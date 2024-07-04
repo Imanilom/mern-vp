@@ -9,9 +9,9 @@ const calculateMetrics = (logs) => {
   const nnIntervals = [];
   if (rrIntervals.length < 2) {
     // Not enough data points to calculate metrics
-    return { sdnn: null, rmssd: null, pnn50: null };
+    return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null };
   }
-  let sumSquaredDiffs = 0; // For SDNN
+  let sumSquaredDiffs = 0; // For RMSSD
   let sumSuccessiveDiffs = 0; // For RMSSD
   let nn50Count = 0;
 
@@ -36,7 +36,14 @@ const calculateMetrics = (logs) => {
   const rmssd = Math.sqrt(sumSquaredDiffs / nnIntervals.length);
   const pnn50 = (nn50Count / nnIntervals.length) * 100;
 
-  return { sdnn, rmssd, pnn50 };
+  // Calculate S1 & S2
+  const diff1 = rrIntervals.slice(1).map((val, index) => val - rrIntervals[index]);
+  const sum1 = rrIntervals.slice(1).map((val, index) => val + rrIntervals[index]);
+
+  const s1 = Math.sqrt(diff1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / diff1.length) / Math.sqrt(2);
+  const s2 = Math.sqrt(sum1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / sum1.length) / Math.sqrt(2);
+
+  return { sdnn, rmssd, pnn50, s1, s2 };
 };
 
 export const test = async (req, res, next) => {
@@ -46,26 +53,22 @@ export const test = async (req, res, next) => {
     });
 
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 100;
+    const limit = parseInt(req.query.limit) || 10000;
     const { startDate, endDate } = req.query;
     let filter = {};
 
     if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      start.setUTCHours(0, 0, 0, 0);
-      end.setUTCHours(23, 59, 59, 999);
+      const start = new Date(startDate).getTime() / 1000; // Convert to Unix time
+      const end = new Date(endDate).getTime() / 1000; // Convert to Unix time
 
-      filter.create_at = {
+      filter.timestamp = {
         $gte: start,
         $lte: end,
       };
     }
 
     const logs = await Log.find(filter)
-      .sort({ datetime: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
+      .sort({ datetime: -1 });
 
     if (logs.length === 0) {
       return next({ status: 404, message: 'Log not found!' });
@@ -77,6 +80,7 @@ export const test = async (req, res, next) => {
     next(error);
   }
 };
+
 
 
 export const updateUser = async (req, res, next) => {

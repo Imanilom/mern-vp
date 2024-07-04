@@ -6,7 +6,7 @@ import {
   ref,
   uploadBytesResumable,
 } from 'firebase/storage';
-import { app } from '../firebase';
+import { app } from '../../firebase';
 import { useDispatch } from 'react-redux';
 import {
   updateUserStart,
@@ -16,7 +16,7 @@ import {
   deleteUserSuccess,
   deleteUserFailure,
   signOutUserStart,
-} from '../redux/user/userSlice';
+} from '../../redux/user/userSlice';
 
 export default function Profile() {
   const dispatch = useDispatch();

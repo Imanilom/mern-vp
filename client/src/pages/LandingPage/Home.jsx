@@ -1,5 +1,5 @@
     import React from 'react'
-    import Hero1 from '../assets/images/hero.jpg';
+    import Hero1 from './../../assets/images/hero.jpg';
     export default function Home() {
       return (
         <section>

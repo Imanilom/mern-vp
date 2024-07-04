@@ -1,6 +1,6 @@
 import { useSelector } from 'react-redux';
 import { useRef, useState, useEffect } from 'react';
-import Side from '../components/Side'
+import Side from '../../components/Side'
 import { Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 

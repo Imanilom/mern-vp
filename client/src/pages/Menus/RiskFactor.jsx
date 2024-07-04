@@ -1,5 +1,5 @@
 import React from 'react'
-import Side from '../components/Side'
+import Side from '../../components/Side'
 function RiskFactor() {
   return (
     <main class="bg-white flex">
