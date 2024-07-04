@@ -31,15 +31,15 @@ export default function App() {
   return (
     <BrowserRouter>
       <Header />
-      
+
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/sign-in' element={<SignIn />} />
         <Route path='/sign-up' element={<SignUp />} />
         <Route path='/about' element={<About />} />
         <Route element={<PrivateRoute />}>
-          <Route path='/profile' element={<Profile />} />
           <Route path='/ringkasan-pasien' element={<Summary />} />
+          <Route path='/profile' element={<Profile />} />
           <Route path='/monitor' element={<Monitor />} />
           <Route path='/activity' element={<Activity />} />
           <Route path='/createActivity' element={<CreateActivity />} />
