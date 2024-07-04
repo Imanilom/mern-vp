@@ -4,14 +4,54 @@ import { useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import "chart.js/auto";
-import Side from "../components/Side";
+import Side from "../../components/Side";
+
+const calculateMetrics = (logs) => {
+  const rrIntervals = logs.map((log) => log.RR);
+  const nnIntervals = [];
+  if (rrIntervals.length < 2) {
+    // Not enough data points to calculate metrics
+    return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null };
+  }
+  let sumSquaredDiffs = 0; // For SDNN
+  let sumSuccessiveDiffs = 0; // For RMSSD
+  let nn50Count = 0;
+
+  for (let i = 1; i < rrIntervals.length; i++) {
+    const diff = Math.abs(rrIntervals[i] - rrIntervals[i - 1]);
+    nnIntervals.push(diff);
+
+    sumSquaredDiffs += diff * diff; // Square the difference and add to sum (for RMSSD)
+    if (diff > 50) {
+      nn50Count++;
+    }
+  }
+
+  const avgNN = nnIntervals.reduce((sum, interval) => sum + interval, 0) / nnIntervals.length;
+
+  const squaredDiffsFromMean = nnIntervals.map((interval) => Math.pow(interval - avgNN, 2));
+  const sumSquaredDiffsFromMean = squaredDiffsFromMean.reduce((sum, diff) => sum + diff, 0);
+
+  const variance = sumSquaredDiffsFromMean / (nnIntervals.length - 1);
+  const sdnn = Math.sqrt(variance);
+
+  const rmssd = Math.sqrt(sumSquaredDiffs / nnIntervals.length);
+  const pnn50 = (nn50Count / nnIntervals.length) * 100;
+
+  // Calculate S1 & S2
+  const s1 = Math.sqrt(nnIntervals.reduce((sum, interval) => sum + Math.pow(interval - avgNN, 2), 0) / nnIntervals.length);
+  const s2 = Math.sqrt(nnIntervals.reduce((sum, interval) => sum + Math.pow(interval + avgNN, 2), 0) / nnIntervals.length);
+
+  return { sdnn, rmssd, pnn50, s1, s2 };
+};
 
 export default function Monitor() {
   const { currentUser } = useSelector((state) => state.user);
   const [log, setLog] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [metrics, setMetrics] = useState({ rmssd: null, pnn50: null, sdnn: null });
+  const [metrics, setMetrics] = useState({ rmssd: null, pnn50: null, sdnn: null, s1: null, s2: null });
+  const [dailyMetrics, setDailyMetrics] = useState([]);
 
   useEffect(() => {
     fetchLogs();
@@ -31,14 +71,32 @@ export default function Monitor() {
       }
       const response = await fetch(url);
       const data = await response.json();
-      setLog(data.logs);
+      const sortedLogs = data.logs.sort((a, b) => b.timestamp - a.timestamp); // Newest to oldest
+      setLog(sortedLogs);
 
-      if (data && data.logs.length > 0) {
+      if (data && sortedLogs.length > 0) {
         setMetrics(data.calculate);
+        calculateDailyMetrics(sortedLogs);
       }
     } catch (error) {
       console.error('Error fetching logs:', error);
     }
+  };
+
+  const calculateDailyMetrics = (logs) => {
+    const groupedLogs = logs.reduce((acc, log) => {
+      const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(log);
+      return acc;
+    }, {});
+
+    const dailyMetrics = Object.keys(groupedLogs).map(date => {
+      const metrics = calculateMetrics(groupedLogs[date]);
+      return { date, ...metrics };
+    });
+
+    setDailyMetrics(dailyMetrics);
   };
 
   const [isHRVisible, setHRIsVisible] = useState(false);
@@ -49,15 +107,20 @@ export default function Monitor() {
   const toggleVisibilityRR = () => setRRIsVisible(!isRRVisible);
   const toggleVisibilityPoincare = () => setPoincareIsVisible(!isPoincareVisible);
 
+  const formatDate = (unixTimestamp) => {
+    const date = new Date(unixTimestamp * 1000); // Convert to milliseconds
+    return date.toLocaleString(); // Adjust the format as needed
+  };
+
   const chartData = (label, dataKey) => ({
-    labels: log ? log.map(item => item.time_created) : [],
+    labels: log ? log.map(item => formatDate(item.timestamp)) : [],
     datasets: [
       {
         label,
         data: log ? log.map(item => item[dataKey]) : [],
         borderColor: 'rgba(75, 192, 192, 1)',
         borderWidth: 1,
-        fill: false,
+        fill: true,
       },
     ],
   });
@@ -96,10 +159,32 @@ export default function Monitor() {
                     <h3 className="font-semibold text-base text-blueGray-700">Monitoring</h3>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                  <MetricCard title="SDNN" value={metrics.sdnn} />
-                  <MetricCard title="RMSSD" value={metrics.rmssd} />
-                  <MetricCard title="pNN50" value={metrics.pnn50} />
+                <div className="mt-8">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">Daily Metrics</h4>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SDNN</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RMSSD</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">pNN50</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {dailyMetrics.map((metric, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap">{metric.date}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{metric.sdnn !== null ? metric.sdnn.toFixed(2) : 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{metric.rmssd !== null ? metric.rmssd.toFixed(2) : 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{metric.pnn50 !== null ? metric.pnn50.toFixed(2) : 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{metric.s1 !== null ? metric.s1.toFixed(2) : 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{metric.s2 !== null ? metric.s2.toFixed(2) : 'N/A'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
                 <div className="mt-4">
                   <h4 className="text-lg font-semibold text-gray-800 mb-2">Select Date Range</h4>

@@ -1,5 +1,5 @@
 import React from 'react'
-import Side from '../components/Side'
+import Side from '../../components/Side'
 
 function Anamnesa() {
   return (

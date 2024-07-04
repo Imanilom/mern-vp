@@ -1,28 +1,28 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import About from './pages/About';
-
+import Home from './pages/LandingPage/Home';
+import About from './pages/LandingPage/About';
+import Project from './pages/LandingPage/Project';
 import Header from './components/Header';
 import Sidebar from './components/Side';
-import SignIn from './pages/SignIn';
-import SignUp from './pages/SignUp';
-import Profile from './pages/Profile';
+import SignIn from './pages/auth/SignIn';
+import SignUp from './pages/auth/SignUp';
+import Profile from './pages/Menus/Profile';
 // Dashboard
-import Summary from './pages/Summary';
-import Monitor from './pages/Monitor';
-import MedicalHistories from './pages/MedicalHistories';
-import RiskFactor from './pages/RiskFactor';
-import RiskPrediction from './pages/RiskPrediction';
-import DetectionHistories from './pages/DetectionHistories';
-import Treatment from './pages/Treatment';
-import Recommendation from './pages/Recommendation';
+import Summary from './pages/Menus/Summary';
+import Monitor from './pages/Menus/Monitor';
+import MedicalHistories from './pages/Menus/MedicalHistories';
+import RiskFactor from './pages/Menus/RiskFactor';
+import RiskPrediction from './pages/Menus/RiskPrediction';
+import DetectionHistories from './pages/Menus/DetectionHistories';
+import Treatment from './pages/Menus/Treatment';
+import Recommendation from './pages/Menus/Recommendation';
 // Crud
-import Activity from './pages/Activity';
-import CreateActivity from './pages/CreateActivity';
-import UpdateActivity from './pages/EditActivity';
+import Activity from './pages/Menus/Activity';
+import CreateActivity from './pages/Menus/CreateActivity';
+import UpdateActivity from './pages/Menus/EditActivity';
 // Anamnesa
-import Anamnesa from './pages/Anamnesa';
+import Anamnesa from './pages/Menus/Anamnesa';
 // Private Route
 
 import PrivateRoute from './components/PrivateRoute'

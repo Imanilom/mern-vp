@@ -1,6 +1,6 @@
 import React from 'react'
-import Side from '../components/Side'
-function Recommendation() {
+import Side from '../../components/Side'
+function DetectionHistories() {
   return (
     <main class="bg-white flex">
     <Side />
@@ -9,10 +9,7 @@ function Recommendation() {
       <div class="rounded-t mb-0 px-4 py-3 border-0">
         <div class="flex flex-wrap items-center">
           <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-            <h3 class="font-semibold text-base text-blueGray-700">Rekomendasi</h3>
-          </div>
-          <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-            <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat rekomendasi aktivitas</button>
+            <h3 class="font-semibold text-base text-blueGray-700">Riwayat Deteksi</h3>
           </div>
         </div>
       </div>
@@ -22,13 +19,10 @@ function Recommendation() {
           <thead>
             <tr>
               <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                Berlaku dari
+                Tanggal
               </th>
               <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                Hingga tanggal
-              </th>
-              <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                Aktivitas
+                Nilai DFA
               </th>
             </tr>
           </thead>
@@ -39,21 +33,28 @@ function Recommendation() {
                 15 Juni 2022
               </th>
               <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                22 Juni 2022
-              </td>
-              <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                Berjalan kaki satu jam 
+              1,109  
               </td>
             </tr>
-       
+            <tr>
+              <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                18 Desember 2022
+              </th>
+              <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                1,157
+              </td>
+            </tr>
           </tbody>
         </table>
+        
       </div>
+      
     </div>
+    <h2 class="danger"><span>Alert :</span> Ditemukan Deteksi baru saat berjalan</h2>
   </div>
 </main>
-   
+    
   )
 }
 
-export default Recommendation
+export default DetectionHistories
