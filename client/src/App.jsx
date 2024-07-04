@@ -31,12 +31,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <Header />
-
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/sign-in' element={<SignIn />} />
         <Route path='/sign-up' element={<SignUp />} />
         <Route path='/about' element={<About />} />
+        <Route path='/project' element={<Project />} />
         <Route element={<PrivateRoute />}>
           <Route path='/ringkasan-pasien' element={<Summary />} />
           <Route path='/profile' element={<Profile />} />
