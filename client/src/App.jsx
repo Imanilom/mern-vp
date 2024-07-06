@@ -4,6 +4,7 @@ import Home from './pages/LandingPage/Home';
 import About from './pages/LandingPage/About';
 import Project from './pages/LandingPage/Project';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import Sidebar from './components/Side';
 import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
@@ -53,6 +54,7 @@ export default function App() {
           <Route path='/anamnesa' element={<Anamnesa />} />
         </Route>
       </Routes>
+      <Footer />
     </BrowserRouter>
   )
 }

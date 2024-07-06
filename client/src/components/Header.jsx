@@ -23,11 +23,18 @@ export default function Header() {
               Home
             </li>
           </Link>
+          <Link to='/project'>
+            <li className='hidden sm:inline text-slate-700 hover:underline'>
+              Project
+            </li>
+          </Link>
+          
           <Link to='/about'>
             <li className='hidden sm:inline text-slate-700 hover:underline'>
               About
             </li>
           </Link>
+
           <Link to='/ringkasan-pasien'>
             {currentUser ? (
               <p>Dashboard</p>
