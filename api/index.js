@@ -7,6 +7,7 @@ import garminRouter from './routes/garmin.route.js';
 import activityRouter from './routes/activity.route.js';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import cors from 'cors';
 import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import './controllers/data.controller.js';
 

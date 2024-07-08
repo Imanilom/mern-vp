@@ -68,18 +68,21 @@ export const test = async (req, res, next) => {
     }
 
     const logs = await Log.find(filter)
-      .sort({ datetime: -1 });
+      .sort({ create_at: -1 })
+      .limit(limit);
 
     if (logs.length === 0) {
-      return next({ status: 404, message: 'Log not found!' });
+      return res.status(404).json({ message: 'Log not found!' });
     }
 
     const calculate = calculateMetrics(logs);
     res.status(200).json({ logs, calculate });
   } catch (error) {
+    console.error('Error in /api/user/test:', error.message);
     next(error);
   }
 };
+
 
 
 
