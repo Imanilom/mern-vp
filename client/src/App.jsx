@@ -4,6 +4,7 @@ import Home from './pages/LandingPage/Home';
 import About from './pages/LandingPage/About';
 import Project from './pages/LandingPage/Project';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import Sidebar from './components/Side';
 import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
@@ -31,15 +32,15 @@ export default function App() {
   return (
     <BrowserRouter>
       <Header />
-      
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/sign-in' element={<SignIn />} />
         <Route path='/sign-up' element={<SignUp />} />
         <Route path='/about' element={<About />} />
+        <Route path='/project' element={<Project />} />
         <Route element={<PrivateRoute />}>
-          <Route path='/profile' element={<Profile />} />
           <Route path='/ringkasan-pasien' element={<Summary />} />
+          <Route path='/profile' element={<Profile />} />
           <Route path='/monitor' element={<Monitor />} />
           <Route path='/activity' element={<Activity />} />
           <Route path='/createActivity' element={<CreateActivity />} />
@@ -53,6 +54,7 @@ export default function App() {
           <Route path='/anamnesa' element={<Anamnesa />} />
         </Route>
       </Routes>
+      <Footer />
     </BrowserRouter>
   )
 }
