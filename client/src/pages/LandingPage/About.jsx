@@ -18,7 +18,7 @@ function About() {
                 <div className="flex flex-row items-start justify-start">
                   <h3 className="text-2xl font-semibold">PPTIK - ITB</h3>
                 </div>
-                <div className="w-full text-base font-medium leading-tight">
+                <div className="w-full text-base font-medium leading-tight text-justify">
                   PPTIK merupakan salah satu pusat penelitian yang terdapat di
                   ITB yang dibangun dengan tujuan agar masyarakat dapat
                   memanfaatkan penyebaran TIK yang secara global telah meluas.
@@ -26,7 +26,7 @@ function About() {
               </div>
             </div>
           </div>
-          <div className="w-full max-w-2xl flex flex-col items-start justify-start gap-5">
+          <div className="w-full max-w-2xl flex flex-col items-start justify-start gap-5 text-justify">
             <h3 className="m-0 text-2xl font-semibold">OUR VISION</h3>
             <div className="w-full text-base font-medium leading-tight">
               Every Indonesian citizen must be able to take advantage of ICT for
