@@ -10,7 +10,8 @@ import path from 'path';
 import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import './controllers/data.controller.js';
 
-dotenv.config();
+dotenv.config({path : '../.env'});
+console.log(process.env.MONGO);
 
 mongoose
   .connect(process.env.MONGO, {

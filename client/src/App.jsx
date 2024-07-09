@@ -26,20 +26,26 @@ import UpdateActivity from './pages/Menus/EditActivity';
 import Anamnesa from './pages/Menus/Anamnesa';
 // Private Route
 
-import PrivateRoute from './components/PrivateRoute'
+import PrivateRoute from './components/PrivateRoute';
 
 export default function App() {
+
   return (
     <BrowserRouter>
       <Header />
       <Routes>
-        <Route path='/' element={<Home />} />
         <Route path='/sign-in' element={<SignIn />} />
         <Route path='/sign-up' element={<SignUp />} />
+        <Route path='/' element={<Home />} />
         <Route path='/about' element={<About />} />
         <Route path='/project' element={<Project />} />
+
+        {/* PRIVATE ROUTE */}
+
+
+        <Route path='/ringkasan-pasien' element={<Summary />} />
+
         <Route element={<PrivateRoute />}>
-          <Route path='/ringkasan-pasien' element={<Summary />} />
           <Route path='/profile' element={<Profile />} />
           <Route path='/monitor' element={<Monitor />} />
           <Route path='/activity' element={<Activity />} />
