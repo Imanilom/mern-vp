@@ -47,11 +47,14 @@ const calculateMetrics = (logs) => {
 
 export default function Monitor() {
   const { currentUser } = useSelector((state) => state.user);
-  const [log, setLog] = useState(null);
+  const [logs, setLogs] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [metrics, setMetrics] = useState({ rmssd: null, pnn50: null, sdnn: null, s1: null, s2: null });
   const [dailyMetrics, setDailyMetrics] = useState([]);
+  const [isHRVisible, setHRIsVisible] = useState(true); // Show HR chart by default
+  const [isRRVisible, setRRIsVisible] = useState(true); // Show RR chart by default
+  const [isPoincareVisible, setPoincareIsVisible] = useState(true); // Show Poincare chart by default
 
   useEffect(() => {
     fetchLogs();
@@ -71,11 +74,11 @@ export default function Monitor() {
       }
       const response = await fetch(url);
       const data = await response.json();
-      const sortedLogs = data.logs.sort((a, b) => b.timestamp - a.timestamp); // Newest to oldest
-      setLog(sortedLogs);
+      const sortedLogs = data.logs.sort((a, b) => b.timestamp - a.timestamp); // Sort logs from newest to oldest
+      setLogs(sortedLogs);
 
       if (data && sortedLogs.length > 0) {
-        setMetrics(data.calculate);
+        setMetrics(calculateMetrics(sortedLogs));
         calculateDailyMetrics(sortedLogs);
       }
     } catch (error) {
@@ -99,10 +102,6 @@ export default function Monitor() {
     setDailyMetrics(dailyMetrics);
   };
 
-  const [isHRVisible, setHRIsVisible] = useState(false);
-  const [isRRVisible, setRRIsVisible] = useState(false);
-  const [isPoincareVisible, setPoincareIsVisible] = useState(false);
-
   const toggleVisibilityHR = () => setHRIsVisible(!isHRVisible);
   const toggleVisibilityRR = () => setRRIsVisible(!isRRVisible);
   const toggleVisibilityPoincare = () => setPoincareIsVisible(!isPoincareVisible);
@@ -113,11 +112,11 @@ export default function Monitor() {
   };
 
   const chartData = (label, dataKey) => ({
-    labels: log ? log.map(item => formatDate(item.timestamp)) : [],
+    labels: logs ? logs.map(item => formatDate(item.timestamp)).reverse() : [],
     datasets: [
       {
         label,
-        data: log ? log.map(item => item[dataKey]) : [],
+        data: logs ? logs.map(item => item[dataKey]).reverse() : [],
         borderColor: 'rgba(75, 192, 192, 1)',
         borderWidth: 1,
         fill: true,
@@ -126,9 +125,9 @@ export default function Monitor() {
   });
 
   const poincareData = () => {
-    if (!log) return { datasets: [] };
+    if (!logs) return { datasets: [] };
 
-    const rr = log.map(item => item.RR);
+    const rr = logs.map(item => item.RR);
     const data = rr.slice(1).map((value, index) => ({
       x: rr[index],
       y: value,
@@ -223,13 +222,6 @@ export default function Monitor() {
     </div>
   );
 }
-
-const MetricCard = ({ title, value }) => (
-  <div className="bg-white shadow-md rounded-lg p-4">
-    <h4 className="text-lg font-semibold text-gray-800 mb-2">{title}</h4>
-    <p className="text-gray-600">{value !== null ? value.toFixed(2) : "Loading..."}</p>
-  </div>
-);
 
 const ToggleButton = ({ text, isVisible, onClick }) => (
   <button
