@@ -17,7 +17,7 @@ export default function Header() {
           </h1>
          
         </Link>
-        <ul className='flex gap-4'>
+        <ul className='flex gap-4 items-center font-semibold'>
           <Link to='/'>
             <li className='hidden sm:inline text-slate-700 hover:underline'>
               Home
@@ -46,7 +46,7 @@ export default function Header() {
             {currentUser ? (
               <img src={currentUser.profilePicture} alt='profile' className='h-7 w-7 rounded-full object-cover' />
             ) : (
-              <li>Sign In</li>
+              <li className='px-3 py-2 rounded-lg hover:text-white hover:bg-slate-700 duration-100 font-semibold'>Sign In</li>
             )}
           </Link>
         </ul>

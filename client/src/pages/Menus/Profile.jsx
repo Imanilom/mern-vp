@@ -33,7 +33,7 @@ export default function Profile() {
       handleFileUpload(image);
     }
   }, [image]);
-  
+
   const handleFileUpload = async (image) => {
     const storage = getStorage(app);
     const fileName = new Date().getTime() + image.name;
@@ -114,7 +114,7 @@ export default function Profile() {
       dispatch(deleteUserFailure(data.message));
     }
   };
-  
+
   return (
     <div className='p-3 max-w-lg mx-auto'>
       <h1 className='text-3xl font-semibold text-center my-7'>Profile</h1>
@@ -132,12 +132,19 @@ export default function Profile() {
       allow write: if
       request.resource.size < 2 * 1024 * 1024 &&
       request.resource.contentType.matches('image/.*') */}
-        <img
-          src={formData.profilePicture || currentUser.profilePicture}
-          alt='profile'
-          className='h-24 w-24 self-center cursor-pointer rounded-full object-cover mt-2'
-          onClick={() => fileRef.current.click()}
-        />
+        <div className="relative flex justify-center w-fit mx-auto group">
+
+          {/* icon */}
+          <svg className='absolute bottom-0 right-2 ' xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+            <path className='fill-transparent group-hover:fill-[#9718ec]' fill="" fill-rule="evenodd" d="M9.778 21h4.444c3.121 0 4.682 0 5.803-.735a4.408 4.408 0 0 0 1.226-1.204c.749-1.1.749-2.633.749-5.697c0-3.065 0-4.597-.749-5.697a4.407 4.407 0 0 0-1.226-1.204c-.72-.473-1.622-.642-3.003-.702c-.659 0-1.226-.49-1.355-1.125A2.064 2.064 0 0 0 13.634 3h-3.268c-.988 0-1.839.685-2.033 1.636c-.129.635-.696 1.125-1.355 1.125c-1.38.06-2.282.23-3.003.702A4.405 4.405 0 0 0 2.75 7.667C2 8.767 2 10.299 2 13.364c0 3.064 0 4.596.749 5.697c.324.476.74.885 1.226 1.204C5.096 21 6.657 21 9.778 21M12 9.273c-2.301 0-4.167 1.831-4.167 4.09c0 2.26 1.866 4.092 4.167 4.092c2.301 0 4.167-1.832 4.167-4.091c0-2.26-1.866-4.091-4.167-4.091m0 1.636c-1.38 0-2.5 1.099-2.5 2.455c0 1.355 1.12 2.454 2.5 2.454s2.5-1.099 2.5-2.454c0-1.356-1.12-2.455-2.5-2.455m4.722-.818c0-.452.373-.818.834-.818h1.11c.46 0 .834.366.834.818a.826.826 0 0 1-.833.818h-1.111a.826.826 0 0 1-.834-.818" clip-rule="evenodd"/></svg>
+
+          <img
+            src={formData.profilePicture || currentUser.profilePicture}
+            alt='profile'
+            className='h-24 w-24 self-center cursor-pointer rounded-full object-cover mt-2'
+            onClick={() => fileRef.current.click()}
+          />
+        </div>
         <p className='text-sm self-center'>
           {imageError ? (
             <span className='text-red-700'>
@@ -151,45 +158,64 @@ export default function Profile() {
             ''
           )}
         </p>
-        <input
-          defaultValue={currentUser.name}
-          type='text'
-          id='name'
-          placeholder='Name'
-          className='bg-slate-100 rounded-lg p-3'
-          onChange={handleChange}
-        />
-        <input
-          defaultValue={currentUser.email}
-          type='email'
-          id='email'
-          placeholder='Email'
-          className='bg-slate-100 rounded-lg p-3'
-          onChange={handleChange}
-        />
-         <input
-          defaultValue={currentUser.phone_number}
-          type='text'
-          id='phone_number'
-          placeholder='Phone'
-          className='bg-slate-100 rounded-lg p-3'
-          onChange={handleChange}
-        />
-         <input
-          defaultValue={currentUser.address}
-          type='text'
-          id='address'
-          placeholder='Address'
-          className='bg-slate-100 rounded-lg p-3'
-          onChange={handleChange}
-        />
-        <input
-          type='password'
-          id='password'
-          placeholder='Password'
-          className='bg-slate-100 rounded-lg p-3'
-          onChange={handleChange}
-        />
+        <div className="mb-3">
+          <div className='text-sm font-semibold text-gray-400 mb-1'>Username</div>
+
+          <input
+            defaultValue={currentUser.name}
+            type='text'
+            id='name'
+            placeholder='Name'
+            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
+            onChange={handleChange}
+          />
+        </div>
+        <div className="mb-3">
+          <div className='text-sm font-semibold text-gray-400 mb-1'>Email Address</div>
+          <input
+            defaultValue={currentUser.email}
+            type='email'
+            id='email'
+            placeholder='Email'
+            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="mb-3">
+          <div className='text-sm font-semibold text-gray-400 mb-1'>Phone Number</div>
+          <input
+            defaultValue={currentUser.phone_number}
+            type='text'
+            id='phone_number'
+            placeholder='Phone'
+            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
+            onChange={handleChange}
+          />
+        </div>
+        <div className="mb-3">
+          <div className='text-sm font-semibold text-gray-400 mb-1'>Address</div>
+          <input
+            defaultValue={currentUser.address}
+            type='text'
+            id='address'
+            placeholder='Address'
+            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="mb-3">
+          <div className='text-sm font-semibold text-gray-400 mb-1'>Password</div>
+          <input
+            type='password'
+            id='password'
+            placeholder='Password'
+            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
+            onChange={handleChange}
+          />
+        </div>
+
         <button className='bg-slate-700 text-white p-3 rounded-lg uppercase hover:opacity-95 disabled:opacity-80'>
           {loading ? 'Loading...' : 'Update'}
         </button>
@@ -201,14 +227,19 @@ export default function Profile() {
         >
           Delete Account
         </span>
-        <span onClick={handleSignOut} className='text-red-700 cursor-pointer'>
+        <span onClick={handleSignOut} className='text-red-700 px-4 py-2 border rounded-md cursor-pointer hover:text-white hover:bg-red-700 duration-200'>
           Sign out
         </span>
       </div>
-      <p className='text-red-700 mt-5'>{error && 'Something went wrong!'}</p>
-      <p className='text-green-700 mt-5'>
-        {updateSuccess && 'User is updated successfully!'}
-      </p>
+      {error ? (
+        <p className='text-white px-16 py-4 mt-5 bg-red-700'>{error && 'Something went wrong!'}</p>
+      ) : null}
+      {updateSuccess ? (
+        <p className='text-green text-white px-16 py-4 bg-green-500 mt-5'>
+          {updateSuccess && 'User is updated successfully!'}
+        </p>
+
+      ) : null}
     </div>
   );
 }

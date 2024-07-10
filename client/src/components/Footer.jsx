@@ -18,7 +18,7 @@ function Footer() {
                 </div>
 
                 {/* another action */}
-                <div className="flex justify-start gap-8 md:justify-between w-full flex-wrap md:gap-6 lg:gap-0">
+                <div className="flex justify-start gap-8 md:justify-start w-full flex-wrap md:gap-6 lg:gap-16">
                     <div className="sosial">
                         <p className="font-bold mb-3">FIND OUR SOSIAL</p>
                         <div className="flex gap-3">

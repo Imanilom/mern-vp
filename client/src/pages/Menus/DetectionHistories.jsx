@@ -50,7 +50,7 @@ function DetectionHistories() {
       </div>
       
     </div>
-    <h2 class="danger"><span>Alert :</span> Ditemukan Deteksi baru saat berjalan</h2>
+    <h2 class="danger text-orange-500"><span>Alert :</span> Ditemukan Deteksi baru saat berjalan</h2>
   </div>
 </main>
     
