@@ -42,10 +42,10 @@ export default function App() {
 
         {/* PRIVATE ROUTE */}
 
-        <Route path='/ringkasan-pasien' element={<Summary />} />
 
         <Route element={<PrivateRoute />}>
           <Route path='/profile' element={<Profile />} />
+          <Route path='/ringkasan-pasien' element={<Summary />} />
           <Route path='/monitor' element={<Monitor />} />
           <Route path='/activity' element={<Activity />} />
           <Route path='/createActivity' element={<CreateActivity />} />
