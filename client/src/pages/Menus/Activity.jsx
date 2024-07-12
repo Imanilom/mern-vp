@@ -45,13 +45,12 @@ function Acitivity() {
         console.log(data)
         setAktivitas(data)
         
-     
       } catch (error) {
 
       }
     };
     fetchLog();
-  });
+  }, []);
   return (
     <main class="bg-white flex">
     <Side />
@@ -98,7 +97,7 @@ function Acitivity() {
           {aktivitas?.map((aktivitas) => (
               <tr key={aktivitas._id}>
               <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
-                {aktivitas.Date}
+                {new Date(aktivitas.Date).getFullYear()}-{new Date(aktivitas.Date).getMonth()}-{new Date(aktivitas.Date).getDay()} : {new Date(aktivitas.Date).getHours()} : {new Date(aktivitas.Date).getMinutes()}
               </th>
               <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
               {aktivitas.awal}

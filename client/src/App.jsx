@@ -42,7 +42,6 @@ export default function App() {
 
         {/* PRIVATE ROUTE */}
 
-
         <Route element={<PrivateRoute />}>
           <Route path='/profile' element={<Profile />} />
           <Route path='/ringkasan-pasien' element={<Summary />} />
