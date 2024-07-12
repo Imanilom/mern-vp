@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/getActivity', getActivity);
 router.get('/get/:id', get);
 router.post('/create', createActivity);
-router.delete('/delete/:id', deleteActivity);
+router.delete('/delete/:id', verifyToken ,deleteActivity);
 router.post('/update/:id', editActivity);
 
     
