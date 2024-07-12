@@ -8,7 +8,7 @@ router.get('/getActivity', getActivity);
 router.get('/get/:id', get);
 router.post('/create', createActivity);
 router.delete('/delete/:id', deleteActivity);
-router.post('/update/:id', editActivity);
+router.post('/update/:id', verifyToken, editActivity);
 
     
 export default router;

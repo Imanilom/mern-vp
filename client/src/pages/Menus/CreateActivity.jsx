@@ -24,10 +24,16 @@ function CreateActivity() {
       ...formData,
       [e.target.id]: e.target.value,
     });
+
+   
   }
 
   const handleSelectChange = (event) => {
     setSelectedOption(event.target.value);
+    setFormData({
+      ...formData,
+      aktivitas: event.target.value,
+    })
   };
 
   const handleSubmit = async (e) => {
@@ -80,8 +86,8 @@ function CreateActivity() {
             </div>
             <div>
               <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Select an option:</label>
-              <select value={formData.selectedOption} id="aktivitas" onChange={handleSelectChange}>
-                <option value="" disabled>
+              <select value={selectedOption} id="aktivitas" onChange={handleSelectChange}>
+                <option value="" disabled >
                   Select an option
                 </option>
                 {options.map((option, index) => (

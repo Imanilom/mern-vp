@@ -19,9 +19,13 @@ import DetectionHistories from './pages/Menus/DetectionHistories';
 import Treatment from './pages/Menus/Treatment';
 import Recommendation from './pages/Menus/Recommendation';
 // Crud
+
+//Activity >>
 import Activity from './pages/Menus/Activity';
 import CreateActivity from './pages/Menus/CreateActivity';
-import UpdateActivity from './pages/Menus/EditActivity';
+import UpdateActivity from './pages/Menus/UpdateActivity';
+//Activity END >>
+
 // Anamnesa
 import Anamnesa from './pages/Menus/Anamnesa';
 // Private Route
@@ -47,8 +51,9 @@ export default function App() {
           <Route path='/ringkasan-pasien' element={<Summary />} />
           <Route path='/monitor' element={<Monitor />} />
           <Route path='/activity' element={<Activity />} />
+      
           <Route path='/createActivity' element={<CreateActivity />} />
-          <Route path='/updateActivity' element={<UpdateActivity />} />
+          <Route path='/updateActivity/:id' element={<UpdateActivity />} />
           <Route path='/riwayat-medis' element={<MedicalHistories />} />
           <Route path='/faktor-resiko' element={<RiskFactor />} />
           <Route path='/prediksi-faktor' element={<RiskPrediction />} />
