@@ -78,7 +78,7 @@ export const deleteActivity = async (req, res, next) => {
 
   try {
     await Aktivitas.findByIdAndDelete(req.params.id);
-    res.status(200).json('Aktivitas has been deleted!');
+    res.status(200).json({message : 'Aktivitas has been deleted!'});
   } catch (error) {
     next(error);
   }
