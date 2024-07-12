@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from 'react';
 import Side from '../../components/Side'
 import { Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import Swal from 'sweetalert2';
 
 function Acitivity() {
   const [useractivitys, setUseractivitys] = useState([]);
@@ -22,19 +23,18 @@ function Acitivity() {
       });
       const data = await res.json();
       console.log(res)
-      // if (data.success === false) {
-      //   console.log(data.message);
-      //   return;
-      // }
-
-      // setUseractivitys((prev) =>
-      //   prev.filter((activity) => activity._id !== activityId)
-      // );
 
       // get new data to make it reactive
       const res2 = await fetch(`/api/activity/getActivity`);
       const data2 = await res2.json();
-      setAktivitas(data2)
+      setAktivitas(data2);
+
+      Swal.fire({
+        title: "Success",
+        text: "Your activities deleted",
+        icon: "success",
+        confirmButtonColor: "#3085d6",
+      });
 
 
     } catch (error) {
@@ -49,9 +49,9 @@ function Acitivity() {
 
   const handleConfirmDelete = () => {
     handleactivityDelete(activityToDelete._id);
-    console.log('id delete : ', activityToDelete._id)
     setShowModal(false);
     setActivityToDelete(null);
+
   };
 
   const handleCancelDelete = () => {

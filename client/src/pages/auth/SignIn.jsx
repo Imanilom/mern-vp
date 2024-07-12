@@ -11,7 +11,7 @@ import logo from '../../assets/images/logo.png';
 
 export default function SignIn() {
   const [formData, setFormData] = useState({});
-  const [isHide, setIsHide] = useState(false);
+  const [isHide, setIsHide] = useState(true);
   const { loading, error } = useSelector((state) => state.user);
 
   const navigate = useNavigate();
