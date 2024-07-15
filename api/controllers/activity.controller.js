@@ -19,7 +19,7 @@ export const readActivity = async (req, res, next) => {
 export const getActivity = async (req, res, next) => {
   try {
     //get activities by credential user login
-    const Activity = await Aktivitas.find({userRef : req.user.id});
+    const Activity = await Aktivitas.find({userRef : req.user.id}).sort({create_at : -1});
     
     if (!Activity) {
       return next(errorHandler(404, 'Activity not found!'));

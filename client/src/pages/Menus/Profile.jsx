@@ -33,6 +33,7 @@ export default function Profile() {
       handleFileUpload(image);
     }
   }, [image]);
+  
 
   const handleFileUpload = async (image) => {
     const storage = getStorage(app);
