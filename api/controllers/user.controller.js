@@ -52,10 +52,14 @@ export const test = async (req, res, next) => {
       $or: [{ HR: 0 }, { RR: 0 }, { rrRMS: 0 }],
     });
 
+    let user = await User.findById(req.user.id);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10000;
     const { startDate, endDate } = req.query;
-    let filter = {};
+
+    let filter = {
+      guid_device : user.current_device || 'C0680226'
+    };
 
     if (startDate && endDate) {
       const start = new Date(startDate).getTime() / 1000; // Convert to Unix time
@@ -70,6 +74,8 @@ export const test = async (req, res, next) => {
     const logs = await Log.find(filter)
       .sort({ create_at: -1 })
       .limit(limit);
+
+      // console.log(logs, filter, user)
 
     if (logs.length === 0) {
       return res.status(404).json({ message: 'Log not found!' });
@@ -101,6 +107,7 @@ export const updateUser = async (req, res, next) => {
           name: req.body.name,
           email: req.body.email,
           password: req.body.password,
+          current_device : req.body.current_device,
           phone_number: req.body.phone_number,
           address: req.body.address,
           otp: req.body.otp,
@@ -109,6 +116,7 @@ export const updateUser = async (req, res, next) => {
       },
       { new: true }
     );
+
 
     const { password, ...rest } = updatedUser._doc;
 
