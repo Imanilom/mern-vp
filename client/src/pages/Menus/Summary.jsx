@@ -8,12 +8,14 @@ import { Link } from 'react-router-dom';
 function Summary() {
     const { currentUser, loading, error } = useSelector((state) => state.user);
 
+
     return (
         <div>
             <main>
                 <section class="bg-white flex">
                     <Side />
                     <div class="container px-6 py-10 mx-auto">
+
                         <h1 class="text-3xl font-semibold text-gray-800 capitalize lg:text-4xl ">Heart Disease Decision Support Monitoring, Detection and Predictive System </h1>
                         <div class="mt-8 lg:-mx-6 lg:flex lg:items-center">
                             <img class="object-cover w-full lg:mx-6 lg:w-1/3 rounded-xl h-72 lg:h-96" src={currentUser.profilePicture} alt="" />
