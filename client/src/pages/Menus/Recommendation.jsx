@@ -1,15 +1,19 @@
-import React from 'react'
+import React, { useState } from 'react';
 import Side from '../../components/Side';
 import { Link } from 'react-router-dom';
-
 import { useSelector } from 'react-redux';
 
 function Recommendation() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
+  const [checkedActivities, setCheckedActivities] = useState({});
 
-  const checkboxAction = async (id) => {
+  const checkboxAction = (id) => {
+    setCheckedActivities((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
-  }
   return (
     <main class="bg-white flex">
       <Side />
@@ -21,7 +25,7 @@ function Recommendation() {
                 <h3 class="font-semibold text-base text-blueGray-700">Rekomendasi</h3>
               </div>
               <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                {currentUser.role != 'user' ? (
+                {currentUser.role !== 'user' ? (
                   <Link to="/createRecomendation">
                     <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat rekomendasi aktivitas</button>
                   </Link>
@@ -43,16 +47,14 @@ function Recommendation() {
                   <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Aktivitas
                   </th>
-                  {currentUser.role == 'user' ? (
+                  {currentUser.role === 'user' ? (
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Status
                     </th>
-
                   ) : (
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Action
                     </th>
-
                   )}
                 </tr>
               </thead>
@@ -69,18 +71,16 @@ function Recommendation() {
                     Berjalan kaki satu jam
                   </td>
 
-                  {currentUser == 'user' ? (
-
+                  {currentUser.role === 'user' ? (
                     <td class="border-t-0 px-6 flex gap-2 items-center align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                       <input
                         type="checkbox"
+                        checked={checkedActivities['id'] || false}
                         onChange={() => checkboxAction('id')}
                         className="form-checkbox h-5 w-5 text-indigo-600"
-                      />x
+                      />
                     </td>
-
                   ) : (
-
                     <td class="border-t-0 px-6 flex gap-2 items-center align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                       <Link to='/rekomendasi/detail/$_idactivity'>
                         <span className='bg-indigo-600 text-white font-medium py-1 px-3 rounded-md active:bg-indigo-600/80'>Detail</span>
@@ -92,15 +92,13 @@ function Recommendation() {
                     </td>
                   )}
                 </tr>
-
               </tbody>
             </table>
           </div>
         </div>
       </div>
     </main>
-
-  )
+  );
 }
 
-export default Recommendation
+export default Recommendation;
