@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom';
 function Summary() {
     const { currentUser, loading, error } = useSelector((state) => state.user);
 
-
     return (
         <div>
             <main>
@@ -25,7 +24,12 @@ function Summary() {
                                     <div class="rounded-t mb-0 px-4 py-3 border-0">
                                         <div class="flex flex-wrap items-center">
                                             <div class="relative w-full px-4 max-w-full flex-grow lg:flex lg:justify-between flex-1">
-                                                <h3 class="font-semibold text-base text-blueGray-700">Biodata Pasien</h3>
+                                                {currentUser != 'user' ? (
+                                                    <h3 class="font-semibold text-base text-blueGray-700">Biodata Dokter</h3>
+                                                ) : (
+                                                    
+                                                    <h3 class="font-semibold text-base text-blueGray-700">Biodata Pasien</h3>
+                                                )}
                                                 <Link to={`/profile`} className='text-sm text-blue-500'>Edit information</Link>
                                             </div>
                                             {/* <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">

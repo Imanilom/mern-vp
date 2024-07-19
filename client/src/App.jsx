@@ -17,8 +17,12 @@ import RiskFactor from './pages/Menus/RiskFactor';
 import RiskPrediction from './pages/Menus/RiskPrediction';
 import DetectionHistories from './pages/Menus/DetectionHistories';
 import Treatment from './pages/Menus/Treatment';
-import Recommendation from './pages/Menus/Recommendation';
+import MyPatients from './pages/Menus/MyPatients';
 // Crud
+
+// Recomendation
+import Recommendation from './pages/Menus/Recommendation';
+import CreateRecomendation from './pages/Menus/CreateRecomendation';
 
 //Activity >>
 import Activity from './pages/Menus/Activity';
@@ -51,7 +55,9 @@ export default function App() {
           <Route path='/ringkasan-pasien' element={<Summary />} />
           <Route path='/monitor' element={<Monitor />} />
           <Route path='/activity' element={<Activity />} />
+          <Route path='/my-patients' element={<MyPatients />} />
       
+          <Route path='/createRecomendation' element={<CreateRecomendation />} />
           <Route path='/createActivity' element={<CreateActivity />} />
           <Route path='/updateActivity/:id' element={<UpdateActivity />} />
           <Route path='/riwayat-medis' element={<MedicalHistories />} />
