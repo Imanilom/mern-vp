@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
+import Patient from './patient.model.js';
 
 const recomendationSchema = mongoose.Schema({
     doctor_id : {
-        type : mongoose.Schema.Types.ObjectId,
-        required : true
+        type : mongoose.Types.ObjectId,
+        required : true,
+        ref : Patient
     },
     name : {
         type : String,

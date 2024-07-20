@@ -9,8 +9,51 @@ function Recommendation() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
 
   const [recomendation, setRecomendation] = useState([]);
-  const checkboxAction = async (id) => {
+  const [isCheckAction, setCheckAction] = useState(false);
+  const checkboxAction = async (e, properti) => {
 
+    if (isCheckAction) {
+      // user gabisa langsung ceklis banyak.. harus antri
+      e.target.checked = false;
+      alert('Please wait. dont spam.');
+    } else {
+      setCheckAction(true);
+      try {
+        console.log('usercurrent', currentUser)
+        const formData = JSON.stringify({
+          activity_id: properti.id,
+          doctor_id: properti.doctor,
+          patient_id: currentUser._id,
+          status: true
+        });
+
+        const res = await fetch('/api/action/recomendation/check', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: formData
+
+        })
+
+        const data = await res.json();
+        console.log(res);
+        console.log(data);
+        Swal.fire({
+          title: "Success",
+          text: data.message,
+          icon: "success",
+          confirmButtonColor: "#3085d6",
+        });
+
+        e.target.disabled = true;
+
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setCheckAction(false);
+      }
+    }
   }
 
   const handleDelete = async (id) => {
@@ -44,9 +87,7 @@ function Recommendation() {
       try {
         const res = await fetch('/api/recomendation/getAll', {
           method: 'GET',
-          // headers: {
-          //   'Content-Type': 'application/json'
-          // }
+
         });
 
         const data = await res.json();
@@ -84,6 +125,11 @@ function Recommendation() {
             <table class="items-center bg-transparent w-full border-collapse ">
               <thead>
                 <tr>
+                  {currentUser.role == 'user' ? (
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Doctor
+                    </th>
+                  ) : null}
                   <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Berlaku dari
                   </th>
@@ -110,6 +156,11 @@ function Recommendation() {
                   recomendation.map((recomendation) => {
                     return (
                       <tr>
+                        {currentUser.role == 'user' ? (
+                          <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                            {recomendation.doctor_id.name}
+                          </th>
+                        ) : null}
                         <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                           {new Intl.DateTimeFormat('id-ID', {
                             day: 'numeric',
@@ -128,13 +179,27 @@ function Recommendation() {
                           {recomendation.name}
                         </td>
 
-                        {currentUser == 'user' ? (
+                        {currentUser.role == 'user' ? (
                           <td class="border-t-0 px-6 flex gap-2 items-center align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                            <input
-                              type="checkbox"
-                              onChange={() => checkboxAction('id')}
-                              className="form-checkbox h-5 w-5 text-indigo-600"
-                            />x
+                            {recomendation.status ? (
+                              <>
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  onChange={() => alert('You have listed this item. action denied')}
+                                  className="form-checkbox h-5 w-5 text-indigo-600 checked:accent-pink-500"
+                                /> done?
+                              </>
+                            ) : (
+                              <>
+                                <input
+                                  type="checkbox"
+                                  onChange={() => checkboxAction(event, { id: recomendation._id, doctor: recomendation.doctor_id._id })}
+                                  className="form-checkbox h-5 w-5 text-indigo-600 checked:accent-pink-500"
+                                /> done?
+                              </>
+                            )}
+
                           </td>
                         ) : (
                           <td class="border-t-0 px-6 flex gap-2 items-center align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">

@@ -7,7 +7,8 @@ import { Link, useParams } from 'react-router-dom';
 
 function RecomendationDetail() {
     const { currentUser, loading, error } = useSelector((state) => state.user);
-    const [recomendation, setRecomendation] = useState([]);
+    const [recomendation, setRecomendation] = useState(null);
+    const [patients, setPatients] = useState([]);
     const { id } = useParams();
 
     useEffect(() => {
@@ -17,9 +18,14 @@ function RecomendationDetail() {
                     method: 'GET'
                 });
 
+                const res2 = await fetch(`/api/action/recomendation/listPatient/${id}`);
+
                 const data = await res.json();
-                console.log(data);
+                const data2 = await res2.json();
+
+                console.log(data, data2);
                 setRecomendation(data.recomendation);
+                setPatients(data2.patients)
             } catch (error) {
                 console.log(error);
             }
@@ -43,8 +49,7 @@ function RecomendationDetail() {
                                         <div class="flex flex-wrap items-center">
                                             <div class="relative w-full px-4 max-w-full flex-grow lg:flex lg:justify-between flex-1">
                                                 <h3 class="font-semibold text-base text-blueGray-700">The Activity</h3>
-                                                <Link>
-
+                                                <Link to={`/rekomendasi`}>
                                                     <h3 class="font-semibold text-blue-400 text-sm text-blueGray-700">Back to main menu</h3>
                                                 </Link>
                                             </div>
@@ -61,7 +66,7 @@ function RecomendationDetail() {
                                                         Name Activity
                                                     </th>
                                                     <td class="px-6 py-4 text-sm text-gray-700">
-                                                        {recomendation.name ?? ''}
+                                                        {recomendation ? recomendation.name : ''}
                                                     </td>
                                                 </tr>
                                                 <tr class="bg-white border-b">
@@ -69,33 +74,38 @@ function RecomendationDetail() {
                                                         Doctor Penanggung jawab
                                                     </th>
                                                     <td class="px-6 py-4 text-sm text-gray-700">
-                                                        {recomendation.doctor_id ?? ''}
+                                                        {recomendation ? recomendation.doctor_id : ''}
                                                     </td>
                                                 </tr>
                                                 <tr class="bg-gray-100 border-b">
                                                     <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
                                                         Berlaku semenjak
                                                     </th>
-                                                    <td class="px-6 py-4 text-sm text-gray-700">
-                                                        {new Intl.DateTimeFormat('id-ID', {
-                                                            day: 'numeric',
-                                                            month: 'long',
-                                                            year: 'numeric'
-                                                        }).format(new Date(recomendation.berlaku_dari ?? ''))}
-                                                    </td>
+                                                    {recomendation ? (
+                                                        <td class="px-6 py-4 text-sm text-gray-700">
+                                                            {new Intl.DateTimeFormat('id-ID', {
+                                                                day: 'numeric',
+                                                                month: 'long',
+                                                                year: 'numeric'
+                                                            }).format(new Date(recomendation.berlaku_dari ?? ''))}
+                                                        </td>
+                                                    ) : null}
                                                 </tr>
                                                 <tr class="bg-white border-b">
                                                     <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
                                                         Hingga Tanggal
                                                     </th>
-                                                    <td class="px-6 py-4 text-sm text-gray-700">
-                                                        {new Intl.DateTimeFormat('id-ID', {
-                                                            day: 'numeric',
-                                                            month: 'long',
-                                                            year: 'numeric'
-                                                        }).format(new Date(recomendation.hingga_tanggal ?? ''))}
+                                                    {recomendation ? (
+                                                        <td class="px-6 py-4 text-sm text-gray-700">
 
-                                                    </td>
+                                                            {new Intl.DateTimeFormat('id-ID', {
+                                                                day: 'numeric',
+                                                                month: 'long',
+                                                                year: 'numeric'
+                                                            }).format(new Date(recomendation.hingga_tanggal ?? ''))}
+
+                                                        </td>
+                                                    ) : null}
                                                 </tr>
 
                                             </tbody>
@@ -112,6 +122,9 @@ function RecomendationDetail() {
                                                 No.
                                             </th>
                                             <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                                Profile
+                                            </th>
+                                            <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Name
                                             </th>
                                             <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
@@ -125,38 +138,31 @@ function RecomendationDetail() {
                                     </thead>
 
                                     <tbody>
-
-                                        <tr>
-                                            <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
-                                                {recomendation ? (
-                                                    <div>
-                                                        {new Intl.DateTimeFormat('id-ID', {
-                                                            day: 'numeric',
-                                                            month: 'long',
-                                                            year: 'numeric'
-                                                        }).format(new Date())}
-                                                    </div>
-
-                                                ) : null}
-                                            </th>
-                                            <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                                                {recomendation ? (
-                                                    <div>
-                                                        {new Intl.DateTimeFormat('id-ID', {
-                                                            day: 'numeric',
-                                                            month: 'long',
-                                                            year: 'numeric'
-                                                        }).format(new Date())}
-                                                    </div>
-
-                                                ) : null}
-                                            </td>
-                                            <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                                                {recomendation ? recomendation.name : ''}
-                                            </td>
+                                        {patients.length > 0 ? (
+                                            patients.map((patient, i) => {
+                                                return (
+                                                    <tr>
+                                                        <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                                                           {i + 1}
+                                                        </th>
+                                                        <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                                                           <div className="w-20 h-20 bg-center bg-cover rounded-full" style={{backgroundImage : `url(${patient.patient.profilePicture})`}}></div>
+                                                        </th>
+                                                        <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                                                            {patient.patient.name}
+                                                        </td>
+                                                        <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                                                        {patient.patient.email}
+                                                        </td>
+                                                        <td class="border-t-0 text-gray-400 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                                                        {patient.patient.address}
+                                                        </td>
 
 
-                                        </tr>
+                                                    </tr>
+                                                )
+                                            })
+                                        ) : null}
 
 
                                     </tbody>

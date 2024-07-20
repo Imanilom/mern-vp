@@ -48,7 +48,7 @@ function UpdateRecomendation() {
                 }
             });
 
-            const data = await res.json(); 
+            const data = await res.json();  
          
             Swal.fire({
                 title: "Success",
@@ -58,6 +58,8 @@ function UpdateRecomendation() {
             }).then(() => {
                 navigate('/rekomendasi');
             });
+
+            
             
         } catch (error) {
             console.log(error);
