@@ -1,15 +1,64 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Side from '../../components/Side';
 import { Link } from 'react-router-dom';
 
 import { useSelector } from 'react-redux';
+import Swal from 'sweetalert2';
 
 function Recommendation() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
-
+  const [recomendation, setRecomendation] = useState([]);
   const checkboxAction = async (id) => {
 
   }
+
+  const handleDelete = async (id) => {
+    let ask = window.confirm('Are you sure want to delete?');
+    if (ask) {
+      try {
+        const res = await fetch(`/api/recomendation/delete/${id}`, {
+          method: 'Delete'
+        });
+
+        const data = await res.json();
+        console.log(data);
+        setRecomendation(data.recomendations);
+
+        Swal.fire({
+          title: "Success",
+          text: data.message,
+          icon: "success",
+          confirmButtonColor: "#3085d6",
+        });
+
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  }
+
+  useEffect(() => {
+    const fetchtdata = async () => {
+      console.log('process..');
+      try {
+        const res = await fetch('/api/recomendation/getAll', {
+          method: 'GET',
+          // headers: {
+          //   'Content-Type': 'application/json'
+          // }
+        });
+
+        const data = await res.json();
+        console.log(data)
+        setRecomendation(data.recomendation);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    fetchtdata();
+  }, [])
+
   return (
     <main class="bg-white flex">
       <Side />
@@ -58,40 +107,54 @@ function Recommendation() {
               </thead>
 
               <tbody>
-                <tr>
-                  <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
-                    15 Juni 2022
-                  </th>
-                  <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                    22 Juni 2022
-                  </td>
-                  <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                    Berjalan kaki satu jam
-                  </td>
+                {recomendation.length > 0 ? (
+                  recomendation.map((recomendation) => {
+                    return (
+                      <tr>
+                        <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                          {new Intl.DateTimeFormat('id-ID', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          }).format(new Date(recomendation.berlaku_dari))}
+                        </th>
+                        <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                          {new Intl.DateTimeFormat('id-ID', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          }).format(new Date(recomendation.hingga_tanggal))}
+                        </td>
+                        <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                          {recomendation.name}
+                        </td>
 
-                  {currentUser == 'user' ? (
+                        {currentUser == 'user' ? (
+                          <td class="border-t-0 px-6 flex gap-2 items-center align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                            <input
+                              type="checkbox"
+                              onChange={() => checkboxAction('id')}
+                              className="form-checkbox h-5 w-5 text-indigo-600"
+                            />x
+                          </td>
+                        ) : (
+                          <td class="border-t-0 px-6 flex gap-2 items-center align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                            <Link to={`/rekomendasi/detail/${recomendation._id}`}>
+                              <span className='bg-indigo-600 text-white font-medium py-1 px-3 rounded-md active:bg-indigo-600/80'>Detail</span>
+                            </Link>
+                            <Link to={`/updateRecomendation/${recomendation._id}`}>
+                              <span className='bg-yellow-400 font-medium py-1 px-3 rounded-md active:bg-yellow-400/80'>Edit</span>
+                            </Link>
+                            <button onClick={() => handleDelete(recomendation._id)}>
+                              <span className='bg-red-600 font-medium py-1 px-3 rounded-md active:bg-red-600/80 text-white'>Delete</span>
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
+                ) : null}
 
-                    <td class="border-t-0 px-6 flex gap-2 items-center align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                      <input
-                        type="checkbox"
-                        onChange={() => checkboxAction('id')}
-                        className="form-checkbox h-5 w-5 text-indigo-600"
-                      />x
-                    </td>
-
-                  ) : (
-
-                    <td class="border-t-0 px-6 flex gap-2 items-center align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                      <Link to='/rekomendasi/detail/$_idactivity'>
-                        <span className='bg-indigo-600 text-white font-medium py-1 px-3 rounded-md active:bg-indigo-600/80'>Detail</span>
-                      </Link>
-                      <span className='bg-yellow-400 font-medium py-1 px-3 rounded-md active:bg-yellow-400/80'>Edit</span>
-                      <button>
-                        <span className='bg-red-600 font-medium py-1 px-3 rounded-md active:bg-red-600/80 text-white'>Delete</span>
-                      </button>
-                    </td>
-                  )}
-                </tr>
 
               </tbody>
             </table>

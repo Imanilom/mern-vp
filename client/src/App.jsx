@@ -23,6 +23,8 @@ import MyPatients from './pages/Menus/MyPatients';
 // Recomendation
 import Recommendation from './pages/Menus/Recommendation';
 import CreateRecomendation from './pages/Menus/CreateRecomendation';
+import UpdateRecomendation from './pages/Menus/UpdateRecomendation';
+import RecomendationDetail from './pages/Menus/RecomendationDetail';
 
 //Activity >>
 import Activity from './pages/Menus/Activity';
@@ -57,7 +59,9 @@ export default function App() {
           <Route path='/activity' element={<Activity />} />
           <Route path='/my-patients' element={<MyPatients />} />
       
+          <Route path='/rekomendasi/detail/:id' element={<RecomendationDetail />} />
           <Route path='/createRecomendation' element={<CreateRecomendation />} />
+          <Route path='/updateRecomendation/:id' element={<UpdateRecomendation />} />
           <Route path='/createActivity' element={<CreateActivity />} />
           <Route path='/updateActivity/:id' element={<UpdateActivity />} />
           <Route path='/riwayat-medis' element={<MedicalHistories />} />
