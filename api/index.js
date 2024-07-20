@@ -6,6 +6,7 @@ import authRouter from './routes/auth.route.js';
 import garminRouter from './routes/garmin.route.js';
 import activityRouter from './routes/activity.route.js';
 import recomendationRouter from './routes/recomendation.route.js';
+import patientRouter from './routes/patient.route.js';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import cors from 'cors';
@@ -41,6 +42,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/garmin', garminRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/recomendation', recomendationRouter);
+app.use('/api/patient', patientRouter);
 
 app.use(express.static(path.join(__dirname, '/client/dist')));
 

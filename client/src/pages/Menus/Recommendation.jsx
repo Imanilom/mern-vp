@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
+
 import Side from '../../components/Side';
 import { Link } from 'react-router-dom';
-
 import { useSelector } from 'react-redux';
 import Swal from 'sweetalert2';
 
 function Recommendation() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
+
   const [recomendation, setRecomendation] = useState([]);
   const checkboxAction = async (id) => {
 
@@ -70,7 +71,7 @@ function Recommendation() {
                 <h3 class="font-semibold text-base text-blueGray-700">Rekomendasi</h3>
               </div>
               <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                {currentUser.role != 'user' ? (
+                {currentUser.role !== 'user' ? (
                   <Link to="/createRecomendation">
                     <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat rekomendasi aktivitas</button>
                   </Link>
@@ -92,16 +93,14 @@ function Recommendation() {
                   <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Aktivitas
                   </th>
-                  {currentUser.role == 'user' ? (
+                  {currentUser.role === 'user' ? (
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Status
                     </th>
-
                   ) : (
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Action
                     </th>
-
                   )}
                 </tr>
               </thead>
@@ -154,16 +153,13 @@ function Recommendation() {
                     );
                   })
                 ) : null}
-
-
               </tbody>
             </table>
           </div>
         </div>
       </div>
     </main>
-
-  )
+  );
 }
 
-export default Recommendation
+export default Recommendation;
