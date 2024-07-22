@@ -1,16 +1,10 @@
 import express from 'express';
 import Patient from '../models/patient.model.js';
+import { getAllPatients } from '../controllers/patient.controller.js';
+import { verifyToken } from '../utils/verifyUser.js';
 
 const router = express.Router();
 
-// Route to get all patients
-router.get('/', async (req, res) => {
-    try {
-        const patients = await Patient.find();
-        res.json(patients);
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
+router.get('/all', verifyToken, getAllPatients);
 
 export default router;

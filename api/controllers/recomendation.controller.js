@@ -7,8 +7,8 @@ import { ActionRecomendation } from "../models/actionRecomendationUser.js";
 // For doctor
 
 export const createRecomendation = async (req, res) => {
-    const { name, berlaku_dari, hingga_tanggal } = req.body;
-    req.body.doctor_id = req.user.id;
+    const { name, berlaku_dari, hingga_tanggal, patient } = req.body;
+    req.body.doctor = req.user.id;
     // console.log(name, berlaku_dari, hingga_tanggal, req.user)
     try {
         const recomendation = await Recomendation.create(req.body);
@@ -18,84 +18,34 @@ export const createRecomendation = async (req, res) => {
     }
 }
 
-
-export const getRecomendation = async (req, res) => {
+export const getRecomendationByPatient = async (req, res) => {
     try {
 
-        let rekomendation = [];
         // if role is doctor fetch this >>
         if (req.user.role === 'doctor') {
-            rekomendation = await Recomendation.find({
-                doctor_id: req.user.id
+            const recomendation = await Recomendation.find({
+                doctor: req.user.id,
+                patient: req.params.patient
             }).sort({ createdAt: -1 });
+            // console.log(recomendation);
 
+            if (!recomendation) return res.json({ recomendation: recomendation });
+
+            res.json({ recomendation: recomendation });
+            console.log('berhasil');
         }
-
         // if role is != doctor fetch this >>
         else {
-            const patient = await Patient.findById(req.user.id);
-            // user.doctor 
-            console.log(patient);
-            if (!patient.docter) return res.json({ recomendation: rekomendation });
+            console.log(req.params);
+            const recomendation = await Recomendation.find({
+                patient: req.params.patient
+            }).sort({ createdAt: -1 }).populate('doctor');
 
-            let rekomendationCollection = await Recomendation.find({
-                doctor_id: patient.docter || ''
-            }).sort({ createdAt: -1 }).populate('doctor_id');
+            if (!recomendation) return res.json({ recomendation: recomendation });
 
-            console.log('collection ', rekomendationCollection.length);
-            const actionPatient = await ActionRecomendation.find({
-                docter: patient.docter || '',
-                patient : req.user.id
-            });
-        
-            rekomendation = [];
-
-            rekomendationCollection.forEach(element => {
-                let found = false; 
-
-                for (let j = 0; j < actionPatient.length; j++) {
-                    if (element._doc._id.equals(actionPatient[j]['activity'])) {
-                        found = true;
-                        rekomendation.push({...element._doc, status : true});
-                        // console.log(rekomendation, j)
-                        // jika disini maka langsung lanjut forEach
-                    }
-                    
-                }
-
-                if(!found){
-                    rekomendation.push({...element._doc, status : false});
-
-                }
-            });
-
-            // for (let i = 0; i < rekomendation.length; i++) {
-            //     let activity = rekomendation[i];
-            //     for (let j = 0; j < actionPatient.length; j++) {
-            //         console.log(activity._id, '==', actionPatient[j]['activity'], activity._id.equals(actionPatient[j]['activity']))
-            //         if (activity._id.equals(actionPatient[j]['activity'])) {
-            //             activity.status = true;
-
-            //             console.log('----true');
-            //         } else {
-            //             rekomendation[i]['status'] = false;
-            //             rekomendation
-            //         }
-            //     }
-            // }
-
-            // for (let i = 0; i < rekomendation.length; i++) {
-            //     let activity = rekomendation[i];
-            //     // Cek apakah activity._id ada dalam actionPatient
-            //     rekomendation[i]['status'] = actionPatient.some(val => val.activity == activity._id ? console.log('oke same') : false);
-            // }
-
-
-            // console.log('action patient', actionPatient);
-            // console.log('result filter', rekomendation);
+            res.json({ recomendation: recomendation });
         }
 
-        res.json({ recomendation: rekomendation });
     } catch (error) {
         console.log(error);
     }

@@ -2,8 +2,10 @@ import Patient from '../models/patient.model.js';
 
 export const getAllPatients = async (req, res) => {
     try {
-        const patient = await Patient.find();
-        console.log(patient);
+        const {role, id} = req.user; // doctor
+        const patients = await Patient.find({
+            docter : id
+        });
         res.status(200).json(patients);
     } catch (error) {
         res.status(500).json({ message: error.message });

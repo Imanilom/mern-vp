@@ -8,7 +8,7 @@ import Swal from 'sweetalert2';
 import { axiosConfig } from '../../utls/axiosConfig.js';
 
 function CreateRecomendation() {
-    const { currentUser } = useSelector((state) => state.user);
+    const { currentUser, DocterPatient } = useSelector((state) => state.user);
     const navigate = useNavigate();
     useEffect(() => {
 
@@ -21,6 +21,7 @@ function CreateRecomendation() {
             name : e.target[0].value,
             berlaku_dari : e.target[1].value,
             hingga_tanggal : e.target[2].value,
+            patient :  DocterPatient._id
         })
 
         try {
