@@ -7,7 +7,7 @@ import { useSelector } from 'react-redux';
 
 const Side = () => {
   const { currentUser, loading, error, DocterPatient } = useSelector((state) => state.user);
-  console.log('docter : ', DocterPatient == null);
+  console.log('docter : ', DocterPatient == null, DocterPatient);
   return (
     <div className="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 h-[calc(100vh-2rem)] w-full max-w-[20rem] p-4 shadow-xl shadow-blue-gray-900/5">
       <Sidebar>

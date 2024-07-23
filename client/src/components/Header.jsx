@@ -43,7 +43,9 @@ export default function Header() {
                 <li className=' text-slate-700 hover:underline'></li>
               )}
             </Link>
-          ) : (
+          ) : null}
+
+          {!DocterPatient && currentUser && currentUser.role == 'doctor' ? (
             <Link to='/my-patients'>
               {currentUser ? (
                 <p>My Patients</p>
@@ -51,8 +53,8 @@ export default function Header() {
                 <li className=' text-slate-700 hover:underline'></li>
               )}
             </Link>
-          )}
-          
+          ) : null}
+
           {currentUser && currentUser.role != 'doctor' ? (
             <Link to='/ringkasan-pasien'>
               {currentUser ? (

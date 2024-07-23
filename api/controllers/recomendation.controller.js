@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { Recomendation } from "../models/recomendation.js";
 import Patient from "../models/patient.model.js";
 import User from "../models/user.model.js";
-import { ActionRecomendation } from "../models/actionRecomendationUser.js";
+// import { ActionRecomendation } from "../models/actionRecomendationUser.js";
 
 // For doctor
 

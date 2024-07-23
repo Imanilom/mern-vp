@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { ActionRecomendation } from '../models/actionRecomendationUser.js';
+// import { ActionRecomendation } from '../models/actionRecomendationUser.js';
 import { Recomendation } from "../models/recomendation.js";
 
 export const postCheck = async (req, res) => {
