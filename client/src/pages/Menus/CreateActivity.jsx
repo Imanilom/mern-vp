@@ -2,9 +2,10 @@ import React, { useState } from 'react'
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 function CreateActivity() {
-  const { currentUser } = useSelector((state) => state.user);
+  const { currentUser, DocterPatient } = useSelector((state) => state.user);
   const navigate = useNavigate();
   const [selectedOption, setSelectedOption] = useState('');
   const options = ['Berjalan', 'Tidur', 'Berolahraga'];
@@ -25,7 +26,7 @@ function CreateActivity() {
       [e.target.id]: e.target.value,
     });
 
-   
+
   }
 
   const handleSelectChange = (event) => {
@@ -38,7 +39,15 @@ function CreateActivity() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('loading..');
     try {
+      let id = null;
+      if (currentUser.role == 'user') {
+        id = currentUser._id
+      } else {
+        id = DocterPatient._id
+      }
+      console.log(id);
       const res = await fetch('/api/activity/create', {
         method: 'POST',
         headers: {
@@ -46,15 +55,25 @@ function CreateActivity() {
         },
         body: JSON.stringify({
           ...formData,
-          userRef: currentUser._id,
+          userRef: id,
         }),
       });
       const data = await res.json();
+
       setLoading(false);
       if (data.success === false) {
         setError(data.message);
       }
-      navigate('/activity');
+
+      Swal.fire({
+        title: "Success",
+        text: data.message,
+        icon: "success",
+        confirmButtonColor: "#3085d6",
+      }).then(() => {
+        navigate('/activity');
+      });
+
     } catch (error) {
       setError(error.message);
       setLoading(false);
