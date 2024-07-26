@@ -16,6 +16,7 @@ import {
   deleteUserSuccess,
   deleteUserFailure,
   signOutUserStart,
+  docterUnsetUser
 } from '../../redux/user/userSlice';
 
 export default function Profile() {
@@ -110,6 +111,7 @@ export default function Profile() {
         return;
       }
       dispatch(deleteUserSuccess(data));
+      dispatch(docterUnsetUser());
     } catch (error) {
       dispatch(deleteUserFailure(data.message));
     }

@@ -4,13 +4,14 @@ const initialState = {
   currentUser: null,
   error: null,
   loading: false,
+  DocterPatient : null
 };
 
 const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
-    signInStart: (state) => {
+    signInStart: (state) => { // state bukan data yng dikirim melalui dispatch melainkan mengambil state saat ini untuk di update
       state.loading = true;
     },
     signInSuccess: (state, action) => {
@@ -58,6 +59,12 @@ const userSlice = createSlice({
       state.error = action.payload;
       state.loading = false;
     },
+    docterGetUser: (state, property) => {
+      state.DocterPatient = property.payload;
+    },
+    docterUnsetUser: (state) => {
+      state.DocterPatient = null;
+    }
   },
 });
 
@@ -74,6 +81,8 @@ export const {
   signOutUserFailure,
   signOutUserSuccess,
   signOutUserStart,
+  docterGetUser,
+  docterUnsetUser
 } = userSlice.actions;
 
 export default userSlice.reducer;

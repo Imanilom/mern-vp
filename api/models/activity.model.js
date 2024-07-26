@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import User from './user.model.js';
 
 const AktivitasSchema = new mongoose.Schema(
     {
@@ -8,7 +9,6 @@ const AktivitasSchema = new mongoose.Schema(
         },
         awal: {
             type: String,
-
         },
         akhir: {
             type: String,
@@ -19,6 +19,7 @@ const AktivitasSchema = new mongoose.Schema(
         userRef: {
             type: String,
         },
+       
         create_at: { 
           type: Date, 
           default: Date.now 

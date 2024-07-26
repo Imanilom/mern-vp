@@ -7,7 +7,7 @@ import Swal from 'sweetalert2';
 
 function Acitivity() {
   const [useractivitys, setUseractivitys] = useState([]);
-  const { currentUser } = useSelector((state) => state.user);
+  const { currentUser, DocterPatient } = useSelector((state) => state.user);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [aktivitas, setAktivitas] = useState(null);
@@ -62,8 +62,15 @@ function Acitivity() {
   useEffect(() => {
     const fetchLog = async () => {
       try {
+        console.log('oke loading..')
+
         setLoading(true);
-        const res = await fetch(`/api/activity/getActivity`);
+        let url = `/api/activity/getActivity`;
+        if (currentUser.role == 'doctor') {
+          url += `/${DocterPatient._id}`
+        }
+        console.log(url);
+        const res = await fetch(url);
         const data = await res.json();
         if (data.success === false) {
 

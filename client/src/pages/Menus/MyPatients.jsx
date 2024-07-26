@@ -5,19 +5,29 @@ import { useDispatch } from 'react-redux';
 import Side from '../../components/Side';
 import { Link } from 'react-router-dom';
 import { FaSearch } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+
+import {
+    docterGetUser,
+    docterUnsetUser
+} from '../../redux/user/userSlice';
 
 function MyPatients() {
-    const { currentUser, error } = useSelector((state) => state.user);
+
+    const { currentUser, error, DocterPatient } = useSelector((state) => state.user);
     const [searchInput, setSearchInput] = useState('');
     const [isModal, setModal] = useState(false);
     const [patients, setPatients] = useState([]);
     const [modalProperty, setModalProperty] = useState({});
     const [allPatient, setAllPatient] = useState([]);
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchPatients = async () => {
+
             try {
-                const response = await fetch('/api/patient'); // Adjust the API endpoint as needed
+                const response = await fetch('/api/patient/all'); // Adjust the API endpoint as needed
                 const data = await response.json();
                 setPatients(data);
                 setAllPatient(data);
@@ -34,6 +44,12 @@ function MyPatients() {
         setModalProperty(property);
         console.log(property);
     };
+
+    const handleChoosePatient = (property) => {
+        dispatch(docterGetUser(property));
+        console.log(property);
+        navigate('/ringkasan-pasien')
+    }
 
     const handleSearchName = (e) => {
         e.preventDefault();
@@ -151,20 +167,23 @@ function MyPatients() {
                                                     {patient.address}
                                                 </td>
                                                 <td>
-                                                    <div className="relative w-full px-4 max-w-full flex-grow flex-1 text-center">
+                                                    <div className="relative w-full px-4 max-w-full flex-grow flex-1 text-end">
                                                         <button onClick={() => handleChangePropertyModal(patient)} className="bg-indigo-500 text-white hover:bg-indigo-600/90 active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Detail</button>
+                                                        <button onClick={() => handleChoosePatient(patient)} className="bg-green-500 text-white hover:bg-green-500/90 active:bg-green-500 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Monitoring</button>
                                                     </div>
                                                 </td>
                                             </tr>
                                         )) : (
                                             <tr>
-                                                <td colSpan="5" className="text-center text-2xl">You have no patients</td>
+                                                <td colSpan="5" className="text-center text-xl py-4 text-gray-400 ">You have no patients with name {searchInput}</td>
                                             </tr>
                                         )}
                                     </tbody>
                                 </table>
                             </div>
+
                         </div>
+                            <button className='py-3 text-center w-full text-white font-semibold rounded-md bg-indigo-600 hover:bg-indigo-600/90 focus:translate-y-2 duration-150'>Add New Patient</button>
                     </div>
                 </section>
             </main>

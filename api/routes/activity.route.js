@@ -5,6 +5,8 @@ import { verifyToken } from '../utils/verifyUser.js';
 const router = express.Router();
 
 router.get('/getActivity', verifyToken, getActivity);
+router.get('/getActivity/:patient', verifyToken, getActivity); // untuk route docter
+
 router.get('/get/:id', get);
 router.post('/create', createActivity);
 

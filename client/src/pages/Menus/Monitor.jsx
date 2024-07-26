@@ -46,7 +46,7 @@ const calculateMetrics = (logs) => {
 };
 
 export default function Monitor() {
-  const { currentUser } = useSelector((state) => state.user);
+  const { currentUser, DocterPatient } = useSelector((state) => state.user);
   const [logs, setLogs] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
@@ -55,7 +55,7 @@ export default function Monitor() {
   const [isHRVisible, setHRIsVisible] = useState(true); // Show HR chart by default
   const [isRRVisible, setRRIsVisible] = useState(true); // Show RR chart by default
   const [isPoincareVisible, setPoincareIsVisible] = useState(true); // Show Poincare chart by default
-
+  const [device, setDevice] = useState(null);
   useEffect(() => {
     fetchLogs();
   }, []);
@@ -66,9 +66,13 @@ export default function Monitor() {
     }
   }, [startDate, endDate]);
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (device) => {
     try {
       let url = `/api/user/test`;
+      if (currentUser.role != 'user' && device) {
+        url = `/api/user/test/${device}`;
+      }
+      console.log(url);
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       }
@@ -145,6 +149,12 @@ export default function Monitor() {
     };
   };
 
+  const handleChangeDevice = (e) => {
+    e.preventDefault();
+    setDevice(e.target.value);
+    fetchLogs(e.target.value)
+  }
+
   return (
     <div>
       <main>
@@ -154,8 +164,23 @@ export default function Monitor() {
             <div className="relative flex flex-col min-w-0 break-words bg-white w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0">
                 <div className="flex flex-wrap items-center">
-                  <div className="relative w-full px-4 max-w-full flex-grow flex-1">
-                    <h3 className="font-semibold text-base text-blueGray-700">Monitoring || Device {currentUser.current_device} </h3>
+                  <div className="relative w-full px-4 max-w-full flex-grow flex-1 flex justify-betwee">
+                    {currentUser.role == 'user' ? (
+                      <h3 className="font-semibold text-base text-blueGray-700">Monitoring || Device {currentUser.role == 'user' ? currentUser.current_device : DocterPatient.current_device} </h3>
+
+                    ) : (
+                      <div className="flex justify-between items-center w-full">
+
+                        <h3 className="font-semibold text-base text-blueGray-700">Monitoring || Device {device ?? 'nothing'} </h3>
+                        <select name="" id="" className='border border-slate-200 rounded-md px-3 py-1' onChange={handleChangeDevice}>
+                          <option value="" selected disabled>Select device Monitoring</option>
+                          <option value="C0680226">C0680226</option>
+                          <option value="BA903328">BA903328</option>
+
+                        </select>
+
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="mt-8">
@@ -225,9 +250,8 @@ export default function Monitor() {
 
 const ToggleButton = ({ text, isVisible, onClick }) => (
   <button
-    className={`text-slate-800 hover:text-blue-600 text-sm bg-white hover:bg-slate-100 border ${
-      isVisible ? 'border-slate-200' : ''
-    } rounded-md font-medium px-4 py-2 inline-flex space-x-1 items-center`}
+    className={`text-slate-800 hover:text-blue-600 text-sm bg-white hover:bg-slate-100 border ${isVisible ? 'border-slate-200' : ''
+      } rounded-md font-medium px-4 py-2 inline-flex space-x-1 items-center`}
     onClick={onClick}
   >
     {isVisible ? `Hide ${text}` : `Show ${text}`}

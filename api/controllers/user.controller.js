@@ -71,6 +71,10 @@ export const test = async (req, res, next) => {
       };
     }
 
+    if(req.user.role == 'doctor'){
+      filter.guid_device = req.params.device;
+    }
+
     const logs = await Log.find(filter)
       .sort({ create_at: -1 })
       .limit(limit);
