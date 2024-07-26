@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const polarDataSchema = new mongoose.Schema({
   guid: { type: String, required: true, unique: true },
@@ -12,5 +12,4 @@ const polarDataSchema = new mongoose.Schema({
 });
 
 const PolarData = mongoose.model('PolarData', polarDataSchema);
-  
-  module.exports = PolarData;
+export default PolarData;
