@@ -11,13 +11,12 @@ import actionRecomendation from './routes/action.recomendation.rout.js';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import cors from 'cors';
-// import cors from 'cors';
+import amqp from 'amqplib';
+
 import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import './controllers/data.controller.js';
 
-dotenv.config({path : '../.env'});
-console.log(process.env.MONGO);
-
+dotenv.config();
 mongoose
   .connect(process.env.MONGO, {
     useNewUrlParser: true,
@@ -67,3 +66,48 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);
 });
+
+
+// Models
+import PolarData from './models/Data.models.js';
+
+// Connect to RabbitMQ
+async function connectRabbitMQ() {
+  try {
+    const connection = await amqp.connect(process.env.RABBITMQ_URI);
+    const channel = await connection.createChannel();
+    await channel.assertQueue(process.env.QUEUE_NAME, { durable: true });
+    console.log('Connected to RabbitMQ, waiting for messages...');
+d
+    channel.consume(process.env.QUEUE_NAME, async (msg) => {
+      if (msg !== null) {
+        const data = JSON.parse(msg.content.toString());
+        console.log('Received data:', data);
+
+        // Security: Encrypt password before storing (Adapt for your encryption scheme)
+        const encryptPassword = (password, secretKey) => {
+          const cipher = crypto.createCipher('aes-256-cbc', secretKey);
+          let encrypted = cipher.update(password, 'utf8', 'hex');
+          encrypted += cipher.final('hex');
+          return encrypted;
+        };
+        data.encryptedPassword = encryptPassword(data.password, process.env.ENCRYPTION_KEY);
+        delete data.password; // Remove plain-text password
+
+        // Save data to MongoDB
+        const polarData = new PolarData(data);
+        try {
+          await polarData.save();
+          console.log('Data saved to MongoDB');
+          channel.ack(msg);
+        } catch (err) {
+          console.error('Failed to save data to MongoDB:', err);
+        }
+      }
+    }, { noAck: false });
+  } catch (err) {
+    console.error('Failed to connect to RabbitMQ:', err);
+  }
+}
+
+connectRabbitMQ();
