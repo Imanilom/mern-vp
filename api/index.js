@@ -8,6 +8,8 @@ import activityRouter from './routes/activity.route.js';
 import recomendationRouter from './routes/recomendation.route.js';
 import patientRouter from './routes/patient.route.js';
 import actionRecomendation from './routes/action.recomendation.rout.js';
+import anamnesa from './routes/anamnesa.route.js';
+
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import cors from 'cors';
@@ -45,6 +47,7 @@ app.use('/api/activity', activityRouter);
 app.use('/api/recomendation', recomendationRouter);
 app.use('/api/patient', patientRouter);
 app.use('/api/action/recomendation', actionRecomendation);
+app.use('/api/anamnesa', anamnesa);
 
 app.use(express.static(path.join(__dirname, '/client/dist')));
 

@@ -34,9 +34,12 @@ import UpdateActivity from './pages/Menus/UpdateActivity';
 
 // Anamnesa
 import Anamnesa from './pages/Menus/Anamnesa';
+import InputMedicalHistory from './pages/Menus/InputMedicalHistory';
 // Private Route
 
 import PrivateRoute from './components/PrivateRoute';
+import CreateAnamnesa from './pages/Menus/CreateAnamnesa';
+import UpdateAnemnesa from './pages/Menus/UpdateAnemnesa';
 
 export default function App() {
 
@@ -58,9 +61,12 @@ export default function App() {
           <Route path='/monitor' element={<Monitor />} />
           <Route path='/activity' element={<Activity />} />
           <Route path='/my-patients' element={<MyPatients />} />
+          <Route path='/input-medical' element={<InputMedicalHistory />} />
+          <Route path='/createAnamnesa' element={<CreateAnamnesa />} />
       
           <Route path='/rekomendasi/detail/:id' element={<RecomendationDetail />} />
           <Route path='/createRecomendation' element={<CreateRecomendation />} />
+          <Route path='/updateAnemnesa/:id' element={<UpdateAnemnesa />} />
           <Route path='/updateRecomendation/:id' element={<UpdateRecomendation />} />
           <Route path='/createActivity' element={<CreateActivity />} />
           <Route path='/updateActivity/:id' element={<UpdateActivity />} />
