@@ -18,10 +18,7 @@ import './controllers/data.controller.js';
 
 dotenv.config();
 mongoose
-  .connect(process.env.MONGO, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO)
   .then(() => {
     console.log('Connected to MongoDB!');
   })
@@ -110,4 +107,4 @@ d
   }
 }
 
-connectRabbitMQ();
+// connectRabbitMQ();
