@@ -7,8 +7,8 @@ import garminRouter from './routes/garmin.route.js';
 import activityRouter from './routes/activity.route.js';
 import recomendationRouter from './routes/recomendation.route.js';
 import patientRouter from './routes/patient.route.js';
+import anamnesaRouter from './routes/anamnesa.route.js';
 import actionRecomendation from './routes/action.recomendation.rout.js';
-import anamnesa from './routes/anamnesa.route.js';
 
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -18,7 +18,8 @@ import amqp from 'amqplib';
 import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import './controllers/data.controller.js';
 
-dotenv.config();
+dotenv.config({path : '../.env'});
+
 mongoose
   .connect(process.env.MONGO, {
     useNewUrlParser: true,
@@ -46,7 +47,7 @@ app.use('/api/activity', activityRouter);
 app.use('/api/recomendation', recomendationRouter);
 app.use('/api/patient', patientRouter);
 app.use('/api/action/recomendation', actionRecomendation);
-app.use('/api/anamnesa', anamnesa);
+app.use('/api/anamnesa', anamnesaRouter);
 
 app.use(express.static(path.join(__dirname, '/client/dist')));
 
@@ -71,46 +72,47 @@ app.listen(PORT, () => {
 });
 
 
-// Models
-import PolarData from './models/Data.models.js';
+// // Models
+// import PolarData from './models/Data.models.js';
 
-// Connect to RabbitMQ
-async function connectRabbitMQ() {
-  try {
-    const connection = await amqp.connect(process.env.RABBITMQ_URI);
-    const channel = await connection.createChannel();
-    await channel.assertQueue(process.env.QUEUE_NAME, { durable: true });
-    console.log('Connected to RabbitMQ, waiting for messages...');
-d
-    channel.consume(process.env.QUEUE_NAME, async (msg) => {
-      if (msg !== null) {
-        const data = JSON.parse(msg.content.toString());
-        console.log('Received data:', data);
+// // Connect to RabbitMQ
+// async function connectRabbitMQ() {
+//   try {
+//     // console.log(process.env.RABBITMQ_URI);
+//     const connection = await amqp.connect(process.env.RABBITMQ_URI);
+//     const channel = await connection.createChannel();
+//     await channel.assertQueue(process.env.QUEUE_NAME, { durable: true });
+//     console.log('Connected to RabbitMQ, waiting for messages...');
 
-        // Security: Encrypt password before storing (Adapt for your encryption scheme)
-        const encryptPassword = (password, secretKey) => {
-          const cipher = crypto.createCipher('aes-256-cbc', secretKey);
-          let encrypted = cipher.update(password, 'utf8', 'hex');
-          encrypted += cipher.final('hex');
-          return encrypted;
-        };
-        data.encryptedPassword = encryptPassword(data.password, process.env.ENCRYPTION_KEY);
-        delete data.password; // Remove plain-text password
+//     channel.consume(process.env.QUEUE_NAME, async (msg) => {
+//       if (msg !== null) {
+//         const data = JSON.parse(msg.content.toString());
+//         console.log('Received data:', data);
 
-        // Save data to MongoDB
-        const polarData = new PolarData(data);
-        try {
-          await polarData.save();
-          console.log('Data saved to MongoDB');
-          channel.ack(msg);
-        } catch (err) {
-          console.error('Failed to save data to MongoDB:', err);
-        }
-      }
-    }, { noAck: false });
-  } catch (err) {
-    console.error('Failed to connect to RabbitMQ:', err);
-  }
-}
+//         // Security: Encrypt password before storing (Adapt for your encryption scheme)
+//         const encryptPassword = (password, secretKey) => {
+//           const cipher = crypto.createCipher('aes-256-cbc', secretKey);
+//           let encrypted = cipher.update(password, 'utf8', 'hex');
+//           encrypted += cipher.final('hex');
+//           return encrypted;
+//         };
+//         data.encryptedPassword = encryptPassword(data.password, process.env.ENCRYPTION_KEY);
+//         delete data.password; // Remove plain-text password
 
-connectRabbitMQ();
+//         // Save data to MongoDB
+//         const polarData = new PolarData(data);
+//         try {
+//           await polarData.save();
+//           console.log('Data saved to MongoDB');
+//           channel.ack(msg);
+//         } catch (err) {
+//           console.error('Failed to save data to MongoDB:', err);
+//         }
+//       }
+//     }, { noAck: false });
+//   } catch (err) {
+//     console.error('Failed to connect to RabbitMQ:', err);
+//   }
+// }
+
+// connectRabbitMQ();

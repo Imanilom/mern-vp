@@ -1,7 +1,41 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import Swal from "sweetalert2";
+
 
 function CreateAnamnesa() {
-    const handleSubmit = async () => {
+    const { riwayatid } = useParams();
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            let formData = {
+                pertanyaan: e.target[0].value,
+                jawaban: e.target[1].value,
+                riwayatmedis: riwayatid
+            }
+
+            const res = await fetch(`/api/anamnesa/createAnamnesa/${riwayatid}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await res.json();
+            Swal.fire({
+                title: "Success",
+                text: data.message,
+                icon: "success",
+                confirmButtonColor: "#3085d6",
+            }).then(() => {
+                navigate('/riwayat-medis');
+            });
+            // console.log(data);
+        } catch (error) {
+            console.log(error)
+        }
 
     }
     return (
@@ -21,7 +55,7 @@ function CreateAnamnesa() {
                             <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Tuliskan Jawaban</label>
                         </div>
                     </div>
-                    
+
                     <div className="flex gap-2">
                         <button type="submit" class="mt-5 rounded-md bg-black px-5 py-2 text-white">Create Anamnesa</button>
                         <Link to='/riwayat-medis' class="mt-5 rounded-md border border-gray-400/20 hover:border-gray-400/70 hover:shadow-xl px-10 py-2 text-black">Cancel</Link>

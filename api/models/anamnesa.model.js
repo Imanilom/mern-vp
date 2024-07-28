@@ -8,10 +8,10 @@ const schema = mongoose.Schema({
         ref : riwayatmedis
     },
     pertanyaan : String,
-    jawaban : String
+    jawaban : String,
+    status : String
 }, {
     timestamps : true
 })
-
 
 export const anamnesa = mongoose.model('anamnesa', schema);

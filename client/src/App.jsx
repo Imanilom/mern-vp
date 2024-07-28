@@ -62,7 +62,7 @@ export default function App() {
           <Route path='/activity' element={<Activity />} />
           <Route path='/my-patients' element={<MyPatients />} />
           <Route path='/input-medical' element={<InputMedicalHistory />} />
-          <Route path='/createAnamnesa' element={<CreateAnamnesa />} />
+          <Route path='/createAnamnesa/:riwayatid' element={<CreateAnamnesa />} />
       
           <Route path='/rekomendasi/detail/:id' element={<RecomendationDetail />} />
           <Route path='/createRecomendation' element={<CreateRecomendation />} />
