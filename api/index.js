@@ -21,7 +21,7 @@ import './controllers/data.controller.js';
 dotenv.config({path : '../.env'});
 
 mongoose
-  .connect(process.env.MONGO)
+  .connect("mongodb://healthdevice:Q3afzxiAb!@database2.pptik.id:27017/healthdevice")
   .then(() => {
     console.log('Connected to MongoDB!');
   })
@@ -62,7 +62,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5173;
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);
