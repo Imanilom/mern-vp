@@ -112,4 +112,4 @@ async function connectRabbitMQ() {
   }
 }
 
-connectRabbitMQ();
+// connectRabbitMQ();

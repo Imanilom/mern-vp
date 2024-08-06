@@ -5,9 +5,11 @@ import bcryptjs from 'bcryptjs';
 export const createActivity = async (req, res, next) => {
   try {
     const { userRef, date, awal, akhir, aktivitas } = req.body;
-    const Activity = await Aktivitas.create({ userRef, date, awal, akhir, aktivitas });
+    console.log(date, awal, akhir);
+    // const Activity = await Aktivitas.create({ userRef, date, awal, akhir, aktivitas });
    
-    return res.status(201).json({Activity : Activity, message : 'Created Activity succes'});
+    // return res.status(201).json({Activity : Activity, message : 'Created Activity succes'});
+    return res.status(201).json({message : 'Created Activity succes'});
   } catch (error) {
     next(error);
   }
