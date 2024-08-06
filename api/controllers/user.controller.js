@@ -43,6 +43,7 @@ const calculateMetrics = (logs) => {
   const s1 = Math.sqrt(diff1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / diff1.length) / Math.sqrt(2);
   const s2 = Math.sqrt(sum1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / sum1.length) / Math.sqrt(2);
 
+  // task calculate DFA
   return { sdnn, rmssd, pnn50, s1, s2 };
 };
 
@@ -62,12 +63,14 @@ export const test = async (req, res, next) => {
     };
 
     if (startDate && endDate) {
-      const start = new Date(startDate).getTime() / 1000; // Convert to Unix time
-      const end = new Date(endDate).getTime() / 1000; // Convert to Unix time
 
-      filter.timestamp = {
-        $gte: start,
-        $lte: end,
+      // filter date by column date_created
+      const dateStartF = `${new Date(startDate).getDate()}-${new Date(startDate).getMonth()}-${new Date(startDate).getFullYear()}`
+      const dateEndF = `${new Date(endDate).getDate()}-${new Date(endDate).getMonth()}-${new Date(endDate).getFullYear()}`
+  
+      filter.date_created = {
+        $gte: dateStartF,
+        $lte: dateEndF,
       };
     }
 
@@ -79,12 +82,12 @@ export const test = async (req, res, next) => {
       .sort({ create_at: -1 })
       .limit(limit);
 
-      // console.log(logs, filter, user)
+      // console.log(logs, filter)
 
     if (logs.length === 0) {
       return res.status(404).json({ message: 'Log not found!' });
     }
-
+   
     const calculate = calculateMetrics(logs);
     res.status(200).json({ logs, calculate });
   } catch (error) {
