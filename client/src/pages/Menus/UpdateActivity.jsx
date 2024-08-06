@@ -37,10 +37,10 @@ function UpdateActivity() {
                 setActivityUser(res.data);
                 setFormData(res.data);
 
-                console.log(res.data);
+                // console.log(res.data);
 
-                console.log('user : ', currentUser);
-                console.log('cookie : ', Cookies.get('access_token'));
+                // console.log('user : ', currentUser);
+                // console.log('cookie : ', Cookies.get('access_token'));
             } catch (error) {
                 console.log(error);
             }
@@ -70,7 +70,7 @@ function UpdateActivity() {
 
         try {
             let formdata = new FormData(e.target);
-            console.log(formdata, formData);
+            // console.log(formdata, formData);
             // const res = await axios.post(`/api/activity/update/${id}`, formdata);
             const res = await fetch(`/api/activity/update/${id}`, {
                 method: 'POST',
@@ -85,9 +85,8 @@ function UpdateActivity() {
             });
 
             const data = await res.json();
-
-            console.log(data);
-            console.log(res)
+            // console.log(data);
+            // console.log(res)
             setLoading(false);
 
             if (data.success === false) {

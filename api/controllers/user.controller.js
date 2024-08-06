@@ -3,6 +3,7 @@ import User from '../models/user.model.js';
 import Log from '../models/log.model.js';
 import Aktivitas from '../models/activity.model.js';
 import { errorHandler } from '../utils/error.js';
+import { calculateDFA } from './data.controller.js';
 
 const calculateMetrics = (logs) => {
   const rrIntervals = logs.map((log) => log.RR);
@@ -59,7 +60,7 @@ export const test = async (req, res, next) => {
     const { startDate, endDate } = req.query;
 
     let filter = {
-      guid_device : user.current_device || 'C0680226'
+      guid_device: user.current_device || 'C0680226'
     };
 
     if (startDate && endDate) {
@@ -67,14 +68,14 @@ export const test = async (req, res, next) => {
       // filter date by column date_created
       const dateStartF = `${new Date(startDate).getDate()}-${new Date(startDate).getMonth()}-${new Date(startDate).getFullYear()}`
       const dateEndF = `${new Date(endDate).getDate()}-${new Date(endDate).getMonth()}-${new Date(endDate).getFullYear()}`
-  
+
       filter.date_created = {
         $gte: dateStartF,
         $lte: dateEndF,
       };
     }
 
-    if(req.user.role == 'doctor'){
+    if (req.user.role == 'doctor') {
       filter.guid_device = req.params.device;
     }
 
@@ -82,12 +83,12 @@ export const test = async (req, res, next) => {
       .sort({ create_at: -1 })
       .limit(limit);
 
-      // console.log(logs, filter)
+    // console.log(logs, filter)
 
     if (logs.length === 0) {
       return res.status(404).json({ message: 'Log not found!' });
     }
-   
+
     const calculate = calculateMetrics(logs);
     res.status(200).json({ logs, calculate });
   } catch (error) {
@@ -96,8 +97,54 @@ export const test = async (req, res, next) => {
   }
 };
 
+export const getRiwayatDeteksiWithDfa = async (req, res) => {
+  let result = [];
+  /**
+   * logika fetch : 
+   * select aktivitas sesuai currentUser
+   * aktifitas memiliki Jam start dan end lalu cari logs menggunakan $gte dan $lte dari start dan end
+   */
 
+  const theActivities = await Aktivitas.find({ userRef: req.params.userId }).sort({Date : -1});
+  for (let i = 0; i < theActivities.length; i++) {
+    const singleactivity = theActivities[i];
+    let date = new Date(singleactivity.Date);
+    let dateFormat = `${String(date.getDate()).padStart(2, '0')}-${String((date.getMonth() + 1)).padStart(2, '0')}-${date.getFullYear()}`;
+    // console.log(date, dateFormat, singleactivity.awal, singleactivity.akhir)
+    // console.log(dateFormat)
+    const logs = await Log.find({
+      date : dateFormat,
+      time: {
+        $gte: singleactivity.awal,
+        $lte: singleactivity.akhir
+      }
+    });
 
+    let dfa = 0;
+    // console.log(logs.length)
+
+    if(logs.length > 0){
+      const colelctionHR = logs.map(val => val.HR);
+      // console.log('logs Hr', colelctionHR)
+      if (colelctionHR.length >= 8) {
+        dfa = calculateDFA(colelctionHR);
+      }
+
+    }
+
+    let dataOutput = {
+      date : dateFormat,
+      time : `${singleactivity.awal} - ${singleactivity.akhir}`,
+      aktifitas : singleactivity.aktivitas,
+      dfa : dfa
+    }
+
+    result.push(dataOutput);
+  }
+
+  // console.log('testing', result);
+  res.json({ message: 'oke', riwayat : result})
+}
 
 export const updateUser = async (req, res, next) => {
   if (req.user.id !== req.params.id)
@@ -114,7 +161,7 @@ export const updateUser = async (req, res, next) => {
           name: req.body.name,
           email: req.body.email,
           password: req.body.password,
-          current_device : req.body.current_device,
+          current_device: req.body.current_device,
           phone_number: req.body.phone_number,
           address: req.body.address,
           otp: req.body.otp,
@@ -147,13 +194,13 @@ export const deleteUser = async (req, res, next) => {
 
 export const getUser = async (req, res, next) => {
   try {
-    
+
     const user = await User.findById(req.params.id);
-  
+
     if (!user) return next(errorHandler(404, 'User not found!'));
-  
+
     const { password: pass, ...rest } = user._doc;
-  
+
     res.status(200).json(rest);
   } catch (error) {
     next(error);

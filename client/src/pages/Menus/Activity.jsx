@@ -85,6 +85,13 @@ function Acitivity() {
     };
     fetchLog();
   }, []);
+
+  const parseTime = (timeString) => {
+    const [hour, minute] = timeString.split(':').map(Number); // Memecah string dan mengonversi ke angka
+    const now = new Date(); // Mengambil tanggal saat ini
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute); // Menggunakan tanggal saat ini
+  };
+
   return (
     <main class="bg-white flex">
       <Side />
@@ -134,10 +141,16 @@ function Acitivity() {
                       {new Date(aktivitas.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </th>
                     <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                      {aktivitas.awal}
+                      {new Intl.DateTimeFormat('id-ID', {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(parseTime(aktivitas.awal)).toString().replace('.', ':')}
                     </td>
                     <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                      {aktivitas.akhir}
+                      {new Intl.DateTimeFormat('id-ID', {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      }).format(parseTime(aktivitas.akhir)).toString().replace('.', ':')}
                     </td>
                     <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                       {aktivitas.aktivitas}

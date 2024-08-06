@@ -4,12 +4,17 @@ import bcryptjs from 'bcryptjs';
 
 export const createActivity = async (req, res, next) => {
   try {
-    const { userRef, date, awal, akhir, aktivitas } = req.body;
-    console.log(date, awal, akhir);
-    // const Activity = await Aktivitas.create({ userRef, date, awal, akhir, aktivitas });
-   
-    // return res.status(201).json({Activity : Activity, message : 'Created Activity succes'});
-    return res.status(201).json({message : 'Created Activity succes'});
+    const { userRef, tanggal, awal, akhir, aktivitas } = req.body;
+    // merubah format H:M to H:M:S
+
+    let checkFormatTimeAwal = awal.split(':');
+    let checkFormatTimeAkhir = akhir.split(':');
+
+    let newFormatAwal = checkFormatTimeAwal.length > 2 ? awal : `${awal}:00`;
+    let newFormatAkhir = checkFormatTimeAkhir.length > 2 ? akhir : `${akhir}:00`;
+  
+    const Activity = await Aktivitas.create({ userRef, Date : new Date(tanggal), awal : newFormatAwal, akhir : newFormatAkhir, aktivitas });
+    return res.status(201).json({Activity : Activity, message : 'Created Activity succes'});
   } catch (error) {
     next(error);
   }
@@ -31,7 +36,7 @@ export const getActivity = async (req, res, next) => { // mark
       
       // state role docter
       Activity = await Aktivitas.find({ userRef: req.params.patient }).sort({ create_at: -1 }); // harusnya dia bawa id user. bukan req.user.id docter
-      console.log(req.params.patient);
+      // console.log(req.params.patient);
     }
 
     if (!Activity) {
@@ -57,7 +62,8 @@ export const get = async (req, res, next) => {
 
 export const editActivity = async (req, res, next) => {
 
-  const { userRef, date, awal, akhir, aktivitas } = req.body;
+  const { userRef, awal, akhir, aktivitas, tanggal } = req.body;
+
   const Activity = await Aktivitas.findById(req.params.id);
   if (!Activity) {
     return next(errorHandler(404, 'Activity not found!'));
@@ -68,15 +74,24 @@ export const editActivity = async (req, res, next) => {
   }
 
   try {
+    let checkFormatTimeAwal = awal.split(':');
+    let checkFormatTimeAkhir = akhir.split(':');
 
+    let newFormatAwal = checkFormatTimeAwal.length > 2 ? awal : `${awal}:00`;
+    let newFormatAkhir = checkFormatTimeAkhir.length > 2 ? akhir : `${akhir}:00`;
+    
     const updatedActivity = await Aktivitas.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      {userRef, Date : new Date(tanggal), awal : newFormatAwal, akhir : newFormatAkhir, aktivitas},
       { new: true }
     );
+
+    // console.log(updatedActivity, req.body);
     res.status(200).json(updatedActivity);
+
   } catch (error) {
-    next(error);
+    console.log(error)
+    // next(error);
   }
 }
 
