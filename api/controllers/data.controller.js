@@ -9,7 +9,7 @@ import cron from 'node-cron';
 
 
 // Fungsi untuk menghitung DFA
-function calculateDFA(data, order = 1) {
+export const calculateDFA = (data, order = 1) => {
         const y = data.map((val, i) => data.slice(0, i + 1).reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
         const boxSizes = [...new Set(Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(val => val <= data.length / 2))];
         const fluctuation = boxSizes.map(boxSize => {
@@ -60,7 +60,7 @@ async function filterIQ(logs, multiplier = 1.5) {
     return filteredLogs;
 }
 
-function calculateQuartilesAndIQR(values) {
+export const calculateQuartilesAndIQR = (values) => {
     values.sort((a, b) => a - b);
     const midIndex = Math.floor(values.length / 2);
     const Q1 = values[Math.floor(midIndex / 2)];
