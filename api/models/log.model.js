@@ -58,6 +58,12 @@ const LogSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    activity_ref : {
+      type : mongoose.Types.ObjectId,
+      ref : 'aktivitas',
+      required : false
+    }, 
+    activity : String
   },
   {
     versionKey: false,

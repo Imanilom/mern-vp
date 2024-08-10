@@ -1,4 +1,5 @@
 import Aktivitas from '../models/activity.model.js';
+import Log from '../models/log.model.js';
 import { errorHandler } from '../utils/error.js';
 import bcryptjs from 'bcryptjs';
 
@@ -12,9 +13,30 @@ export const createActivity = async (req, res, next) => {
 
     let newFormatAwal = checkFormatTimeAwal.length > 2 ? awal : `${awal}:00`;
     let newFormatAkhir = checkFormatTimeAkhir.length > 2 ? akhir : `${akhir}:00`;
-  
-    const Activity = await Aktivitas.create({ userRef, Date : new Date(tanggal), awal : newFormatAwal, akhir : newFormatAkhir, aktivitas });
-    return res.status(201).json({Activity : Activity, message : 'Created Activity succes'});
+
+
+    const Activity = await Aktivitas.create({ userRef, Date: new Date(tanggal), awal: newFormatAwal, akhir: newFormatAkhir, aktivitas });
+
+    // Lets make reference logs with the activity
+    let day = new Date(tanggal);
+    let dmy = `${String(day.getDate()).padStart(2, '0')}-${String(day.getMonth() + 1).padStart(2, '0')}-${day.getFullYear()}`;
+
+    let filter = {
+      date: dmy,
+      time: {
+        $gte: newFormatAwal,
+        $lte: newFormatAkhir
+      }
+    }
+    
+    const logs = await Log.updateMany(filter, {
+      $set: {
+        activity_ref: Activity._id,
+        activity: aktivitas
+      }
+    })
+
+    return res.status(201).json({ Activity: Activity, message: 'Created Activity succes' });
   } catch (error) {
     next(error);
   }
@@ -33,7 +55,7 @@ export const getActivity = async (req, res, next) => { // mark
       // state role user
       Activity = await Aktivitas.find({ userRef: req.user.id }).sort({ create_at: -1 });
     } else {
-      
+
       // state role docter
       Activity = await Aktivitas.find({ userRef: req.params.patient }).sort({ create_at: -1 }); // harusnya dia bawa id user. bukan req.user.id docter
       // console.log(req.params.patient);
@@ -79,10 +101,10 @@ export const editActivity = async (req, res, next) => {
 
     let newFormatAwal = checkFormatTimeAwal.length > 2 ? awal : `${awal}:00`;
     let newFormatAkhir = checkFormatTimeAkhir.length > 2 ? akhir : `${akhir}:00`;
-    
+
     const updatedActivity = await Aktivitas.findByIdAndUpdate(
       req.params.id,
-      {userRef, Date : new Date(tanggal), awal : newFormatAwal, akhir : newFormatAkhir, aktivitas},
+      { userRef, Date: new Date(tanggal), awal: newFormatAwal, akhir: newFormatAkhir, aktivitas },
       { new: true }
     );
 

@@ -20,7 +20,6 @@ export const createRecomendation = async (req, res) => {
 
 export const getRecomendationByPatient = async (req, res) => {
     try {
-
         // if role is doctor fetch this >>
         if (req.user.role === 'doctor') {
             const recomendation = await Recomendation.find({

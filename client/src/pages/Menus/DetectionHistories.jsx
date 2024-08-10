@@ -2,9 +2,18 @@ import React, { useState, useEffect } from 'react'
 import Side from '../../components/Side';
 import { useSelector } from 'react-redux';
 
+let data1 = [
+  {
+    dfa: -1,
+    date: "",
+    Aktifitas: "",
+  },
+  
+];
+
 function DetectionHistories() {
 
-  const [data, setData] = useState([]);
+  const [data, setData] = useState(data1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
   const [sort, setSort] = useState(null);
   const [sortByKey, setSortByKey] = useState(null);
@@ -57,7 +66,6 @@ function DetectionHistories() {
     }
 
     console.log(currentUser)
-
     handle();
   }, [])
 
@@ -121,7 +129,7 @@ function DetectionHistories() {
                           {val.time}
                         </th>
                         <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                          {val.dfa.toFixed(2)} 
+                          {val.dfa > 0 ? val.dfa.toFixed(2) : null} 
                         </td>
                         <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                           {val.aktifitas}
@@ -175,7 +183,7 @@ function HandleSimbol(props) {
     )
   }
 
-  else {
+  else if(dfa > 0) {
     return (
       <span
         className="w-fit px-3 py-1 text-[12px] rounded-md bg-green-500 text-white font-medium" >

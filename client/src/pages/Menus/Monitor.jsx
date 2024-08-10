@@ -220,18 +220,21 @@ export default function Monitor() {
     return date.toLocaleString(); // Adjust the format as needed
   };
 
-  const chartData = (label, dataKey) => ({
-    labels: logs ? logs.map(item => formatDate(item.timestamp)).reverse() : [],
-    datasets: [
-      {
-        label,
-        data: logs ? logs.map(item => item[dataKey]).reverse() : [],
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-        fill: true,
-      },
-    ],
-  });
+  const chartData = (label, dataKey) => {
+    // console.log(logs)
+    return ({
+      labels: logs ? logs.map(item => formatDate(item.timestamp)).reverse() : [],
+      datasets: [
+        {
+          label,
+          data: logs ? logs.map(item => item[dataKey]).reverse() : [],
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1,
+          fill: true,
+        },
+      ],
+    })
+  };
 
   const poincareData = () => {
     if (!logs) return { datasets: [] };

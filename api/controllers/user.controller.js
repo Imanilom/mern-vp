@@ -99,19 +99,11 @@ export const test = async (req, res, next) => {
 
 export const getRiwayatDeteksiWithDfa = async (req, res) => {
   let result = [];
-  /**
-   * logika fetch : 
-   * select aktivitas sesuai currentUser
-   * aktifitas memiliki Jam start dan end lalu cari logs menggunakan $gte dan $lte dari start dan end
-   */
-
   const theActivities = await Aktivitas.find({ userRef: req.params.userId }).sort({Date : -1});
   for (let i = 0; i < theActivities.length; i++) {
     const singleactivity = theActivities[i];
     let date = new Date(singleactivity.Date);
     let dateFormat = `${String(date.getDate()).padStart(2, '0')}-${String((date.getMonth() + 1)).padStart(2, '0')}-${date.getFullYear()}`;
-    // console.log(date, dateFormat, singleactivity.awal, singleactivity.akhir)
-    // console.log(dateFormat)
     const logs = await Log.find({
       date : dateFormat,
       time: {
@@ -121,7 +113,6 @@ export const getRiwayatDeteksiWithDfa = async (req, res) => {
     });
 
     let dfa = 0;
-    // console.log(logs.length)
 
     if(logs.length > 0){
       const colelctionHR = logs.map(val => val.HR);
