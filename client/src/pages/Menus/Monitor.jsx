@@ -356,7 +356,7 @@ export default function Monitor() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                        {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th> */}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200 text-sm">
@@ -372,7 +372,7 @@ export default function Monitor() {
                           <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s1.toFixed(2)}</td>
                           <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s2.toFixed(2)}</td>
                           <td className="px-6 py-4 whitespace-nowrap">{handleDfaAvg()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{medianProperty.total}</td>
+                          {/* <td className="px-6 py-4 whitespace-nowrap">{medianProperty.total}</td> */}
                         </tr>
 
 

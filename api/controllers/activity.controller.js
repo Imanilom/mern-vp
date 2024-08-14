@@ -42,10 +42,6 @@ export const createActivity = async (req, res, next) => {
   }
 }
 
-export const readActivity = async (req, res, next) => {
-
-}
-
 export const getActivity = async (req, res, next) => { // mark
   try {
 
@@ -84,7 +80,7 @@ export const get = async (req, res, next) => {
 
 export const editActivity = async (req, res, next) => {
 
-  const { userRef, awal, akhir, aktivitas, tanggal } = req.body;
+  const { userRef, awal, akhir, aktivitas, Date } = req.body;
 
   const Activity = await Aktivitas.findById(req.params.id);
   if (!Activity) {
@@ -104,11 +100,10 @@ export const editActivity = async (req, res, next) => {
 
     const updatedActivity = await Aktivitas.findByIdAndUpdate(
       req.params.id,
-      { userRef, Date: new Date(tanggal), awal: newFormatAwal, akhir: newFormatAkhir, aktivitas },
+      { userRef, Date, awal: newFormatAwal, akhir: newFormatAkhir, aktivitas },
       { new: true }
     );
 
-    // console.log(updatedActivity, req.body);
     res.status(200).json(updatedActivity);
 
   } catch (error) {

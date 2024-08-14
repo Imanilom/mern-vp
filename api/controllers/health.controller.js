@@ -113,8 +113,6 @@ function segmentDataByInterval(logs, intervalType = 'hour') {
     return segmentedData;
   }
 
-
-
   const processAndSaveData = async () => {
     try {
       const now = new Date();

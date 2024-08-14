@@ -66,13 +66,15 @@ export const test = async (req, res, next) => {
     if (startDate && endDate) {
 
       // filter date by column date_created
-      const dateStartF = `${new Date(startDate).getDate()}-${new Date(startDate).getMonth()}-${new Date(startDate).getFullYear()}`
-      const dateEndF = `${new Date(endDate).getDate()}-${new Date(endDate).getMonth()}-${new Date(endDate).getFullYear()}`
+      const dateStartF = `${String(new Date(startDate).getDate()).padStart(2, '0')}-${String(new Date(startDate).getMonth()).padStart(2, '0')}-${new Date(startDate).getFullYear()}`
+      const dateEndF = `${String(new Date(endDate).getDate()).padStart(2, '0')}-${String(new Date(endDate).getMonth()).padStart(2, '0')}-${new Date(endDate).getFullYear()}`
 
       filter.date_created = {
         $gte: dateStartF,
         $lte: dateEndF,
       };
+
+      console.log(filter)
     }
 
     if (req.user.role == 'doctor') {
