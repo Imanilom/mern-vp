@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Side from '../../components/Side';
 import { useSelector } from 'react-redux';
+import '../../loading2.css';
 
 let data1 = [
   {
@@ -8,7 +9,7 @@ let data1 = [
     date: "",
     Aktifitas: "",
   },
-  
+
 ];
 
 function DetectionHistories() {
@@ -17,6 +18,7 @@ function DetectionHistories() {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
   const [sort, setSort] = useState(null);
   const [sortByKey, setSortByKey] = useState(null);
+  const [isLoading, setLoading] = useState(false);
   const { currentUser, DocterPatient } = useSelector(state => state.user);
   // const {currentUser} = useSelector(state => state.user);
 
@@ -48,6 +50,7 @@ function DetectionHistories() {
   };
 
   useEffect(() => {
+    setLoading(true)
     let handle = async () => {
       try {
         let url = `/api/user/riwayatdeteksi/${currentUser._id}`
@@ -62,6 +65,8 @@ function DetectionHistories() {
 
       } catch (error) {
         console.log(error);
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -129,7 +134,7 @@ function DetectionHistories() {
                           {val.time}
                         </th>
                         <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                          {val.dfa > 0 ? val.dfa.toFixed(2) : null} 
+                          {val.dfa > 0 ? val.dfa.toFixed(2) : null}
                         </td>
                         <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                           {val.aktifitas}
@@ -148,13 +153,19 @@ function DetectionHistories() {
                       </tr>
                     )
                   }) : null}
-
               </tbody>
             </table>
+
 
           </div>
 
         </div>
+        {isLoading ? (
+          <div className="flex justify-center my-8 gap-3 items-center">
+            <div class="loader2"></div>
+            <div className="font-medium">Loading..</div>
+          </div>
+        ) : null}
       </div>
     </main>
 
@@ -183,7 +194,7 @@ function HandleSimbol(props) {
     )
   }
 
-  else if(dfa > 0) {
+  else if (dfa > 0) {
     return (
       <span
         className="w-fit px-3 py-1 text-[12px] rounded-md bg-green-500 text-white font-medium" >

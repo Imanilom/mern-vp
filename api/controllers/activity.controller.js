@@ -28,7 +28,7 @@ export const createActivity = async (req, res, next) => {
         $lte: newFormatAkhir
       }
     }
-    
+
     const logs = await Log.updateMany(filter, {
       $set: {
         activity_ref: Activity._id,
@@ -81,7 +81,7 @@ export const get = async (req, res, next) => {
 export const editActivity = async (req, res, next) => {
 
   const { userRef, awal, akhir, aktivitas, Date } = req.body;
-
+  console.log({ body: req.body })
   const Activity = await Aktivitas.findById(req.params.id);
   if (!Activity) {
     return next(errorHandler(404, 'Activity not found!'));
@@ -104,6 +104,22 @@ export const editActivity = async (req, res, next) => {
       { new: true }
     );
 
+    // Update the logs activity
+    let filter = {
+      activity: {
+        $exists: true,
+      },
+      activity_ref: Activity._id
+    }
+
+    let update = {
+      $set: {
+        activity: updatedActivity.aktivitas
+      }
+    }
+
+    // Set reference
+    await Log.updateMany(filter, update);
     res.status(200).json(updatedActivity);
 
   } catch (error) {
@@ -125,6 +141,23 @@ export const deleteActivity = async (req, res, next) => {
 
   try {
     await Aktivitas.findByIdAndDelete(req.params.id);
+    // Update logs with unset the activity and activity ref 
+    let filter = {
+      activity: {
+        $exists: true,
+      },
+      activity_ref: Activity._id
+    }
+
+    let update = {
+      $unset: { 
+        activity: "" ,
+        activity_ref : ""
+      }
+    }
+
+    await Log.updateMany(filter, update);
+    // unset logs where reference with this activity
     res.status(200).json({ message: 'Aktivitas has been deleted!' });
   } catch (error) {
     next(error);

@@ -1,18 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   server: {
-    port : 3000,
+    port: 3000, // Port untuk Vite (React)
     proxy: {
       '/api': {
-        target: 'http://localhost:5173',
-        // target: 'https://103.147.114.203:5173/',
-        secure: false,
+        target: 'http://localhost:5173', // Ubah ini ke port server backend yang benar
+        changeOrigin: true,
+        // secure: false,
+        // rewrite: (path) => path.replace(/^\/api/, ''), // Opsional, jika API backend tidak memerlukan prefix '/api'
       },
     },
   },
-
   plugins: [react()],
 });

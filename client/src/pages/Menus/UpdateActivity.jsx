@@ -69,9 +69,6 @@ function UpdateActivity() {
         e.preventDefault();
 
         try {
-            let formdata = new FormData(e.target);
-            // console.log(formdata, formData);
-            // const res = await axios.post(`/api/activity/update/${id}`, formdata);
             const res = await fetch(`/api/activity/update/${id}`, {
                 method: 'POST',
                 headers: {
@@ -85,14 +82,13 @@ function UpdateActivity() {
             });
 
             const data = await res.json();
-            // console.log(data);
-            // console.log(res)
+            console.log(data);
+            console.log(res)
             setLoading(false);
 
             if (data.success === false) {
                 setError(data.message);
             }
-
 
             Swal.fire({
                 title: "Success",
@@ -121,17 +117,17 @@ function UpdateActivity() {
                     <form onSubmit={handleSubmit} action="https://api.web3forms.com/submit" class="mt-10">
                         <div class="grid gap-6 mt-5 mb-5 sm:grid-cols-1">
                             <div class="relative z-0">
-                                <input type="date" onChange={handleChange} defaultValue={new Date(activityUser.Date).toISOString().split('T')[0]} id="tanggal" name="tanggal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                                <input type="date" disabled onChange={handleChange} defaultValue={new Date(activityUser.Date).toISOString().split('T')[0]} id="tanggal" name="tanggal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
                                 <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Tanggal</label>
                             </div>
                         </div>
                         <div class="grid gap-6 sm:grid-cols-2">
                             <div class="relative z-0">
-                                <input type="time" onChange={handleChange} defaultValue={activityUser.awal.replace('.', ':')} id="awal" name="awal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                                <input type="time" disabled onChange={handleChange} defaultValue={activityUser.awal.replace('.', ':')} id="awal" name="awal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
                                 <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Waktu Awal</label>
                             </div>
                             <div class="relative z-0">
-                                <input type="time" onChange={handleChange} defaultValue={activityUser.akhir.replace('.', ':')} id="akhir" name="akhir" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                                <input type="time" disabled onChange={handleChange} defaultValue={activityUser.akhir.replace('.', ':')} id="akhir" name="akhir" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
                                 <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Waktu Akhir</label>
                             </div>
                             <div>
@@ -151,7 +147,6 @@ function UpdateActivity() {
                         <div className="flex gap-2">
                             <button type="submit" class="mt-5 rounded-md bg-black px-10 py-2 text-white">Save activity</button>
                             <Link to='/activity' class="mt-5 rounded-md border border-transparent hover:border-gray-400/30 hover:shadow-xl px-10 py-2 text-black">Cancel</Link>
-
                         </div>
                     </form>
                 </div>

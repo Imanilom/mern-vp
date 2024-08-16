@@ -30,6 +30,7 @@ import RecomendationDetail from './pages/Menus/RecomendationDetail';
 import Activity from './pages/Menus/Activity';
 import CreateActivity from './pages/Menus/CreateActivity';
 import UpdateActivity from './pages/Menus/UpdateActivity';
+import SetActivity from './pages/Menus/SetActivity';
 //Activity END >>
 
 // Anamnesa
@@ -60,6 +61,7 @@ export default function App() {
           <Route path='/ringkasan-pasien' element={<Summary />} />
           <Route path='/monitor' element={<Monitor />} />
           <Route path='/activity' element={<Activity />} />
+          <Route path='/set/activity/:encrypt' element={<SetActivity />} />
           <Route path='/my-patients' element={<MyPatients />} />
           <Route path='/input-medical' element={<InputMedicalHistory />} />
           <Route path='/createAnamnesa/:riwayatid' element={<CreateAnamnesa />} />

@@ -22,6 +22,8 @@ function Summary() {
             navigate('/my-patients');
         }
     }
+
+   
     return (
         <div>
             <main>

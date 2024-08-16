@@ -4,6 +4,9 @@ import Side from '../../components/Side'
 import { Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import Swal from 'sweetalert2';
+import { encryptStr, decryptHash } from '../../utls/encrypt.js'
+import '../../loading.css';
+
 
 function Acitivity() {
   const [useractivitys, setUseractivitys] = useState([]);
@@ -15,6 +18,47 @@ function Acitivity() {
   const [formData, setFormData] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState(null);
+  const [logs, setLogs] = useState(null);
+  const [timeGap, setTimeGap] = useState(null);
+
+  const [isViewAct, setViewAct] = useState(true)
+  const [isViewUnrelationAct, setViewUnrelationAct] = useState(true)
+
+
+  const fetchLogsNoRelation = async () => {
+    try {
+      setLoading(true)
+      let url2 = `/api/user/testLogActivity`;
+      if (timeGap) {
+        url2 += `?gap=${timeGap}`;
+      }
+
+      const res2 = await fetch(url2);
+      const data2 = await res2.json();
+
+      if (data2.result == null) {
+        setLogs(null)
+        return;
+      }
+
+      // desc
+      const ordered = Object.keys(data2.result)
+        .sort((a, b) => parseKey(b) - parseKey(a)) // Sortir berdasarkan objek Date
+        .reduce((obj, key) => {
+          obj[key] = data2.result[key];
+          return obj;
+        }, {});
+
+      setLogs(ordered);
+    } catch (error) {
+      console.log(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => {
+    fetchLogsNoRelation();
+  }, [timeGap]);
 
   const handleactivityDelete = async (activityId) => {
     try {
@@ -42,6 +86,7 @@ function Acitivity() {
     }
   };
 
+
   const confirmDelete = (activity) => {
     setActivityToDelete(activity);
     setShowModal(true);
@@ -63,7 +108,6 @@ function Acitivity() {
     const fetchLog = async () => {
       try {
         console.log('oke loading..')
-
         setLoading(true);
         let url = `/api/activity/getActivity`;
         if (currentUser.role == 'doctor') {
@@ -73,14 +117,16 @@ function Acitivity() {
         const res = await fetch(url);
         const data = await res.json();
         if (data.success === false) {
-
           return;
         }
-        console.log(data)
-        setAktivitas(data)
+        console.log(data);
+        setAktivitas(data);
 
+        await fetchLogsNoRelation();
       } catch (error) {
 
+      } finally {
+        setLoading(false);
       }
     };
     fetchLog();
@@ -92,106 +138,209 @@ function Acitivity() {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute); // Menggunakan tanggal saat ini
   };
 
+  const parseKey = (key) => {
+    const [datePart] = key.split('/');
+    const [day, month, year] = datePart.split('-').map(Number);
+    return new Date(year, month - 1, day); // Buat objek Date
+  };
+
   return (
     <main class="bg-white flex">
       <Side />
+
       <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-24">
-        <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
-          <div class="rounded-t mb-0 px-4 py-3 border-0">
-            <div class="flex flex-wrap items-center">
-              <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-                <h3 class="font-semibold text-base text-blueGray-700">{currentUser.role == 'user' ? "Aktivitas" : "Aktifitas Pasien"}</h3>
-              </div>
-              <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                {/* <Link to={'/createActivity'}>
+        <div className="flex gap-3">
+
+          <div onClick={() => setViewAct(!isViewAct)} className='w-fit px-3 py-2 mb-5 border-gray-300 mt-2 border rounded-md focus:outline-none shadow-lg bg-white cursor-pointer text-gray-900'>
+            {isViewAct ? 'Hide history activity ' : 'UnHide history activity '}
+          </div>
+          {logs ? (
+            <div onClick={() => setViewUnrelationAct(!isViewUnrelationAct)} className='w-fit px-3 py-2 mb-5 border-gray-300 mt-2 border rounded-md focus:outline-none shadow-lg bg-white cursor-pointer text-gray-900'>
+              {isViewUnrelationAct ? 'Hide unrelationship log ' : 'UnHide unrelationship log'}
+
+            </div>
+          ) : null}
+        </div>
+        {logs && isViewUnrelationAct ? (
+          <div>
+            <h3 class="font-semibold text-[20px] text-blueGray-700 mb-3">
+              Please Fill The Activity To See History Activity
+            </h3>
+            <div className="flex gap-2 items-center">
+
+              <select
+                onChange={(e) => setTimeGap(e.target.value)}
+                id="yourSelect"
+                name="yourSelect"
+                className="block w-60 mt-2 p-2 border border-gray-300 rounded-md focus:outline-none shadow-lg bg-white text-gray-900"
+              >
+
+                <option value="5">5 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="15">15 minutes</option>
+                <option selected value="30">30 minutes</option>
+                <option value="60">60 minutes</option>
+              </select>
+              {loading ? (
+                <span class="ms-4 loader"></span>
+              ) : null}
+            </div>
+
+            <div className="containers mt-5 flex-col font-semibold flex gap-3 mb-8">
+              {Object.keys(logs).map((timeSlot) => {
+                console.log({ simestart: timeSlot.split('/')[1].split('-')[0], timeSlot })
+                // console.log({ timeSlot }, timeSlot.split('/')[0], new Date(timeSlot.split('/')[0]))
+                return (
+                  <div className="box border items-center duration-300 hover:translate-x-4 flex flex-col gap-3 shadow-lg px-8 rounded-md py-3 max-w-60 w-fit">
+                    <div className="flex font-medium gap-20">
+                      <div className='min-w-20 gap-3 flex flex-col'>
+                        <p>Tanggal</p>
+                        <p className='text-gray-500'>{timeSlot.split('/')[0].replace('-', '/').replace('-', '/')}</p>
+                      </div>
+                      <div className='min-w-20 gap-3 flex flex-col'>
+                        <p>Awal Waktu</p>
+                        <p className='text-gray-500'>{timeSlot.split('/')[1].split('-')[0]}</p>
+                      </div>
+                      <div className='min-w-20 gap-3 flex flex-col'>
+                        <p>Akhir Waktu</p>
+                        <p className='text-gray-500'> {timeSlot.split('/')[1].split('-')[1]}</p>
+                      </div>
+                      <div className='min-w-20 gap-3 flex flex-col'>
+                        <p>Action</p>
+                        <Link to={`/set/activity/${encryptStr(JSON.stringify({ date: timeSlot.split('/')[0], awal: timeSlot.split('/')[1].split('-')[0], akhir: timeSlot.split('/')[1].split('-')[1] }))}`} className="w-fit px-3 py-1 cursor-pointer bg-[#46FF59]/90 hover:bg-[#46FF59] rounded-md">
+                          Set Detail Activity
+                        </Link>
+
+                      </div>
+                    </div>
+
+
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {isViewAct ? (
+          <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
+            <div class="rounded-t mb-0 px-4 py-3 border-0">
+              <div class="flex flex-wrap items-center">
+                <div class="relative w-full px-4 max-w-full flex-grow flex-1">
+                  <h3 class="font-semibold text-base text-blueGray-700">{currentUser.role == 'user' ? "Aktivitas" : "Aktifitas Pasien"}</h3>
+                </div>
+                <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
+                  {/* <Link to={'/createActivity'}>
                   <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">
                     Tambahkan aktivitas
                   </button>
                 </Link> */}
+                </div>
+              </div>
+            </div>
+
+            <div class="block w-full overflow-x-auto">
+              <table class="items-center bg-transparent w-full border-collapse ">
+                <thead>
+                  <tr>
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Tanggal
+                    </th>
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Awal
+                    </th>
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Akhir
+                    </th>
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Aktivitas
+                    </th>
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-center text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {aktivitas?.map((aktivitas) => (
+                    <tr key={aktivitas._id}>
+                      <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                        {new Date(aktivitas.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </th>
+                      <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                        {new Intl.DateTimeFormat('id-ID', {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }).format(parseTime(aktivitas.awal)).toString().replace('.', ':')}
+                      </td>
+                      <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                        {new Intl.DateTimeFormat('id-ID', {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        }).format(parseTime(aktivitas.akhir)).toString().replace('.', ':')}
+                      </td>
+                      <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                        {aktivitas.aktivitas}
+                      </td>
+                      <td>
+                        <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
+                          <Link to={`/updateActivity/${aktivitas._id}`}>
+                            <button class="bg-indigo-500 text-white hover:bg-indigo-600/90 active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Update</button>
+                          </Link>
+
+                          <button class="bg-red-700 text-white hover:bg-red-700/80 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button" onClick={() => confirmDelete(aktivitas)}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+
+            </div>
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className='h-[60vh] flex items-center justify-center'>
+            <span class="ms-4 loader"></span>
+          </div>
+        ) : null}
+      </div>
+      {
+        showModal && (
+          <div class="fixed inset-0 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded shadow-lg">
+              <h2 class="text-lg font-semibold mb-4">Konfirmasi Hapus</h2>
+              <p>Apakah Anda yakin ingin menghapus aktivitas ini?</p>
+              <p><strong>Tanggal:</strong> {new Date(activityToDelete.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(activityToDelete.Date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+              <p><strong>Awal:</strong> {activityToDelete.awal}</p>
+              <p><strong>Akhir:</strong> {activityToDelete.akhir}</p>
+              <p><strong>Aktivitas:</strong> {activityToDelete.aktivitas}</p>
+              <div class="mt-4 flex justify-end">
+                <button class="bg-gray-500 text-white px-4 py-2 rounded mr-2" onClick={handleCancelDelete}>Cancel</button>
+                <button class="bg-red-500 text-white px-4 py-2 rounded" onClick={handleConfirmDelete}>Delete</button>
               </div>
             </div>
           </div>
-
-          <div class="block w-full overflow-x-auto">
-            <table class="items-center bg-transparent w-full border-collapse ">
-              <thead>
-                <tr>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Tanggal
-                  </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Awal
-                  </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Akhir
-                  </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Aktivitas
-                  </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-center text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {aktivitas?.map((aktivitas) => (
-                  <tr key={aktivitas._id}>
-                    <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
-                      {new Date(aktivitas.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                    </th>
-                    <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                      {new Intl.DateTimeFormat('id-ID', {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }).format(parseTime(aktivitas.awal)).toString().replace('.', ':')}
-                    </td>
-                    <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                      {new Intl.DateTimeFormat('id-ID', {
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      }).format(parseTime(aktivitas.akhir)).toString().replace('.', ':')}
-                    </td>
-                    <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                      {aktivitas.aktivitas}
-                    </td>
-                    <td>
-                      <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                        <Link to={`/updateActivity/${aktivitas._id}`}>
-                          <button class="bg-indigo-500 text-white hover:bg-indigo-600/90 active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Update</button>
-                        </Link>
-
-                        <button class="bg-red-700 text-white hover:bg-red-700/80 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button" onClick={() => confirmDelete(aktivitas)}>Delete</button>
-
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+        )
+      }
 
 
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {showModal && (
-        <div class="fixed inset-0 flex items-center justify-center z-50">
-          <div class="bg-white p-6 rounded shadow-lg">
-            <h2 class="text-lg font-semibold mb-4">Konfirmasi Hapus</h2>
-            <p>Apakah Anda yakin ingin menghapus aktivitas ini?</p>
-            <p><strong>Tanggal:</strong> {new Date(activityToDelete.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(activityToDelete.Date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-            <p><strong>Awal:</strong> {activityToDelete.awal}</p>
-            <p><strong>Akhir:</strong> {activityToDelete.akhir}</p>
-            <p><strong>Aktivitas:</strong> {activityToDelete.aktivitas}</p>
-            <div class="mt-4 flex justify-end">
-              <button class="bg-gray-500 text-white px-4 py-2 rounded mr-2" onClick={handleCancelDelete}>Cancel</button>
-              <button class="bg-red-500 text-white px-4 py-2 rounded" onClick={handleConfirmDelete}>Delete</button>
+      {/* {Object.keys(logs).map((timeSlot) => (
+        <div key={timeSlot} id={timeSlot}>
+          <h2>{timeSlot}</h2>
+          
+          {logs[timeSlot].map((data, index) => (
+            <div key={index}>
+              <p id={data.create_at}>Data {index + 1}:</p>
+             
+              <pre>{JSON.stringify(data, null, 2)}</pre>
             </div>
-          </div>
+          ))}
         </div>
-      )}
-    </main>
+      ))} */}
+    </main >
 
   )
 }

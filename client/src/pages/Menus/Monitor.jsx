@@ -91,6 +91,7 @@ export default function Monitor() {
     dfa: 0,
     total: 0
   });
+  const [borderColor, setBorderColor] = useState([]);
 
   useEffect(() => {
     fetchLogs();
@@ -125,6 +126,27 @@ export default function Monitor() {
       }
       const sortedLogs = data.logs.sort((a, b) => b.timestamp - a.timestamp); // Sort logs from newest to oldest
       setLogs(sortedLogs);
+
+      // setBorderColor
+
+      sortedLogs.map(item => {
+        // console.log(item);
+        if (item.hasOwnProperty('activity')) {
+          console.log({activity :item.activity}, 'adarelasi');
+        } else {
+          // console.log('kosong belum ada relasi')
+        }
+      })
+
+      const borderColor = sortedLogs.map(item => {
+        if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan
+        if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
+        if (item.activity === 'Berolahraga') return 'rgba(116, 12, 224, 0.8)'; // Ungu untuk Berolahraga
+        // return 'rgba(75, 192, 192, 1)'; // Warna default
+        return 'rgba(75, 192, 192, 1)'; // Warna default
+      });
+
+      setBorderColor(borderColor);
 
       if (data && sortedLogs.length > 0) {
         setMetrics(calculateMetrics(sortedLogs));
@@ -176,10 +198,6 @@ export default function Monitor() {
     const groupedLogs = logs.reduce((acc, log) => {
       const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
       if (!acc[date]) acc[date] = [];
-      // let dfaHR = logs.map(log => log.HR);
-      // let dfa = calculateDFA(CollectionHR);
-      // let dfa = logs.map(log => log.HR);
-      // console.log('dfa: ', dfa)
       acc[date].push({ ...log });
       return acc;
     }, {});
@@ -205,9 +223,6 @@ export default function Monitor() {
       return { date, ...metrics, dfa };
     });
 
-    // const dfa = logs.map((log) => log.RR);
-    // const dfaResult = calculateDFA(dfa);
-
     setDailyMetrics(dailyMetrics);
   };
 
@@ -221,14 +236,32 @@ export default function Monitor() {
   };
 
   const chartData = (label, dataKey) => {
-    // console.log(logs)
+    // console.log(logs);
+    // if(logs > 0){
+    //   logs.map(item => {
+    //     console.log(item);
+    //     if(item.activity){
+    //       console.log(item.activity)
+    //     }else{
+    //       console.log('kosong belum ada relasi')
+    //     }
+    //   })
+    // }
+    // const borderColor = logs ? logs.map(item => {
+    //   if (item.activity === 'berjalan') return 'rgba(255, 0, 0, 1)'; // Merah untuk berjalan
+    //   if (item.activity === 'tidur') return 'rgba(0, 255, 0, 1)'; // Hijau untuk tidur
+    //   return 'rgba(75, 192, 192, 1)'; // Warna default
+    // }) : null;
+
+    // console.log({borderColor})
+
     return ({
       labels: logs ? logs.map(item => formatDate(item.timestamp)).reverse() : [],
       datasets: [
         {
           label,
           data: logs ? logs.map(item => item[dataKey]).reverse() : [],
-          borderColor: 'rgba(75, 192, 192, 1)',
+          borderColor: borderColor.reverse(),
           borderWidth: 1,
           fill: true,
         },

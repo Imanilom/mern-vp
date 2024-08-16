@@ -18,5 +18,7 @@
     --s:-1;
   }
 
-  @keyframes l11 {100%{transform: translateY(calc(var(--s,1)*0.1%));}}
+  @keyframes l11 {100%{transform: translateY(calc(var(--s,1)*0.1%))}}
+  
+
   
