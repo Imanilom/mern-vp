@@ -32,7 +32,7 @@ export default function SignIn() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: "0",
       });
 
       const data = await res.json();
@@ -78,7 +78,7 @@ export default function SignIn() {
         </div>
 
         <button
-          // disabled={loading}
+          
           className='bg-slate-700 text-white p-3 rounded-lg uppercase hover:opacity-95 disabled:opacity-80'
         >
           {loading ? 'Loading...' : 'Sign In'}

@@ -16,6 +16,9 @@ const AktivitasSchema = new mongoose.Schema(
         aktivitas: {
             type: String,
         },
+        status: {
+            type: String
+        },
         userRef: {
             type: String,
         },
