@@ -22,6 +22,7 @@
     "fft.js": "^4.0.4",
     "fs": "^0.0.1-security",
     "garmin-connect": "^1.6.2",
+    "http": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
     "knn": "^0.0.2",
     "ml-knn": "^3.0.0",
