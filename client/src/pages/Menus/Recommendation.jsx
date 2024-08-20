@@ -4,12 +4,15 @@ import Side from '../../components/Side';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Swal from 'sweetalert2';
+import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 
 function Recommendation() {
   const { currentUser, loading, error, DocterPatient } = useSelector((state) => state.user);
 
   const [recomendation, setRecomendation] = useState([]);
   const [isCheckAction, setCheckAction] = useState(false);
+  const [id, setId] = useState(null);
+  const [isModal, setModal] = useState(false);
   const checkboxAction = async (e, properti) => {
 
     if (isCheckAction) {
@@ -61,29 +64,30 @@ function Recommendation() {
     }
   }
 
-  const handleDelete = async (id) => {
-    let ask = window.confirm('Are you sure want to delete?');
-    if (ask) {
-      try {
-        const res = await fetch(`/api/recomendation/delete/${id}`, {
-          method: 'Delete'
-        });
+  const handleDelete = async () => {
 
-        const data = await res.json();
-        console.log(data);
-        setRecomendation(data.recomendations);
+    try {
+      const res = await fetch(`/api/recomendation/delete/${id}`, {
+        method: 'Delete'
+      });
 
-        Swal.fire({
-          title: "Success",
-          text: data.message,
-          icon: "success",
-          confirmButtonColor: "#3085d6",
-        });
+      const data = await res.json();
+      console.log(data);
+      setRecomendation(data.recomendations);
 
-      } catch (error) {
-        console.log(error);
-      }
+      Swal.fire({
+        title: "Success",
+        text: data.message,
+        icon: "success",
+        confirmButtonColor: "#3085d6",
+      });
+
+    } catch (error) {
+      console.log(error);
+    }finally{
+      setModal(false)
     }
+
   }
 
   useEffect(() => {
@@ -101,9 +105,8 @@ function Recommendation() {
             method: 'GET',
 
           });
-
         }
-        
+
         const data = await res.json();
         console.log(data)
         setRecomendation(data.recomendation);
@@ -118,14 +121,15 @@ function Recommendation() {
   return (
     <main class="bg-white flex">
       <Side />
-      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-24">
+      <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
+        <ButtonOffCanvas />
         <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
           <div class="rounded-t mb-0 px-4 py-3 border-0">
-            <div class="flex flex-wrap items-center">
+            <div class="flex flex-wrap flex-col sm:flex-row sm:items-center items-start sm:gap-0 gap-1">
               <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-                <h3 class="font-semibold text-base text-blueGray-700">Rekomendasi</h3>
+                <h3 class="font-semibold text-sm md:text-base text-blueGray-700">Rekomendasi</h3>
               </div>
-              <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
+              <div class="relative w-full px-4 max-w-full flex-grow flex-1 md:text-right">
                 {currentUser.role !== 'user' ? (
                   <Link to="/createRecomendation">
                     <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat rekomendasi aktivitas</button>
@@ -237,7 +241,7 @@ function Recommendation() {
                             <Link to={`/updateRecomendation/${recomendation._id}`}>
                               <span className='bg-yellow-400 font-medium py-1 px-3 rounded-md active:bg-yellow-400/80'>Edit</span>
                             </Link>
-                            <button onClick={() => handleDelete(recomendation._id)}>
+                            <button onClick={() => { setId(recomendation._id); setModal(true) }} data-modal-target="popup-modal" data-modal-toggle="popup-modal">
                               <span className='bg-red-600 font-medium py-1 px-3 rounded-md active:bg-red-600/80 text-white'>Delete</span>
                             </button>
                           </td>
@@ -251,6 +255,32 @@ function Recommendation() {
           </div>
         </div>
       </div>
+
+      {/* modal */}
+      {isModal ? (
+        <div class="overflow-y-auto flex overflow-x-hidden bg-black/20 fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+          <div class="relative p-4 w-full max-w-md max-h-full">
+            <div class="relative bg-white rounded-lg p-4 shadow dark:bg-gray-700">
+              <button onClick={() => setModal(!isModal)} type="button" class="absolute top-3 end-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="popup-modal">
+                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
+                </svg>
+                <span class="sr-only">Close modal</span>
+              </button>
+              <div class="p-4 md:p-5 text-center">
+                <svg class="mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11V6m0 8h.01M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">Are you sure you want to delete this product?</h3>
+                <button onClick={() => handleDelete()} data-modal-hide="popup-modal" type="button" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center">
+                  Yes, I'm sure
+                </button>
+                <button data-modal-hide="popup-modal" onClick={() => setModal(!isModal)} type="button" class="py-2.5 px-5 ms-3 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">No, cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

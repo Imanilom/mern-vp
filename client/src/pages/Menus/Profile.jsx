@@ -121,6 +121,7 @@ export default function Profile() {
     <div className='p-3 max-w-lg mx-auto'>
       <h1 className='text-3xl font-semibold text-center my-7'>Profile</h1>
       <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
+
         <input
           type='file'
           ref={fileRef}
@@ -147,6 +148,7 @@ export default function Profile() {
             onClick={() => fileRef.current.click()}
           />
         </div>
+
         <p className='text-sm self-center'>
           {imageError ? (
             <span className='text-red-700'>
@@ -160,82 +162,94 @@ export default function Profile() {
             ''
           )}
         </p>
-        <div className="mb-3">
-          <div className='text-sm font-semibold text-gray-400 mb-1'>Username</div>
+        <div className="md:flex gap-3">
+          <div className="mb-3">
+            <div className='text-sm font-semibold text-gray-400 mb-1'>Username</div>
 
-          <input
-            defaultValue={currentUser.name}
-            type='text'
-            id='name'
-            placeholder='Name'
-            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
-            onChange={handleChange}
-          />
-        </div>
-        <div className="mb-3">
-          <div className='text-sm font-semibold text-gray-400 mb-1'>Email Address</div>
-          <input
-            defaultValue={currentUser.email}
-            type='email'
-            id='email'
-            placeholder='Email'
-            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
-            onChange={handleChange}
-          />
-        </div>
 
-        <div className="mb-3">
-          <div className='text-sm font-semibold text-gray-400 mb-1'>Select your device</div>
-          <select onChange={handleChange} id='current_device' name="" className='bg-white/60 rounded-md p-3 border min-w-[100%] me-4'>
-            {currentUser.current_device == 'C0680226' ? (
-              <>
-                <option value="C0680226" selected>C0680226</option>
-                <option value="BA903328">BA903328</option>
-              </>
-              
-            )  : (
-              <>
-                <option value="C0680226">C0680226</option>
-                <option value="BA903328" selected>BA903328</option>
-              </>
-            ) }
-          </select>
-        
+            <input
+              defaultValue={currentUser.name}
+              type='text'
+              id='name'
+              placeholder='Name'
+              className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
+              onChange={handleChange}
+            />
+          </div>
+          <div className="mb-3">
+            <div className='text-sm font-semibold text-gray-400 mb-1'>Email Address</div>
+            <input
+              defaultValue={currentUser.email}
+              type='email'
+              id='email'
+              placeholder='Email'
+              className='bg-white/60 rounded-lg p-3 border min-w-[100%] md:min-w-[270px]'
+              onChange={handleChange}
+            />
+          </div>
         </div>
 
-        <div className="mb-3">
-          <div className='text-sm font-semibold text-gray-400 mb-1'>Phone Number</div>
-          <input
-            defaultValue={currentUser.phone_number}
-            type='text'
-            id='phone_number'
-            placeholder='Phone'
-            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
-            onChange={handleChange}
-          />
-        </div>
-        <div className="mb-3">
-          <div className='text-sm font-semibold text-gray-400 mb-1'>Address</div>
-          <input
-            defaultValue={currentUser.address}
-            type='text'
-            id='address'
-            placeholder='Address'
-            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
-            onChange={handleChange}
-          />
+        <div className="md:flex gap-3">
+
+          <div className="mb-3">
+            <div className='text-sm font-semibold text-gray-400 mb-1 '>Select your device</div>
+            <select onChange={handleChange} id='current_device' name="" className='bg-white/60 rounded-md p-3 border min-w-[100%] md:min-w-[270px]'>
+              {currentUser.current_device == 'C0680226' ? (
+                <>
+                  <option value="C0680226" selected>C0680226</option>
+                  <option value="BA903328">BA903328</option>
+                </>
+
+              ) : (
+                <>
+                  <option value="C0680226">C0680226</option>
+                  <option value="BA903328" selected>BA903328</option>
+                </>
+              )}
+            </select>
+
+          </div>
+
+          <div className="mb-3">
+            <div className='text-sm font-semibold text-gray-400 mb-1'>Phone Number</div>
+            <input
+              defaultValue={currentUser.phone_number}
+              type='text'
+              id='phone_number'
+              placeholder='Phone'
+              className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
+              onChange={handleChange}
+            />
+          </div>
         </div>
 
-        <div className="mb-3">
-          <div className='text-sm font-semibold text-gray-400 mb-1'>Password</div>
-          <input
-            type='password'
-            id='password'
-            placeholder='Password'
-            className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
-            onChange={handleChange}
-          />
+        <div className="md:flex gap-3">
+
+          <div className="mb-3">
+            <div className='text-sm font-semibold text-gray-400 mb-1'>Address</div>
+            <input
+              defaultValue={currentUser.address}
+              type='text'
+              id='address'
+              placeholder='Address'
+              className='bg-white/60 rounded-lg p-3 border min-w-[100%] md:min-w-[270px]'
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="mb-3">
+            <div className='text-sm font-semibold text-gray-400 mb-1'>Password</div>
+            <input
+              type='password'
+              id='password'
+              placeholder='Password'
+              className='bg-white/60 rounded-lg p-3 border min-w-[100%]'
+              onChange={handleChange}
+            />
+          </div>
+          
         </div>
+
 
         <button className='bg-slate-700 text-white p-3 rounded-lg uppercase hover:opacity-95 disabled:opacity-80'>
           {loading ? 'Loading...' : 'Update'}

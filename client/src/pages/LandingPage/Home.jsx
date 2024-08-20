@@ -10,20 +10,25 @@ import image6 from './../../assets/images/doctor6.png';
 import image7 from './../../assets/images/doctor7.png';
 
 
+import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+
 export default function Home() {
+  const navigate = useNavigate();
+
   return (
     <section className='flex flex-col gap-24'>
       {/* Hero 1 Explain Smart Future e-healt */}
 
       <div className="w-10/12 mx-auto py-16 flex flex-col md:justify-between md:flex-row gap-8 items-center">
-        <div className="flex flex-col gap-4  md:w-5/12">
+        <div className="flex flex-col gap-4  md:w-8/12 lg:w-5/12">
           <h1 className='text-[28px] md:text-[40px] font-bold'>
             Smart Future <span className='text-[#B47AEA]'>eHealth</span> ,
             <br />for who? </h1>
 
-          <p className="text-[14px]">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,</p>
+          <p className="text-[16px]">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,</p>
 
-          <button className='rounded-md w-fit text-[#FFFFFF] hover:shadow-xl duration-200 font-semibold bg-[#B47AEA] px-6 py-2'>Lets Start!</button>
+          <button onClick={() => navigate('/sign-in')} className='rounded-md w-fit text-[#FFFFFF] hover:shadow-xl duration-200 font-semibold bg-[#B47AEA] px-6 py-2'>Lets Start!</button>
         </div>
 
         <div>
@@ -36,12 +41,11 @@ export default function Home() {
 
 
       {/* Traditional vs Smart Health for Individual Care */}
-      <div className="w-10/12 mx-auto flex flex-col gap-12 md:gap-16">
-
+      <div className="w-10/12 mx-auto flex flex-col gap-12 md:gap-4">
         {/* text */}
         <div className="text-[28px] md:text-[40px] text-center font-bold flex flex-col gap-4 mb-8">
           <h1>Traditional vs <span className='text-[#B47AEA]'>Smart Health</span>  for Individual Care</h1>
-          <p className='text-[16px]'>Lets compare them</p>
+          <p className='text-[20px]'>Lets compare them</p>
         </div>
 
         {/* Traditional health */}
@@ -63,7 +67,7 @@ export default function Home() {
           </div>
 
           {/* description */}
-          <p className='font-semibold text-[14px] md:text-[16px] md:mt-4 text-center md:px-24 lg:px-44'>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, magna aliqua. Ut enim ad minim veniam,</p>
+          <p className='md:font-semibold text-[16px] md:text-[16px] md:mt-4 text-center md:px-24 lg:px-44'>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, magna aliqua. Ut enim ad minim veniam,</p>
 
         </div>
 
@@ -90,7 +94,7 @@ export default function Home() {
           </div>
 
           {/* description */}
-          <p className='font-semibold text-[14px] md:text-[16px] md:mt-4 text-center md:px-24 lg:px-44'>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, magna aliqua. Ut enim ad minim veniam,</p>
+          <p className='md:font-semibold text-[16px] md:text-[16px] md:mt-4 text-center md:px-24 lg:px-44'>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, magna aliqua. Ut enim ad minim veniam,</p>
 
         </div>
 
@@ -120,7 +124,7 @@ export default function Home() {
             <h4 className="text-[18px] font-bold">Lorem ipsum dolor sit amet, consectetur adipiscing</h4>
 
             {/* text description */}
-            <div className="text-[14px]">
+            <div className="text-[16px]">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
             </div>
           </card>
@@ -134,7 +138,7 @@ export default function Home() {
             <h4 className="text-[18px] font-bold">Lorem ipsum dolor sit amet, consectetur adipiscing</h4>
 
             {/* text description */}
-            <div className="text-[14px]">
+            <div className="text-[16px]">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
             </div>
           </card>
@@ -148,7 +152,7 @@ export default function Home() {
             <h4 className="text-[18px] font-bold">Lorem ipsum dolor sit amet, consectetur adipiscing</h4>
 
             {/* text description */}
-            <div className="text-[14px]">
+            <div className="text-[16px]">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
             </div>
           </card>
@@ -162,7 +166,7 @@ export default function Home() {
             <h4 className="text-[18px] font-bold">Lorem ipsum dolor sit amet, consectetur adipiscing</h4>
 
             {/* text description */}
-            <div className="text-[14px]">
+            <div className="text-[16px]">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
             </div>
           </card>
@@ -230,9 +234,9 @@ export default function Home() {
           <span className='text-[#B76DFD]'>Join </span>
           With Us Now!
         </h1>
-        <p className='font-medium text-sm'>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Adipisci odit aut ipsa, culpa nihil fugit fugiat quas enim. Vitae corporis obcaecati veniam sed incidunt nulla.</p>
+        <p className='md:font-medium'>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Adipisci odit aut ipsa, culpa nihil fugit fugiat quas enim. Vitae corporis obcaecati veniam sed incidunt nulla.</p>
 
-        <button className='rounded-md w-fit text-[#FFFFFF] hover:shadow-xl duration-200 font-semibold bg-[#B47AEA] px-6 py-2'>Lets Start!</button>
+        <button onClick={() => navigate('/sign-up')} className='rounded-md w-fit text-[#FFFFFF] hover:shadow-xl duration-200 font-semibold bg-[#B47AEA] px-6 py-2'>Lets Start!</button>
       </div>
 
       {/* Join with us now END */}

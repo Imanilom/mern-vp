@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
     docterUnsetUser
 } from '../../redux/user/userSlice.js';
+import ButtonOffCanvas from '../../components/ButtonOffCanvas.jsx';
 
 function Summary() {
 
@@ -27,10 +28,10 @@ function Summary() {
     return (
         <div>
             <main>
-                <section class="bg-white flex">
+                <section class="bg-white md:flex">
                     <Side />
                     <div class="container px-6 py-10 mx-auto">
-
+                        <ButtonOffCanvas index={1} />
                         <h1 class="text-3xl font-semibold text-gray-800 capitalize lg:text-4xl ">Heart Disease Decision Support Monitoring, Detection and Predictive System </h1>
                         <div class="mt-8 lg:-mx-6 lg:flex lg:items-center">
                             <img class="object-cover w-full lg:mx-6 lg:w-1/3 rounded-xl h-72 lg:h-96" src={currentUser.role != 'user' ? DocterPatient.profilePicture : currentUser.profilePicture}
@@ -40,7 +41,7 @@ function Summary() {
                                 <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded duration-300 lg:hover:translate-x-[-20px] group">
                                     <div class="rounded-t mb-0 px-4 py-3 border-0">
                                         <div class="flex flex-wrap items-center">
-                                            <div class="relative w-full px-4 max-w-full flex-grow lg:flex lg:justify-between flex-1">
+                                            <div class="relative w-full lg:px-4 max-w-full flex-grow flex justify-between flex-1">
 
                                                 <h3 class="font-semibold text-base text-blueGray-700">Biodata Pasien</h3>
 

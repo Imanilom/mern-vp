@@ -5,20 +5,20 @@ function About() {
   return (
     <div className="w-full relative bg-white overflow-hidden flex flex-col items-start justify-start pt-8 px-4 pb-64 gap-36 leading-normal tracking-normal sm:gap-9 md:gap-18 md:px-7">
       <section className="w-full flex flex-col sm:flex-row items-start justify-center text-left text-6xl text-black font-inter">
-        <div className="w-full max-w-3xl flex flex-col items-start justify-start gap-20 sm:gap-5 md:gap-10">
-          <div className="w-full flex flex-col sm:flex-row items-end justify-start gap-8 sm:gap-4 md:flex-wrap">
+        <div className="w-full max-w-3xl flex flex-col items-start justify-start gap-12 sm:gap-5 md:gap-10">
+          <div className="w-full flex flex-col sm:flex-row items-center md:items-end justify-start gap-8 sm:gap-4 md:flex-wrap">
             <img
               className="h-30 w-30 object-cover md:flex-1"
               loading="lazy"
               alt=""
               src={Logo_PPTIk}
             />
-            <div className="flex-1 flex flex-col items-start justify-start pb-22 min-w-[283px] min-h-[211px]">
+            <div className="flex-1 flex flex-col items-start justify-start pb-4 min-w-[283px] ">
               <div className="w-full flex flex-col items-start justify-start gap-3">
                 <div className="flex flex-row items-start justify-start">
                   <h3 className="text-2xl font-semibold">PPTIK - ITB</h3>
                 </div>
-                <div className="w-full text-base font-medium leading-tight text-justify">
+                <div className="w-full text-base leading-tight text-justify">
                   PPTIK merupakan salah satu pusat penelitian yang terdapat di
                   ITB yang dibangun dengan tujuan agar masyarakat dapat
                   memanfaatkan penyebaran TIK yang secara global telah meluas.
@@ -26,9 +26,9 @@ function About() {
               </div>
             </div>
           </div>
-          <div className="w-full max-w-2xl flex flex-col items-start justify-start gap-5 text-justify">
-            <h3 className="m-0 text-2xl font-semibold">OUR VISION</h3>
-            <div className="w-full text-base font-medium leading-tight">
+          <div className="w-full max-w-2xl flex flex-col items-center md:items-start justify-start gap-5 text-justify">
+            <h3 className="m-0 text-2xl font-semibold ">OUR VISION</h3>
+            <div className="w-full text-base leading-tight">
               Every Indonesian citizen must be able to take advantage of ICT for
               the advancement of his life. Every citizen can participate in the
               knowledge society and the knowledge economy, either benefiting
@@ -54,16 +54,7 @@ function About() {
 
           <div class="mapouter relative text-end w-[100%] h-[390px]">
             <div class="gmap_canvas overflow-hidden bg-none w-[100%] h-[390px]">
-              <iframe
-                class="gmap_iframe"
-                height={390}
-                width="100%"
-                frameborder="0"
-                scrolling="no"
-                marginheight="0"
-                marginwidth="0"
-                src="https://maps.google.com/maps?width=650&amp;height=390&amp;hl=en&amp;q=Institut bandung Itb&amp;t=&amp;z=14&amp;ie=UTF8&amp;iwloc=B&amp;output=embed"
-              ></iframe>
+              <iframe width="520" height="400" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" id="gmap_canvas" src="https://maps.google.com/maps?width=520&amp;height=400&amp;hl=en&amp;q=Jl.%20Ganesa%20No.10,%20Lb.%20Siliwangi,%20Kecamatan%20Coblong,%20Kota%20Bandung,%20Jawa%20Barat%2040132,%20Indonesia%20Bandung+(Institut%20Teknologi%20Bandung)&amp;t=&amp;z=15&amp;ie=UTF8&amp;iwloc=B&amp;output=embed"></iframe> <a href='https://mapswebsite.org/de'>maps einbinden</a> <script type='text/javascript' src='https://embedmaps.com/google-maps-authorization/script.js?id=87de3d80cad254f311c3a744a0b68d898dfa04f3'></script>
               <a href="https://embed-googlemap.com">embed-googlemap.com</a>
             </div>
           </div>

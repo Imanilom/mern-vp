@@ -7,6 +7,8 @@ import "chart.js/auto";
 import Side from "../../components/Side";
 
 import '../../loading.css';
+import ButtonOffCanvas from '../../components/ButtonOffCanvas';
+// import '../../tableresponsive.css';
 
 let results = [];
 
@@ -132,7 +134,7 @@ export default function Monitor() {
       sortedLogs.map(item => {
         // console.log(item);
         if (item.hasOwnProperty('activity')) {
-          console.log({activity :item.activity}, 'adarelasi');
+          console.log({ activity: item.activity }, 'adarelasi');
         } else {
           // console.log('kosong belum ada relasi')
         }
@@ -325,94 +327,102 @@ export default function Monitor() {
             <div className="relative flex flex-col min-w-0 break-words bg-white w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0">
                 <div className="flex flex-wrap items-center">
-                  <div className="relative w-full px-4 max-w-full flex-grow flex-1 flex justify-betwee">
+                  <ButtonOffCanvas index={2} />
+                  <div className="relative w-full sm:px-4 max-w-full flex-grow flex-1 flex justify-betwee">
                     {currentUser.role == 'user' ? (
                       <h3 className="font-semibold text-base text-blueGray-700">Monitoring || Device {currentUser.role == 'user' ? currentUser.current_device : DocterPatient.current_device} </h3>
-
                     ) : (
-                      <div className="flex justify-between items-center w-full">
+                      <div className="md:flex justify-between items-center w-full">
 
-                        <h3 className="font-semibold text-base text-blueGray-700">Monitoring || Device {device ?? 'nothing'} </h3>
-                        <select name="" id="" className='border border-slate-200 rounded-md px-3 py-1' onChange={handleChangeDevice}>
+                        <h3 className="font-semibold text-base text-blueGray-700 mb-3">Monitoring || Device {device ?? 'nothing'} </h3>
+                        <select name="" id="" className='max-w-[170px] border border-slate-200 rounded-md px-3 py-1' onChange={handleChangeDevice}>
                           <option value="" selected disabled>Select device Monitoring</option>
                           <option value="C0680226">C0680226</option>
                           <option value="BA903328">BA903328</option>
-
                         </select>
+                        {loading ? (
+                          <span class="ms-4 loader "></span>
+                        ) : null}
 
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="mt-8">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2">Daily Metrics</h4>
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SDNN</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RMSSD</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">pNN50</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {dailyMetrics.length > 0 ? (
-                        dailyMetrics.map((metric, index) => {
-                          return (
-                            <tr key={index}>
-                              <td className="px-6 py-4 whitespace-nowrap">{metric.date}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">{metric.sdnn !== null ? metric.sdnn.toFixed(2) : 'N/A'}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">{metric.rmssd !== null ? metric.rmssd.toFixed(2) : 'N/A'}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">{metric.pnn50 !== null ? metric.pnn50.toFixed(2) : 'N/A'}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">{metric.s1 !== null ? metric.s1.toFixed(2) : 'N/A'}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">{metric.s2 !== null ? metric.s2.toFixed(2) : 'N/A'}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null ? metric.dfa.toFixed(2) : 'N/A'}</td>
-                            </tr>
-                          );
-                        })
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                    Daily Metrics <span className='sm:hidden text-sm'> | this table can be scrolled.</span>
 
-                      ) : null}
+                  </h4>
 
-                    </tbody>
-                  </table>
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2 mt-4">Average Metrics</h4>
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SDNN</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RMSSD</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">pNN50</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
-                        {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th> */}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                      {/* {dailyMetrics.map((metric, index) => ( */}
-                      {dailyMetrics.length > 0 ? (
-
-
+                  <div style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl'>
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
                         <tr>
-                          <td className="px-6 py-4 whitespace-nowrap">{dailyMetrics[dailyMetrics.length - 1]['date']} - {dailyMetrics[0]['date']} </td>
-                          <td className="px-6 py-4 whitespace-nowrap">{medianProperty.sdnn.toFixed(2)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{medianProperty.rmssd.toFixed(2)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{medianProperty.pnn50.toFixed(2)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s1.toFixed(2)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s2.toFixed(2)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{handleDfaAvg()}</td>
-                          {/* <td className="px-6 py-4 whitespace-nowrap">{medianProperty.total}</td> */}
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SDNN</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RMSSD</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">pNN50</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
                         </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200 text-xs lg:text-[16px]">
+                        {dailyMetrics.length > 0 ? (
+                          dailyMetrics.map((metric, index) => {
+                            return (
+                              <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap">{metric.date}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{metric.sdnn !== null ? metric.sdnn.toFixed(2) : 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{metric.rmssd !== null ? metric.rmssd.toFixed(2) : 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{metric.pnn50 !== null ? metric.pnn50.toFixed(2) : 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{metric.s1 !== null ? metric.s1.toFixed(2) : 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{metric.s2 !== null ? metric.s2.toFixed(2) : 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null ? metric.dfa.toFixed(2) : 'N/A'}</td>
+                              </tr>
+                            );
+                          })
+
+                        ) : null}
+
+                      </tbody>
+                    </table>
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2 mt-4">Average Metrics</h4>
+                  <div style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl'>
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SDNN</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RMSSD</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">pNN50</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
+                          {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th> */}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200 text-xs lg:text-[16px]">
+                        {/* {dailyMetrics.map((metric, index) => ( */}
+                        {dailyMetrics.length > 0 ? (
+                          <tr>
+                            <td className="px-6 py-4 whitespace-nowrap">{dailyMetrics[dailyMetrics.length - 1]['date']} - {dailyMetrics[0]['date']} </td>
+                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.sdnn.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.rmssd.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.pnn50.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s1.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s2.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{handleDfaAvg()}</td>
+                            {/* <td className="px-6 py-4 whitespace-nowrap">{medianProperty.total}</td> */}
+                          </tr>
 
 
-                      ) : null}
-                      {/* ))} */}
-                    </tbody>
-                  </table>
+                        ) : null}
+                        {/* ))} */}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
                 <div className="mt-4">
                   <h4 className="text-lg font-semibold text-gray-800 mb-2">Select Date Range</h4>
@@ -427,28 +437,35 @@ export default function Monitor() {
                       setEndDate(end);
                     }}
                     isClearable
-                    className="p-2 border border-gray-300 rounded"
+                    className="p-2 border border-gray-300 rounded text-sm md:text-[16px]"
                   />
                   {loading ? (
-                    <span class="ms-4 loader"></span>
+                    <span class="ms-4 loader "></span>
                   ) : null}
                   {/* <span className='ms-2'>Loading..</span> */}
                 </div>
               </div>
             </div>
-            <div className="inline-flex items-center rounded-md shadow-sm mt-4">
+            <div className="flex items-center rounded-md shadow-sm mt-4 gap-1">
               <ToggleButton text="RR" isVisible={isRRVisible} onClick={toggleVisibilityRR} />
               <ToggleButton text="HR" isVisible={isHRVisible} onClick={toggleVisibilityHR} />
               <ToggleButton text="Poincare" isVisible={isPoincareVisible} onClick={toggleVisibilityPoincare} />
             </div>
-            <div className="mt-4 lg:flex lg:items-center">
-              {isHRVisible && <ChartComponent data={chartData('HR', 'HR')} />}
+            <div style={{ overflowX: 'auto' }}>
+
+              <div className="min-w-[768px] max-w-[768px] min-h-[384px] max-h-[384px] lg:max-w-full mt-4 lg:flex lg:items-center">
+                {isHRVisible && <ChartComponent data={chartData('HR', 'HR')} />}
+              </div>
             </div>
-            <div className="mt-4 lg:flex lg:items-center">
-              {isRRVisible && <ChartComponent data={chartData('RR', 'RR')} />}
+            <div style={{ overflowX: 'auto' }}>
+              <div className="min-w-[768px] max-w-[768px] min-h-[384px] max-h-[384px] mt-4 lg:flex lg:items-center">
+                {isRRVisible && <ChartComponent data={chartData('RR', 'RR')} />}
+              </div>
             </div>
-            <div className="mt-4 lg:flex lg:items-center">
-              {isPoincareVisible && <ScatterChartComponent data={poincareData()} />}
+            <div style={{ overflowX: 'auto' }}>
+              <div className="min-w-[768px] max-w-[768px] min-h-[384px] max-h-[384px] mt-4 lg:flex lg:items-center">
+                {isPoincareVisible && <ScatterChartComponent data={poincareData()} />}
+              </div>
             </div>
           </div>
         </section>
@@ -468,9 +485,11 @@ const ToggleButton = ({ text, isVisible, onClick }) => (
 );
 
 const ChartComponent = ({ data }) => (
+  // <div style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl'>
   <div className="object-cover w-full lg:w-full rounded-xl h-96">
     <Line data={data} />
   </div>
+  // </div>
 );
 
 const ScatterChartComponent = ({ data }) => (

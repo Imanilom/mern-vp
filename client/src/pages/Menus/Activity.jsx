@@ -6,6 +6,7 @@ import { useDispatch } from 'react-redux';
 import Swal from 'sweetalert2';
 import { encryptStr, decryptHash } from '../../utls/encrypt.js'
 import '../../loading.css';
+import ButtonOffCanvas from '../../components/ButtonOffCanvas.jsx';
 
 
 function Acitivity() {
@@ -148,16 +149,15 @@ function Acitivity() {
     <main class="bg-white flex">
       <Side />
 
-      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-24">
-        <div className="flex gap-3">
-
+      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
+        <ButtonOffCanvas index={3} />
+        <div className="flex gap-3 text-sm md:text-[16px]">
           <div onClick={() => setViewAct(!isViewAct)} className='w-fit px-3 py-2 mb-5 border-gray-300 mt-2 border rounded-md focus:outline-none shadow-lg bg-white cursor-pointer text-gray-900'>
             {isViewAct ? 'Hide history activity ' : 'UnHide history activity '}
           </div>
           {logs ? (
             <div onClick={() => setViewUnrelationAct(!isViewUnrelationAct)} className='w-fit px-3 py-2 mb-5 border-gray-300 mt-2 border rounded-md focus:outline-none shadow-lg bg-white cursor-pointer text-gray-900'>
               {isViewUnrelationAct ? 'Hide unrelationship log ' : 'UnHide unrelationship log'}
-
             </div>
           ) : null}
         </div>
@@ -174,7 +174,6 @@ function Acitivity() {
                 name="yourSelect"
                 className="block w-60 mt-2 p-2 border border-gray-300 rounded-md focus:outline-none shadow-lg bg-white text-gray-900"
               >
-
                 <option value="5">5 minutes</option>
                 <option value="10">10 minutes</option>
                 <option value="15">15 minutes</option>
@@ -191,8 +190,8 @@ function Acitivity() {
                 console.log({ simestart: timeSlot.split('/')[1].split('-')[0], timeSlot })
                 // console.log({ timeSlot }, timeSlot.split('/')[0], new Date(timeSlot.split('/')[0]))
                 return (
-                  <div className="box border items-center duration-300 hover:translate-x-4 flex flex-col gap-3 shadow-lg px-8 rounded-md py-3 max-w-60 w-fit">
-                    <div className="flex font-medium gap-20">
+                  <div className="box border text-xs md:text-[16px] items-center duration-300 hover:translate-x-4 flex flex-col gap-3 shadow-lg px-3 md:px-8 rounded-md py-3 max-w-60 w-fit">
+                    <div className="flex  font-medium gap-4 md:gap-20">
                       <div className='min-w-20 gap-3 flex flex-col'>
                         <p>Tanggal</p>
                         <p className='text-gray-500'>{timeSlot.split('/')[0].replace('-', '/').replace('-', '/')}</p>
@@ -207,8 +206,8 @@ function Acitivity() {
                       </div>
                       <div className='min-w-20 gap-3 flex flex-col'>
                         <p>Action</p>
-                        <Link to={`/set/activity/${encryptStr(JSON.stringify({ date: timeSlot.split('/')[0], awal: timeSlot.split('/')[1].split('-')[0], akhir: timeSlot.split('/')[1].split('-')[1] }))}`} className="w-fit px-3 py-1 cursor-pointer bg-[#46FF59]/90 hover:bg-[#46FF59] rounded-md">
-                          Set Detail Activity
+                        <Link to={`/set/activity/${encryptStr(JSON.stringify({ date: timeSlot.split('/')[0], awal: timeSlot.split('/')[1].split('-')[0], akhir: timeSlot.split('/')[1].split('-')[1] }))}`} className="w-fit px-1 md:px-3 py-1 md:py-2 cursor-pointer text-[12px] md:text-[16px] bg-[#46FF59]/90 hover:bg-[#46FF59] rounded-md">
+                          Set Activity
                         </Link>
 
                       </div>
@@ -255,9 +254,11 @@ function Acitivity() {
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Aktivitas
                     </th>
-                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-center text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                      Aksi
-                    </th>
+                    {currentUser.role == 'user' ? (
+                      <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-center text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                        Aksi
+                      </th>
+                    ) : null}
                   </tr>
                 </thead>
 
@@ -282,15 +283,17 @@ function Acitivity() {
                       <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                         {aktivitas.aktivitas}
                       </td>
-                      <td>
-                        <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                          <Link to={`/updateActivity/${aktivitas._id}`}>
-                            <button class="bg-indigo-500 text-white hover:bg-indigo-600/90 active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Update</button>
-                          </Link>
+                      {currentUser.role == 'user' ? (
+                        <td>
+                          <div class="relative w-full px-4 max-w-full flex-grow flex-1 py-2 sm:py-0 text-right">
+                            <Link to={`/updateActivity/${aktivitas._id}`}>
+                              <button class="bg-indigo-500 text-white hover:bg-indigo-600/90 active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Update</button>
+                            </Link>
 
-                          <button class="bg-red-700 text-white hover:bg-red-700/80 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button" onClick={() => confirmDelete(aktivitas)}>Delete</button>
-                        </div>
-                      </td>
+                            <button class="bg-red-700 text-white hover:bg-red-700/80 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button" onClick={() => confirmDelete(aktivitas)}>Delete</button>
+                          </div>
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
@@ -309,8 +312,8 @@ function Acitivity() {
       </div>
       {
         showModal && (
-          <div class="fixed inset-0 flex items-center justify-center z-50">
-            <div class="bg-white p-6 rounded shadow-lg">
+          <div class="fixed bg-black/20 inset-0 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded shadow-lg max-w-[350px] md:max-w-[500px]">
               <h2 class="text-lg font-semibold mb-4">Konfirmasi Hapus</h2>
               <p>Apakah Anda yakin ingin menghapus aktivitas ini?</p>
               <p><strong>Tanggal:</strong> {new Date(activityToDelete.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(activityToDelete.Date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>

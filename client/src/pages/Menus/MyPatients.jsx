@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { FaSearch } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
+import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 import {
     docterGetUser,
     docterUnsetUser
@@ -107,11 +108,13 @@ function MyPatients() {
             <main>
                 <section className="bg-white flex">
                     <Side />
-                    <div className="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-24">
+
+                    <div className="md:w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
+                        <ButtonOffCanvas />
                         <div className="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
                             <div className="rounded-t mb-0 px-4 py-3 border-0">
-                                <div className="flex flex-wrap items-center">
-                                    <div className="relative w-full px-4 max-w-full flex-grow flex-1">
+                                <div className="flex md:flex-row flex-col flex-wrap gap-3 md:items-center">
+                                    <div className="relative w-full md:px-4 max-w-full flex-grow flex-1">
                                         <h3 className="font-semibold text-base text-blueGray-700">My Patients || {patients.length ?? 0}</h3>
                                     </div>
                                     <form action="" method="post" onSubmit={handleSearchName}>
@@ -133,7 +136,7 @@ function MyPatients() {
                                 <table className="items-center bg-transparent w-full border-collapse ">
                                     <thead>
                                         <tr>
-                                            <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            <th className="hidden sm:table-cell px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 No.
                                             </th>
                                             <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
@@ -142,7 +145,7 @@ function MyPatients() {
                                             <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Name
                                             </th>
-                                            <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            <th className="hidden sm:table-cell px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Address
                                             </th>
                                             <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
@@ -153,17 +156,17 @@ function MyPatients() {
                                     <tbody>
                                         {patients.length > 0 ? patients.map((patient, i) => (
                                             <tr key={patient._id}>
-                                                <th className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                                                <th className="hidden sm:table-cell border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                                                     {i + 1}
                                                 </th>
                                                 <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                                                    <div className="rounded-full w-[100px] h-[100px] bg-cover bg-center" style={{ backgroundImage: `url('${patient.profilePicture}')` }}>
+                                                    <div className="rounded-full w-[50px] h-[50px] md:w-[100px] md:h-[100px] bg-cover bg-center" style={{ backgroundImage: `url('${patient.profilePicture}')` }}>
                                                     </div>
                                                 </td>
                                                 <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-sm font-medium whitespace-nowrap p-4 ">
                                                     {patient.name}
                                                 </td>
-                                                <td className="border-t-0 text-gray-400 px-6 w-[360px] align-middle border-l-0 border-r-0 text-xs whitespace-wrap p-4 ">
+                                                <td className="hidden sm:table-cell border-t-0 text-gray-400 px-6 w-[360px] align-middle border-l-0 border-r-0 text-xs whitespace-wrap p-4 ">
                                                     {patient.address}
                                                 </td>
                                                 <td>
@@ -183,7 +186,7 @@ function MyPatients() {
                             </div>
 
                         </div>
-                            <button className='py-3 text-center w-full text-white font-semibold rounded-md bg-indigo-600 hover:bg-indigo-600/90 focus:translate-y-2 duration-150'>Add New Patient</button>
+                        <button className='py-3 text-center w-full text-white font-semibold rounded-md bg-indigo-600 hover:bg-indigo-600/90 focus:translate-y-2 duration-150'>Add New Patient</button>
                     </div>
                 </section>
             </main>

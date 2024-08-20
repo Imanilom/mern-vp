@@ -192,8 +192,8 @@ function SetActivity() {
         <div class="flex min-h-screen py-24 items-center justify-start bg-white">
 
             {activityUser != null ? (
-                <div class="mx-auto w-full max-w-lg">
-                    <h1 class="text-4xl font-medium">Update Activity </h1>
+                <div class="mx-auto max-w-lg w-10/12">
+                    <h1 class="text-4xl font-medium">Set the activity </h1>
                     <p class="mt-3 font-medium">Information your session</p>
 
                     <form onSubmit={handleSubmit} action="https://api.web3forms.com/submit" class="mt-10">
@@ -220,7 +220,7 @@ function SetActivity() {
 
                             <div className="mt-5 mb-3 h-3 w-full border-b border-black"></div>
                         </div>
-                        <div className="flex justify-between gap-6 items-center mb-3">
+                        <div className="flex justify-between text-sm md:text-base gap-6 items-center mb-3">
                             <p>
                                 How much you doing activity in this section ?
                             </p>
@@ -231,15 +231,15 @@ function SetActivity() {
                         </div>
                         {countActivity > 0 ? (
                             <div style={{ overflowX: 'auto' }}>
-                                <div className="flex gap-3 py-4">
+                                <div className="flex gap-2 py-4 text-sm md:text-base ">
                                     {Array.from({ length: countActivity }).map((val, i) => {
                                         return (
                                             i + 1 == indexActivity ? (
-                                                <crombutton onClick={() => setIndAct(i + 1)} className="px-4 py-1 min-w-[110px] max-w-[110px] cursor-pointer border-2 bg-slate-800 text-white hover:bg-slate-800 hover:text-white hover:translate-y-[-6px] duration-300 border-slate-800/70 rounded-md">
+                                                <crombutton onClick={() => setIndAct(i + 1)} className="px-4 py-1 max-w-[100px] min-w-[100px] md:min-w-[110px] md:max-w-[110px] cursor-pointer border-2 bg-slate-800 text-white hover:bg-slate-800 hover:text-white hover:translate-y-[-6px] duration-300 border-slate-800/70 rounded-md">
                                                     Activity {i + 1}
                                                 </crombutton>
                                             ) : (
-                                                <crombutton onClick={() => setIndAct(i + 1)} className="px-4 py-1 min-w-[110px] max-w-[110px] cursor-pointer border-2 hover:bg-slate-800 hover:text-white hover:translate-y-[-6px] duration-300 border-slate-800/70 rounded-md">
+                                                <crombutton onClick={() => setIndAct(i + 1)} className="px-4 py-1 max-w-[100px] min-w-[100px] md:max-w-[110px] cursor-pointer border-2 hover:bg-slate-800 hover:text-white hover:translate-y-[-6px] duration-300 border-slate-800/70 rounded-md">
                                                     Activity {i + 1}
                                                 </crombutton>
                                             )

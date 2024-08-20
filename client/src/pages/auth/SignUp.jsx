@@ -41,41 +41,45 @@ export default function SignUp() {
     }
   };
   return (
-    <div className='p-3 max-w-lg mx-auto min-h-[90vh] flex flex-col justify-center items-center '>
+    <div className='px-3 md:py-8 max-w-lg mx-auto min-h-[90vh] flex flex-col justify-center items-center '>
       <h1 className='text-3xl text-center font-semibold my-7'>Sign Up</h1>
 
+      <form onSubmit={handleSubmit} className='flex md:min-w-[450px] flex-col gap-4'>
+        <div className="flex flex-col md:flex-row gap-3">
+          <input
+            type='text'
+            placeholder='guid'
+            className='border p-3 w-full rounded-lg'
+            id='guid'
+            onChange={handleChange}
+          />
+          <input
+            type='text'
+            placeholder='name'
+            className='border p-3 w-full rounded-lg'
+            id='name'
+            onChange={handleChange}
+          />
+        </div>
 
+        <div className="flex flex-col md:flex-row gap-3">
 
-      <form onSubmit={handleSubmit} className='flex min-w-[350px] flex-col gap-4'>
-        <input
-          type='text'
-          placeholder='guid'
-          className='border p-3 rounded-lg'
-          id='guid'
-          onChange={handleChange}
-        />
-        <input
-          type='text'
-          placeholder='name'
-          className='border p-3 rounded-lg'
-          id='name'
-          onChange={handleChange}
-        />
-        <input
-          type='email'
-          placeholder='email'
-          className='border p-3 rounded-lg'
-          id='email'
-          onChange={handleChange}
-        />
-        <input
-          type='text'
-          placeholder='phone'
-          className='border p-3 rounded-lg'
-          id='phone_number'
-          onChange={handleChange}
-        />
-        <div className="flex gap-4">
+          <input
+            type='email'
+            placeholder='email'
+            className='border p-3 rounded-lg w-full'
+            id='email'
+            onChange={handleChange}
+          />
+          <input
+            type='text'
+            placeholder='phone'
+            className='border p-3 rounded-lg w-full'
+            id='phone_number'
+            onChange={handleChange}
+          />
+        </div>
+        <div className="flex gap-2 md:gap-4">
           <input
             type={isHide ? 'password' : 'text'}
             placeholder='password'
@@ -84,7 +88,7 @@ export default function SignUp() {
             onChange={handleChange}
           />
 
-          <div className='border hover:opacity-80 h-fit p-3 px-4 rounded-md bg-white' onClick={() => setIsHide(!isHide)}>
+          <div className='border hover:opacity-80 h-fit p-3 px-4 rounded-md bg-white cursor-pointer' onClick={() => setIsHide(!isHide)}>
             {isHide ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="black" d="M2 5.27L3.28 4L20 20.72L18.73 22l-3.08-3.08c-1.15.38-2.37.58-3.65.58c-5 0-9.27-3.11-11-7.5c.69-1.76 1.79-3.31 3.19-4.54zM12 9a3 3 0 0 1 3 3a3 3 0 0 1-.17 1L11 9.17A3 3 0 0 1 12 9m0-4.5c5 0 9.27 3.11 11 7.5a11.8 11.8 0 0 1-4 5.19l-1.42-1.43A9.86 9.86 0 0 0 20.82 12A9.82 9.82 0 0 0 12 6.5c-1.09 0-2.16.18-3.16.5L7.3 5.47c1.44-.62 3.03-.97 4.7-.97M3.18 12A9.82 9.82 0 0 0 12 17.5c.69 0 1.37-.07 2-.21L11.72 15A3.064 3.064 0 0 1 9 12.28L5.6 8.87c-.99.85-1.82 1.91-2.42 3.13" /></svg>
             ) : (
@@ -93,7 +97,6 @@ export default function SignUp() {
           </div>
 
         </div>
-
 
         <button
           disabled={loading}

@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 import {
   setActionRiwayat, unsetActionRiwayat
 } from '../../redux/user/webSlice';
+import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 
 
 function MedicalHistories() {
@@ -82,7 +83,7 @@ function MedicalHistories() {
         confirmButtonColor: "#3085d6",
         cancelButtonColor: "#d33",
         confirmButtonText: "Yes, delete it!"
-      }).then(async(result) => {
+      }).then(async (result) => {
         if (result.isConfirmed) {
           const deleteRiwayat = await fetch(`/api/anamnesa/deleteriwayat/${riwayat._id}`, {
             method: 'DELETE'
@@ -93,7 +94,7 @@ function MedicalHistories() {
             text: "Your Riwayat medis has been deleted.",
             icon: "success",
             confirmButtonColor: "#3085d6",
-          }).then(async() => {
+          }).then(async () => {
             await fetchData();
           });
         }
@@ -112,7 +113,8 @@ function MedicalHistories() {
   return (
     <main class="bg-white flex">
       <Side />
-      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-24">
+      <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
+        <ButtonOffCanvas />
         {catatanTambahan && catatanTambahan.length > 0 ? (
           <div class="relative mt-8 flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
             <div class="rounded-t mb-0 px-4 py-3 border-0">
@@ -194,29 +196,29 @@ function MedicalHistories() {
 
         <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
           <div class="rounded-t mb-0 px-4 py-3 border-0">
-            <div class="flex flex-wrap items-center">
+            <div class="flex items-center">
               <div class="relative w-full px-4 max-w-full flex-grow flex-1">
                 {/* <h3 class="font-semibold text-base text-blueGray-700">Riwayat Medis</h3> */}
-                <h3 class="font-semibold text-base text-blueGray-700">Riwayat Medis</h3>
+                <h3 class="font-semibold md:text-base text-blueGray-700 text-sm">Riwayat Medis</h3>
               </div>
 
               <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
                 {currentUser.role != 'user' && riwayat != null ? (
                   <Link to={`/createAnamnesa/${riwayat._id}`} >
-                    <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Anamnesa</button>
+                    <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none  min-w-[150px] md:min-w-[100px] mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Anamnesa</button>
                   </Link>
                 ) : null}
 
 
                 {currentUser.role == 'user' && riwayat == null ? (
                   <Link to={`/input-medical`} onClick={() => dispacth(setActionRiwayat('create'))}>
-                    <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Jawab Pertanyaan</button>
+                    <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none  min-w-[150px] md:min-w-[100px] mr-1 mb-1 ease-linear transition-all duration-150" type="button">Jawab Pertanyaan</button>
                   </Link>
                 ) : null}
 
                 {currentUser.role == 'user' && riwayat != null ? (
                   // <Link to={`/input-medical`} onClick={() => dispacth(setActionRiwayat('create'))}>
-                  <button onClick={handleResetRiwayat} class="bg-red-500 text-white active:bg-red-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Ulang Riwayat</button>
+                  <button onClick={handleResetRiwayat} class="bg-red-500 text-white active:bg-red-600 text-xs font-bold uppercase px-1 md:px-3 py-1 rounded min-w-[150px] md:min-w-[100px] outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Ulang Riwayat</button>
                   // </Link>
                 ) : null}
               </div>

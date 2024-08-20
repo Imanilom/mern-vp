@@ -8,6 +8,7 @@ import { useSelector } from 'react-redux';
 import {
     setActionRiwayat, unsetActionRiwayat
 } from '../../redux/user/webSlice';
+import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 
 
 function InputMedicalHistory() {
@@ -71,10 +72,10 @@ function InputMedicalHistory() {
     return (
         <main class="bg-white flex pb-8">
             <Side />
-            <form onSubmit={handleOnSubmit} class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-24 flex flex-col gap-3">
-                <h3 class="font-semibold text-base text-blueGray-700">Riwayat Medis Pasien</h3>
+            <form onSubmit={handleOnSubmit} class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24 flex flex-col gap-4">
+                <ButtonOffCanvas /> 
+                <h3 class="font-semibold text-[18px] text-blueGray-700">Riwayat Medis Pasien</h3>
                 {/* <h3 class="font-semibold text-base text-blueGray-700"></h3> */}
-
 
                 <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
                     <div onClick={() => setToggleTab('riwayatkeluhan')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
@@ -84,48 +85,48 @@ function InputMedicalHistory() {
                         <IoIosArrowDropdown size={24} />
                     </div>
                     {/* {toggleTab == 'riwayatkeluhan' ? ( */}
-                    <div className="flex flex-col mt-6 gap-4 justify-center">
+                    <div className="flex flex-col mt-4 gap-6 justify-center">
 
                         {/* input */}
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apa keluhan utama anda
                             </label>
                             <div>
-                                <input required type="text" name='Apa keluhan utama anda' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' />
+                                <input required type="text" name='Apa keluhan utama anda' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
 
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Kapan keluhan pertama kali muncul?
                             </label>
                             <div>
-                                <input required type="text" name='Kapan keluhan pertama kali muncul?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' />
+                                <input required type="text" name='Kapan keluhan pertama kali muncul?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
 
 
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Seberapa sering nyeri dada terjadi
                             </label>
                             <div>
                                 {/* <input type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' /> */}
-                                <select required name='Seberapa sering nyeri dada terjadi' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Seberapa sering nyeri dada terjadi' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="sedikit">Sedikit</option>
                                     <option value="sering">Sering</option>
                                 </select>
                             </div>
                         </div>
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Bagaimana intensitas nyeri dada
                             </label>
                             <div>
                                 {/* <input type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' /> */}
-                                <select required name='Bagaimana intensitas nyeri dada' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Bagaimana intensitas nyeri dada' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ringan">ringan</option>
                                     <option value="sedang">sedang</option>
@@ -134,24 +135,22 @@ function InputMedicalHistory() {
                             </div>
                         </div>
 
-
-
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah ada faktor pencetus yang terkait dengan nyeri dada (misalnya aktivitas fisik atau stres)
                             </label>
                             <div>
-                                <input required name='Apakah ada faktor pencetus yang terkait dengan nyeri dada (misalnya aktivitas fisik atau stres)' onChange={handleInputChange} type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' />
+                                <input required name='Apakah ada faktor pencetus yang terkait dengan nyeri dada (misalnya aktivitas fisik atau stres)' onChange={handleInputChange} type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
 
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah ada faktor yang memperburuk atau meredakan nyeri dada?
                             </label>
                             <div>
                                 {/* <input type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' /> */}
-                                <select required name='Apakah ada faktor yang memperburuk atau meredakan nyeri dada?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah ada faktor yang memperburuk atau meredakan nyeri dada?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya, ada</option>
                                     <option value="tidak">tidak</option>
@@ -159,13 +158,13 @@ function InputMedicalHistory() {
                                 </select>
                             </div>
                         </div>
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah nyeri dada berpindah ke lengan kiri, rahang, atau punggung?
                             </label>
                             <div>
                                 {/* <input type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' /> */}
-                                <select required name='Apakah nyeri dada berpindah ke lengan kiri, rahang, atau punggung?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah nyeri dada berpindah ke lengan kiri, rahang, atau punggung?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya</option>
                                     <option value="tidak">tidak</option>
@@ -186,27 +185,28 @@ function InputMedicalHistory() {
                         <IoIosArrowDropdown size={24} />
                     </div>
                     {/* {toggleTab == 'riwayatmedis' ? ( */}
-                    <div className="flex flex-col mt-3 justify-center gap-4">
-                        <div className='flex gap-6 items-center'>
+                    <div className="flex flex-col mt-4 gap-6 justify-center">
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien memiliki riwayat penyakit jantung sebelumnya?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat penyakit jantung sebelumnya?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat penyakit jantung sebelumnya?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] max-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak, saya tidak punya</option>
-                                    <option value="ya">Ya, saya memiliki penyakit jantung sebelumnya</option>
+                                    <option value="ya">Ya, saya punya sebelumnya</option>
                                 </select>
                             </div>
 
                         </div>
-                        <div className='flex gap-6 items-center'>
+
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah ada riwayat penyakit jantung dalam keluarga (misalnya orangtua atau saudara)?
 
                             </label>
                             <div>
-                                <select required name='Apakah ada riwayat penyakit jantung dalam keluarga (misalnya orangtua atau saudara)?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah ada riwayat penyakit jantung dalam keluarga (misalnya orangtua atau saudara)?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak ada</option>
                                     <option value="ya">Ya, ada</option>
@@ -214,13 +214,13 @@ function InputMedicalHistory() {
                             </div>
 
                         </div>
-                        <div className='flex gap-6 items-center'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien memiliki riwayat hipertensi, diabetes, atau penyakit lain yang berhubungan dengan penyakit jantung?
 
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat hipertensi, diabetes, atau penyakit lain yang berhubungan dengan penyakit jantung?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat hipertensi, diabetes, atau penyakit lain yang berhubungan dengan penyakit jantung?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya, ada</option>
                                     <option value="tidak">Tidak ada</option>
@@ -228,17 +228,18 @@ function InputMedicalHistory() {
                             </div>
 
                         </div>
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien sedang mengonsumsi obat-obatan tertentu?
                             </label>
                             <div>
-                                <input required name='Apakah pasien sedang mengonsumsi obat-obatan tertentu?' onChange={handleInputChange} type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' />
+                                <input required name='Apakah pasien sedang mengonsumsi obat-obatan tertentu?' onChange={handleInputChange} type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
                     </div>
                     {/* ) : null} */}
                 </section>
+
                 <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
                     <div onClick={() => setToggleTab('riwayatgayahidup')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                         <div>
@@ -247,14 +248,14 @@ function InputMedicalHistory() {
                         <IoIosArrowDropdown size={24} />
                     </div>
                     {/* {toggleTab == 'riwayatgayahidup' ? ( */}
-                    <div className="flex flex-col mt-3 justify-center gap-4">
-                        <div className='flex gap-6 items-center justify-between'>
+                    <div className="flex flex-col mt-4 justify-center gap-6">
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien merokok?
 
                             </label>
                             <div>
-                                <select required name='Apakah pasien merokok?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien merokok?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak, saya tidak merokok</option>
                                     <option value="ya">Ya, saya merokok</option>
@@ -262,25 +263,25 @@ function InputMedicalHistory() {
                             </div>
 
                         </div>
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien mengonsumsi alkohol?
 
                             </label>
                             <div>
-                                <select required name='Apakah pasien mengonsumsi alkohol?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien mengonsumsi alkohol?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya, benar</option>
                                     <option value="tidak">Tidak</option>
                                 </select>
                             </div>
                         </div>
-                        <div className='flex gap-6 items-center justify-between'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien menjalani pola makan sehat?
                             </label>
                             <div>
-                                <select required name='Apakah pasien menjalani pola makan sehat?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien menjalani pola makan sehat?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya, benar</option>
                                     <option value="tidak yakin">Tidak yakin</option>
@@ -289,12 +290,12 @@ function InputMedicalHistory() {
                             </div>
                         </div>
 
-                        <div className='flex gap-6 justify-between items-center'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien rutin berolahraga?
                             </label>
                             <div>
-                                <select required name='Apakah pasien rutin berolahraga?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien rutin berolahraga?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -306,6 +307,7 @@ function InputMedicalHistory() {
                     </div>
                     {/* ) : null} */}
                 </section>
+
                 <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
                     <div onClick={() => setToggleTab('riwayatpenyakitlain')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                         <div>
@@ -314,13 +316,13 @@ function InputMedicalHistory() {
                         <IoIosArrowDropdown size={24} />
                     </div>
                     {/* {toggleTab == 'riwayatpenyakitlain' ? ( */}
-                    <div className="flex flex-col mt-3 justify-center gap-4">
-                        <div className='flex gap-6 justify-between items-center'>
+                    <div className="flex flex-col mt-4 justify-center gap-6">
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien memiliki riwayat hipertensi?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat hipertensi?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat hipertensi?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -328,12 +330,12 @@ function InputMedicalHistory() {
                             </div>
 
                         </div>
-                        <div className='flex gap-6 justify-between items-center'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien memiliki riwayat diabetes?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat diabetes?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat diabetes?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -341,12 +343,12 @@ function InputMedicalHistory() {
                             </div>
 
                         </div>
-                        <div className='flex gap-6 justify-between items-center'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien memiliki riwayat penyakit ginjal?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat penyakit ginjal?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat penyakit ginjal?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -366,13 +368,13 @@ function InputMedicalHistory() {
                         <IoIosArrowDropdown size={24} />
                     </div>
                     {/* {toggleTab == 'riwayatoperasi' ? ( */}
-                    <div className="flex flex-col mt-3 justify-center gap-4">
-                        <div className='flex gap-6 justify-between items-center'>
+                    <div className="flex flex-col mt-4 justify-center gap-6">
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien pernah menjalani operasi sebelumnya?
                             </label>
                             <div>
-                                <select required name='Apakah pasien pernah menjalani operasi sebelumnya?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien pernah menjalani operasi sebelumnya?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -380,12 +382,12 @@ function InputMedicalHistory() {
                             </div>
 
                         </div>
-                        <div className='flex gap-6 justify-between items-center'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Jika iya, operasi apa yang pernah dilakukan oleh pasien?
                             </label>
                             <div>
-                                <input required name='Jika iya, operasi apa yang pernah dilakukan oleh pasien?' onChange={handleInputChange} type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' />
+                                <input required name='Jika iya, operasi apa yang pernah dilakukan oleh pasien?' onChange={handleInputChange} type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
 
@@ -401,13 +403,13 @@ function InputMedicalHistory() {
                         <IoIosArrowDropdown size={24} />
                     </div>
                     {/* {toggleTab == 'riwayatalergi' ? ( */}
-                    <div className="flex flex-col mt-3 justify-center gap-4">
-                        <div className='flex gap-6 justify-between items-center'>
+                    <div className="flex flex-col mt-4 justify-center gap-6">
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien memiliki riwayat alergi terhadap obat-obatan tertentu?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat alergi terhadap obat-obatan tertentu?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat alergi terhadap obat-obatan tertentu?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, ada</option>
@@ -415,12 +417,12 @@ function InputMedicalHistory() {
                             </div>
 
                         </div>
-                        <div className='flex gap-6 justify-between items-center'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien memiliki riwayat alergi makanan?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat alergi makanan?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat alergi makanan?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, ada</option>
@@ -440,14 +442,14 @@ function InputMedicalHistory() {
                         <IoIosArrowDropdown size={24} />
                     </div>
                     {/* {toggleTab == 'riwayatpsikosisial' ? ( */}
-                    <div className="flex flex-col mt-3 justify-center gap-4">
-                        <div className='flex gap-6 justify-between items-center'>
+                    <div className="flex flex-col mt-4 justify-center gap-6">
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Bagaimana tingkat stres pasien dalam kehidupan sehari-hari?
 
                             </label>
                             <div>
-                                <select required name='Bagaimana tingkat stres pasien dalam kehidupan sehari-hari?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Bagaimana tingkat stres pasien dalam kehidupan sehari-hari?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="sering">Saya sering mengalami stress</option>
                                     <option value="jarang">Saya, jarang mengalami stress</option>
@@ -455,16 +457,16 @@ function InputMedicalHistory() {
                             </div>
 
                         </div>
-                        <div className='flex gap-6 justify-between items-center'>
+                        <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                             <label htmlFor="">
                                 Apakah pasien memiliki riwayat gangguan kecemasan atau depresi?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat gangguan kecemasan atau depresi?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat gangguan kecemasan atau depresi?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md max-w-[270px] min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
-                                    <option value="tidak">Saya tidak memiliki gangguan kecemasan</option>
-                                    <option value="sering">Saya sering mengalami depresi</option>
-                                    <option value="jarang">Saya, jarang mengalami gangguan kecemasan</option>
+                                    <option value="tidak">Tidak memiliki gangguan kecemasan</option>
+                                    <option value="sering">Sering mengalami depresi</option>
+                                    <option value="jarang">Jarang mengalami gangguan kecemasan</option>
                                 </select>
                             </div>
                         </div>
@@ -482,7 +484,7 @@ function InputMedicalHistory() {
                         </div>
                         {/* {toggleTab == 'Keteranganlainnya' ? ( */}
                         <div className="flex flex-col mt-3 justify-center gap-4">
-                            <div className='flex gap-6 border-b pb-3 justify-between items-center'>
+                            <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                                 <label htmlFor="">
                                     Pertanyaan
                                 </label>
@@ -491,7 +493,7 @@ function InputMedicalHistory() {
                                 </label>
                             </div>
 
-                            <div className='flex gap-6 justify-between items-center'>
+                            <div className='flex flex-col md:flex-row gap-2 md:gap-6 items-start md:items-center justify-between'>
                                 <label htmlFor="">
                                     Pertanyaan random lainnya
                                 </label>
@@ -506,8 +508,8 @@ function InputMedicalHistory() {
 
                 ) : null}
 
-                <div className="flex justify-end py-4">
-                    <div className='flex gap-3 font-semibold'>
+                <div className="flex justify-start md:justify-end py-4">
+                    <div className='flex gap-2 font-semibold'>
                         <Link to={`/riwayat-medis`} className='px-3 py-1 bg-slate-800 text-white rounded-md' type='button'>Back To Riwayat Medis</Link>
                         {currentUser.role == 'user' && Actionriwayatmedis == 'create' ? (
                             <button type='submit' className='px-3 py-1 bg-green-500 text-white rounded-md'>Submit</button>

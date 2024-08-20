@@ -108,10 +108,9 @@ function UpdateActivity() {
     return (
 
         <div class="flex min-h-screen items-center justify-start bg-white">
-
             {activityUser != null ? (
-                <div class="mx-auto w-full max-w-lg">
-                    <h1 class="text-4xl font-medium">Update Activity</h1>
+                <div class="mx-auto w-10/12  md:max-w-lg">
+                    <h1 class="text-3xl md:text-4xl font-medium">Update Activity</h1>
                     <p class="mt-3">Update your activity below</p>
 
                     <form onSubmit={handleSubmit} action="https://api.web3forms.com/submit" class="mt-10">

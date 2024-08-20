@@ -51,11 +51,10 @@ function CreateRecomendation() {
 
     return (
         <div class="flex min-h-[90vh] items-center justify-start bg-white">
-            <div class="mx-auto w-full max-w-lg">
-                <h1 class="text-4xl font-medium">Create Recomendation Activity</h1>
-                <p class="mt-3">Insert below</p>
-
-                <form onSubmit={handleSubmit} method='post' class="mt-10">
+            <div class="mx-auto w-10/12 lg:w-full max-w-lg">
+                <h1 class="text-2xl lg:text-4xl font-medium">Create Recomendation Activity</h1>
+                
+                <form onSubmit={handleSubmit} method='post' class="mt-6">
                     <div class="grid gap-6 mt-5 mb-5 sm:grid-cols-1">
                         <div class="relative z-0">
                             <input type="text" name="name" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
@@ -74,7 +73,7 @@ function CreateRecomendation() {
 
                     </div>
                     <div className="flex gap-2">
-                        <button type="submit" class="mt-5 rounded-md bg-black px-10 py-2 text-white">Create Recomendation</button>
+                        <button type="submit" class="mt-5 rounded-md bg-black px-4 md:px-10 py-2 text-white md:text-base text-sm">Create Recomendation</button>
                         <Link to='/rekomendasi' class="mt-5 rounded-md border border-transparent hover:border-gray-400/30 hover:shadow-xl px-10 py-2 text-black">Cancel</Link>
                     </div>
                 </form>

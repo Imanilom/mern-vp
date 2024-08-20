@@ -1,10 +1,12 @@
 import React from 'react'
 import Side from '../../components/Side'
+import ButtonOffCanvas from '../../components/ButtonOffCanvas'
 function RiskFactor() {
   return (
     <main class="bg-white flex">
         <Side />
-      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-5">
+      <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8">
+        <ButtonOffCanvas />
         <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
           <div class="rounded-t mb-0 px-4 py-3 border-0">
             <div class="flex flex-wrap items-center">
@@ -232,7 +234,7 @@ function RiskFactor() {
                   <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                     oldpeak
                   </td>
-                  <td class="border-t-0 px-6 align-center border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
+                  <td class="border-t-0 px-6 align-center border-l-0 border-r-0 text-xs p-4">
                     Depresi ST yang diinduksi oleh olahraga relatif terhadap istirahat
                   </td>
                   <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
@@ -251,7 +253,7 @@ function RiskFactor() {
                   <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                     slope
                   </td>
-                  <td class="border-t-0 px-6 align-center border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
+                  <td class="border-t-0 px-6 align-center border-l-0 border-r-0 text-xs  p-4">
                    Kemiringan segmen ST pada latihan puncak
                   </td>
                   <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
@@ -276,7 +278,7 @@ function RiskFactor() {
                   <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                     ca
                   </td>
-                  <td class="border-t-0 px-6 align-center border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
+                  <td class="border-t-0 px-6 align-center border-l-0 border-r-0 text-xs  p-4">
                     Jumlah vessel utama yang diwarnai oleh flourosopy
                   </td>
                   <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">

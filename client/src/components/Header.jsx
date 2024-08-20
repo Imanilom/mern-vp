@@ -11,7 +11,7 @@ export default function Header() {
     <header className='bg-slate-200 shadow-md'>
       <div className='flex justify-between items-center max-w-6xl mx-auto p-3'>
         <Link to='/'>
-          <h1 className='font-bold text-sm sm:text-xl flex flex-wrap'>
+          <h1 className='font-bold text-[18px] sm:text-xl flex flex-wrap'>
             <span className='text-slate-500'>Vidya</span>
             <span className='text-slate-700'>Medic</span>
           </h1>
@@ -69,7 +69,7 @@ export default function Header() {
             {currentUser ? (
               <img src={currentUser.profilePicture} alt='profile' className='h-7 w-7 rounded-full object-cover' />
             ) : (
-              <li className='px-3 py-2 rounded-lg hover:text-white hover:bg-slate-700 duration-100 font-semibold'>Sign In</li>
+              <li className='px-3 py-2 rounded-lg hover:text-white text-white lg:text-black lg:bg-transparent bg-slate-700 hover:bg-slate-700 duration-100 font-semibold'>Sign In</li>
             )}
           </Link>
         </ul>

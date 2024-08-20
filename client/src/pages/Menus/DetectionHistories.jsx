@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Side from '../../components/Side';
 import { useSelector } from 'react-redux';
 import '../../loading2.css';
+import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 
 let data1 = [
   {
@@ -77,10 +78,11 @@ function DetectionHistories() {
   return (
     <main class="bg-white flex">
       <Side />
-      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-24">
-        <h3 class="mb-3 mt-4 text-base text-[18px] font-bold text-blueGray-700">Riwayat Deteksi</h3>
+      <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
+        <ButtonOffCanvas />
+        <h3 class="mb-3 mt-2 text-[20px] font-bold text-blueGray-700">Riwayat Deteksi</h3>
         <p>Keterangan Simbolis  </p>
-        <ul style={{ listStyle: 'inside' }}>
+        <ul style={{ listStyle: 'inside' }} className='text-sm md:text-base'>
           <li>*Hijau menandakan kestabilan nilai DFA</li>
           <li>*Orange menandakan adanya deteksi yang perlu diwaspadai ketika anda sedang melakukan aktifitas</li>
           <li>*Merah menandakan adanya deteksi berbahaya ketika anda sedang beraktivitas dan perlu ditindak lanjuti</li>
@@ -143,7 +145,7 @@ function DetectionHistories() {
                           {val.dfa == 0 ? (
                             <span
                               className="w-fit px-3 py-1 text-[12px] rounded-md bg-slate-800 text-white font-medium" >
-                              Cant calculate dfa. logs should at least 8 items
+                              Cant calculate dfa.
                             </span>
                           ) : (
                             <HandleSimbol dfa={val.dfa} />
