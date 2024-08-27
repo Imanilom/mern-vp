@@ -32,7 +32,7 @@ export default function SignIn() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: "0",
+        body: JSON.stringify(formData),
       });
 
       const data = await res.json();
