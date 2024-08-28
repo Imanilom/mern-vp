@@ -58,7 +58,7 @@ const PatientSchema = mongoose.Schema({
         default:
           'https://img.freepik.com/premium-vector/man-avatar-profile-picture-vector-illustration_268834-538.jpg',
       },
-    
+      requestAppointment : String // pending || accept
 }, {
     timestamps: true
 });
