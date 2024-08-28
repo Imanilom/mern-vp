@@ -4,6 +4,48 @@ import Segment from '../models/segment.model.js';
 import DailyMetric from '../models/daily.model.js';
 import FFT from 'fft.js';
 
+const calculateMetrics = (logs) => {
+  const rrIntervals = logs.map((log) => log.RR);
+  const nnIntervals = [];
+  if (rrIntervals.length < 2) {
+    // Not enough data points to calculate metrics
+    return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null };
+  }
+  let sumSquaredDiffs = 0; // For SDNN
+  let sumSuccessiveDiffs = 0; // For RMSSD
+  let nn50Count = 0;
+
+  for (let i = 1; i < rrIntervals.length; i++) {
+    const diff = Math.abs(rrIntervals[i] - rrIntervals[i - 1]);
+    nnIntervals.push(diff);
+
+    sumSquaredDiffs += diff * diff; // Square the difference and add to sum (for RMSSD)
+    if (diff > 50) {
+      nn50Count++;
+    }
+  }
+
+  const avgNN = nnIntervals.reduce((sum, interval) => sum + interval, 0) / nnIntervals.length;
+
+  const squaredDiffsFromMean = nnIntervals.map((interval) => Math.pow(interval - avgNN, 2));
+  const sumSquaredDiffsFromMean = squaredDiffsFromMean.reduce((sum, diff) => sum + diff, 0);
+
+  const variance = sumSquaredDiffsFromMean / (nnIntervals.length - 1);
+  const sdnn = Math.sqrt(variance);
+
+  const rmssd = Math.sqrt(sumSquaredDiffs / nnIntervals.length);
+  const pnn50 = (nn50Count / nnIntervals.length) * 100;
+
+  // Calculate S1 & S2
+  const s1 = Math.sqrt(nnIntervals.reduce((sum, interval) => sum + Math.pow(interval - avgNN, 2), 0) / nnIntervals.length);
+  const s2 = Math.sqrt(nnIntervals.reduce((sum, interval) => sum + Math.pow(interval + avgNN, 2), 0) / nnIntervals.length);
+
+  // console.log('dfa' , dfa)
+  // console.log(logs)
+  // results.push({ sdnn, rmssd, pnn50, s1, s2 });
+  return { sdnn, rmssd, pnn50, s1, s2 };
+};
+
 async function filterIQ(logs, multiplier = 1.5) {
     const filteredLogs = [];
   

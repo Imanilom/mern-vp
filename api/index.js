@@ -15,10 +15,12 @@ import path from 'path';
 import cors from 'cors';
 import amqp from 'amqplib';
 
+
+import './controllers/cornjob.controller.js'; 
 import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import './controllers/data.controller.js';
 
-dotenv.config({path : '../.env'});
+dotenv.config({ path: '../.env' });
 
 mongoose
   .connect("mongodb://healthdevice:Q3afzxiAb!@database2.pptik.id:27017/healthdevice")
@@ -26,7 +28,7 @@ mongoose
     console.log('Connected to MongoDB!');
   })
   .catch((err) => {
-    console.log(err); 
+    console.log(err);
   });
 
 const __dirname = path.resolve();
@@ -62,7 +64,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;  
+const PORT = process.env.PORT || 3000;
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);
@@ -113,4 +116,3 @@ app.listen(PORT, () => {
 // }
 
 // connectRabbitMQ();
-
