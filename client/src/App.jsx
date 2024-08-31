@@ -14,10 +14,13 @@ import Summary from './pages/Menus/Summary';
 import Monitor from './pages/Menus/Monitor';
 import MedicalHistories from './pages/Menus/MedicalHistories';
 import RiskFactor from './pages/Menus/RiskFactor';
-import RiskPrediction from './pages/Menus/RiskPrediction';
 import DetectionHistories from './pages/Menus/DetectionHistories';
 import Treatment from './pages/Menus/Treatment';
 import MyPatients from './pages/Menus/MyPatients';
+
+
+import CreatePrediction from './pages/Menus/CreatePrediction';
+import RiskPrediction from './pages/Menus/RiskPrediction';
 // Crud
 
 // Recomendation
@@ -65,6 +68,7 @@ export default function App() {
           <Route path='/my-patients' element={<MyPatients />} />
           <Route path='/input-medical' element={<InputMedicalHistory />} />
           <Route path='/createAnamnesa/:riwayatid' element={<CreateAnamnesa />} />
+          <Route path='/create/prediksi_factor' element={<CreatePrediction />} />
       
           <Route path='/rekomendasi/detail/:id' element={<RecomendationDetail />} />
           <Route path='/createRecomendation' element={<CreateRecomendation />} />

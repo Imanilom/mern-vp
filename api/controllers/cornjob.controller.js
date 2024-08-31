@@ -112,6 +112,3 @@ cron.schedule('0 */1 * * *', () => {
     DBSCANLogRR();
 });
 
-// cron.schedule('*/1 * * * *', () => {
-//     DBSCANLogRR();
-// });
