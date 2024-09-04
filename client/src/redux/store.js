@@ -1,12 +1,12 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import userReducer from './user/userSlice';
+import userReducer from './user/userSlice.js';
 import { persistReducer, persistStore } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
-import webSlice from './user/webSlice';
+import webSlice from './user/webSlice.js';
 
 const rootReducer = combineReducers({
   user: userReducer,
-  web : webSlice
+  data : webSlice
 });
 
 const persistConfig = {

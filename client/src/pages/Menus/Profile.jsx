@@ -18,6 +18,7 @@ import {
   signOutUserStart,
   docterUnsetUser
 } from '../../redux/user/userSlice';
+import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
 
 export default function Profile() {
   const dispatch = useDispatch();
@@ -104,6 +105,7 @@ export default function Profile() {
   const handleSignOut = async () => {
     try {
       dispatch(signOutUserStart());
+      dispatch(clearLogsWithDailytMetric());
       const res = await fetch('/api/auth/signout');
       const data = await res.json();
       if (data.success === false) {
