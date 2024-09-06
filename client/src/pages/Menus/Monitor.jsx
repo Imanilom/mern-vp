@@ -8,6 +8,8 @@ import Side from "../../components/Side";
 
 import '../../loading.css';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
+import DailyMetric from '../../components/DailyMetric';
+import GrafikMetric from '../../components/GrafikMetric';
 // import '../../tableresponsive.css';
 
 let results = []
@@ -73,15 +75,20 @@ const calculateMetrics = (logs) => {
 };
 
 export default function Monitor() {
+
+  const dispatch = useDispatch();
   const { currentUser, DocterPatient } = useSelector((state) => state.user);
+  // set redux and make good performance
+  const { dailymetricR, logsR, medianPropertyR, metricsR, borderColorR } = useSelector((state) => state.data);
+
   const [logs, setLogs] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [metrics, setMetrics] = useState({ rmssd: null, pnn50: null, sdnn: null, s1: null, s2: null });
   const [dailyMetrics, setDailyMetrics] = useState([]);
-  const [isHRVisible, setHRIsVisible] = useState(true); // Show HR chart by default
-  const [isRRVisible, setRRIsVisible] = useState(true); // Show RR chart by default
-  const [isPoincareVisible, setPoincareIsVisible] = useState(true); // Show Poincare chart by default
+  const [isHRVisible, setHRIsVisible] = useState(false); // Show HR chart by default
+  const [isRRVisible, setRRIsVisible] = useState(false); // Show RR chart by default
+  const [isPoincareVisible, setPoincareIsVisible] = useState(false); // Show Poincare chart by default
   const [device, setDevice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [medianProperty, setMedianProperty] = useState({
@@ -96,12 +103,16 @@ export default function Monitor() {
   const [borderColor, setBorderColor] = useState([]);
 
   useEffect(() => {
-    fetchLogs();
+      fetchLogs();
   }, []);
 
   useEffect(() => {
     if (startDate && endDate) {
+
+      // dispatch(clearLogsWithDailytMetric());
       fetchLogs(device);
+      console.log('berhasil filter by date')
+
     }
   }, [startDate, endDate]);
 
@@ -113,33 +124,28 @@ export default function Monitor() {
       if (currentUser.role != 'user' && device) {
         url = `/api/user/test/${device}`;
       }
-      console.log(url);
+
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       }
       const response = await fetch(url);
       const data = await response.json();
-      // console.log(data)
+      console.log({ data })
       if (!response.ok) {
         setLogs([]);
         setMetrics([]);
         setDailyMetrics([]);
+
+        dispatch(clearLogsWithDailytMetric());
         return
       }
+
+      // let payloadRedux = {};
       const sortedLogs = data.logs.sort((a, b) => b.timestamp - a.timestamp); // Sort logs from newest to oldest
       setLogs(sortedLogs);
+      // payloadRedux.logs = sortedLogs;
 
       // setBorderColor
-
-      sortedLogs.map(item => {
-        // console.log(item);
-        if (item.hasOwnProperty('activity')) {
-          console.log({ activity: item.activity }, 'adarelasi');
-        } else {
-          // console.log('kosong belum ada relasi')
-        }
-      })
-
       const borderColor = sortedLogs.map(item => {
         if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan
         if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
@@ -149,12 +155,19 @@ export default function Monitor() {
       });
 
       setBorderColor(borderColor);
+      // payloadRedux.borderColorR = borderColor;
 
       if (data && sortedLogs.length > 0) {
-        setMetrics(calculateMetrics(sortedLogs));
+        const resultCalculateMetric = calculateMetrics(sortedLogs);
+        setMetrics(resultCalculateMetric);
+        // payloadRedux.metricsR = resultCalculateMetric;
         let dfaHR = sortedLogs.map(log => log.HR);
 
-        calculateDailyMetrics(sortedLogs, dfaHR); // call here
+        const dailyMetrictResult = calculateDailyMetrics(sortedLogs, dfaHR); // call here
+        setDailyMetrics(dailyMetrictResult);
+        console.log({ dailyMetrictResult });
+
+        // payloadRedux.dailymetricR = dailyMetrictResult;
 
         let property = {
           tSdnn: 0,
@@ -171,8 +184,6 @@ export default function Monitor() {
           property.tPnn50 += val.pnn50;
           property.tS1 += val.s1;
           property.tS2 += val.s2;
-
-
         });
 
         let median = {
@@ -185,7 +196,10 @@ export default function Monitor() {
         }
 
         setMedianProperty(median);
-        console.log(median)
+        // payloadRedux.medianPropertyR = median;
+        // dispatch(setLogsWithDailyMetric(payloadRedux));
+        // dispatch(setDefautlFetchTrue());
+        // console.log(median)
       }
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -194,9 +208,8 @@ export default function Monitor() {
     }
   };
 
-
   const calculateDailyMetrics = (logs, CollectionHR) => {
-    console.log('HR', logs)
+    // console.log('HR', logs)
     const groupedLogs = logs.reduce((acc, log) => {
       const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
       if (!acc[date]) acc[date] = [];
@@ -205,7 +218,7 @@ export default function Monitor() {
     }, {});
 
     // Add DFA value here..
-    console.log(groupedLogs)
+    // console.log(groupedLogs)
 
     const dailyMetrics = Object.keys(groupedLogs).map((date, i) => {
       // groupedLogs[date] adalah kumpulan logs sesuai dengan tanggal tanggal
@@ -219,78 +232,25 @@ export default function Monitor() {
       }
 
       const dfa = calculateDFA(HRPoint);
-      console.log(HRPoint, dfa);
+
       // console.log(groupedLogs[date], i)
       const metrics = calculateMetrics(groupedLogs[date]);
       return { date, ...metrics, dfa };
     });
 
-    setDailyMetrics(dailyMetrics);
+    // setDailyMetrics(dailyMetrics);
+    return dailyMetrics;
   };
 
   const toggleVisibilityHR = () => setHRIsVisible(!isHRVisible);
   const toggleVisibilityRR = () => setRRIsVisible(!isRRVisible);
   const toggleVisibilityPoincare = () => setPoincareIsVisible(!isPoincareVisible);
 
-  const formatDate = (unixTimestamp) => {
-    const date = new Date(unixTimestamp * 1000); // Convert to milliseconds
-    return date.toLocaleString(); // Adjust the format as needed
-  };
+  // const formatDate = (unixTimestamp) => {
+  //   const date = new Date(unixTimestamp * 1000); // Convert to milliseconds
+  //   return date.toLocaleString(); // Adjust the format as needed
+  // };
 
-  const chartData = (label, dataKey) => {
-    // console.log(logs);
-    // if(logs > 0){
-    //   logs.map(item => {
-    //     console.log(item);
-    //     if(item.activity){
-    //       console.log(item.activity)
-    //     }else{
-    //       console.log('kosong belum ada relasi')
-    //     }
-    //   })
-    // }
-    // const borderColor = logs ? logs.map(item => {
-    //   if (item.activity === 'berjalan') return 'rgba(255, 0, 0, 1)'; // Merah untuk berjalan
-    //   if (item.activity === 'tidur') return 'rgba(0, 255, 0, 1)'; // Hijau untuk tidur
-    //   return 'rgba(75, 192, 192, 1)'; // Warna default
-    // }) : null;
-
-    // console.log({borderColor})
-
-    return ({
-      labels: logs ? logs.map(item => formatDate(item.timestamp)).reverse() : [],
-      datasets: [
-        {
-          label,
-          data: logs ? logs.map(item => item[dataKey]).reverse() : [],
-          borderColor: borderColor.reverse(),
-          borderWidth: 1,
-          fill: true,
-        },
-      ],
-    })
-  };
-
-  const poincareData = () => {
-    if (!logs) return { datasets: [] };
-
-    const rr = logs.map(item => item.RR);
-    const data = rr.slice(1).map((value, index) => ({
-      x: rr[index],
-      y: value,
-    }));
-
-    return {
-      datasets: [
-        {
-          label: 'Poincare Plot',
-          data,
-          backgroundColor: 'rgba(75, 192, 192, 1)',
-          pointRadius: 2,
-        },
-      ],
-    };
-  };
 
   const handleChangeDevice = (e) => {
     e.preventDefault();
@@ -298,29 +258,9 @@ export default function Monitor() {
     fetchLogs(e.target.value);
   }
 
-  const calculateQuartilesAndIQR = (values) => {
-    values.sort((a, b) => a - b);
-    const midIndex = Math.floor(values.length / 2);
-    const Q1 = values[Math.floor(midIndex / 2)];
-    const Q3 = values[Math.floor(midIndex + midIndex / 2)];
-    const IQR = Q3 - Q1;
-    return { Q1, Q3, IQR };
-  }
-
-  const handleDfaAvg = () => {
-    let result = 0;
-    let dfaValues = dailyMetrics.map(val => val.dfa);
-    dfaValues.forEach(val => {
-      result += val
-    });
-    // console.log(dfaValues, result)
-    result = result / dfaValues.length;
-    return result.toFixed(2);
-  }
-
   return (
     <div>
-      <main>
+      <main className=''>
         <section className="bg-white flex">
           <Side />
           <div className="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-5">
@@ -348,82 +288,9 @@ export default function Monitor() {
                     )}
                   </div>
                 </div>
-                <div className="mt-8">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                    Daily Metrics <span className='sm:hidden text-sm'> | this table can be scrolled.</span>
 
-                  </h4>
+                <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
 
-                  <div style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl'>
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SDNN</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RMSSD</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">pNN50</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200 text-xs lg:text-[16px]">
-                        {dailyMetrics.length > 0 ? (
-                          dailyMetrics.map((metric, index) => {
-                            return (
-                              <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap">{metric.date}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{metric.sdnn !== null ? metric.sdnn.toFixed(2) : 'N/A'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{metric.rmssd !== null ? metric.rmssd.toFixed(2) : 'N/A'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{metric.pnn50 !== null ? metric.pnn50.toFixed(2) : 'N/A'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{metric.s1 !== null ? metric.s1.toFixed(2) : 'N/A'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{metric.s2 !== null ? metric.s2.toFixed(2) : 'N/A'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null ? metric.dfa.toFixed(2) : 'N/A'}</td>
-                              </tr>
-                            );
-                          })
-
-                        ) : null}
-
-                      </tbody>
-                    </table>
-                  </div>
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2 mt-4">Average Metrics</h4>
-                  <div style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl'>
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SDNN</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RMSSD</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">pNN50</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
-                          {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th> */}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200 text-xs lg:text-[16px]">
-                        {/* {dailyMetrics.map((metric, index) => ( */}
-                        {dailyMetrics.length > 0 ? (
-                          <tr>
-                            <td className="px-6 py-4 whitespace-nowrap">{dailyMetrics[dailyMetrics.length - 1]['date']} - {dailyMetrics[0]['date']} </td>
-                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.sdnn.toFixed(2)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.rmssd.toFixed(2)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.pnn50.toFixed(2)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s1.toFixed(2)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s2.toFixed(2)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{handleDfaAvg()}</td>
-                            {/* <td className="px-6 py-4 whitespace-nowrap">{medianProperty.total}</td> */}
-                          </tr>
-
-
-                        ) : null}
-                        {/* ))} */}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
                 <div className="mt-4">
                   <h4 className="text-lg font-semibold text-gray-800 mb-2">Select Date Range</h4>
                   <DatePicker
@@ -442,31 +309,19 @@ export default function Monitor() {
                   {loading ? (
                     <span class="ms-4 loader "></span>
                   ) : null}
-                  {/* <span className='ms-2'>Loading..</span> */}
+
                 </div>
+
               </div>
             </div>
-            <div className="flex items-center rounded-md shadow-sm mt-4 gap-1">
+            <div className="flex items-center rounded-md shadow-sm mt-4 mb-8 gap-1">
               <ToggleButton text="RR" isVisible={isRRVisible} onClick={toggleVisibilityRR} />
               <ToggleButton text="HR" isVisible={isHRVisible} onClick={toggleVisibilityHR} />
               <ToggleButton text="Poincare" isVisible={isPoincareVisible} onClick={toggleVisibilityPoincare} />
             </div>
-            <div style={{ overflowX: 'auto' }}>
-
-              <div className="min-w-[768px] max-w-[768px] min-h-[384px] max-h-[384px] lg:max-w-full mt-4 lg:flex lg:items-center">
-                {isHRVisible && <ChartComponent data={chartData('HR', 'HR')} />}
-              </div>
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <div className="min-w-[768px] max-w-[768px] min-h-[384px] max-h-[384px] mt-4 lg:flex lg:items-center">
-                {isRRVisible && <ChartComponent data={chartData('RR', 'RR')} />}
-              </div>
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <div className="min-w-[768px] max-w-[768px] min-h-[384px] max-h-[384px] mt-4 lg:flex lg:items-center">
-                {isPoincareVisible && <ScatterChartComponent data={poincareData()} />}
-              </div>
-            </div>
+            {logs ? (
+              <GrafikMetric logs={logs} isHRVisible={isHRVisible} isRRVisible={isRRVisible} isPoincareVisible={isPoincareVisible} borderColor={borderColor} />
+            ) : null}
           </div>
         </section>
       </main>
@@ -482,18 +337,4 @@ const ToggleButton = ({ text, isVisible, onClick }) => (
   >
     {isVisible ? `Hide ${text}` : `Show ${text}`}
   </button>
-);
-
-const ChartComponent = ({ data }) => (
-  // <div style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl'>
-  <div className="object-cover w-full lg:w-full rounded-xl h-96">
-    <Line data={data} />
-  </div>
-  // </div>
-);
-
-const ScatterChartComponent = ({ data }) => (
-  <div className="object-cover w-full lg:w-full rounded-xl h-96">
-    <Scatter data={data} />
-  </div>
 );

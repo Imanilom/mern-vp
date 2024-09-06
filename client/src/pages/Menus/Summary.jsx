@@ -24,7 +24,6 @@ function Summary() {
         }
     }
 
-   
     return (
         <div>
             <main>

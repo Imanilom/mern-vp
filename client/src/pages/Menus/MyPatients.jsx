@@ -149,6 +149,9 @@ function MyPatients() {
                                                 Address
                                             </th>
                                             <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                                Info
+                                            </th>
+                                            <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Action
                                             </th>
                                         </tr>
@@ -169,10 +172,19 @@ function MyPatients() {
                                                 <td className="hidden sm:table-cell border-t-0 text-gray-400 px-6 w-[360px] align-middle border-l-0 border-r-0 text-xs whitespace-wrap p-4 ">
                                                     {patient.address}
                                                 </td>
+                                                <td className="hidden sm:table-cell border-t-0 text-gray-400 px-6 w-[360px] align-middle border-l-0 border-r-0 text-xs whitespace-wrap p-4 ">
+                                                    {patient.requestAppointment == 'pending' ? (
+                                                        <button disabled className="bg-yellow-500 text-white text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Request Appointment</button>
+                                                    ) : null}
+                                                    {patient.requestAppointment == 'accepted' ? (
+                                                        <button disabled className="bg-green-500 text-white text-[12px] font-bold px-1 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">You've Appointment with patient</button>
+                                                    ) : null}
+                                                </td>
                                                 <td>
                                                     <div className="relative w-full px-4 max-w-full flex-grow flex-1 text-end">
                                                         <button onClick={() => handleChangePropertyModal(patient)} className="bg-indigo-500 text-white hover:bg-indigo-600/90 active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Detail</button>
                                                         <button onClick={() => handleChoosePatient(patient)} className="bg-green-500 text-white hover:bg-green-500/90 active:bg-green-500 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Monitoring</button>
+
                                                     </div>
                                                 </td>
                                             </tr>
