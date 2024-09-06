@@ -44,6 +44,8 @@ import InputMedicalHistory from './pages/Menus/InputMedicalHistory';
 import PrivateRoute from './components/PrivateRoute';
 import CreateAnamnesa from './pages/Menus/CreateAnamnesa';
 import UpdateAnemnesa from './pages/Menus/UpdateAnemnesa';
+import CreateTreatment from './pages/Menus/CreateTreatment';
+import UpdateTreatment from './pages/Menus/UpdateTreatment';
 
 export default function App() {
 
@@ -69,6 +71,7 @@ export default function App() {
           <Route path='/input-medical' element={<InputMedicalHistory />} />
           <Route path='/createAnamnesa/:riwayatid' element={<CreateAnamnesa />} />
           <Route path='/create/prediksi_factor' element={<CreatePrediction />} />
+          <Route path='/treatment/create' element={<CreateTreatment />} />
       
           <Route path='/rekomendasi/detail/:id' element={<RecomendationDetail />} />
           <Route path='/createRecomendation' element={<CreateRecomendation />} />
@@ -76,6 +79,7 @@ export default function App() {
           <Route path='/updateRecomendation/:id' element={<UpdateRecomendation />} />
           <Route path='/createActivity' element={<CreateActivity />} />
           <Route path='/updateActivity/:id' element={<UpdateActivity />} />
+          <Route path='/treatment/update/:id' element={<UpdateTreatment />} />
           <Route path='/riwayat-medis' element={<MedicalHistories />} />
           <Route path='/faktor-resiko' element={<RiskFactor />} />
           <Route path='/prediksi-faktor' element={<RiskPrediction />} />
