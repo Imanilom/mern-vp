@@ -10,7 +10,7 @@ import '../../loading.css';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 // import '../../tableresponsive.css';
 
-let results = [];
+let results = []
 
 const calculateDFA = (data, order = 1) => {
   const y = data.map((val, i) => data.slice(0, i + 1).reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));

@@ -1,117 +1,152 @@
-import turf from '@turf/clusters-dbscan';
-import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
-import fs from 'fs';
-import cron from 'node-cron';
+import cron from "node-cron";
+import { createCanvas } from "canvas";
+import fs from "fs";
+import { Chart, CategoryScale, LinearScale, TimeScale, LineController, LineElement, PointElement, Tooltip, Legend } from "chart.js";
+import 'chartjs-adapter-date-fns';  // Import date adapter
+import Log from "../models/log.model.js"; // Import your Log model
 
-import Log from '../models/log.model.js';
+// Register the components
+Chart.register(CategoryScale, LinearScale, TimeScale, LineController, LineElement, PointElement, Tooltip, Legend);
 
-async function DBSCANLogRR() {
-    try {
-        const timeEnd = Math.floor(Date.now() / 1000);
-        const timeStart = timeEnd - 3600; // 1 jam yang lalu
-   
-        const logs = await Log.find({
-            timestamp: {
-                $gte: timeStart,
-                $lte: timeEnd
-            }
-        }, { RR: 1, date_created: 1, time_created: 1 });
+// DBSCAN Implementation (same as before)
+const dbscan = (data, epsilon, minPoints) => {
+  const clusters = [];
+  const visited = new Set();
+  const noise = [];
 
-        if(logs.length == 0){
-            console.log('Logs hourly is empty. create graph canceled.');
-            return;
+  const distance = (pointA, pointB) => Math.abs(pointA - pointB);
+
+  const regionQuery = (pointIdx, points) => {
+    const neighbors = [];
+    points.forEach((p, idx) => {
+      if (distance(p, points[pointIdx]) <= epsilon) {
+        neighbors.push(idx);
+      }
+    });
+    return neighbors;
+  };
+
+  const expandCluster = (pointIdx, neighbors, cluster, points, epsilon, minPoints) => {
+    cluster.push(pointIdx);
+    visited.add(pointIdx);
+
+    for (let i = 0; i < neighbors.length; i++) {
+      const neighborIdx = neighbors[i];
+
+      if (!visited.has(neighborIdx)) {
+        visited.add(neighborIdx);
+        const newNeighbors = regionQuery(neighborIdx, points);
+        if (newNeighbors.length >= minPoints) {
+          neighbors = neighbors.concat(newNeighbors);
         }
+      }
 
-        const dateWithTime = `${logs[0]['date_created']}${logs[0]['time_created']}`;
-        const filteredLogs = logs.map((log) => log.RR);
-
-        const points = filteredLogs.map((rr, i) => ({
-            type: 'Feature',
-            properties: { rrValue: rr },
-            geometry: {
-                type: "Point",
-                coordinates: [i, rr]
-            }
-        }));
-
-        const geojsonData = {
-            type: "FeatureCollection",
-            features: points
-        }
-
-        const R = 3; // ubah radius
-        const MinPoint = 6; // ubah minim point to create cluster
-
-        const clustered = turf(geojsonData, R, { minPoints: MinPoint });
-        // Pisahkan data berdasarkan cluster
-        const clusters = {};
-
-        clustered.features.forEach((feature, i) => {
-            const cluster_id = feature.properties.rrValue;
-            // console.log({ cluster_id, i })
-            if (cluster_id !== undefined) {
-                if (!clusters[cluster_id]) clusters[cluster_id] = [];
-                clusters[cluster_id].push(feature.geometry.coordinates);
-            }
-        })
-
-        let filename = String(`graphHRPoint${dateWithTime}`).replace(':', '').replace(':', '').replace('-', '').replace('-', '');
-        await DrawNodeCanvasDBSCAN(clusters, filename);
-    } catch (error) {
-        console.log({ error });
+      const alreadyInCluster = clusters.some(c => c.includes(neighborIdx));
+      if (!alreadyInCluster) {
+        cluster.push(neighborIdx);
+      }
     }
-}
+  };
 
+  data.forEach((_, idx) => {
+    if (visited.has(idx)) return;
 
-async function DrawNodeCanvasDBSCAN(clusters, namefile) {
-    try {
+    const neighbors = regionQuery(idx, data);
+    if (neighbors.length < minPoints) {
+      noise.push(idx);
+    } else {
+      const cluster = [];
+      expandCluster(idx, neighbors, cluster, data, epsilon, minPoints);
+      clusters.push(cluster);
+    }
+  });
 
-        const width = 1280;
-        const height = 720;
+  return { clusters, noise };
+};
 
-        const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height, backgroundColour: 'white' });
+// Visualize Data and Save as PNG for each guid_device
+const generateGraph = async (guid_device) => {
+  try {
+    // Fetch the latest 1000 HR data points from Logs collection filtered by guid_device
+    const dataPoints = await Log.find({ guid_device }).sort({ timestamp: -1 }).limit(1000);
 
-        const dataPoint = Object.keys(clusters).map((cluster_id, i) =>
-        ({
-            label: `Cluster ${cluster_id}`,
-            data: clusters[cluster_id].map(([x, y]) => ({ x, y })),
-            backgroundColor: `rgba(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255}, 1)`
-        }));
-
-        const configuration = {
-            // type: 'scatter',
-            type: 'bar',
-            data: { datasets: dataPoint },
-            options: {
-                scales: {
-                    x: { type: 'linear', position: 'bottom' },
-                    y: { type: 'linear', position: 'left' }
-                },
-                elements: {
-                    bar: {
-                        barThickness: 10, // Mengatur ketebalan batang secara eksplisit
-                        maxBarThickness: 15, // Ketebalan maksimum batang
-                    }
-                }
-            }
-        }
-
-        const buffer = await chartJSNodeCanvas.renderToBuffer(configuration);
-        fs.writeFileSync(`./dbscan_photo/${namefile}.png`, buffer);
-        console.log(`Grafik disimpan sebagai ${namefile}.png`);
+    if (dataPoints.length === 0) {
+      console.log(`No data available for GUID Device: ${guid_device}`);
+      return;
     }
 
-    catch (error) {
-        console.log({ error })
+    const hrValues = dataPoints.map(point => point.HR);
+    const timestamps = dataPoints.map(point => new Date(point.timestamp));
+
+    // Apply custom DBSCAN
+    const epsilon = 5; // Example epsilon value
+    const minPoints = 2; // Example minimum points value
+    const { clusters, noise } = dbscan(hrValues, epsilon, minPoints);
+
+    console.log(`Clusters for GUID Device ${guid_device}:`, clusters);
+    console.log(`Noise for GUID Device ${guid_device}:`, noise);
+
+    // Create a linear graph
+    const canvas = createCanvas(800, 400);
+    const ctx = canvas.getContext('2d');
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: timestamps,
+        datasets: [{
+          label: `Heart Rate Data for GUID Device: ${guid_device}`,
+          data: hrValues,
+          borderColor: 'rgba(75, 192, 192, 1)',
+          fill: false
+        }]
+      },
+      options: {
+        scales: {
+          x: { 
+            type: 'time', // Use the time scale
+            time: { unit: 'minute' } 
+          },
+          y: { 
+            beginAtZero: false 
+          }
+        }
+      }
+    });
+
+    // Ensure the 'graphs' directory exists
+    const dir = './graphs';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
     }
-}
 
+    // Save the chart as PNG
+    const buffer = canvas.toBuffer('image/png');
+    const filename = `./graphs/heart_rate_${guid_device}_${Date.now()}.png`;
+    fs.writeFileSync(filename, buffer);
+    console.log(`Graph saved successfully for GUID Device ${guid_device} as`, filename);
 
-// Start every hour
-cron.schedule('0 */1 * * *', () => {
-    DBSCANLogRR();
+  } catch (error) {
+    console.error(`Error generating graph for GUID Device ${guid_device}:`, error);
+  }
+};
+
+// Schedule Cron Job to run every 5 minutes
+cron.schedule('*/5 * * * *', async () => {
+  console.log('Running cron job...');
+
+  try {
+    // Get unique guid_device values from the Log collection
+    const uniqueGuidDevices = await Log.distinct('guid_device');
+    
+    // Generate a graph for each unique guid_device
+    for (const guid_device of uniqueGuidDevices) {
+      await generateGraph(guid_device);
+    }
+  } catch (error) {
+    console.error('Error during cron job execution:', error);
+  }
 });
 
-// cron.schedule('*/1 * * * *', () => {
-//     DBSCANLogRR();
-// });
+// For testing, you can call the function once when the script runs
+// generateGraph("C0680226");
