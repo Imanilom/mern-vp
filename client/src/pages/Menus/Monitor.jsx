@@ -12,11 +12,7 @@ import DailyMetric from '../../components/DailyMetric';
 import GrafikMetric from '../../components/GrafikMetric';
 // import '../../tableresponsive.css';
 
-// redux tools
-import { clearLogsWithDailytMetric, setLogsWithDailyMetric, setDefautlFetchFalse, setDefautlFetchTrue } from '../../redux/user/webSlice';
-import { useDispatch } from 'react-redux';
-
-let results = [];
+let results = []
 
 const calculateDFA = (data, order = 1) => {
   const y = data.map((val, i) => data.slice(0, i + 1).reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
