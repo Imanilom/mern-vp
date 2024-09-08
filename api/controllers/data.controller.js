@@ -203,7 +203,7 @@ const processAndSaveData = async () => {
 };
 
 // Schedule Cron Job to run every 5 minutes
-cron.schedule('*/1 * * * *', async () => {
+cron.schedule('*/5 * * * *', async () => {
   console.log('Running cron job fillMissingRRForLogsWithHR....');
   fillMissingRRForLogsWithHR();
     console.log('Running cron job...');
