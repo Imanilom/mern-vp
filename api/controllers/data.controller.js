@@ -203,8 +203,8 @@ const processAndSaveData = async () => {
 };
 
 // Schedule Cron Job to run every 5 minutes
-cron.schedule('*/5 * * * *', async () => {
-  console.log('Running cron job fillMissingRRForLogsWithHR');
+cron.schedule('*/1 * * * *', async () => {
+  console.log('Running cron job fillMissingRRForLogsWithHR....');
   fillMissingRRForLogsWithHR();
     console.log('Running cron job...');
     processAndSaveData()
@@ -222,8 +222,8 @@ cron.schedule('*/5 * * * *', async () => {
   const fillMissingRRForLogsWithHR = async () => {
     try {
         console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
-        const logsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 });
-        const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } }).sort({ create_at: 1 });
+        const logsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
+        const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } }).sort({ create_at: 1 }).limit(1000);
 
         if (!logsWithHRNoRR.length) {
             console.log('No logs found with HR but no RR.');
@@ -238,7 +238,7 @@ cron.schedule('*/5 * * * *', async () => {
         let logsWithHRNoRRIds = [];
 
         const bulkOps = logsWithHRNoRR.map((log, index) => {
-            logsWithHRNoRRIds.push(log._id); // Mencatat ID log dengan HR tetapi tidak ada RR
+            logsWithHRNoRRIds.push(log._id);
             let nearestRRValue = null;
             let sourceLogId = null;
 
@@ -259,7 +259,6 @@ cron.schedule('*/5 * * * *', async () => {
             }
 
             if (nearestRRValue !== null) {
-                // Membuat objek baru dengan RR dan rrRMS ditempatkan setelah HR
                 const updatedLog = {
                     ...log.toObject(),
                     RR: nearestRRValue,
@@ -285,8 +284,7 @@ cron.schedule('*/5 * * * *', async () => {
             totalFailed = bulkOps.length - totalUpdated;
         }
 
-        // Memeriksa kembali log dengan HR tetapi tidak ada RR
-        const remainingLogsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 });
+        const remainingLogsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
         const remainingCount = remainingLogsWithHRNoRR.length;
 
         console.log(`RR and rrRMS values filled successfully. Total updated: ${totalUpdated}, Total failed: ${totalFailed}, Remaining logs with HR but no RR: ${remainingCount}`);
