@@ -221,7 +221,9 @@ const processAndSaveData = async () => {
 };
 
 // Schedule Cron Job to run every 5 minutes
-cron.schedule('*/1 * * * *', async () => {
+cron.schedule('*/5 * * * *', async () => {
+  console.log('Running cron job fillMissingRRForLogsWithHR....');
+  fillMissingRRForLogsWithHR();
     console.log('Running cron job...');
     processAndSaveData()
     try {
@@ -234,3 +236,86 @@ cron.schedule('*/1 * * * *', async () => {
     }
   });
   // generateGraph("C0680226");
+
+  const fillMissingRRForLogsWithHR = async () => {
+    try {
+        console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
+        const logsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
+        const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } }).sort({ create_at: 1 }).limit(1000);
+
+        if (!logsWithHRNoRR.length) {
+            console.log('No logs found with HR but no RR.');
+            return { message: 'No logs found with HR but no RR.', status: 404 };
+        }
+
+        console.log(`Found ${logsWithHRNoRR.length} logs with HR but no RR.`);
+        console.log(`Found ${logsWithHRAndRR.length} logs with both HR and RR.`);
+
+        let totalUpdated = 0;
+        let totalFailed = 0;
+        let logsWithHRNoRRIds = [];
+
+        const bulkOps = logsWithHRNoRR.map((log, index) => {
+            logsWithHRNoRRIds.push(log._id);
+            let nearestRRValue = null;
+            let sourceLogId = null;
+
+            for (let i = 1; i < logsWithHRAndRR.length; i++) {
+                const prevIndex = index - i;
+                const nextIndex = index + i;
+
+                if (prevIndex >= 0 && logsWithHRAndRR[prevIndex].RR !== null) {
+                    nearestRRValue = logsWithHRAndRR[prevIndex].RR;
+                    sourceLogId = logsWithHRAndRR[prevIndex]._id;
+                    break;
+                }
+                if (nextIndex < logsWithHRAndRR.length && logsWithHRAndRR[nextIndex].RR !== null) {
+                    nearestRRValue = logsWithHRAndRR[nextIndex].RR;
+                    sourceLogId = logsWithHRAndRR[nextIndex]._id;
+                    break;
+                }
+            }
+
+            if (nearestRRValue !== null) {
+                const updatedLog = {
+                    ...log.toObject(),
+                    RR: nearestRRValue,
+                    rrRMS: 0 
+                };
+                delete updatedLog._id;
+
+                console.log(`Filled missing RR for log at index ${index} (ID: ${log._id}) with value ${nearestRRValue} from log ID: ${sourceLogId}.`);
+                console.log(`Set rrRMS to 0 for log at index ${index} (ID: ${log._id}).`);
+                return {
+                    updateOne: {
+                        filter: { _id: log._id },
+                        update: { $set: updatedLog }
+                    }
+                };
+            }
+            return null;
+        }).filter(op => op !== null);
+
+        if (bulkOps.length > 0) {
+            const bulkWriteResult = await Log.bulkWrite(bulkOps);
+            totalUpdated = bulkWriteResult.modifiedCount;
+            totalFailed = bulkOps.length - totalUpdated;
+        }
+
+        const remainingLogsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
+        const remainingCount = remainingLogsWithHRNoRR.length;
+
+        console.log(`RR and rrRMS values filled successfully. Total updated: ${totalUpdated}, Total failed: ${totalFailed}, Remaining logs with HR but no RR: ${remainingCount}`);
+        return { 
+            message: 'RR and rrRMS values filled successfully.', 
+            totalUpdated, 
+            totalFailed, 
+            logsWithHRNoRRIds, 
+            remainingCount,
+            status: 200 
+        };
+    } catch (error) {
+        console.error('Error filling missing RR and rrRMS values:', error);
+        return { message: 'Internal server error.', status: 500 };
+    }
+};
