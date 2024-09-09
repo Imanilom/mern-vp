@@ -15,9 +15,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "canvas": "^2.11.2",
-    "chart.js": "^4.4.4",
     "chartjs-adapter-date-fns": "^3.0.0",
-    "chartjs-node-canvas": "^4.1.6",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

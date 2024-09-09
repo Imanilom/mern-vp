@@ -5,12 +5,14 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import "chart.js/auto";
 import Side from "../../components/Side";
+import { useDispatch } from 'react-redux';
 
 import '../../loading.css';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 import DailyMetric from '../../components/DailyMetric';
 import GrafikMetric from '../../components/GrafikMetric';
 // import '../../tableresponsive.css';
+import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
 
 let results = []
 
