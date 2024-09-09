@@ -86,6 +86,19 @@ const generateGraph = async (guid_device) => {
     console.log(`Clusters for GUID Device ${guid_device}:`, clusters);
     console.log(`Noise for GUID Device ${guid_device}:`, noise);
 
+      // Pair HR values with timestamps and then sort by timestamps
+      const pairedData = hrValues.map((hr, index) => ({
+        hr,
+        timestamp: timestamps[index]
+      }));
+  
+      // Sort the paired data by timestamp (to ensure the order is correct after processing)
+      pairedData.sort((a, b) => a.timestamp - b.timestamp);
+  
+      // Extract the sorted HR and timestamps
+      const sortedHrValues = pairedData.map(data => data.hr);
+      const sortedTimestamps = pairedData.map(data => data.timestamp);
+
     // Create a linear graph
     const canvas = createCanvas(800, 400);
     const ctx = canvas.getContext('2d');
@@ -93,10 +106,10 @@ const generateGraph = async (guid_device) => {
     new Chart(ctx, {
       type: 'line',
       data: {
-        labels: timestamps,
+        labels: sortedTimestamps,
         datasets: [{
           label: `Heart Rate Data for GUID Device: ${guid_device}`,
-          data: hrValues,
+          data: sortedHrValues,
           borderColor: 'rgba(75, 192, 192, 1)',
           fill: false
         }]
