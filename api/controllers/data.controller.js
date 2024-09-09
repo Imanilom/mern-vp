@@ -72,41 +72,59 @@ const dbscan = (data, epsilon, minPoints) => {
 // Function to generate graph and save as PNG
 const generateGraph = async (guid_device) => {
   try {
-    const dataPoints = await Log.find({ guid_device }).sort({ timestamp: -1 }).limit(1000);
-
+    const dataPoints = await Log.find({ guid_device }).sort({ create_at : -1 }).limit(1000);
     if (dataPoints.length === 0) {
       console.log(`No data available for GUID Device: ${guid_device}`);
       return;
     }
 
     const hrValues = dataPoints.map(point => point.HR);
-    const timestamps = dataPoints.map(point => new Date(point.timestamp));
+    const timestamps = dataPoints.map(point => new Date(point.create_at));
 
-    const epsilon = 5;
-    const minPoints = 2;
+    const epsilon = 4;
+    const minPoints = 1.5;
     const { clusters, noise } = dbscan(hrValues, epsilon, minPoints);
 
     console.log(`Clusters for GUID Device ${guid_device}:`, clusters);
     console.log(`Noise for GUID Device ${guid_device}:`, noise);
 
+      // Pair HR values with timestamps and then sort by timestamps
+      const pairedData = hrValues.map((hr, index) => ({
+        hr,
+        timestamp: timestamps[index]
+      }));
+  
+      // Sort the paired data by timestamp (to ensure the order is correct after processing)
+      pairedData.sort((a, b) => a.timestamp - b.timestamp);
+  
+      // Extract the sorted HR and timestamps
+      const sortedHrValues = pairedData.map(data => data.hr);
+      const sortedTimestamps = pairedData.map(data => data.timestamp);
+
+    // Create a linear graph
     const canvas = createCanvas(800, 400);
     const ctx = canvas.getContext('2d');
 
     new Chart(ctx, {
       type: 'line',
       data: {
-        labels: timestamps,
+        labels: sortedTimestamps,
         datasets: [{
           label: `Heart Rate Data for GUID Device: ${guid_device}`,
-          data: hrValues,
+          data: sortedHrValues,
           borderColor: 'rgba(75, 192, 192, 1)',
           fill: false
         }]
       },
       options: {
         scales: {
-          x: { type: 'time', time: { unit: 'minute' } },
-          y: { beginAtZero: false }
+          x: { 
+            type: 'time', // Use the time scale
+            time: { unit: 'minute' } 
+          },
+          y: { 
+            beginAtZero: false 
+          }
         }
       }
     });
@@ -203,7 +221,9 @@ const processAndSaveData = async () => {
 };
 
 // Schedule Cron Job to run every 5 minutes
-cron.schedule('*/1 * * * *', async () => {
+cron.schedule('*/5 * * * *', async () => {
+  console.log('Running cron job fillMissingRRForLogsWithHR....');
+  fillMissingRRForLogsWithHR();
     console.log('Running cron job...');
     processAndSaveData()
     try {
@@ -216,3 +236,86 @@ cron.schedule('*/1 * * * *', async () => {
     }
   });
   // generateGraph("C0680226");
+
+  const fillMissingRRForLogsWithHR = async () => {
+    try {
+        console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
+        const logsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
+        const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } }).sort({ create_at: 1 }).limit(1000);
+
+        if (!logsWithHRNoRR.length) {
+            console.log('No logs found with HR but no RR.');
+            return { message: 'No logs found with HR but no RR.', status: 404 };
+        }
+
+        console.log(`Found ${logsWithHRNoRR.length} logs with HR but no RR.`);
+        console.log(`Found ${logsWithHRAndRR.length} logs with both HR and RR.`);
+
+        let totalUpdated = 0;
+        let totalFailed = 0;
+        let logsWithHRNoRRIds = [];
+
+        const bulkOps = logsWithHRNoRR.map((log, index) => {
+            logsWithHRNoRRIds.push(log._id);
+            let nearestRRValue = null;
+            let sourceLogId = null;
+
+            for (let i = 1; i < logsWithHRAndRR.length; i++) {
+                const prevIndex = index - i;
+                const nextIndex = index + i;
+
+                if (prevIndex >= 0 && logsWithHRAndRR[prevIndex].RR !== null) {
+                    nearestRRValue = logsWithHRAndRR[prevIndex].RR;
+                    sourceLogId = logsWithHRAndRR[prevIndex]._id;
+                    break;
+                }
+                if (nextIndex < logsWithHRAndRR.length && logsWithHRAndRR[nextIndex].RR !== null) {
+                    nearestRRValue = logsWithHRAndRR[nextIndex].RR;
+                    sourceLogId = logsWithHRAndRR[nextIndex]._id;
+                    break;
+                }
+            }
+
+            if (nearestRRValue !== null) {
+                const updatedLog = {
+                    ...log.toObject(),
+                    RR: nearestRRValue,
+                    rrRMS: 0 
+                };
+                delete updatedLog._id;
+
+                console.log(`Filled missing RR for log at index ${index} (ID: ${log._id}) with value ${nearestRRValue} from log ID: ${sourceLogId}.`);
+                console.log(`Set rrRMS to 0 for log at index ${index} (ID: ${log._id}).`);
+                return {
+                    updateOne: {
+                        filter: { _id: log._id },
+                        update: { $set: updatedLog }
+                    }
+                };
+            }
+            return null;
+        }).filter(op => op !== null);
+
+        if (bulkOps.length > 0) {
+            const bulkWriteResult = await Log.bulkWrite(bulkOps);
+            totalUpdated = bulkWriteResult.modifiedCount;
+            totalFailed = bulkOps.length - totalUpdated;
+        }
+
+        const remainingLogsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
+        const remainingCount = remainingLogsWithHRNoRR.length;
+
+        console.log(`RR and rrRMS values filled successfully. Total updated: ${totalUpdated}, Total failed: ${totalFailed}, Remaining logs with HR but no RR: ${remainingCount}`);
+        return { 
+            message: 'RR and rrRMS values filled successfully.', 
+            totalUpdated, 
+            totalFailed, 
+            logsWithHRNoRRIds, 
+            remainingCount,
+            status: 200 
+        };
+    } catch (error) {
+        console.error('Error filling missing RR and rrRMS values:', error);
+        return { message: 'Internal server error.', status: 500 };
+    }
+};
