@@ -149,7 +149,7 @@ export default function Monitor() {
 
       // setBorderColor
       const borderColor = sortedLogs.map(item => {
-        if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan
+        if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan 
         if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
         if (item.activity === 'Berolahraga') return 'rgba(116, 12, 224, 0.8)'; // Ungu untuk Berolahraga
         // return 'rgba(75, 192, 192, 1)'; // Warna default
