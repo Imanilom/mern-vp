@@ -23,8 +23,9 @@ import './controllers/data.controller.js';
 dotenv.config({ path: '../.env' });
 
 mongoose
-  .connect("mongodb://healthdevice:Q3afzxiAb!@database2.pptik.id:27017/healthdevice",{
-    serverSelectionTimeoutMS: 30000, // Increase server selection timeout to 30 seconds
+  // .connect("mongodb://healthdevice:Q3afzxiAb!@database2.pptik.id:27017/healthdevice",{
+  .connect("mongodb://localhost:27017/test",{
+  serverSelectionTimeoutMS: 30000, // Increase server selection timeout to 30 seconds
     socketTimeoutMS: 45000, // Increase socket timeout to 45 seconds
   })
   .then(() => {
