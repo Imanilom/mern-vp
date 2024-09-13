@@ -13,7 +13,7 @@ import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 
 function InputMedicalHistory() {
     const { currentUser, DocterPatient, loading, error } = useSelector((state) => state.user);
-    const { Actionriwayatmedis } = useSelector((state) => state.web);
+    const { Actionriwayatmedis } = useSelector((state) => state.data);
 
     const [inputItem, setInputItem] = useState({});
     const navigate = useNavigate();

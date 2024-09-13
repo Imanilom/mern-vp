@@ -10,7 +10,6 @@ let data1 = [
     date: "",
     Aktifitas: "",
   },
-
 ];
 
 function DetectionHistories() {
@@ -21,6 +20,8 @@ function DetectionHistories() {
   const [sortByKey, setSortByKey] = useState(null);
   const [isLoading, setLoading] = useState(false);
   const { currentUser, DocterPatient } = useSelector(state => state.user);
+  const [pagination, setPagination] = useState(0);
+  const [currentPagination, setCurrentPagination] = useState(1);
   // const {currentUser} = useSelector(state => state.user);
 
   const sortedData = React.useMemo(() => {
@@ -51,28 +52,41 @@ function DetectionHistories() {
   };
 
   useEffect(() => {
-    setLoading(true)
-    let handle = async () => {
-      try {
-        let url = `/api/user/riwayatdeteksi/${currentUser._id}`
-        if (currentUser.role != 'user') {
-          url = `/api/user/riwayatdeteksi/${DocterPatient._id}`
-        }
+    fectInit();
+  }, [currentPagination]);
 
-        const res = await fetch(url);
-        const data = await res.json();
-        console.log(data)
-        setData(data.riwayat);
-
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false)
-      }
+  const handleChangePagination = (num) => {
+    if (num > 0 && num < pagination + 1) {
+      setCurrentPagination(num);
     }
+  }
 
-    console.log(currentUser)
-    handle();
+  const fectInit = async () => {
+    try {
+      setLoading(true)
+      let url = `/api/user/riwayatdeteksi/${currentUser._id}`
+      if (currentUser.role != 'user') {
+        url = `/api/user/riwayatdeteksi/${DocterPatient._id}`
+      }
+      if (currentPagination > 0) {
+        url += `?page=${currentPagination - 1}`;
+      }
+
+      const res = await fetch(url);
+      const data = await res.json();
+      console.log(data)
+      setData(data.riwayat);
+      setPagination(data.totalPagination);
+
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fectInit();
   }, [])
 
   return (
@@ -149,7 +163,6 @@ function DetectionHistories() {
                             </span>
                           ) : (
                             <HandleSimbol dfa={val.dfa} />
-
                           )}
                         </td>
                       </tr>
@@ -158,10 +171,48 @@ function DetectionHistories() {
               </tbody>
             </table>
 
-
           </div>
 
         </div>
+        {/* pagination */}
+        <nav aria-label="Page navigation example" className='pb-5 max-w-[400px]' style={{overflowX : 'auto'}}>
+          <ul class="flex items-center -space-x-px h-8 text-sm">
+            <li onClick={() => handleChangePagination(currentPagination - 1)}>
+              <p href="#" class="flex items-center justify-center px-3 h-8 ms-0 leading-tight text-gray-500 bg-white border border-e-0 border-gray-300 rounded-s-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                <span class="sr-only">Previous</span>
+                <svg class="w-2.5 h-2.5 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4" />
+                </svg>
+              </p>
+            </li>
+
+            {Array.from({ length: pagination }).map((_i, i) => {
+
+              if (i + 1 == currentPagination) {
+                return (
+                  <li className='cursor-pointer'>
+                    <p href="#" class="flex items-center justify-center px-3 h-8 bg-blue-400">{i + 1}</p>
+                  </li>
+                )
+              } else {
+                return (
+                  <li className='cursor-pointer' onClick={() => handleChangePagination(i + 1)}>
+                    <p href="#" class="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">{i + 1}</p>
+                  </li>
+                )
+              }
+            })}
+
+            <li onClick={() => handleChangePagination(currentPagination + 1)}>
+              <p href="#" class="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 rounded-e-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                <span class="sr-only">Next</span>
+                <svg class="w-2.5 h-2.5 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4" />
+                </svg>
+              </p>
+            </li>
+          </ul>
+        </nav>
         {isLoading ? (
           <div className="flex justify-center my-8 gap-3 items-center">
             <div class="loader2"></div>

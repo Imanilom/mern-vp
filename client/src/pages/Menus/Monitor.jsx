@@ -99,7 +99,7 @@ export default function Monitor() {
   const [isHRVisible, setHRIsVisible] = useState(false); // Show HR chart by default
   const [isRRVisible, setRRIsVisible] = useState(false); // Show RR chart by default
   const [isPoincareVisible, setPoincareIsVisible] = useState(false); // Show Poincare chart by default
-  const [device, setDevice] = useState(null);
+  const [device, setDevice] = useState("C0680226");
   const [loading, setLoading] = useState(false);
   const [medianProperty, setMedianProperty] = useState({
     sdnn: 0,
@@ -113,7 +113,7 @@ export default function Monitor() {
   const [borderColor, setBorderColor] = useState([]);
 
   useEffect(() => {
-    fetchLogs();
+    fetchLogs(device);
   }, []);
 
   useEffect(() => {
@@ -131,19 +131,20 @@ export default function Monitor() {
       setLoading(true);
       results = [];
       let url = `/api/user/test`;
-      if (currentUser.role != 'user' && device) {
+      if (currentUser.role != 'user') {
         url = `/api/user/test/${device}`;
       }
-
+      
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       }
+      console.log({url}, currentUser.role != 'user' && device)
       const response = await fetch(url);
       const data = await response.json();
       console.log({ data })
       if (!response.ok) {
         setLogs([]);
-      
+
         setMetrics([]);
         setDailyMetrics([]);
 
@@ -154,7 +155,7 @@ export default function Monitor() {
       // let payloadRedux = {};
       const sortedLogs = data.logs.sort((a, b) => b.timestamp - a.timestamp); // Sort logs from newest to oldest
       setLogs(sortedLogs);
-     
+
       // payloadRedux.logs = sortedLogs;
 
       // setBorderColor
@@ -288,8 +289,8 @@ export default function Monitor() {
 
                         <h3 className="font-semibold text-base text-blueGray-700 mb-3">Monitoring || Device {device ?? 'nothing'} </h3>
                         <select name="" id="" className='max-w-[170px] border border-slate-200 rounded-md px-3 py-1' onChange={handleChangeDevice}>
-                          <option value="" selected disabled>Select device Monitoring</option>
-                          <option value="C0680226">C0680226</option>
+                          <option value="" disabled>Select device Monitoring</option>
+                          <option value="C0680226" selected>C0680226</option>
                           <option value="BA903328">BA903328</option>
                         </select>
                         {loading ? (
@@ -327,10 +328,13 @@ export default function Monitor() {
               </div>
             </div>
             {logs ? (
-              <div className='flex flex-col gap-6'>
-                <LineGraph data={logs} label={`RR`} keyValue={`RR`} color={borderColor} />
-                <LineGraph data={logs} label={`HR`} keyValue={`HR`} color={borderColor} />
-                <ScatterGraph data={logs} label={`PointCare`} keyValue={`HR`} color={borderColor} />
+              <div style={{ overflowX: 'auto' }}>
+
+                <div className='flex flex-col gap-6'>
+                  <LineGraph data={logs} label={`RR`} keyValue={`RR`} color={borderColor} />
+                  <LineGraph data={logs} label={`HR`} keyValue={`HR`} color={borderColor} />
+                  <ScatterGraph data={logs} label={`PointCare`} keyValue={`HR`} color={borderColor} />
+                </div>
               </div>
             ) : null}
             {/* <div className="flex items-center rounded-md shadow-sm mt-4 mb-8 gap-1">
@@ -409,7 +413,7 @@ const ToggleButton = ({ text, isVisible, onClick }) => (
 
 //     // mengambil element tooltip
 //     const tooltip = d3.select('#tooltip');
-//     // reset gambar svg 
+//     // reset gambar svg
 //     const lastSvg = d3.select(chartRef.current);
 //     lastSvg.selectAll('*').remove()
 
@@ -438,9 +442,9 @@ const ToggleButton = ({ text, isVisible, onClick }) => (
 //     const y = d3.scaleLinear()
 //       .domain([0, d3.max(data, d => d[keyValue])]) // membentuk garis dari 0 hingga data value paling tinggi (max)
 //       .range([height - margin.bottom, margin.top]);
-//     // Pada sumbu Y, kita biasanya ingin nilai 0 berada di bawah (koordinat terbesar), 
-//     // dan nilai terbesar berada di atas (koordinat terkecil). Oleh karena itu, range Y 
-//     // dibalik, dari [height, 0]. Jadi, 0 akan dipetakan ke bagian bawah grafik 
+//     // Pada sumbu Y, kita biasanya ingin nilai 0 berada di bawah (koordinat terbesar),
+//     // dan nilai terbesar berada di atas (koordinat terkecil). Oleh karena itu, range Y
+//     // dibalik, dari [height, 0]. Jadi, 0 akan dipetakan ke bagian bawah grafik
 //     // (misalnya height = 400), dan 90 akan dipetakan ke bagian atas (0).
 
 //     const line = d3.line()

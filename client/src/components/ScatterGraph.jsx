@@ -201,7 +201,9 @@ function ScatterGraph({ data, label, keyValue, color }) {
     return (
         <div className='relative p-4'>
             <div id="tooltip" style={styleTooltype}></div>
-            <div className="me-auto mb-3 flex items-center">
+            <div className="me-auto mb-3 flex items-center sm:justify-start justify-between">
+                <div>
+
                 <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('decrement')}>
                     <FaAngleLeft color='white' size={16} />
 
@@ -209,12 +211,15 @@ function ScatterGraph({ data, label, keyValue, color }) {
                 <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('plus')}>
                     <FaAngleRight color='white' size={16} />
                 </button>
-                <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
-                    Zoom level 1
-                </button>
-                <button id='' className='rounded-md bg-blue-500 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
-                    Graphic {label}
-                </button>
+                </div>
+                <div className="flex sm:flex-row flex-col">
+                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
+                        Zoom level 1
+                    </button>
+                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
+                        Graphic {label}
+                    </button>
+                </div>
             </div>
 
             <div className="svg-container" id={`svg-container_${label}`} ref={chartRef}></div>

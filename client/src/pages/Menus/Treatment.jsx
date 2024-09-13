@@ -3,6 +3,7 @@ import Side from '../../components/Side'
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 function Treatment() {
   const { currentUser, DocterPatient } = useSelector(state => state.user);
   const [history, setHistory] = useState([]);
@@ -91,24 +92,22 @@ function Treatment() {
   return (
     <main class="bg-white flex">
       <Side />
-      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-24">
-
+      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-12 sm:mt-24">
+        <ButtonOffCanvas />
         {treatment ? (
-          <div class="flex w-full py-4 overflow-x-auto justify-between gap-4 mt-12 items-center">
+          <div class="flex w-full py-4 overflow-x-auto justify-between gap-4 mt-12 items-center flex-col sm:flex-row">
             <div className="left">
               {currentUser.role == 'user' ? (
                 <div className="flex gap-2 items-center justify-between ">
                   <h1 className='text-slate-900 font-bold text-[20px]'>Treatment Pasien</h1>
                   <button type='button' className="w-fit px-3 py-1 bg-orange-500 hover:bg-orange-500/90 text-[12px] font-medium text-white rounded-md">Ongoing</button>
-
                 </div>
               ) : (
                 <div className="flex gap-2 items-center justify-between ">
                   <h1 className='text-slate-900 font-bold text-[20px]'>Treatment Pasien</h1>
                   <div className="flex flex-col gap-1">
-                    <button onClick={() => handleSwitchSubmit()} type='button' className="w-fit px-3 py-1 bg-blue-500 hover:bg-blue-500/90 text-[12px] font-medium text-white rounded-md">Tandai sebagai treatment yang usai</button>
+                    <button onClick={() => handleSwitchSubmit()} type='button' className="w-fit px-3 py-1 bg-blue-500 hover:bg-blue-500/90 text-[12px] font-medium text-white rounded-md">Tandai treatment telah usai</button>
                     <Link to={`/treatment/update/${treatment._id}`} className="w-fit px-3 py-1 text-xs font-medium bg-orange-500 text-white rounded-md">Update</Link>
-
                   </div>
 
                 </div>
@@ -231,10 +230,10 @@ function Treatment() {
 
 
             <div className="rigth">
-              <div className="bg-center group relative bg-cover h-[35vh] hover:h-[45vh] duration-500 mb-4 rounded-md border" style={{ backgroundImage: `url('${treatment.doctor.profilePicture}')` }}>
+              <div className="bg-center group relative bg-cover h-[35vh] hover:h-[45vh] duration-500 mb-4 rounded-md border " style={{ backgroundImage: `url('${treatment.doctor.profilePicture}')` }}>
                 <div className="bg-black/40 group-hover:bg-black/10 absolute left-0 top-0 w-full h-full rounded-md"></div>
               </div>
-              <table class="max-w-[480px] border border-slate-800 lg:min-w-[400px] bg-white shadow-md rounded-lg overflow-hidden">
+              <table class="sm:max-w-[480px] border border-slate-800 lg:min-w-[400px] bg-white shadow-md rounded-lg overflow-hidden">
                 <tbody>
                   <tr class="bg-white border-b">
                     <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold text-gray-900">

@@ -261,7 +261,7 @@ function RiskPrediction() {
           {/* Form submit Appointment */}
 
           {detailAppointment != null ? (
-            <div class="flex w-full py-4 overflow-x-auto justify-between gap-4 mt-12 items-center">
+            <div class="flex flex-col sm:flex-row w-full py-4 overflow-x-auto justify-between gap-4 mt-12 items-center">
               <div className="left">
                 <h1 className='text-slate-900 font-bold text-[24px] mb-4'>Appointment</h1>
                 {currentUser.role != 'user' ? (
@@ -316,7 +316,6 @@ function RiskPrediction() {
               </div>
 
               <div className="rigth">
-
                 <div className="bg-center bg-cover h-[30vh] hover:h-[40vh] duration-200 mb-4 rounded-md border" style={{ backgroundImage: `url('${detailAppointment.doctor.profilePicture}')` }}></div>
                 <table class="max-w-[480px] border border-slate-800 lg:min-w-[400px] bg-white shadow-md rounded-lg overflow-hidden">
                   <tbody>
@@ -356,7 +355,7 @@ function RiskPrediction() {
 
       {modal ? (
         <div className="w-full h-[100vh] flex justify-center items-center top-0 left-0 fixed z-20 bg-black/60">
-          <div className="boxModal flex flex-col bg-white rounded-lg p-8 w-/10/12 lg:w-5/12">
+          <div className="boxModal flex flex-col bg-white rounded-lg p-8 w-11/12 lg:w-5/12">
             <div className="flex justify-end" onClick={() => setModal(!modal)}>
               <IoMdCloseCircle size={24} color='red' />
             </div>

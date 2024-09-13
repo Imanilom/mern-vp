@@ -37,6 +37,7 @@ function Acitivity() {
       const res2 = await fetch(url2);
       const data2 = await res2.json();
 
+      console.log({data2})
       if (data2.result == null) {
         setLogs(null)
         return;
@@ -51,6 +52,7 @@ function Acitivity() {
         }, {});
 
       setLogs(ordered);
+      console.log({ordered})
     } catch (error) {
       console.log(error)
     } finally {
@@ -120,7 +122,7 @@ function Acitivity() {
         if (data.success === false) {
           return;
         }
-        console.log(data);
+        console.log({data});
         setAktivitas(data);
 
         await fetchLogsNoRelation();

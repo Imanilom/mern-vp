@@ -60,18 +60,17 @@ function CreateTreatment() {
 
     return (
         <div class="flex min-h-[90vh] bg-white">
-            <div className="flex gap-4 w-10/12 justify-start mx-auto items-center my-8">
-
+            <div className="flex sm:flex-row flex-col gap-16 w-10/12 justify-start mx-auto items-center sm:gap-4 my-8">
                 <div class="flex md:w-5/12">
                     <form onSubmit={handleSubmit} method='post' class="mt-6 flex flex-col gap-4">
                         <h1 class="text-2xl lg:text-2xl font-medium">Create Treatment Pasient</h1>
                         <div class="relative z-0 w-full">
-                            <input type="text" name="name" class="peer block w-[30vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
+                            <input type="text" name="name" class="peer block w-full sm:w-[30vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
                             <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Diagnosa pasient</label>
                         </div>
 
-                        <div class="relative z-0 max-w-[30vw] mt-3">
-                            <input type="date" name="berlaku_dari" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                        <div class="relative z-0 sm:max-w-[30vw] mt-3">
+                            <input type="date" name="berlaku_dari" class="peer block w-full sm:w-[30vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
                             <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Tanggal Consultasi ulang *optional</label>
                         </div>
 
@@ -87,19 +86,19 @@ function CreateTreatment() {
                     </form>
                 </div>
 
-                <form onSubmit={handleAddMedicine} className="md:w-3/12 flex-col flex gap-4">
+                <form onSubmit={handleAddMedicine} className="md:w-3/12 w-full px-4 flex-col flex gap-4">
                     <div className="text-lg font-medium">Add medicine list</div>
                     <div class="relative z-0 w-full">
-                        <input type="text" name="name" class="peer block w-[20vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
+                        <input type="text" name="name" class="peer block w-full sm:w-[20vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
                         <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Nama Obat</label>
                     </div>
 
                     <div class="relative z-0 w-full">
-                        <input type="text" name="name" class="peer block w-[20vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
+                        <input type="text" name="name" class="peer block w-full sm:w-[20vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
                         <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Dosis obat</label>
                     </div>
                     <div class="relative z-0 w-full">
-                        <input type="text" name="name" class="peer block w-[20vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
+                        <input type="text" name="name" class="peer block w-full sm:w-[20vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
                         <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">frequency</label>
                     </div>
 
@@ -108,7 +107,7 @@ function CreateTreatment() {
                 </form>
 
                 {medicine.length > 0 ? (
-                    <div className="md:w-4/12 flex flex-col gap-6 p-6">
+                    <div className="md:w-4/12 w-full px-4 flex flex-col gap-6 p-6">
                         <div className="text-xl font-medium text-end">Your Medicine list</div>
 
                         <div className="flex flex-col gap-4 bg-black w-full p-4 rounded-md">

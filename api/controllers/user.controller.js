@@ -63,6 +63,7 @@ export const test = async (req, res, next) => {
     let filter = {
       guid_device: user.current_device || 'C0680226'
     };
+    console.log({user, filter})
 
     if (startDate && endDate) {
 
@@ -75,18 +76,18 @@ export const test = async (req, res, next) => {
         $lte: dateEndF,
       };
 
-      console.log(filter)
     }
-
+    
     if (req.user.role == 'doctor') {
       filter.guid_device = req.params.device;
     }
-
+    
+    console.log({filter}, 1, req.user.role);
     const logs = await Log.find(filter)
       .sort({ create_at: -1 })
       .limit(limit);
 
-    // console.log(logs, filter)
+    console.log(filter)
 
     if (logs.length === 0) {
       return res.status(404).json({ message: 'Log not found!' });
@@ -102,7 +103,18 @@ export const test = async (req, res, next) => {
 
 export const getRiwayatDeteksiWithDfa = async (req, res) => {
   let result = [];
-  const theActivities = await Aktivitas.find({ userRef: req.params.userId }).sort({ Date: -1 });
+  let limit = 4;
+  const page = parseInt(req.query.page) || 0;
+
+  const [countDoc, theActivities] = await Promise.all([
+    Aktivitas.countDocuments({ userRef: req.params.userId }),
+    Aktivitas.find({ userRef: req.params.userId })
+      .sort({ Date: -1 })
+      .limit(limit)
+      .skip(limit * page)
+  ]);
+
+  let totalPagination = Math.floor(countDoc / limit) + 1;
   for (let i = 0; i < theActivities.length; i++) {
     const singleactivity = theActivities[i];
     let date = new Date(singleactivity.Date);
@@ -122,7 +134,6 @@ export const getRiwayatDeteksiWithDfa = async (req, res) => {
       if (colelctionHR.length >= 8) {
         dfa = calculateDFA(colelctionHR);
       }
-
     }
 
     let dataOutput = {
@@ -136,7 +147,7 @@ export const getRiwayatDeteksiWithDfa = async (req, res) => {
   }
 
   // console.log('testing', result);
-  res.json({ message: 'oke', riwayat: result })
+  res.json({ message: 'oke', riwayat: result, totalPagination })
 }
 
 export const updateUser = async (req, res, next) => {
@@ -220,7 +231,7 @@ export const getLogWithActivity = async (req, res, next) => {
       .limit(2000);
 
     if (logs.length === 0) {
-      return res.status(200).json({ message: 'All log have relations now.', result : null });
+      return res.status(200).json({ message: 'All log have relations now.', result: null });
     }
 
     if (!gap) gap = 30
@@ -362,7 +373,7 @@ export const pushActivity = async (req, res) => {
         }
       }
 
-      console.log({date : new Date(year, month - 1, day)})
+      console.log({ date: new Date(year, month - 1, day) })
 
       let update = {
         $set: {
@@ -380,6 +391,6 @@ export const pushActivity = async (req, res) => {
   }
 
 
-} 
+}
 
 
