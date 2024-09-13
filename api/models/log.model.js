@@ -63,7 +63,8 @@ const LogSchema = new mongoose.Schema(
       ref : 'aktivitas',
       required : false
     }, 
-    activity : String
+    activity : String,
+    isChecked: { type: Boolean, default: false }  
   },
   {
     versionKey: false,
