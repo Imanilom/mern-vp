@@ -10,6 +10,8 @@ let scroolState = 1;
 function LineGraph({ data, label, keyValue, color }) {
     const [scroolLevel, setScroolLevel] = useState(1);
     const chartRef = useRef();
+    const slice = 1;
+    const XCount = 20;
 
     let styleTooltype = {
         position: 'absolute',
@@ -35,7 +37,7 @@ function LineGraph({ data, label, keyValue, color }) {
     }
 
     const triggerSimulate = (opt) => {
-        if (opt == 'plus' && scroolState < 3) {
+        if (opt == 'plus' && scroolState < slice) {
             scroolState++;
             simulateScroll(768 * (scroolState - 1))
         } else if (opt == 'decrement' && scroolState > 1) {
@@ -70,8 +72,9 @@ function LineGraph({ data, label, keyValue, color }) {
         lastSvg.selectAll('*').remove()
 
         // Tentukan ukuran chart
+
         const height = 500;
-        const width = 768 * 3;
+        const width = 768 * slice;
         const margin = { top: 20, right: 20, bottom: 80, left: 40 }
 
         // Buat SVG di dalam div yang menggunakan useRef
@@ -150,7 +153,7 @@ function LineGraph({ data, label, keyValue, color }) {
             .attr('transform', `translate(0,${height - margin.bottom})`) // translate x, y
             .call(d3.axisBottom(x)
                 .tickFormat(formatDateTime)
-                .ticks(40) // memberikan jumlah titk yang dapat dicetak pada sumbu x
+                .ticks(XCount) // memberikan jumlah titk yang dapat dicetak pada sumbu x
                 .tickPadding(8)) // jarak antar titik dengan label
             // .tickFormat(d3.timeFormat("%H:%M:%S")) // Format lengkap dengan jam, menit, dan detik
             // .ticks(5) // Tentukan jumlah ticks, bisa diubah sesuai kebutuhan // ?
@@ -172,7 +175,7 @@ function LineGraph({ data, label, keyValue, color }) {
             console.log(newX, newY, event);
             changeZoomText(event.transform.k);
 
-            x.call(d3.axisBottom(newX).ticks(39).tickPadding(8));
+            x.call(d3.axisBottom(newX).ticks(XCount).tickPadding(8));
             y.call(d3.axisLeft(newY).ticks(15));
 
             linepath.attr('d', d3.line()
@@ -200,15 +203,17 @@ function LineGraph({ data, label, keyValue, color }) {
         <div className='relative p-4'>
             <div style={styleTooltype} id={`tooltip${label}`}></div>
             <div className="me-auto mb-3 flex items-center sm:justify-start justify-between">
-                <div>
-                    <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('decrement')}>
-                        <FaAngleLeft color='white' size={16} />
+                {slice > 1 ? (
+                    <div>
+                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('decrement')}>
+                            <FaAngleLeft color='white' size={16} />
 
-                    </button>
-                    <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('plus')}>
-                        <FaAngleRight color='white' size={16} />
-                    </button>
-                </div>
+                        </button>
+                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('plus')}>
+                            <FaAngleRight color='white' size={16} />
+                        </button>
+                    </div>
+                ) : null}
 
                 <div className="flex sm:flex-row flex-col">
                     <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
