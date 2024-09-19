@@ -7,8 +7,8 @@ const router = express.Router();
 router.get('/testLogActivity', verifyToken, getLogWithActivity)
 router.post('/pushActivity', verifyToken, pushActivity);
 router.get('/test', verifyToken, test);
-router.get('/riwayatdeteksi/:userId', verifyToken, getRiwayatDeteksiWithDfa);
 router.get('/test/:device', verifyToken, test);
+router.get('/riwayatdeteksi/:userId', verifyToken, getRiwayatDeteksiWithDfa);
 router.post('/update/:id', verifyToken, updateUser)
 router.delete('/delete/:id', verifyToken, deleteUser)
 router.get('/:id', verifyToken, getUser)

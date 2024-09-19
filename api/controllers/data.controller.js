@@ -9,7 +9,7 @@ import 'chartjs-adapter-date-fns';  // Import date adapter
 import Log from "../models/log.model.js"; // Import your Log model
 import FFT from 'fft.js';
 import Segment from '../models/segment.model.js';
-
+import { runAllMethods } from './logs.controller.js';
 // Register the components
 Chart.register(CategoryScale, LinearScale, TimeScale, LineController, LineElement, PointElement, Tooltip, Legend);
 
@@ -221,20 +221,30 @@ const processAndSaveData = async () => {
 };
 
 // Schedule Cron Job to run every 5 minutes
-cron.schedule('*/1 * * * *', async () => {
+cron.schedule('*/5 * * * *', async () => {
   console.log('Running cron job fillMissingRRForLogsWithHR....');
   fillMissingRRForLogsWithHR();
     console.log('Running cron job...');
-    processAndSaveData()
+
     try {
-      const uniqueGuidDevices = await Log.distinct('guid_device');
-      for (const guid_device of uniqueGuidDevices) {
-        await generateGraph(guid_device);
-      }
+        
+        await runAllMethods();
+        
+        console.log('Running processAndSaveData...');
+        await processAndSaveData();
+        console.log('processAndSaveData completed.');
+
+        console.log('Running generateGraph for each unique guid_device...');
+        const uniqueGuidDevices = await Log.distinct('guid_device');
+        for (const guid_device of uniqueGuidDevices) {
+            await generateGraph(guid_device);
+        }
+        console.log('generateGraph completed for all guid_device.');
+
     } catch (error) {
-      console.error('Error during cron job execution:', error);
+        console.error('Error during cron job execution:', error);
     }
-  });
+});
   // generateGraph("C0680226");
 
   const fillMissingRRForLogsWithHR = async () => {

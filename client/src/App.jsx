@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState } from 'react'
+import './chart.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/LandingPage/Home';
 import About from './pages/LandingPage/About';
@@ -47,6 +48,7 @@ import UpdateAnemnesa from './pages/Menus/UpdateAnemnesa';
 import CreateTreatment from './pages/Menus/CreateTreatment';
 import UpdateTreatment from './pages/Menus/UpdateTreatment';
 
+
 export default function App() {
 
   return (
@@ -72,7 +74,7 @@ export default function App() {
           <Route path='/createAnamnesa/:riwayatid' element={<CreateAnamnesa />} />
           <Route path='/create/prediksi_factor' element={<CreatePrediction />} />
           <Route path='/treatment/create' element={<CreateTreatment />} />
-      
+
           <Route path='/rekomendasi/detail/:id' element={<RecomendationDetail />} />
           <Route path='/createRecomendation' element={<CreateRecomendation />} />
           <Route path='/updateAnemnesa/:id' element={<UpdateAnemnesa />} />
@@ -87,9 +89,11 @@ export default function App() {
           <Route path='/treatment' element={<Treatment />} />
           <Route path='/rekomendasi' element={<Recommendation />} />
           <Route path='/anamnesa' element={<Anamnesa />} />
+         
         </Route>
       </Routes>
       <Footer />
     </BrowserRouter>
   )
 }
+

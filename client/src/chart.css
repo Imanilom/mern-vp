@@ -1,0 +1,22 @@
+
+.svg-container{
+    overflow-y: auto!important; /* Mengaktifkan scroll horizontal */
+    width: 786px; /* Atur lebar sesuai kebutuhan */
+    scroll-behavior: smooth; /* Menambahkan scroll smooth */
+    /* transition: all 3s; */
+    /* pointer-events: none; */
+    /* touch-action: none; */
+}
+
+#tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 5px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-size: 12px;
+    max-width: 190px;
+  }

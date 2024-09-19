@@ -13,7 +13,7 @@ import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 function MedicalHistories() {
 
   const { currentUser, loading, error, DocterPatient } = useSelector((state) => state.user);
-  const { Actionriwayatmedis } = useSelector(state => state.web);
+  const { Actionriwayatmedis } = useSelector(state => state.data);
   const [anemnesa, setAnemnesa] = useState([]);
   const [catatanTambahan, setCatatanTambahan] = useState([]);
   const [riwayat, setRiwayat] = useState(null);

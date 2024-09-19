@@ -15,6 +15,63 @@ function Summary() {
     const { currentUser, loading, error, DocterPatient } = useSelector((state) => state.user);
     const navigate = useNavigate();
     const dispatch = useDispatch();
+    const [data, setData] = useState({
+        Faktor_Resiko: '',
+        Hasil_Prediksi: '',
+        Riwayat_Deteksi: '',
+        Rekomendasi_Terakhir: '',
+        Treatment_Terakhir: '',
+    });
+
+    const fetchInit = async () => {
+        try {
+            let url = '/api/predictionfactor/getinfo';
+            let url2 = `/api/recomendation/getAll/${DocterPatient._id}`;
+            let url3 = '/api/treatment/getTreatment';
+            let url4 = `/api/user/riwayatdeteksi/${currentUser._id}`
+
+            if (currentUser.role == 'user') {
+                url4 = `/api/user/riwayatdeteksi/${DocterPatient._id}`
+                url3 += `/${currentUser._id}`
+            } else {
+                url3 += `/${DocterPatient._id}`
+            }
+
+            if (currentUser.role != 'user') url += `?patient=${DocterPatient._id}`;
+            if (currentUser.role == 'user') url2 = `/api/recomendation/getAll/${currentUser._id}`;
+
+            const [res, res2, res3, res4] = await Promise.all([
+                await fetch(url),
+                await fetch(url2),
+                await fetch(url3),
+                await fetch(url4),
+            ]);
+
+            const [data, data2, data3, data4] = await Promise.all([
+                await res.json(),
+                await res2.json(),
+                await res3.json(),
+                await res4.json(),
+            ]);
+
+            let property = {};
+            property.Faktor_Resiko = data.prediction.supporting_risks;
+            property.Hasil_Prediksi = data.prediction.result_prediction;
+            property.Riwayat_Deteksi = data4.riwayat[0];
+            property.Rekomendasi_Terakhir = data2.recomendation[data2.recomendation.length - 1]['name'];
+            property.Treatment_Terakhir = data3.history[data3.history.length - 1]['diagnosis'];
+            console.log({ data, data2, data3, property });
+
+            setData(property);
+        } catch (error) {
+            console.log({ error })
+        }
+    }
+
+    useEffect(() => {
+        fetchInit();
+    }, []);
+
 
     const handleUnsignPatient = () => {
         let ask = window.confirm('Are you sure?');
@@ -177,31 +234,31 @@ function Summary() {
                                             <tbody class="text-blue-gray-900">
                                                 <tr class="border-b border-blue-gray-200">
                                                     <td class="py-3 px-4">Faktor Resiko</td>
-                                                    <td class="py-3 px-4">-</td>
+                                                    <td class="py-3 px-4">{data.Faktor_Resiko.length > 0 && data.Faktor_Resiko.map((val) => (<p>-{val}</p>))}</td>
                                                     <td class="py-3 px-4">-</td>
                                                 </tr>
 
                                                 <tr class="border-b border-blue-gray-200">
                                                     <td class="py-3 px-4">Hasil Prediksi</td>
-                                                    <td class="py-3 px-4">-</td>
+                                                    <td class="py-3 px-4">{data.Hasil_Prediksi}</td>
                                                     <td class="py-3 px-4">-</td>
                                                 </tr>
 
                                                 <tr class="border-b border-blue-gray-200">
                                                     <td class="py-3 px-4">Riwayat Deteksi</td>
-                                                    <td class="py-3 px-4">-</td>
+                                                    <td class="py-3 px-4">{data.Riwayat_Deteksi['dfa'] || data.Riwayat_Deteksi['dfa'] <= 0 ? `Tidak dapat menghitung secara akurat` : data.Riwayat_Deteksi['dfa'] }</td>
                                                     <td class="py-3 px-4">-</td>
                                                 </tr>
 
                                                 <tr class="border-b border-blue-gray-200">
                                                     <td class="py-3 px-4">Rekomendasi Terakhir</td>
-                                                    <td class="py-3 px-4">-</td>
+                                                    <td class="py-3 px-4">{data.Rekomendasi_Terakhir}</td>
                                                     <td class="py-3 px-4">-</td>
                                                 </tr>
 
                                                 <tr class="border-b border-blue-gray-200">
                                                     <td class="py-3 px-4">Treatment Terakhir</td>
-                                                    <td class="py-3 px-4">-</td>
+                                                    <td class="py-3 px-4">{data.Treatment_Terakhir}</td>
                                                     <td class="py-3 px-4">-</td>
                                                 </tr>
 
