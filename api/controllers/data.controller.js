@@ -141,10 +141,46 @@ const generateGraph = async (guid_device) => {
     console.error(`Error generating graph for GUID Device ${guid_device}:`, error);
   }
 };
+import Log from '../models/logModel'; // Import model Log
+import mongoose from 'mongoose';
+import cron from 'node-cron';
+import fs from 'fs';
+import path from 'path';
+
+// Filtering Function (IQR-based)
+async function filterIQ(logs, multiplier = 1.5) {
+  const filteredLogs = [];
+  for (const log of logs) {
+    const hrValues = log.HR !== null ? [log.HR] : [];
+    const rrValues = log.RR !== null ? [log.RR] : [];
+
+    if (hrValues.length === 0 || rrValues.length === 0) continue;
+
+    const hrStats = calculateQuartilesAndIQR(hrValues);
+    const rrStats = calculateQuartilesAndIQR(rrValues);
+
+    const filteredHr = hrValues.filter(value => value >= hrStats.Q1 - multiplier * hrStats.IQR && value <= hrStats.Q3 + multiplier * hrStats.IQR);
+    const filteredRr = rrValues.filter(value => value >= rrStats.Q1 - multiplier * rrStats.IQR && value <= rrStats.Q3 + multiplier * rrStats.IQR);
+
+    if (filteredHr.length > 0 && filteredRr.length > 0) {
+      filteredLogs.push({ HR: filteredHr[0], RR: filteredRr[0], timestamp: log.timestamp });
+    }
+  }
+  return filteredLogs;
+}
+
+// Quartile and IQR calculation helper
+const calculateQuartilesAndIQR = (values) => {
+  values.sort((a, b) => a - b);
+  const Q1 = values[Math.floor((values.length / 4))];
+  const Q3 = values[Math.floor((values.length * (3 / 4)))];
+  const IQR = Q3 - Q1;
+  return { Q1, Q3, IQR };
+};
 
 // DFA Calculation Function
 export const calculateDFA = (data, order = 1) => {
-  const y = data.map((val, i) => data.slice(0, 50)
+  const y = data.map((val, i) => data.slice(0, i+1)
     .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
   const boxSizes = [...new Set(Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(val => val <= data.length / 2))];
   const fluctuation = boxSizes.map(boxSize => {
@@ -164,61 +200,73 @@ export const calculateDFA = (data, order = 1) => {
   return alpha;
 };
 
-// Filtering Function
-async function filterIQ(logs, multiplier = 1.5) {
-  const filteredLogs = [];
-  for (const [interval, logData] of Object.entries(logs)) {
-    const hrValues = logData.HR.filter(value => value != null);
-    const rrValues = logData.RR.filter(value => value != null);
-    const hrStats = calculateQuartilesAndIQR(hrValues);
-    const rrStats = calculateQuartilesAndIQR(rrValues);
-    const filteredHr = hrValues.filter(value => value >= hrStats.Q1 - multiplier * hrStats.IQR && value <= hrStats.Q3 + multiplier * hrStats.IQR);
-    const filteredRr = rrValues.filter(value => value >= rrStats.Q1 - multiplier * rrStats.IQR && value <= rrStats.Q3 + multiplier * rrStats.IQR);
-    if (filteredHr.length > 0 && filteredRr.length > 0) {
-      filteredLogs.push({ interval, logs: filteredHr.map((hr, index) => ({ HR: hr, RR: filteredRr[index], create_at: new Date(interval) })) });
-    }
-  }
-  return filteredLogs;
-}
+// Calculate other HRV metrics
+const calculateHRVMetrics = (rrIntervals) => {
+  const pnn50 = calculatePNN50(rrIntervals);
+  const dfa = calculateDFA(rrIntervals);
+  const minRR = Math.min(...rrIntervals);
+  const maxRR = Math.max(...rrIntervals);
+  const medianRR = calculateMedian(rrIntervals);
+  const rmssd = calculateRMSSD(rrIntervals);
+  const sdnn = calculateSDNN(rrIntervals);
+  const { hf, lf, lfhratio } = calculateFrequencyDomain(rrIntervals);
 
+  return { pnn50, dfa, minRR, maxRR, medianRR, rmssd, sdnn, hf, lf, lfhratio };
+};
 
-// Metric Calculation and Saving
-const processAndSaveData = async () => {
+// Main process for heart rate data
+const processHeartRateData = async () => {
   try {
-    const now = new Date();
-    const formattedDate = `${now.getUTCFullYear()}${now.getUTCMonth() + 1}${now.getUTCDate()}`;
-    
-    const logs = await Log.find().sort({ create_at: -1 }).limit(1000);
-    if (!logs.length) {
-      console.log('No new logs found in the specified period.');
+    // Fetch logs from MongoDB that are unchecked and sort by timestamp (oldest first)
+    const logs = await Log.find({ isChecked: false }).sort({ timestamp: 1 });
+
+    if (logs.length === 0) {
+      console.log('No data to process.');
       return;
     }
 
-    const segmentedLogs = segmentDataByInterval(logs, 'hour');
-    const filteredLogs = await filterIQ(segmentedLogs);
-    if (!filteredLogs.length) {
-      console.log('No logs passed the IQ filter.');
-      return;
-    }
-    const results = await calculateMetricsAfterIQFilter(filteredLogs);
+    // Initialize array to store RR intervals and HR data from filtered logs
+    const allRRIntervals = [];
+    const allFilteredData = [];
 
-    const rrValues = logs.map((log) => log.RR).filter(value => value != null);
-    if (rrValues.length > 0) {
-      const dfaAlpha = calculateDFA(rrValues);
-      results.DFA = dfaAlpha;
-    }
+    // Process each log
+    for (const log of logs) {
+      // Filter logs based on IQR
+      const filteredLogs = await filterIQ([log]);
 
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = dirname(__filename);
-    const outputDir = path.resolve(__dirname, 'data');
-    fs.mkdirSync(outputDir, { recursive: true });
-    const outputFilePath = path.resolve(outputDir, `metrics_${formattedDate}.json`);
-    fs.writeFileSync(outputFilePath, JSON.stringify(results));
-    console.log(`Metrics successfully saved to: ${outputFilePath}`);
+      if (filteredLogs.length === 0) {
+        console.log(`No valid data after filtering for log with timestamp ${log.timestamp}.`);
+        continue;
+      }
+
+      // Add RR intervals and HR data from filtered logs to arrays
+      filteredLogs.forEach(filteredLog => {
+        allRRIntervals.push(filteredLog.RR);
+        allFilteredData.push({ HR: filteredLog.HR, RR: filteredLog.RR, timestamp: filteredLog.timestamp });
+      });
+
+      // Calculate HRV metrics for all filtered RR intervals
+      const hrvMetrics = calculateHRVMetrics(allRRIntervals);
+
+      // Save the HRV metrics and filtered data as a JSON file
+      const fileName = path.join('./hrv-results', `log_${log.timestamp}.json`);
+      fs.writeFileSync(fileName, JSON.stringify({ hrvMetrics, filteredData: allFilteredData }, null, 2));
+
+      // Mark the log as processed (isChecked: true)
+      await Log.updateOne({ _id: log._id }, { $set: { isChecked: true } });
+
+      console.log(`Processed and saved data log with timestamp ${log.timestamp}.`);
+    }
   } catch (error) {
-    console.error('Error during data processing:', error);
+    console.error('Error processing heart rate data:', error);
   }
 };
+
+// Cron job scheduled every 10 minutes
+cron.schedule('*/10 * * * *', () => {
+  console.log('Running heart rate data processing every 10 minutes...');
+  processHeartRateData();
+});
 
 // Schedule Cron Job to run every 5 minutes
 cron.schedule('*/5 * * * *', async () => {
@@ -229,11 +277,7 @@ cron.schedule('*/5 * * * *', async () => {
     try {
         
         await runAllMethods();
-        
-        console.log('Running processAndSaveData...');
-        await processAndSaveData();
-        console.log('processAndSaveData completed.');
-
+    
         console.log('Running generateGraph for each unique guid_device...');
         const uniqueGuidDevices = await Log.distinct('guid_device');
         for (const guid_device of uniqueGuidDevices) {
