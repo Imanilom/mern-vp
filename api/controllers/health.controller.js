@@ -4,7 +4,7 @@ import Segment from '../models/segment.model.js';
 import DailyMetric from '../models/daily.model.js';
 import FFT from 'fft.js';
 
-const calculateMetrics = (logs) => {
+export const calculateMetrics = (logs) => {
   const rrIntervals = logs.map((log) => log.RR);
   const nnIntervals = [];
   if (rrIntervals.length < 2) {
@@ -212,7 +212,7 @@ function segmentDataByInterval(logs, intervalType = 'hour') {
   };
 
 // Fungsi untuk menghitung metrik harian dari data RR
-function calculateAdvancedMetrics(rrIntervals) {
+export function calculateAdvancedMetrics(rrIntervals) {
     if (rrIntervals.length < 2) {
         return null; // Tidak cukup data untuk perhitungan
     }
@@ -273,7 +273,6 @@ function calculateAdvancedMetrics(rrIntervals) {
     }
 
     const lfHfRatio = lf / hf;
-
     return {
         median3dp,
         mean,

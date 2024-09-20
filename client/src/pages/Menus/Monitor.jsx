@@ -328,7 +328,7 @@ export default function Monitor() {
               </div>
             </div>
             {logs ? (
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ overflowX: 'auto', marginRight : 40 }}>
 
                 <div className='flex flex-col gap-6'>
                   <LineGraph data={logs} label={`RR`} keyValue={`RR`} color={borderColor} />

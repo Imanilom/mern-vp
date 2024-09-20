@@ -10,6 +10,7 @@ import Log from "../models/log.model.js"; // Import your Log model
 import FFT from 'fft.js';
 import Segment from '../models/segment.model.js';
 import { runAllMethods } from './logs.controller.js';
+import { calculateMetrics } from "./health.controller.js";
 // Register the components
 Chart.register(CategoryScale, LinearScale, TimeScale, LineController, LineElement, PointElement, Tooltip, Legend);
 
@@ -164,6 +165,177 @@ export const calculateDFA = (data, order = 1) => {
   return alpha;
 };
 
+function padToPowerOfTwo(arr) {
+  const nextPowerOfTwo = Math.pow(2, Math.ceil(Math.log2(arr.length)));
+  const paddedArray = new Array(nextPowerOfTwo).fill(0);
+  for (let i = 0; i < arr.length; i++) {
+    paddedArray[i] = arr[i];
+  }
+  return paddedArray;
+}
+
+export function calculateAdvancedMetrics(rrIntervals) {
+  if (rrIntervals.length < 2) {
+      return null; // Tidak cukup data untuk perhitungan
+  }
+
+  const sortedIntervals = rrIntervals.slice().sort((a, b) => a - b); // Salin dan urutkan
+
+  // Median 3dp
+  const midIndex = Math.floor(sortedIntervals.length / 2);
+  const median =
+      sortedIntervals.length % 2 === 0
+          ? (sortedIntervals[midIndex - 1] + sortedIntervals[midIndex]) / 2
+          : sortedIntervals[midIndex];
+  const median3dp = parseFloat(median.toFixed(3)); // Pembulatan ke 3 desimal
+
+  // Mean, Max, Min
+  const sum = rrIntervals.reduce((acc, val) => acc + val, 0);
+  const mean = sum / rrIntervals.length;
+  const max = Math.max(...rrIntervals);
+  const min = Math.min(...rrIntervals);
+
+  // RMSSD
+  const squaredDiffs = [];
+  for (let i = 1; i < rrIntervals.length; i++) {
+      const diff = rrIntervals[i] - rrIntervals[i - 1];
+      squaredDiffs.push(diff * diff);
+  }
+  const rmssd = Math.sqrt(
+      squaredDiffs.reduce((acc, val) => acc + val, 0) / squaredDiffs.length
+  );
+
+  // SDNN (Standard Deviation of NN intervals)
+  const avgNN = mean; // Mean RR sama dengan rata-rata interval NN
+  const sdnn = Math.sqrt(
+      rrIntervals.reduce((acc, val) => acc + Math.pow(val - avgNN, 2), 0) /
+          (rrIntervals.length - 1)
+  );
+
+   // Tambahkan padding agar panjang array menjadi pangkat dua
+   const paddedRRIntervals = padToPowerOfTwo(rrIntervals);
+   console.log(paddedRRIntervals.length, 'Padded rrIntervals');
+
+  // console.log(rrIntervals.length, 'rrInterval')
+  // FFT untuk HF dan LF
+  const fft = new FFT(paddedRRIntervals.length);
+  const out = fft.createComplexArray();
+  fft.realTransform(out, rrIntervals);
+
+  const samplingRate = 1; // Sesuaikan dengan sampling rate yang sebenarnya
+  const frequencies = fft.getFrequencyBins(samplingRate);
+  const powerSpectrum = out.map((value, index) => {
+      return Math.sqrt(value.real * value.real + value.imag * value.imag) /
+          rrIntervals.length;
+  });
+
+  let hf = 0,
+      lf = 0;
+  for (let i = 0; i < powerSpectrum.length; i++) {
+      if (frequencies[i] >= 0.15 && frequencies[i] <= 0.4) {
+          hf += powerSpectrum[i] * powerSpectrum[i];
+      } else if (frequencies[i] >= 0.04 && frequencies[i] <= 0.15) {
+          lf += powerSpectrum[i] * powerSpectrum[i];
+      }
+  }
+
+  const lfHfRatio = lf / hf;
+
+  // --
+
+  // if (!fs.existsSync('./data')) {
+  //   fs.mkdir('/data');
+  // }
+
+  // function getDateKey(type = 'default') {
+  //   const date = new Date();
+  //   if(type == 'default'){
+  //     const year = date.getFullYear();
+  //     const month = String(date.getMonth() + 1).padStart(2, '0');
+  //     const day = String(date.getDate()).padStart(2, '0');
+  //     return `${year}${month}${day}`;
+  //   }
+
+  //   if(type == 'DateWithHour'){
+  //     const year = date.getFullYear();
+  //     const month = String(date.getMonth() + 1);
+  //     const day = String(date.getDate());
+  //     const Hour = String(date.getHours());
+  //     return `${year}-${month}-${day}T${Hour}`;
+  //   }
+  // }
+
+  
+  // function loadJson(filePath) {
+  //   if (fs.existsSync(filePath)) {
+  //     const data = fs.readFileSync(filePath);
+  //     return JSON.parse(data);
+  //   } else {
+  //     return {};  // Kembali objek kosong jika file belum ada
+  //   }
+  // }
+
+  // const data = loadJson(`./data/data_${getDateKey()}.json`);
+  // const namefile = `data_${getDateKey()}.json`;
+  // // fs.writeFileSync(`./data/data_${getDateKey()}.json`, JSON.stringify(data, null, 2), 'utf8');
+  // data[getDateKey('DateWithHour')]
+
+  return {
+      median3dp,
+      mean,
+      max,
+      min,
+      rmssd,
+      sdnn,
+      hf,
+      lf,
+      lfHfRatio,
+  };
+}
+
+async function calculateMetricsAfterIQFilter(filteredLogs) {
+  const results = {};
+
+  for (const intervalData of filteredLogs) {
+    const { interval, logs } = intervalData;
+    const rrValues = logs.map((log) => log.RR);
+    const hrValues = logs.map((log) => log.HR);
+
+    if (rrValues.length < 2 || hrValues.length < 2) {
+      // Filter jika tidak terdapat data yg cukup
+      continue;
+    }
+
+    console.log({rrValues, hrValues})
+
+    const hrMetrics = calculateMetrics(hrValues);
+    const rrMetrics = calculateMetrics(rrValues); // Pindahkan perhitungan advancedMetrics ke sini
+    const advancedMetrics = calculateAdvancedMetrics(rrValues);
+
+    results[interval] = {
+      HR: hrMetrics,
+      RR: {
+        ...rrMetrics,
+        ...advancedMetrics,
+      },
+    };
+  }
+  return results;
+}
+
+
+// Fungsi helper untuk menghitung Q1, Q3, dan IQR
+function calculateQuartilesAndIQR(values) {
+  values.sort((a, b) => a - b);
+  const midIndex = Math.floor(values.length / 2);
+
+  const Q1 = values[Math.floor(midIndex / 2)];
+  const Q3 = values[Math.floor(midIndex + midIndex / 2)];
+  const IQR = Q3 - Q1;
+
+  return { Q1, Q3, IQR };
+}
+
 // Filtering Function
 async function filterIQ(logs, multiplier = 1.5) {
   const filteredLogs = [];
@@ -179,6 +351,36 @@ async function filterIQ(logs, multiplier = 1.5) {
     }
   }
   return filteredLogs;
+}
+
+
+// Fungsi segmentasi data per interval (misalnya, per jam)
+function segmentDataByInterval(logs, intervalType = 'hour') {
+  const segmentedData = {};
+
+  logs.forEach((log) => {
+    const timestamp = new Date(log.create_at);
+    let intervalKey;
+
+    if (intervalType === 'hour') {
+      intervalKey = `${timestamp.getUTCFullYear()}-${
+        timestamp.getUTCMonth() + 1
+      }-${timestamp.getUTCDate()}T${timestamp.getUTCHours()}`;
+    } else if (intervalType === 'day') {
+      intervalKey = `${timestamp.getUTCFullYear()}-${
+        timestamp.getUTCMonth() + 1
+      }-${timestamp.getUTCDate()}`;
+    }
+
+    if (!segmentedData[intervalKey]) {
+      segmentedData[intervalKey] = { HR: [], RR: [] };
+    }
+
+    segmentedData[intervalKey].HR.push(log.HR);
+    segmentedData[intervalKey].RR.push(log.RR);
+  });
+
+  return segmentedData;
 }
 
 

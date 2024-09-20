@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "basic-ftp": "^5.0.5",
     "bcryptjs": "^2.4.3",
     "canvas": "^2.11.2",
     "chartjs-adapter-date-fns": "^3.0.0",

@@ -58,6 +58,7 @@ export default function App() {
         <Route path='/sign-in' element={<SignIn />} />
         <Route path='/sign-up' element={<SignUp />} />
         <Route path='/' element={<Home />} />
+        {/* <Route path='/' element={<Test3d />} /> */}
         <Route path='/about' element={<About />} />
         <Route path='/project' element={<Project />} />
 

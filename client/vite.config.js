@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 
 export default defineConfig({
+  assetsInclude: ['**/*.gltf', '**/*.glb'],  // Memastikan Vite menangani file ini sebagai aset
   server: {
     port: 3000, // Port untuk Vite (React)
     proxy: {

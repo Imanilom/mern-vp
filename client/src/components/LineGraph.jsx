@@ -10,8 +10,8 @@ let scroolState = 1;
 function LineGraph({ data, label, keyValue, color }) {
     const [scroolLevel, setScroolLevel] = useState(1);
     const chartRef = useRef();
-    const slice = 1;
-    const XCount = 20;
+    const [slice, setSlice] = useState(1);
+    const XCount = 10;
 
     let styleTooltype = {
         position: 'absolute',
@@ -25,6 +25,7 @@ function LineGraph({ data, label, keyValue, color }) {
         fontSize: 12 + 'px',
         maxWidth: 200 + 'px',
         minWidth: 200 + 'px',
+        zIndex : 99
     }
 
     useEffect(() => {
@@ -54,28 +55,43 @@ function LineGraph({ data, label, keyValue, color }) {
         d.create_at = new Date(d.create_at); // merubah isi dari array
     });
 
-
-    //   drawChart(data);
-    // }, []);
-
     const changeZoomText = (zoomV) => {
         document.getElementById(`zoom_panel_${label}`).innerHTML = `Zoom level ${zoomV.toFixed(1)}`;
     }
 
     const drawChart = (data) => {
 
+        // mengambil 1 data setiap 200 data
+        const sampledData = data.filter((d, i) => i % 200 === 0);
+        // console.log({sampledData})
+
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
-        console.log({ label, data, tooltip })
+        // console.log({ label, data, tooltip })
+
         // reset gambar svg 
         const lastSvg = d3.select(chartRef.current);
         lastSvg.selectAll('*').remove()
 
         // Tentukan ukuran chart
-
         const height = 500;
-        const width = 768 * slice;
+        const width = 25 * data.length / 2;
         const margin = { top: 20, right: 20, bottom: 80, left: 40 }
+        let svgWidth;
+
+        if(window.innerWidth > 980){
+            // laptop
+            svgWidth = 768;
+        }else if(window.innerWidth > 540){
+            // tablet
+            svgWidth = window.innerWidth * 0.7;
+        }else{
+            // hp
+            svgWidth = window.innerWidth * 0.8;
+        }
+
+        setSlice(Math.floor(width / svgWidth)); // layar lebar svg
+        console.log({width, svgWidth})
 
         // Buat SVG di dalam div yang menggunakan useRef
         const svg = d3.select(chartRef.current)
@@ -86,16 +102,22 @@ function LineGraph({ data, label, keyValue, color }) {
             .style('background', '#FFFFFF')
             .attr('class', 'svgOne')
 
-        const x = d3.scaleTime()
-            .domain(d3.extent(data, d => d.create_at)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
+        const x = d3.scaleBand()
+            .domain(data.map(d => d.create_at)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
             .range([margin.left, width - margin.right]);
+        // const x = d3.scaleLinear()
+        //     .domain([d3.min(sampledData, d => d['create_at']), d3.max(sampledData, d => d.create_at)]) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
+        //     .range([margin.left, width - margin.right]);
+        // const x = d3.scaleLinear()
+        //     .domain([d3.min(data, d => d['create_at']), d3.max(data, d => d.create_at)]) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
+        //     .range([margin.left, width - margin.right]);
         // const x = d3.scaleTime()
         //   .domain(d3.extent(data, d => d.datetime)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
         //   .range([margin.left, width - margin.right]);
 
 
         const y = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d[keyValue]) + 50]) // membentuk garis dari 0 hingga data value paling tinggi (max)
+            .domain([0, d3.max(data, d => d[keyValue]) + 10]) // membentuk garis dari 0 hingga data value paling tinggi (max)
             .range([height - margin.bottom, margin.top]);
         // Pada sumbu Y, kita biasanya ingin nilai 0 berada di bawah (koordinat terbesar), 
         // dan nilai terbesar berada di atas (koordinat terkecil). Oleh karena itu, range Y 
@@ -106,7 +128,7 @@ function LineGraph({ data, label, keyValue, color }) {
             .x(d => x(d.create_at))
             .y(d => y(d[[keyValue]]));
 
-        console.log({ line })
+        // console.log({ line })
 
         // gambar line
         const linepath = svg.append('path')
@@ -158,8 +180,10 @@ function LineGraph({ data, label, keyValue, color }) {
             // .tickFormat(d3.timeFormat("%H:%M:%S")) // Format lengkap dengan jam, menit, dan detik
             // .ticks(5) // Tentukan jumlah ticks, bisa diubah sesuai kebutuhan // ?
             .selectAll('text') // Memilih semua elemen teks (label) pada sumbu
-            .attr('transform', 'rotate(-35)') // Memutar label 45 derajat
+            .attr('transform', 'rotate(-45)') // Memutar label 45 derajat
             .style('text-anchor', 'end') // Menyelaraskan teks ke ujung
+            .style('font-size', 8)
+            .style('padding-right', 2)
 
         svg.append('g')
             .attr('transform', `translate(${margin.left}, 0)`)
