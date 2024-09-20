@@ -80,24 +80,37 @@ const generateGraph = async (guid_device) => {
 
     // Apply custom DBSCAN
     const epsilon = 5; // Example epsilon value
-    const minPoints = 2; // Example minimum points value
+    const minPoints = 10; // Example minimum points value
     const { clusters, noise } = dbscan(hrValues, epsilon, minPoints);
 
     console.log(`Clusters for GUID Device ${guid_device}:`, clusters);
     console.log(`Noise for GUID Device ${guid_device}:`, noise);
 
-      // Pair HR values with timestamps and then sort by timestamps
-      const pairedData = hrValues.map((hr, index) => ({
-        hr,
-        timestamp: timestamps[index]
-      }));
+    // Pair HR values with timestamps and then sort by timestamps
+    const pairedData = hrValues.map((hr, index) => ({
+      hr,
+      timestamp: timestamps[index]
+    }));
   
-      // Sort the paired data by timestamp (to ensure the order is correct after processing)
-      pairedData.sort((a, b) => a.timestamp - b.timestamp);
+    // Sort the paired data by timestamp (to ensure the order is correct after processing)
+    pairedData.sort((a, b) => a.timestamp - b.timestamp);
   
-      // Extract the sorted HR and timestamps
-      const sortedHrValues = pairedData.map(data => data.hr);
-      const sortedTimestamps = pairedData.map(data => data.timestamp);
+    // Extract the sorted HR and timestamps
+    const sortedHrValues = pairedData.map(data => data.hr);
+    const sortedTimestamps = pairedData.map(data => data.timestamp);
+
+    // Assign cluster labels for the graph
+    const clusterLabels = Array(sortedHrValues.length).fill(null); // Default null for noise
+    clusters.forEach((cluster, idx) => {
+      cluster.forEach(pointIdx => {
+        clusterLabels[pointIdx] = `Cluster ${idx + 1}`; // Label clusters
+      });
+    });
+
+    // Assign noise points
+    noise.forEach(noiseIdx => {
+      clusterLabels[noiseIdx] = 'Noise';
+    });
 
     // Create a linear graph
     const canvas = createCanvas(800, 400);
@@ -107,12 +120,30 @@ const generateGraph = async (guid_device) => {
       type: 'line',
       data: {
         labels: sortedTimestamps,
-        datasets: [{
-          label: `Heart Rate Data for GUID Device: ${guid_device}`,
-          data: sortedHrValues,
-          borderColor: 'rgba(75, 192, 192, 1)',
-          fill: false
-        }]
+        datasets: [
+          {
+            label: `Raw Heart Rate Data for GUID Device: ${guid_device}`,
+            data: sortedHrValues,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            fill: false
+          },
+          {
+            label: 'DBSCAN Clustered Data',
+            data: sortedHrValues.map((hr, i) => (clusterLabels[i] !== 'Noise' ? hr : null)), // Show HR for cluster points
+            borderColor: 'rgba(255, 99, 132, 1)',
+            pointBackgroundColor: clusterLabels.map(label => label === 'Noise' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 99, 132, 1)'),
+            showLine: false,
+            pointRadius: 5
+          },
+          {
+            label: 'Noise Points',
+            data: sortedHrValues.map((hr, i) => (clusterLabels[i] === 'Noise' ? hr : null)), // Show HR for noise points
+            borderColor: 'rgba(0, 0, 0, 1)',
+            pointBackgroundColor: 'rgba(0, 0, 0, 1)',
+            showLine: false,
+            pointRadius: 5
+          }
+        ]
       },
       options: {
         scales: {
