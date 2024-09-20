@@ -7,11 +7,21 @@ import { dirname } from 'path';
 import { Chart, CategoryScale, LinearScale, TimeScale, LineController, LineElement, PointElement, Tooltip, Legend } from "chart.js";
 import 'chartjs-adapter-date-fns';  // Import date adapter
 import Log from "../models/log.model.js"; // Import your Log model
-import FFT from 'fft.js';
+import pkg from 'fft-js';  // Impor seluruh modul sebagai default
+
 import Segment from '../models/segment.model.js';
 import { runAllMethods } from './logs.controller.js';
 // Register the components
 Chart.register(CategoryScale, LinearScale, TimeScale, LineController, LineElement, PointElement, Tooltip, Legend);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const { fft, util: fftUtil } = pkg;  
+
+const formatTimestamp = (timestamp) => {
+  const date = new Date(timestamp);
+  return date.toISOString().replace(/[:.]/g, '-'); // Replace ':' and '.' with '-'
+};
 
 // DBSCAN Implementation (same as before)
 const dbscan = (data, epsilon, minPoints) => {
@@ -81,8 +91,8 @@ const generateGraph = async (guid_device) => {
     const hrValues = dataPoints.map(point => point.HR);
     const timestamps = dataPoints.map(point => new Date(point.create_at));
 
-    const epsilon = 4;
-    const minPoints = 1.5;
+    const epsilon = 2.5;
+    const minPoints = 4;
     const { clusters, noise } = dbscan(hrValues, epsilon, minPoints);
 
     console.log(`Clusters for GUID Device ${guid_device}:`, clusters);
@@ -141,42 +151,81 @@ const generateGraph = async (guid_device) => {
     console.error(`Error generating graph for GUID Device ${guid_device}:`, error);
   }
 };
-import Log from '../models/logModel'; // Import model Log
-import mongoose from 'mongoose';
-import cron from 'node-cron';
-import fs from 'fs';
-import path from 'path';
 
 // Filtering Function (IQR-based)
 async function filterIQ(logs, multiplier = 1.5) {
   const filteredLogs = [];
-  for (const log of logs) {
-    const hrValues = log.HR !== null ? [log.HR] : [];
-    const rrValues = log.RR !== null ? [log.RR] : [];
 
+  // Loop through each log to apply IQR filtering
+  for (const log of logs) {
+    // If HR and RR are single values (not arrays), convert them to arrays
+    const hrValues = Array.isArray(log.HR) ? log.HR : [log.HR];
+    const rrValues = Array.isArray(log.RR) ? log.RR : [log.RR];
+
+    // Ensure there are valid HR and RR values before proceeding
     if (hrValues.length === 0 || rrValues.length === 0) continue;
 
+    // If there is only one value, skip IQR filtering and directly use the value
+    if (hrValues.length === 1 && rrValues.length === 1) {
+      filteredLogs.push({ HR: hrValues[0], RR: rrValues[0], timestamp: log.timestamp });
+      continue;
+    }
+
+    // Calculate quartiles and IQR for both HR and RR values
     const hrStats = calculateQuartilesAndIQR(hrValues);
     const rrStats = calculateQuartilesAndIQR(rrValues);
 
-    const filteredHr = hrValues.filter(value => value >= hrStats.Q1 - multiplier * hrStats.IQR && value <= hrStats.Q3 + multiplier * hrStats.IQR);
-    const filteredRr = rrValues.filter(value => value >= rrStats.Q1 - multiplier * rrStats.IQR && value <= rrStats.Q3 + multiplier * rrStats.IQR);
+    // Filter HR values based on IQR
+    const filteredHr = hrValues.filter(value => 
+      value >= hrStats.Q1 - multiplier * hrStats.IQR && 
+      value <= hrStats.Q3 + multiplier * hrStats.IQR
+    );
 
+    // Filter RR values based on IQR
+    const filteredRr = rrValues.filter(value => 
+      value >= rrStats.Q1 - multiplier * rrStats.IQR && 
+      value <= rrStats.Q3 + multiplier * rrStats.IQR
+    );
+
+    // If filtered data is available, push the first valid result to filteredLogs
     if (filteredHr.length > 0 && filteredRr.length > 0) {
       filteredLogs.push({ HR: filteredHr[0], RR: filteredRr[0], timestamp: log.timestamp });
     }
   }
+
   return filteredLogs;
 }
 
 // Quartile and IQR calculation helper
 const calculateQuartilesAndIQR = (values) => {
+  // Ensure values is an array and has valid data
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error('Invalid input to calculateQuartilesAndIQR: expected non-empty array');
+  }
+
+  // Sort values in ascending order
   values.sort((a, b) => a - b);
-  const Q1 = values[Math.floor((values.length / 4))];
-  const Q3 = values[Math.floor((values.length * (3 / 4)))];
-  const IQR = Q3 - Q1;
+
+  // Calculate the quartiles
+  const Q1 = calculatePercentile(values, 25);
+  const Q3 = calculatePercentile(values, 75);
+  const IQR = Q3 - Q1; // Interquartile range
+
   return { Q1, Q3, IQR };
 };
+
+// Helper function to calculate percentiles
+const calculatePercentile = (values, percentile) => {
+  const index = (percentile / 100) * (values.length - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+
+  if (lower === upper) return values[lower]; // If exact index, return the value
+
+  const weight = index - lower;
+  return values[lower] * (1 - weight) + values[upper] * weight; // Linear interpolation for percentile
+};
+
 
 // DFA Calculation Function
 export const calculateDFA = (data, order = 1) => {
@@ -200,25 +249,156 @@ export const calculateDFA = (data, order = 1) => {
   return alpha;
 };
 
+
+// Function to calculate frequency domain features
+const calculateFrequencyDomain = (rrIntervals) => {
+  if (!Array.isArray(rrIntervals) || rrIntervals.length === 0) {
+    throw new Error('Invalid RR intervals array');
+  }
+
+  // Step 1: Interpolation (interpolating RR intervals to a regular time grid)
+  const fs = 4; // Sampling frequency (4 Hz is common in HRV analysis)
+  const interpolatedRR = interpolateRR(rrIntervals, fs);
+
+  // Step 2: FFT
+  const phasors = fft(interpolatedRR);
+  const frequencies = fftUtil.fftFreq(phasors, fs); // Calculate frequency bins
+  const magnitudes = fftUtil.fftMag(phasors); // Get magnitudes
+
+  // Step 3: Calculate power in LF and HF bands
+  let lfPower = 0;
+  let hfPower = 0;
+
+  for (let i = 0; i < frequencies.length; i++) {
+    const freq = frequencies[i];
+    const power = magnitudes[i] ** 2;
+
+    // LF band: 0.04 - 0.15 Hz
+    if (freq >= 0.04 && freq < 0.15) {
+      lfPower += power;
+    }
+
+    // HF band: 0.15 - 0.4 Hz
+    if (freq >= 0.15 && freq < 0.4) {
+      hfPower += power;
+    }
+  }
+
+  // Step 4: LF/HF Ratio
+  const lfhratio = lfPower / hfPower;
+
+  return {
+    lf: lfPower,
+    hf: hfPower,
+    lfhratio: lfhratio,
+  };
+};
+
+// Helper function to interpolate RR intervals
+const interpolateRR = (rrIntervals, fs) => {
+  const time = [];
+  const interpolatedRR = [];
+
+  // Cumulative time based on RR intervals
+  let currentTime = 0;
+  for (let i = 0; i < rrIntervals.length; i++) {
+    time.push(currentTime);
+    currentTime += rrIntervals[i] / 1000; // RR interval in seconds
+  }
+
+  // Linear interpolation to resample the RR intervals to a uniform time grid
+  const duration = time[time.length - 1];
+  const interpolatedTime = [];
+  for (let t = 0; t <= duration; t += 1 / fs) {
+    interpolatedTime.push(t);
+  }
+
+  // Using linear interpolation to get the interpolated RR intervals
+  for (let i = 1; i < time.length; i++) {
+    const t1 = time[i - 1];
+    const t2 = time[i];
+    const rr1 = rrIntervals[i - 1];
+    const rr2 = rrIntervals[i];
+
+    const slope = (rr2 - rr1) / (t2 - t1);
+
+    for (let t of interpolatedTime) {
+      if (t >= t1 && t <= t2) {
+        const rrInterpolated = rr1 + slope * (t - t1);
+        interpolatedRR.push(rrInterpolated);
+      }
+    }
+  }
+
+  return interpolatedRR;
+};
+
 // Calculate other HRV metrics
 const calculateHRVMetrics = (rrIntervals) => {
-  const pnn50 = calculatePNN50(rrIntervals);
+  const nnIntervals = [];
+  if (rrIntervals.length < 2) {
+    // Not enough data points to calculate metrics
+    return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null };
+  }
+  let sumSquaredDiffs = 0; // For RMSSD
+  let sumSuccessiveDiffs = 0; // For RMSSD
+  let nn50Count = 0;
+
+  for (let i = 1; i < rrIntervals.length; i++) {
+    const diff = Math.abs(rrIntervals[i] - rrIntervals[i - 1]);
+    nnIntervals.push(diff);
+
+    sumSquaredDiffs += diff * diff; // Square the difference and add to sum (for RMSSD)
+    if (diff > 50) {
+      nn50Count++;
+    }
+  }
+  const avgNN = nnIntervals.reduce((sum, interval) => sum + interval, 0) / nnIntervals.length;
+
+  const squaredDiffsFromMean = nnIntervals.map((interval) => Math.pow(interval - avgNN, 2));
+  const sumSquaredDiffsFromMean = squaredDiffsFromMean.reduce((sum, diff) => sum + diff, 0);
+
+  const variance = sumSquaredDiffsFromMean / (nnIntervals.length - 1);
+  const sdnn = Math.sqrt(variance);
+
+  const rmssd = Math.sqrt(sumSquaredDiffs / nnIntervals.length);
+  const pnn50 = (nn50Count / nnIntervals.length) * 100;
+
+  // Calculate S1 & S2
+  const diff1 = rrIntervals.slice(1).map((val, index) => val - rrIntervals[index]);
+  const sum1 = rrIntervals.slice(1).map((val, index) => val + rrIntervals[index]);
+
+  const s1 = Math.sqrt(diff1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / diff1.length) / Math.sqrt(2);
+  const s2 = Math.sqrt(sum1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / sum1.length) / Math.sqrt(2);
+
   const dfa = calculateDFA(rrIntervals);
   const minRR = Math.min(...rrIntervals);
   const maxRR = Math.max(...rrIntervals);
-  const medianRR = calculateMedian(rrIntervals);
-  const rmssd = calculateRMSSD(rrIntervals);
-  const sdnn = calculateSDNN(rrIntervals);
   const { hf, lf, lfhratio } = calculateFrequencyDomain(rrIntervals);
-
-  return { pnn50, dfa, minRR, maxRR, medianRR, rmssd, sdnn, hf, lf, lfhratio };
+  return { pnn50, dfa, minRR, maxRR, rmssd, sdnn, hf, lf, lfhratio, s1, s2};
+  
+  
 };
 
-// Main process for heart rate data
 const processHeartRateData = async () => {
   try {
-    // Fetch logs from MongoDB that are unchecked and sort by timestamp (oldest first)
-    const logs = await Log.find({ isChecked: false }).sort({ timestamp: 1 });
+    // Fetch the oldest unchecked log to determine the time range
+    const firstLog = await Log.findOne({ isChecked: false }).sort({ create_at: 1 });
+
+    if (!firstLog) {
+      console.log('No data to process.');
+      return;
+    }
+
+    // Calculate the 10-minute range
+    const oldestTimestamp = new Date(firstLog.create_at);
+    const tenMinutesLater = new Date(oldestTimestamp.getTime() + 10 * 60 * 1000);
+
+    // Fetch logs within the 10-minute range
+    const logs = await Log.find({
+      isChecked: false,
+      create_at: { $gte: oldestTimestamp, $lte: tenMinutesLater }
+    }).sort({ create_at: 1 });
 
     if (logs.length === 0) {
       console.log('No data to process.');
@@ -229,39 +409,47 @@ const processHeartRateData = async () => {
     const allRRIntervals = [];
     const allFilteredData = [];
 
+    // Ensure the directory exists, create it if not
+    const resultsDir = path.join(__dirname, 'hrv-results');
+    if (!fs.existsSync(resultsDir)) {
+      fs.mkdirSync(resultsDir, { recursive: true });
+    }
+
     // Process each log
     for (const log of logs) {
       // Filter logs based on IQR
       const filteredLogs = await filterIQ([log]);
-
+      
       if (filteredLogs.length === 0) {
-        console.log(`No valid data after filtering for log with timestamp ${log.timestamp}.`);
+        console.log(`No valid data after filtering for log with timestamp ${log.create_at}.`);
         continue;
       }
 
       // Add RR intervals and HR data from filtered logs to arrays
       filteredLogs.forEach(filteredLog => {
         allRRIntervals.push(filteredLog.RR);
-        allFilteredData.push({ HR: filteredLog.HR, RR: filteredLog.RR, timestamp: filteredLog.timestamp });
+        allFilteredData.push({ HR: filteredLog.HR, RR: filteredLog.RR, timestamp: filteredLog.create_at });
       });
 
       // Calculate HRV metrics for all filtered RR intervals
       const hrvMetrics = calculateHRVMetrics(allRRIntervals);
 
+      // Format the timestamp for the file name
+      const formattedTimestamp = formatTimestamp(log.create_at);
+      
       // Save the HRV metrics and filtered data as a JSON file
-      const fileName = path.join('./hrv-results', `log_${log.timestamp}.json`);
-      fs.writeFileSync(fileName, JSON.stringify({ hrvMetrics, filteredData: allFilteredData }, null, 2));
+      const fileName = path.join(resultsDir, `log_${formattedTimestamp}.json`);
+      fs.writeFileSync(fileName, JSON.stringify({ hrvMetrics, filteredData: allFilteredData, raw: logs }, null, 2));
 
       // Mark the log as processed (isChecked: true)
       await Log.updateOne({ _id: log._id }, { $set: { isChecked: true } });
 
-      console.log(`Processed and saved data log with timestamp ${log.timestamp}.`);
+      console.log(`Processed and saved data log with timestamp ${log.create_at}.`);
     }
   } catch (error) {
     console.error('Error processing heart rate data:', error);
   }
 };
-
 // Cron job scheduled every 10 minutes
 cron.schedule('*/10 * * * *', () => {
   console.log('Running heart rate data processing every 10 minutes...');
@@ -290,7 +478,7 @@ cron.schedule('*/5 * * * *', async () => {
     }
 });
   // generateGraph("C0680226");
-
+  processHeartRateData();
   const fillMissingRRForLogsWithHR = async () => {
     try {
         console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');

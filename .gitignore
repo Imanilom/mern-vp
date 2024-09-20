@@ -12,7 +12,8 @@ dist
 dist-ssr
 *.local
 data
-
+graphs
+hrv-results
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
