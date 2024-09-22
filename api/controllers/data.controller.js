@@ -152,24 +152,32 @@ const generateGraph = async (guid_device) => {
   }
 };
 
-// Filtering Function (IQR-based)
+// Filtering Function (IQR-based) per 10 seconds
 async function filterIQ(logs, multiplier = 1.5) {
+  console.log('Original Logs:', logs); // Log original logs
   const filteredLogs = [];
 
-  // Loop through each log to apply IQR filtering
-  for (const log of logs) {
-    // If HR and RR are single values (not arrays), convert them to arrays
-    const hrValues = Array.isArray(log.HR) ? log.HR : [log.HR];
-    const rrValues = Array.isArray(log.RR) ? log.RR : [log.RR];
+  // Group logs by 10-second intervals
+  const groupedLogs = [];
+  let currentGroup = [];
+  let startTime = new Date(logs[0].timestamp).getTime();
 
-    // Ensure there are valid HR and RR values before proceeding
-    if (hrValues.length === 0 || rrValues.length === 0) continue;
-
-    // If there is only one value, skip IQR filtering and directly use the value
-    if (hrValues.length === 1 && rrValues.length === 1) {
-      filteredLogs.push({ HR: hrValues[0], RR: rrValues[0], timestamp: log.timestamp });
-      continue;
+  logs.forEach(log => {
+    const logTime = new Date(log.timestamp).getTime();
+    if (logTime - startTime < 10000) { // 10 seconds in milliseconds
+      currentGroup.push(log);
+    } else {
+      groupedLogs.push(currentGroup);
+      currentGroup = [log];
+      startTime = logTime;
     }
+  });
+  if (currentGroup.length > 0) groupedLogs.push(currentGroup);
+
+  // Process each group
+  groupedLogs.forEach(group => {
+    const hrValues = group.map(log => log.HR);
+    const rrValues = group.map(log => log.RR);
 
     // Calculate quartiles and IQR for both HR and RR values
     const hrStats = calculateQuartilesAndIQR(hrValues);
@@ -187,12 +195,13 @@ async function filterIQ(logs, multiplier = 1.5) {
       value <= rrStats.Q3 + multiplier * rrStats.IQR
     );
 
-    // If filtered data is available, push the first valid result to filteredLogs
-    if (filteredHr.length > 0 && filteredRr.length > 0) {
-      filteredLogs.push({ HR: filteredHr[0], RR: filteredRr[0], timestamp: log.timestamp });
+    // If filtered data is available, push all valid results to filteredLogs
+    for (let i = 0; i < Math.min(filteredHr.length, filteredRr.length); i++) {
+      filteredLogs.push({ HR: filteredHr[i], RR: filteredRr[i], timestamp: group[i].timestamp });
     }
-  }
+  });
 
+  console.log('Filtered Logs:', filteredLogs); // Log filtered logs
   return filteredLogs;
 }
 
@@ -415,37 +424,34 @@ const processHeartRateData = async () => {
       fs.mkdirSync(resultsDir, { recursive: true });
     }
 
-    // Process each log
-    for (const log of logs) {
-      // Filter logs based on IQR
-      const filteredLogs = await filterIQ([log]);
-      
-      if (filteredLogs.length === 0) {
-        console.log(`No valid data after filtering for log with timestamp ${log.create_at}.`);
-        continue;
-      }
+    // Process logs in 10-second intervals
+    const filteredLogs = await filterIQ(logs);
 
-      // Add RR intervals and HR data from filtered logs to arrays
-      filteredLogs.forEach(filteredLog => {
-        allRRIntervals.push(filteredLog.RR);
-        allFilteredData.push({ HR: filteredLog.HR, RR: filteredLog.RR, timestamp: filteredLog.create_at });
-      });
-
-      // Calculate HRV metrics for all filtered RR intervals
-      const hrvMetrics = calculateHRVMetrics(allRRIntervals);
-
-      // Format the timestamp for the file name
-      const formattedTimestamp = formatTimestamp(log.create_at);
-      
-      // Save the HRV metrics and filtered data as a JSON file
-      const fileName = path.join(resultsDir, `log_${formattedTimestamp}.json`);
-      fs.writeFileSync(fileName, JSON.stringify({ hrvMetrics, filteredData: allFilteredData, raw: logs }, null, 2));
-
-      // Mark the log as processed (isChecked: true)
-      await Log.updateOne({ _id: log._id }, { $set: { isChecked: true } });
-
-      console.log(`Processed and saved data log with timestamp ${log.create_at}.`);
+    if (filteredLogs.length === 0) {
+      console.log('No valid data after filtering.');
+      return;
     }
+
+    // Add RR intervals and HR data from filtered logs to arrays
+    filteredLogs.forEach(filteredLog => {
+      allRRIntervals.push(filteredLog.RR);
+      allFilteredData.push({ HR: filteredLog.HR, RR: filteredLog.RR, timestamp: filteredLog.timestamp });
+    });
+
+    // Calculate HRV metrics for all filtered RR intervals
+    const hrvMetrics = calculateHRVMetrics(allRRIntervals);
+
+    // Format the timestamp for the file name
+    const formattedTimestamp = formatTimestamp(oldestTimestamp);
+    
+    // Save the HRV metrics and filtered data as a JSON file
+    const fileName = path.join(resultsDir, `log_${formattedTimestamp}.json`);
+    fs.writeFileSync(fileName, JSON.stringify({ hrvMetrics, filteredData: allFilteredData, raw: logs }, null, 2));
+
+    // Mark the logs as processed (isChecked: true)
+    await Log.updateMany({ _id: { $in: logs.map(log => log._id) } }, { $set: { isChecked: true } });
+
+    console.log(`Processed and saved data logs from ${oldestTimestamp} to ${tenMinutesLater}.`);
   } catch (error) {
     console.error('Error processing heart rate data:', error);
   }
