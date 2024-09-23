@@ -12,9 +12,9 @@ async function SendFileToFtp(pathfile, pathfileFtp) {
 
         await client.access({
             host: process.env.FTP_HOST,   // Sesuaikan host FTP
-            user: process.env.FTP_USER,          // Sesuaikan username FTP
-            password: process.env.FTP_PASSWORD,      // Sesuaikan password FTP
-            secure: process.env.FTP_SECURE,          // Set secure ke true jika menggunakan FTPS
+            user: process.env.FTP_USER,       // Sesuaikan username FTP
+            password: process.env.FTP_PASSWORD,  // Sesuaikan password FTP
+            secure: process.env.FTP_SECURE,   // Set secure ke true jika menggunakan FTPS
             port: process.env.FTP_PORT
         });
 
@@ -29,7 +29,7 @@ async function SendFileToFtp(pathfile, pathfileFtp) {
 }
 
 
-async function DownloadFromFtp(filename, pathfileFtp) {
+async function DownloadFromFtp(pathfile, pathfileFtp) {
     const client = new ftp.Client();
     client.ftp.verbose = true;
 
@@ -108,6 +108,10 @@ const handleGetFromFile = async () => {
     // }
 }
 
-cron.schedule("30 23 * * *", () => {
-    TransferfileToFtp();
-});
+// cron.schedule("30 23 * * *", () => {
+    // TransferfileToFtp();
+// });
+
+
+
+export {SendFileToFtp, DownloadFromFtp};

@@ -11,6 +11,7 @@ function LineGraph({ data, label, keyValue, color }) {
     const [scroolLevel, setScroolLevel] = useState(1);
     const chartRef = useRef();
     const [slice, setSlice] = useState(1);
+    const [slider, setSlider] = useState(1);
     const XCount = 10;
 
     let styleTooltype = {
@@ -40,8 +41,10 @@ function LineGraph({ data, label, keyValue, color }) {
     const triggerSimulate = (opt) => {
         if (opt == 'plus' && scroolState < slice) {
             scroolState++;
+            setSlider(slider + 1);
             simulateScroll(768 * (scroolState - 1))
         } else if (opt == 'decrement' && scroolState > 1) {
+            setSlider(slider - 1);
             scroolState--;
             simulateScroll((768 * (scroolState - 1)));
         }
@@ -241,7 +244,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
                 <div className="flex sm:flex-row flex-col">
                     <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
-                        Zoom level 1
+                        Slide {slider}
                     </button>
                     <button id='' className='rounded-md bg-blue-500 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
