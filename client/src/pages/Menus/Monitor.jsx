@@ -8,15 +8,10 @@ import Side from "../../components/Side";
 import { useDispatch } from 'react-redux';
 import { useRef } from 'react';
 
-import * as d3 from 'd3';
-import { FaAngleLeft } from "react-icons/fa";
-import { FaAngleRight } from "react-icons/fa";
-
-
 import '../../loading.css';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 import DailyMetric from '../../components/DailyMetric';
-import GrafikMetric from '../../components/GrafikMetric';
+
 // import '../../tableresponsive.css';
 import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
 import LineGraph from '../../components/LineGraph';
@@ -114,6 +109,7 @@ export default function Monitor() {
 
   useEffect(() => {
     fetchLogs(device);
+    // readFileExistOnFTP('2023-07-24', '2024-08-29');
   }, []);
 
   useEffect(() => {
@@ -154,8 +150,7 @@ export default function Monitor() {
 
       // let payloadRedux = {};
       const sortedLogs = data.logs.sort((a, b) => b.timestamp - a.timestamp); // Sort logs from newest to oldest
-      setLogs(sortedLogs);
-
+      setLogs(sortedLogs);     
       // payloadRedux.logs = sortedLogs;
 
       // setBorderColor
@@ -209,6 +204,7 @@ export default function Monitor() {
         }
 
         setMedianProperty(median);
+      
         // payloadRedux.medianPropertyR = median;
         // dispatch(setLogsWithDailyMetric(payloadRedux));
         // dispatch(setDefautlFetchTrue());
