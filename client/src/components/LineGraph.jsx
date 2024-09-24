@@ -5,7 +5,10 @@ import { FaAngleLeft } from "react-icons/fa";
 import { FaAngleRight } from "react-icons/fa";
 import '../chart.css';
 
-let scroolState = 1;
+let scroolState = {
+    HR : 1, // daftarkan label 
+    RR : 1
+};
 
 function LineGraph({ data, label, keyValue, color }) {
     const [scroolLevel, setScroolLevel] = useState(1);
@@ -39,14 +42,14 @@ function LineGraph({ data, label, keyValue, color }) {
     }
 
     const triggerSimulate = (opt) => {
-        if (opt == 'plus' && scroolState < slice) {
-            scroolState++;
+        if (opt == 'plus' && scroolState[label] < slice) {
+            scroolState[label]++;
             setSlider(slider + 1);
-            simulateScroll(768 * (scroolState - 1))
-        } else if (opt == 'decrement' && scroolState > 1) {
+            simulateScroll(768 * (scroolState[label] - 1))
+        } else if (opt == 'decrement' && scroolState[label] > 1) {
             setSlider(slider - 1);
-            scroolState--;
-            simulateScroll((768 * (scroolState - 1)));
+            scroolState[label]--;
+            simulateScroll((768 * (scroolState[label] - 1)));
         }
     }
 
@@ -156,11 +159,11 @@ function LineGraph({ data, label, keyValue, color }) {
                 // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
                 // console.log({ xPos, yPos, scrollX })
                 let x = xPos + 10;
-                if (scroolState > 1) {
-                    x = xPos - (768 * (scroolState - 1));
-                    console.log(x, xPos, (768 * (scroolState - 1)))
+                if (scroolState[label] > 1) {
+                    x = xPos - (768 * (scroolState[label] - 1));
+                    console.log(x, xPos, (768 * (scroolState[label] - 1)))
                 }
-                console.log({ scroolLevel, scroolState }, (xPos - (scroolState * 768) + 10), xPos, { x });
+                // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
                 tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
