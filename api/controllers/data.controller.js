@@ -9,14 +9,46 @@ import 'chartjs-adapter-date-fns';  // Import date adapter
 import Log from "../models/log.model.js"; // Import your Log model
 import pkg from 'fft-js';  // Impor seluruh modul sebagai default
 
+// import {SendFileToFtp, DownloadFromFtp} from './ftp.controller.js';
+
 import Segment from '../models/segment.model.js';
 import { runAllMethods } from './logs.controller.js';
+import { calculateMetrics } from "./health.controller.js";
+import dotenv from 'dotenv';
+import ftp from 'basic-ftp';
+
 // Register the components
 Chart.register(CategoryScale, LinearScale, TimeScale, LineController, LineElement, PointElement, Tooltip, Legend);
 
+dotenv.config({ path: '../../.env' });
+
+async function SendFileToFtp(pathfile, pathfileFtp) {
+  try {
+    const client = new ftp.Client();
+    client.ftp.verbose = true;
+
+    await client.access({
+      host: process.env.FTP_HOST,   // Sesuaikan host FTP
+      user: process.env.FTP_USER,          // Sesuaikan username FTP
+      password: process.env.FTP_PASSWORD,      // Sesuaikan password FTP
+      secure: process.env.FTP_SECURE,          // Set secure ke true jika menggunakan FTPS
+      port: process.env.FTP_PORT
+    });
+
+    console.log("Mengupload file ke FTP...");
+    await client.uploadFrom(pathfile, pathfileFtp);
+    // param 1 : lokasi file kita, param 2 : lokasi menyimpan file di ftp 
+    console.log("File berhasil diupload ke FTP");
+
+  } catch (error) {
+    console.log({ error });
+  }
+}
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const { fft, util: fftUtil } = pkg;  
+const { fft, util: fftUtil } = pkg;
 
 const formatTimestamp = (timestamp) => {
   const date = new Date(timestamp);
@@ -82,7 +114,7 @@ const dbscan = (data, epsilon, minPoints) => {
 // Function to generate graph and save as PNG
 const generateGraph = async (guid_device) => {
   try {
-    const dataPoints = await Log.find({ guid_device }).sort({ create_at : -1 }).limit(1000);
+    const dataPoints = await Log.find({ guid_device }).sort({ create_at: -1 }).limit(1000);
     if (dataPoints.length === 0) {
       console.log(`No data available for GUID Device: ${guid_device}`);
       return;
@@ -98,18 +130,18 @@ const generateGraph = async (guid_device) => {
     console.log(`Clusters for GUID Device ${guid_device}:`, clusters);
     console.log(`Noise for GUID Device ${guid_device}:`, noise);
 
-      // Pair HR values with timestamps and then sort by timestamps
-      const pairedData = hrValues.map((hr, index) => ({
-        hr,
-        timestamp: timestamps[index]
-      }));
-  
-      // Sort the paired data by timestamp (to ensure the order is correct after processing)
-      pairedData.sort((a, b) => a.timestamp - b.timestamp);
-  
-      // Extract the sorted HR and timestamps
-      const sortedHrValues = pairedData.map(data => data.hr);
-      const sortedTimestamps = pairedData.map(data => data.timestamp);
+    // Pair HR values with timestamps and then sort by timestamps
+    const pairedData = hrValues.map((hr, index) => ({
+      hr,
+      timestamp: timestamps[index]
+    }));
+
+    // Sort the paired data by timestamp (to ensure the order is correct after processing)
+    pairedData.sort((a, b) => a.timestamp - b.timestamp);
+
+    // Extract the sorted HR and timestamps
+    const sortedHrValues = pairedData.map(data => data.hr);
+    const sortedTimestamps = pairedData.map(data => data.timestamp);
 
     // Create a linear graph
     const canvas = createCanvas(800, 400);
@@ -128,12 +160,12 @@ const generateGraph = async (guid_device) => {
       },
       options: {
         scales: {
-          x: { 
+          x: {
             type: 'time', // Use the time scale
-            time: { unit: 'minute' } 
+            time: { unit: 'minute' }
           },
-          y: { 
-            beginAtZero: false 
+          y: {
+            beginAtZero: false
           }
         }
       }
@@ -185,14 +217,14 @@ async function filterIQ(logs, multiplier = 1.5) {
     const rrStats = calculateQuartilesAndIQR(rrValues);
 
     // Filter HR values based on IQR
-    const filteredHr = hrValues.filter(value => 
-      value >= hrStats.Q1 - multiplier * hrStats.IQR && 
+    const filteredHr = hrValues.filter(value =>
+      value >= hrStats.Q1 - multiplier * hrStats.IQR &&
       value <= hrStats.Q3 + multiplier * hrStats.IQR
     );
 
     // Filter RR values based on IQR
-    const filteredRr = rrValues.filter(value => 
-      value >= rrStats.Q1 - multiplier * rrStats.IQR && 
+    const filteredRr = rrValues.filter(value =>
+      value >= rrStats.Q1 - multiplier * rrStats.IQR &&
       value <= rrStats.Q3 + multiplier * rrStats.IQR
     );
 
@@ -273,7 +305,7 @@ const calculatePercentile = (values, percentile) => {
 
 // DFA Calculation Function
 export const calculateDFA = (data, order = 1) => {
-  const y = data.map((val, i) => data.slice(0, i+1)
+  const y = data.map((val, i) => data.slice(0, i + 1)
     .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
   const boxSizes = [...new Set(Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(val => val <= data.length / 2))];
   const fluctuation = boxSizes.map(boxSize => {
@@ -287,11 +319,182 @@ export const calculateDFA = (data, order = 1) => {
       .reduce((acc, val) => acc + val, 0) / (reshaped.length * reshaped[0].length));
   });
   const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr => arr.map(val => Math.log10(val)));
-  const alpha = (logFluctuation.reduce((acc, val, i) => acc + (val * logBoxSizes[i]), 0) - 
-    (logFluctuation.reduce((acc, val) => acc + val, 0) * logBoxSizes.reduce((acc, val) => acc + val, 0) / logBoxSizes.length)) / 
+  const alpha = (logFluctuation.reduce((acc, val, i) => acc + (val * logBoxSizes[i]), 0) -
+    (logFluctuation.reduce((acc, val) => acc + val, 0) * logBoxSizes.reduce((acc, val) => acc + val, 0) / logBoxSizes.length)) /
     (logBoxSizes.reduce((acc, val) => acc + Math.pow(val, 2), 0) - Math.pow(logBoxSizes.reduce((acc, val) => acc + val, 0), 2) / logBoxSizes.length);
   return alpha;
 };
+
+function padToPowerOfTwo(arr) {
+  const nextPowerOfTwo = Math.pow(2, Math.ceil(Math.log2(arr.length)));
+  const paddedArray = new Array(nextPowerOfTwo).fill(0);
+  for (let i = 0; i < arr.length; i++) {
+    paddedArray[i] = arr[i];
+  }
+  return paddedArray;
+}
+
+export function calculateAdvancedMetrics(rrIntervals) {
+  if (rrIntervals.length < 2) {
+    return null; // Tidak cukup data untuk perhitungan
+  }
+
+  const sortedIntervals = rrIntervals.slice().sort((a, b) => a - b); // Salin dan urutkan
+
+  // Median 3dp
+  const midIndex = Math.floor(sortedIntervals.length / 2);
+  const median =
+    sortedIntervals.length % 2 === 0
+      ? (sortedIntervals[midIndex - 1] + sortedIntervals[midIndex]) / 2
+      : sortedIntervals[midIndex];
+  const median3dp = parseFloat(median.toFixed(3)); // Pembulatan ke 3 desimal
+
+  // Mean, Max, Min
+  const sum = rrIntervals.reduce((acc, val) => acc + val, 0);
+  const mean = sum / rrIntervals.length;
+  const max = Math.max(...rrIntervals);
+  const min = Math.min(...rrIntervals);
+
+  // RMSSD
+  const squaredDiffs = [];
+  for (let i = 1; i < rrIntervals.length; i++) {
+    const diff = rrIntervals[i] - rrIntervals[i - 1];
+    squaredDiffs.push(diff * diff);
+  }
+  const rmssd = Math.sqrt(
+    squaredDiffs.reduce((acc, val) => acc + val, 0) / squaredDiffs.length
+  );
+
+  // SDNN (Standard Deviation of NN intervals)
+  const avgNN = mean; // Mean RR sama dengan rata-rata interval NN
+  const sdnn = Math.sqrt(
+    rrIntervals.reduce((acc, val) => acc + Math.pow(val - avgNN, 2), 0) /
+    (rrIntervals.length - 1)
+  );
+
+  // Tambahkan padding agar panjang array menjadi pangkat dua
+  const paddedRRIntervals = padToPowerOfTwo(rrIntervals);
+  console.log(paddedRRIntervals.length, 'Padded rrIntervals');
+
+  // console.log(rrIntervals.length, 'rrInterval')
+  // FFT untuk HF dan LF
+  const fft = new FFT(paddedRRIntervals.length);
+  const out = fft.createComplexArray();
+  fft.realTransform(out, rrIntervals);
+
+  const samplingRate = 1; // Sesuaikan dengan sampling rate yang sebenarnya
+  const frequencies = fft.getFrequencyBins(samplingRate);
+  const powerSpectrum = out.map((value, index) => {
+    return Math.sqrt(value.real * value.real + value.imag * value.imag) /
+      rrIntervals.length;
+  });
+
+  let hf = 0,
+    lf = 0;
+  for (let i = 0; i < powerSpectrum.length; i++) {
+    if (frequencies[i] >= 0.15 && frequencies[i] <= 0.4) {
+      hf += powerSpectrum[i] * powerSpectrum[i];
+    } else if (frequencies[i] >= 0.04 && frequencies[i] <= 0.15) {
+      lf += powerSpectrum[i] * powerSpectrum[i];
+    }
+  }
+
+  const lfHfRatio = lf / hf;
+
+  // --
+
+  // if (!fs.existsSync('./data')) {
+  //   fs.mkdir('/data');
+  // }
+
+  // function getDateKey(type = 'default') {
+  //   const date = new Date();
+  //   if(type == 'default'){
+  //     const year = date.getFullYear();
+  //     const month = String(date.getMonth() + 1).padStart(2, '0');
+  //     const day = String(date.getDate()).padStart(2, '0');
+  //     return `${year}${month}${day}`;
+  //   }
+
+  //   if(type == 'DateWithHour'){
+  //     const year = date.getFullYear();
+  //     const month = String(date.getMonth() + 1);
+  //     const day = String(date.getDate());
+  //     const Hour = String(date.getHours());
+  //     return `${year}-${month}-${day}T${Hour}`;
+  //   }
+  // }
+
+
+  // function loadJson(filePath) {
+  //   if (fs.existsSync(filePath)) {
+  //     const data = fs.readFileSync(filePath);
+  //     return JSON.parse(data);
+  //   } else {
+  //     return {};  // Kembali objek kosong jika file belum ada
+  //   }
+  // }
+
+  // const data = loadJson(`./data/data_${getDateKey()}.json`);
+  // const namefile = `data_${getDateKey()}.json`;
+  // // fs.writeFileSync(`./data/data_${getDateKey()}.json`, JSON.stringify(data, null, 2), 'utf8');
+  // data[getDateKey('DateWithHour')]
+
+  return {
+    median3dp,
+    mean,
+    max,
+    min,
+    rmssd,
+    sdnn,
+    hf,
+    lf,
+    lfHfRatio,
+  };
+}
+
+async function calculateMetricsAfterIQFilter(filteredLogs) {
+  const results = {};
+
+  for (const intervalData of filteredLogs) {
+    const { interval, logs } = intervalData;
+    const rrValues = logs.map((log) => log.RR);
+    const hrValues = logs.map((log) => log.HR);
+
+    if (rrValues.length < 2 || hrValues.length < 2) {
+      // Filter jika tidak terdapat data yg cukup
+      continue;
+    }
+
+    console.log({ rrValues, hrValues })
+
+    const hrMetrics = calculateMetrics(hrValues);
+    const rrMetrics = calculateMetrics(rrValues); // Pindahkan perhitungan advancedMetrics ke sini
+    const advancedMetrics = calculateAdvancedMetrics(rrValues);
+
+    results[interval] = {
+      HR: hrMetrics,
+      RR: {
+        ...rrMetrics,
+        ...advancedMetrics,
+      },
+    };
+  }
+  return results;
+}
+
+
+// // Fungsi helper untuk menghitung Q1, Q3, dan IQR
+// function calculateQuartilesAndIQR(values) {
+//   values.sort((a, b) => a - b);
+//   const midIndex = Math.floor(values.length / 2);
+
+//   const Q1 = values[Math.floor(midIndex / 2)];
+//   const Q3 = values[Math.floor(midIndex + midIndex / 2)];
+//   const IQR = Q3 - Q1;
+
+//   return { Q1, Q3, IQR };
+// }
 
 
 // Function to calculate frequency domain features
@@ -419,9 +622,9 @@ const calculateHRVMetrics = (rrIntervals) => {
   const minRR = Math.min(...rrIntervals);
   const maxRR = Math.max(...rrIntervals);
   const { hf, lf, lfhratio } = calculateFrequencyDomain(rrIntervals);
-  return { pnn50, dfa, minRR, maxRR, rmssd, sdnn, hf, lf, lfhratio, s1, s2};
-  
-  
+  return { pnn50, dfa, minRR, maxRR, rmssd, sdnn, hf, lf, lfhratio, s1, s2 };
+
+
 };
 
 const processHeartRateData = async () => {
@@ -492,6 +695,7 @@ const processHeartRateData = async () => {
     console.error('Error processing heart rate data:', error);
   }
 };
+
 // Cron job scheduled every 10 minutes
 cron.schedule('*/10 * * * *', () => {
   console.log('Running heart rate data processing every 10 minutes...');
@@ -502,104 +706,104 @@ cron.schedule('*/10 * * * *', () => {
 cron.schedule('*/5 * * * *', async () => {
   console.log('Running cron job fillMissingRRForLogsWithHR....');
   fillMissingRRForLogsWithHR();
-    console.log('Running cron job...');
+  console.log('Running cron job...');
 
-    try {
-        
-        await runAllMethods();
-    
-        console.log('Running generateGraph for each unique guid_device...');
-        const uniqueGuidDevices = await Log.distinct('guid_device');
-        for (const guid_device of uniqueGuidDevices) {
-            await generateGraph(guid_device);
-        }
-        console.log('generateGraph completed for all guid_device.');
+  try {
 
-    } catch (error) {
-        console.error('Error during cron job execution:', error);
+    await runAllMethods();
+
+    console.log('Running generateGraph for each unique guid_device...');
+    const uniqueGuidDevices = await Log.distinct('guid_device');
+    for (const guid_device of uniqueGuidDevices) {
+      await generateGraph(guid_device);
     }
+    console.log('generateGraph completed for all guid_device.');
+
+  } catch (error) {
+    console.error('Error during cron job execution:', error);
+  }
 });
-  // generateGraph("C0680226");
-  processHeartRateData();
-  const fillMissingRRForLogsWithHR = async () => {
-    try {
-        console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
-        const logsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
-        const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } }).sort({ create_at: 1 }).limit(1000);
+// generateGraph("C0680226");
+// processHeartRateData();
+const fillMissingRRForLogsWithHR = async () => {
+  try {
+    console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
+    const logsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
+    const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } }).sort({ create_at: 1 }).limit(1000);
 
-        if (!logsWithHRNoRR.length) {
-            console.log('No logs found with HR but no RR.');
-            return { message: 'No logs found with HR but no RR.', status: 404 };
-        }
-
-        console.log(`Found ${logsWithHRNoRR.length} logs with HR but no RR.`);
-        console.log(`Found ${logsWithHRAndRR.length} logs with both HR and RR.`);
-
-        let totalUpdated = 0;
-        let totalFailed = 0;
-        let logsWithHRNoRRIds = [];
-
-        const bulkOps = logsWithHRNoRR.map((log, index) => {
-            logsWithHRNoRRIds.push(log._id);
-            let nearestRRValue = null;
-            let sourceLogId = null;
-
-            for (let i = 1; i < logsWithHRAndRR.length; i++) {
-                const prevIndex = index - i;
-                const nextIndex = index + i;
-
-                if (prevIndex >= 0 && logsWithHRAndRR[prevIndex].RR !== null) {
-                    nearestRRValue = logsWithHRAndRR[prevIndex].RR;
-                    sourceLogId = logsWithHRAndRR[prevIndex]._id;
-                    break;
-                }
-                if (nextIndex < logsWithHRAndRR.length && logsWithHRAndRR[nextIndex].RR !== null) {
-                    nearestRRValue = logsWithHRAndRR[nextIndex].RR;
-                    sourceLogId = logsWithHRAndRR[nextIndex]._id;
-                    break;
-                }
-            }
-
-            if (nearestRRValue !== null) {
-                const updatedLog = {
-                    ...log.toObject(),
-                    RR: nearestRRValue,
-                    rrRMS: 0 
-                };
-                delete updatedLog._id;
-
-                console.log(`Filled missing RR for log at index ${index} (ID: ${log._id}) with value ${nearestRRValue} from log ID: ${sourceLogId}.`);
-                console.log(`Set rrRMS to 0 for log at index ${index} (ID: ${log._id}).`);
-                return {
-                    updateOne: {
-                        filter: { _id: log._id },
-                        update: { $set: updatedLog }
-                    }
-                };
-            }
-            return null;
-        }).filter(op => op !== null);
-
-        if (bulkOps.length > 0) {
-            const bulkWriteResult = await Log.bulkWrite(bulkOps);
-            totalUpdated = bulkWriteResult.modifiedCount;
-            totalFailed = bulkOps.length - totalUpdated;
-        }
-
-        const remainingLogsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
-        const remainingCount = remainingLogsWithHRNoRR.length;
-
-        console.log(`RR and rrRMS values filled successfully. Total updated: ${totalUpdated}, Total failed: ${totalFailed}, Remaining logs with HR but no RR: ${remainingCount}`);
-        return { 
-            message: 'RR and rrRMS values filled successfully.', 
-            totalUpdated, 
-            totalFailed, 
-            logsWithHRNoRRIds, 
-            remainingCount,
-            status: 200 
-        };
-    } catch (error) {
-        console.error('Error filling missing RR and rrRMS values:', error);
-        return { message: 'Internal server error.', status: 500 };
+    if (!logsWithHRNoRR.length) {
+      console.log('No logs found with HR but no RR.');
+      return { message: 'No logs found with HR but no RR.', status: 404 };
     }
+
+    console.log(`Found ${logsWithHRNoRR.length} logs with HR but no RR.`);
+    console.log(`Found ${logsWithHRAndRR.length} logs with both HR and RR.`);
+
+    let totalUpdated = 0;
+    let totalFailed = 0;
+    let logsWithHRNoRRIds = [];
+
+    const bulkOps = logsWithHRNoRR.map((log, index) => {
+      logsWithHRNoRRIds.push(log._id);
+      let nearestRRValue = null;
+      let sourceLogId = null;
+
+      for (let i = 1; i < logsWithHRAndRR.length; i++) {
+        const prevIndex = index - i;
+        const nextIndex = index + i;
+
+        if (prevIndex >= 0 && logsWithHRAndRR[prevIndex].RR !== null) {
+          nearestRRValue = logsWithHRAndRR[prevIndex].RR;
+          sourceLogId = logsWithHRAndRR[prevIndex]._id;
+          break;
+        }
+        if (nextIndex < logsWithHRAndRR.length && logsWithHRAndRR[nextIndex].RR !== null) {
+          nearestRRValue = logsWithHRAndRR[nextIndex].RR;
+          sourceLogId = logsWithHRAndRR[nextIndex]._id;
+          break;
+        }
+      }
+
+      if (nearestRRValue !== null) {
+        const updatedLog = {
+          ...log.toObject(),
+          RR: nearestRRValue,
+          rrRMS: 0
+        };
+        delete updatedLog._id;
+
+        console.log(`Filled missing RR for log at index ${index} (ID: ${log._id}) with value ${nearestRRValue} from log ID: ${sourceLogId}.`);
+        console.log(`Set rrRMS to 0 for log at index ${index} (ID: ${log._id}).`);
+        return {
+          updateOne: {
+            filter: { _id: log._id },
+            update: { $set: updatedLog }
+          }
+        };
+      }
+      return null;
+    }).filter(op => op !== null);
+
+    if (bulkOps.length > 0) {
+      const bulkWriteResult = await Log.bulkWrite(bulkOps);
+      totalUpdated = bulkWriteResult.modifiedCount;
+      totalFailed = bulkOps.length - totalUpdated;
+    }
+
+    const remainingLogsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
+    const remainingCount = remainingLogsWithHRNoRR.length;
+
+    console.log(`RR and rrRMS values filled successfully. Total updated: ${totalUpdated}, Total failed: ${totalFailed}, Remaining logs with HR but no RR: ${remainingCount}`);
+    return {
+      message: 'RR and rrRMS values filled successfully.',
+      totalUpdated,
+      totalFailed,
+      logsWithHRNoRRIds,
+      remainingCount,
+      status: 200
+    };
+  } catch (error) {
+    console.error('Error filling missing RR and rrRMS values:', error);
+    return { message: 'Internal server error.', status: 500 };
+  }
 };

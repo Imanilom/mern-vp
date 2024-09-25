@@ -26,19 +26,18 @@ function Summary() {
     const fetchInit = async () => {
         try {
             let url = '/api/predictionfactor/getinfo';
-            let url2 = `/api/recomendation/getAll/${DocterPatient._id}`;
+            let url2 = `/api/recomendation/getAll/${currentUser._id}`;
             let url3 = '/api/treatment/getTreatment';
             let url4 = `/api/user/riwayatdeteksi/${currentUser._id}`
 
             if (currentUser.role == 'user') {
-                url4 = `/api/user/riwayatdeteksi/${DocterPatient._id}`
                 url3 += `/${currentUser._id}`
             } else {
+                url += `?patient=${DocterPatient._id}`;
+                url2 = `/api/recomendation/getAll/${DocterPatient._id}`;
                 url3 += `/${DocterPatient._id}`
+                url4 = `/api/user/riwayatdeteksi/${DocterPatient._id}`
             }
-
-            if (currentUser.role != 'user') url += `?patient=${DocterPatient._id}`;
-            if (currentUser.role == 'user') url2 = `/api/recomendation/getAll/${currentUser._id}`;
 
             const [res, res2, res3, res4] = await Promise.all([
                 await fetch(url),

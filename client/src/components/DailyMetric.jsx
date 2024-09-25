@@ -1,6 +1,6 @@
 function DailyMetric(props) {
     const {dailyMetrics, medianProperty} = props;
-
+    console.log({dailyMetrics})
     const handleDfaAvg = () => {
         let result = 0;
         let dfaValues = dailyMetrics.map(val => val.dfa);
@@ -41,7 +41,7 @@ function DailyMetric(props) {
                       <td className="px-6 py-4 whitespace-nowrap">{metric.pnn50 !== null ? metric.pnn50.toFixed(2) : 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{metric.s1 !== null ? metric.s1.toFixed(2) : 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{metric.s2 !== null ? metric.s2.toFixed(2) : 'N/A'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null ? metric.dfa.toFixed(2) : 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa ? metric.dfa.toFixed(2) : 'N/A'}</td>
                     </tr>
                   );
                 })
