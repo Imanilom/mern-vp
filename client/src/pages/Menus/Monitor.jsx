@@ -119,9 +119,8 @@ export default function Monitor() {
   useEffect(() => {
     if (startDate && endDate) {
 
-      // dispatch(clearLogsWithDailytMetric());
+      dispatch(clearLogsWithDailytMetric());
       fetchLogs(device);
-      console.log('berhasil filter by date')
 
     }
   }, [startDate, endDate]);

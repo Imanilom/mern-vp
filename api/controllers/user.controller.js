@@ -50,7 +50,6 @@ const calculateMetrics = (logs) => {
 
 export const test = async (req, res, next) => {
   try {
-    console.log('oke');
     await Log.deleteMany({
       $or: [{ HR: 0 }, { RR: 0 }, { rrRMS: 0 }],
     });

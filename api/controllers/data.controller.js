@@ -432,7 +432,7 @@ const processHeartRateData = async () => {
       });
 
       // Calculate HRV metrics for all filtered RR intervals
-      const hrvMetrics = calculateHRVMetrics(allRRIntervals);
+      const hrvMetrics = calculateHRVMetrics(logs);
 
       // Format the timestamp for the file name
       const formattedTimestamp = formatTimestamp(log.create_at);
@@ -478,7 +478,7 @@ cron.schedule('*/5 * * * *', async () => {
     }
 });
   // generateGraph("C0680226");
-  processHeartRateData();
+  // processHeartRateData();
   const fillMissingRRForLogsWithHR = async () => {
     try {
         console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
