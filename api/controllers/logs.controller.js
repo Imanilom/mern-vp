@@ -27,7 +27,7 @@ export const checkAndFillLogs = async () => {
         for (const log of logs) {
             let isUpdated = false; // Flag untuk menandai apakah log diupdate
 
-            console.log(`Processing log with ID ${log._id}, current RR: ${log.RR}, current rrRMS: ${log.rrRMS}, isChecked: ${log.isChecked}`);
+            // console.log(`Processing log with ID ${log._id}, current RR: ${log.RR}, current rrRMS: ${log.rrRMS}, isChecked: ${log.isChecked}`);
 
             if (log.RR === null || log.RR === undefined) {
                 // Mencari nilai RR terdekat dari log dengan HR dan RR
@@ -51,12 +51,12 @@ export const checkAndFillLogs = async () => {
                 // Jika log sudah memiliki nilai RR dan rrRMS, dan flag isChecked adalah false, ubah flag ke true
                 log.isChecked = true;
                 isUpdated = true;
-                console.log(`Log with ID ${log._id} has RR and rrRMS, marking as checked.`);
+                // console.log(`Log with ID ${log._id} has RR and rrRMS, marking as checked.`);
             }
 
             if (isUpdated) {
                 await log.save(); // Menyimpan perubahan pada database
-                console.log(`Log with ID ${log._id} has been marked as checked and updated.`);
+                // console.log(`Log with ID ${log._id} has been marked as checked and updated.`);
             } else {
                 console.log(`Log with ID ${log._id} was not updated.`);
             }

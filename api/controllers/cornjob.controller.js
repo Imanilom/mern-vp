@@ -178,7 +178,6 @@ const generateGraph = async (guid_device) => {
 // Schedule Cron Job to run every 5 minutes
 cron.schedule('*/5 * * * *', async () => {
   console.log('Running cron job...');
-
   try {
     // Get unique guid_device values from the Log collection
     const uniqueGuidDevices = await Log.distinct('guid_device');

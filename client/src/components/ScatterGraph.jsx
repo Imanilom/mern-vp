@@ -9,9 +9,10 @@ let scroolState = 1;
 
 function ScatterGraph({ data, label, keyValue, color }) {
     const chartRef = useRef();
-
+    const YCount = 10;
+    const slice = 1;
     const triggerSimulate = (opt) => {
-        if (opt == 'plus' && scroolState < 2) {
+        if (opt == 'plus' && scroolState < slice) {
             scroolState++;
             simulateScroll(768 * (scroolState - 1))
         } else if (opt == 'decrement' && scroolState > 1) {
@@ -67,7 +68,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
 
         // porperty canvas chart
         const height = 500;
-        const width = 768 * 2;
+        const width = 768 * slice;
         const margin = { top: 20, right: 20, bottom: 30, left: 40 }
 
         const svg = d3.select(chartRef.current)
@@ -126,7 +127,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
         svg.append('g')
             .attr('transform', `translate(0, ${height - margin.bottom - 10})`)
             .call(d3.axisBottom(x)
-                .ticks(20)
+                .ticks(YCount)
                 .tickPadding(10)
             )
             .selectAll("line") // Memilih elemen line pada ticks
@@ -140,7 +141,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
         svg.append('g')
             .attr('transform', `translate(${margin.left},${-margin.top})`)
             .call(d3.axisLeft(y)
-                .ticks(20)
+                .ticks(YCount)
             )
 
         //zoom event
@@ -154,11 +155,11 @@ function ScatterGraph({ data, label, keyValue, color }) {
             changeZoomText(e.transform.k);
 
             x.call(d3.axisBottom(newX)
-                .ticks(20)
+                .ticks(YCount)
                 .tickPadding(10))
 
             y.call(d3.axisLeft(newY)
-                .ticks(20))
+                .ticks(YCount))
 
             linepath.attr('d', d3.line()
                 .x(d => newX(d[0]))
@@ -202,16 +203,18 @@ function ScatterGraph({ data, label, keyValue, color }) {
         <div className='relative p-4'>
             <div id="tooltip" style={styleTooltype}></div>
             <div className="me-auto mb-3 flex items-center sm:justify-start justify-between">
-                <div>
+                {slice > 1 ? (
+                    <div>
 
-                <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('decrement')}>
-                    <FaAngleLeft color='white' size={16} />
+                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('decrement')}>
+                            <FaAngleLeft color='white' size={16} />
 
-                </button>
-                <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('plus')}>
-                    <FaAngleRight color='white' size={16} />
-                </button>
-                </div>
+                        </button>
+                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('plus')}>
+                            <FaAngleRight color='white' size={16} />
+                        </button>
+                    </div>
+                ) : null}
                 <div className="flex sm:flex-row flex-col">
                     <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
                         Zoom level 1
