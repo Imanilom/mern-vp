@@ -156,6 +156,7 @@ const generateGraph = async (guid_device) => {
 async function filterIQ(logs, multiplier = 1.5) {
   console.log('Original Logs:', logs); // Log original logs
   const filteredLogs = [];
+  const rawFilteredLogs = [];
 
   // Group logs by 10-second intervals
   const groupedLogs = [];
@@ -197,11 +198,45 @@ async function filterIQ(logs, multiplier = 1.5) {
 
     // If filtered data is available, push all valid results to filteredLogs
     for (let i = 0; i < Math.min(filteredHr.length, filteredRr.length); i++) {
-      filteredLogs.push({ HR: filteredHr[i], RR: filteredRr[i], timestamp: group[i].timestamp });
+      const filteredLog = { HR: filteredHr[i], RR: filteredRr[i], timestamp: group[i].timestamp };
+      filteredLogs.push(filteredLog);
+      rawFilteredLogs.push(group[i]); // Save raw data
     }
   });
 
   console.log('Filtered Logs:', filteredLogs); // Log filtered logs
+
+  // Save raw filtered logs to JSON
+  const resultsDir = path.join(__dirname, 'hrv-results');
+  if (!fs.existsSync(resultsDir)) {
+    fs.mkdirSync(resultsDir, { recursive: true });
+  }
+  const formattedTimestamp = formatTimestamp(new Date());
+  const fileName = path.join(resultsDir, `filtered_logs_${formattedTimestamp}.json`);
+
+  // Calculate HRV metrics for the filtered RR intervals
+  const rrIntervals = filteredLogs.map(log => log.RR);
+  const hrvMetrics = calculateHRVMetrics(rrIntervals);
+
+  // Change the format of the JSON data
+  const formattedJsonData = rawFilteredLogs.map(log => ({
+    timestamp: log.timestamp,
+    HR: log.HR,
+    RR: log.RR,
+    metrics: hrvMetrics // Add HRV metrics
+  }));
+
+  // Log the formatted JSON data before saving
+  console.log('Formatted JSON Data:', JSON.stringify(formattedJsonData, null, 2));
+
+  // Save the formatted JSON data
+  try {
+    fs.writeFileSync(fileName, JSON.stringify(formattedJsonData, null, 2));
+    console.log(`JSON data saved successfully to ${fileName}`);
+  } catch (error) {
+    console.error(`Error saving JSON data to ${fileName}:`, error);
+  }
+
   return filteredLogs;
 }
 
@@ -445,11 +480,12 @@ const processHeartRateData = async () => {
     const formattedTimestamp = formatTimestamp(oldestTimestamp);
     
     // Save the HRV metrics and filtered data as a JSON file
-    const fileName = path.join(resultsDir, `log_${formattedTimestamp}.json`);
-    fs.writeFileSync(fileName, JSON.stringify({ hrvMetrics, filteredData: allFilteredData, raw: logs }, null, 2));
-
-    // Mark the logs as processed (isChecked: true)
-    await Log.updateMany({ _id: { $in: logs.map(log => log._id) } }, { $set: { isChecked: true } });
+    const fileName = path.join(resultsDir, `filtered_logs_${formattedTimestamp}.json`);
+    const jsonData = allFilteredData.map(log => ({
+      ...log, // Include existing log data
+      metrics: hrvMetrics // Add HRV metrics
+    }));
+    fs.writeFileSync(fileName, JSON.stringify(jsonData, null, 2));
 
     console.log(`Processed and saved data logs from ${oldestTimestamp} to ${tenMinutesLater}.`);
   } catch (error) {
