@@ -471,7 +471,7 @@ async function calculateMetricsAfterIQFilter(filteredLogs) {
     const hrMetrics = calculateMetrics(hrValues);
     const rrMetrics = calculateMetrics(rrValues); // Pindahkan perhitungan advancedMetrics ke sini
     const advancedMetrics = calculateAdvancedMetrics(rrValues);
-
+    
     results[interval] = {
       HR: hrMetrics,
       RR: {
