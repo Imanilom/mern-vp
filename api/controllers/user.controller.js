@@ -206,10 +206,23 @@ export const getRiwayatDeteksiWithDfa = async (req, res) => {
   let result = [];
   let limit = 4;
   const page = parseInt(req.query.page) || 0;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
 
+  let filter = {
+    userRef: req.params.userId 
+  }
+
+  if(startDate && endDate){
+    filter.Date = {
+      $gte : new Date(startDate),
+      $lte : new Date(endDate) 
+    }
+  }
+  
   const [countDoc, theActivities] = await Promise.all([
-    Aktivitas.countDocuments({ userRef: req.params.userId }),
-    Aktivitas.find({ userRef: req.params.userId })
+    Aktivitas.countDocuments(filter),
+    Aktivitas.find(filter)
       .sort({ Date: -1 })
       .limit(limit)
       .skip(limit * page)

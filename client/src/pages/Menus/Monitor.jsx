@@ -16,68 +16,10 @@ import DailyMetric from '../../components/DailyMetric';
 import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
 import LineGraph from '../../components/LineGraph';
 import ScatterGraph from '../../components/ScatterGraph';
+import AOS from 'aos';
+
 
 let results = []
-
-const calculateDFA = (data, order = 1) => {
-  const y = data.map((val, i) => data.slice(0, i + 1).reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
-  const boxSizes = [...new Set(Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(val => val <= data.length / 2))];
-  const fluctuation = boxSizes.map(boxSize => {
-    const reshaped = Array.from({ length: Math.floor(data.length / boxSize) }, (_, i) => y.slice(i * boxSize, (i + 1) * boxSize));
-    const localTrends = reshaped.map(segment => {
-      const x = Array.from({ length: segment.length }, (_, i) => i);
-      const [a, b] = [0, 1].map(deg => segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length);
-      return segment.map((val, i) => a * x[i] + b);
-    });
-    return Math.sqrt(localTrends.flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2))).reduce((acc, val) => acc + val, 0) / (reshaped.length * reshaped[0].length));
-  });
-  const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr => arr.map(val => Math.log10(val)));
-  const alpha = (logFluctuation.reduce((acc, val, i) => acc + (val * logBoxSizes[i]), 0) - (logFluctuation.reduce((acc, val) => acc + val, 0) * logBoxSizes.reduce((acc, val) => acc + val, 0) / logBoxSizes.length)) /
-    (logBoxSizes.reduce((acc, val) => acc + Math.pow(val, 2), 0) - Math.pow(logBoxSizes.reduce((acc, val) => acc + val, 0), 2) / logBoxSizes.length);
-  return alpha;
-}
-
-const calculateMetrics = (logs) => {
-  const rrIntervals = logs.map((log) => log.RR);
-  const nnIntervals = [];
-  if (rrIntervals.length < 2) {
-    // Not enough data points to calculate metrics
-    return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null };
-  }
-  let sumSquaredDiffs = 0; // For SDNN
-  let sumSuccessiveDiffs = 0; // For RMSSD
-  let nn50Count = 0;
-
-  for (let i = 1; i < rrIntervals.length; i++) {
-    const diff = Math.abs(rrIntervals[i] - rrIntervals[i - 1]);
-    nnIntervals.push(diff);
-
-    sumSquaredDiffs += diff * diff; // Square the difference and add to sum (for RMSSD)
-    if (diff > 50) {
-      nn50Count++;
-    }
-  }
-
-  const avgNN = nnIntervals.reduce((sum, interval) => sum + interval, 0) / nnIntervals.length;
-
-  const squaredDiffsFromMean = nnIntervals.map((interval) => Math.pow(interval - avgNN, 2));
-  const sumSquaredDiffsFromMean = squaredDiffsFromMean.reduce((sum, diff) => sum + diff, 0);
-
-  const variance = sumSquaredDiffsFromMean / (nnIntervals.length - 1);
-  const sdnn = Math.sqrt(variance);
-
-  const rmssd = Math.sqrt(sumSquaredDiffs / nnIntervals.length);
-  const pnn50 = (nn50Count / nnIntervals.length) * 100;
-
-  // Calculate S1 & S2
-  const s1 = Math.sqrt(nnIntervals.reduce((sum, interval) => sum + Math.pow(interval - avgNN, 2), 0) / nnIntervals.length);
-  const s2 = Math.sqrt(nnIntervals.reduce((sum, interval) => sum + Math.pow(interval + avgNN, 2), 0) / nnIntervals.length);
-
-  // console.log('dfa' , dfa)
-  // console.log(logs)
-  results.push({ sdnn, rmssd, pnn50, s1, s2 });
-  return { sdnn, rmssd, pnn50, s1, s2 };
-};
 
 export default function Monitor() {
 
@@ -108,6 +50,9 @@ export default function Monitor() {
   const [borderColor, setBorderColor] = useState([]);
 
   useEffect(() => {
+    AOS.init({
+      duration: 700
+    })
     fetchLogs(device);
     // readFileExistOnFTP('2023-07-24', '2024-08-29');
   }, []);
@@ -130,11 +75,11 @@ export default function Monitor() {
       if (currentUser.role != 'user') {
         url = `/api/user/test/${device}`;
       }
-      
+
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       }
-      console.log({url}, currentUser.role != 'user' && device)
+      console.log({ url }, currentUser.role != 'user' && device)
       const response = await fetch(url);
       const data = await response.json();
       console.log({ data })
@@ -149,8 +94,8 @@ export default function Monitor() {
       }
 
       // let payloadRedux = {};
-      const sortedLogs = data.logs.sort((a, b) => b.timestamp - a.timestamp); // Sort logs from newest to oldest
-      setLogs(sortedLogs);     
+      const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
+      setLogs(sortedLogs);
       setDailyMetrics(data.metricDaily); // butuh date
       // payloadRedux.logs = sortedLogs;
 
@@ -160,7 +105,7 @@ export default function Monitor() {
         if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
         if (item.activity === 'Berolahraga') return 'rgba(116, 12, 224, 0.8)'; // Ungu untuk Berolahraga
         // return 'rgba(75, 192, 192, 1)'; // Warna default
-        return 'rgba(75, 192, 192, 1)'; // Warna default
+        return 'rgba(7, 172, 123, 1)'; // Warna default
       });
 
       setBorderColor(borderColor);
@@ -205,11 +150,11 @@ export default function Monitor() {
       //   }
 
       //   setMedianProperty(median);
-      
-        // payloadRedux.medianPropertyR = median;
-        // dispatch(setLogsWithDailyMetric(payloadRedux));
-        // dispatch(setDefautlFetchTrue());
-        // console.log(median)
+
+      // payloadRedux.medianPropertyR = median;
+      // dispatch(setLogsWithDailyMetric(payloadRedux));
+      // dispatch(setDefautlFetchTrue());
+      // console.log(median)
       // }
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -271,21 +216,43 @@ export default function Monitor() {
   return (
     <div>
       <main className=''>
-        <section className="bg-white flex">
+        <section className="bgg-bl flex text-white">
           <Side />
           <div className="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-5">
-            <div className="relative flex flex-col min-w-0 break-words bg-white w-full">
+            <div className="relative flex flex-col min-w-0 break-words bgg-bl w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0">
                 <div className="flex flex-wrap items-center">
                   <ButtonOffCanvas index={2} />
-                  <div className="relative w-full sm:px-4 max-w-full flex-grow flex-1 flex justify-betwee">
-                    {currentUser.role == 'user' ? (
-                      <h3 className="font-semibold text-base text-blueGray-700">Monitoring || Device {currentUser.role == 'user' ? currentUser.current_device : DocterPatient.current_device} </h3>
-                    ) : (
-                      <div className="md:flex justify-between items-center w-full">
 
-                        <h3 className="font-semibold text-base text-blueGray-700 mb-3">Monitoring || Device {device ?? 'nothing'} </h3>
-                        <select name="" id="" className='max-w-[170px] border border-slate-200 rounded-md px-3 py-1' onChange={handleChangeDevice}>
+                  <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Monitoring</h1>
+
+                </div>
+                <div data-aos="fade-up" className="flex mt-4 items-center">
+                  <div className="">
+                    {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
+                    <DatePicker
+                      selectsRange
+                      startDate={startDate}
+                      endDate={endDate}
+                      onChange={(dates) => {
+                        const [start, end] = dates;
+                        console.log(start, end)
+                        setStartDate(start);
+                        setEndDate(end);
+                      }}
+                      isClearable
+                      placeholderText='Cari berdasarkan range tanggal'
+                      className="p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[320px]"
+                    />
+                    {/* {loading ? (
+                      <span class="ms-4 loader "></span>
+                    ) : null} */}
+
+                  </div>
+                  {currentUser.role == 'user' ? null : (
+                    <div data-aos="fade-up" className="relative w-full sm:px-4 max-w-full flex-grow flex-1 flex justify-betwee">
+                      <div className="md:flex justify-between items-center w-full">
+                        <select name="" id="" className='p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[220px] px-3 py-3' onChange={handleChangeDevice}>
                           <option value="" disabled>Select device Monitoring</option>
                           <option value="C0680226" selected>C0680226</option>
                           <option value="BA903328">BA903328</option>
@@ -295,37 +262,19 @@ export default function Monitor() {
                         ) : null}
 
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
                 </div>
 
                 <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
 
-                <div className="mt-4">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2">Select Date Range</h4>
-                  <DatePicker
-                    selectsRange
-                    startDate={startDate}
-                    endDate={endDate}
-                    onChange={(dates) => {
-                      const [start, end] = dates;
-                      console.log(start, end)
-                      setStartDate(start);
-                      setEndDate(end);
-                    }}
-                    isClearable
-                    className="p-2 border border-gray-300 rounded text-sm md:text-[16px]"
-                  />
-                  {loading ? (
-                    <span class="ms-4 loader "></span>
-                  ) : null}
 
-                </div>
 
               </div>
             </div>
             {logs ? (
-              <div style={{ overflowX: 'auto', marginRight : 40 }}>
+              <div style={{ overflowX: 'auto', marginRight: 40 }}>
 
                 <div className='flex flex-col gap-6'>
                   <LineGraph data={logs} label={`RR`} keyValue={`RR`} color={borderColor} />

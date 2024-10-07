@@ -4,6 +4,8 @@ import Side from '../../components/Side';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Swal from 'sweetalert2';
+import DatePicker from 'react-datepicker';
+import AOS from 'aos';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 
 function Recommendation() {
@@ -13,6 +15,12 @@ function Recommendation() {
   const [isCheckAction, setCheckAction] = useState(false);
   const [id, setId] = useState(null);
   const [isModal, setModal] = useState(false);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [pagination, setPagination] = useState(0);
+  const [currentPagination, setCurrentPagination] = useState(1);
+
+
   const checkboxAction = async (e, properti) => {
 
     if (isCheckAction) {
@@ -84,48 +92,104 @@ function Recommendation() {
 
     } catch (error) {
       console.log(error);
-    }finally{
+    } finally {
       setModal(false)
     }
 
   }
 
-  useEffect(() => {
-    const fetchtdata = async () => {
-      console.log('process..');
-      try {
-        let res;
-        if (currentUser.role != 'user') {
-          res = await fetch(`/api/recomendation/getAll/${DocterPatient._id}`, {
-            method: 'GET',
-
-          });
-        } else {
-          res = await fetch(`/api/recomendation/getAll/${currentUser._id}`, {
-            method: 'GET',
-
-          });
-        }
-
-        const data = await res.json();
-        console.log(data)
-        setRecomendation(data.recomendation);
-      } catch (error) {
-        console.log(error);
-      }
+  const handleChangePagination = (num) => {
+    if (num > 0 && num < pagination + 1) {
+      setCurrentPagination(num);
     }
+  }
 
+  const fetchtdata = async () => {
+    console.log('process..');
+    try {
+      let res;
+      if (currentUser.role != 'user') {
+        let url;
+        url = `/api/recomendation/getAll/${DocterPatient._id}?p=${currentPagination - 1}`;
+        if (startDate && endDate) {
+          url = `/api/recomendation/getAll/${DocterPatient._id}?p=${currentPagination - 1}&startDate=${startDate}&endDate=${endDate}`;
+        }
+        res = await fetch(url, {
+          method: 'GET',
+        });
+
+      } else {
+        let url;
+        url = `/api/recomendation/getAll/${currentUser._id}?p=${currentPagination - 1}`;
+
+        if (startDate && endDate) {
+          url = `/api/recomendation/getAll/${currentUser._id}?p=${currentPagination - 1}&startDate=${startDate}&endDate=${endDate}`;
+        }
+        res = await fetch(url, {
+          method: 'GET',
+
+        });
+      }
+
+      const data = await res.json();
+      console.log(data)
+      setRecomendation(data.recomendation);
+      setPagination(data.lengthPagination) //
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  useEffect(() => {
+    AOS.init({
+      duration: 700
+    })
     fetchtdata();
   }, [])
 
+  useEffect(() => {
+    fetchtdata();
+  }, [currentPagination]);
+
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchtdata();
+    }
+  }, [startDate, endDate]);
+
   return (
-    <main class="bg-white flex">
+    <main class="bgg-bl flex text-white">
       <Side />
-      <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
+      <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
         <ButtonOffCanvas />
-        <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
-          <div class="rounded-t mb-0 px-4 py-3 border-0">
-            <div class="flex flex-wrap flex-col sm:flex-row sm:items-center items-start sm:gap-0 gap-1">
+
+        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-4">Rekomendasi aktivitas</h1>
+
+        <div data-aos="fade-up" className="">
+          {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
+          <DatePicker
+            selectsRange
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(dates) => {
+              const [start, end] = dates;
+              console.log(start, end)
+              setStartDate(start);
+              setEndDate(end);
+            }}
+            isClearable
+            placeholderText='Cari berdasarkan range tanggal'
+            className="py-3 px-4 bg-[#2C2C2C] rounded text-sm md:text-[14px] lg:min-w-[320px] mb-3"
+          />
+          {/* {loading ? (
+                      <span class="ms-4 loader "></span>
+                    ) : null} */}
+
+        </div>
+
+        <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg rounded ">
+          <div class="rounded-t bg-[#363636]/20 mb-0 px-4 py-3 border-0">
+            <div class="flex  flex-wrap flex-col sm:flex-row sm:items-center items-start sm:gap-0 gap-1">
               <div class="relative w-full px-4 max-w-full flex-grow flex-1">
                 <h3 class="font-semibold text-sm md:text-base text-blueGray-700">Rekomendasi</h3>
               </div>
@@ -139,30 +203,30 @@ function Recommendation() {
             </div>
           </div>
 
-          <div class="block w-full overflow-x-auto">
-            <table class="items-center bg-transparent w-full border-collapse ">
+          <div class="block w-full overflow-x-auto" data-aos="fade-right">
+            <table class="items-center bg-transparent w-full  ">
               <thead>
-                <tr>
+                <tr className='bg-[#2f2f2f]'>
                   {currentUser.role == 'user' ? (
-                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Doctor
                     </th>
                   ) : null}
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Berlaku dari
                   </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Hingga tanggal
                   </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Aktivitas
                   </th>
 
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Status
                   </th>
                   {currentUser.role != 'user' ? (
-                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Action
                     </th>
 
@@ -173,9 +237,9 @@ function Recommendation() {
 
               <tbody>
                 {recomendation.length > 0 ? (
-                  recomendation.map((recomendation) => {
+                  recomendation.map((recomendation, i) => {
                     return (
-                      <tr>
+                      <tr className={i % 2 == 0 ? 'bg-[#141414]' : 'bg-[#2f2f2f]'}>
                         {currentUser.role == 'user' ? (
                           <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                             {recomendation.doctor.name}
@@ -219,7 +283,7 @@ function Recommendation() {
                                   type="checkbox"
                                   checked
                                   onChange={() => checkboxAction(event, { id: recomendation._id, checked: true })}
-                                  className="form-checkbox h-5 w-5 text-indigo-600 checked:accent-pink-500"
+                                  className="form-checkbox h-5 w-5 text-indigo-600 bg-[#2f2f2f] checked:accent-[#07AC7B]"
                                 /> done?
                               </>
                             ) : (
@@ -227,7 +291,7 @@ function Recommendation() {
                                 <input
                                   type="checkbox"
                                   onChange={() => checkboxAction(event, { id: recomendation._id, checked: false })}
-                                  className="form-checkbox h-5 w-5 text-indigo-600 checked:accent-pink-500"
+                                  className="form-checkbox h-5 w-5 text-indigo-600 bg-[#2f2f2f] checked:accent-[#07AC7B]"
                                 /> done?
                               </>
                             )}
@@ -254,6 +318,30 @@ function Recommendation() {
             </table>
           </div>
         </div>
+
+        <nav  data-aos="fade-right" aria-label="Page navigation example" className='pb-5 max-w-[400px]' style={{ overflowX: 'auto' }}>
+          <div className="pagination flex gap-2 mb-8 text-sm">
+            {Array.from({ length: pagination }).map((_i, i) => {
+
+              if (i + 1 == currentPagination) {
+                return (
+                  <div className="py-3 px-7 bgg-b text-white">
+                    {i + 1}
+                  </div>
+                )
+              } else {
+                return (
+                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 bg-[#272727] text-white cursor-pointer">
+                    {i + 1}
+                  </div>
+
+                )
+              }
+            })}
+
+
+          </div>
+        </nav>
       </div>
 
       {/* modal */}

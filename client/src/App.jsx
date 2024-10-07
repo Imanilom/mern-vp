@@ -48,53 +48,73 @@ import UpdateAnemnesa from './pages/Menus/UpdateAnemnesa';
 import CreateTreatment from './pages/Menus/CreateTreatment';
 import UpdateTreatment from './pages/Menus/UpdateTreatment';
 
+import { useLocation } from 'react-router-dom';
 
 export default function App() {
 
   return (
-    <BrowserRouter>
-      <Header />
-      <Routes>
-        <Route path='/sign-in' element={<SignIn />} />
-        <Route path='/sign-up' element={<SignUp />} />
-        <Route path='/' element={<Home />} />
-        {/* <Route path='/' element={<Test3d />} /> */}
-        <Route path='/about' element={<About />} />
-        <Route path='/project' element={<Project />} />
+    <>
+      <BrowserRouter>
+        {/* <Header /> */}
+        <MainContent />
+      </BrowserRouter>
 
-        {/* PRIVATE ROUTE */}
-
-        <Route element={<PrivateRoute />}>
-          <Route path='/profile' element={<Profile />} />
-          <Route path='/ringkasan-pasien' element={<Summary />} />
-          <Route path='/monitor' element={<Monitor />} />
-          <Route path='/activity' element={<Activity />} />
-          <Route path='/set/activity/:encrypt' element={<SetActivity />} />
-          <Route path='/my-patients' element={<MyPatients />} />
-          <Route path='/input-medical' element={<InputMedicalHistory />} />
-          <Route path='/createAnamnesa/:riwayatid' element={<CreateAnamnesa />} />
-          <Route path='/create/prediksi_factor' element={<CreatePrediction />} />
-          <Route path='/treatment/create' element={<CreateTreatment />} />
-
-          <Route path='/rekomendasi/detail/:id' element={<RecomendationDetail />} />
-          <Route path='/createRecomendation' element={<CreateRecomendation />} />
-          <Route path='/updateAnemnesa/:id' element={<UpdateAnemnesa />} />
-          <Route path='/updateRecomendation/:id' element={<UpdateRecomendation />} />
-          <Route path='/createActivity' element={<CreateActivity />} />
-          <Route path='/updateActivity/:id' element={<UpdateActivity />} />
-          <Route path='/treatment/update/:id' element={<UpdateTreatment />} />
-          <Route path='/riwayat-medis' element={<MedicalHistories />} />
-          <Route path='/faktor-resiko' element={<RiskFactor />} />
-          <Route path='/prediksi-faktor' element={<RiskPrediction />} />
-          <Route path='/riwayat-deteksi' element={<DetectionHistories />} />
-          <Route path='/treatment' element={<Treatment />} />
-          <Route path='/rekomendasi' element={<Recommendation />} />
-          <Route path='/anamnesa' element={<Anamnesa />} />
-         
-        </Route>
-      </Routes>
-      <Footer />
-    </BrowserRouter>
+    </>
   )
 }
 
+
+function MainContent() {
+
+  const location = useLocation();
+
+  // List of paths where Header should not be displayed
+  const noHeaderPaths = ['/sign-in', '/sign-up'];
+
+  return (
+    <>
+     {!noHeaderPaths.includes(location.pathname) && <Header />}
+    <Routes>
+      <Route path='/sign-in' element={<SignIn />} />
+      <Route path='/sign-up' element={<SignUp />} />
+      <Route path='/' element={<Home />} />
+      {/* <Route path='/' element={<Test3d />} /> */}
+      <Route path='/about' element={<About />} />
+      <Route path='/project' element={<Project />} />
+
+      {/* PRIVATE ROUTE */}
+
+      <Route element={<PrivateRoute />}>
+        <Route path='/profile' element={<Profile />} />
+        <Route path='/ringkasan-pasien' element={<Summary />} />
+        <Route path='/monitor' element={<Monitor />} />
+        <Route path='/activity' element={<Activity />} />
+        <Route path='/set/activity/:encrypt' element={<SetActivity />} />
+        <Route path='/my-patients' element={<MyPatients />} />
+        <Route path='/input-medical' element={<InputMedicalHistory />} />
+        <Route path='/createAnamnesa/:riwayatid' element={<CreateAnamnesa />} />
+        <Route path='/create/prediksi_factor' element={<CreatePrediction />} />
+        <Route path='/treatment/create' element={<CreateTreatment />} />
+
+        <Route path='/rekomendasi/detail/:id' element={<RecomendationDetail />} />
+        <Route path='/createRecomendation' element={<CreateRecomendation />} />
+        <Route path='/updateAnemnesa/:id' element={<UpdateAnemnesa />} />
+        <Route path='/updateRecomendation/:id' element={<UpdateRecomendation />} />
+        <Route path='/createActivity' element={<CreateActivity />} />
+        <Route path='/updateActivity/:id' element={<UpdateActivity />} />
+        <Route path='/treatment/update/:id' element={<UpdateTreatment />} />
+        <Route path='/riwayat-medis' element={<MedicalHistories />} />
+        <Route path='/faktor-resiko' element={<RiskFactor />} />
+        <Route path='/prediksi-faktor' element={<RiskPrediction />} />
+        <Route path='/riwayat-deteksi' element={<DetectionHistories />} />
+        <Route path='/treatment' element={<Treatment />} />
+        <Route path='/rekomendasi' element={<Recommendation />} />
+        <Route path='/anamnesa' element={<Anamnesa />} />
+
+      </Route>
+    </Routes>
+    <Footer />
+    </>
+
+  )
+}

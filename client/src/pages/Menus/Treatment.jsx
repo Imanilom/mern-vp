@@ -8,10 +8,23 @@ function Treatment() {
   const { currentUser, DocterPatient } = useSelector(state => state.user);
   const [history, setHistory] = useState([]);
   const [treatment, setTreatment] = useState(null);
+  const [showInfoDokter, setShowInfo] = useState(false);
+  const [pagination, setPagination] = useState(0);
+  const [currentPagination, setCurrentPagination] = useState(1);
 
   useEffect(() => {
     fetchInit();
   }, [])
+
+  useEffect(() => {
+    fetchInit();
+  }, [currentPagination])
+
+  const handleChangePagination = (num) => {
+    if (num > 0 && num < pagination + 1) {
+      setCurrentPagination(num);
+    }
+  }
 
   const fetchInit = async () => {
     try {
@@ -21,11 +34,14 @@ function Treatment() {
       } else {
         url += `/${DocterPatient._id}`
       }
+      url += `?p=${currentPagination - 1}`;
+
       const res = await fetch(url);
       const data = await res.json();
 
       setTreatment(data.treat);
       setHistory(data.history);
+      setPagination(data.lengthPagination);
       console.log({ data })
     } catch (error) {
       console.log({ error });
@@ -90,23 +106,26 @@ function Treatment() {
   }
 
   return (
-    <main class="bg-white flex">
+    <main class="bgg-bl text-white flex">
       <Side />
-      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-12 sm:mt-24">
+      <div class="w-full xl:w-9/12 mb-12 xl:mb-0 px-4 mx-auto mt-12 sm:mt-16">
         <ButtonOffCanvas />
         {treatment ? (
-          <div class="flex w-full py-4 overflow-x-auto justify-between gap-4 mt-12 items-center flex-col sm:flex-row">
-            <div className="left">
+          <div class="flex w-full py-4 overflow-x-auto justify-between gap-8 mt-12 items-center flex-col sm:flex-row">
+            <div data-aos="fade-right" className="left lg:min-w-[480px]" >
+              <h1 class="text-3xl font-semibold capitalize lg:text-4xl mb-3" >Treatment</h1>
+              <h1 class="font-semibold mb-3">Pengobatan anda saat ini</h1>
+
               {currentUser.role == 'user' ? (
-                <div className="flex gap-2 items-center justify-between ">
-                  <h1 className='text-slate-900 font-bold text-[20px]'>Treatment Pasien</h1>
+                <div className="flex gap-2 items-center justify-end mb-3 ">
+                  {/* <h1 className='text-slate-900 font-bold text-[20px]'>Treatment Pasien</h1> */}
                   <button type='button' className="w-fit px-3 py-1 bg-orange-500 hover:bg-orange-500/90 text-[12px] font-medium text-white rounded-md">Ongoing</button>
                 </div>
               ) : (
-                <div className="flex gap-2 items-center justify-between ">
-                  <h1 className='text-slate-900 font-bold text-[20px]'>Treatment Pasien</h1>
-                  <div className="flex flex-col gap-1">
-                    <button onClick={() => handleSwitchSubmit()} type='button' className="w-fit px-3 py-1 bg-blue-500 hover:bg-blue-500/90 text-[12px] font-medium text-white rounded-md">Tandai treatment telah usai</button>
+                <div className="flex gap-2 items-center justify-end mb-3 ">
+                  {/* <h1 className='text-slate-900 font-bold text-[20px]'>Treatment Pasien</h1> */}
+                  <div className="flex justify-between gap-1">
+                    <button onClick={() => handleSwitchSubmit()} type='button' className="w-fit px-3 py-1 text-[12px] font-medium text-[#101010] bgg-dg rounded-md">Tandai treatment telah usai</button>
                     <Link to={`/treatment/update/${treatment._id}`} className="w-fit px-3 py-1 text-xs font-medium bg-orange-500 text-white rounded-md">Update</Link>
                   </div>
 
@@ -115,21 +134,21 @@ function Treatment() {
 
 
 
-              <table class="max-w-[480px] bg-white shadow-md rounded-lg overflow-hidden">
+              <table class="max-w-[480px] indi overflow-hidden">
                 <tbody>
-                  <tr class="bg-white border-b">
-                    <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold text-gray-900">
+                  <tr class="bg-[#363636]/20 text-white">
+                    <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold ">
                       Detail Treatment
                     </th>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm ">
 
                     </td>
                   </tr>
-                  <tr class="bg-[#E2E3FF]/90 border-b">
-                    <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                  <tr class="bg-[#2f2f2f] ">
+                    <th class="px-6 py-4 text-left text-sm font-medium ">
                       Tanggal
                     </th>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm ">
                       {/* January, 21 2024 */}
                       {new Intl.DateTimeFormat('id-ID', {
                         month: 'long',
@@ -138,19 +157,19 @@ function Treatment() {
                       }).format(new Date(treatment.createdAt))}
                     </td>
                   </tr>
-                  <tr class="bg-white border-b">
-                    <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                  <tr class="bg-[#141414]">
+                    <th class="px-6 py-4 text-left text-sm font-medium ">
                       Diagnosa
                     </th>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm ">
                       {treatment.diagnosis}
                     </td>
                   </tr>
-                  <tr class="bg-[#E2E3FF]/90 border-b">
-                    <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                  <tr class="bg-[#2f2f2f]">
+                    <th class="px-6 py-4 text-left text-sm font-medium ">
                       Tanggal Checkup ulang
                     </th>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm ">
                       {/* January, 21 2024 */}
                       {treatment.followUpDate ? (
                         new Intl.DateTimeFormat('id-ID', {
@@ -161,11 +180,11 @@ function Treatment() {
                       ) : '- dokter tidak meminta anda untuk checkup ulang'}
                     </td>
                   </tr>
-                  <tr class="bg-white border-b">
-                    <th class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium text-gray-900">
+                  <tr class="bg-[#141414]">
+                    <th class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                       Catatan dokter
                     </th>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <td class="px-6 py-4 text-sm ">
                       {treatment.notes != '' ? treatment.notes : '- Tidak ada catatan dari dokter'}
                     </td>
                   </tr>
@@ -173,7 +192,26 @@ function Treatment() {
                 </tbody>
               </table>
 
-              <div class="max-w-[480px] mt-4 relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded-lg ">
+              <div className="flex text-sm justify-between bg-[#363636]/20 rounded-md my-3 px-6 py-3">
+                <p>Informasi pribadi dokter anda</p>
+                <p className='text-[#07AC7B] cursor-pointer' onClick={() => setShowInfo(!showInfoDokter)}>
+                  {showInfoDokter ? 'Hide' : 'Show'}
+                </p>
+              </div>
+
+              {showInfoDokter ? (
+
+                <div className="my-3 bg-center group relative bg-cover h-[35vh] hover:h-[45vh] duration-500 mb-4 rounded-md " style={{ backgroundImage: `url('${treatment.doctor.profilePicture}')` }}>
+                  <div className="bg-black/80 group-hover:bg-black/60 absolute left-0 top-0 w-full h-full rounded-md"></div>
+                </div>
+              ) : null}
+
+            </div>
+
+
+            <div data-aos="fade-up" className="rigth w-full">
+              <h1 class="text-xl font-semibold capitalize lg:text-2xl mb-3">List Obat Pasien </h1>
+              {/* <div class="max-w-[480px] mt-4 relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded-lg ">
                 <div class="rounded-t mb-0 px-4 py-3 border-0">
                   <div class="flex flex-wrap items-center">
                     <div class="relative w-full px-4 max-w-full flex-grow flex-1">
@@ -183,6 +221,8 @@ function Treatment() {
                     </div>
                   </div>
                 </div>
+
+
                 <div class="block w-full overflow-x-auto">
                   <table class="items-center bg-transparent w-full border-collapse ">
                     <thead>
@@ -224,54 +264,68 @@ function Treatment() {
                     </tbody>
                   </table>
                 </div>
+              </div> */}
+
+              <div className="flex flex-col my-3 gap-3">
+                <card className="py-5 w-[90%] hover:w-full px-4 rounded-md duration-150 bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
+                  <p className='text-[18px]'>Bodrexin AE</p>
+                  <p className=''>Dosis Obat : 1 Sendok Makan</p>
+                  <p className=''>Frequency : 3 x sehari</p>
+                </card>
+                <card className="py-5 px-4 rounded-md w-[90%] hover:w-full duration-150 bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
+                  <p className='text-[18px]'>Bodrexin AE</p>
+                  <p className=''>Dosis Obat : 1 Sendok Makan</p>
+                  <p className=''>Frequency : 3 x sehari</p>
+                </card>
+                <card className="py-5 px-4 rounded-md w-[90%] hover:w-full duration-150 bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
+                  <p className='text-[18px]'>Bodrexin AE</p>
+                  <p className=''>Dosis Obat : 1 Sendok Makan</p>
+                  <p className=''>Frequency : 3 x sehari</p>
+                </card>
               </div>
 
-            </div>
+              {showInfoDokter ? (
+                <table class="my-3 sm:max-w-[480px] border border-slate-800 lg:min-w-[480px] shadow-md rounded-lg overflow-hidden">
+                  <tbody>
+                    <tr class="bg-[#363636]/20 ">
+                      <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold ">
+                        Ditulis oleh:
+                      </th>
+                      <td class="px-6 py-4 text-sm ">
 
+                      </td>
+                    </tr>
 
-            <div className="rigth">
-              <div className="bg-center group relative bg-cover h-[35vh] hover:h-[45vh] duration-500 mb-4 rounded-md border " style={{ backgroundImage: `url('${treatment.doctor.profilePicture}')` }}>
-                <div className="bg-black/40 group-hover:bg-black/10 absolute left-0 top-0 w-full h-full rounded-md"></div>
-              </div>
-              <table class="sm:max-w-[480px] border border-slate-800 lg:min-w-[400px] bg-white shadow-md rounded-lg overflow-hidden">
-                <tbody>
-                  <tr class="bg-white border-b">
-                    <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold text-gray-900">
-                      Ditulis oleh:
-                    </th>
-                    <td class="px-6 py-4 text-sm text-gray-700">
+                    <tr class="bg-[#2f2f2f]">
+                      <th class="px-6 py-4 text-left text-sm font-medium ">
+                        Name
+                      </th>
+                      <td class="px-6 py-4 text-sm ">
+                        {treatment.doctor.name}
+                      </td>
+                    </tr>
+                    <tr class="bg-[#141414]">
+                      <th class="px-6 py-4 text-left text-sm font-medium ">
+                        No Handphone
+                      </th>
+                      <td class="px-6 py-4 text-sm ">
+                        {treatment.doctor.phone_number}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
 
-                    </td>
-                  </tr>
-
-                  <tr class="bg-[#E2E3FF]/90 border-b">
-                    <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
-                      Name
-                    </th>
-                    <td class="px-6 py-4 text-sm text-gray-700">
-                      {treatment.doctor.name}
-                    </td>
-                  </tr>
-                  <tr class="bg-white border-b">
-                    <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
-                      No Handphone
-                    </th>
-                    <td class="px-6 py-4 text-sm text-gray-700">
-                      {treatment.doctor.phone_number}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              ) : null}
             </div>
           </div>
         ) : null}
 
 
-        <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
-          <div class="rounded-t mb-0 px-4 py-3 border-0 bg-white">
-            <div class="flex flex-wrap items-center bg-white">
-              <div class="relative w-full px-4 max-w-full flex justify-between bg-white">
-                <h3 class="font-semibold text-lg text-blueGray-700 bg-white">History Treatment</h3>
+        <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
+          <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/20">
+            <div class="flex flex-wrap items-center ">
+              <div class="relative w-full px-4 max-w-full flex justify-between ">
+                <h3 class="font-semibold text-lg text-blueGray-700">History Treatment</h3>
                 {currentUser.role != 'user' && !treatment ? (
                   <Link to="/treatment/create" className="w-fit px-3 py-1 bg-blue-500 hover:bg-blue-500/90 text-[12px] font-medium text-white rounded-md">Create Treatment</Link>
 
@@ -283,23 +337,23 @@ function Treatment() {
             </div>
           </div>
 
-          <div class="block w-full overflow-x-auto">
-            <table class="items-center bg-transparent w-full border-collapse ">
+          <div class="block w-full bgg-bl overflow-x-auto">
+            <table class="items-center w-full  ">
               <thead>
-                <tr>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                <tr className="bg-[#2f2f2f] darkgreen">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Tanggal
                   </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Diagnosa
                   </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Dokter
                   </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Status
                   </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Action
                   </th>
                 </tr>
@@ -308,7 +362,7 @@ function Treatment() {
               <tbody>
                 {history.length > 0 ? (
                   history.map((val, i) => (
-                    <tr>
+                    <tr className={i % 2 == 0 ? 'bg-[#141414]' : 'bg-[#2f2f2f]'}>
                       <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                         {new Intl.DateTimeFormat('ID-id', {
                           month: 'long',
@@ -340,6 +394,31 @@ function Treatment() {
             </table>
           </div>
         </div>
+
+        {/* pagination */}
+        <nav data-aos="fade-right" aria-label="Page navigation example" className='pb-5 max-w-[400px]' style={{ overflowX: 'auto' }}>
+          <div className="pagination flex gap-2 mb-8 text-sm">
+            {Array.from({ length: pagination }).map((_i, i) => {
+
+              if (i + 1 == currentPagination) {
+                return (
+                  <div className="py-3 px-7 bgg-b text-white">
+                    {i + 1}
+                  </div>
+                )
+              } else {
+                return (
+                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 bg-[#272727] text-white cursor-pointer">
+                    {i + 1}
+                  </div>
+
+                )
+              }
+            })}
+
+
+          </div>
+        </nav>
       </div>
     </main>
 

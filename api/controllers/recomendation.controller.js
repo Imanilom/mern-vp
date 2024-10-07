@@ -20,29 +20,74 @@ export const createRecomendation = async (req, res) => {
 
 export const getRecomendationByPatient = async (req, res) => {
     try {
+
+        const page = req.query.p || 0;
+        const maxitems = 5;
+        let countDoc; 
+
+        const startDate = req.query.startDate;
+        const endDate = req.query.endDate;
+
         // if role is doctor fetch this >>
         if (req.user.role === 'doctor') {
-            const recomendation = await Recomendation.find({
+            let filter = {
                 doctor: req.user.id,
                 patient: req.params.patient
-            }).sort({ createdAt: -1 });
+            }
+
+            if(startDate && endDate){
+                filter.berlaku_dari = {
+                    $gte : new Date(startDate),
+                    $lte : new Date(endDate)
+                }
+                console.log({startDate, endDate, filter})
+            }
+            const recomendation = await Recomendation.find(filter).sort({ createdAt: -1 }).skip(page * maxitems).limit(maxitems);
+
+            countDoc = await Recomendation.countDocuments({
+                doctor: req.user.id,
+                patient: req.params.patient
+            });
+
+
+            let lengthPagination = Math.floor(countDoc / maxitems) + 1;
+
             // console.log(recomendation);
 
-            if (!recomendation) return res.json({ recomendation: recomendation });
+            if (!recomendation) return res.json({ recomendation: recomendation,  lengthPagination});
 
-            res.json({ recomendation: recomendation });
+            res.json({ recomendation: recomendation, lengthPagination });
             console.log('berhasil');
         }
         // if role is != doctor fetch this >>
         else {
-            console.log(req.params);
-            const recomendation = await Recomendation.find({
+
+            let filter = {
                 patient: req.params.patient
-            }).sort({ createdAt: -1 }).populate('doctor');
+            }
 
-            if (!recomendation) return res.json({ recomendation: recomendation });
+            if(startDate && endDate){
+                filter.berlaku_dari = {
+                    $gte : new Date(startDate),
+                    $lte : new Date(endDate)
+                }
+                console.log({startDate, endDate, filter})
+            }
+           
+            // console.log(req.params);
+            const recomendation = await Recomendation.find(filter).sort({ createdAt: -1 }).skip(page * maxitems).limit(maxitems).populate('doctor');
 
-            res.json({ recomendation: recomendation });
+            countDoc = await Recomendation.countDocuments({
+                patient: req.params.patient
+            });
+
+            console.log({countDoc})
+
+            
+            let lengthPagination = Math.floor(countDoc / maxitems) + 1; 
+            if (!recomendation) return res.json({ recomendation: recomendation, lengthPagination });
+
+            res.json({ recomendation: recomendation, lengthPagination });
         }
 
     } catch (error) {

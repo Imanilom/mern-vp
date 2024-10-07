@@ -3,6 +3,8 @@ import Side from '../../components/Side';
 import { useSelector } from 'react-redux';
 import '../../loading2.css';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
+import DatePicker from 'react-datepicker';
+import AOS from 'aos';
 
 let data1 = [
   {
@@ -22,7 +24,10 @@ function DetectionHistories() {
   const { currentUser, DocterPatient } = useSelector(state => state.user);
   const [pagination, setPagination] = useState(0);
   const [currentPagination, setCurrentPagination] = useState(1);
+  const [state, setState] = useState('safe');
   // const {currentUser} = useSelector(state => state.user);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
 
   const sortedData = React.useMemo(() => {
     let sortableItems = [...data];
@@ -55,6 +60,12 @@ function DetectionHistories() {
     fectInit();
   }, [currentPagination]);
 
+  useEffect(() => {
+    if (startDate && endDate) {
+      fectInit();
+    }
+  }, [startDate, endDate]);
+
   const handleChangePagination = (num) => {
     if (num > 0 && num < pagination + 1) {
       setCurrentPagination(num);
@@ -64,13 +75,16 @@ function DetectionHistories() {
   const fectInit = async () => {
     try {
       setLoading(true)
-      let url = `/api/user/riwayatdeteksi/${currentUser._id}`
+      let url = `/api/user/riwayatdeteksi/${currentUser._id}?page=${currentPagination - 1}`
       if (currentUser.role != 'user') {
-        url = `/api/user/riwayatdeteksi/${DocterPatient._id}`
+        url = `/api/user/riwayatdeteksi/${DocterPatient._id}?page=${currentPagination - 1}`
       }
-      if (currentPagination > 0) {
-        url += `?page=${currentPagination - 1}`;
+      if (startDate && endDate) {
+        url += `&startDate=${startDate}&endDate=${endDate}`;
       }
+      // if (currentPagination > 0) {
+      //   url += `?page=${currentPagination - 1}`;
+      // }
 
       const res = await fetch(url);
       const data = await res.json();
@@ -86,27 +100,105 @@ function DetectionHistories() {
   }
 
   useEffect(() => {
+    AOS.init({
+      duration: 700
+    })
     fectInit();
   }, [])
 
+  const handleText = (state) => {
+    if (state == 'safe') {
+      return (
+        <div className='w-[330px] flex-col flex gap-3 text-sm'>
+          <p>Hijau, warna hijau memiliki arti bahwa system kami mengenali bahwa aktivitas anda aman, tidak ada anomali.</p>
+          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#46FF59]'>Safe</button>
+        </div>
+      )
+    }
+    if (state == 'warning') {
+      return (
+        <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
+          <p>Orange, warna orange memiliki arti bahwa sistem kami mengenali adanya deteksi yang perlu diwaspadai. ketika anda sedang melakukan aktifitas</p>
+          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#F47500]'>Warning</button>
+        </div>
+      )
+    }
+    if (state == 'danger') {
+      return (
+        <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
+          <p>Merah, warna Merah memiliki arti bahwa system kami mengenali adanya deteksi yang perlu ditangani</p>
+          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#F40000]'>Danger</button>
+        </div>
+      )
+    }
+    if (state == 'undefined') {
+      return (
+        <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
+          <p>Putih, warna Putih memiliki arti bahwa system kami tidak dapat mengenali deteksi, hal ini bisa terjadi ketika system kami kekurangan data dari anda. </p>
+          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#FFFFFF]'>System kekurangan data</button>
+        </div>
+      )
+    }
+
+
+  }
+
   return (
-    <main class="bg-white flex">
+    <main class="bgg-bl text-white flex">
       <Side />
-      <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
+      <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
         <ButtonOffCanvas />
-        <h3 class="mb-3 mt-2 text-[20px] font-bold text-blueGray-700">Riwayat Deteksi</h3>
-        <p>Keterangan Simbolis  </p>
-        <ul style={{ listStyle: 'inside' }} className='text-sm md:text-base'>
+        <div data-aos="fade-up">
+
+          <h1 class="text-3xl font-semibold capitalize lg:text-4xl mb-3">Riwayat Deteksi </h1>
+          <p>Hey Pasien, kamu harus mengenali beberapa simbol berikut!  </p>
+          {/* <ul style={{ listStyle: 'inside' }} className='text-sm md:text-base'>
           <li>*Hijau menandakan kestabilan nilai DFA</li>
           <li>*Orange menandakan adanya deteksi yang perlu diwaspadai ketika anda sedang melakukan aktifitas</li>
           <li>*Merah menandakan adanya deteksi berbahaya ketika anda sedang beraktivitas dan perlu ditindak lanjuti</li>
-        </ul>
-        <div class="relative mt-4 flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
+        </ul> */}
+          <div className="flex gap-5 items-end justify-between">
+            <div className="md:w-6/12 flex gap-5 my-3 items-center">
+              <div className="w-fit text-sm text-[#101010] font-semibold flex flex-col gap-2 py-3">
+                <button onClick={() => setState('safe')} className='bg-[#46FF59] py-1 rounded px-3'>Click me</button>
+                <button onClick={() => setState('warning')} className='bg-[#F47500] py-1 rounded px-3'>Click me</button>
+                <button onClick={() => setState('danger')} className='bg-[#F40000] py-1 rounded px-3'>Click me</button>
+                <button onClick={() => setState('undefined')} className='bg-[#FFFFFF] py-1 rounded px-3'>Click me</button>
+              </div>
+
+              {/* <div className='md:w-6/12 flex-col flex gap-3'>
+              <p>Hijau, warna hijau memiliki arti bahwa system kami mengenali bahwa aktivitas anda aman, tidak ada anomali.</p>
+              <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#46FF59]'>Safe</button>
+            </div> */}
+
+              {handleText(state)}
+            </div>
+
+            <div className="md:w-5/12 ms-auto flex justify-end">
+              <DatePicker
+                selectsRange
+                startDate={startDate}
+                endDate={endDate}
+                onChange={(dates) => {
+                  const [start, end] = dates;
+                  console.log(start, end)
+                  setStartDate(start);
+                  setEndDate(end);
+                }}
+                isClearable
+                placeholderText='Cari berdasarkan range tanggal'
+                className="p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[320px]"
+              />
+            </div>
 
 
-          <div class="rounded-t mb-0 px-4 py-3 border-0">
+
+          </div>
+        </div>
+        <div class="relative mt-4 flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
+          <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/20">
             <div class="flex flex-wrap items-center">
-              <div class="relative w-full px-4 max-w-full flex-grow flex-1">
+              <div class="relative text-sm w-full px-4 max-w-full flex-grow flex-1">
                 {sortByKey && sort ? (
                   <>
                     Filter by {sortByKey} : {sort ?? ''}
@@ -116,23 +208,23 @@ function DetectionHistories() {
             </div>
           </div>
 
-          <div class="block w-full overflow-x-auto">
-            <table class="items-center bg-transparent w-full border-collapse ">
+          <div data-aos="fade-right" class="block w-full overflow-x-auto">
+            <table class="items-center bg-transparent w-full ">
               <thead>
-                <tr>
-                  <th title='sort by date' onClick={() => requestSort('date')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                <tr className='bg-[#2f2f2f]'>
+                  <th title='sort by date' onClick={() => requestSort('date')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Tanggal
                   </th>
-                  <th title='sort by date' onClick={() => requestSort('time')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th title='sort by date' onClick={() => requestSort('time')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Time
                   </th>
-                  <th title='sort by dfa' onClick={() => requestSort('dfa')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th title='sort by dfa' onClick={() => requestSort('dfa')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Nilai DFA
                   </th>
-                  <th title='sort by activity' onClick={() => requestSort('aktifitas')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th title='sort by activity' onClick={() => requestSort('aktifitas')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Aktivitas
                   </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Simbolis
                   </th>
                 </tr>
@@ -140,9 +232,9 @@ function DetectionHistories() {
 
               <tbody>
                 {sortedData.length > 0 ?
-                  sortedData.map((val) => {
+                  sortedData.map((val, _i) => {
                     return (
-                      <tr>
+                      <tr className={_i % 2 === 0 ? 'bg-[#141414]' : 'bg-[#2f2f2f]'}>
                         <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                           {val.date.replace('-', '/').replace('-', '/')}
                         </th>
@@ -158,7 +250,7 @@ function DetectionHistories() {
                         <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                           {val.dfa == 0 ? (
                             <span
-                              className="w-fit px-3 py-1 text-[12px] rounded-md bg-slate-800 text-white font-medium" >
+                              className="w-fit px-3 py-1 text-[12px] rounded-md bg-white/90 text-[#101010]  font-semibold" >
                               Cant calculate dfa.
                             </span>
                           ) : (
@@ -174,44 +266,30 @@ function DetectionHistories() {
           </div>
 
         </div>
-        {/* pagination */}
-        <nav aria-label="Page navigation example" className='pb-5 max-w-[400px]' style={{overflowX : 'auto'}}>
-          <ul class="flex items-center -space-x-px h-8 text-sm">
-            <li onClick={() => handleChangePagination(currentPagination - 1)}>
-              <p href="#" class="flex items-center justify-center px-3 h-8 ms-0 leading-tight text-gray-500 bg-white border border-e-0 border-gray-300 rounded-s-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
-                <span class="sr-only">Previous</span>
-                <svg class="w-2.5 h-2.5 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4" />
-                </svg>
-              </p>
-            </li>
 
+        {/* pagination */}
+        <nav data-aos="fade-right" aria-label="Page navigation example" className='pb-5 max-w-[400px]' style={{ overflowX: 'auto' }}>
+          <div className="pagination flex gap-2 mb-8 text-sm">
             {Array.from({ length: pagination }).map((_i, i) => {
 
               if (i + 1 == currentPagination) {
                 return (
-                  <li className='cursor-pointer'>
-                    <p href="#" class="flex items-center justify-center px-3 h-8 bg-blue-400">{i + 1}</p>
-                  </li>
+                  <div className="py-3 px-7 bgg-b text-white">
+                    {i + 1}
+                  </div>
                 )
               } else {
                 return (
-                  <li className='cursor-pointer' onClick={() => handleChangePagination(i + 1)}>
-                    <p href="#" class="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">{i + 1}</p>
-                  </li>
+                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 bg-[#272727] text-white cursor-pointer">
+                    {i + 1}
+                  </div>
+
                 )
               }
             })}
 
-            <li onClick={() => handleChangePagination(currentPagination + 1)}>
-              <p href="#" class="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 rounded-e-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
-                <span class="sr-only">Next</span>
-                <svg class="w-2.5 h-2.5 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4" />
-                </svg>
-              </p>
-            </li>
-          </ul>
+
+          </div>
         </nav>
         {isLoading ? (
           <div className="flex justify-center my-8 gap-3 items-center">

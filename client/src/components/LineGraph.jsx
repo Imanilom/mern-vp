@@ -4,10 +4,12 @@ import * as d3 from 'd3';
 import { FaAngleLeft } from "react-icons/fa";
 import { FaAngleRight } from "react-icons/fa";
 import '../chart.css';
+import AOS from 'aos';
+
 
 let scroolState = {
-    HR : 1, // daftarkan label 
-    RR : 1
+    HR: 1, // daftarkan label 
+    RR: 1
 };
 
 function LineGraph({ data, label, keyValue, color }) {
@@ -16,6 +18,12 @@ function LineGraph({ data, label, keyValue, color }) {
     const [slice, setSlice] = useState(1);
     const [slider, setSlider] = useState(1);
     const XCount = 10;
+
+    useEffect(() => {
+        AOS.init({
+            duration: 700
+        })
+    }, [])
 
     let styleTooltype = {
         position: 'absolute',
@@ -27,9 +35,9 @@ function LineGraph({ data, label, keyValue, color }) {
         opacity: 0,
         transition: 'opacity 0.2s',
         fontSize: 12 + 'px',
-        maxWidth: 200 + 'px',
+        maxWidth: 300 + 'px',
         minWidth: 200 + 'px',
-        zIndex : 99
+        zIndex: 99
     }
 
     useEffect(() => {
@@ -82,22 +90,22 @@ function LineGraph({ data, label, keyValue, color }) {
         // Tentukan ukuran chart
         const height = 500;
         const width = 25 * data.length / 2;
-        const margin = { top: 20, right: 20, bottom: 80, left: 40 }
+        const margin = { top: 20, right: 20, bottom: 90, left: 50 }
         let svgWidth;
 
-        if(window.innerWidth > 980){
+        if (window.innerWidth > 980) {
             // laptop
             svgWidth = 768;
-        }else if(window.innerWidth > 540){
+        } else if (window.innerWidth > 540) {
             // tablet
             svgWidth = window.innerWidth * 0.7;
-        }else{
+        } else {
             // hp
             svgWidth = window.innerWidth * 0.8;
         }
 
-        setSlice(Math.floor(width / svgWidth)); // layar lebar svg
-        console.log({width, svgWidth})
+        setSlice(Math.floor(width / svgWidth) + 1); // layar lebar svg
+        console.log({ width, svgWidth })
 
         // Buat SVG di dalam div yang menggunakan useRef
         const svg = d3.select(chartRef.current)
@@ -105,8 +113,8 @@ function LineGraph({ data, label, keyValue, color }) {
             // .attr('class', classTailwindCSS)
             .attr('height', height)
             .attr('width', width)
-            .style('background', '#FFFFFF')
-            .attr('class', 'svgOne')
+            // .style('background', '#2C2C2C')
+            .attr('class', 'svgOne bgg-bl')
 
         const x = d3.scaleBand()
             .domain(data.map(d => d.create_at)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
@@ -231,31 +239,34 @@ function LineGraph({ data, label, keyValue, color }) {
 
     return (
         <div className='relative p-4'>
-            <div style={styleTooltype} id={`tooltip${label}`}></div>
-            <div className="me-auto mb-3 flex items-center sm:justify-start justify-between">
+            <div data-aos="fade-right"  style={styleTooltype} id={`tooltip${label}`}></div>
+            <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
                 {slice > 1 ? (
                     <div>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('decrement')}>
+                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
                             <FaAngleLeft color='white' size={16} />
 
                         </button>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('plus')}>
+                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
                             <FaAngleRight color='white' size={16} />
                         </button>
                     </div>
                 ) : null}
 
                 <div className="flex sm:flex-row flex-col">
-                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
+                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
-                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
                 </div>
             </div>
-            <div ref={chartRef} className='svg-container' id={`svg-container-${label}`}>
+            <div className="relative" data-aos="fade-right">
+                <div ref={chartRef} className='svg-container relative ' id={`svg-container-${label}`}>
 
+                </div>
+                {/* <div className="rectangle w-full h-full z-[2] absolute top-0 left-0"></div> */}
             </div>
 
         </div>
