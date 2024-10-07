@@ -471,7 +471,7 @@ async function calculateMetricsAfterIQFilter(filteredLogs) {
     const hrMetrics = calculateMetrics(hrValues);
     const rrMetrics = calculateMetrics(rrValues); // Pindahkan perhitungan advancedMetrics ke sini
     const advancedMetrics = calculateAdvancedMetrics(rrValues);
-
+    
     results[interval] = {
       HR: hrMetrics,
       RR: {
@@ -676,8 +676,8 @@ const processHeartRateData = async () => {
       allFilteredData.push({ HR: filteredLog.HR, RR: filteredLog.RR, timestamp: filteredLog.timestamp });
     });
 
-    // Calculate HRV metrics for all filtered RR intervals
-    const hrvMetrics = calculateHRVMetrics(allRRIntervals);
+      // Calculate HRV metrics for all filtered RR intervals
+      const hrvMetrics = calculateHRVMetrics(allRRIntervals);
 
     // Format the timestamp for the file name
     const formattedTimestamp = formatTimestamp(oldestTimestamp);
@@ -724,13 +724,13 @@ cron.schedule('*/5 * * * *', async () => {
     console.error('Error during cron job execution:', error);
   }
 });
-// generateGraph("C0680226");
-// processHeartRateData();
-const fillMissingRRForLogsWithHR = async () => {
-  try {
-    console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
-    const logsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
-    const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } }).sort({ create_at: 1 }).limit(1000);
+  // generateGraph("C0680226");
+  processHeartRateData();
+  const fillMissingRRForLogsWithHR = async () => {
+    try {
+        console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
+        const logsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
+        const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } }).sort({ create_at: 1 }).limit(1000);
 
     if (!logsWithHRNoRR.length) {
       console.log('No logs found with HR but no RR.');
