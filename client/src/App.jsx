@@ -49,6 +49,7 @@ import CreateTreatment from './pages/Menus/CreateTreatment';
 import UpdateTreatment from './pages/Menus/UpdateTreatment';
 
 import { useLocation } from 'react-router-dom';
+import AddPatient from './pages/Menus/AddPatient';
 
 export default function App() {
 
@@ -110,6 +111,7 @@ function MainContent() {
         <Route path='/treatment' element={<Treatment />} />
         <Route path='/rekomendasi' element={<Recommendation />} />
         <Route path='/anamnesa' element={<Anamnesa />} />
+        <Route path='/add/pasient/:id' element={<AddPatient />} />
 
       </Route>
     </Routes>

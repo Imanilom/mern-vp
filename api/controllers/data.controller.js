@@ -691,6 +691,7 @@ const processHeartRateData = async () => {
     console.log('tulis file');
     fs.writeFileSync(fileName, JSON.stringify(jsonData, null, 2));
 
+    await SendFileToFtp(`./api/controllers/hrv-results/filtered_logs_${formattedTimestamp}.json`,'/hrv-results');
     console.log(`Processed and saved data logs from ${oldestTimestamp} to ${tenMinutesLater}.`);
   } catch (error) {
     console.error('Error processing heart rate data:', error);
@@ -725,7 +726,7 @@ cron.schedule('*/5 * * * *', async () => {
   }
 });
   // generateGraph("C0680226");
-  processHeartRateData();
+  // processHeartRateData();
   const fillMissingRRForLogsWithHR = async () => {
     try {
         console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');

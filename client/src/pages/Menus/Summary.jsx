@@ -10,6 +10,7 @@ import {
 } from '../../redux/user/userSlice.js';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas.jsx';
 import AOS from 'aos';
+import Swal from 'sweetalert2';
 
 
 function Summary() {
@@ -81,11 +82,20 @@ function Summary() {
 
 
     const handleUnsignPatient = () => {
-        let ask = window.confirm('Are you sure?');
-        if (ask) {
-            dispatch(docterUnsetUser());
-            navigate('/my-patients');
-        }
+        Swal.fire({
+            title: "Are you sure?",
+            text: "Kamu bisa monitoring pasien ini di lain waktu",
+            icon: "info",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, of course"
+          }).then((result) => {
+            if (result.isConfirmed) {
+                dispatch(docterUnsetUser());
+                navigate('/my-patients');
+            }
+          });
     }
 
     return (
@@ -105,7 +115,7 @@ function Summary() {
 
                                 </div>
 
-                                <div class="rounded-md relative flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg duration-300 lg:hover:translate-x-[-20px] group">
+                                <div class="rounded-md relative mt-3 flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg duration-300 lg:hover:translate-x-[-20px] group">
                                     <div class="mb-0 px-4 py-3 border-0">
                                         <div class="flex flex-wrap items-center">
                                             <div class="relative w-full lg:px-4 max-w-full flex-grow flex justify-between flex-1">

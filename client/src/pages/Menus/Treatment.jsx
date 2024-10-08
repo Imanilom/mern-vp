@@ -43,6 +43,7 @@ function Treatment() {
       setHistory(data.history);
       setPagination(data.lengthPagination);
       console.log({ data })
+      console.log('oke')
     } catch (error) {
       console.log({ error });
     }
@@ -267,7 +268,19 @@ function Treatment() {
               </div> */}
 
               <div className="flex flex-col my-3 gap-3">
-                <card className="py-5 w-[90%] hover:w-full px-4 rounded-md duration-150 bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
+                {treatment.medications.length > 0 ? (
+                  treatment.medications.map((medision) => {
+                    return (
+                      <div className="py-5 w-[90%] hover:w-full px-4 rounded-md duration-150 bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
+                        <p className='text-[18px]'>{medision.name}</p>
+                        <p className=''>Dosis Obat :  {medision.dosage}</p>
+                        <p className=''>Frequency :  {medision.frequency}</p>
+                      </div>
+                    )
+                  })
+                ) : null}
+
+                {/* <card className="py-5 px-4 rounded-md w-[90%] hover:w-full duration-150 bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
                   <p className='text-[18px]'>Bodrexin AE</p>
                   <p className=''>Dosis Obat : 1 Sendok Makan</p>
                   <p className=''>Frequency : 3 x sehari</p>
@@ -276,12 +289,7 @@ function Treatment() {
                   <p className='text-[18px]'>Bodrexin AE</p>
                   <p className=''>Dosis Obat : 1 Sendok Makan</p>
                   <p className=''>Frequency : 3 x sehari</p>
-                </card>
-                <card className="py-5 px-4 rounded-md w-[90%] hover:w-full duration-150 bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
-                  <p className='text-[18px]'>Bodrexin AE</p>
-                  <p className=''>Dosis Obat : 1 Sendok Makan</p>
-                  <p className=''>Frequency : 3 x sehari</p>
-                </card>
+                </card> */}
               </div>
 
               {showInfoDokter ? (
@@ -327,7 +335,7 @@ function Treatment() {
               <div class="relative w-full px-4 max-w-full flex justify-between ">
                 <h3 class="font-semibold text-lg text-blueGray-700">History Treatment</h3>
                 {currentUser.role != 'user' && !treatment ? (
-                  <Link to="/treatment/create" className="w-fit px-3 py-1 bg-blue-500 hover:bg-blue-500/90 text-[12px] font-medium text-white rounded-md">Create Treatment</Link>
+                  <Link to="/treatment/create" className="w-fit px-3 py-1  text-[12px] font-medium darkgreen rounded-md">Create Treatment</Link>
 
                 ) : null}
               </div>
