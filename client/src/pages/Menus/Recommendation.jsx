@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Swal from 'sweetalert2';
 import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import AOS from 'aos';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 
@@ -165,27 +166,28 @@ function Recommendation() {
 
         <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-4">Rekomendasi aktivitas</h1>
 
-        <div data-aos="fade-up" className="">
-          {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
-          <DatePicker
-            selectsRange
-            startDate={startDate}
-            endDate={endDate}
-            onChange={(dates) => {
-              const [start, end] = dates;
-              console.log(start, end)
-              setStartDate(start);
-              setEndDate(end);
-            }}
-            isClearable
-            placeholderText='Cari berdasarkan range tanggal'
-            className="py-3 px-4 bg-[#2C2C2C] rounded text-sm md:text-[14px] lg:min-w-[320px] mb-3"
-          />
-          {/* {loading ? (
+        {/* <div data-aos="fade-up" className=""> */}
+        {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
+        <DatePicker
+          data-aos="fade-up"
+          selectsRange
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(dates) => {
+            const [start, end] = dates;
+            console.log(start, end)
+            setStartDate(start);
+            setEndDate(end);
+          }}
+          isClearable
+          placeholderText='Cari berdasarkan range tanggal'
+          className="py-3 px-4 bg-[#2C2C2C] rounded text-sm md:text-[14px] lg:min-w-[320px] mb-3"
+        />
+        {/* {loading ? (
                       <span class="ms-4 loader "></span>
                     ) : null} */}
 
-        </div>
+        {/* </div> */}
 
         <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg rounded ">
           <div class="rounded-t bg-[#363636]/20 mb-0 px-4 py-3 border-0">
@@ -303,7 +305,7 @@ function Recommendation() {
                               <span className='bg-indigo-600 text-white font-medium py-1 px-3 rounded-md active:bg-indigo-600/80'>Detail</span>
                             </Link> */}
                             <Link to={`/updateRecomendation/${recomendation._id}`}>
-                              <span className='bg-yellow-400 font-medium py-1 px-3 rounded-md active:bg-yellow-400/80'>Edit</span>
+                              <span className='darkgreen font-medium py-1 px-3 rounded-md '>Edit</span>
                             </Link>
                             <button onClick={() => { setId(recomendation._id); setModal(true) }} data-modal-target="popup-modal" data-modal-toggle="popup-modal">
                               <span className='bg-red-600 font-medium py-1 px-3 rounded-md active:bg-red-600/80 text-white'>Delete</span>
@@ -319,7 +321,7 @@ function Recommendation() {
           </div>
         </div>
 
-        <nav  data-aos="fade-right" aria-label="Page navigation example" className='pb-5 max-w-[400px]' style={{ overflowX: 'auto' }}>
+        <nav data-aos="fade-right" aria-label="Page navigation example" className='pb-5 max-w-[400px]' style={{ overflowX: 'auto' }}>
           <div className="pagination flex gap-2 mb-8 text-sm">
             {Array.from({ length: pagination }).map((_i, i) => {
 

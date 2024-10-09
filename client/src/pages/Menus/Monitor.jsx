@@ -226,45 +226,43 @@ export default function Monitor() {
                   <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Monitoring</h1>
 
                 </div>
-                <div data-aos="fade-up" className="flex mt-4 items-center">
-                  <div className="">
-                    {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
-                    <DatePicker
-                      selectsRange
-                      startDate={startDate}
-                      endDate={endDate}
-                      onChange={(dates) => {
-                        const [start, end] = dates;
-                        console.log(start, end)
-                        setStartDate(start);
-                        setEndDate(end);
-                      }}
-                      isClearable
-                      placeholderText='Cari berdasarkan range tanggal'
-                      className="p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[320px]"
-                    />
-                    {/* {loading ? (
-                      <span class="ms-4 loader "></span>
-                    ) : null} */}
+                {/* <div data-aos="fade-up" className="flex mt-4 items-center"> */}
+                {/* <div className=""> */}
+                {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
+                <DatePicker
+                  data-aos="fade-left"
+                  selectsRange
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(dates) => {
+                    const [start, end] = dates;
+                    console.log(start, end)
+                    setStartDate(start);
+                    setEndDate(end);
+                  }}
+                  isClearable
+                  placeholderText='Cari berdasarkan range tanggal'
+                  className="p-3 bg-[#2C2C2C] rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] w-fit inline-block"
+                />
 
+                {currentUser.role !== 'user' && (
+                  <div data-aos="fade-up" className="inline-block relative">
+                    <select
+                      name=""
+                      id=""
+                      className="p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                      onChange={handleChangeDevice}
+                    >
+                      <option value="" disabled>Select device Monitoring</option>
+                      <option value="C0680226" selected>C0680226</option>
+                      <option value="BA903328">BA903328</option>
+                    </select>
+                    {loading ? <span className="ms-4 loader"></span> : null}
                   </div>
-                  {currentUser.role == 'user' ? null : (
-                    <div data-aos="fade-up" className="relative w-full sm:px-4 max-w-full flex-grow flex-1 flex justify-betwee">
-                      <div className="md:flex justify-between items-center w-full">
-                        <select name="" id="" className='p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[220px] px-3 py-3' onChange={handleChangeDevice}>
-                          <option value="" disabled>Select device Monitoring</option>
-                          <option value="C0680226" selected>C0680226</option>
-                          <option value="BA903328">BA903328</option>
-                        </select>
-                        {loading ? (
-                          <span class="ms-4 loader "></span>
-                        ) : null}
+                )}
 
-                      </div>
-                    </div>
-                  )}
 
-                </div>
+                {/* </div> */}
 
                 <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
 

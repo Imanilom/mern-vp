@@ -116,7 +116,7 @@ const generateGraph = async (guid_device) => {
   try {
     const dataPoints = await Log.find({ guid_device }).sort({ create_at: -1 }).limit(1000);
     if (dataPoints.length === 0) {
-      console.log(`No data available for GUID Device: ${guid_device}`);
+      // console.log(`No data available for GUID Device: ${guid_device}`);
       return;
     }
 
@@ -127,8 +127,8 @@ const generateGraph = async (guid_device) => {
     const minPoints = 4;
     const { clusters, noise } = dbscan(hrValues, epsilon, minPoints);
 
-    console.log(`Clusters for GUID Device ${guid_device}:`, clusters);
-    console.log(`Noise for GUID Device ${guid_device}:`, noise);
+    // console.log(`Clusters for GUID Device ${guid_device}:`, clusters);
+    // console.log(`Noise for GUID Device ${guid_device}:`, noise);
 
     // Pair HR values with timestamps and then sort by timestamps
     const pairedData = hrValues.map((hr, index) => ({
@@ -186,7 +186,7 @@ const generateGraph = async (guid_device) => {
 
 // Filtering Function (IQR-based) per 10 seconds
 async function filterIQ(logs, multiplier = 1.5) {
-  console.log('Original Logs:', logs); // Log original logs
+  // console.log('Original Logs:', logs); // Log original logs
   const filteredLogs = [];
   const rawFilteredLogs = [];
 
@@ -236,7 +236,7 @@ async function filterIQ(logs, multiplier = 1.5) {
     }
   });
 
-  console.log('Filtered Logs:', filteredLogs); // Log filtered logs
+  // console.log('Filtered Logs:', filteredLogs); // Log filtered logs
 
   // Save raw filtered logs to JSON
   const resultsDir = path.join(__dirname, 'hrv-results');
@@ -259,7 +259,7 @@ async function filterIQ(logs, multiplier = 1.5) {
   }));
 
   // Log the formatted JSON data before saving
-  console.log('Formatted JSON Data:', JSON.stringify(formattedJsonData, null, 2));
+  // console.log('Formatted JSON Data:', JSON.stringify(formattedJsonData, null, 2));
 
   // Save the formatted JSON data
   try {
@@ -374,7 +374,7 @@ export function calculateAdvancedMetrics(rrIntervals) {
 
   // Tambahkan padding agar panjang array menjadi pangkat dua
   const paddedRRIntervals = padToPowerOfTwo(rrIntervals);
-  console.log(paddedRRIntervals.length, 'Padded rrIntervals');
+  // console.log(paddedRRIntervals.length, 'Padded rrIntervals');
 
   // console.log(rrIntervals.length, 'rrInterval')
   // FFT untuk HF dan LF
@@ -466,7 +466,7 @@ async function calculateMetricsAfterIQFilter(filteredLogs) {
       continue;
     }
 
-    console.log({ rrValues, hrValues })
+    // console.log({ rrValues, hrValues })
 
     const hrMetrics = calculateMetrics(hrValues);
     const rrMetrics = calculateMetrics(rrValues); // Pindahkan perhitungan advancedMetrics ke sini
@@ -633,7 +633,7 @@ const processHeartRateData = async () => {
     const firstLog = await Log.findOne({ isChecked: false }).sort({ create_at: 1 });
 
     if (!firstLog) {
-      console.log('No data to process.', 636); // berhenti disini
+      // console.log('No data to process.', 636); // berhenti disini
       return;
     }
 
@@ -648,7 +648,7 @@ const processHeartRateData = async () => {
     }).sort({ create_at: 1 });
 
     if (logs.length === 0) {
-      console.log('No data to process.', 651);
+      // console.log('No data to process.', 651);
       return;
     }
 
@@ -666,7 +666,7 @@ const processHeartRateData = async () => {
     const filteredLogs = await filterIQ(logs);
 
     if (filteredLogs.length === 0) {
-      console.log('No valid data after filtering.');
+      // console.log('No valid data after filtering.');
       return;
     }
 
@@ -688,7 +688,7 @@ const processHeartRateData = async () => {
       ...log, // Include existing log data
       metrics: hrvMetrics // Add HRV metrics
     }));
-    console.log('tulis file');
+    // console.log('tulis file');
     fs.writeFileSync(fileName, JSON.stringify(jsonData, null, 2));
 
     await SendFileToFtp(`./api/controllers/hrv-results/filtered_logs_${formattedTimestamp}.json`,'/hrv-results');
@@ -700,26 +700,26 @@ const processHeartRateData = async () => {
 
 // Cron job scheduled every 10 minutes
 cron.schedule('*/10 * * * *', () => {
-  console.log('Running heart rate data processing every 10 minutes...');
+  // console.log('Running heart rate data processing every 10 minutes...');
   processHeartRateData();
 });
 
 // Schedule Cron Job to run every 5 minutes
 cron.schedule('*/5 * * * *', async () => {
-  console.log('Running cron job fillMissingRRForLogsWithHR....');
+  // console.log('Running cron job fillMissingRRForLogsWithHR....');
   fillMissingRRForLogsWithHR();
-  console.log('Running cron job...');
+  // console.log('Running cron job...');
 
   try {
 
     await runAllMethods();
 
-    console.log('Running generateGraph for each unique guid_device...');
+    // console.log('Running generateGraph for each unique guid_device...');
     const uniqueGuidDevices = await Log.distinct('guid_device');
     for (const guid_device of uniqueGuidDevices) {
       await generateGraph(guid_device);
     }
-    console.log('generateGraph completed for all guid_device.');
+    // console.log('generateGraph completed for all guid_device.');
 
   } catch (error) {
     console.error('Error during cron job execution:', error);
@@ -729,17 +729,17 @@ cron.schedule('*/5 * * * *', async () => {
   // processHeartRateData();
   const fillMissingRRForLogsWithHR = async () => {
     try {
-        console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
+        // console.log('Starting to fill missing RR and rrRMS values for logs with HR but no RR...');
         const logsWithHRNoRR = await Log.find({ HR: { $ne: null }, RR: null }).sort({ create_at: 1 }).limit(1000);
         const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } }).sort({ create_at: 1 }).limit(1000);
 
     if (!logsWithHRNoRR.length) {
-      console.log('No logs found with HR but no RR.');
+      // console.log('No logs found with HR but no RR.');
       return { message: 'No logs found with HR but no RR.', status: 404 };
     }
 
-    console.log(`Found ${logsWithHRNoRR.length} logs with HR but no RR.`);
-    console.log(`Found ${logsWithHRAndRR.length} logs with both HR and RR.`);
+    // console.log(`Found ${logsWithHRNoRR.length} logs with HR but no RR.`);
+    // console.log(`Found ${logsWithHRAndRR.length} logs with both HR and RR.`);
 
     let totalUpdated = 0;
     let totalFailed = 0;
@@ -774,8 +774,8 @@ cron.schedule('*/5 * * * *', async () => {
         };
         delete updatedLog._id;
 
-        console.log(`Filled missing RR for log at index ${index} (ID: ${log._id}) with value ${nearestRRValue} from log ID: ${sourceLogId}.`);
-        console.log(`Set rrRMS to 0 for log at index ${index} (ID: ${log._id}).`);
+        // console.log(`Filled missing RR for log at index ${index} (ID: ${log._id}) with value ${nearestRRValue} from log ID: ${sourceLogId}.`);
+        // console.log(`Set rrRMS to 0 for log at index ${index} (ID: ${log._id}).`);
         return {
           updateOne: {
             filter: { _id: log._id },
@@ -796,6 +796,7 @@ cron.schedule('*/5 * * * *', async () => {
     const remainingCount = remainingLogsWithHRNoRR.length;
 
     console.log(`RR and rrRMS values filled successfully. Total updated: ${totalUpdated}, Total failed: ${totalFailed}, Remaining logs with HR but no RR: ${remainingCount}`);
+    
     return {
       message: 'RR and rrRMS values filled successfully.',
       totalUpdated,

@@ -15,7 +15,10 @@ export const getTreatment = async (req, res) => {
         let history = [];
         let treat;
 
-        const user = await User.findById(req.params.patient).limit(maxItems);
+        const user = await User.findById(req.params.patient);
+        if(!user) return res.status(404).json({message : 'Cant find patient id'});
+
+        console.log({user})
         // countDoc = await User.countDocuments({_})
         [history, countDoc] = await Promise.all([
             Treatments.find({
