@@ -4,10 +4,12 @@ import * as d3 from 'd3';
 import { FaAngleLeft } from "react-icons/fa";
 import { FaAngleRight } from "react-icons/fa";
 import '../chart.css';
+import AOS from 'aos';
+
 
 let scroolState = {
-    HR : 1, // daftarkan label 
-    RR : 1
+    HR: 1, // daftarkan label 
+    RR: 1
 };
 
 function LineGraph({ data, label, keyValue, color }) {
@@ -16,6 +18,12 @@ function LineGraph({ data, label, keyValue, color }) {
     const [slice, setSlice] = useState(1);
     const [slider, setSlider] = useState(1);
     const XCount = 10;
+
+    useEffect(() => {
+        AOS.init({
+            duration: 700
+        })
+    }, [])
 
     let styleTooltype = {
         position: 'absolute',
@@ -27,9 +35,9 @@ function LineGraph({ data, label, keyValue, color }) {
         opacity: 0,
         transition: 'opacity 0.2s',
         fontSize: 12 + 'px',
-        maxWidth: 200 + 'px',
+        maxWidth: 300 + 'px',
         minWidth: 200 + 'px',
-        zIndex : 99
+        zIndex: 99
     }
 
     useEffect(() => {
@@ -65,11 +73,9 @@ function LineGraph({ data, label, keyValue, color }) {
         document.getElementById(`zoom_panel_${label}`).innerHTML = `Zoom level ${zoomV.toFixed(1)}`;
     }
 
-    const drawChart = (data) => {
-
-        // mengambil 1 data setiap 200 data
-        const sampledData = data.filter((d, i) => i % 200 === 0);
-        // console.log({sampledData})
+    const drawChart = (rawData) => {
+        // Proses data untuk menghilangkan duplikat
+        const processedData = processData(rawData);
 
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
@@ -81,23 +87,23 @@ function LineGraph({ data, label, keyValue, color }) {
 
         // Tentukan ukuran chart
         const height = 500;
-        const width = 25 * data.length / 2;
-        const margin = { top: 20, right: 20, bottom: 80, left: 40 }
+        const width = 25 * processedData.length / 2;
+        const margin = { top: 20, right: 20, bottom: 90, left: 50 }
         let svgWidth;
 
-        if(window.innerWidth > 980){
+        if (window.innerWidth > 980) {
             // laptop
             svgWidth = 768;
-        }else if(window.innerWidth > 540){
+        } else if (window.innerWidth > 540) {
             // tablet
             svgWidth = window.innerWidth * 0.7;
-        }else{
+        } else {
             // hp
             svgWidth = window.innerWidth * 0.8;
         }
 
-        setSlice(Math.floor(width / svgWidth)); // layar lebar svg
-        console.log({width, svgWidth})
+        setSlice(Math.floor(width / svgWidth) + 1); // layar lebar svg
+        console.log({ width, svgWidth })
 
         // Buat SVG di dalam div yang menggunakan useRef
         const svg = d3.select(chartRef.current)
@@ -105,11 +111,11 @@ function LineGraph({ data, label, keyValue, color }) {
             // .attr('class', classTailwindCSS)
             .attr('height', height)
             .attr('width', width)
-            .style('background', '#FFFFFF')
-            .attr('class', 'svgOne')
+            // .style('background', '#2C2C2C')
+            .attr('class', 'svgOne bgg-bl')
 
         const x = d3.scaleBand()
-            .domain(data.map(d => d.create_at)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
+            .domain(processedData.map(d => d.create_at)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
             .range([margin.left, width - margin.right]);
         // const x = d3.scaleLinear()
         //     .domain([d3.min(sampledData, d => d['create_at']), d3.max(sampledData, d => d.create_at)]) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
@@ -123,7 +129,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
 
         const y = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d[keyValue]) + 10]) // membentuk garis dari 0 hingga data value paling tinggi (max)
+            .domain([0, d3.max(processedData, d => d[keyValue]) + 10]) // membentuk garis dari 0 hingga data value paling tinggi (max)
             .range([height - margin.bottom, margin.top]);
         // Pada sumbu Y, kita biasanya ingin nilai 0 berada di bawah (koordinat terbesar), 
         // dan nilai terbesar berada di atas (koordinat terkecil). Oleh karena itu, range Y 
@@ -138,7 +144,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
         // gambar line
         const linepath = svg.append('path')
-            .datum(data)
+            .datum(processedData)
             .attr('fill', 'none')
             .attr('stroke', 'rgba(75, 192, 192, 1)')
             .attr('stroke-width', 2)
@@ -146,13 +152,13 @@ function LineGraph({ data, label, keyValue, color }) {
 
         // memberikan titik pada ujung sumbu y
         const circles = svg.selectAll('circle')
-            .data(data)
+            .data(processedData)
             .enter()
             .append('circle')
             .attr('cx', d => x(d.create_at))
             .attr('cy', d => y(d[keyValue]))
             .attr('r', 4)
-            .attr('fill', (d, i) => color[i])
+            .attr('fill', (d, i) => color[i % color.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
             .on('mouseover', (event, d) => {
                 const [xPos, yPos] = d3.pointer(event); // mouse x, y
                 // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
@@ -225,37 +231,58 @@ function LineGraph({ data, label, keyValue, color }) {
             .on('zoom', zoomed));  // Panggil fungsi zoomed saat zoom/pan terjadi
     }
 
+    // Fungsi untuk memproses data dan menghilangkan duplikat
+    const processData = (rawData) => {
+        // Urutkan data berdasarkan create_at
+        const sortedData = rawData.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
+        
+        // Gunakan Set untuk menyimpan nilai unik
+        const uniqueValues = new Set();
+        
+        // Filter data untuk menghilangkan duplikat
+        return sortedData.filter(item => {
+            const value = item[keyValue];
+            if (!uniqueValues.has(value)) {
+                uniqueValues.add(value);
+                return true;
+            }
+            return false;
+        });
+    }
 
     // const y = d3.scaleTime()
     // .domain()
 
     return (
         <div className='relative p-4'>
-            <div style={styleTooltype} id={`tooltip${label}`}></div>
-            <div className="me-auto mb-3 flex items-center sm:justify-start justify-between">
+            <div data-aos="fade-right"  style={styleTooltype} id={`tooltip${label}`}></div>
+            <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
                 {slice > 1 ? (
                     <div>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('decrement')}>
+                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
                             <FaAngleLeft color='white' size={16} />
 
                         </button>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('plus')}>
+                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
                             <FaAngleRight color='white' size={16} />
                         </button>
                     </div>
                 ) : null}
 
                 <div className="flex sm:flex-row flex-col">
-                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
+                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
-                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
                 </div>
             </div>
-            <div ref={chartRef} className='svg-container' id={`svg-container-${label}`}>
+            <div className="relative" data-aos="fade-right">
+                <div ref={chartRef} className='svg-container relative ' id={`svg-container-${label}`}>
 
+                </div>
+                {/* <div className="rectangle w-full h-full z-[2] absolute top-0 left-0"></div> */}
             </div>
 
         </div>

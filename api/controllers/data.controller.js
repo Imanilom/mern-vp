@@ -119,7 +119,7 @@ const processHeartRateData = async () => {
     const firstLog = await Log.findOne({ isChecked: false }).sort({ create_at: 1 });
 
     if (!firstLog) {
-      console.log('No data to process.');
+      console.log('No data to process.', 636); // berhenti disini
       return;
     }
 
@@ -134,7 +134,7 @@ const processHeartRateData = async () => {
     }).sort({ create_at: 1 });
 
     if (logs.length === 0) {
-      console.log('No data to process.');
+      console.log('No data to process.', 651);
       return;
     }
 
@@ -174,8 +174,10 @@ const processHeartRateData = async () => {
       ...log, // Include existing log data
       metrics: hrvMetrics // Add HRV metrics
     }));
+    console.log('tulis file');
     fs.writeFileSync(fileName, JSON.stringify(jsonData, null, 2));
 
+    await SendFileToFtp(`./api/controllers/hrv-results/filtered_logs_${formattedTimestamp}.json`,'/hrv-results');
     console.log(`Processed and saved data logs from ${oldestTimestamp} to ${tenMinutesLater}.`);
   } catch (error) {
     console.error('Error processing heart rate data:', error);

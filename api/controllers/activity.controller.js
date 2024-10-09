@@ -45,22 +45,67 @@ export const createActivity = async (req, res, next) => {
 export const getActivity = async (req, res, next) => { // mark
   try {
 
+    console.log(req.query);
     //get activities by credential user login
+    const page = req.query.p || 0;
+    const itemsperpage = 5;
+
     let Activity;
+    let countDoc;
+    let totalPagination;
+
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+    let filter;
+
+   
     if (req.user.role == 'user') {
+
+      filter = {
+        userRef: req.user.id 
+      }
+      
+      if(startDate && endDate){
+        filter.Date = {
+          $gte : new Date(startDate),
+          $lte : new Date(endDate),
+        }
+      }
       // state role user
-      Activity = await Aktivitas.find({ userRef: req.user.id }).sort({ create_at: -1 });
+      // Activity = await Aktivitas.find({ userRef: req.user.id }).sort({ create_at: -1 });
+      [Activity, countDoc] = await Promise.all([
+        Aktivitas.find(filter).skip(page * itemsperpage).limit(itemsperpage).sort({ create_at: -1 }),
+        Aktivitas.countDocuments(filter)
+      ])
+
+      totalPagination = Math.floor(countDoc / itemsperpage) + 1;
     } else {
 
+      filter = {
+        userRef: req.params.patient
+      }
+
+      if(startDate && endDate){
+        filter.Date = {
+          $gte : new Date(startDate),
+          $lte : new Date(endDate),
+        }
+      }
+
       // state role docter
-      Activity = await Aktivitas.find({ userRef: req.params.patient }).sort({ create_at: -1 }); // harusnya dia bawa id user. bukan req.user.id docter
-      // console.log(req.params.patient);
+      // Activity = await Aktivitas.find({ userRef: req.params.patient }).sort({ create_at: -1 }); // harusnya dia bawa id user. bukan req.user.id docter
+      [Activity, countDoc] = await Promise.all([
+        Aktivitas.find(filter).sort({ create_at: -1 }).skip(page * itemsperpage).limit(itemsperpage),
+        Aktivitas.countDocuments(filter)
+      ])
+
+      totalPagination = Math.floor(countDoc / itemsperpage) + 1;
     }
 
     if (!Activity) {
       return next(errorHandler(404, 'Activity not found!'));
     }
-    res.status(200).json(Activity);
+    res.status(200).json({Activity, totalPagination});
   } catch (error) {
     next(error);
   }
@@ -150,9 +195,9 @@ export const deleteActivity = async (req, res, next) => {
     }
 
     let update = {
-      $unset: { 
-        activity: "" ,
-        activity_ref : ""
+      $unset: {
+        activity: "",
+        activity_ref: ""
       }
     }
 

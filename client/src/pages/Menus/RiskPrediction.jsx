@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import { IoMdCloseCircle } from "react-icons/io";
 import { BsFillSendFill } from "react-icons/bs";
 import { Link } from 'react-router-dom';
+import AOS from 'aos';
 
 function RiskPrediction() {
 
@@ -18,8 +19,12 @@ function RiskPrediction() {
 
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(false);
+  const [showInfoDokter, setShowInfoDokter] = useState(false);
 
   useEffect(() => {
+    AOS.init({
+      duration: 700
+    })
     fetchInit();
     console.log({ currentUser });
   }, []);
@@ -128,7 +133,7 @@ function RiskPrediction() {
     if (status == 'pending') return (<button disabled class="bg-orange-500 text-white active:bg-orange-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Pending..</button>)
     else if (status == 'accepted') return (<button disabled class="bg-green-500 text-white active:bg-green-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Accepted</button>
     )
-    else return (<button onClick={handleRequestAppointmentUser} class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 min-w-[150px]" type="button">{loading ? 'Loadingg..' : 'Meminta Temu Janji'}</button>)
+    else return (<button onClick={handleRequestAppointmentUser} class="text-[#07AC7B]  text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 min-w-[150px]" type="button">{loading ? 'Loadingg..' : 'Meminta Temu Janji'}</button>)
   }
 
   const handleResetPrediction = async () => {
@@ -178,12 +183,12 @@ function RiskPrediction() {
 
   return (
     <div>
-      <main class="bg-white flex py-8">
+      <main class="bgg-bl text-white flex ">
         <Side />
-        <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
+        <div class="w-11/12 py-8 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
           <ButtonOffCanvas />
-          <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded ">
-            <div class="rounded-t mb-0 px-4 py-3 border-0">
+          <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words bgg-bl w-full mb-6 shadow-lg rounded ">
+            <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/20">
               <div class="flex flex-wrap items-center">
                 <div class="relative w-full px-4 max-w-full flex-grow flex-1">
                   <h3 class="font-semibold text-sm md:text-base text-blueGray-700">Prediksi Resiko</h3>
@@ -210,13 +215,13 @@ function RiskPrediction() {
             </div>
 
             <div class="block w-full overflow-x-auto">
-              <table class="items-center bg-transparent w-full border-collapse ">
+              <table class="items-center bg-transparent w-full  ">
                 <thead>
-                  <tr>
-                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <tr className='bg-[#2c2c2c]'>
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Hasil Prediksi:
                     </th>
-                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs border-l-0 border-r-0 whitespace-nowrap font-semibold text-left italic">
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs border-l-0 border-r-0 whitespace-nowrap font-semibold text-left italic">
                       {!detailPrediction ? '--empty' : 'Berpotensi memiliki penyakit jantung'}
                     </th>
                   </tr>
@@ -253,35 +258,81 @@ function RiskPrediction() {
           </div>
 
           {currentUser.role != 'user' && statusAppointment == 'pending' ? (
-            <div className="flex ms-2 flex-col gap-2 font-semibold pt-4">
+            <div data-aos="fade-up" className="flex ms-2 text-center flex-col gap-2 font-semibold pt-4">
               <p>Pasient ini meminta temu janji dengan anda</p>
-              <button onClick={() => setModal(true)} class="bg-indigo-500 w-fit text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 min-w-[150px]" type="button">Buat Temu Janji</button>
+              <button onClick={() => setModal(true)} class=" text-xs font-bold uppercase px-3  rounded outline-none focus:outline-none mr-1 py-3 bg-[#07AC7B] my-3 ease-linear transition-all duration-150 min-w-[150px]" type="button">Buat Temu Janji</button>
             </div>
           ) : null}
           {/* Form submit Appointment */}
 
           {detailAppointment != null ? (
-            <div class="flex flex-col sm:flex-row w-full py-4 overflow-x-auto justify-between gap-4 mt-12 items-center">
-              <div className="left">
-                <h1 className='text-slate-900 font-bold text-[24px] mb-4'>Appointment</h1>
-                {currentUser.role != 'user' ? (
-                  <button onClick={handleEndedAppointment} class="bg-red-500 text-white active:bg-red-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Temu Janji Selesai</button>
+            <div class="flex text-white flex-col sm:flex-row w-full py-4 overflow-x-auto justify-between gap-4 mt-12 items-center">
+              <div data-aos="fade-up" className="rigth lg:w-6/12">
+                <div className="w-[100%] py-3 text-sm rounded-md mb-3 bg-[#363636]/20 flex justify-between px-3">
+                  <p>Informasi dokter pribadi anda</p>
+                  <p className='text-[#07AC7B] cursor-pointer' onClick={() => setShowInfoDokter(!showInfoDokter)}>{showInfoDokter ? 'Hidee' : 'Show'}</p>
+                </div>
+                <div className="relative w-full group">
+                  <div className="w-full bg-center bg-cover h-[30vh] group-hover:h-[40vh] duration-200 mb-4 rounded-md border" style={{ backgroundImage: `url('${detailAppointment.doctor.profilePicture}')` }}></div>
+                  <div className="w-full h-full bg-[#363636]/50 absolute top-0 left-0"></div>
+                </div>
+
+                {showInfoDokter ? (
+                  <table class="max-w-[480px] border border-slate-800 lg:min-w-[400px] text-white shadow-md rounded-lg overflow-hidden">
+                    <tbody>
+                      <tr class="bg-[#363636]/20">
+                        <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold ">
+                          Detail Docter
+                        </th>
+                        <td class="px-6 py-4 text-sm text-gray-700">
+
+                        </td>
+                      </tr>
+
+                      <tr class="bg-[#2f2f2f]">
+                        <th class="px-6 py-4 text-left text-sm font-medium">
+                          Name
+                        </th>
+                        <td class="px-6 py-4 text-sm ">
+                          {detailAppointment.doctor.name}
+                        </td>
+                      </tr>
+                      <tr class="bg-[#141414]">
+                        <th class="px-6 py-4 text-left text-sm font-medium">
+                          No Handphone
+                        </th>
+                        <td class="px-6 py-4 text-sm ">
+                          {detailAppointment.doctor.phone_number}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 ) : null}
-                <table class="max-w-[480px] bg-white shadow-md rounded-lg overflow-hidden">
+              </div>
+
+              <div data-aos="fade-right" className="left">
+                <div className="flex justify-between">
+                  <h1 className=' font-bold text-[24px] mb-4'>Appointment</h1>
+                  {currentUser.role != 'user' ? (
+                    <button onClick={handleEndedAppointment} class="bg-red-500 text-white active:bg-red-600 h-fit py-2 text-xs font-bold uppercase px-3 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Temu Janji Selesai</button>
+                  ) : null}
+
+                </div>
+                <table class="max-w-[480px] text-white shadow-md rounded-lg overflow-hidden">
                   <tbody>
-                    <tr class="bg-white border-b">
-                      <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold text-gray-900">
+                    <tr class="bg-[#363636]/20 ">
+                      <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold ">
                         Detail Temu Janji
                       </th>
-                      <td class="px-6 py-4 text-sm text-gray-700">
+                      <td class="px-6 py-4 text-sm ">
 
                       </td>
                     </tr>
-                    <tr class="bg-[#E2E3FF]/90 border-b">
-                      <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                    <tr class="bg-[#2f2f2f]">
+                      <th class="px-6 py-4 text-left text-sm font-medium ">
                         Tanggal
                       </th>
-                      <td class="px-6 py-4 text-sm text-gray-700">
+                      <td class="px-6 py-4 text-sm text-[#07AC7B]">
                         {/* January, 21 2024 */}
                         {new Intl.DateTimeFormat('id-ID', {
                           month: 'long',
@@ -290,22 +341,22 @@ function RiskPrediction() {
                         }).format(new Date(detailAppointment.date))}
                       </td>
                     </tr>
-                    <tr class="bg-white border-b">
-                      <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                    <tr class="bg-[#141414]">
+                      <th class="px-6 py-4 text-left text-sm font-medium ">
                         Jam
                       </th>
-                      <td class="px-6 py-4 text-sm text-gray-700">
+                      <td class="px-6 py-4 text-sm text-[#07AC7B]">
                         {new Intl.DateTimeFormat('id-ID', {
                           hour: '2-digit',
                           minute: '2-digit'
                         }).format(new Date().setHours(Number(detailAppointment.time.split(':')[0]), Number(detailAppointment.time.split(':')[1]))).replace('.', ' : ')}
                       </td>
                     </tr>
-                    <tr class="bg-[#E2E3FF]/90 border-b">
-                      <th class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium text-gray-900">
+                    <tr class="bg-[#2f2f2f]">
+                      <th class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium ">
                         Catatan dokter
                       </th>
-                      <td class="px-6 py-4 text-sm text-gray-700">
+                      <td class="px-6 py-4 text-sm text-[#07AC7B]">
                         {detailAppointment.note}
                       </td>
                     </tr>
@@ -315,38 +366,7 @@ function RiskPrediction() {
 
               </div>
 
-              <div className="rigth">
-                <div className="bg-center bg-cover h-[30vh] hover:h-[40vh] duration-200 mb-4 rounded-md border" style={{ backgroundImage: `url('${detailAppointment.doctor.profilePicture}')` }}></div>
-                <table class="max-w-[480px] border border-slate-800 lg:min-w-[400px] bg-white shadow-md rounded-lg overflow-hidden">
-                  <tbody>
-                    <tr class="bg-white border-b">
-                      <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold text-gray-900">
-                        Detail Docter
-                      </th>
-                      <td class="px-6 py-4 text-sm text-gray-700">
 
-                      </td>
-                    </tr>
-
-                    <tr class="bg-[#E2E3FF]/90 border-b">
-                      <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
-                        Name
-                      </th>
-                      <td class="px-6 py-4 text-sm text-gray-700">
-                        {detailAppointment.doctor.name}
-                      </td>
-                    </tr>
-                    <tr class="bg-white border-b">
-                      <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
-                        No Handphone
-                      </th>
-                      <td class="px-6 py-4 text-sm text-gray-700">
-                        {detailAppointment.doctor.phone_number}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
             </div>
           ) : null}
 
@@ -355,7 +375,7 @@ function RiskPrediction() {
 
       {modal ? (
         <div className="w-full h-[100vh] flex justify-center items-center top-0 left-0 fixed z-20 bg-black/60">
-          <div className="boxModal flex flex-col bg-white rounded-lg p-8 w-11/12 lg:w-5/12">
+          <div className="boxModal flex flex-col bg-[#141414] text-white rounded-lg p-8 w-11/12 lg:w-5/12">
             <div className="flex justify-end" onClick={() => setModal(!modal)}>
               <IoMdCloseCircle size={24} color='red' />
             </div>
@@ -365,25 +385,25 @@ function RiskPrediction() {
               <div className="flex justify-between">
                 <div class="grid w-[48%] gap-6 mt-5 mb-5 sm:grid-cols-1">
                   <div class="relative z-0">
-                    <input type="date" id="tanggal" name="tanggal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
-                    <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Tanggal</label>
+                    <input type="date" id="tanggal" name="tanggal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm  focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                    <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm  duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Tanggal</label>
                   </div>
                 </div>
                 <div class="grid w-[48%] gap-6 mt-5 sm:grid-cols-1">
                   <div class="relative z-0">
-                    <input type="time" id="awal" name="awal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
-                    <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Jam bertemu</label>
+                    <input type="time" id="awal" name="awal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm  focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                    <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm  duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Jam bertemu</label>
                   </div>
                 </div>
               </div>
               <div class="grid gap-6 mt-4 mb-5 sm:grid-cols-1">
                 <div class="relative z-0">
-                  <input type="text" name="name" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
-                  <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Catatan Untuk Pasien</label>
+                  <input type="text" name="name" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm  focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                  <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm  duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Catatan Untuk Pasien</label>
                 </div>
               </div>
 
-              <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 w-fit">
+              <button type="submit" class="text-white bgg-dg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 w-fit">
                 <BsFillSendFill size={16} color='white' className='me-2' />
                 Buat Temu Janji
 

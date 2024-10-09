@@ -9,6 +9,9 @@ import {
     docterUnsetUser
 } from '../../redux/user/userSlice.js';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas.jsx';
+import AOS from 'aos';
+import Swal from 'sweetalert2';
+
 
 function Summary() {
 
@@ -22,6 +25,8 @@ function Summary() {
         Rekomendasi_Terakhir: '',
         Treatment_Terakhir: '',
     });
+    const [infoDokter, setInfoDokter] = useState('null');
+    const [showInfoDokter, setShowInfo] = useState(true);
 
     const fetchInit = async () => {
         try {
@@ -59,6 +64,7 @@ function Summary() {
             property.Riwayat_Deteksi = data4.riwayat[0];
             property.Rekomendasi_Terakhir = data2.recomendation[data2.recomendation.length - 1]['name'];
             property.Treatment_Terakhir = data3.history[data3.history.length - 1]['diagnosis'];
+            setInfoDokter(data2.recomendation[data2.recomendation.length - 1]['doctor']);
             console.log({ data, data2, data3, property });
 
             setData(property);
@@ -68,33 +74,49 @@ function Summary() {
     }
 
     useEffect(() => {
+        AOS.init({
+            duration : 700
+       })
         fetchInit();
     }, []);
 
 
     const handleUnsignPatient = () => {
-        let ask = window.confirm('Are you sure?');
-        if (ask) {
-            dispatch(docterUnsetUser());
-            navigate('/my-patients');
-        }
+        Swal.fire({
+            title: "Are you sure?",
+            text: "Kamu bisa monitoring pasien ini di lain waktu",
+            icon: "info",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, of course"
+          }).then((result) => {
+            if (result.isConfirmed) {
+                dispatch(docterUnsetUser());
+                navigate('/my-patients');
+            }
+          });
     }
 
     return (
         <div>
             <main>
-                <section class="bg-white md:flex">
+                <section class="bgg-bl md:flex text-white/95">
                     <Side />
                     <div class="container px-6 py-10 mx-auto">
-                        <ButtonOffCanvas index={1} />
-                        <h1 class="text-3xl font-semibold text-gray-800 capitalize lg:text-4xl ">Heart Disease Decision Support Monitoring, Detection and Predictive System </h1>
-                        <div class="mt-8 lg:-mx-6 lg:flex lg:items-center">
-                            <img class="object-cover w-full lg:mx-6 lg:w-1/3 rounded-xl h-72 lg:h-96" src={currentUser.role != 'user' ? DocterPatient.profilePicture : currentUser.profilePicture}
-                                alt="" />
+                        {/* <ButtonOffCanvas index={1} /> */}
+                        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl " >Heart Disease Decision Support Monitoring, Detection and Predictive System </h1>
+                        <div class="mt-8 w-11/12 mx-auto lg:flex lg:items-start">
+                            <div data-aos="fade-right" className='w-full lg:mx-6 lg:w-2/3'>
+                                <div className="relative">
 
-                            <div class="mt-6 lg:w-2/3 lg:mt-0 lg:mx-6 ">
-                                <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded duration-300 lg:hover:translate-x-[-20px] group">
-                                    <div class="rounded-t mb-0 px-4 py-3 border-0">
+                                    <img class="object-cover rounded-xl h-72 lg:h-96" src={currentUser.role != 'user' ? DocterPatient.profilePicture : currentUser.profilePicture}
+                                        alt="" />
+
+                                </div>
+
+                                <div class="rounded-md relative mt-3 flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg duration-300 lg:hover:translate-x-[-20px] group">
+                                    <div class="mb-0 px-4 py-3 border-0">
                                         <div class="flex flex-wrap items-center">
                                             <div class="relative w-full lg:px-4 max-w-full flex-grow flex justify-between flex-1">
 
@@ -103,98 +125,53 @@ function Summary() {
                                                 {currentUser.role != 'user' ? (
                                                     <button onClick={() => handleUnsignPatient()} className='bg-red-600 focus:bg-red-600/90 text-white px-3 py-1 rounded-md text-sm'>Berhenti Monitoring</button>
                                                 ) : (
-                                                    <Link to={`/profile`} className='text-sm text-blue-500'>Edit information</Link>
+                                                    <Link to={`/profile`} className='text-sm text-[#07AC7B]'>Edit information</Link>
 
                                                 )}
                                             </div>
-                                            {/* <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                                        <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">See all</button>
-                                    </div> */}
+
                                         </div>
                                     </div>
 
                                     <div class="block w-full overflow-x-auto">
-                                        {/* <table class="items-center bg-transparent w-full border-collapse ">
-                                <tbody>
-                                <tr>
-                                    <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
-                                   Nama
-                                    </th>
-                                    <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                                    {currentUser.name}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700">
-                                    Usia
-                                    </th>
-                                    <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
-                                   21
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700">
-                                    Jenis Kelamin
-                                    </th>
-                                    <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
-                                    Laki-laki
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700">
-                                    Alamat
-                                    </th>
-                                    <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
-                                    {currentUser.address}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700">
-                                    Dokter
-                                    </th>
-                                    <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
-                                    dokter Shafiyah
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table> */}
 
-                                        <table class="min-w-full bg-white shadow-xl rounded-lg overflow-hidden">
+
+                                        <table class="min-w-full shadow-xl overflow-hidden">
                                             <tbody>
-                                                <tr class="bg-gray-100 border-b">
-                                                    <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                                                <tr class="bg-[#2C2C2C] ">
+                                                    <th class="px-6 py-4 text-left text-sm font-medium">
                                                         Nama
                                                     </th>
-                                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                                    <td class="px-6 py-4 text-sm ">
                                                         {currentUser.role != 'user' ? DocterPatient.name : currentUser.name}
                                                     </td>
                                                 </tr>
-                                                <tr class="bg-white border-b">
-                                                    <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                                                <tr class="bg-[#141414] ">
+                                                    <th class="px-6 py-4 text-left text-sm font-medium ">
                                                         Usia
                                                     </th>
-                                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                                    <td class="px-6 py-4 text-sm ">
                                                         21
                                                     </td>
                                                 </tr>
-                                                <tr class="bg-gray-100 border-b">
-                                                    <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                                                <tr class="bg-[#2C2C2C]  ">
+                                                    <th class="px-6 py-4 text-left text-sm font-medium ">
                                                         Jenis Kelamin
                                                     </th>
-                                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                                    <td class="px-6 py-4 text-sm ">
                                                         Laki-laki
                                                     </td>
                                                 </tr>
-                                                <tr class="bg-white border-b">
-                                                    <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                                                <tr class="bg-[#141414] ">
+                                                    <th class="px-6 py-4 text-left text-sm font-medium ">
                                                         Alamat
                                                     </th>
-                                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                                    <td class="px-6 py-4 text-sm ">
                                                         {currentUser.role != 'user' ? DocterPatient.address : currentUser.address}
 
                                                     </td>
                                                 </tr>
-                                                <tr class="bg-gray-100">
+                                                {/* <tr class="bg-[#2C2C2C] ">
                                                     <th class="px-6 py-4 text-left text-sm font-medium text-gray-900">
                                                         Dokter
                                                     </th>
@@ -202,69 +179,138 @@ function Summary() {
                                                         {currentUser.role != 'user' ? currentUser.name : currentUser.name}
 
                                                     </td>
-                                                </tr>
+                                                </tr> */}
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
-                                {/* Ringkasan Riwayat Medis */}
-                                <div class="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded duration-300 lg:hover:translate-x-[-20px] group">
-                                    <div class="rounded-t mb-0 px-4 py-3 border-0">
-                                        <div class="flex flex-wrap items-center">
-                                            <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-                                                <h3 class="font-semibold text-base text-blueGray-700">Ringkasan Riwayat Medis</h3>
+                            </div>
+
+                            <div data-aos="fade-up" class="mt-6 lg:w-2/3 lg:mt-0 lg:mx-6 ">
+                                <div className="flex text-sm justify-between bg-[#363636]/20 rounded-md my-3 px-6 py-3">
+                                    <p>Informasi pribadi dokter anda</p>
+                                    <p className='text-[#07AC7B] cursor-pointer' onClick={() => setShowInfo(!showInfoDokter)}>
+                                        {showInfoDokter ? 'Hide' : 'Show'}
+                                    </p>
+                                </div>
+                                <div className="relative">
+                                    <img class="object-cover rounded-xl h-72 lg:h-60 w-full mb-3" src={currentUser.role != 'user' ? currentUser.profilePicture : infoDokter.profilePicture}
+                                        alt="" />
+                                    <div className="w-full h-full bg-[#363636]/50 absolute top-0 left-0"></div>
+
+                                </div>
+
+                                {showInfoDokter ? (
+                                    <div class="relative flex flex-col min-w-0 break-words bgg-bl w-full mb-6 shadow-lg rounded duration-300 lg:hover:translate-x-[-20px] group">
+                                        <div class=" bg-[#363636]/20 rounded-t mb-0 px-4 py-3 border-0">
+                                            <div class="flex flex-wrap items-center">
+                                                <div class="relative w-full lg:px-4 max-w-full flex-grow flex justify-between flex-1">
+
+                                                    <h3 class="font-semibold text-base text-blueGray-700">Biodata Dokter</h3>
+                                                </div>
+
                                             </div>
-                                            {/* <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                                        <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">See all</button>
-                                    </div> */}
+                                        </div>
+
+                                        <div class="block w-full overflow-x-auto">
+                                            <table class="min-w-full bgg-bl shadow-xl overflow-hidden">
+
+                                                <tbody>
+                                                    <tr class="bg-[#2C2C2C]">
+                                                        <th class="px-6 py-4 text-left text-sm font-medium">
+                                                            Nama
+                                                        </th>
+                                                        <td class="px-6 py-4 text-sm text-[#07AC7B]">
+                                                            {currentUser.role != 'user' ? currentUser.name : infoDokter.name}
+                                                        </td>
+                                                    </tr>
+                                                    <tr class="bg-[#141414]">
+                                                        <th class="px-6 py-4 text-left text-sm font-medium ">
+                                                            Email
+                                                        </th>
+                                                        <td class="px-6 py-4 text-sm text-[#07AC7B]">
+                                                            {currentUser.role != 'user' ? currentUser.email : infoDokter.email}
+                                                        </td>
+                                                    </tr>
+
+                                                    <tr class="bg-[#2C2C2C]">
+                                                        <th class="px-6 py-4 text-left text-sm font-medium ">
+                                                            Role
+                                                        </th>
+                                                        <td class="px-6 py-4 text-sm text-[#07AC7B]">
+                                                            Dokter
+                                                        </td>
+                                                    </tr>
+
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
+                                ) : null}
+                                {/* Ringkasan Riwayat Medis */}
 
-                                    <div class="block w-full overflow-x-auto">
-                                        <table class="min-w-full bg-white shadow-md rounded-xl">
-                                            <thead>
-                                                <tr class="bg-blue-gray-100 text-gray-700">
-                                                    <th class="py-3 px-4 text-left">Feature</th>
-                                                    <th class="py-3 px-4 text-left">Keterangan</th>
-                                                    <th class="py-3 px-4 text-left">Tanggal</th>
+                            </div>
 
-                                                </tr>
-                                            </thead>
-                                            <tbody class="text-blue-gray-900">
-                                                <tr class="border-b border-blue-gray-200">
-                                                    <td class="py-3 px-4">Faktor Resiko</td>
-                                                    <td class="py-3 px-4">{data.Faktor_Resiko.length > 0 && data.Faktor_Resiko.map((val) => (<p>-{val}</p>))}</td>
-                                                    <td class="py-3 px-4">-</td>
-                                                </tr>
 
-                                                <tr class="border-b border-blue-gray-200">
-                                                    <td class="py-3 px-4">Hasil Prediksi</td>
-                                                    <td class="py-3 px-4">{data.Hasil_Prediksi}</td>
-                                                    <td class="py-3 px-4">-</td>
-                                                </tr>
+                        </div>
 
-                                                <tr class="border-b border-blue-gray-200">
-                                                    <td class="py-3 px-4">Riwayat Deteksi</td>
-                                                    <td class="py-3 px-4">{data.Riwayat_Deteksi['dfa'] || data.Riwayat_Deteksi['dfa'] <= 0 ? `Tidak dapat menghitung secara akurat` : data.Riwayat_Deteksi['dfa'] }</td>
-                                                    <td class="py-3 px-4">-</td>
-                                                </tr>
-
-                                                <tr class="border-b border-blue-gray-200">
-                                                    <td class="py-3 px-4">Rekomendasi Terakhir</td>
-                                                    <td class="py-3 px-4">{data.Rekomendasi_Terakhir}</td>
-                                                    <td class="py-3 px-4">-</td>
-                                                </tr>
-
-                                                <tr class="border-b border-blue-gray-200">
-                                                    <td class="py-3 px-4">Treatment Terakhir</td>
-                                                    <td class="py-3 px-4">{data.Treatment_Terakhir}</td>
-                                                    <td class="py-3 px-4">-</td>
-                                                </tr>
-
-                                            </tbody>
-                                        </table>
+                        <div data-aos="fade-right" class="w-11/12 mx-auto lg:mx-16 relative flex flex-col min-w-0 break-words bg-[#363636]/20 mb-6 shadow-lg rounded duration-300 lg:hover:translate-x-[-20px] group">
+                            <div class=" mb-0 px-4 py-3 border-0">
+                                <div class="flex flex-wrap items-center">
+                                    <div class="relative w-full px-4 max-w-full flex-grow flex-1">
+                                        <h3 class="font-semibold text-base text-blueGray-700">Ringkasan Riwayat Medis</h3>
                                     </div>
+
+
+                                    {/* <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
+                                        <button class="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">See all</button>
+                                    </div> */}
                                 </div>
+                            </div>
+
+                            <div class="block w-full overflow-x-auto">
+                                <table class="min-w-full shadow-md text-sm">
+                                    <thead>
+                                        <tr class="bg-[#2C2C2C]">
+                                            <th class="py-3 px-4 text-left">Feature</th>
+                                            <th class="py-3 px-4 text-left">Keterangan</th>
+                                            <th class="py-3 px-4 text-left">Tanggal</th>
+
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-blue-gray-900">
+                                        <tr class="bg-[#141414]">
+                                            <td class="py-3 px-4">Faktor Resiko</td>
+                                            <td class="py-3 px-4 text-sm">{data.Faktor_Resiko.length > 0 && data.Faktor_Resiko.map((val) => (<p>-{val}</p>))}</td>
+                                            <td class="py-3 px-4">-</td>
+                                        </tr>
+
+                                        <tr class="bg-[#2C2C2C]">
+                                            <td class="py-3 px-4">Hasil Prediksi</td>
+                                            <td class="py-3 px-4">{data.Hasil_Prediksi}</td>
+                                            <td class="py-3 px-4">-</td>
+                                        </tr>
+
+                                        <tr class="bg-[#141414]">
+                                            <td class="py-3 px-4">Riwayat Deteksi</td>
+                                            <td class="py-3 px-4">{data.Riwayat_Deteksi['dfa'] || data.Riwayat_Deteksi['dfa'] <= 0 ? `Tidak dapat menghitung secara akurat` : data.Riwayat_Deteksi['dfa']}</td>
+                                            <td class="py-3 px-4">-</td>
+                                        </tr>
+
+                                        <tr class="bg-[#2C2C2C]">
+                                            <td class="py-3 px-4">Rekomendasi Terakhir</td>
+                                            <td class="py-3 px-4">{data.Rekomendasi_Terakhir}</td>
+                                            <td class="py-3 px-4">-</td>
+                                        </tr>
+
+                                        <tr class="bg-[#141414]">
+                                            <td class="py-3 px-4">Treatment Terakhir</td>
+                                            <td class="py-3 px-4">{data.Treatment_Terakhir}</td>
+                                            <td class="py-3 px-4">-</td>
+                                        </tr>
+
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>

@@ -4,10 +4,18 @@ import * as d3 from 'd3';
 import { FaAngleLeft } from "react-icons/fa";
 import { FaAngleRight } from "react-icons/fa";
 import '../chart.css';
+import AOS from 'aos';
+
 
 let scroolState = 1;
 
+
 function ScatterGraph({ data, label, keyValue, color }) {
+    useEffect(() => {
+        AOS.init({
+            duration: 700
+        })
+    }, [])
     const chartRef = useRef();
     const YCount = 10;
     const slice = 1;
@@ -76,7 +84,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
             .attr('width', width)
             .attr('height', height)
             .style('background', 'white')
-            .attr('class', 'svgTwo')
+            .attr('class', 'svgTwo bgg-bl')
 
         const x = d3.scaleLinear()
             .domain([d3.min(data, d => d[0]) - 50, d3.max(data, d => d[0])])
@@ -104,14 +112,16 @@ function ScatterGraph({ data, label, keyValue, color }) {
             .attr("cx", d => x(d[0]))
             .attr("cy", d => y(d[1]))
             .attr("r", 5)
-            .attr("fill", (d, i) => color[i]).on('mouseover', (event, d) => {
+            .attr("fill", (d, i) => color[i])
+            .on('mouseover', (event, d) => {
                 const [xPos, yPos] = d3.pointer(event); // mouse x, y
                 let x = xPos + 10;
                 if (scroolState > 1) {
-                    x = xPos - (768 * (scroolState - 1));
+                    // x = xPos - (768 * (scroolState - 1));
+                    x = xPos - 768;
                     console.log(x, xPos, (768 * (scroolState - 1)))
                 }
-                console.log({ scroolState }, (xPos - (scroolState * 768) + 10), xPos, { x });
+                console.log({ scroolState }, (xPos - (scroolState * 768) + 10), xPos, { x }, tooltip);
 
                 tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
                     .style('top', `${(yPos + 10)}px`)
@@ -119,6 +129,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
                     .html(`<p>Date: ${String(d[2]).split('GMT')[0]} </p> <p>Aktivitas Pasien: ${d[3] == undefined ? `Tidak ada riwayat` : d[3]}</p> <p>Point Care: [${d[0]}, ${d[1]}]</p>`);
 
             })
+       
             .on('mouseout', () => {
                 tooltip.style('opacity', 0);
             });
@@ -185,7 +196,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
             .on('zoom', zoomed));
     }
 
-    const styleTooltype = {
+    let styleTooltype = {
         position: 'absolute',
         pointerEvents: 'none',
         background: 'rgba(0, 0, 0, 0.7)',
@@ -195,17 +206,17 @@ function ScatterGraph({ data, label, keyValue, color }) {
         opacity: 0,
         transition: 'opacity 0.2s',
         fontSize: 12 + 'px',
-        maxWidth: 200 + 'px',
+        maxWidth: 300 + 'px',
         minWidth: 200 + 'px',
+        zIndex: 99
     }
 
     return (
         <div className='relative p-4'>
-            <div id="tooltip" style={styleTooltype}></div>
+            <div data-aos="fade-right" id="tooltip" style={styleTooltype}></div>
             <div className="me-auto mb-3 flex items-center sm:justify-start justify-between">
                 {slice > 1 ? (
                     <div>
-
                         <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('decrement')}>
                             <FaAngleLeft color='white' size={16} />
 
@@ -215,17 +226,17 @@ function ScatterGraph({ data, label, keyValue, color }) {
                         </button>
                     </div>
                 ) : null}
-                <div className="flex sm:flex-row flex-col">
-                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
+                <div data-aos="fade-up" className="flex sm:flex-row flex-col">
+                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Zoom level 1
                     </button>
-                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 border me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
                 </div>
             </div>
 
-            <div className="svg-container" id={`svg-container_${label}`} ref={chartRef}></div>
+            <div data-aos="fade-right" className="svg-container" id={`svg-container_${label}`} ref={chartRef}></div>
         </div>
     )
 }

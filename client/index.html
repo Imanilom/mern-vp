@@ -1,14 +1,105 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vidyamedic</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.1/dist/flowbite.min.js"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vidyamedic</title>
+
+  <!-- goggle font inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+    rel="stylesheet">
+
+
+  <!-- aos animation -->
+  <!-- <link rel="stylesheet" href="bower_components/aos/dist/aos.css" /> -->
+  <!-- <script src="bower_components/aos/dist/aos.js"></script> -->
+  <style>
+    * {
+      font-family: "Inter", system-ui !important;
+      /* font-optical-sizing: auto; */
+      /* font-weight: ; */
+      font-style: normal;
+    }
+
+    .blue {
+      color: #005A8F;
+    }
+
+    .darkgreen {
+      color: #07AC7B;
+    }
+
+    .purple {
+      color: #B76DFD;
+    }
+
+    .red{
+      color: #920E0E;
+    }
+
+    .bgg-red{
+      background-color: #920E0E!important;
+    }
+
+    .bgg-b {
+      background-color: #005A8F !important;
+    }
+
+    .bgg-dg {
+      background-color: #07AC7B !important;
+    }
+
+    .bgg-bl {
+      background-color: #101010 !important;
+    }
+
+
+    .css-ewdv3l {
+      outline: none !important;
+      box-shadow: none !important;
+      border-color: transparent !important;
+      border: none !important;
+    }
+
+    .rectangle {
+      background-color: rgba(255, 255, 255, 0.1);
+      /* #FFFFFF dengan opacity 10% */
+      filter: blur(4px);
+      /* Efek blur sebesar 4 */
+      border: none;
+      /* Jika tidak ada border */
+    }
+
+    @keyframes scroll {
+      0% {
+        transform: translateX(0);
+      }
+
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+
+    .animate-scroll {
+      display: flex;
+      width: calc(100% * 2);
+      /* Menggandakan lebar untuk mencakup set duplikat */
+      animation: scroll 40s linear infinite;
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.1/dist/flowbite.min.js"></script>
+
+</body>
+
 </html>

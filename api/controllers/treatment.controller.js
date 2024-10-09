@@ -3,29 +3,44 @@ import Patient from "../models/patient.model.js";
 import User from "../models/user.model.js";
 import { Treatments } from "../models/treatment.model.js";
 
+
 // get treatment pasient
 
 export const getTreatment = async (req, res) => {
     try {
+        let countDoc;
+        let page = req.query.p || 0;
+        let maxItems = 5;
 
         let history = [];
         let treat;
 
-        //cek role dlu 
-        const user = await User.findById(req.params.patient);
-        history = await Treatments.find({
-            patient: user._id,
-            status: {
-                $ne: "ongoing"
-            },
-        }).populate('doctor');
+        const user = await User.findById(req.params.patient).limit(maxItems);
+        // countDoc = await User.countDocuments({_})
+        [history, countDoc] = await Promise.all([
+            Treatments.find({
+                patient: user._id,
+                status: {
+                    $ne: "ongoing"
+                },
+            }).skip(page * maxItems).limit(maxItems).populate('doctor'),
+
+            Treatments.countDocuments({
+                patient: user._id,
+                status: {
+                    $ne: "ongoing"
+                },
+            })
+        ]);
+
+        let lengthPagination = Math.floor(countDoc / maxItems) + 1; 
 
         treat = await Treatments.findOne({
             patient: user._id,
             status: "ongoing",
         }).populate('doctor');
 
-        res.json({treat, history});
+        res.json({ treat, history, lengthPagination });
     } catch (error) {
         console.log({ error });
     }
@@ -38,7 +53,7 @@ export const getTreatmentDetail = async (req, res) => {
 
         treat = await Treatments.findById(req.params.id).populate('doctor');
 
-        res.json({treat});
+        res.json({ treat });
     } catch (error) {
         console.log({ error });
     }
@@ -74,12 +89,12 @@ export const createTreatment = async (req, res) => {
 
 // update treatment
 export const updateTreatment = async (req, res) => {
- try {
+    try {
 
         const { _id, diagnosis, followUpDate, notes, medications } = req.body;
 
         const treatment = await Treatments.findById(_id);
-        if(!treatment) return res.status(403).json({message : 'Cant find any treatment'});
+        if (!treatment) return res.status(403).json({ message: 'Cant find any treatment' });
 
         treatment.diagnosis = diagnosis;
         treatment.followUpDate = followUpDate;
@@ -87,7 +102,7 @@ export const updateTreatment = async (req, res) => {
         treatment.medications = medications;
 
         await treatment.save();
-        res.json({ message: "Succesfully update treatment."})
+        res.json({ message: "Succesfully update treatment." })
 
     } catch (error) {
         console.log({ error })
@@ -101,10 +116,10 @@ export const deleteTreatment = async (req, res) => {
         const treat = await Treatments.findById(req.params.id);
 
         await treat.deleteOne();
-        res.json({message : 'ok'});
-        
+        res.json({ message: 'ok' });
+
     } catch (error) {
-        console.log({error})
+        console.log({ error })
     }
 }
 
@@ -116,8 +131,8 @@ export const switchStatus = async (req, res) => {
         treat.status = 'completed';
         await treat.save();
 
-        res.json({message : 'The Treatment was succesfully complete.'});
+        res.json({ message: 'The Treatment was succesfully complete.' });
     } catch (error) {
-        console.log({error});
+        console.log({ error });
     }
 }
