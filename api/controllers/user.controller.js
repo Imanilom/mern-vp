@@ -3,7 +3,7 @@ import User from '../models/user.model.js';
 import Log from '../models/log.model.js';
 import Aktivitas from '../models/activity.model.js';
 import { errorHandler } from '../utils/error.js';
-import { calculateDFA } from './data.controller.js';
+import { calculateDFA } from './metrics.controller.js';
 
 import fs from 'fs';
 
