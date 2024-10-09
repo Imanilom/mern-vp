@@ -34,7 +34,7 @@ const groupDataByThreeAndAverage = (data) => {
 
 // Filtering Function (IQR-based) per 10 seconds with anomaly detection and grouping
 async function filterIQ(logs, multiplier = 1.5) {
-  console.log('Original Logs:', logs);
+  // console.log('Original Logs:', logs);
   const filteredLogs = [];
   const rawFilteredLogs = [];
   const anomalies = [];
@@ -190,7 +190,7 @@ const processHeartRateData = async () => {
     const filteredLogs = await filterIQ(logs);
 
     if (filteredLogs.length === 0) {
-      // console.log('No valid data after filtering.');
+      console.log('No valid data after filtering.');
       return;
     }
 
@@ -208,15 +208,15 @@ const processHeartRateData = async () => {
       metrics: hrvMetrics
     }));
     
-    console.log('Writing filtered logs to file...');
     fs.writeFileSync(fileName, JSON.stringify(jsonData, null, 2));
+    console.log('Writing filtered logs to file succesfully...');
 
-    console.log(`Processed and saved data logs from ${oldestTimestamp} to ${tenMinutesLater}.`);
+    // console.log(`Processed and saved data logs from ${oldestTimestamp} to ${tenMinutesLater}.`);
 
     // Update the `isChecked` status of the processed logs to true
     const logIds = logs.map(log => log._id); // Get the IDs of the processed logs
     await Log.updateMany({ _id: { $in: logIds } }, { $set: { isChecked: true } });
-    console.log(`Updated isChecked status for ${logIds.length} logs.`);
+    // console.log(`Updated isChecked status for ${logIds.length} logs.`);
   } catch (error) {
     console.error('Error processing heart rate data:', error);
   }
@@ -241,7 +241,7 @@ cron.schedule('*/5 * * * *', async () => {
     for (const guid_device of uniqueGuidDevices) {
       await generateGraph(guid_device);
     }
-    console.log('generateGraph completed for all guid_device.');
+    // console.log('generateGraph completed for all guid_device.');
   } catch (error) {
     console.error('Error during cron job execution:', error);
   }
