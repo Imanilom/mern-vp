@@ -73,11 +73,9 @@ function LineGraph({ data, label, keyValue, color }) {
         document.getElementById(`zoom_panel_${label}`).innerHTML = `Zoom level ${zoomV.toFixed(1)}`;
     }
 
-    const drawChart = (data) => {
-
-        // mengambil 1 data setiap 200 data
-        const sampledData = data.filter((d, i) => i % 200 === 0);
-        // console.log({sampledData})
+    const drawChart = (rawData) => {
+        // Proses data untuk menghilangkan duplikat
+        const processedData = processData(rawData);
 
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
@@ -89,7 +87,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
         // Tentukan ukuran chart
         const height = 500;
-        const width = 25 * data.length / 2;
+        const width = 25 * processedData.length / 2;
         const margin = { top: 20, right: 20, bottom: 90, left: 50 }
         let svgWidth;
 
@@ -117,7 +115,7 @@ function LineGraph({ data, label, keyValue, color }) {
             .attr('class', 'svgOne bgg-bl')
 
         const x = d3.scaleBand()
-            .domain(data.map(d => d.create_at)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
+            .domain(processedData.map(d => d.create_at)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
             .range([margin.left, width - margin.right]);
         // const x = d3.scaleLinear()
         //     .domain([d3.min(sampledData, d => d['create_at']), d3.max(sampledData, d => d.create_at)]) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
@@ -131,7 +129,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
 
         const y = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d[keyValue]) + 10]) // membentuk garis dari 0 hingga data value paling tinggi (max)
+            .domain([0, d3.max(processedData, d => d[keyValue]) + 10]) // membentuk garis dari 0 hingga data value paling tinggi (max)
             .range([height - margin.bottom, margin.top]);
         // Pada sumbu Y, kita biasanya ingin nilai 0 berada di bawah (koordinat terbesar), 
         // dan nilai terbesar berada di atas (koordinat terkecil). Oleh karena itu, range Y 
@@ -146,7 +144,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
         // gambar line
         const linepath = svg.append('path')
-            .datum(data)
+            .datum(processedData)
             .attr('fill', 'none')
             .attr('stroke', 'rgba(75, 192, 192, 1)')
             .attr('stroke-width', 2)
@@ -154,13 +152,13 @@ function LineGraph({ data, label, keyValue, color }) {
 
         // memberikan titik pada ujung sumbu y
         const circles = svg.selectAll('circle')
-            .data(data)
+            .data(processedData)
             .enter()
             .append('circle')
             .attr('cx', d => x(d.create_at))
             .attr('cy', d => y(d[keyValue]))
             .attr('r', 4)
-            .attr('fill', (d, i) => color[i])
+            .attr('fill', (d, i) => color[i % color.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
             .on('mouseover', (event, d) => {
                 const [xPos, yPos] = d3.pointer(event); // mouse x, y
                 // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
@@ -233,6 +231,24 @@ function LineGraph({ data, label, keyValue, color }) {
             .on('zoom', zoomed));  // Panggil fungsi zoomed saat zoom/pan terjadi
     }
 
+    // Fungsi untuk memproses data dan menghilangkan duplikat
+    const processData = (rawData) => {
+        // Urutkan data berdasarkan create_at
+        const sortedData = rawData.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
+        
+        // Gunakan Set untuk menyimpan nilai unik
+        const uniqueValues = new Set();
+        
+        // Filter data untuk menghilangkan duplikat
+        return sortedData.filter(item => {
+            const value = item[keyValue];
+            if (!uniqueValues.has(value)) {
+                uniqueValues.add(value);
+                return true;
+            }
+            return false;
+        });
+    }
 
     // const y = d3.scaleTime()
     // .domain()
