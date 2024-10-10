@@ -544,7 +544,7 @@ export const getFilteredAndRawData = async (req, res, next) => {
     let filteredData = JSON.parse(fs.readFileSync(filteredFilePath, 'utf-8'));
     const rawData = JSON.parse(fs.readFileSync(rawFilePath, 'utf-8')).raw;
 
-    // Konversi 'timestamp' ke 'datetime' dan pindahkan ke atas 'HR'
+    // Konversi 'timestamp' ke 'datetime'
     filteredData = filteredData.map(item => ({
       datetime: new Date(item.timestamp * 1000).toISOString(), // Konversi timestamp ke datetime
       HR: item.HR,
