@@ -4,8 +4,15 @@ import Log from '../models/log.model.js';
 import Aktivitas from '../models/activity.model.js';
 import { errorHandler } from '../utils/error.js';
 import { calculateDFA } from './metrics.controller.js';
+// import { filterIQ } from './data.controller.js';
 
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const calculateMetrics = (logs) => {
   const rrIntervals = logs.map((log) => log.RR);
@@ -506,4 +513,90 @@ export const pushActivity = async (req, res) => {
 
 }
 
+export const getFilteredAndRawData = async (req, res, next) => {
+  try {
+    const resultsDir = path.join(__dirname, '../controllers/hrv-results');
+    const files = fs.readdirSync(resultsDir);
 
+    const latestFilteredFile = files
+      .filter(file => file.startsWith('filtered_logs_'))
+      .sort((a, b) => {
+        const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+        const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+        return dateB - dateA;
+      })[0];
+
+    const latestRawFile = files
+      .filter(file => file.startsWith('log_'))
+      .sort((a, b) => {
+        const dateA = new Date(a.match(/log_(.+)\.json/)[1]);
+        const dateB = new Date(b.match(/log_(.+)\.json/)[1]);
+        return dateB - dateA;
+      })[0];
+
+    if (!latestFilteredFile || !latestRawFile) {
+      return res.status(404).json({ message: 'No data available' });
+    }
+
+    const filteredFilePath = path.join(resultsDir, latestFilteredFile);
+    const rawFilePath = path.join(resultsDir, latestRawFile);
+
+    let filteredData = JSON.parse(fs.readFileSync(filteredFilePath, 'utf-8'));
+    const rawData = JSON.parse(fs.readFileSync(rawFilePath, 'utf-8')).raw;
+
+    // Konversi 'timestamp' ke 'datetime' dan pindahkan ke atas 'HR'
+    filteredData = filteredData.map(item => ({
+      datetime: new Date(item.timestamp * 1000).toISOString(), // Konversi timestamp ke datetime
+      HR: item.HR,
+      RR: item.RR,
+      metrics: item.metrics
+    }));
+
+    // Menghitung rata-rata metrics dan datetime per hari
+    const metricsPerDay = {};
+    const datetimePerDay = {};
+
+    filteredData.forEach(item => {
+      const date = item.datetime.split('T')[0]; // Ambil tanggal saja
+      const timestamp = new Date(item.datetime).getTime();
+
+      if (!metricsPerDay[date]) {
+        metricsPerDay[date] = { count: 0, sum: {} };
+        datetimePerDay[date] = { count: 0, sum: 0 };
+      }
+
+      const metrics = item.metrics;
+      for (const key in metrics) {
+        if (!metricsPerDay[date].sum[key]) {
+          metricsPerDay[date].sum[key] = 0;
+        }
+        metricsPerDay[date].sum[key] += metrics[key];
+      }
+      metricsPerDay[date].count += 1;
+
+      datetimePerDay[date].sum += timestamp;
+      datetimePerDay[date].count += 1;
+    });
+
+    const averageMetricsPerDay = {};
+    for (const date in metricsPerDay) {
+      averageMetricsPerDay[date] = {};
+      const { sum, count } = metricsPerDay[date];
+      for (const key in sum) {
+        averageMetricsPerDay[date][key] = sum[key] / count;
+      }
+    }
+
+    const averageDatetimePerDay = {};
+    for (const date in datetimePerDay) {
+      const { sum, count } = datetimePerDay[date];
+      const avgTimestamp = sum / count;
+      averageDatetimePerDay[date] = new Date(avgTimestamp).toISOString();
+    }
+
+    res.status(200).json({ filtered: filteredData, raw: rawData, averages: averageMetricsPerDay, averageDatetime: averageDatetimePerDay });
+  } catch (error) {
+    console.error('Error reading filtered and raw data:', error);
+    next(error);
+  }
+};
