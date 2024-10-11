@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Line, Scatter } from 'react-chartjs-2';
 import { useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import "chart.js/auto";
 import Side from "../../components/Side";
 import { useDispatch } from 'react-redux';
-import { useRef } from 'react';
 
 import '../../loading.css';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
@@ -84,10 +82,8 @@ export default function Monitor() {
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       }
-      console.log({ url }, currentUser.role != 'user' && device)
       const response = await fetch(url);
       const data = await response.json();
-      console.log({ data })
 
       if (!response.ok) {
         console.log('error');
@@ -110,9 +106,6 @@ export default function Monitor() {
       set3dpData(tes);
       setLogs(sortedLogs);
       setIQRData(data.filterIQRResult);
-      console.log({ tes })
-      // setDailyMetrics(data); // butuh date
-      // payloadRedux.logs = sortedLogs;
 
       // setBorderColor
       const borderColor = sortedLogs.map(item => {
@@ -134,7 +127,6 @@ export default function Monitor() {
 
         const dailyMetrictResult = calculateDailyMetrics(sortedLogs, dfaHR); // call here
         setDailyMetrics(dailyMetrictResult);
-        console.log({ dailyMetrictResult });
 
         // payloadRedux.dailymetricR = dailyMetrictResult;
 
@@ -169,9 +161,6 @@ export default function Monitor() {
         setMedianProperty(median);
 
         payloadRedux.medianPropertyR = median;
-        // dispatch(setLogsWithDailyMetric(payloadRedux));
-        // dispatch(setDefautlFetchTrue());
-        console.log(median)
       }
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -268,22 +257,16 @@ export default function Monitor() {
         groupedData.push({ date, avg });
       }
     }
-
-    console.log({ groupedData, }, 'function gp3d')
     return groupedData;
   };
 
   const calculateDailyMetrics = (logs, CollectionHR) => {
-    // console.log('HR', logs)
     const groupedLogs = logs.reduce((acc, log) => {
       const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
       if (!acc[date]) acc[date] = [];
       acc[date].push({ ...log });
       return acc;
     }, {});
-
-    // Add DFA value here..
-    // console.log(groupedLogs)
 
     const dailyMetrics = Object.keys(groupedLogs).map((date, i) => {
       // groupedLogs[date] adalah kumpulan logs sesuai dengan tanggal tanggal
@@ -312,13 +295,6 @@ export default function Monitor() {
   const toggleVisibilityPoincare = () => setPoincareIsVisible(!isPoincareVisible);
   const toggleVisibility3dp = () => set3dpIsVisible(!is3dpVisible);
   const toggleVisibilityIQR = () => setIQRIsVisible(!isIQRVisible);
-  // const toggleVisibilityPoincare = () => setPoincareIsVisible(!isPoincareVisible);
-
-  // const formatDate = (unixTimestamp) => {
-  //   const date = new Date(unixTimestamp * 1000); // Convert to milliseconds
-  //   return date.toLocaleString(); // Adjust the format as needed
-  // };
-
 
   const handleChangeDevice = (e) => {
     e.preventDefault();
@@ -351,9 +327,6 @@ export default function Monitor() {
                   <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Monitoring</h1>
 
                 </div>
-                {/* <div data-aos="fade-up" className="flex mt-4 items-center"> */}
-                {/* <div className=""> */}
-                {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
                 <DatePicker
                   data-aos="fade-left"
                   selectsRange
@@ -361,7 +334,6 @@ export default function Monitor() {
                   endDate={endDate}
                   onChange={(dates) => {
                     const [start, end] = dates;
-                    console.log(start, end)
                     setStartDate(start);
                     setEndDate(end);
                   }}
@@ -385,27 +357,6 @@ export default function Monitor() {
                     {loading ? <span className="ms-4 loader"></span> : null}
                   </div>
                 )}
-
-                {/* <div className="flex flex-col gap-3 justify-end py-3">
-                  <div onClick={toggleVisibilityHR} className={isHRVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                    <button className='text-xs py-0.5 px-1.5 m-2'>{isHRVisible ? 'Hide' : 'Show'} Graphic HR</button>
-                  </div>
-                  <div onClick={toggleVisibilityRR} className={isRRVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                    <button className='text-xs py-0.5 px-1.5 m-2'>{isRRVisible ? 'Hide' : 'Show'} Graphic RR</button>
-                  </div>
-                  <div onClick={toggleVisibilityPoincare} className={isPoincareVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                    <button className='text-xs py-0.5 px-1.5 m-2'>{isPoincareVisible ? 'Hide' : 'Show'} Graphic Pointcare</button>
-                  </div>
-                  <div onClick={toggleVisibility3dp} className={is3dpVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                    <button className='text-xs py-0.5 px-1.5 m-2'>{is3dpVisible ? 'Hide' : 'Show'} Graphic 3dpfilter</button>
-                  </div>
-                  <div onClick={toggleVisibilityIQR} className={isIQRVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                    <button className='text-xs py-0.5 px-1.5 m-2'>{isIQRVisible ? 'Hide' : 'Show'} Graphic IQR</button>
-                  </div>
-                </div> */}
-
-
-                {/* </div> */}
 
                 <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
 
@@ -466,14 +417,6 @@ export default function Monitor() {
                 </div>
               </div>
             ) : null}
-            {/* <div className="flex items-center rounded-md shadow-sm mt-4 mb-8 gap-1">
-              <ToggleButton text="RR" isVisible={isRRVisible} onClick={toggleVisibilityRR} />
-              <ToggleButton text="HR" isVisible={isHRVisible} onClick={toggleVisibilityHR} />
-              <ToggleButton text="Poincare" isVisible={isPoincareVisible} onClick={toggleVisibilityPoincare} />
-            </div>
-            {logs ? (
-              <GrafikMetric logs={logs} isHRVisible={isHRVisible} isRRVisible={isRRVisible} isPoincareVisible={isPoincareVisible} borderColor={borderColor} />
-            ) : null} */}
           </div>
         </section>
       </main>
@@ -481,12 +424,3 @@ export default function Monitor() {
   );
 }
 
-const ToggleButton = ({ text, isVisible, onClick }) => (
-  <button
-    className={`text-slate-800 hover:text-blue-600 text-sm bg-white hover:bg-slate-100 border ${isVisible ? 'border-slate-200' : ''
-      } rounded-md font-medium px-4 py-2 inline-flex space-x-1 items-center`}
-    onClick={onClick}
-  >
-    {isVisible ? `Hide ${text}` : `Show ${text}`}
-  </button>
-);

@@ -31,6 +31,7 @@ export const groupDataByThreeAndAverage = (data) => {
   }
   return groupedData;
 };
+// pilih mau lihat hasil interquartil dulu, interquartil dan apa dll
 
 // Filtering Function (IQR-based) per 10 seconds with anomaly detection and grouping
 export async function filterIQ(logs, multiplier = 1.5) {

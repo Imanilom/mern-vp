@@ -77,7 +77,7 @@ const generateGraph = async (guid_device) => {
 
     const hrValues = dataPoints.map(point => point.HR);
     const timestamps = dataPoints.map(point => new Date(point.timestamp));
-
+    
     // Apply custom DBSCAN
     const epsilon = 5; // Example epsilon value
     const minPoints = 10; // Example minimum points value

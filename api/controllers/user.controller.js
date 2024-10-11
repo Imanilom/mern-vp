@@ -4,8 +4,8 @@ import Log from '../models/log.model.js';
 import Aktivitas from '../models/activity.model.js';
 import { errorHandler } from '../utils/error.js';
 import { calculateDFA } from './metrics.controller.js';
-import {formatTimestamp, groupDataByThreeAndAverage, filterIQ} from './data.controller.js';
-import { calculateHRVMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js"; 
+import { formatTimestamp, groupDataByThreeAndAverage, filterIQ } from './data.controller.js';
+import { calculateHRVMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
 
 const calculateMetrics = (logs) => {
   const rrIntervals = logs.map((log) => log.RR);
@@ -209,6 +209,7 @@ export const test = async (req, res, next) => {
 
     let user = await User.findById(req.user.id);
     const page = parseInt(req.query.page) || 1;
+    const device = req.params.device || 1;
     const limit = parseInt(req.query.limit) || 2000;
     const { startDate, endDate } = req.query;
 
@@ -216,29 +217,35 @@ export const test = async (req, res, next) => {
     // const logs = [];
     const fileCounts = {}; // untuk menyimpan jumlah file per tanggal
     let filter = {};
-    if(startDate && endDate){
+
+    if (device) {
+      console.log({device})
+      filter.guid_device = device // Sesuaikan dengan user device yang valid
+    }
+
+    if (startDate && endDate) {
       let dateStart = new Date(startDate).getTime() / 1000;
       let dateEnd = new Date(endDate).getTime() / 1000;
-      console.log({dateStart, dateEnd})
+      console.log({ dateStart, dateEnd })
       filter.timestamp = {
-        $gte : dateStart,
-        $lte : dateEnd
+        $gte: dateStart,
+        $lte: dateEnd
       }
     }
     console.log('wait', filter, limit)
     const logs = await Log.find(filter)
-    .sort({ create_at: -1 })
-    .limit(limit);
+      .sort({ create_at: -1 })
+      .limit(limit);
     console.log('selesai')
 
 
     // perlu interquartile
     // console.log({logs})
-    if(logs){
+    if (logs) {
       let sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
       const filterIQRResult = await filterIQ(sortedLogs);
-      console.log({filterIQRResult})
-      res.json({logs, filterIQRResult})
+      console.log({ filterIQRResult })
+      res.json({ logs, filterIQRResult })
     }
 
     // let filter = {

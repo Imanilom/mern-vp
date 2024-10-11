@@ -5,7 +5,7 @@ export const getAllPatients = async (req, res) => {
     try {
         const { role, id } = req.user; // doctor
 
-        const patients = await Patient.find({
+        const patients = await User.find({
             docter: id
         });
 
@@ -21,10 +21,10 @@ export const getNonePatient = async (req, res) => {
 
     try {
         const [patients, countDoc] = await Promise.all([
-            Patient.find({
+            User.find({
                 docter: { $exists: false }, role: { $ne: 'doctor' }
             }).sort({ create_at: -1 }).skip(page * maxItems).limit(maxItems),
-            Patient.countDocuments({ docter: { $exists: false }, role: { $ne: 'doctor' } })
+            User.countDocuments({ docter: { $exists: false }, role: { $ne: 'doctor' } })
         ]);
 
         const lengthPage = Math.floor(countDoc / maxItems) + 1;
@@ -40,7 +40,7 @@ export const setPatient = async (req, res) => {
 
     try {
         const id = req.body.id;
-        const pasien = await Patient.findById(id);
+        const pasien = await User.findById(id);
         const doctor = await User.findById(req.user.id);
 
         pasien.docter = doctor._id;
