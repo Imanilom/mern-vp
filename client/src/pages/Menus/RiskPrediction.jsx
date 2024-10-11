@@ -185,8 +185,11 @@ function RiskPrediction() {
     <div>
       <main class="bgg-bl text-white flex ">
         <Side />
-        <div class="w-11/12 py-8 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24">
+        <div class="w-11/12 py-8 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
           <ButtonOffCanvas />
+
+          <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-4 ">Prediksi Resiko</h1>
+
           <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words bgg-bl w-full mb-6 shadow-lg rounded ">
             <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/20">
               <div class="flex flex-wrap items-center">

@@ -70,14 +70,15 @@ function InputMedicalHistory() {
     }
 
     return (
-        <main class="bg-white flex pb-8">
+        <main class="bgg-bl text-white flex pb-8">
             <Side />
-            <form onSubmit={handleOnSubmit} class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-24 flex flex-col gap-4">
+            <form onSubmit={handleOnSubmit} class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16 flex flex-col gap-4">
                 <ButtonOffCanvas /> 
-                <h3 class="font-semibold text-[18px] text-blueGray-700">Riwayat Medis Pasien</h3>
+                <div class="font-semibold text-4xl  text-blueGray-700">Riwayat Medis Pasien</div>
+                <p class="mt-3 font-medium mb-3">Berikan informasi yang jelas dan valid</p>
                 {/* <h3 class="font-semibold text-base text-blueGray-700"></h3> */}
 
-                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
+                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-[#07AC7B]'>
                     <div onClick={() => setToggleTab('riwayatkeluhan')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                         <div>
                             Riwayat Keluhan
@@ -93,7 +94,7 @@ function InputMedicalHistory() {
                                 Apa keluhan utama anda
                             </label>
                             <div>
-                                <input required type="text" name='Apa keluhan utama anda' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
+                                <input required type="text" name='Apa keluhan utama anda' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
 
@@ -102,7 +103,7 @@ function InputMedicalHistory() {
                                 Kapan keluhan pertama kali muncul?
                             </label>
                             <div>
-                                <input required type="text" name='Kapan keluhan pertama kali muncul?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
+                                <input required type="text" name='Kapan keluhan pertama kali muncul?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
 
@@ -112,8 +113,8 @@ function InputMedicalHistory() {
                                 Seberapa sering nyeri dada terjadi
                             </label>
                             <div>
-                                {/* <input type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' /> */}
-                                <select required name='Seberapa sering nyeri dada terjadi' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                {/* <input type="text" className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[300px]' /> */}
+                                <select required name='Seberapa sering nyeri dada terjadi' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="sedikit">Sedikit</option>
                                     <option value="sering">Sering</option>
@@ -125,8 +126,8 @@ function InputMedicalHistory() {
                                 Bagaimana intensitas nyeri dada
                             </label>
                             <div>
-                                {/* <input type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' /> */}
-                                <select required name='Bagaimana intensitas nyeri dada' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                {/* <input type="text" className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[300px]' /> */}
+                                <select required name='Bagaimana intensitas nyeri dada' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ringan">ringan</option>
                                     <option value="sedang">sedang</option>
@@ -140,7 +141,7 @@ function InputMedicalHistory() {
                                 Apakah ada faktor pencetus yang terkait dengan nyeri dada (misalnya aktivitas fisik atau stres)
                             </label>
                             <div>
-                                <input required name='Apakah ada faktor pencetus yang terkait dengan nyeri dada (misalnya aktivitas fisik atau stres)' onChange={handleInputChange} type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
+                                <input required name='Apakah ada faktor pencetus yang terkait dengan nyeri dada (misalnya aktivitas fisik atau stres)' onChange={handleInputChange} type="text" className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
 
@@ -149,8 +150,8 @@ function InputMedicalHistory() {
                                 Apakah ada faktor yang memperburuk atau meredakan nyeri dada?
                             </label>
                             <div>
-                                {/* <input type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' /> */}
-                                <select required name='Apakah ada faktor yang memperburuk atau meredakan nyeri dada?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                {/* <input type="text" className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[300px]' /> */}
+                                <select required name='Apakah ada faktor yang memperburuk atau meredakan nyeri dada?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya, ada</option>
                                     <option value="tidak">tidak</option>
@@ -163,8 +164,8 @@ function InputMedicalHistory() {
                                 Apakah nyeri dada berpindah ke lengan kiri, rahang, atau punggung?
                             </label>
                             <div>
-                                {/* <input type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' /> */}
-                                <select required name='Apakah nyeri dada berpindah ke lengan kiri, rahang, atau punggung?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                {/* <input type="text" className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[300px]' /> */}
+                                <select required name='Apakah nyeri dada berpindah ke lengan kiri, rahang, atau punggung?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya</option>
                                     <option value="tidak">tidak</option>
@@ -177,7 +178,7 @@ function InputMedicalHistory() {
                     </div>
                     {/* ) : null} */}
                 </section>
-                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
+                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-[#07AC7B]'>
                     <div onClick={() => setToggleTab('riwayatmedis')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                         <div>
                             Riwayat Medis
@@ -191,7 +192,7 @@ function InputMedicalHistory() {
                                 Apakah pasien memiliki riwayat penyakit jantung sebelumnya?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat penyakit jantung sebelumnya?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] max-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat penyakit jantung sebelumnya?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] max-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak, saya tidak punya</option>
                                     <option value="ya">Ya, saya punya sebelumnya</option>
@@ -206,7 +207,7 @@ function InputMedicalHistory() {
 
                             </label>
                             <div>
-                                <select required name='Apakah ada riwayat penyakit jantung dalam keluarga (misalnya orangtua atau saudara)?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah ada riwayat penyakit jantung dalam keluarga (misalnya orangtua atau saudara)?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak ada</option>
                                     <option value="ya">Ya, ada</option>
@@ -220,7 +221,7 @@ function InputMedicalHistory() {
 
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat hipertensi, diabetes, atau penyakit lain yang berhubungan dengan penyakit jantung?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat hipertensi, diabetes, atau penyakit lain yang berhubungan dengan penyakit jantung?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya, ada</option>
                                     <option value="tidak">Tidak ada</option>
@@ -233,14 +234,14 @@ function InputMedicalHistory() {
                                 Apakah pasien sedang mengonsumsi obat-obatan tertentu?
                             </label>
                             <div>
-                                <input required name='Apakah pasien sedang mengonsumsi obat-obatan tertentu?' onChange={handleInputChange} type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
+                                <input required name='Apakah pasien sedang mengonsumsi obat-obatan tertentu?' onChange={handleInputChange} type="text" className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
                     </div>
                     {/* ) : null} */}
                 </section>
 
-                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
+                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-[#07AC7B]'>
                     <div onClick={() => setToggleTab('riwayatgayahidup')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                         <div>
                             Riwayat Gaya Hidup
@@ -255,7 +256,7 @@ function InputMedicalHistory() {
 
                             </label>
                             <div>
-                                <select required name='Apakah pasien merokok?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien merokok?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak, saya tidak merokok</option>
                                     <option value="ya">Ya, saya merokok</option>
@@ -269,7 +270,7 @@ function InputMedicalHistory() {
 
                             </label>
                             <div>
-                                <select required name='Apakah pasien mengonsumsi alkohol?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien mengonsumsi alkohol?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya, benar</option>
                                     <option value="tidak">Tidak</option>
@@ -281,7 +282,7 @@ function InputMedicalHistory() {
                                 Apakah pasien menjalani pola makan sehat?
                             </label>
                             <div>
-                                <select required name='Apakah pasien menjalani pola makan sehat?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien menjalani pola makan sehat?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="ya">Ya, benar</option>
                                     <option value="tidak yakin">Tidak yakin</option>
@@ -295,7 +296,7 @@ function InputMedicalHistory() {
                                 Apakah pasien rutin berolahraga?
                             </label>
                             <div>
-                                <select required name='Apakah pasien rutin berolahraga?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien rutin berolahraga?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -308,7 +309,7 @@ function InputMedicalHistory() {
                     {/* ) : null} */}
                 </section>
 
-                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
+                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-[#07AC7B]'>
                     <div onClick={() => setToggleTab('riwayatpenyakitlain')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                         <div>
                             Riwayat Penyakit Lain
@@ -322,7 +323,7 @@ function InputMedicalHistory() {
                                 Apakah pasien memiliki riwayat hipertensi?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat hipertensi?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat hipertensi?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -335,7 +336,7 @@ function InputMedicalHistory() {
                                 Apakah pasien memiliki riwayat diabetes?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat diabetes?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat diabetes?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -348,7 +349,7 @@ function InputMedicalHistory() {
                                 Apakah pasien memiliki riwayat penyakit ginjal?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat penyakit ginjal?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat penyakit ginjal?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -360,7 +361,7 @@ function InputMedicalHistory() {
                     </div>
                     {/* ) : null} */}
                 </section>
-                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
+                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-[#07AC7B]'>
                     <div onClick={() => setToggleTab('riwayatoperasi')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                         <div>
                             Riwayat Operasi
@@ -374,7 +375,7 @@ function InputMedicalHistory() {
                                 Apakah pasien pernah menjalani operasi sebelumnya?
                             </label>
                             <div>
-                                <select required name='Apakah pasien pernah menjalani operasi sebelumnya?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien pernah menjalani operasi sebelumnya?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, benar</option>
@@ -387,7 +388,7 @@ function InputMedicalHistory() {
                                 Jika iya, operasi apa yang pernah dilakukan oleh pasien?
                             </label>
                             <div>
-                                <input required name='Jika iya, operasi apa yang pernah dilakukan oleh pasien?' onChange={handleInputChange} type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]' />
+                                <input required name='Jika iya, operasi apa yang pernah dilakukan oleh pasien?' onChange={handleInputChange} type="text" className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]' />
                             </div>
                         </div>
 
@@ -395,7 +396,7 @@ function InputMedicalHistory() {
                     </div>
                     {/* ) : null} */}
                 </section>
-                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
+                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-[#07AC7B]'>
                     <div onClick={() => setToggleTab('riwayatalergi')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                         <div>
                             Riwayat Alergi
@@ -409,7 +410,7 @@ function InputMedicalHistory() {
                                 Apakah pasien memiliki riwayat alergi terhadap obat-obatan tertentu?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat alergi terhadap obat-obatan tertentu?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat alergi terhadap obat-obatan tertentu?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, ada</option>
@@ -422,7 +423,7 @@ function InputMedicalHistory() {
                                 Apakah pasien memiliki riwayat alergi makanan?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat alergi makanan?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat alergi makanan?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak</option>
                                     <option value="ya">Ya, ada</option>
@@ -434,7 +435,7 @@ function InputMedicalHistory() {
                     {/* ) : null} */}
                 </section>
 
-                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
+                <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-[#07AC7B]'>
                     <div onClick={() => setToggleTab('riwayatpsikosisial')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                         <div>
                             Riwayat Psikososial
@@ -449,7 +450,7 @@ function InputMedicalHistory() {
 
                             </label>
                             <div>
-                                <select required name='Bagaimana tingkat stres pasien dalam kehidupan sehari-hari?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Bagaimana tingkat stres pasien dalam kehidupan sehari-hari?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="sering">Saya sering mengalami stress</option>
                                     <option value="jarang">Saya, jarang mengalami stress</option>
@@ -462,7 +463,7 @@ function InputMedicalHistory() {
                                 Apakah pasien memiliki riwayat gangguan kecemasan atau depresi?
                             </label>
                             <div>
-                                <select required name='Apakah pasien memiliki riwayat gangguan kecemasan atau depresi?' onChange={handleInputChange} className='border border-slate-800 px-3 py-1 rounded-md max-w-[270px] min-w-[270px] md:min-w-[300px]'>
+                                <select required name='Apakah pasien memiliki riwayat gangguan kecemasan atau depresi?' onChange={handleInputChange} className='bg-[#2c2c2c] px-3 py-2 rounded-md max-w-[270px] min-w-[270px] md:min-w-[300px]'>
                                     <option value="" disabled selected>Choose here</option>
                                     <option value="tidak">Tidak memiliki gangguan kecemasan</option>
                                     <option value="sering">Sering mengalami depresi</option>
@@ -475,7 +476,7 @@ function InputMedicalHistory() {
                 </section>
 
                 {Actionriwayatmedis == 'detail' ? (
-                    <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-slate-400'>
+                    <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-[#07AC7B]'>
                         <div onClick={() => setToggleTab('Keteranganlainnya')} className="flex justify-between hover:cursor-pointer text-[18px]  font-semibold">
                             <div>
                                 Keterangan Lainnya
@@ -498,7 +499,7 @@ function InputMedicalHistory() {
                                     Pertanyaan random lainnya
                                 </label>
                                 <div>
-                                    <input type="text" className='border border-slate-800 px-3 py-1 rounded-md min-w-[300px]' />
+                                    <input type="text" className='bg-[#2c2c2c] px-3 py-2 rounded-md min-w-[300px]' />
                                 </div>
 
                             </div>
@@ -510,9 +511,9 @@ function InputMedicalHistory() {
 
                 <div className="flex justify-start md:justify-end py-4">
                     <div className='flex gap-2 font-semibold'>
-                        <Link to={`/riwayat-medis`} className='px-3 py-1 bg-slate-800 text-white rounded-md' type='button'>Back To Riwayat Medis</Link>
+                        <Link to={`/riwayat-medis`} className='px-3 font-semibold py-1 hover:text-[#005A8F] text-white rounded-md' type='button'>Back To Riwayat Medis</Link>
                         {currentUser.role == 'user' && Actionriwayatmedis == 'create' ? (
-                            <button type='submit' className='px-3 py-1 bg-green-500 text-white rounded-md'>Submit</button>
+                            <button type='submit' className='px-8 py-1 bg-[#07AC7B] text-white rounded-md'>Submit</button>
                         ) : null}
                     </div>
                 </div>

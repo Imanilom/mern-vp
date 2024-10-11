@@ -308,10 +308,11 @@ function Acitivity() {
 
           <>
             <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-3 ">Aktivitas Pasien</h1>
-            <div data-aos="fade-up" className="">
+         
               {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
               <DatePicker
                 selectsRange
+                data-aos="fade-up"
                 startDate={startDate}
                 endDate={endDate}
                 onChange={(dates) => {
@@ -328,7 +329,7 @@ function Acitivity() {
                       <span class="ms-4 loader "></span>
                     ) : null} */}
 
-            </div>
+
             <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words bg-[#363636]/20 lg:w-10/12 mb-6 shadow-lg rounded ">
               <div class="rounded-md  mb-0 px-4 py-3 border-0">
                 <div class="flex flex-wrap items-center">

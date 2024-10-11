@@ -8,43 +8,52 @@ import { Treatments } from "../models/treatment.model.js";
 
 export const getTreatment = async (req, res) => {
     try {
-        let countDoc;
-        let page = req.query.p || 0;
+        let countDoc = 0;
+        let page = parseInt(req.query.p, 10) || 0;  // Pastikan page adalah angka
         let maxItems = 5;
 
         let history = [];
         let treat;
 
-        const user = await User.findById(req.params.patient).limit(maxItems);
-        // countDoc = await User.countDocuments({_})
+        // Cari user berdasarkan patient ID
+        const user = await User.findById(req.params.patient);
+        if (!user) return res.status(404).json({ message: 'Cant find patient id' });
+
+        // console.log('User:', user);
+        // console.log('Page:', page, 'MaxItems:', maxItems);
+
+        // Fetch history dan count dalam satu waktu menggunakan Promise.all
         [history, countDoc] = await Promise.all([
             Treatments.find({
                 patient: user._id,
-                status: {
-                    $ne: "ongoing"
-                },
-            }).skip(page * maxItems).limit(maxItems).populate('doctor'),
-
+                status: { $ne: "ongoing" }  // Pastikan status bukan ongoing
+            })
+            .skip(page * maxItems)
+            .limit(maxItems)
+            .populate('doctor'),  // Pastikan doctor ada di dalam model
             Treatments.countDocuments({
                 patient: user._id,
-                status: {
-                    $ne: "ongoing"
-                },
+                status: { $ne: "ongoing" }
             })
         ]);
 
-        let lengthPagination = Math.floor(countDoc / maxItems) + 1; 
+        // Menghitung total halaman untuk pagination
+        let lengthPagination = Math.ceil(countDoc / maxItems);  // Ubah Math.floor ke Math.ceil
 
+        // Fetch ongoing treatment jika ada
         treat = await Treatments.findOne({
             patient: user._id,
             status: "ongoing",
         }).populate('doctor');
 
+        // Kirimkan response ke client
         res.json({ treat, history, lengthPagination });
+
     } catch (error) {
-        console.log({ error });
+        console.error('Error occurred:', error);  // Perbaiki log untuk error
+        return res.status(500).json({ message: 'Internal server error' });
     }
-}
+};
 
 
 export const getTreatmentDetail = async (req, res) => {

@@ -198,7 +198,7 @@ function MyPatients() {
                                                 </td>
                                                 <td>
                                                     <div className="relative w-full px-4 max-w-full flex-grow flex-1 text-end">
-                                                        <button onClick={() => handleChangePropertyModal(patient)} className="bg-indigo-500 text-white hover:bg-indigo-600/90 active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Detail</button>
+                                                        {/* <button onClick={() => handleChangePropertyModal(patient)} className="bg-indigo-500 text-white hover:bg-indigo-600/90 active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Detail</button> */}
                                                         <button onClick={() => handleChoosePatient(patient)} className="bg-green-500 text-white hover:bg-green-500/90 active:bg-green-500 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Monitoring</button>
 
                                                     </div>

@@ -10,15 +10,15 @@ import AOS from 'aos';
 let scroolState = {
     HR: 1, // daftarkan label 
     RR: 1,
-
+    InterQuartile : 1
 };
 
-function LineGraph({ data, label, keyValue, color }) {
+function InterquartileGraph({ data, label, color }) {
     const [scroolLevel, setScroolLevel] = useState(1);
     const chartRef = useRef();
     const [slice, setSlice] = useState(1);
     const [slider, setSlider] = useState(1);
-    const XCount = 10;
+    let XCount = 10;
 
     useEffect(() => {
         AOS.init({
@@ -65,10 +65,6 @@ function LineGraph({ data, label, keyValue, color }) {
     // useEffect(() => {
     //   // init for using label x date
     //   const parseDate = d3.timeParse('%d-%m-%Y %H:%M:%S'); // function untuk merubah string to date
-    data.forEach(d => {
-        // const mergeDateTime = `${d.date} ${d.time}`;
-        d.create_at = new Date(d.create_at); // merubah isi dari array
-    });
 
     const changeZoomText = (zoomV) => {
         document.getElementById(`zoom_panel_${label}`).innerHTML = `Zoom level ${zoomV.toFixed(1)}`;
@@ -77,6 +73,13 @@ function LineGraph({ data, label, keyValue, color }) {
     const drawChart = (rawData) => {
         // Proses data untuk menghilangkan duplikat
         const processedData = processData(rawData);
+
+        processedData.forEach(d => {
+            d.date = new Date(d.timestamp * 1000);
+        });
+
+        XCount = processedData.length;
+        console.log({processedData})
 
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
@@ -116,7 +119,7 @@ function LineGraph({ data, label, keyValue, color }) {
             .attr('class', 'svgOne bgg-bl')
 
         const x = d3.scaleBand()
-            .domain(processedData.map(d => d.create_at)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
+            .domain(processedData.map(d => d.date)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
             .range([margin.left, width - margin.right]);
         // const x = d3.scaleLinear()
         //     .domain([d3.min(sampledData, d => d['create_at']), d3.max(sampledData, d => d.create_at)]) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
@@ -130,36 +133,57 @@ function LineGraph({ data, label, keyValue, color }) {
 
 
         const y = d3.scaleLinear()
-            .domain([0, d3.max(processedData, d => d[keyValue]) + 10]) // membentuk garis dari 0 hingga data value paling tinggi (max)
+            .domain([0, d3.max(processedData, d => Math.max(d.HR, d.RR))]) // membentuk garis dari 0 hingga data value paling tinggi (max)
             .range([height - margin.bottom, margin.top]);
         // Pada sumbu Y, kita biasanya ingin nilai 0 berada di bawah (koordinat terbesar), 
         // dan nilai terbesar berada di atas (koordinat terkecil). Oleh karena itu, range Y 
         // dibalik, dari [height, 0]. Jadi, 0 akan dipetakan ke bagian bawah grafik 
         // (misalnya height = 400), dan 90 akan dipetakan ke bagian atas (0).
 
-        const line = d3.line()
-            .x(d => x(d.create_at))
-            .y(d => y(d[[keyValue]]));
+        // const line = d3.line()
+        //     .x(d => x(d.date))
+        //     .y(d => y(d[["avg"]]));
+        const lineRR = d3.line()
+            .x(d => x(d.date))
+            .y(d => y(d[["RR"]]));
+        const lineHR = d3.line()
+            .x(d => x(d.date))
+            .y(d => y(d[["HR"]]));
 
         // console.log({ line })
 
         // gambar line
-        const linepath = svg.append('path')
+        // const linepath = svg.append('path')
+        //     .datum(processedData)
+        //     .attr('fill', 'none')
+        //     .attr('stroke', 'rgba(75, 192, 192, 1)')
+        //     .attr('stroke-width', 2)
+        //     .attr('d', line);
+
+        const linepathHR = svg.append('path')
             .datum(processedData)
             .attr('fill', 'none')
             .attr('stroke', 'rgba(75, 192, 192, 1)')
             .attr('stroke-width', 2)
-            .attr('d', line);
+            .attr('d', lineHR);
+
+        const linepathRR = svg.append('path')
+            .datum(processedData)
+            .attr('fill', 'none')
+            .attr('stroke', 'rgba(75, 192, 192, 1)')
+            .attr('stroke-width', 2)
+            .attr('d', lineRR);
+
 
         // memberikan titik pada ujung sumbu y
-        const circles = svg.selectAll('circle')
+        const circlesHR = svg.selectAll('circle.hr-circle')
             .data(processedData)
             .enter()
             .append('circle')
-            .attr('cx', d => x(d.create_at))
-            .attr('cy', d => y(d[keyValue]))
+            .attr('cx', d => x(d.date))
+            .attr('cy', d => y(d["HR"]))
             .attr('r', 4)
-            .attr('fill', (d, i) => color[i % color.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
+            .attr('fill', 'rgba(0, 90, 143, 1)') // Menggunakan modulo untuk memastikan warna selalu tersedia
             .on('mouseover', (event, d) => {
                 const [xPos, yPos] = d3.pointer(event); // mouse x, y
                 // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
@@ -174,7 +198,35 @@ function LineGraph({ data, label, keyValue, color }) {
                 tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
-                    .html(`<p>Date: ${String(d.create_at).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> ${keyValue}: ${d[keyValue]} </p>`);
+                    .html(`<p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile HR: ${d["HR"]} </p>`);
+            })
+            .on('mouseout', () => {
+                tooltip.style('opacity', 0);
+            });
+
+        const circlesRR = svg.selectAll('circle.rr-circle')
+            .data(processedData)
+            .enter()
+            .append('circle')
+            .attr('cx', d => x(d.date))
+            .attr('cy', d => y(d["RR"]))
+            .attr('r', 4)
+            .attr('fill', 'rgba(7, 172, 123, 1)') // Menggunakan modulo untuk memastikan warna selalu tersedia
+            .on('mouseover', (event, d) => {
+                const [xPos, yPos] = d3.pointer(event); // mouse x, y
+                // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
+                // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
+                // console.log({ xPos, yPos, scrollX })
+                let x = xPos + 10;
+                if (scroolState[label] > 1) {
+                    x = xPos - (768 * (scroolState[label] - 1));
+                    console.log(x, xPos, (768 * (scroolState[label] - 1)))
+                }
+                // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
+                tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
+                    .style('top', `${(yPos + 10)}px`)
+                    .style('opacity', 1)
+                    .html(`<p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile RR: ${d["RR"]} </p>`);
             })
             .on('mouseout', () => {
                 tooltip.style('opacity', 0);
@@ -215,14 +267,29 @@ function LineGraph({ data, label, keyValue, color }) {
             x.call(d3.axisBottom(newX).ticks(XCount).tickPadding(8));
             y.call(d3.axisLeft(newY).ticks(15));
 
-            linepath.attr('d', d3.line()
-                .x(d => newX(d.create_at))
-                .y(d => newY(d[[keyValue]]))
+            // linepath.attr('d', d3.line()
+            //     .x(d => newX(d.date))
+            //     .y(d => newY(d[["avg"]]))
+            // );
+            linepathHR.attr('d', d3.line()
+                .x(d => newX(d.date))
+                .y(d => newY(d[["HR"]]))
             );
 
-            circles
-                .attr('cx', d => newX(d.create_at))
-                .attr('cy', d => newY(d[keyValue]));
+            linepathRR.attr('d', d3.line()
+                .x(d => newX(d.date))
+                .y(d => newY(d[["RR"]]))
+            );
+
+            // circles
+            //     .attr('cx', d => newX(d.date))
+            //     .attr('cy', d => newY(d["avg"]));
+            circlesHR
+                .attr('cx', d => newX(d.date))
+                .attr('cy', d => newY(d["HR"]));
+            circlesRR
+                .attr('cx', d => newX(d.date))
+                .attr('cy', d => newY(d["RR"]));
         };
 
         // Tambahkan event zoom pada SVG
@@ -235,14 +302,14 @@ function LineGraph({ data, label, keyValue, color }) {
     // Fungsi untuk memproses data dan menghilangkan duplikat
     const processData = (rawData) => {
         // Urutkan data berdasarkan create_at
-        const sortedData = rawData.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
+        const sortedData = rawData.sort((a, b) => new Date(a.date) - new Date(b.date));
         
         // Gunakan Set untuk menyimpan nilai unik
         const uniqueValues = new Set();
         
         // Filter data untuk menghilangkan duplikat
         return sortedData.filter(item => {
-            const value = item[keyValue];
+            const value = item["RR"];
             if (!uniqueValues.has(value)) {
                 uniqueValues.add(value);
                 return true;
@@ -277,6 +344,12 @@ function LineGraph({ data, label, keyValue, color }) {
                     <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
+                    <button id='' className='rounded-md bg-[#005A8F] px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                        HR Point
+                    </button>
+                    <button id='' className='rounded-md bg-[#07AC7B] px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                        RR Point
+                    </button>
                 </div>
             </div>
             <div className="relative" data-aos="fade-right">
@@ -290,4 +363,4 @@ function LineGraph({ data, label, keyValue, color }) {
     )
 }
 
-export default LineGraph;
+export default InterquartileGraph;

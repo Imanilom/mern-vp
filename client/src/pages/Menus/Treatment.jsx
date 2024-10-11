@@ -39,10 +39,14 @@ function Treatment() {
       const res = await fetch(url);
       const data = await res.json();
 
+      if(!res.ok){
+        console.log({ data, res })
+        throw new Error(data.message)
+      }
+
       setTreatment(data.treat);
       setHistory(data.history);
       setPagination(data.lengthPagination);
-      console.log({ data })
       console.log('oke')
     } catch (error) {
       console.log({ error });
@@ -111,6 +115,9 @@ function Treatment() {
       <Side />
       <div class="w-full xl:w-9/12 mb-12 xl:mb-0 px-4 mx-auto mt-12 sm:mt-16">
         <ButtonOffCanvas />
+        
+        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-4 ">Treatment Pasien</h1>
+
         {treatment ? (
           <div class="flex w-full py-4 overflow-x-auto justify-between gap-8 mt-12 items-center flex-col sm:flex-row">
             <div data-aos="fade-right" className="left lg:min-w-[480px]" >

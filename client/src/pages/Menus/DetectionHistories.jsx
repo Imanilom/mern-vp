@@ -111,7 +111,7 @@ function DetectionHistories() {
       return (
         <div className='w-[330px] flex-col flex gap-3 text-sm'>
           <p>Hijau, warna hijau memiliki arti bahwa system kami mengenali bahwa aktivitas anda aman, tidak ada anomali.</p>
-          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#46FF59]'>Safe</button>
+          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#46FF59]/70 rounded'>Safe</button>
         </div>
       )
     }
@@ -119,7 +119,7 @@ function DetectionHistories() {
       return (
         <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
           <p>Orange, warna orange memiliki arti bahwa sistem kami mengenali adanya deteksi yang perlu diwaspadai. ketika anda sedang melakukan aktifitas</p>
-          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#F47500]'>Warning</button>
+          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#F47500]/70 rounded'>Warning</button>
         </div>
       )
     }
@@ -127,7 +127,7 @@ function DetectionHistories() {
       return (
         <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
           <p>Merah, warna Merah memiliki arti bahwa system kami mengenali adanya deteksi yang perlu ditangani</p>
-          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#F40000]'>Danger</button>
+          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#F40000]/70 rounded'>Danger</button>
         </div>
       )
     }
@@ -135,7 +135,7 @@ function DetectionHistories() {
       return (
         <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
           <p>Putih, warna Putih memiliki arti bahwa system kami tidak dapat mengenali deteksi, hal ini bisa terjadi ketika system kami kekurangan data dari anda. </p>
-          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#FFFFFF]'>System kekurangan data</button>
+          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#FFFFFF]/70 rounded'>System kekurangan data</button>
         </div>
       )
     }
@@ -160,10 +160,10 @@ function DetectionHistories() {
           <div className="flex gap-5 items-end justify-between">
             <div className="md:w-6/12 flex gap-5 my-3 items-center">
               <div className="w-fit text-sm text-[#101010] font-semibold flex flex-col gap-2 py-3">
-                <button onClick={() => setState('safe')} className='bg-[#46FF59] py-1 rounded px-3'>Click me</button>
-                <button onClick={() => setState('warning')} className='bg-[#F47500] py-1 rounded px-3'>Click me</button>
-                <button onClick={() => setState('danger')} className='bg-[#F40000] py-1 rounded px-3'>Click me</button>
-                <button onClick={() => setState('undefined')} className='bg-[#FFFFFF] py-1 rounded px-3'>Click me</button>
+                <button onClick={() => setState('safe')} className='bg-[#46FF59]/70 py-1 rounded px-3'>Click me</button>
+                <button onClick={() => setState('warning')} className='bg-[#F47500]/70 py-1 rounded px-3'>Click me</button>
+                <button onClick={() => setState('danger')} className='bg-[#F40000]/70 py-1 rounded px-3'>Click me</button>
+                <button onClick={() => setState('undefined')} className='bg-[#FFFFFF]/70 py-1 rounded px-3'>Click me</button>
               </div>
 
               {/* <div className='md:w-6/12 flex-col flex gap-3'>
@@ -174,7 +174,7 @@ function DetectionHistories() {
               {handleText(state)}
             </div>
 
-            <div className="md:w-5/12 ms-auto flex justify-end">
+            {/* <div className=" ms-auto flex justify-end"> */}
               <DatePicker
                 selectsRange
                 startDate={startDate}
@@ -187,9 +187,9 @@ function DetectionHistories() {
                 }}
                 isClearable
                 placeholderText='Cari berdasarkan range tanggal'
-                className="p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[320px]"
+                className="px-4 py-3 bg-[#2C2C2C] md:w-5/12 rounded ms-auto text-sm  lg:min-w-[320px]"
               />
-            </div>
+            {/* </div> */}
 
 
 
