@@ -48,22 +48,19 @@ function MyPatients() {
     const handleChangePropertyModal = (property) => {
         setModal(true);
         setModalProperty(property);
-        console.log(property);
+    
     };
 
     const handleChoosePatient = (property) => {
         dispatch(docterGetUser(property));
-        console.log(property);
         navigate('/ringkasan-pasien')
     }
 
     const handleSearchName = (e) => {
         e.preventDefault();
     };
-
     useEffect(() => {
         if (searchInput !== '') {
-            console.log(searchInput);
             let resultQuery = [];
             for (let i = 0; i < allPatient.length; i++) {
                 let word = allPatient[i]['name'].split(" ");
@@ -74,7 +71,6 @@ function MyPatients() {
                     }
                 }
             }
-            console.log(resultQuery);
             setPatients(resultQuery);
         } else {
             setPatients(allPatient);

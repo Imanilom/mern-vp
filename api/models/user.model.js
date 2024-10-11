@@ -5,6 +5,7 @@ const UserSchema = new mongoose.Schema(
     guid: {
       required: true,
       type: String,
+      unique: true, // Added unique constraint for guid
     },
     name: {
       required: true,
@@ -21,19 +22,14 @@ const UserSchema = new mongoose.Schema(
       type: String,
     },
     current_device: {
-      required: true,
       type: String,
-      default: "C0680226"
+      default: "C0680226",
     },
     phone_number: {
       required: true,
       type: String,
     },
     address: {
-      default: "",
-      type: String,
-    },
-    guid: {
       type: String,
       default: "",
     },
@@ -42,21 +38,29 @@ const UserSchema = new mongoose.Schema(
       default: "user",
     },
     otp: {
-      default: 0,
       type: Number,
+      default: 0,
     },
     is_active: {
       type: Boolean,
       default: true,
     },
-    create_at: {
+    created_at: {
       type: Date,
-      default: Date.now
+      default: Date.now,
     },
     profilePicture: {
       type: String,
       default:
         'https://img.freepik.com/premium-vector/man-avatar-profile-picture-vector-illustration_268834-538.jpg',
+    },
+    docter: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User', // Corrected reference to the model name
+    },
+    requestAppointment: {
+      type: String, // Added type specification
+      enum: ['pending', 'accept'], // Limited the values for this field
     },
   },
   {
@@ -64,6 +68,6 @@ const UserSchema = new mongoose.Schema(
   }
 );
 
-const User = mongoose.model("user", UserSchema);
+const User = mongoose.model("User", UserSchema); // Capitalized the model name
 
 export default User;
