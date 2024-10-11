@@ -4,8 +4,8 @@ import Log from '../models/log.model.js';
 import Aktivitas from '../models/activity.model.js';
 import { errorHandler } from '../utils/error.js';
 import { calculateDFA } from './metrics.controller.js';
-
-import fs from 'fs';
+import {formatTimestamp, groupDataByThreeAndAverage, filterIQ} from './data.controller.js';
+import { calculateHRVMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js"; 
 
 const calculateMetrics = (logs) => {
   const rrIntervals = logs.map((log) => log.RR);
@@ -50,6 +50,157 @@ const calculateMetrics = (logs) => {
   return { sdnn, rmssd, pnn50, s1, s2 };
 };
 
+// export const test = async (req, res, next) => {
+//   try {
+//     await Log.deleteMany({
+//       $or: [{ HR: 0 }, { RR: 0 }, { rrRMS: 0 }],
+//     });
+
+//     let user = await User.findById(req.user.id);
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 2000;
+//     const { startDate, endDate } = req.query;
+
+//     const metricDaily = [];
+//     const logs = [];
+//     const fileCounts = {}; // untuk menyimpan jumlah file per tanggal
+
+//     // let filter = {
+//     //   guid_device: 'C0680226' // Sesuaikan dengan user device yang valid
+//     // };
+
+//     // Formatkan input tanggal ke objek Date
+//     fs.readdir('./controllers/hrv-results', (err, list) => {
+//       if (err) {
+//         console.log({ err });
+//         return;
+//       }
+
+//       let filteredFile;
+
+//       if (startDate && endDate) {
+
+//         const start = new Date(startDate);
+//         const end = new Date(endDate);
+//         // Filter file berdasarkan rentang tanggal
+//         filteredFile = list.filter(filename => {
+//           // Ekstrak tanggal dari nama file menggunakan regex
+//           const fileDateM = filename.match(/log_(\d{4}-\d{2}-\d{2})/);
+
+//           if (fileDateM) {
+//             const fileDate = new Date(fileDateM[1]); // Ubah tanggal ke objek Date
+
+//             // Cek apakah fileDate berada dalam rentang tanggal start dan end
+//             return fileDate >= start && fileDate <= end;
+//           }
+
+//           return false; // Jika tidak ada tanggal yang cocok, jangan sertakan file tersebut
+//         })
+//           .sort((a, b) => {
+//             const dateA = new Date(a.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
+//             const dateB = new Date(b.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
+//             return dateB - dateA; // Urutkan dari yang terbaru
+//           });
+
+//       }
+//       else {
+
+//         // Jika tidak ada startDate dan endDate, ambil 5 file terbaru
+//         filteredFile = list
+//           .filter(filename => {
+//             const fileDateM = filename.match(/log_(\d{4}-\d{2}-\d{2})/);
+//             return !!fileDateM; // Pastikan ada tanggal di nama file
+//           })
+//           .sort((a, b) => {
+//             const dateA = new Date(a.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
+//             const dateB = new Date(b.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
+//             return dateB - dateA; // Urutkan dari yang terbaru
+//           })
+//           .slice(0, 5); // Ambil 5 file paling baru
+//       }
+
+//       console.log({ filteredFile });
+
+//       filteredFile.map((file) => {
+//         // read file 
+//         const data = fs.readFileSync(`./controllers/hrv-results/${file}`, 'utf-8');
+//         const jsonData = JSON.parse(data)
+//         const date = file.replace('log_', '').split('T')[0];
+
+//         // Inisialisasi metricDaily[date] jika belum ada
+//         if (!metricDaily[date]) {
+//           metricDaily[date] = {
+//             sdnn: 0,
+//             rmssd: 0,
+//             pnn50: 0,
+//             s1: 0,
+//             s2: 0,
+//             dfa: 0,
+//             count: 0 // Tambahkan counter untuk jumlah file
+//           };
+//           fileCounts[date] = 0; // Inisialisasi counter file untuk tanggal tersebut
+//         }
+
+//         // Perbarui nilai di metricDaily dengan menambah nilai dari file baru
+//         if (jsonData.hrvMetrics) {
+//           const metrics = jsonData.hrvMetrics;
+
+//           // Perbarui nilai total
+//           metricDaily[date].sdnn += metrics.sdnn || 0;
+//           metricDaily[date].rmssd += metrics.rmssd || 0;
+//           metricDaily[date].pnn50 += metrics.pnn50 || 0;
+//           metricDaily[date].s1 += metrics.s1 || 0;
+//           metricDaily[date].s2 += metrics.s2 || 0;
+//           metricDaily[date].dfa += metrics.dfa || 0;
+
+//           // Tambahkan jumlah file yang diproses untuk tanggal tersebut
+//           fileCounts[date] += 1;
+//         }
+
+//         // Setelah semua file diproses, rata-rata nilai metrics berdasarkan jumlah file
+//         Object.keys(metricDaily).forEach(date => {
+//           const count = fileCounts[date];
+
+//           // Jika ada lebih dari satu file, hitung rata-rata
+//           if (count > 0) {
+//             metricDaily[date].sdnn /= count;
+//             metricDaily[date].rmssd /= count;
+//             metricDaily[date].pnn50 /= count;
+//             metricDaily[date].s1 /= count;
+//             metricDaily[date].s2 /= count;
+//             metricDaily[date].dfa /= count;
+//           }
+
+
+//           // Hapus counter karena tidak diperlukan lagi
+//           delete metricDaily[date].count;
+//         });
+
+//         if (jsonData.raw) {
+//           logs.push(...jsonData.raw)
+//         }
+
+//       })
+
+//       console.log({ fileCounts })
+
+//       //buat format sesuai untuk file monitoring
+//       let metric = Object.keys(metricDaily).map((date) => {
+//         return {
+//           date,
+//           ...metricDaily[date]
+//         }
+//       });
+
+//       res.status(200).json({ logs, metricDaily: metric });
+//     });
+
+//   } catch (error) {
+//     console.error('Error in /api/user/test:', error.message);
+//     next(error);
+//   }
+// };
+
 export const test = async (req, res, next) => {
   try {
     await Log.deleteMany({
@@ -62,144 +213,171 @@ export const test = async (req, res, next) => {
     const { startDate, endDate } = req.query;
 
     const metricDaily = [];
-    const logs = [];
+    // const logs = [];
     const fileCounts = {}; // untuk menyimpan jumlah file per tanggal
+    let filter = {};
+    if(startDate && endDate){
+      let dateStart = new Date(startDate).getTime() / 1000;
+      let dateEnd = new Date(endDate).getTime() / 1000;
+      console.log({dateStart, dateEnd})
+      filter.timestamp = {
+        $gte : dateStart,
+        $lte : dateEnd
+      }
+    }
+    console.log('wait', filter, limit)
+    const logs = await Log.find(filter)
+    .sort({ create_at: -1 })
+    .limit(limit);
+    console.log('selesai')
+
+
+    // perlu interquartile
+    // console.log({logs})
+    if(logs){
+      let sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
+      const filterIQRResult = await filterIQ(sortedLogs);
+      console.log({filterIQRResult})
+      res.json({logs, filterIQRResult})
+    }
 
     // let filter = {
     //   guid_device: 'C0680226' // Sesuaikan dengan user device yang valid
     // };
 
     // Formatkan input tanggal ke objek Date
-    fs.readdir('./controllers/hrv-results', (err, list) => {
-      if (err) {
-        console.log({ err });
-        return;
-      }
+    // fs.readdir('./controllers/hrv-results', (err, list) => {
+    //   if (err) {
+    //     console.log({ err });
+    //     return;
+    //   }
 
-      let filteredFile;
+    //   let filteredFile;
 
-      if (startDate && endDate) {
-        
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        // Filter file berdasarkan rentang tanggal
-        filteredFile = list.filter(filename => {
-          // Ekstrak tanggal dari nama file menggunakan regex
-          const fileDateM = filename.match(/log_(\d{4}-\d{2}-\d{2})/);
+    //   if (startDate && endDate) {
 
-          if (fileDateM) {
-            const fileDate = new Date(fileDateM[1]); // Ubah tanggal ke objek Date
+    //     const start = new Date(startDate);
+    //     const end = new Date(endDate);
+    //     // Filter file berdasarkan rentang tanggal
+    //     filteredFile = list.filter(filename => {
+    //       // Ekstrak tanggal dari nama file menggunakan regex
+    //       const fileDateM = filename.match(/log_(\d{4}-\d{2}-\d{2})/);
 
-            // Cek apakah fileDate berada dalam rentang tanggal start dan end
-            return fileDate >= start && fileDate <= end;
-          }
+    //       if (fileDateM) {
+    //         const fileDate = new Date(fileDateM[1]); // Ubah tanggal ke objek Date
 
-          return false; // Jika tidak ada tanggal yang cocok, jangan sertakan file tersebut
-        })
-          .sort((a, b) => {
-            const dateA = new Date(a.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
-            const dateB = new Date(b.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
-            return dateB - dateA; // Urutkan dari yang terbaru
-          });
+    //         // Cek apakah fileDate berada dalam rentang tanggal start dan end
+    //         return fileDate >= start && fileDate <= end;
+    //       }
 
-      }
-      else {
-      
-        // Jika tidak ada startDate dan endDate, ambil 5 file terbaru
-        filteredFile = list
-          .filter(filename => {
-            const fileDateM = filename.match(/log_(\d{4}-\d{2}-\d{2})/);
-            return !!fileDateM; // Pastikan ada tanggal di nama file
-          })
-          .sort((a, b) => {
-            const dateA = new Date(a.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
-            const dateB = new Date(b.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
-            return dateB - dateA; // Urutkan dari yang terbaru
-          })
-          .slice(0, 5); // Ambil 5 file paling baru
-      }
+    //       return false; // Jika tidak ada tanggal yang cocok, jangan sertakan file tersebut
+    //     })
+    //       .sort((a, b) => {
+    //         const dateA = new Date(a.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
+    //         const dateB = new Date(b.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
+    //         return dateB - dateA; // Urutkan dari yang terbaru
+    //       });
 
-      console.log({ filteredFile });
+    //   }
+    //   else {
 
-      filteredFile.map((file) => {
-        // read file 
-        const data = fs.readFileSync(`./controllers/hrv-results/${file}`, 'utf-8');
-        const jsonData = JSON.parse(data)
-        const date = file.replace('log_', '').split('T')[0];
+    //     // Jika tidak ada startDate dan endDate, ambil 5 file terbaru
+    //     filteredFile = list
+    //       .filter(filename => {
+    //         const fileDateM = filename.match(/log_(\d{4}-\d{2}-\d{2})/);
+    //         return !!fileDateM; // Pastikan ada tanggal di nama file
+    //       })
+    //       .sort((a, b) => {
+    //         const dateA = new Date(a.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
+    //         const dateB = new Date(b.match(/log_(\d{4}-\d{2}-\d{2})/)[1]);
+    //         return dateB - dateA; // Urutkan dari yang terbaru
+    //       })
+    //       .slice(0, 5); // Ambil 5 file paling baru
+    //   }
 
-        // Inisialisasi metricDaily[date] jika belum ada
-        if (!metricDaily[date]) {
-          metricDaily[date] = {
-            sdnn: 0,
-            rmssd: 0,
-            pnn50: 0,
-            s1: 0,
-            s2: 0,
-            dfa : 0,
-            count: 0 // Tambahkan counter untuk jumlah file
-          };
-          fileCounts[date] = 0; // Inisialisasi counter file untuk tanggal tersebut
-        }
+    //   console.log({ filteredFile });
 
-        // Perbarui nilai di metricDaily dengan menambah nilai dari file baru
-        if (jsonData.hrvMetrics) {
-          const metrics = jsonData.hrvMetrics;
+    //   filteredFile.map((file) => {
+    //     // read file 
+    //     const data = fs.readFileSync(`./controllers/hrv-results/${file}`, 'utf-8');
+    //     const jsonData = JSON.parse(data)
+    //     const date = file.replace('log_', '').split('T')[0];
 
-          // Perbarui nilai total
-          metricDaily[date].sdnn += metrics.sdnn || 0;
-          metricDaily[date].rmssd += metrics.rmssd || 0;
-          metricDaily[date].pnn50 += metrics.pnn50 || 0;
-          metricDaily[date].s1 += metrics.s1 || 0;
-          metricDaily[date].s2 += metrics.s2 || 0;
-          metricDaily[date].dfa += metrics.dfa || 0;
+    //     // Inisialisasi metricDaily[date] jika belum ada
+    //     if (!metricDaily[date]) {
+    //       metricDaily[date] = {
+    //         sdnn: 0,
+    //         rmssd: 0,
+    //         pnn50: 0,
+    //         s1: 0,
+    //         s2: 0,
+    //         dfa: 0,
+    //         count: 0 // Tambahkan counter untuk jumlah file
+    //       };
+    //       fileCounts[date] = 0; // Inisialisasi counter file untuk tanggal tersebut
+    //     }
 
-          // Tambahkan jumlah file yang diproses untuk tanggal tersebut
-          fileCounts[date] += 1;
-        }
+    //     // Perbarui nilai di metricDaily dengan menambah nilai dari file baru
+    //     if (jsonData.hrvMetrics) {
+    //       const metrics = jsonData.hrvMetrics;
 
-        // Setelah semua file diproses, rata-rata nilai metrics berdasarkan jumlah file
-        Object.keys(metricDaily).forEach(date => {
-          const count = fileCounts[date];
+    //       // Perbarui nilai total
+    //       metricDaily[date].sdnn += metrics.sdnn || 0;
+    //       metricDaily[date].rmssd += metrics.rmssd || 0;
+    //       metricDaily[date].pnn50 += metrics.pnn50 || 0;
+    //       metricDaily[date].s1 += metrics.s1 || 0;
+    //       metricDaily[date].s2 += metrics.s2 || 0;
+    //       metricDaily[date].dfa += metrics.dfa || 0;
 
-          // Jika ada lebih dari satu file, hitung rata-rata
-          if (count > 0) {
-            metricDaily[date].sdnn /= count;
-            metricDaily[date].rmssd /= count;
-            metricDaily[date].pnn50 /= count;
-            metricDaily[date].s1 /= count;
-            metricDaily[date].s2 /= count;
-            metricDaily[date].dfa /= count;
-          }
+    //       // Tambahkan jumlah file yang diproses untuk tanggal tersebut
+    //       fileCounts[date] += 1;
+    //     }
 
-          
-          // Hapus counter karena tidak diperlukan lagi
-          delete metricDaily[date].count;
-        });
+    //     // Setelah semua file diproses, rata-rata nilai metrics berdasarkan jumlah file
+    //     Object.keys(metricDaily).forEach(date => {
+    //       const count = fileCounts[date];
 
-        if (jsonData.raw) {
-          logs.push(...jsonData.raw)
-        }
+    //       // Jika ada lebih dari satu file, hitung rata-rata
+    //       if (count > 0) {
+    //         metricDaily[date].sdnn /= count;
+    //         metricDaily[date].rmssd /= count;
+    //         metricDaily[date].pnn50 /= count;
+    //         metricDaily[date].s1 /= count;
+    //         metricDaily[date].s2 /= count;
+    //         metricDaily[date].dfa /= count;
+    //       }
 
-      })
+    //       // Hapus counter karena tidak diperlukan lagi
+    //       delete metricDaily[date].count;
+    //     });
 
-      console.log({fileCounts})
+    //     if (jsonData.raw) {
+    //       logs.push(...jsonData.raw)
+    //     }
 
-      //buat format sesuai untuk file monitoring
-      let metric = Object.keys(metricDaily).map((date) => {
-        return {
-          date,
-          ...metricDaily[date]
-        }
-      });
+    //   })
 
-      res.status(200).json({ logs, metricDaily : metric });
-    });
+    //   console.log({ fileCounts })
+
+    //   //buat format sesuai untuk file monitoring
+    //   let metric = Object.keys(metricDaily).map((date) => {
+    //     return {
+    //       date,
+    //       ...metricDaily[date]
+    //     }
+    //   });
+
+    //   res.status(200).json({ logs, metricDaily: metric });
+    // });
+
+    // 
 
   } catch (error) {
     console.error('Error in /api/user/test:', error.message);
     next(error);
   }
 };
+
 
 export const getRiwayatDeteksiWithDfa = async (req, res) => {
   let result = [];
@@ -209,16 +387,16 @@ export const getRiwayatDeteksiWithDfa = async (req, res) => {
   const endDate = req.query.endDate;
 
   let filter = {
-    userRef: req.params.userId 
+    userRef: req.params.userId
   }
 
-  if(startDate && endDate){
+  if (startDate && endDate) {
     filter.Date = {
-      $gte : new Date(startDate),
-      $lte : new Date(endDate) 
+      $gte: new Date(startDate),
+      $lte: new Date(endDate)
     }
   }
-  
+
   const [countDoc, theActivities] = await Promise.all([
     Aktivitas.countDocuments(filter),
     Aktivitas.find(filter)

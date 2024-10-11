@@ -14,13 +14,13 @@ import { runAllMethods } from './logs.controller.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const formatTimestamp = (timestamp) => {
+export const formatTimestamp = (timestamp) => {
   const date = new Date(timestamp);
   return date.toISOString().replace(/[:.]/g, '-'); // Replace ':' and '.' with '-'
 };
 
 // Function to group data into groups of 3 and calculate the average
-const groupDataByThreeAndAverage = (data) => {
+export const groupDataByThreeAndAverage = (data) => {
   const groupedData = [];
   for (let i = 0; i < data.length; i += 3) {
     const chunk = data.slice(i, i + 3);
@@ -33,7 +33,7 @@ const groupDataByThreeAndAverage = (data) => {
 };
 
 // Filtering Function (IQR-based) per 10 seconds with anomaly detection and grouping
-async function filterIQ(logs, multiplier = 1.5) {
+export async function filterIQ(logs, multiplier = 1.5) {
   // console.log('Original Logs:', logs);
   const filteredLogs = [];
   const rawFilteredLogs = [];
@@ -58,8 +58,8 @@ async function filterIQ(logs, multiplier = 1.5) {
 
   // Process each group
   groupedLogs.forEach(group => {
-    const hrValues = group.map(log => log.HR);
-    const rrValues = group.map(log => log.RR);
+    const hrValues = group.map(log => log.HR); // data HR 
+    const rrValues = group.map(log => log.RR); 
 
     // Calculate quartiles and IQR for both HR and RR values
     const hrStats = calculateQuartilesAndIQR(hrValues);
@@ -246,4 +246,4 @@ cron.schedule('*/5 * * * *', async () => {
     console.error('Error during cron job execution:', error);
   }
 });
-processHeartRateData();
+// processHeartRateData();

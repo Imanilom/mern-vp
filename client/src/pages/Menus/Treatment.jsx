@@ -39,12 +39,14 @@ function Treatment() {
       const res = await fetch(url);
       const data = await res.json();
 
-      if(!res.ok) throw new Error(data.message)
+      if(!res.ok){
+        console.log({ data, res })
+        throw new Error(data.message)
+      }
 
       setTreatment(data.treat);
       setHistory(data.history);
       setPagination(data.lengthPagination);
-      console.log({ data })
       console.log('oke')
     } catch (error) {
       console.log({ error });
