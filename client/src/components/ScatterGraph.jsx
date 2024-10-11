@@ -191,7 +191,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
 
         // zoom trigger event
         svg.call(d3.zoom()
-            .scaleExtent([1, 100])
+            .scaleExtent([1, 120])
             .translateExtent([[0, 0], [width, height]])
             .on('zoom', zoomed));
     }

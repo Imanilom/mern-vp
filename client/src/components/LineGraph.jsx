@@ -78,6 +78,15 @@ function LineGraph({ data, label, keyValue, color }) {
         // Proses data untuk menghilangkan duplikat
         const processedData = processData(rawData);
 
+        // filtering warna circle
+        color = processedData.map(item => {
+            if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan 
+            if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
+            if (item.activity === 'Berolahraga') return 'rgba(116, 12, 224, 0.8)'; // Ungu untuk Berolahraga
+            // return 'rgba(75, 192, 192, 1)'; // Warna default
+            return 'rgba(7, 172, 123, 1)'; // Warna default
+        });
+
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
         // console.log({ label, data, tooltip })
@@ -236,10 +245,10 @@ function LineGraph({ data, label, keyValue, color }) {
     const processData = (rawData) => {
         // Urutkan data berdasarkan create_at
         const sortedData = rawData.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
-        
+
         // Gunakan Set untuk menyimpan nilai unik
         const uniqueValues = new Set();
-        
+
         // Filter data untuk menghilangkan duplikat
         return sortedData.filter(item => {
             const value = item[keyValue];
@@ -256,7 +265,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
     return (
         <div className='relative p-4'>
-            <div data-aos="fade-right"  style={styleTooltype} id={`tooltip${label}`}></div>
+            <div data-aos="fade-right" style={styleTooltype} id={`tooltip${label}`}></div>
             <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
                 {slice > 1 ? (
                     <div>

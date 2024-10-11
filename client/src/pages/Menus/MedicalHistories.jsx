@@ -161,9 +161,7 @@ function MedicalHistories() {
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Tanggal
                     </th>
-                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                      Dibuat Oleh
-                    </th>
+                   
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Pertanyaan
                     </th>
@@ -186,9 +184,7 @@ function MedicalHistories() {
                               year: 'numeric'
                             }).format(new Date())}
                           </td>
-                          <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                            {riwayat ? riwayat.Doctor.name : null}
-                          </td>
+                        
                           <td class="border-t-0 break-words px-6 align-center border-l-0 border-r-0 text-xs p-4">
                             {val.pertanyaan}
                           </td>

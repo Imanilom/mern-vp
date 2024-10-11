@@ -146,23 +146,25 @@ export default function Monitor() {
           tS2: 0,
         }
 
-        results.forEach((val) => {
+        dailyMetrictResult.forEach((val) => {
           // console.log(val)
-          property.tSdnn += val.sdnn;
-          property.tRmssd += val.rmssd;
-          property.tPnn50 += val.pnn50;
-          property.tS1 += val.s1;
-          property.tS2 += val.s2;
+          property.tSdnn += Math.floor(val.sdnn);
+          property.tRmssd += Math.floor(val.rmssd);
+          property.tPnn50 += Math.floor(val.pnn50);
+          property.tS1 += Math.floor(val.s1);
+          property.tS2 += Math.floor(val.s2);
         });
 
         let median = {
-          sdnn: property.tSdnn / results.length,
-          rmssd: property.tRmssd / results.length,
-          pnn50: property.tPnn50 / results.length,
-          s1: property.tS1 / results.length,
-          s2: property.tS2 / results.length,
-          total: results.length
+          sdnn: property.tSdnn / dailyMetrictResult.length,
+          rmssd: property.tRmssd / dailyMetrictResult.length,
+          pnn50: property.tPnn50 / dailyMetrictResult.length,
+          s1: property.tS1 / dailyMetrictResult.length,
+          s2: property.tS2 / dailyMetrictResult.length,
+          total: dailyMetrictResult.length
         }
+
+        console.log({results})
 
         setMedianProperty(median);
 

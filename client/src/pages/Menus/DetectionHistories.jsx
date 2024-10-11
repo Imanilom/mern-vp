@@ -134,7 +134,7 @@ function DetectionHistories() {
     if (state == 'undefined') {
       return (
         <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
-          <p>Putih, warna Putih memiliki arti bahwa system kami tidak dapat mengenali deteksi, hal ini bisa terjadi ketika system kami kekurangan data dari anda. </p>
+          <p>Putih, warna Putih memiliki arti bahwa system kami tidak cukup mempunyai data untuk diproses, hal ini bisa terjadi ketika system kami kekurangan data dari anda. </p>
           <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#FFFFFF]/70 rounded'>System kekurangan data</button>
         </div>
       )
@@ -251,7 +251,7 @@ function DetectionHistories() {
                           {val.dfa == 0 ? (
                             <span
                               className="w-fit px-3 py-1 text-[12px] rounded-md bg-white/90 text-[#101010]  font-semibold" >
-                              Cant calculate dfa.
+                              Data kurang untuk di proses
                             </span>
                           ) : (
                             <HandleSimbol dfa={val.dfa} />

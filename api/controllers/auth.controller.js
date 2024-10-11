@@ -39,9 +39,10 @@ export const signin = async (req, res, next) => {
 
 export const google = async (req, res, next) => {
   try {
+    console.log('udh hit api');
     const user = await User.findOne({ email: req.body.email });
     if (user) {
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+      const token = jwt.sign({ id: user._id }, 'asnjkKkjsnklnly1xcx?23r');
       const { password: hashedPassword, ...rest } = user._doc;
       const expiryDate = new Date(Date.now() + 3600000); // 1 hour
       res
@@ -61,13 +62,16 @@ export const google = async (req, res, next) => {
           req.body.name.split(' ').join('').toLowerCase() +
           Math.random().toString(36).slice(-8),
         email: req.body.email,
+        phone_number : "0851",
         password: hashedPassword,
         profilePicture: req.body.photo,
       });
       await newUser.save();
-      const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
+      const token = jwt.sign({ id: newUser._id }, 'asnjkKkjsnklnly1xcx?23r');
       const { password: hashedPassword2, ...rest } = newUser._doc;
       const expiryDate = new Date(Date.now() + 3600000); // 1 hour
+
+      console.log('photo ',  req.body.photo)
       res
         .cookie('access_token', token, {
           httpOnly: true,
