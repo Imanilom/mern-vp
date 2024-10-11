@@ -12,6 +12,7 @@ import actionRecomendation from './routes/action.recomendation.rout.js';
 import appointmentRoute from './routes/appointment.route.js';
 import predictionFactorRoute from './routes/prediction.factor.route.js';
 import treatmentRoute from './routes/treatment.route.js';
+import data from './routes/data.route.js';
 
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -57,7 +58,7 @@ app.use('/api/anamnesa', anamnesaRouter);
 app.use('/api/appointment', appointmentRoute);
 app.use('/api/predictionfactor', predictionFactorRoute);
 app.use('/api/treatment', treatmentRoute);
-
+app.use('/api/data', data);
 app.use(express.static(path.join(__dirname, '/client/dist')));
 
 app.get('*', (req, res) => {
