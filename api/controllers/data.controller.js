@@ -95,7 +95,7 @@ export async function filterIQ(logs, multiplier = 1.5) {
 
     if (hrAnomalies.length > 0 || rrAnomalies.length > 0) {
       anomalies.push({
-        timestamp: group[0].timestamp,
+        timestamp: group[0].create_at,
         hrAnomalies,
         rrAnomalies,
       });
