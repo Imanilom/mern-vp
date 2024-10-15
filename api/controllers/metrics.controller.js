@@ -59,46 +59,53 @@ export const dbscan = (data, epsilon, minPoints) => {
 
 // Other metric calculation functions
 export const calculateHRVMetrics = (rrIntervals) => {
-    const nnIntervals = [];
   if (rrIntervals.length < 2) {
     // Not enough data points to calculate metrics
-    return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null };
+    return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null, dfa: null, minRR: null, maxRR: null, hf: null, lf: null, lfhratio: null };
   }
+
+  const nnIntervals = [];
   let sumSquaredDiffs = 0; // For RMSSD
-  let sumSuccessiveDiffs = 0; // For RMSSD
   let nn50Count = 0;
 
+  // Calculate NN intervals and differences
   for (let i = 1; i < rrIntervals.length; i++) {
     const diff = Math.abs(rrIntervals[i] - rrIntervals[i - 1]);
     nnIntervals.push(diff);
 
-    sumSquaredDiffs += diff * diff; // Square the difference and add to sum (for RMSSD)
+    // For RMSSD
+    sumSquaredDiffs += Math.pow(diff, 2);
     if (diff > 50) {
       nn50Count++;
     }
   }
-  const avgNN = nnIntervals.reduce((sum, interval) => sum + interval, 0) / nnIntervals.length;
 
+  const avgNN = nnIntervals.reduce((sum, interval) => sum + interval, 0) / nnIntervals.length;
+  
+  // Calculate SDNN
   const squaredDiffsFromMean = nnIntervals.map((interval) => Math.pow(interval - avgNN, 2));
   const sumSquaredDiffsFromMean = squaredDiffsFromMean.reduce((sum, diff) => sum + diff, 0);
-
   const variance = sumSquaredDiffsFromMean / (nnIntervals.length - 1);
   const sdnn = Math.sqrt(variance);
 
-  const rmssd = Math.sqrt(sumSquaredDiffs / nnIntervals.length);
-  const pnn50 = (nn50Count / nnIntervals.length) * 100;
+  // RMSSD calculation
+  const rmssd = Math.sqrt(sumSquaredDiffs / (nnIntervals.length - 1));
 
-  // Calculate S1 & S2
+  // PNN50 calculation
+  const pnn50 = (nn50Count / (nnIntervals.length - 1)) * 100; // Number of intervals above 50 ms
+
+  // Calculate S1 and S2
   const diff1 = rrIntervals.slice(1).map((val, index) => val - rrIntervals[index]);
   const sum1 = rrIntervals.slice(1).map((val, index) => val + rrIntervals[index]);
 
   const s1 = Math.sqrt(diff1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / diff1.length) / Math.sqrt(2);
   const s2 = Math.sqrt(sum1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / sum1.length) / Math.sqrt(2);
 
-  const dfa = calculateDFA(rrIntervals);
+  const dfa = calculateDFA(rrIntervals); // Make sure calculateDFA is defined correctly
   const minRR = Math.min(...rrIntervals);
   const maxRR = Math.max(...rrIntervals);
-  const { hf, lf, lfhratio } = calculateFrequencyDomain(rrIntervals);
+  const { hf, lf, lfhratio } = calculateFrequencyDomain(rrIntervals); // Ensure this function is implemented correctly
+
   return { pnn50, dfa, minRR, maxRR, rmssd, sdnn, hf, lf, lfhratio, s1, s2 };
 };
 
