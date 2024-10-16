@@ -50,6 +50,9 @@ import UpdateTreatment from './pages/Menus/UpdateTreatment';
 
 import { useLocation } from 'react-router-dom';
 import AddPatient from './pages/Menus/AddPatient';
+import FaktorResiko from './pages/Menus/FaktorResiko';
+import WriteDoc from './pages/Menus/WriteDoc';
+import InputLabotarium from './pages/Menus/InputLabotarium';
 
 export default function App() {
 
@@ -105,7 +108,11 @@ function MainContent() {
         <Route path='/updateActivity/:id' element={<UpdateActivity />} />
         <Route path='/treatment/update/:id' element={<UpdateTreatment />} />
         <Route path='/riwayat-medis' element={<MedicalHistories />} />
-        <Route path='/faktor-resiko' element={<RiskFactor />} />
+        <Route path='/faktor-resiko' element={<FaktorResiko />} />
+        <Route path='/faktor-resiko/doc' element={<WriteDoc />} /> 
+        {/* tambah labotarium baru  */}
+        <Route path='/faktor-resiko/:id' element={<RiskFactor />} />
+        <Route path='/faktor-resiko/:id/add' element={<InputLabotarium />} />
         <Route path='/prediksi-faktor' element={<RiskPrediction />} />
         <Route path='/riwayat-deteksi' element={<DetectionHistories />} />
         <Route path='/treatment' element={<Treatment />} />

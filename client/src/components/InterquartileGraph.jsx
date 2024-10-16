@@ -79,7 +79,7 @@ function InterquartileGraph({ data, label, color }) {
         });
 
         XCount = processedData.length;
-        console.log({processedData})
+        console.log({processedData, XCount})
 
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
@@ -116,7 +116,7 @@ function InterquartileGraph({ data, label, color }) {
             .attr('height', height)
             .attr('width', width)
             // .style('background', '#2C2C2C')
-            .attr('class', 'svgOne bgg-bl')
+            .attr('class', 'svgOne bgg-bl min-w-lg')
 
         const x = d3.scaleBand()
             .domain(processedData.map(d => d.date)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC

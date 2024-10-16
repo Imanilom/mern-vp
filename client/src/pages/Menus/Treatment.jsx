@@ -116,7 +116,8 @@ function Treatment() {
       <div class="w-full xl:w-9/12 mb-12 xl:mb-0 px-4 mx-auto mt-12 sm:mt-16">
         <ButtonOffCanvas />
         
-        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-4 ">Treatment Pasien</h1>
+        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-1 ">Treatment Pasien</h1>
+        <h1 data-aos="fade-up" class="text-md  mb-4 ">Histori treatment pasien yang pernah dijalani.</h1>
 
         {treatment ? (
           <div class="flex w-full py-4 overflow-x-auto justify-between gap-8 mt-12 items-center flex-col sm:flex-row">
@@ -337,26 +338,13 @@ function Treatment() {
 
 
         <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
-          <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/20">
-            <div class="flex flex-wrap items-center ">
-              <div class="relative w-full px-4 max-w-full flex justify-between ">
-                <h3 class="font-semibold text-lg text-blueGray-700">History Treatment</h3>
-                {currentUser.role != 'user' && !treatment ? (
-                  <Link to="/treatment/create" className="w-fit px-3 py-1  text-[12px] font-medium darkgreen rounded-md">Create Treatment</Link>
+          
 
-                ) : null}
-              </div>
-              <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-
-              </div>
-            </div>
-          </div>
-
-          <div class="block w-full bgg-bl overflow-x-auto">
+          <div class="block w-full bgg-bl overflow-x-auto rounded">
             <table class="items-center w-full  ">
               <thead>
                 <tr className="bg-[#2f2f2f] darkgreen">
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-4 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Tanggal
                   </th>
                   <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
@@ -417,13 +405,13 @@ function Treatment() {
 
               if (i + 1 == currentPagination) {
                 return (
-                  <div className="py-3 px-7 bgg-b text-white">
+                  <div className="py-3 px-7 bgg-b text-white rounded-[5px]">
                     {i + 1}
                   </div>
                 )
               } else {
                 return (
-                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 bg-[#272727] text-white cursor-pointer">
+                  <div onClick={() => { handleChangePagination(i + 1); }} className=" rounded-[5px] py-3 px-4 bg-[#272727] text-white cursor-pointer">
                     {i + 1}
                   </div>
 

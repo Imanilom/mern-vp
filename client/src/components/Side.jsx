@@ -151,8 +151,8 @@ const Side = () => {
               </Link>
             ) : null}
 
-            {currentUser.role != 'user' ? (
-              //show only for admin
+            {/* {currentUser.role != 'user' ? ( */}
+           
               <Link className="py-2 px-4 duration-100 hover:bg-[#005A8F] text-sm" to='/faktor-resiko'>
                 <div>
                   <div role="button" tabindex="0" class="flex p-3 items-center w-full rounded-lg text-start leading-tight transition-all outline-none">
@@ -163,7 +163,7 @@ const Side = () => {
                   </div>
                 </div>
               </Link>
-            ) : null}
+            {/* ) : null} */}
 
             {/* --- */}
             {DocterPatient && currentUser.role == 'doctor' ? (

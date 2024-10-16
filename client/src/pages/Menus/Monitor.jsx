@@ -75,14 +75,14 @@ export default function Monitor() {
       setLoading(true);
       results = [];
       let url = `/api/user/test`;
-      if (currentUser.role != 'user') {
+      if (device) {
         url = `/api/user/test/${device}`;
       }
 
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       }
-      const response = await fetch(url);
+      const response = await fetch(url);  
       const data = await response.json();
 
       if (!response.ok) {
@@ -342,7 +342,7 @@ export default function Monitor() {
                   className="p-3 bg-[#2C2C2C] rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] w-fit inline-block"
                 />
 
-                {currentUser.role !== 'user' && (
+                {/* {currentUser.role !== 'user' && ( */}
                   <div data-aos="fade-up" className="inline-block relative">
                     <select
                       name=""
@@ -356,7 +356,7 @@ export default function Monitor() {
                     </select>
                     {loading ? <span className="ms-4 loader"></span> : null}
                   </div>
-                )}
+                {/* )} */}
 
                 <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
 
@@ -407,11 +407,6 @@ export default function Monitor() {
                       <ScatterGraph data={logs} label={`PointCare`} keyValue={`HR`} color={borderColor} />
                     ) : null}
                   </div>
-
-
-
-
-
 
 
                 </div>

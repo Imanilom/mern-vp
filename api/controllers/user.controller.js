@@ -209,7 +209,7 @@ export const test = async (req, res, next) => {
 
     let user = await User.findById(req.user.id);
     const page = parseInt(req.query.page) || 1;
-    const device = req.params.device || 1;
+    const device = req.params.device || false;
     const limit = parseInt(req.query.limit) || 2000;
     const { startDate, endDate } = req.query;
 

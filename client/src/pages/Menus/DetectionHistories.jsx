@@ -274,13 +274,13 @@ function DetectionHistories() {
 
               if (i + 1 == currentPagination) {
                 return (
-                  <div className="py-3 px-7 bgg-b text-white">
+                  <div className="py-3 px-7 bgg-b text-white rounded-[5px]">
                     {i + 1}
                   </div>
                 )
               } else {
                 return (
-                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 bg-[#272727] text-white cursor-pointer">
+                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 bg-[#272727] text-white cursor-pointer rounded-[5px]">
                     {i + 1}
                   </div>
 

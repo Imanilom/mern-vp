@@ -76,7 +76,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
     const drawChart = (rawData) => {
         const processedData = processData(rawData);
-<<<<<<< HEAD
+
 
         // filtering warna circle
         color = processedData.map(item => {
@@ -88,8 +88,6 @@ function LineGraph({ data, label, keyValue, color }) {
         });
 
         // mengambil element tooltip
-=======
->>>>>>> 98d2f15394bc8ebdad614849bb9d7c4097557c31
         const tooltip = d3.select(`#tooltip${label}`);
         const lastSvg = d3.select(chartRef.current);
         lastSvg.selectAll('*').remove()
@@ -113,7 +111,7 @@ function LineGraph({ data, label, keyValue, color }) {
             .append('svg')
             .attr('height', height)
             .attr('width', width)
-            .attr('class', 'svgOne bgg-bl')
+            .attr('class', 'svgOne bgg-bl min-w-lg')
     
         const x = d3.scaleBand()
             .domain(processedData.map(d => d.create_at))

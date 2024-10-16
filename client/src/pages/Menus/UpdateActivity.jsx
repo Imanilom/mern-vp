@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import Side from '../../components/Side';
 import Swal from 'sweetalert2';
 
 
@@ -106,32 +107,65 @@ function UpdateActivity() {
     };
 
     return (
+        <main class="bgg-bl text-white flex pb-8">
+            <Side />
 
-        <div class="flex min-h-screen items-center justify-start bg-white">
-            {activityUser != null ? (
-                <div class="mx-auto w-10/12  md:max-w-lg">
-                    <h1 class="text-3xl md:text-4xl font-medium">Update Activity</h1>
-                    <p class="mt-3">Update your activity below</p>
+            <div class="flex min-h-screen mt-16  w-11/12 md:max-w-lg justify-start">
+                {activityUser != null ? (
+                    <div class="w-full px-8">
+                        <h1 class="text-3xl md:text-4xl font-semibold">Update Activity</h1>
+                        <p class="mt-3">Perbaharui aktivitas anda dengan valid!</p>
 
-                    <form onSubmit={handleSubmit} action="https://api.web3forms.com/submit" class="mt-10">
-                        <div class="grid gap-6 mt-5 mb-5 sm:grid-cols-1">
-                            <div class="relative z-0">
-                                <input type="date" disabled onChange={handleChange} defaultValue={new Date(activityUser.Date).toISOString().split('T')[0]} id="tanggal" name="tanggal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
-                                <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Tanggal</label>
+                        <form onSubmit={handleSubmit} action="https://api.web3forms.com/submit" class="mt-10 ">
+                            {/* <div class="grid gap-6 mt-5 mb-5 sm:grid-cols-1">
+                                <div class="relative z-0">
+                                    <input type="date" disabled onChange={handleChange} defaultValue={new Date(activityUser.Date).toISOString().split('T')[0]} id="tanggal" name="tanggal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                                    <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Tanggal</label>
+                                </div>
+                            </div> */}
+                            <div className='mb-3'>
+                                <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tanggal</label>
+                                <input type="date" disabled onChange={handleChange} defaultValue={new Date(activityUser.Date).toISOString().split('T')[0]} id="tanggal" name="tanggal" class="bg-[#2C2C2C]/30 text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-md" placeholder="John" required />
                             </div>
-                        </div>
-                        <div class="grid gap-6 sm:grid-cols-2">
-                            <div class="relative z-0">
-                                <input type="time" disabled onChange={handleChange} defaultValue={activityUser.awal.replace('.', ':')} id="awal" name="awal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
-                                <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Waktu Awal</label>
+
+                            {/* <div className="flex gap-3 my-3"> */}
+                            <div className=' min-w-md mb-3'>
+                                <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Waktu Awal</label>
+                                <input type="time" disabled onChange={handleChange} defaultValue={activityUser.awal.replace('.', ':')} id="awal" name="awal" class="bg-[#2C2C2C]/30 text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5  min-w-md" placeholder="John" required />
                             </div>
-                            <div class="relative z-0">
-                                <input type="time" disabled onChange={handleChange} defaultValue={activityUser.akhir.replace('.', ':')} id="akhir" name="akhir" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
-                                <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Waktu Akhir</label>
+
+                            <div className='min-w-md mb-3'>
+                                <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Waktu Akhir</label>
+                                <input type="time" disabled onChange={handleChange} defaultValue={activityUser.akhir.replace('.', ':')} id="akhir" name="akhir" class="bg-[#2C2C2C]/30 text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5  min-w-md " placeholder="John" required />
                             </div>
-                            <div>
-                                <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Select an option:</label>
-                                <select defaultValue={activityUser.aktivitas} id="aktivitas" name='aktivitas' onChange={handleSelectChange}>
+                            {/* </div> */}
+                            {/* <div class="grid gap-6 sm:grid-cols-2">
+                                <div class="relative z-0">
+                                    <input type="time" disabled onChange={handleChange} defaultValue={activityUser.awal.replace('.', ':')} id="awal" name="awal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                                    <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Waktu Awal</label>
+                                </div>
+                                <div class="relative z-0">
+                                    <input type="time" disabled onChange={handleChange} defaultValue={activityUser.akhir.replace('.', ':')} id="akhir" name="akhir" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
+                                    <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Waktu Akhir</label>
+                                </div>
+                                <div>
+                                    <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Select an option:</label>
+                                    <select defaultValue={activityUser.aktivitas} id="aktivitas" name='aktivitas' onChange={handleSelectChange}>
+                                        <option value="" disabled>
+                                            Select an option
+                                        </option>
+                                        {options.map((option, index) => (
+                                            <option key={index} value={option}>
+                                                {option}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div> */}
+
+                            <div className='mb-3'>
+                            <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Aktivitas anda</label>
+                                <select defaultValue={activityUser.aktivitas} id="aktivitas" name='aktivitas' onChange={handleSelectChange} class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3  min-w-md ">
                                     <option value="" disabled>
                                         Select an option
                                     </option>
@@ -142,15 +176,15 @@ function UpdateActivity() {
                                     ))}
                                 </select>
                             </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <button type="submit" class="mt-5 rounded-md bg-black px-10 py-2 text-white">Save activity</button>
-                            <Link to='/activity' class="mt-5 rounded-md border border-transparent hover:border-gray-400/30 hover:shadow-xl px-10 py-2 text-black">Cancel</Link>
-                        </div>
-                    </form>
-                </div>
-            ) : null}
-        </div>
+                            <div className="flex gap-2">
+                                <button type="submit" class="mt-5 rounded-md bg-[#07AC7B] px-4 py-2 text-[#141414] font-semibold hover:bg-transparent hover:text-[#07AC7B]">Save activity</button>
+                                <Link to='/activity' class="mt-5 rounded-md border font-semibold border-transparent blue text-sm px-4 py-2">Back to Dashboard</Link>
+                            </div>
+                        </form>
+                    </div>
+                ) : null}
+            </div>
+        </main>
     )
 }
 
