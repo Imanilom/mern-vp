@@ -72,7 +72,9 @@ function InterquartileGraph({ data, label, color }) {
 
     const drawChart = (rawData) => {
         // Proses data untuk menghilangkan duplikat
+        console.log({rawData})
         const processedData = processData(rawData);
+        console.log({processedData})
 
         processedData.forEach(d => {
             d.date = new Date(d.timestamp * 1000);
@@ -301,6 +303,7 @@ function InterquartileGraph({ data, label, color }) {
 
     // Fungsi untuk memproses data dan menghilangkan duplikat
     const processData = (rawData) => {
+        console.log({rawData}, 306)
         // Urutkan data berdasarkan create_at
         const sortedData = rawData.sort((a, b) => new Date(a.date) - new Date(b.date));
         

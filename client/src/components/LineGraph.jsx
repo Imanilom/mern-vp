@@ -134,6 +134,7 @@ function LineGraph({ data, label, keyValue, color }) {
     
         // Deteksi perubahan tanggal
         let previousDate = null;
+        
         processedData.forEach((d, i) => {
             const currentDate = d.create_at.toDateString();
             if (previousDate !== currentDate) {

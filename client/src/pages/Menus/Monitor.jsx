@@ -394,7 +394,7 @@ export default function Monitor() {
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isIQRVisible ? 'Hide' : 'Show'} Graphic IQR</button>
                     </div>
                     {isIQRVisible ? (
-                      <InterquartileGraph data={IQRData} label={`InterQuartile`} color={borderColor} />
+                      <InterquartileGraph data={IQRData.filteredLogs} label={`InterQuartile`} color={borderColor} />
                     ) : null}
 
                   </div>

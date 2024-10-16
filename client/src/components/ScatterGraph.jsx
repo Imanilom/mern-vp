@@ -68,6 +68,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
     }
 
     const drawChart = (data) => {
+        console.log({data}, 'Scatter')
         // mengambil element tooltip
         const tooltip = d3.select('#tooltip');
         // reset gambar svg 
