@@ -33,9 +33,8 @@ export const groupDataByThreeAndAverage = (data) => {
 };
 // pilih mau lihat hasil interquartil dulu, interquartil dan apa dll
 
-// Filtering Function (IQR-based) per 10 seconds with anomaly detection and grouping
+// Update filterIQ function with anomaly detection
 export async function filterIQ(logs, multiplier = 1.5) {
-  // console.log('Original Logs:', logs);
   const filteredLogs = [];
   const rawFilteredLogs = [];
   const anomalies = [];
@@ -59,33 +58,23 @@ export async function filterIQ(logs, multiplier = 1.5) {
 
   // Process each group
   groupedLogs.forEach(group => {
-    const hrValues = group.map(log => log.HR); // data HR 
-    const rrValues = group.map(log => log.RR); 
+    const hrValues = group.map(log => log.HR);
+    const rrValues = group.map(log => log.RR);
 
-    // Calculate quartiles and IQR for both HR and RR values
     const hrStats = calculateQuartilesAndIQR(hrValues);
     const rrStats = calculateQuartilesAndIQR(rrValues);
 
-    // Add Q1 and Q3 to the array (quartilbawah and quartilatas)
-    hrValues.quartilbawah = hrStats.Q1;
-    hrValues.quartilatas = hrStats.Q3;
-
-    rrValues.quartilbawah = rrStats.Q1;
-    rrValues.quartilatas = rrStats.Q3;
-
-    // Filter HR values based on IQR
     const filteredHr = hrValues.filter(value =>
       value >= hrStats.Q1 - multiplier * hrStats.IQR &&
       value <= hrStats.Q3 + multiplier * hrStats.IQR
     );
 
-    // Filter RR values based on IQR
     const filteredRr = rrValues.filter(value =>
       value >= rrStats.Q1 - multiplier * rrStats.IQR &&
       value <= rrStats.Q3 + multiplier * rrStats.IQR
     );
 
-    // Detect anomalies (values outside the IQR range) and add to a separate JSON
+    // Detect anomalies
     const hrAnomalies = hrValues.filter(value =>
       value < hrStats.Q1 - multiplier * hrStats.IQR || value > hrStats.Q3 + multiplier * hrStats.IQR
     );
@@ -101,63 +90,18 @@ export async function filterIQ(logs, multiplier = 1.5) {
       });
     }
 
-    // If filtered data is available, push all valid results to filteredLogs
-    for (let i = 0; i < Math.min(filteredHr.length, filteredRr.length); i++) {
-      const filteredLog = { HR: filteredHr[i], RR: filteredRr[i], timestamp: group[i].timestamp };
-      filteredLogs.push(filteredLog);
-      rawFilteredLogs.push(group[i]); // Save raw data
+    if (filteredHr.length > 0 && filteredRr.length > 0) {
+      for (let i = 0; i < Math.min(filteredHr.length, filteredRr.length); i++) {
+        const filteredLog = { HR: filteredHr[i], RR: filteredRr[i], timestamp: group[i].timestamp };
+        filteredLogs.push(filteredLog);
+        rawFilteredLogs.push(group[i]);
+      }
     }
   });
 
-  // Group data into groups of 3 and calculate averages
-  const groupedHr = groupDataByThreeAndAverage(filteredLogs.map(log => log.HR));
-  const groupedRr = groupDataByThreeAndAverage(filteredLogs.map(log => log.RR));
-  // Save raw filtered logs to JSON
-  const resultsDir = path.join(__dirname, 'hrv-results');
-  if (!fs.existsSync(resultsDir)) {
-    fs.mkdirSync(resultsDir, { recursive: true });
-  }
-  const formattedTimestamp = formatTimestamp(new Date());
-  const fileName = path.join(resultsDir, `filtered_logs_${formattedTimestamp}.json`);
-  const anomalyFileName = path.join(resultsDir, `anomalies_${formattedTimestamp}.json`);
-
-  // Calculate HRV metrics for the filtered RR intervals
-  const rrIntervals = filteredLogs.map(log => log.RR);
-  const hrvMetrics = calculateHRVMetrics(rrIntervals);
-
-  // Change the format of the JSON data
-  const formattedJsonData = rawFilteredLogs.map(log => ({
-    timestamp: log.create_at,
-    HR: log.HR,
-    RR: log.RR,
-    metrics: hrvMetrics // Add HRV metrics
-  }));
-
-  // Add grouped data to the JSON
-  const jsonDataWithGroupedAverages = {
-    filteredLogs: formattedJsonData,
-    groupedAverages: {
-      groupedHr,
-      groupedRr
-    }
-  };
-
-  // Save the formatted JSON data
-  try {
-    fs.writeFileSync(fileName, JSON.stringify(jsonDataWithGroupedAverages, null, 2));
-    console.log(`JSON data saved successfully to ${fileName}`);
-    
-    // Save anomalies to a separate file
-    fs.writeFileSync(anomalyFileName, JSON.stringify(anomalies, null, 2));
-    console.log(`Anomalies saved successfully to ${anomalyFileName}`);
-  } catch (error) {
-    console.error(`Error saving JSON data to ${fileName}:`, error);
-  }
-
-  return filteredLogs;
+  return { filteredLogs, anomalies };
 }
 
-// Process heart rate data function and update isChecked status
 const processHeartRateData = async () => {
   try {
     const firstLog = await Log.findOne({ isChecked: false }).sort({ create_at: 1 });
@@ -180,44 +124,65 @@ const processHeartRateData = async () => {
       return;
     }
 
-    const allRRIntervals = [];
-    const allFilteredData = [];
-
-    const resultsDir = path.join(__dirname, 'hrv-results');
-    if (!fs.existsSync(resultsDir)) {
-      fs.mkdirSync(resultsDir, { recursive: true });
-    }
-
-    const filteredLogs = await filterIQ(logs);
+    // Get filtered logs and anomalies
+    const { filteredLogs, anomalies } = await filterIQ(logs);
 
     if (filteredLogs.length === 0) {
       console.log('No valid data after filtering.');
       return;
     }
 
-    filteredLogs.forEach(filteredLog => {
-      allRRIntervals.push(filteredLog.RR);
-      allFilteredData.push({ HR: filteredLog.HR, RR: filteredLog.RR, timestamp: filteredLog.timestamp });
-    });
-
+    // Calculate metrics for the day
+    const allRRIntervals = filteredLogs.map(log => log.RR);
     const hrvMetrics = calculateHRVMetrics(allRRIntervals);
     const formattedTimestamp = formatTimestamp(oldestTimestamp);
-
-    const fileName = path.join(resultsDir, `filtered_logs_${formattedTimestamp}.json`);
-    const jsonData = allFilteredData.map(log => ({
-      ...log,
-      metrics: hrvMetrics
-    }));
+    const resultsDir = path.join(__dirname, 'hrv-results');
     
-    fs.writeFileSync(fileName, JSON.stringify(jsonData, null, 2));
-    console.log('Writing filtered logs to file succesfully...');
+    if (!fs.existsSync(resultsDir)) {
+      fs.mkdirSync(resultsDir, { recursive: true });
+    }
 
-    // console.log(`Processed and saved data logs from ${oldestTimestamp} to ${tenMinutesLater}.`);
+    // Create or update JSON file for filtered logs
+    const dateString = oldestTimestamp.toISOString().split('T')[0];
+    const fileName = path.join(resultsDir, `filtered_logs_${dateString}.json`);
+    const anomalyFileName = path.join(resultsDir, `anomalies_${dateString}.json`);
+
+    let jsonData = { metrics: {}, filteredLogs: [] };
+    let anomalyData = [];
+
+    // Check if the filtered logs file already exists
+    if (fs.existsSync(fileName)) {
+      const existingData = fs.readFileSync(fileName);
+      jsonData = JSON.parse(existingData);
+    }
+
+    // Update the metrics
+    jsonData.metrics = hrvMetrics;
+    jsonData.filteredLogs = jsonData.filteredLogs.concat(
+      filteredLogs.map(log => ({
+        timestamp: log.timestamp,
+        HR: log.HR,
+        RR: log.RR
+      }))
+    );
+
+    fs.writeFileSync(fileName, JSON.stringify(jsonData, null, 2));
+    console.log('Updated filtered logs successfully...');
+
+    // Handle anomalies
+    if (anomalies.length > 0) {
+      if (fs.existsSync(anomalyFileName)) {
+        const existingAnomalies = fs.readFileSync(anomalyFileName);
+        anomalyData = JSON.parse(existingAnomalies);
+      }
+      anomalyData = anomalyData.concat(anomalies);
+      fs.writeFileSync(anomalyFileName, JSON.stringify(anomalyData, null, 2));
+      console.log('Updated anomalies successfully...');
+    }
 
     // Update the `isChecked` status of the processed logs to true
-    const logIds = logs.map(log => log._id); // Get the IDs of the processed logs
+    const logIds = logs.map(log => log._id);
     await Log.updateMany({ _id: { $in: logIds } }, { $set: { isChecked: true } });
-    // console.log(`Updated isChecked status for ${logIds.length} logs.`);
   } catch (error) {
     console.error('Error processing heart rate data:', error);
   }
