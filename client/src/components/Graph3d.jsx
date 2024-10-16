@@ -5,7 +5,7 @@ import '../chart.css';
 import AOS from 'aos';
 
 let scroolState = {
-    HR: 1, 
+    HR: 1,
     RR: 1,
     Data3dp: 1
 };
@@ -109,6 +109,35 @@ function Graph3d({ data, label, color }) {
             .attr('stroke-width', 2)
             .attr('d', line);
 
+        // Deteksi perubahan tanggal
+        let previousDate = null;
+
+        processedData.forEach((d, i) => {
+            console.log({ d })
+            const currentDate = d.date.toDateString();
+            if (previousDate !== currentDate) {
+                // Gambar garis putus-putus di sini
+                svg.append('line')
+                    .attr('x1', x(d.date)) // Posisi X berdasarkan tanggal
+                    .attr('y1', margin.top)
+                    .attr('x2', x(d.date)) // Posisi X untuk garis vertikal
+                    .attr('y2', height - margin.bottom)
+                    .attr('stroke', 'white')
+                    .attr('stroke-width', 1)
+                    .attr('stroke-dasharray', '5,5'); // Mengatur garis menjadi putus-putus
+
+                // Tambahkan label tanggal di dekat garis putus-putus
+                svg.append('text')
+                    .attr('x', x(d.date) + 5)
+                    .attr('y', margin.top - 5)
+                    .attr('fill', 'white')
+                    .attr('font-size', 10)
+                    .text(currentDate);
+            }
+            previousDate = currentDate;
+        });
+
+
         const circles = svg.selectAll('circle')
             .data(processedData)
             .enter()
@@ -132,7 +161,7 @@ function Graph3d({ data, label, color }) {
                 tooltip.style('opacity', 0);
             });
 
-        const formatDateTime = d3.timeFormat("%d-%m-%Y %H:%M:%S");
+        const formatDateTime = d3.timeFormat("%H:%M:%S");
 
         svg.append('g')
             .attr('transform', `translate(0,${height - margin.bottom})`)
@@ -192,7 +221,7 @@ function Graph3d({ data, label, color }) {
         <div className='relative p-4'>
             <div data-aos="fade-right" style={styleTooltype} id={`tooltip${label}`}></div>
             <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
-            {slice > 1 ? (
+                {slice > 1 ? (
                     <div>
                         <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
                             <FaAngleLeft color='white' size={16} />
@@ -214,7 +243,7 @@ function Graph3d({ data, label, color }) {
                 </div>
             </div>
 
-          
+
             <div className='overflow-auto' id={`svg-container-${label}`} ref={chartRef}></div>
             <div id={`zoom_panel_${label}`}></div>
         </div>

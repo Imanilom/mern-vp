@@ -10,8 +10,9 @@ import AOS from 'aos';
 let scroolState = {
     HR: 1, // daftarkan label 
     RR: 1,
-    InterQuartile : 1
+    InterQuartile: 1
 };
+
 
 function InterquartileGraph({ data, label, color }) {
     const [scroolLevel, setScroolLevel] = useState(1);
@@ -72,16 +73,18 @@ function InterquartileGraph({ data, label, color }) {
 
     const drawChart = (rawData) => {
         // Proses data untuk menghilangkan duplikat
-        console.log({rawData})
-        const processedData = processData(rawData);
-        console.log({processedData})
+        console.log({ rawData })
+        const processedData2 = processData(rawData);
+        console.log({ processedData2 })
 
-        processedData.forEach(d => {
+        processedData2.forEach(d => {
             d.date = new Date(d.timestamp * 1000);
         });
 
+        const processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
+
         XCount = processedData.length;
-        console.log({processedData, XCount})
+        console.log({ processedData, XCount })
 
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
@@ -162,6 +165,8 @@ function InterquartileGraph({ data, label, color }) {
         //     .attr('stroke-width', 2)
         //     .attr('d', line);
 
+
+
         const linepathHR = svg.append('path')
             .datum(processedData)
             .attr('fill', 'none')
@@ -175,6 +180,44 @@ function InterquartileGraph({ data, label, color }) {
             .attr('stroke', 'rgba(75, 192, 192, 1)')
             .attr('stroke-width', 2)
             .attr('d', lineRR);
+
+
+        // Deteksi perubahan tanggal
+        let previousDate = null;
+        let firstInSlice = true;
+
+        processedData.forEach((d, i) => {
+            const currentDate = d.date.toDateString();
+            if (previousDate !== currentDate || firstInSlice) {
+                // Gambar garis putus-putus di sini
+                let linePosition = x(d.date); // Posisi X berdasarkan tanggal
+                if (!firstInSlice && previousDate === currentDate) {
+                    // Jika tanggal sama dengan slide sebelumnya, buat garis di posisi paling kiri
+                    linePosition = margin.left;
+                }
+
+                svg.append('line')
+                    .attr('x1', linePosition) // Posisi X berdasarkan tanggal atau pojok kiri
+                    .attr('y1', margin.top)
+                    .attr('x2', linePosition) // Posisi X untuk garis vertikal
+                    .attr('y2', height - margin.bottom)
+                    .attr('stroke', 'white')
+                    .attr('stroke-width', 1)
+                    .attr('stroke-dasharray', '5,5'); // Mengatur garis menjadi putus-putus
+
+                // Tambahkan label tanggal di dekat garis putus-putus
+                svg.append('text')
+                    .attr('x', linePosition + 5)
+                    .attr('y', margin.top - 5)
+                    .attr('fill', 'white')
+                    .attr('font-size', 10)
+                    .text(currentDate);
+
+                firstInSlice = false; // setelah pertama kali di slide
+            }
+
+            previousDate = currentDate;
+        });
 
 
         // memberikan titik pada ujung sumbu y
@@ -222,7 +265,7 @@ function InterquartileGraph({ data, label, color }) {
                 let x = xPos + 10;
                 if (scroolState[label] > 1) {
                     x = xPos - (768 * (scroolState[label] - 1));
-                    console.log(x, xPos, (768 * (scroolState[label] - 1)))
+                    console.log(x, xPos, (768 * (scroolState[label] - 1)), d)
                 }
                 // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
                 tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
@@ -236,7 +279,7 @@ function InterquartileGraph({ data, label, color }) {
 
 
         // Buat format tanggal dan waktu dengan d3.timeFormat
-        const formatDateTime = d3.timeFormat("%d-%m-%Y %H:%M:%S");
+        const formatDateTime = d3.timeFormat("%H:%M:%S");
 
         svg.append('g') // g = group
             .attr('transform', `translate(0,${height - margin.bottom})`) // translate x, y
@@ -303,13 +346,13 @@ function InterquartileGraph({ data, label, color }) {
 
     // Fungsi untuk memproses data dan menghilangkan duplikat
     const processData = (rawData) => {
-        console.log({rawData}, 306)
+        console.log({ rawData }, 306)
         // Urutkan data berdasarkan create_at
         const sortedData = rawData.sort((a, b) => new Date(a.date) - new Date(b.date));
-        
+
         // Gunakan Set untuk menyimpan nilai unik
         const uniqueValues = new Set();
-        
+
         // Filter data untuk menghilangkan duplikat
         return sortedData.filter(item => {
             const value = item["RR"];
@@ -326,7 +369,7 @@ function InterquartileGraph({ data, label, color }) {
 
     return (
         <div className='relative p-4'>
-            <div data-aos="fade-right"  style={styleTooltype} id={`tooltip${label}`}></div>
+            <div data-aos="fade-right" style={styleTooltype} id={`tooltip${label}`}></div>
             <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
                 {slice > 1 ? (
                     <div>

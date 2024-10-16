@@ -75,7 +75,8 @@ function LineGraph({ data, label, keyValue, color }) {
     }
 
     const drawChart = (rawData) => {
-        const processedData = processData(rawData);
+        const processedData2 = processData(rawData);
+        const processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
 
 
         // filtering warna circle
@@ -136,6 +137,7 @@ function LineGraph({ data, label, keyValue, color }) {
         let previousDate = null;
         
         processedData.forEach((d, i) => {
+            console.log({d}, 'Linegraph');
             const currentDate = d.create_at.toDateString();
             if (previousDate !== currentDate) {
                 // Gambar garis putus-putus di sini
