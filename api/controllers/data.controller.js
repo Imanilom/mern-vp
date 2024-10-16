@@ -7,7 +7,7 @@ import 'chartjs-adapter-date-fns';  // Import date adapter
 import Log from "../models/log.model.js"; // Import your Log model
 
 import { generateGraph } from "./graph.controller.js";
-import { calculateHRVMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
+import { calculateHRVMetrics, calculateAdvancedMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
 
 import { runAllMethods } from './logs.controller.js';
 
@@ -134,7 +134,7 @@ const processHeartRateData = async () => {
 
     // Calculate metrics for the day
     const allRRIntervals = filteredLogs.map(log => log.RR);
-    const hrvMetrics = calculateHRVMetrics(allRRIntervals);
+    const hrvMetrics = calculateAdvancedMetrics(allRRIntervals);
     const formattedTimestamp = formatTimestamp(oldestTimestamp);
     const resultsDir = path.join(__dirname, 'hrv-results');
     
@@ -212,4 +212,4 @@ cron.schedule('*/5 * * * *', async () => {
     console.error('Error during cron job execution:', error);
   }
 });
-// processHeartRateData();
+processHeartRateData();

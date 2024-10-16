@@ -63,11 +63,11 @@ export const generateGraph = async (guid_device) => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 
     const buffer = canvas.toBuffer('image/png');
-    const filename = `./graphs/heart_rate_${guid_device}_${Date.now()}.png`;
+    const filename = `./graphs/heart_rate_${guid}_${Date.now()}.png`;
     fs.writeFileSync(filename, buffer);
-    console.log(`Graph saved successfully for GUID Device ${guid_device} as`, filename);
+    console.log(`Graph saved successfully for GUID Device ${guid} as`, filename);
 
   } catch (error) {
-    console.error(`Error generating graph for GUID Device ${guid_device}:`, error);
+    console.error(`Error generating graph for GUID Device ${guid}:`, error);
   }
 };
