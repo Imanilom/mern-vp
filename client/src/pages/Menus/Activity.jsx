@@ -217,7 +217,6 @@ function Acitivity() {
                     {Object.keys(logs).map((timeSlot, _i) => {
 
                       if (_i < 5) {
-
                         return (
                           <tr className={_i % 2 == 0 ? 'bg-[#2c2c2c]' : 'bg-[#141414]'}>
                             <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
@@ -419,11 +418,11 @@ function Acitivity() {
           <div data-aos="fade-right" className="pagination flex gap-2 text-sm mb-8">
             {Array.from({ length: paginationCount }).map((_, _i) => (
               _i + 1 === paginationActive ? (
-                <div className="py-3 px-7 bgg-b text-white">
+                <div className="py-3 px-7 bgg-b text-white rounded-[5px]">
                   {_i + 1}
                 </div>
               ) : (
-                <div onClick={() => { setPaginationActive(_i + 1); }} className="py-3 px-4 bg-[#272727] text-white">
+                <div onClick={() => { setPaginationActive(_i + 1); }} className="py-3 px-4 bg-[#272727] text-white rounded-[5px]">
                   {_i + 1}
                 </div>
               )))
@@ -441,8 +440,8 @@ function Acitivity() {
       </div>
       {
         showModal && (
-          <div class="fixed bg-black/20 inset-0 flex items-center justify-center z-50">
-            <div class="bg-white p-6 rounded shadow-lg max-w-[350px] md:max-w-[500px]">
+          <div class="fixed bg-black/80 inset-0 flex items-center justify-center z-50">
+            <div class="bgg-bl p-6 rounded shadow-lg max-w-[350px] md:max-w-[500px]">
               <h2 class="text-lg font-semibold mb-4">Konfirmasi Hapus</h2>
               <p>Apakah Anda yakin ingin menghapus aktivitas ini?</p>
               <p><strong>Tanggal:</strong> {new Date(activityToDelete.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(activityToDelete.Date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
@@ -450,8 +449,8 @@ function Acitivity() {
               <p><strong>Akhir:</strong> {activityToDelete.akhir}</p>
               <p><strong>Aktivitas:</strong> {activityToDelete.aktivitas}</p>
               <div class="mt-4 flex justify-end">
-                <button class="bg-gray-500 text-white px-4 py-2 rounded mr-2" onClick={handleCancelDelete}>Cancel</button>
-                <button class="bg-red-500 text-white px-4 py-2 rounded" onClick={handleConfirmDelete}>Delete</button>
+                <button class=" text-white px-4 py-2 rounded mr-2" onClick={handleCancelDelete}>Cancel</button>
+                <button class="bg-red-600 text-white font-medium px-4 py-2 rounded" onClick={handleConfirmDelete}>Delete</button>
               </div>
             </div>
           </div>

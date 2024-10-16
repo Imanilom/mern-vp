@@ -75,14 +75,14 @@ export default function Monitor() {
       setLoading(true);
       results = [];
       let url = `/api/user/test`;
-      if (currentUser.role != 'user') {
+      if (device) {
         url = `/api/user/test/${device}`;
       }
 
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       }
-      const response = await fetch(url);
+      const response = await fetch(url);  
       const data = await response.json();
 
       if (!response.ok) {
@@ -138,22 +138,25 @@ export default function Monitor() {
           tS2: 0,
         }
 
-        results.forEach((val) => {
-          property.tSdnn += val.sdnn;
-          property.tRmssd += val.rmssd;
-          property.tPnn50 += val.pnn50;
-          property.tS1 += val.s1;
-          property.tS2 += val.s2;
+        dailyMetrictResult.forEach((val) => {
+          // console.log(val)
+          property.tSdnn += Math.floor(val.sdnn);
+          property.tRmssd += Math.floor(val.rmssd);
+          property.tPnn50 += Math.floor(val.pnn50);
+          property.tS1 += Math.floor(val.s1);
+          property.tS2 += Math.floor(val.s2);
         });
 
         let median = {
-          sdnn: property.tSdnn / results.length,
-          rmssd: property.tRmssd / results.length,
-          pnn50: property.tPnn50 / results.length,
-          s1: property.tS1 / results.length,
-          s2: property.tS2 / results.length,
-          total: results.length
+          sdnn: property.tSdnn / dailyMetrictResult.length,
+          rmssd: property.tRmssd / dailyMetrictResult.length,
+          pnn50: property.tPnn50 / dailyMetrictResult.length,
+          s1: property.tS1 / dailyMetrictResult.length,
+          s2: property.tS2 / dailyMetrictResult.length,
+          total: dailyMetrictResult.length
         }
+
+        console.log({results})
 
         setMedianProperty(median);
 
@@ -339,7 +342,7 @@ export default function Monitor() {
                   className="p-3 bg-[#2C2C2C] rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] w-fit inline-block"
                 />
 
-                {currentUser.role !== 'user' && (
+                {/* {currentUser.role !== 'user' && ( */}
                   <div data-aos="fade-up" className="inline-block relative">
                     <select
                       name=""
@@ -353,7 +356,7 @@ export default function Monitor() {
                     </select>
                     {loading ? <span className="ms-4 loader"></span> : null}
                   </div>
-                )}
+                {/* )} */}
 
                 <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
 
@@ -404,11 +407,6 @@ export default function Monitor() {
                       <ScatterGraph data={logs} label={`PointCare`} keyValue={`HR`} color={borderColor} />
                     ) : null}
                   </div>
-
-
-
-
-
 
 
                 </div>

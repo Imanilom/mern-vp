@@ -88,7 +88,7 @@ function Graph3d({ data, label, color }) {
             .append('svg')
             .attr('height', height)
             .attr('width', width)
-            .attr('class', 'svgOne bgg-bl');
+            .attr('class', 'svgOne bgg-bl min-w-lg');
 
         const x = d3.scaleBand()
             .domain(processedData.map(d => d.date))
@@ -192,17 +192,29 @@ function Graph3d({ data, label, color }) {
         <div className='relative p-4'>
             <div data-aos="fade-right" style={styleTooltype} id={`tooltip${label}`}></div>
             <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
-                {slice > 1 && (
+            {slice > 1 ? (
                     <div>
-                        <button className='rounded-md bg-slate-800' onClick={() => triggerSimulate('decrement')}>
-                            <FaAngleLeft />
+                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
+                            <FaAngleLeft color='white' size={16} />
+
                         </button>
-                        <button className='rounded-md bg-slate-800' onClick={() => triggerSimulate('plus')}>
-                            <FaAngleRight />
+                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
+                            <FaAngleRight color='white' size={16} />
                         </button>
                     </div>
-                )}
+                ) : null}
+
+                <div className="flex sm:flex-row flex-col">
+                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                        Slide {slider}
+                    </button>
+                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                        Graphic {label}
+                    </button>
+                </div>
             </div>
+
+          
             <div className='overflow-auto' id={`svg-container-${label}`} ref={chartRef}></div>
             <div id={`zoom_panel_${label}`}></div>
         </div>

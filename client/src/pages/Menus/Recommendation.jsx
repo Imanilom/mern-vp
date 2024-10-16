@@ -47,7 +47,6 @@ function Recommendation() {
               'Content-Type': 'application/json',
             },
             body: formData
-
           })
 
         } else {
@@ -58,9 +57,15 @@ function Recommendation() {
               'Content-Type': 'application/json',
             },
             body: formData
-
           })
 
+          // Swal.fire('Success', 'Berhasil assign aktivitas', 'success');
+          Swal.fire({
+            title: "Success",
+            text: "Berhasil assign aktivitas",
+            icon: "success",
+            confirmButtonColor: "#3085d6",
+          });
         }
 
         const data = await res.json();
@@ -286,7 +291,7 @@ function Recommendation() {
                                   checked
                                   onChange={() => checkboxAction(event, { id: recomendation._id, checked: true })}
                                   className="form-checkbox h-5 w-5 text-indigo-600 bg-[#2f2f2f] checked:accent-[#07AC7B]"
-                                /> done?
+                                /> Selesai
                               </>
                             ) : (
                               <>
@@ -294,7 +299,7 @@ function Recommendation() {
                                   type="checkbox"
                                   onChange={() => checkboxAction(event, { id: recomendation._id, checked: false })}
                                   className="form-checkbox h-5 w-5 text-indigo-600 bg-[#2f2f2f] checked:accent-[#07AC7B]"
-                                /> done?
+                                />
                               </>
                             )}
 
@@ -327,21 +332,19 @@ function Recommendation() {
 
               if (i + 1 == currentPagination) {
                 return (
-                  <div className="py-3 px-7 bgg-b text-white">
+                  <div className="py-3 px-7 bgg-b text-white rounded-[5px]">
                     {i + 1}
                   </div>
                 )
               } else {
                 return (
-                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 bg-[#272727] text-white cursor-pointer">
+                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 rounded-[5px] bg-[#272727] text-white cursor-pointer">
                     {i + 1}
                   </div>
 
                 )
               }
             })}
-
-
           </div>
         </nav>
       </div>
