@@ -1,5 +1,3 @@
-import pkg from 'fft-js'; 
-const { fft, util: fftUtil } = pkg;
 
 // DBSCAN Implementation
 export const dbscan = (data, epsilon, minPoints) => {
@@ -161,85 +159,80 @@ const calculatePercentile = (values, percentile) => {
   };
   
   
-export function calculateAdvancedMetrics(rrIntervals) {
+  export function calculateAdvancedMetrics(rrIntervals) {
     if (rrIntervals.length < 2) {
-      return null; // Tidak cukup data untuk perhitungan
+        return null; // Not enough data for calculation
     }
-  
-    const sortedIntervals = rrIntervals.slice().sort((a, b) => a - b); // Salin dan urutkan
-  
+
+    const sortedIntervals = rrIntervals.slice().sort((a, b) => a - b); // Copy and sort
+
     // Median 3dp
     const midIndex = Math.floor(sortedIntervals.length / 2);
     const median =
-      sortedIntervals.length % 2 === 0
-        ? (sortedIntervals[midIndex - 1] + sortedIntervals[midIndex]) / 2
-        : sortedIntervals[midIndex];
-    const median3dp = parseFloat(median.toFixed(3)); // Pembulatan ke 3 desimal
-  
+        sortedIntervals.length % 2 === 0
+            ? (sortedIntervals[midIndex - 1] + sortedIntervals[midIndex]) / 2
+            : sortedIntervals[midIndex];
+    const median3dp = parseFloat(median.toFixed(3)); // Round to 3 decimals
+
     // Mean, Max, Min
     const sum = rrIntervals.reduce((acc, val) => acc + val, 0);
     const mean = sum / rrIntervals.length;
     const max = Math.max(...rrIntervals);
     const min = Math.min(...rrIntervals);
-  
+    const dfa = calculateDFA(rrIntervals); // Make sure calculateDFA is defined correctly
     // RMSSD
     const squaredDiffs = [];
     for (let i = 1; i < rrIntervals.length; i++) {
-      const diff = rrIntervals[i] - rrIntervals[i - 1];
-      squaredDiffs.push(diff * diff);
+        const diff = rrIntervals[i] - rrIntervals[i - 1];
+        squaredDiffs.push(diff * diff);
     }
     const rmssd = Math.sqrt(
-      squaredDiffs.reduce((acc, val) => acc + val, 0) / squaredDiffs.length
+        squaredDiffs.reduce((acc, val) => acc + val, 0) / squaredDiffs.length
     );
-  
+
     // SDNN (Standard Deviation of NN intervals)
-    const avgNN = mean; // Mean RR sama dengan rata-rata interval NN
+    const avgNN = mean; // Mean RR is the same as the average NN interval
     const sdnn = Math.sqrt(
-      rrIntervals.reduce((acc, val) => acc + Math.pow(val - avgNN, 2), 0) /
-      (rrIntervals.length - 1)
+        rrIntervals.reduce((acc, val) => acc + Math.pow(val - avgNN, 2), 0) /
+        (rrIntervals.length - 1)
     );
-  
-    // Tambahkan padding agar panjang array menjadi pangkat dua
+
+    // Pad to power of two
     const paddedRRIntervals = padToPowerOfTwo(rrIntervals);
     console.log(paddedRRIntervals.length, 'Padded rrIntervals');
-  
-    // console.log(rrIntervals.length, 'rrInterval')
-    // FFT untuk HF dan LF
-    const fft = new FFT(paddedRRIntervals.length);
-    const out = fft.createComplexArray();
-    fft.realTransform(out, rrIntervals);
-  
-    const samplingRate = 1; // Sesuaikan dengan sampling rate yang sebenarnya
-    const frequencies = fft.getFrequencyBins(samplingRate);
-    const powerSpectrum = out.map((value, index) => {
-      return Math.sqrt(value.real * value.real + value.imag * value.imag) /
-        rrIntervals.length;
-    });
-  
-    let hf = 0,
-      lf = 0;
+
+    // FFT implementation
+    const fftResult = fft(paddedRRIntervals);
+    const powerSpectrum = fftResult.map((value) => Math.sqrt(value.real * value.real + value.imag * value.imag) / paddedRRIntervals.length);
+
+    // Frequency bins
+    const samplingRate = 1; // Adjust according to actual sampling rate
+    const frequencies = Array.from({ length: paddedRRIntervals.length / 2 }, (_, i) => i * (samplingRate / paddedRRIntervals.length));
+
+    let hf = 0, lf = 0;
     for (let i = 0; i < powerSpectrum.length; i++) {
-      if (frequencies[i] >= 0.15 && frequencies[i] <= 0.4) {
-        hf += powerSpectrum[i] * powerSpectrum[i];
-      } else if (frequencies[i] >= 0.04 && frequencies[i] <= 0.15) {
-        lf += powerSpectrum[i] * powerSpectrum[i];
-      }
+        if (frequencies[i] >= 0.15 && frequencies[i] <= 0.4) {
+            hf += powerSpectrum[i] * powerSpectrum[i];
+        } else if (frequencies[i] >= 0.04 && frequencies[i] <= 0.15) {
+            lf += powerSpectrum[i] * powerSpectrum[i];
+        }
     }
-  
-    const lfHfRatio = lf / hf;
-  
+
+    const lfHfRatio = hf === 0 ? 0 : lf / hf; // Avoid division by zero
+
     return {
-      median3dp,
-      mean,
-      max,
-      min,
-      rmssd,
-      sdnn,
-      hf,
-      lf,
-      lfHfRatio,
+        dfa,
+        median3dp,
+        mean,
+        max,
+        min,
+        rmssd,
+        sdnn,
+        hf,
+        lf,
+        lfHfRatio,
     };
-  }
+}
 
   export function padToPowerOfTwo(arr) {
     const nextPowerOfTwo = Math.pow(2, Math.ceil(Math.log2(arr.length)));
@@ -249,6 +242,41 @@ export function calculateAdvancedMetrics(rrIntervals) {
     }
     return paddedArray;
   }
+
+  // Simple FFT function (Cooley-Tukey algorithm)
+function fft(input) {
+  const N = input.length;
+  const output = new Array(N).fill(0).map(() => ({ real: 0, imag: 0 }));
+
+  // Bit-reversed copy
+  const bits = Math.log2(N);
+  for (let i = 0; i < N; i++) {
+      const j = parseInt(i.toString(2).padStart(bits, '0').split('').reverse().join(''), 2);
+      output[j] = { real: input[i], imag: 0 };
+  }
+
+  // FFT computation
+  for (let len = 2; len <= N; len *= 2) {
+      const ang = (2 * Math.PI) / len;
+      const wlen = { real: Math.cos(ang), imag: Math.sin(ang) };
+      for (let i = 0; i < N; i += len) {
+          let w = { real: 1, imag: 0 };
+          for (let j = 0; j < len / 2; j++) {
+              const u = output[i + j];
+              const v = {
+                  real: w.real * output[i + j + len / 2].real - w.imag * output[i + j + len / 2].imag,
+                  imag: w.real * output[i + j + len / 2].imag + w.imag * output[i + j + len / 2].real,
+              };
+              output[i + j] = { real: u.real + v.real, imag: u.imag + v.imag };
+              output[i + j + len / 2] = { real: u.real - v.real, imag: u.imag - v.imag };
+              const wTemp = { real: w.real * wlen.real - w.imag * wlen.imag, imag: w.real * wlen.imag + w.imag * wlen.real };
+              w = wTemp; // Update w
+          }
+      }
+  }
+
+  return output;
+}
   
 
   export const fillMissingRRForLogsWithHR = async () => {
