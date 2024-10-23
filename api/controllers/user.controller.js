@@ -6,6 +6,13 @@ import { errorHandler } from '../utils/error.js';
 import { calculateDFA } from './metrics.controller.js';
 import { formatTimestamp, groupDataByThreeAndAverage, filterIQ } from './data.controller.js';
 import { calculateHRVMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Convert import.meta.url to __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const calculateMetrics = (logs) => {
   const rrIntervals = logs.map((log) => log.RR);
@@ -203,51 +210,64 @@ const calculateMetrics = (logs) => {
 
 export const test = async (req, res, next) => {
   try {
-    await Log.deleteMany({
-      $or: [{ HR: 0 }, { RR: 0 }, { rrRMS: 0 }],
-    });
+    const resultsDir = path.join(__dirname, '../controllers/hrv-results');
+    const files = fs.readdirSync(resultsDir);
 
-    let user = await User.findById(req.user.id);
-    const page = parseInt(req.query.page) || 1;
-    const device = req.params.device || false;
-    const limit = parseInt(req.query.limit) || 2000;
-    const { startDate, endDate } = req.query;
+    // Filter dan urutkan file untuk mendapatkan file data harian terbaru
+    const latestDailyFile = files
+      .filter(file => file.startsWith('filtered_logs_'))
+      .sort((a, b) => {
+        const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+        const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+        return dateB - dateA;
+      })[0];
 
-    const metricDaily = [];
-    // const logs = [];
-    const fileCounts = {}; // untuk menyimpan jumlah file per tanggal
-    let filter = {};
-
-    if (device) {
-      console.log({device})
-      filter.guid_device = device // Sesuaikan dengan user device yang valid
+    if (!latestDailyFile) {
+      return res.status(404).json({ message: 'Tidak ada data harian yang tersedia' });
     }
+
+    const dailyFilePath = path.join(resultsDir, latestDailyFile);
+    const dailyData = JSON.parse(fs.readFileSync(dailyFilePath, 'utf-8'));
+
+    // Periksa apakah dailyData mengandung logs
+    const logs = dailyData.filteredLogs || [];
+    if (logs.length === 0) {
+      return res.status(404).json({ message: 'Tidak ada log yang tersedia dalam data harian' });
+    }
+
+    // Filter log berdasarkan startDate dan endDate dari parameter query
+    const { startDate, endDate } = req.query;
+    let filteredLogs = logs;
 
     if (startDate && endDate) {
-      let dateStart = new Date(startDate).getTime() / 1000;
-      let dateEnd = new Date(endDate).getTime() / 1000;
-      console.log({ dateStart, dateEnd })
-      filter.timestamp = {
-        $gte: dateStart,
-        $lte: dateEnd
-      }
-    }
-    console.log('wait', filter, limit)
-    const logs = await Log.find(filter)
-      .sort({ create_at: -1 })
-      .limit(limit);
-    console.log('selesai')
-
-
-    // perlu interquartile
-    // console.log({logs})
-    if (logs) {
-      let sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
-      const filterIQRResult = await filterIQ(sortedLogs);
-      console.log({ filterIQRResult })
-      res.json({ logs, filterIQRResult })
+      const dateStart = new Date(startDate).getTime() / 1000;
+      const dateEnd = new Date(endDate).getTime() / 1000;
+      filteredLogs = logs.filter(log => log.timestamp >= dateStart && log.timestamp <= dateEnd);
     }
 
+    // Hapus log dengan nilai RR yang null
+    const validLogs = filteredLogs.filter(log => log.RR !== null);
+
+    if (validLogs.length === 0) {
+      return res.status(404).json({ message: 'Tidak ada log valid yang tersedia dalam data harian' });
+    }
+
+    // Konversi timestamp ke format tanggal dan waktu yang dapat dibaca
+    const formattedLogs = validLogs.map(log => ({
+      ...log,
+      datetime: new Date(log.timestamp * 1000).toISOString() // Convert timestamp to ISO string
+    }));
+
+    // Terapkan fungsi filterIQ ke log yang valid
+    const { filteredLogs: filterIQRResult, anomalies } = await filterIQ(formattedLogs);
+
+    // Log variabel untuk perbandingan
+    console.log({ logs: formattedLogs, filterIQRResult });
+
+    // Kirim logs dan filterIQRResult ke frontend
+    res.status(200).json({ logs: formattedLogs, filterIQRResult });
+
+    // Komentar yang tidak boleh dihapus
     // let filter = {
     //   guid_device: 'C0680226' // Sesuaikan dengan user device yang valid
     // };
@@ -376,8 +396,6 @@ export const test = async (req, res, next) => {
 
     //   res.status(200).json({ logs, metricDaily: metric });
     // });
-
-    // 
 
   } catch (error) {
     console.error('Error in /api/user/test:', error.message);
@@ -775,6 +793,70 @@ export const getFilteredAndRawData = async (req, res, next) => {
     res.status(200).json({ filtered: filteredData, raw: rawData, averages: averageMetricsPerDay, averageDatetime: averageDatetimePerDay });
   } catch (error) {
     console.error('Error reading filtered and raw data:', error);
+    next(error);
+  }
+};
+
+export const fetchDailyData = async (req, res, next) => {
+  try {
+    const resultsDir = path.join(__dirname, '../controllers/hrv-results');
+    const files = fs.readdirSync(resultsDir);
+
+    // Filter and sort files to get the latest daily data file
+    const latestDailyFile = files
+      .filter(file => file.startsWith('filtered_logs_'))
+      .sort((a, b) => {
+        const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+        const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+        return dateB - dateA;
+      })[0];
+
+    if (!latestDailyFile) {
+      return res.status(404).json({ message: 'No daily data available' });
+    }
+
+    const dailyFilePath = path.join(resultsDir, latestDailyFile);
+    const dailyData = JSON.parse(fs.readFileSync(dailyFilePath, 'utf-8'));
+
+    // Check if dailyData contains logs
+    const logs = dailyData.filteredLogs || [];
+    if (logs.length === 0) {
+      return res.status(404).json({ message: 'No logs available in the daily data' });
+    }
+
+    // Filter logs based on startDate and endDate from query parameters
+    const { startDate, endDate } = req.query;
+    let filteredLogs = logs;
+
+    if (startDate && endDate) {
+      const dateStart = new Date(startDate).getTime() / 1000;
+      const dateEnd = new Date(endDate).getTime() / 1000;
+      filteredLogs = logs.filter(log => log.timestamp >= dateStart && log.timestamp <= dateEnd);
+    }
+
+    // Filter out logs with null RR values
+    const validLogs = filteredLogs.filter(log => log.RR !== null);
+
+    if (validLogs.length === 0) {
+      return res.status(404).json({ message: 'No valid logs available in the daily data' });
+    }
+
+    // Convert timestamp to readable date and time
+    const formattedLogs = validLogs.map(log => ({
+      ...log,
+      datetime: new Date(log.timestamp * 1000).toISOString() // Convert timestamp to ISO string
+    }));
+
+    // Apply the filterIQ function to the valid logs
+    const { filteredLogs: filterIQRResult, anomalies } = await filterIQ(formattedLogs);
+
+    // Log the variables for comparison
+    console.log({ logs: formattedLogs, filterIQRResult });
+
+    // Send the logs and filterIQRResult to the frontend
+    res.status(200).json({ logs: formattedLogs, filterIQRResult });
+  } catch (error) {
+    console.error('Error fetching daily data:', error.message);
     next(error);
   }
 };

@@ -1,5 +1,6 @@
 [
   {
+<<<<<<< HEAD:api/controllers/hrv-results-OC/anomalies_2024-05-27.json
     "timestamp": 1716773823,
     "hrAnomalies": [
       102,
@@ -838,5 +839,18 @@
       635,
       643
     ]
+=======
+    "timestamp": 1716844482,
+    "hrAnomalies": [
+      62,
+      62,
+      62,
+      62,
+      63,
+      63,
+      63
+    ],
+    "rrAnomalies": []
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/anomalies_2024-05-27.json
   }
 ]

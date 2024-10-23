@@ -1,5 +1,6 @@
 {
   "metrics": {
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
     "dfa": 1.3467464486420515,
     "median3dp": 520,
     "mean": 481.15384615384613,
@@ -33,16 +34,35 @@
       "RR": null
     },
     {
+=======
+    "pnn50": 0,
+    "dfa": null,
+    "minRR": 0,
+    "maxRR": 0,
+    "rmssd": 0,
+    "sdnn": 0,
+    "hf": null,
+    "lf": null,
+    "lfhratio": null,
+    "s1": 0,
+    "s2": 0
+  },
+  "filteredLogs": [
+    {
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "timestamp": 1728946383,
       "HR": 117,
       "RR": null
     },
     {
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "timestamp": 1728946384,
       "HR": 117,
       "RR": null
     },
     {
+=======
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "timestamp": 1728946385,
       "HR": 117,
       "RR": null
@@ -69,27 +89,47 @@
     },
     {
       "timestamp": 1728946401,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 118,
+=======
+      "HR": 117,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
       "timestamp": 1728946402,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 118,
+=======
+      "HR": 117,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
       "timestamp": 1728946406,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 118,
+=======
+      "HR": 117,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
       "timestamp": 1728946417,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 118,
+=======
+      "HR": 117,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
       "timestamp": 1728946417,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 118,
+=======
+      "HR": 117,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
@@ -254,27 +294,47 @@
     },
     {
       "timestamp": 1728946485,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 119,
+=======
+      "HR": 118,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
       "timestamp": 1728946492,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 119,
+=======
+      "HR": 118,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
       "timestamp": 1728946493,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 119,
+=======
+      "HR": 118,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
       "timestamp": 1728946495,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 119,
+=======
+      "HR": 118,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
       "timestamp": 1728946496,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "HR": 119,
+=======
+      "HR": 118,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
@@ -375,151 +435,268 @@
     {
       "timestamp": 1728946544,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 264
+=======
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946545,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 281
+=======
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946546,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 282
+=======
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946549,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 283
+=======
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946552,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 285
+=======
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946557,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 287
+=======
+      "RR": 264
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946557,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 289
+=======
+      "RR": 281
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946559,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 294
+=======
+      "RR": 282
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946560,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 306
+=======
+      "RR": 283
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946561,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 318
+=======
+      "RR": 285
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946567,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 325
+=======
+      "RR": 287
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946570,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 326
+=======
+      "RR": 289
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946571,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 338
+=======
+      "RR": 294
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946573,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 344
+=======
+      "RR": 306
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946576,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 352
+=======
+      "RR": 318
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946578,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 354
+=======
+      "RR": 325
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946579,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 355
+=======
+      "RR": 326
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946581,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 365
+=======
+      "RR": 338
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946581,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 388
+=======
+      "RR": 344
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946581,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 395
+=======
+      "RR": 352
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946583,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 409
+=======
+      "RR": 354
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946584,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 423
+=======
+      "RR": 355
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946584,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 425
+=======
+      "RR": 365
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946586,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 429
+=======
+      "RR": 388
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946588,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 430
+=======
+      "RR": 395
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946588,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 432
+=======
+      "RR": 409
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946589,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 438
+=======
+      "RR": 423
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946591,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 452
+=======
+      "RR": 425
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946592,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 455
+=======
+      "RR": 429
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946595,
       "HR": 119,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 503
     },
     {
@@ -546,50 +723,111 @@
       "timestamp": 1728946608,
       "HR": 120,
       "RR": 508
+=======
+      "RR": 430
+    },
+    {
+      "timestamp": 1728946597,
+      "HR": 119,
+      "RR": 432
+    },
+    {
+      "timestamp": 1728946599,
+      "HR": 119,
+      "RR": 438
+    },
+    {
+      "timestamp": 1728946602,
+      "HR": 119,
+      "RR": 455
+    },
+    {
+      "timestamp": 1728946603,
+      "HR": 119,
+      "RR": 503
+    },
+    {
+      "timestamp": 1728946608,
+      "HR": 119,
+      "RR": 505
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946609,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 510
+=======
+      "RR": 505
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946612,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 512
+=======
+      "RR": 506
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946612,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 513
+=======
+      "RR": 508
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946616,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 514
+=======
+      "RR": 508
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946617,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 515
+=======
+      "RR": 510
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946619,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 517
+=======
+      "RR": 512
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946620,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 518
+=======
+      "RR": 513
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946621,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 519
+=======
+      "RR": 515
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946622,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 519
     },
     {
@@ -599,18 +837,38 @@
     },
     {
       "timestamp": 1728946623,
+=======
+      "RR": 517
+    },
+    {
+      "timestamp": 1728946623,
+      "HR": 120,
+      "RR": 518
+    },
+    {
+      "timestamp": 1728946623,
+      "HR": 120,
+      "RR": 519
+    },
+    {
+      "timestamp": 1728946625,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "HR": 120,
       "RR": 520
     },
     {
       "timestamp": 1728946625,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 521
     },
     {
       "timestamp": 1728946625,
       "HR": 120,
       "RR": 522
+=======
+      "RR": 520
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946626,
@@ -620,7 +878,11 @@
     {
       "timestamp": 1728946628,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 525
+=======
+      "RR": 522
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728946628,
@@ -630,12 +892,41 @@
     {
       "timestamp": 1728946633,
       "HR": 120,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 583
     },
     {
       "timestamp": 1728947722,
       "HR": 91,
       "RR": null
+=======
+      "RR": 525
+    },
+    {
+      "timestamp": 1728946634,
+      "HR": 120,
+      "RR": 583
+    },
+    {
+      "timestamp": 1728946638,
+      "HR": 120,
+      "RR": 609
+    },
+    {
+      "timestamp": 1728946639,
+      "HR": 120,
+      "RR": 613
+    },
+    {
+      "timestamp": 1728946640,
+      "HR": 120,
+      "RR": 627
+    },
+    {
+      "timestamp": 1728946643,
+      "HR": 120,
+      "RR": 643
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728947723,
@@ -643,6 +934,7 @@
       "RR": null
     },
     {
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "timestamp": 1728947724,
       "HR": 91,
       "RR": null
@@ -685,6 +977,10 @@
     {
       "timestamp": 1728947738,
       "HR": 92,
+=======
+      "timestamp": 1728947736,
+      "HR": 91,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "RR": null
     },
     {
@@ -693,6 +989,7 @@
       "RR": null
     },
     {
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "timestamp": 1728947742,
       "HR": 92,
       "RR": null
@@ -723,16 +1020,21 @@
       "RR": null
     },
     {
+=======
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "timestamp": 1728947751,
       "HR": 92,
       "RR": null
     },
     {
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "timestamp": 1728947752,
       "HR": 92,
       "RR": null
     },
     {
+=======
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "timestamp": 1728947753,
       "HR": 92,
       "RR": null
@@ -743,6 +1045,7 @@
       "RR": null
     },
     {
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "timestamp": 1728947756,
       "HR": 93,
       "RR": null
@@ -759,10 +1062,14 @@
     },
     {
       "timestamp": 1728947762,
+=======
+      "timestamp": 1728947757,
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
       "HR": 94,
       "RR": null
     },
     {
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "timestamp": 1728947762,
       "HR": 94,
       "RR": null
@@ -841,10 +1148,16 @@
       "timestamp": 1728947789,
       "HR": 94,
       "RR": 314
+=======
+      "timestamp": 1728947781,
+      "HR": 94,
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728947790,
       "HR": 94,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 315
     },
     {
@@ -866,10 +1179,19 @@
       "timestamp": 1728947798,
       "HR": 95,
       "RR": 358
+=======
+      "RR": null
+    },
+    {
+      "timestamp": 1728947796,
+      "HR": 94,
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728947802,
       "HR": 95,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 360
     },
     {
@@ -881,15 +1203,23 @@
       "timestamp": 1728947809,
       "HR": 96,
       "RR": 388
+=======
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728947811,
       "HR": 96,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 392
+=======
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728947813,
       "HR": 96,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 401
     },
     {
@@ -901,10 +1231,14 @@
       "timestamp": 1728947816,
       "HR": 96,
       "RR": 414
+=======
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728947817,
       "HR": 96,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 430
     },
     {
@@ -1126,10 +1460,79 @@
       "timestamp": 1728947894,
       "HR": 102,
       "RR": 655
+=======
+      "RR": null
+    },
+    {
+      "timestamp": 1728947820,
+      "HR": 99,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947822,
+      "HR": 99,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947830,
+      "HR": 100,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947849,
+      "HR": 100,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947850,
+      "HR": 100,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947862,
+      "HR": 101,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947863,
+      "HR": 101,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947863,
+      "HR": 101,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947871,
+      "HR": 101,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947872,
+      "HR": 102,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947873,
+      "HR": 102,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947880,
+      "HR": 102,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947887,
+      "HR": 102,
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728947896,
       "HR": 102,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 668
     },
     {
@@ -1226,10 +1629,39 @@
       "timestamp": 1728947925,
       "HR": 108,
       "RR": 1106
+=======
+      "RR": null
+    },
+    {
+      "timestamp": 1728947900,
+      "HR": 103,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947911,
+      "HR": 105,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947911,
+      "HR": 108,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947914,
+      "HR": 108,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947919,
+      "HR": 108,
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     },
     {
       "timestamp": 1728947926,
       "HR": 108,
+<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-14.json
       "RR": 1151
     },
     {
@@ -1281,6 +1713,19 @@
       "timestamp": 1728947950,
       "HR": 114,
       "RR": 1485
+=======
+      "RR": null
+    },
+    {
+      "timestamp": 1728947937,
+      "HR": 113,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947941,
+      "HR": 114,
+      "RR": null
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-14.json
     }
   ]
 }
