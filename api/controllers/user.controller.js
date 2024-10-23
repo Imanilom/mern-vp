@@ -6,6 +6,13 @@ import { errorHandler } from '../utils/error.js';
 import { calculateDFA } from './metrics.controller.js';
 import { formatTimestamp, groupDataByThreeAndAverage, filterIQ } from './data.controller.js';
 import { calculateHRVMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Convert import.meta.url to __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const calculateMetrics = (logs) => {
   const rrIntervals = logs.map((log) => log.RR);
@@ -203,14 +210,32 @@ const calculateMetrics = (logs) => {
 
 export const test = async (req, res, next) => {
   try {
-    await Log.deleteMany({
-      $or: [{ HR: 0 }, { RR: 0 }, { rrRMS: 0 }],
-    });
+    const resultsDir = path.join(__dirname, '../controllers/hrv-results');
+    const files = fs.readdirSync(resultsDir);
 
-    let user = await User.findById(req.user.id);
-    const page = parseInt(req.query.page) || 1;
-    const device = req.params.device || false;
-    const limit = parseInt(req.query.limit) || 2000;
+    // Filter dan urutkan file untuk mendapatkan file data harian terbaru
+    const latestDailyFile = files
+      .filter(file => file.startsWith('filtered_logs_'))
+      .sort((a, b) => {
+        const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+        const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+        return dateB - dateA;
+      })[0];
+
+    if (!latestDailyFile) {
+      return res.status(404).json({ message: 'Tidak ada data harian yang tersedia' });
+    }
+
+    const dailyFilePath = path.join(resultsDir, latestDailyFile);
+    const dailyData = JSON.parse(fs.readFileSync(dailyFilePath, 'utf-8'));
+
+    // Periksa apakah dailyData mengandung logs
+    const logs = dailyData.filteredLogs || [];
+    if (logs.length === 0) {
+      return res.status(404).json({ message: 'Tidak ada log yang tersedia dalam data harian' });
+    }
+
+    // Filter log berdasarkan startDate dan endDate dari parameter query
     const { startDate, endDate } = req.query;
 
     const metricDaily = [];
@@ -219,32 +244,29 @@ export const test = async (req, res, next) => {
     let filter = {};
 
     if (device) {
-      console.log({ device })
+      console.log({device})
       filter.guid_device = device // Sesuaikan dengan user device yang valid
     }
 
     if (startDate && endDate) {
-      let dateStart = new Date(startDate).getTime() / 1000;
-      let dateEnd = new Date(endDate).getTime() / 1000;
-      console.log({ dateStart, dateEnd })
-      filter.timestamp = {
-        $gte: dateStart,
-        $lte: dateEnd
-      }
+      const dateStart = new Date(startDate).getTime() / 1000;
+      const dateEnd = new Date(endDate).getTime() / 1000;
+      filteredLogs = logs.filter(log => log.timestamp >= dateStart && log.timestamp <= dateEnd);
     }
-    console.log('wait', filter, limit)
-    const logs = await Log.find(filter)
-      .sort({ create_at: -1 })
-      .limit(limit);
-    console.log('selesai')
 
+    // Hapus log dengan nilai RR yang null
+    const validLogs = filteredLogs.filter(log => log.RR !== null);
+
+    if (validLogs.length === 0) {
+      return res.status(404).json({ message: 'Tidak ada log valid yang tersedia dalam data harian' });
+    }
 
     // perlu interquartile
     // console.log({logs})
     if (logs) {
       let sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
       const filterIQRResult = await filterIQ(sortedLogs);
-      // console.log({ logs,filterIQRResult }, filterIQRResult.filteredLogs[0])
+      console.log({ filterIQRResult })
       res.json({ logs, filterIQRResult })
     }
 
@@ -376,8 +398,6 @@ export const test = async (req, res, next) => {
 
     //   res.status(200).json({ logs, metricDaily: metric });
     // });
-
-    // 
 
   } catch (error) {
     console.error('Error in /api/user/test:', error.message);
@@ -778,89 +798,3 @@ export const getFilteredAndRawData = async (req, res, next) => {
     next(error);
   }
 };
-
-export const logdfa = async (req, res, next) => {
-  try {
-    await Log.deleteMany({
-      $or: [{ HR: 0 }, { RR: 0 }, { rrRMS: 0 }],
-    });
-
-    // let ip = 0; // index page
-
-    const device = req.params.device || false;
-    const { startDate, endDate } = req.query;
-
-    const limit = parseInt(req.query.limit) || 10000;
-    // const { startDate, endDate } = req.query;
-
-    const splitCount = 500;
-    // let filter = {date_created : "27-05-2024"} // 
-
-    let filter = {};
-
-    if (startDate && endDate) {
-      let dateStart = new Date(startDate).getTime() / 1000;
-      let dateEnd = new Date(endDate).getTime() / 1000;
-      console.log({ dateStart, dateEnd })
-      filter.timestamp = {
-        $gte: dateStart,
-        $lte: dateEnd
-      }
-    }
-
-    console.log('wait', filter, limit)
-    const logs = await Log.find(filter)
-      // .skip(limit * ip)
-      // .skip((10000 * ip) + 5000)
-      .limit(limit)
-      .sort({ create_at: -1 })
-    console.log('oke aman')
-
-    const splitArrayIntoChunks = (array, chunkSize) => {
-      const result = [];
-      for (let i = 0; i < array.length; i += chunkSize) {
-        const chunk = array.slice(i, i + chunkSize); // Mengambil slice dari array
-        result.push(chunk); // Menambahkan chunk ke hasil
-      }
-      return result; // Mengembalikan array yang telah dibagi
-    };
-
-    // perlu interquartile
-    // console.log({logs})
-    if (logs) {
-      let sortedLogs = logs.sort((a, b) => b.timestamp - a.timestamp);
-
-      // Memecah logs menjadi bagian yang lebih kecil dengan ukuran 500
-      const splittedLog = splitArrayIntoChunks(sortedLogs, splitCount);
-      const HRCollection = [];
-
-      splittedLog.forEach((dataLog, _i) => {
-        HRCollection[_i] = [];
-
-        for (let i = 0; i < dataLog.length; i++) {
-          const data = dataLog[i];
-          HRCollection[_i][i] = data.HR;
-
-        }
-      });
-      // console.log( splittedLog[1][0 * splitCount]['date_created']);
-
-      let result = HRCollection.map((data, i) => {
-        return {
-          dfa: calculateDFA(data),
-          tanggal: splittedLog[i][0 * splittedLog[i].length]['date_created'],
-          waktu_awal: splittedLog[i][0 * splittedLog[i].length]['time_created'],
-          waktu_akhir: splittedLog[i][splittedLog[i].length - 1]['time_created'],
-          count: splittedLog[i].length
-        }
-      });
-
-      console.log({ result, HRCollection, splittedLog });
-      res.json({ result, HRCollection, splittedLog });
-    }
-
-  } catch (error) {
-    console.error('Error in /api/user/test:', error.message);
-    next(error);
-  }
-}
