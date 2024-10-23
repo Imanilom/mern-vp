@@ -199,7 +199,6 @@ const calculatePercentile = (values, percentile) => {
 
     // Pad to power of two
     const paddedRRIntervals = padToPowerOfTwo(rrIntervals);
-    console.log(paddedRRIntervals.length, 'Padded rrIntervals');
 
     // FFT implementation
     const fftResult = fft(paddedRRIntervals);
@@ -276,6 +275,14 @@ function fft(input) {
   }
 
   return output;
+}
+
+// Fungsi Box-Cox Transformasi
+function boxCoxTransform(values, lambda) {
+  if (lambda === 0) {
+    return values.map(x => Math.log(x)); // Jika lambda = 0, gunakan logaritma natural
+  }
+  return values.map(x => (Math.pow(x, lambda) - 1) / lambda);
 }
   
 

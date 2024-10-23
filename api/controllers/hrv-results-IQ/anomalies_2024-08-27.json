@@ -1,0 +1,104 @@
+[
+  {
+    "timestamp": 1724737730,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      532,
+      586,
+      832,
+      896,
+      930,
+      1354,
+      1380,
+      1394,
+      1395,
+      1484,
+      1490,
+      1496,
+      1519
+    ]
+  },
+  {
+    "timestamp": 1724744874,
+    "hrAnomalies": [
+      99,
+      99,
+      100
+    ],
+    "rrAnomalies": [
+      277,
+      893,
+      1325,
+      1334,
+      1339,
+      1354,
+      1376,
+      1382,
+      1396,
+      1423,
+      1444
+    ]
+  },
+  {
+    "timestamp": 1724745475,
+    "hrAnomalies": [
+      84,
+      84
+    ],
+    "rrAnomalies": [
+      724,
+      738,
+      1235,
+      1312,
+      1323,
+      1326,
+      1343
+    ]
+  },
+  {
+    "timestamp": 1724746453,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      750,
+      757,
+      759,
+      1335,
+      1356,
+      1357,
+      1373,
+      1399,
+      1421
+    ]
+  },
+  {
+    "timestamp": 1724748095,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      1316
+    ]
+  },
+  {
+    "timestamp": 1724752629,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      627,
+      649
+    ]
+  },
+  {
+    "timestamp": 1724754903,
+    "hrAnomalies": [
+      107,
+      107,
+      112
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1724785867,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      780
+    ]
+  }
+]

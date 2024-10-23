@@ -71,3 +71,88 @@ export const generateGraph = async (guid_device) => {
     console.error(`Error generating graph for GUID Device ${guid}:`, error);
   }
 };
+
+const generateGraphForFolder = async (folderName) => {
+  try {
+    const dirPath = `./${folderName}`;
+    const files = fs.readdirSync(dirPath);
+    
+    // Mengumpulkan data dari semua file JSON di folder
+    let allData = [];
+    for (const file of files) {
+      const filePath = `${dirPath}/${file}`;
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (data.filteredLogs) {
+        allData = allData.concat(data.filteredLogs);
+      }
+    }
+
+    // Mengurutkan data berdasarkan timestamp
+    allData.sort((a, b) => a.timestamp - b.timestamp);
+    const sortedRrValues = allData.map(data => data.RR);
+    const sortedHrValues = allData.map(data => data.HR);
+    const sortedTimestamps = allData.map(data => {
+      const date = new Date(data.timestamp * 1000); // Konversi ke objek Date
+      return date.toISOString().replace('T', ' ').substring(0, 19); // Format yyyy-mm-dd hh:mm:ss
+    });
+
+    // Membuat canvas untuk grafik
+    const canvas = createCanvas(800, 400);
+    const ctx = canvas.getContext('2d');
+
+    // Membuat grafik menggunakan Chart.js
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: sortedTimestamps,
+        datasets: [
+          {
+            label: 'Heart Rate (HR)',
+            data: sortedHrValues,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            fill: false,
+          },
+          {
+            label: 'Respiratory Rate (RR)',
+            data: sortedRrValues,
+            borderColor: 'rgba(255, 99, 132, 1)',
+            fill: false,
+          }
+        ]
+      },
+      options: {
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: 'minute' // Atur unit waktu di sumbu X
+            }
+          },
+          y: {
+            beginAtZero: false
+          }
+        }
+      }
+    });
+
+    // Menyimpan grafik ke folder yang sesuai
+    const outputDir = `./graphs/${folderName}`;
+    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+    const buffer = canvas.toBuffer('image/png');
+    const filename = `${outputDir}/heart_rate_rr_${folderName}_${Date.now()}.png`;
+    fs.writeFileSync(filename, buffer);
+    console.log(`Graph saved successfully in ${folderName} as`, filename);
+
+  } catch (error) {
+    console.error(`Error generating graph in ${folderName}:`, error);
+  }
+};
+
+// Fungsi utama untuk memanggil generateGraphForFolder untuk semua folder
+export const generateGraphsForAllFolders = async () => {
+  const folders = ['hrv-result-IQ', 'hrv-result-BC', 'hrv-result-OC']; // Ganti dengan nama folder sesuai kebutuhan
+  for (const folder of folders) {
+    await generateGraphForFolder(folder);
+  }
+};

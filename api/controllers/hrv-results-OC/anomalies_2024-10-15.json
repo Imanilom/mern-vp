@@ -1,0 +1,73 @@
+[
+  {
+<<<<<<< HEAD:api/controllers/hrv-results-OC/anomalies_2024-10-15.json
+    "timestamp": 1728962175,
+    "hrAnomalies": [
+      120,
+      120,
+      120,
+      120
+    ],
+    "rrAnomalies": [
+      null,
+      null,
+      null,
+      null
+    ]
+=======
+    "timestamp": 1728963570,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      347,
+      364,
+      499,
+      605,
+      708,
+      1006
+    ]
+  },
+  {
+    "timestamp": 1728964642,
+    "hrAnomalies": [
+      110,
+      111,
+      111,
+      111,
+      111,
+      111,
+      112,
+      112,
+      113,
+      124,
+      124,
+      124,
+      125,
+      127
+    ],
+    "rrAnomalies": [
+      1320,
+      1326,
+      1515,
+      1547,
+      2665,
+      8558
+    ]
+  },
+  {
+    "timestamp": 1728965242,
+    "hrAnomalies": [
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
+    ],
+    "rrAnomalies": []
+>>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/anomalies_2024-10-15.json
+  }
+]
