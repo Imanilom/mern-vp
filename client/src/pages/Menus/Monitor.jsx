@@ -82,9 +82,10 @@ export default function Monitor() {
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       }
-      const response = await fetch(url);  
+      const response = await fetch(url);
       const data = await response.json();
 
+      console.log({ data })
       if (!response.ok) {
         console.log('error');
         setLogs([]);
@@ -95,6 +96,7 @@ export default function Monitor() {
         setIQRData([]);
 
         dispatch(clearLogsWithDailytMetric());
+        setLoading(false);
         return
       }
 
@@ -102,12 +104,13 @@ export default function Monitor() {
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
       const tes = groupDataByThreeAndAverage(sortedLogs);
 
-      // console.log({iQrData})
+      console.log({ sortedLogs, tes })
+
       set3dpData(tes);
       setLogs(sortedLogs);
       setIQRData(data.filterIQRResult);
 
-      // setBorderColor
+      // // setBorderColor
       const borderColor = sortedLogs.map(item => {
         if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan 
         if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
@@ -117,50 +120,52 @@ export default function Monitor() {
       });
 
       setBorderColor(borderColor);
-      // payloadRedux.borderColorR = borderColor;
+      // // payloadRedux.borderColorR = borderColor;
 
       if (data && sortedLogs.length > 0) {
         const resultCalculateMetric = calculateMetrics(sortedLogs);
+        console.log({ resultCalculateMetric })
         setMetrics(resultCalculateMetric);
-        // payloadRedux.metricsR = resultCalculateMetric;
+        //   // payloadRedux.metricsR = resultCalculateMetric;
         let dfaHR = sortedLogs.map(log => log.HR);
-
+        // console.log({dfaHR})
         const dailyMetrictResult = calculateDailyMetrics(sortedLogs, dfaHR); // call here
-        setDailyMetrics(dailyMetrictResult);
+        console.log({ dailyMetrictResult })
+        //   setDailyMetrics(dailyMetrictResult);
 
-        // payloadRedux.dailymetricR = dailyMetrictResult;
+        //   // payloadRedux.dailymetricR = dailyMetrictResult;
 
-        let property = {
-          tSdnn: 0,
-          tRmssd: 0,
-          tPnn50: 0,
-          tS1: 0,
-          tS2: 0,
-        }
+        //   let property = {
+        //     tSdnn: 0,
+        //     tRmssd: 0,
+        //     tPnn50: 0,
+        //     tS1: 0,
+        //     tS2: 0,
+        //   }
 
-        dailyMetrictResult.forEach((val) => {
-          // console.log(val)
-          property.tSdnn += Math.floor(val.sdnn);
-          property.tRmssd += Math.floor(val.rmssd);
-          property.tPnn50 += Math.floor(val.pnn50);
-          property.tS1 += Math.floor(val.s1);
-          property.tS2 += Math.floor(val.s2);
-        });
+        //   dailyMetrictResult.forEach((val) => {
+        //     // console.log(val)
+        //     property.tSdnn += Math.floor(val.sdnn);
+        //     property.tRmssd += Math.floor(val.rmssd);
+        //     property.tPnn50 += Math.floor(val.pnn50);
+        //     property.tS1 += Math.floor(val.s1);
+        //     property.tS2 += Math.floor(val.s2);
+        //   });
 
-        let median = {
-          sdnn: property.tSdnn / dailyMetrictResult.length,
-          rmssd: property.tRmssd / dailyMetrictResult.length,
-          pnn50: property.tPnn50 / dailyMetrictResult.length,
-          s1: property.tS1 / dailyMetrictResult.length,
-          s2: property.tS2 / dailyMetrictResult.length,
-          total: dailyMetrictResult.length
-        }
+        //   let median = {
+        //     sdnn: property.tSdnn / dailyMetrictResult.length,
+        //     rmssd: property.tRmssd / dailyMetrictResult.length,
+        //     pnn50: property.tPnn50 / dailyMetrictResult.length,
+        //     s1: property.tS1 / dailyMetrictResult.length,
+        //     s2: property.tS2 / dailyMetrictResult.length,
+        //     total: dailyMetrictResult.length
+        //   }
 
-        console.log({results})
+        //   console.log({results})
 
-        setMedianProperty(median);
+        //   setMedianProperty(median);
 
-        payloadRedux.medianPropertyR = median;
+        //   payloadRedux.medianPropertyR = median;
       }
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -213,24 +218,29 @@ export default function Monitor() {
   };
 
   const calculateDFA = (data, order = 1) => {
-    const y = data.map((val, i) => data.slice(0, i + 1)
-      .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
-    const boxSizes = [...new Set(Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(val => val <= data.length / 2))];
-    const fluctuation = boxSizes.map(boxSize => {
-      const reshaped = Array.from({ length: Math.floor(data.length / boxSize) }, (_, i) => y.slice(i * boxSize, (i + 1) * boxSize));
-      const localTrends = reshaped.map(segment => {
-        const x = Array.from({ length: segment.length }, (_, i) => i);
-        const [a, b] = [0, 1].map(deg => segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length);
-        return segment.map((val, i) => a * x[i] + b);
+    try {
+      const y = data.map((val, i) => data.slice(0, i + 1)
+        .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
+      const boxSizes = [...new Set(Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(val => val <= data.length / 2))];
+      const fluctuation = boxSizes.map(boxSize => {
+        const reshaped = Array.from({ length: Math.floor(data.length / boxSize) }, (_, i) => y.slice(i * boxSize, (i + 1) * boxSize));
+        const localTrends = reshaped.map(segment => {
+          const x = Array.from({ length: segment.length }, (_, i) => i);
+          const [a, b] = [0, 1].map(deg => segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length);
+          return segment.map((val, i) => a * x[i] + b);
+        });
+        return Math.sqrt(localTrends.flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
+          .reduce((acc, val) => acc + val, 0) / (reshaped.length * reshaped[0].length));
       });
-      return Math.sqrt(localTrends.flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
-        .reduce((acc, val) => acc + val, 0) / (reshaped.length * reshaped[0].length));
-    });
-    const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr => arr.map(val => Math.log10(val)));
-    const alpha = (logFluctuation.reduce((acc, val, i) => acc + (val * logBoxSizes[i]), 0) -
-      (logFluctuation.reduce((acc, val) => acc + val, 0) * logBoxSizes.reduce((acc, val) => acc + val, 0) / logBoxSizes.length)) /
-      (logBoxSizes.reduce((acc, val) => acc + Math.pow(val, 2), 0) - Math.pow(logBoxSizes.reduce((acc, val) => acc + val, 0), 2) / logBoxSizes.length);
-    return alpha;
+      const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr => arr.map(val => Math.log10(val)));
+      const alpha = (logFluctuation.reduce((acc, val, i) => acc + (val * logBoxSizes[i]), 0) -
+        (logFluctuation.reduce((acc, val) => acc + val, 0) * logBoxSizes.reduce((acc, val) => acc + val, 0) / logBoxSizes.length)) /
+        (logBoxSizes.reduce((acc, val) => acc + Math.pow(val, 2), 0) - Math.pow(logBoxSizes.reduce((acc, val) => acc + val, 0), 2) / logBoxSizes.length);
+      return alpha;
+    } catch (error) {
+      console.log('Error in calculateDFA ', { error })
+    }
+
   };
 
   const groupDataByThreeAndAverage = (datalog) => {
@@ -261,33 +271,42 @@ export default function Monitor() {
   };
 
   const calculateDailyMetrics = (logs, CollectionHR) => {
-    const groupedLogs = logs.reduce((acc, log) => {
-      const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
-      if (!acc[date]) acc[date] = [];
-      acc[date].push({ ...log });
-      return acc;
-    }, {});
+    try {
+      const groupedLogs = logs.reduce((acc, log) => {
+        const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
+        if (!acc[date]) acc[date] = [];
+        acc[date].push({ ...log });
+        return acc;
+      }, {});
 
-    const dailyMetrics = Object.keys(groupedLogs).map((date, i) => {
-      // groupedLogs[date] adalah kumpulan logs sesuai dengan tanggal tanggal
-      let groupData = groupedLogs[date];
-      let HRPoint = [];
-      for (let i = 0; i < groupData.length; i++) {
-        // const element = groupData[i];
-        HRPoint.push(groupData[i]['HR']);
-        // let HRPoint = groupData[i].map(data => data.HR)
-        // console.log('HRPOINT : ', HRPoint);
-      }
+      // console.log('aman', {groupedLogs});
 
-      const dfa = calculateDFA(HRPoint);
+      // return;
 
-      // console.log(groupedLogs[date], i)
-      const metrics = calculateMetrics(groupedLogs[date]);
-      return { date, ...metrics, dfa };
-    });
+      const dailyMetrics = Object.keys(groupedLogs).map((date, i) => {
+        // groupedLogs[date] adalah kumpulan logs sesuai dengan tanggal tanggal
+        let groupData = groupedLogs[date];
+        let HRPoint = [];
+        for (let i = 0; i < groupData.length; i++) {
+          // const element = groupData[i];
+          HRPoint.push(groupData[i]['HR']);
+          // let HRPoint = groupData[i].map(data => data.HR)
+          // console.log('HRPOINT : ', HRPoint);
+        }
 
-    // setDailyMetrics(dailyMetrics);
-    return dailyMetrics;
+       
+        const dfa = calculateDFA(HRPoint);
+        // console.log(groupedLogs[date], i)
+        const metrics = calculateMetrics(groupedLogs[date]);
+        return { date, ...metrics, dfa };
+      });
+
+      // setDailyMetrics(dailyMetrics);
+      return dailyMetrics;
+    } catch (err) {
+      console.log({ err })
+    }
+
   };
 
   const toggleVisibilityHR = () => setHRIsVisible(!isHRVisible);
@@ -343,19 +362,19 @@ export default function Monitor() {
                 />
 
                 {/* {currentUser.role !== 'user' && ( */}
-                  <div data-aos="fade-up" className="inline-block relative">
-                    <select
-                      name=""
-                      id=""
-                      className="p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[220px] px-3 py-3"
-                      onChange={handleChangeDevice}
-                    >
-                      <option value="" disabled>Select device Monitoring</option>
-                      <option value="C0680226" selected>C0680226</option>
-                      <option value="BA903328">BA903328</option>
-                    </select>
-                    {loading ? <span className="ms-4 loader"></span> : null}
-                  </div>
+                <div data-aos="fade-up" className="inline-block relative">
+                  <select
+                    name=""
+                    id=""
+                    className="p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                    onChange={handleChangeDevice}
+                  >
+                    <option value="" disabled>Select device Monitoring</option>
+                    <option value="C0680226" selected>C0680226</option>
+                    <option value="BA903328">BA903328</option>
+                  </select>
+                  {loading ? <span className="ms-4 loader"></span> : null}
+                </div>
                 {/* )} */}
 
                 <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />

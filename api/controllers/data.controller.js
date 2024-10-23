@@ -212,4 +212,4 @@ cron.schedule('*/5 * * * *', async () => {
     console.error('Error during cron job execution:', error);
   }
 });
-processHeartRateData();
+// processHeartRateData();
