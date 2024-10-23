@@ -19,6 +19,12 @@ function InputMedicalHistory() {
     const navigate = useNavigate();
     // const {} = useState(state => state.web);
 
+    useEffect(() => {
+        if(currentUser.role != 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
+    }, [])
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setInputItem(prevState => ({

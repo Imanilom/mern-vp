@@ -18,6 +18,10 @@ function WriteDoc() {
         AOS.init({
             duration: 1000
         })
+
+        if(currentUser.role == 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
     }, [])
 
     const [startDate, setStartDate] = useState(null);

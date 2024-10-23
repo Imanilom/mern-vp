@@ -110,6 +110,33 @@ function ButtonOffCanvas() {
                                     </Link>
                                 ) : null}
 
+                                {DocterPatient && currentUser.role == 'doctor' ? (
+                                    <Link to='/monitor/dfa'>
+                                        <div>
+                                            <div role="button" tabindex="0" className="flex py-3 bg-[#101010] px-8 items-center w-full text-start leading-tight transition-all hover:bg-[#005A8F] text-sm outline-none">
+                                                <div className="grid place-items-center mr-4">
+                                                <TbHeartRateMonitor size={24} />
+                                                </div>
+                                                Monitoring DFA
+                                            </div>
+                                        </div>
+                                    </Link>
+
+                                ) : null}
+
+                                {currentUser.role != 'doctor' ? (
+                                    <Link to='/monitor/dfa'>
+                                        <div>
+                                            <div role="button" tabindex="0" className="flex py-3 bg-[#101010] px-8 items-center w-full text-start leading-tight transition-all hover:bg-[#005A8F] text-sm outline-none">
+                                                <div className="grid place-items-center mr-4">
+                                                <TbHeartRateMonitor size={24} />
+                                                </div>
+                                                Monitoring DFA
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ) : null}
+
                                 {/* --- */}
 
                                 {DocterPatient && currentUser.role == 'doctor' ? (

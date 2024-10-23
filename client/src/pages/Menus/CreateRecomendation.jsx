@@ -12,7 +12,9 @@ function CreateRecomendation() {
     const { currentUser, DocterPatient } = useSelector((state) => state.user);
     const navigate = useNavigate();
     useEffect(() => {
-
+        if(currentUser.role != 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
     }, []);
 
     const handleSubmit = async (e) => {

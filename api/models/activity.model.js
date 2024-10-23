@@ -22,6 +22,7 @@ const AktivitasSchema = new mongoose.Schema(
         userRef: {
             type: String,
         },
+        create_by : String,
        
         create_at: { 
           type: Date, 

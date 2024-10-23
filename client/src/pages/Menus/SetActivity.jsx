@@ -33,6 +33,7 @@ function SetActivity() {
     const { encrypt } = useParams();
     //get id by useState
     useState(() => {
+      
         let tryHandle = async () => {
             try {
                 console.log({ encrypt })
@@ -45,6 +46,11 @@ function SetActivity() {
         }
 
         tryHandle();
+
+        if(currentUser.role != 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
+
     }, []);
 
     const handleChange = (e) => {

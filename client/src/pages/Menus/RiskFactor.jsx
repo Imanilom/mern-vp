@@ -78,12 +78,13 @@ function RiskFactor() {
 
         {modal && docValue.length > 0 ? (
           <div className="fixed inset-0 z-50 flex flex-col  items-center justify-center bg-[#000000]/80">
-            <div onClick={() => setModal(false)} className="ms-auto px-[10vw] font-bold text-red-600 cursor-pointer text-[18px]">
-              Close
-            </div>
+
             <div className="flex flex-col items-center">
               {docValue[doc - 1]['file_url'] != null ? (
-                <div className="p-8 bg-white">
+                <div className="px-8 py-4 bg-white">
+                  <div onClick={() => setModal(false)} className="text-end text-sm py-1 font-bold text-red-600 cursor-pointer text-[18px]">
+                    Close
+                  </div>
                   <img src={docValue[doc - 1]['file_url']} className='w-max-lg w-min-[70vw] h-[80vh]' alt="" srcset="" />
                 </div>
               ) : null}

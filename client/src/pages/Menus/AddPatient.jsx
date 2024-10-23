@@ -56,6 +56,10 @@ function AddPatient() {
             duration: 700
         })
         fetchPatients();
+
+        if(currentUser.role == 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
     }, []);
 
     useEffect(() => {

@@ -1,0 +1,1052 @@
+[
+  {
+    "timestamp": 1716829233000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      661,
+      726
+    ]
+  },
+  {
+    "timestamp": 1716829324000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716829334000,
+    "hrAnomalies": [
+      65,
+      65
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716829344000,
+    "hrAnomalies": [
+      65
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716829355000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      869
+    ]
+  },
+  {
+    "timestamp": 1716829366000,
+    "hrAnomalies": [
+      64,
+      66
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716829397000,
+    "hrAnomalies": [
+      63,
+      65
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716829417000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      1097
+    ]
+  },
+  {
+    "timestamp": 1716829427000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      956
+    ]
+  },
+  {
+    "timestamp": 1716830559000,
+    "hrAnomalies": [
+      63
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716837270000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837280000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837291000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837312000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837342000,
+    "hrAnomalies": [
+      56,
+      56
+    ],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837352000,
+    "hrAnomalies": [
+      54
+    ],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837362000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837372000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837392000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      1303
+    ]
+  },
+  {
+    "timestamp": 1716837402000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837422000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837433000,
+    "hrAnomalies": [
+      58
+    ],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837443000,
+    "hrAnomalies": [
+      55,
+      57
+    ],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716837453000,
+    "hrAnomalies": [
+      58
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716844042000,
+    "hrAnomalies": [
+      73,
+      76
+    ],
+    "rrAnomalies": [
+      757
+    ]
+  },
+  {
+    "timestamp": 1716844063000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      702
+    ]
+  },
+  {
+    "timestamp": 1716844311000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      952
+    ]
+  },
+  {
+    "timestamp": 1716844354000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      845
+    ]
+  },
+  {
+    "timestamp": 1716844405000,
+    "hrAnomalies": [
+      71
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716844416000,
+    "hrAnomalies": [
+      67,
+      69
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716844427000,
+    "hrAnomalies": [
+      70,
+      70
+    ],
+    "rrAnomalies": [
+      828
+    ]
+  },
+  {
+    "timestamp": 1716844439000,
+    "hrAnomalies": [
+      69,
+      69
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716844459000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      949
+    ]
+  },
+  {
+    "timestamp": 1716844479000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      900
+    ]
+  },
+  {
+    "timestamp": 1716844489000,
+    "hrAnomalies": [
+      66
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716844500000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      null
+    ]
+  },
+  {
+    "timestamp": 1716851275000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      618
+    ]
+  },
+  {
+    "timestamp": 1716851298000,
+    "hrAnomalies": [
+      85
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716851308000,
+    "hrAnomalies": [
+      84
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716851478000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      628
+    ]
+  },
+  {
+    "timestamp": 1716851489000,
+    "hrAnomalies": [
+      89
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716851501000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      724
+    ]
+  },
+  {
+    "timestamp": 1716851512000,
+    "hrAnomalies": [
+      87,
+      91
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716851547000,
+    "hrAnomalies": [
+      86
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716851603000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      576
+    ]
+  },
+  {
+    "timestamp": 1716851635000,
+    "hrAnomalies": [
+      96,
+      99
+    ],
+    "rrAnomalies": [
+      612,
+      670
+    ]
+  },
+  {
+    "timestamp": 1716851647000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      612
+    ]
+  },
+  {
+    "timestamp": 1716851669000,
+    "hrAnomalies": [
+      90
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716852976000,
+    "hrAnomalies": [
+      89
+    ],
+    "rrAnomalies": [
+      690,
+      743
+    ]
+  },
+  {
+    "timestamp": 1716852998000,
+    "hrAnomalies": [
+      89
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853088000,
+    "hrAnomalies": [
+      94
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853110000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      706,
+      761
+    ]
+  },
+  {
+    "timestamp": 1716853122000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      666,
+      714
+    ]
+  },
+  {
+    "timestamp": 1716853153000,
+    "hrAnomalies": [
+      96
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853176000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      719
+    ]
+  },
+  {
+    "timestamp": 1716853208000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      717
+    ]
+  },
+  {
+    "timestamp": 1716853219000,
+    "hrAnomalies": [
+      88
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853250000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      697
+    ]
+  },
+  {
+    "timestamp": 1716853262000,
+    "hrAnomalies": [
+      91
+    ],
+    "rrAnomalies": [
+      704
+    ]
+  },
+  {
+    "timestamp": 1716853283000,
+    "hrAnomalies": [
+      98
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853303000,
+    "hrAnomalies": [
+      91,
+      94
+    ],
+    "rrAnomalies": [
+      365
+    ]
+  },
+  {
+    "timestamp": 1716853335000,
+    "hrAnomalies": [
+      92
+    ],
+    "rrAnomalies": [
+      633,
+      684
+    ]
+  },
+  {
+    "timestamp": 1716853346000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      635
+    ]
+  },
+  {
+    "timestamp": 1716853358000,
+    "hrAnomalies": [
+      95
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853378000,
+    "hrAnomalies": [
+      95
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853388000,
+    "hrAnomalies": [
+      96
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853683000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      786
+    ]
+  },
+  {
+    "timestamp": 1716853723000,
+    "hrAnomalies": [
+      82
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853788000,
+    "hrAnomalies": [
+      84
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716853833000,
+    "hrAnomalies": [
+      87
+    ],
+    "rrAnomalies": [
+      745
+    ]
+  },
+  {
+    "timestamp": 1716854026000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      719
+    ]
+  },
+  {
+    "timestamp": 1716854038000,
+    "hrAnomalies": [
+      85
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716854050000,
+    "hrAnomalies": [
+      93
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716854078000,
+    "hrAnomalies": [
+      93
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716854144000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      701
+    ]
+  },
+  {
+    "timestamp": 1716854307000,
+    "hrAnomalies": [
+      84
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716854320000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      956
+    ]
+  },
+  {
+    "timestamp": 1716854342000,
+    "hrAnomalies": [
+      86
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716854384000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      719,
+      740
+    ]
+  },
+  {
+    "timestamp": 1716857667000,
+    "hrAnomalies": [
+      100
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716859964000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      632,
+      677
+    ]
+  },
+  {
+    "timestamp": 1716859996000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      622
+    ]
+  },
+  {
+    "timestamp": 1716860042000,
+    "hrAnomalies": [
+      101
+    ],
+    "rrAnomalies": [
+      618
+    ]
+  },
+  {
+    "timestamp": 1716860054000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      621
+    ]
+  },
+  {
+    "timestamp": 1716860088000,
+    "hrAnomalies": [
+      96
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860120000,
+    "hrAnomalies": [
+      100
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860152000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      662,
+      763
+    ]
+  },
+  {
+    "timestamp": 1716860162000,
+    "hrAnomalies": [
+      90
+    ],
+    "rrAnomalies": [
+      647
+    ]
+  },
+  {
+    "timestamp": 1716860176000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      693
+    ]
+  },
+  {
+    "timestamp": 1716860186000,
+    "hrAnomalies": [
+      93
+    ],
+    "rrAnomalies": [
+      665,
+      677
+    ]
+  },
+  {
+    "timestamp": 1716860206000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      612
+    ]
+  },
+  {
+    "timestamp": 1716860250000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      741
+    ]
+  },
+  {
+    "timestamp": 1716860337000,
+    "hrAnomalies": [
+      91
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860348000,
+    "hrAnomalies": [
+      99
+    ],
+    "rrAnomalies": [
+      593
+    ]
+  },
+  {
+    "timestamp": 1716860358000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      707
+    ]
+  },
+  {
+    "timestamp": 1716860466000,
+    "hrAnomalies": [
+      95
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860510000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      716
+    ]
+  },
+  {
+    "timestamp": 1716860595000,
+    "hrAnomalies": [
+      89
+    ],
+    "rrAnomalies": [
+      763
+    ]
+  },
+  {
+    "timestamp": 1716860605000,
+    "hrAnomalies": [
+      90
+    ],
+    "rrAnomalies": [
+      765
+    ]
+  },
+  {
+    "timestamp": 1716860615000,
+    "hrAnomalies": [
+      93
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860646000,
+    "hrAnomalies": [
+      86
+    ],
+    "rrAnomalies": [
+      680
+    ]
+  },
+  {
+    "timestamp": 1716860668000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      779
+    ]
+  },
+  {
+    "timestamp": 1716860678000,
+    "hrAnomalies": [
+      85
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860752000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      601
+    ]
+  },
+  {
+    "timestamp": 1716860762000,
+    "hrAnomalies": [
+      95
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860795000,
+    "hrAnomalies": [
+      99
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860837000,
+    "hrAnomalies": [
+      94
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860858000,
+    "hrAnomalies": [
+      88
+    ],
+    "rrAnomalies": [
+      732
+    ]
+  },
+  {
+    "timestamp": 1716860880000,
+    "hrAnomalies": [
+      93
+    ],
+    "rrAnomalies": [
+      679
+    ]
+  },
+  {
+    "timestamp": 1716860891000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      595
+    ]
+  },
+  {
+    "timestamp": 1716860901000,
+    "hrAnomalies": [
+      99
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860913000,
+    "hrAnomalies": [
+      101
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860933000,
+    "hrAnomalies": [
+      97
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860957000,
+    "hrAnomalies": [
+      93
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716860977000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      690,
+      747
+    ]
+  },
+  {
+    "timestamp": 1716860987000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      689
+    ]
+  },
+  {
+    "timestamp": 1716860998000,
+    "hrAnomalies": [
+      92
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861009000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      595
+    ]
+  },
+  {
+    "timestamp": 1716861043000,
+    "hrAnomalies": [
+      86
+    ],
+    "rrAnomalies": [
+      681
+    ]
+  },
+  {
+    "timestamp": 1716861074000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      667
+    ]
+  },
+  {
+    "timestamp": 1716861084000,
+    "hrAnomalies": [
+      94
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861094000,
+    "hrAnomalies": [
+      87,
+      90
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861105000,
+    "hrAnomalies": [
+      86
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861116000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      747
+    ]
+  },
+  {
+    "timestamp": 1716861149000,
+    "hrAnomalies": [
+      96
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861170000,
+    "hrAnomalies": [
+      98
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861180000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      662,
+      698
+    ]
+  },
+  {
+    "timestamp": 1716861211000,
+    "hrAnomalies": [
+      89
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861221000,
+    "hrAnomalies": [
+      86
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861251000,
+    "hrAnomalies": [
+      89
+    ],
+    "rrAnomalies": [
+      662
+    ]
+  },
+  {
+    "timestamp": 1716861261000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      660
+    ]
+  },
+  {
+    "timestamp": 1716861282000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      750
+    ]
+  },
+  {
+    "timestamp": 1716861326000,
+    "hrAnomalies": [
+      87
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861401000,
+    "hrAnomalies": [
+      90,
+      92
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861412000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      645
+    ]
+  },
+  {
+    "timestamp": 1716861422000,
+    "hrAnomalies": [
+      89,
+      91
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861455000,
+    "hrAnomalies": [
+      88
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861466000,
+    "hrAnomalies": [
+      88
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716861489000,
+    "hrAnomalies": [
+      87,
+      91
+    ],
+    "rrAnomalies": [
+      632,
+      695
+    ]
+  }
+]

@@ -29,6 +29,10 @@ function UpdateRecomendation() {
         }
 
         fetchData();
+
+        if(currentUser.role != 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
     }, []);
 
     const handleSubmit = async (e) => {

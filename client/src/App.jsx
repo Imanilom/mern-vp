@@ -53,6 +53,7 @@ import AddPatient from './pages/Menus/AddPatient';
 import FaktorResiko from './pages/Menus/FaktorResiko';
 import WriteDoc from './pages/Menus/WriteDoc';
 import InputLabotarium from './pages/Menus/InputLabotarium';
+import MonitorDFA from './pages/Menus/MonitorDFA';
 
 export default function App() {
 
@@ -92,6 +93,7 @@ function MainContent() {
         <Route path='/profile' element={<Profile />} />
         <Route path='/ringkasan-pasien' element={<Summary />} />
         <Route path='/monitor' element={<Monitor />} />
+        <Route path='/monitor/dfa' element={<MonitorDFA />} />
         <Route path='/activity' element={<Activity />} />
         <Route path='/set/activity/:encrypt' element={<SetActivity />} />
         <Route path='/my-patients' element={<MyPatients />} />
@@ -100,11 +102,10 @@ function MainContent() {
         <Route path='/create/prediksi_factor' element={<CreatePrediction />} />
         <Route path='/treatment/create' element={<CreateTreatment />} />
 
-        <Route path='/rekomendasi/detail/:id' element={<RecomendationDetail />} />
+        
         <Route path='/createRecomendation' element={<CreateRecomendation />} />
         <Route path='/updateAnemnesa/:id' element={<UpdateAnemnesa />} />
         <Route path='/updateRecomendation/:id' element={<UpdateRecomendation />} />
-        <Route path='/createActivity' element={<CreateActivity />} />
         <Route path='/updateActivity/:id' element={<UpdateActivity />} />
         <Route path='/treatment/update/:id' element={<UpdateTreatment />} />
         <Route path='/riwayat-medis' element={<MedicalHistories />} />
@@ -117,7 +118,6 @@ function MainContent() {
         <Route path='/riwayat-deteksi' element={<DetectionHistories />} />
         <Route path='/treatment' element={<Treatment />} />
         <Route path='/rekomendasi' element={<Recommendation />} />
-        <Route path='/anamnesa' element={<Anamnesa />} />
         <Route path='/add/pasient/:id' element={<AddPatient />} />
 
       </Route>

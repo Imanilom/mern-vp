@@ -20,6 +20,10 @@ function UpdateTreatment() {
 
     useEffect(() => {
         fetchInit();
+
+        if(currentUser.role == 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
     }, []);
 
     const fetchInit = async () => {

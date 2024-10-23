@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const LogSchema = new mongoose.Schema(
   {
     guid: {
-      required: true,
+      // required: true,
       type: String,
     },
     guid_device: {

@@ -1,11 +1,17 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import Side from "../../components/Side";
+import { useEffect } from "react";
 
 function CreateAnamnesa() {
     const { riwayatid } = useParams();
     const navigate = useNavigate();
 
+    useEffect(() => {
+        if(currentUser.role != 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
+    }, [])
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {

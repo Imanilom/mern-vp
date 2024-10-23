@@ -219,7 +219,7 @@ export const test = async (req, res, next) => {
     let filter = {};
 
     if (device) {
-      console.log({device})
+      console.log({ device })
       filter.guid_device = device // Sesuaikan dengan user device yang valid
     }
 
@@ -244,7 +244,7 @@ export const test = async (req, res, next) => {
     if (logs) {
       let sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
       const filterIQRResult = await filterIQ(sortedLogs);
-      console.log({ filterIQRResult })
+      // console.log({ logs,filterIQRResult }, filterIQRResult.filteredLogs[0])
       res.json({ logs, filterIQRResult })
     }
 
@@ -778,3 +778,89 @@ export const getFilteredAndRawData = async (req, res, next) => {
     next(error);
   }
 };
+
+export const logdfa = async (req, res, next) => {
+  try {
+    await Log.deleteMany({
+      $or: [{ HR: 0 }, { RR: 0 }, { rrRMS: 0 }],
+    });
+
+    // let ip = 0; // index page
+
+    const device = req.params.device || false;
+    const { startDate, endDate } = req.query;
+
+    const limit = parseInt(req.query.limit) || 10000;
+    // const { startDate, endDate } = req.query;
+
+    const splitCount = 500;
+    // let filter = {date_created : "27-05-2024"} // 
+
+    let filter = {};
+
+    if (startDate && endDate) {
+      let dateStart = new Date(startDate).getTime() / 1000;
+      let dateEnd = new Date(endDate).getTime() / 1000;
+      console.log({ dateStart, dateEnd })
+      filter.timestamp = {
+        $gte: dateStart,
+        $lte: dateEnd
+      }
+    }
+
+    console.log('wait', filter, limit)
+    const logs = await Log.find(filter)
+      // .skip(limit * ip)
+      // .skip((10000 * ip) + 5000)
+      .limit(limit)
+      .sort({ create_at: -1 })
+    console.log('oke aman')
+
+    const splitArrayIntoChunks = (array, chunkSize) => {
+      const result = [];
+      for (let i = 0; i < array.length; i += chunkSize) {
+        const chunk = array.slice(i, i + chunkSize); // Mengambil slice dari array
+        result.push(chunk); // Menambahkan chunk ke hasil
+      }
+      return result; // Mengembalikan array yang telah dibagi
+    };
+
+    // perlu interquartile
+    // console.log({logs})
+    if (logs) {
+      let sortedLogs = logs.sort((a, b) => b.timestamp - a.timestamp);
+
+      // Memecah logs menjadi bagian yang lebih kecil dengan ukuran 500
+      const splittedLog = splitArrayIntoChunks(sortedLogs, splitCount);
+      const HRCollection = [];
+
+      splittedLog.forEach((dataLog, _i) => {
+        HRCollection[_i] = [];
+
+        for (let i = 0; i < dataLog.length; i++) {
+          const data = dataLog[i];
+          HRCollection[_i][i] = data.HR;
+
+        }
+      });
+      // console.log( splittedLog[1][0 * splitCount]['date_created']);
+
+      let result = HRCollection.map((data, i) => {
+        return {
+          dfa: calculateDFA(data),
+          tanggal: splittedLog[i][0 * splittedLog[i].length]['date_created'],
+          waktu_awal: splittedLog[i][0 * splittedLog[i].length]['time_created'],
+          waktu_akhir: splittedLog[i][splittedLog[i].length - 1]['time_created'],
+          count: splittedLog[i].length
+        }
+      });
+
+      console.log({ result, HRCollection, splittedLog });
+      res.json({ result, HRCollection, splittedLog });
+    }
+
+  } catch (error) {
+    console.error('Error in /api/user/test:', error.message);
+    next(error);
+  }
+}

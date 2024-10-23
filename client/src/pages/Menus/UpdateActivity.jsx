@@ -49,6 +49,10 @@ function UpdateActivity() {
         }
 
         tryHandle();
+
+        if(currentUser.role != 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
     }, []);
 
     const handleChange = (e) => {

@@ -25,6 +25,10 @@ function InputLabotarium() {
         AOS.init({
             duration: 1000
         })
+
+        if(currentUser.role == 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
     }, []);
 
     useEffect(() => {

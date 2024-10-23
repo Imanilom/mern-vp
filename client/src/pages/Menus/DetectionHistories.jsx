@@ -305,7 +305,6 @@ function DetectionHistories() {
 
 function HandleSimbol(props) {
   const { dfa } = props;
-
   if (dfa >= 1.5) {
     return (
       <span

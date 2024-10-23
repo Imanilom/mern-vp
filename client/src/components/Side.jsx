@@ -93,6 +93,33 @@ const Side = () => {
               </Link>
             ) : null}
 
+            {DocterPatient && currentUser.role == 'doctor' ? (
+              <Link className="py-2 px-4 duration-100 hover:bg-[#005A8F] text-sm" to='/monitor/dfa'>
+                <div>
+                  <div role="button" tabindex="0" class="flex items-center w-full p-3 rounded-lg text-start leading-tight transition-all outline-none">
+                    <div class="grid place-items-center mr-4">
+                      <TbHeartRateMonitor size={24} />
+                    </div>
+                    Monitoring DFA
+                  </div>
+                </div>
+              </Link>
+
+            ) : null}
+
+            {currentUser.role != 'doctor' ? (
+              <Link className="py-2 px-4 duration-100 hover:bg-[#005A8F] text-sm" to='/monitor/dfa'>
+                <div>
+                  <div role="button" tabindex="0" class="flex items-center w-full p-3 rounded-lg text-start leading-tight transition-all outline-none">
+                    <div class="grid place-items-center mr-4">
+                      <TbHeartRateMonitor size={24} />
+                    </div>
+                    Monitoring DFA
+                  </div>
+                </div>
+              </Link>
+            ) : null}
+
             {/* --- */}
 
             {DocterPatient && currentUser.role == 'doctor' ? (

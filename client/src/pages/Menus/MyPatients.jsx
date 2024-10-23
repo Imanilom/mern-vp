@@ -43,6 +43,10 @@ function MyPatients() {
         };
 
         fetchPatients();
+
+        if(currentUser.role == 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
     }, []);
 
     const handleChangePropertyModal = (property) => {

@@ -15,7 +15,9 @@ function CreateTreatment() {
     const [isShowList, setShowList] = useState(false);
 
     useEffect(() => {
-
+        if(currentUser.role != 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
     }, []);
 
     const handleSubmit = async (e) => {

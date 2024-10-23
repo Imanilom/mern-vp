@@ -19,6 +19,12 @@ function CreatePrediction() {
     const [listFactor, setListFactor] = useState([]);
     const [text, setText] = useState("");
 
+    useEffect(() => {
+        if(currentUser.role != 'user'){
+            return window.location = '/ringkasan-pasien';
+        }
+    }, [])
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
 

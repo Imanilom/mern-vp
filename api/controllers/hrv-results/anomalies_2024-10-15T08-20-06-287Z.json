@@ -1,0 +1,550 @@
+[
+  {
+    "timestamp": 1694586929000,
+    "hrAnomalies": [
+      105
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694587113000,
+    "hrAnomalies": [
+      102
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694587281000,
+    "hrAnomalies": [
+      101
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694589258000,
+    "hrAnomalies": [
+      104
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694591032000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      579
+    ]
+  },
+  {
+    "timestamp": 1694591043000,
+    "hrAnomalies": [
+      103
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694591056000,
+    "hrAnomalies": [
+      101
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694591069000,
+    "hrAnomalies": [
+      102
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694591351000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      608
+    ]
+  },
+  {
+    "timestamp": 1694591416000,
+    "hrAnomalies": [
+      100
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694591427000,
+    "hrAnomalies": [
+      98
+    ],
+    "rrAnomalies": [
+      630
+    ]
+  },
+  {
+    "timestamp": 1694591483000,
+    "hrAnomalies": [
+      99
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694591530000,
+    "hrAnomalies": [
+      101
+    ],
+    "rrAnomalies": [
+      593
+    ]
+  },
+  {
+    "timestamp": 1694591617000,
+    "hrAnomalies": [
+      106
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694591767000,
+    "hrAnomalies": [
+      96
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694591798000,
+    "hrAnomalies": [
+      96
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694591830000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      641
+    ]
+  },
+  {
+    "timestamp": 1694591841000,
+    "hrAnomalies": [
+      100
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694593512000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      715
+    ]
+  },
+  {
+    "timestamp": 1694593533000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      699
+    ]
+  },
+  {
+    "timestamp": 1694593903000,
+    "hrAnomalies": [
+      96
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694593914000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      630,
+      646
+    ]
+  },
+  {
+    "timestamp": 1694593938000,
+    "hrAnomalies": [
+      97
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694593959000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      651
+    ]
+  },
+  {
+    "timestamp": 1694594057000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      665
+    ]
+  },
+  {
+    "timestamp": 1694594104000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      645
+    ]
+  },
+  {
+    "timestamp": 1694594135000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      659
+    ]
+  },
+  {
+    "timestamp": 1694594630000,
+    "hrAnomalies": [
+      91,
+      93
+    ],
+    "rrAnomalies": [
+      693
+    ]
+  },
+  {
+    "timestamp": 1694594641000,
+    "hrAnomalies": [
+      90
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694594651000,
+    "hrAnomalies": [
+      90
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694594661000,
+    "hrAnomalies": [
+      90
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694594683000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      676
+    ]
+  },
+  {
+    "timestamp": 1694594747000,
+    "hrAnomalies": [
+      91
+    ],
+    "rrAnomalies": [
+      663
+    ]
+  },
+  {
+    "timestamp": 1694594803000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      677
+    ]
+  },
+  {
+    "timestamp": 1694594846000,
+    "hrAnomalies": [
+      92
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694594866000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      695
+    ]
+  },
+  {
+    "timestamp": 1694596283000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      729
+    ]
+  },
+  {
+    "timestamp": 1694596346000,
+    "hrAnomalies": [
+      85
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596399000,
+    "hrAnomalies": [
+      89,
+      91
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596409000,
+    "hrAnomalies": [
+      88,
+      90
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596449000,
+    "hrAnomalies": [
+      85
+    ],
+    "rrAnomalies": [
+      691,
+      721
+    ]
+  },
+  {
+    "timestamp": 1694596513000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      683
+    ]
+  },
+  {
+    "timestamp": 1694596534000,
+    "hrAnomalies": [
+      86
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596565000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      676,
+      684
+    ]
+  },
+  {
+    "timestamp": 1694596576000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      700
+    ]
+  },
+  {
+    "timestamp": 1694596586000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      678,
+      708
+    ]
+  },
+  {
+    "timestamp": 1694596597000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      654
+    ]
+  },
+  {
+    "timestamp": 1694596608000,
+    "hrAnomalies": [
+      94
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596628000,
+    "hrAnomalies": [
+      92
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596649000,
+    "hrAnomalies": [
+      88
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596660000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      665
+    ]
+  },
+  {
+    "timestamp": 1694596692000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      682
+    ]
+  },
+  {
+    "timestamp": 1694596702000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      714
+    ]
+  },
+  {
+    "timestamp": 1694596724000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      724
+    ]
+  },
+  {
+    "timestamp": 1694596735000,
+    "hrAnomalies": [
+      84
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596755000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      671,
+      695
+    ]
+  },
+  {
+    "timestamp": 1694596766000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      672
+    ]
+  },
+  {
+    "timestamp": 1694596777000,
+    "hrAnomalies": [
+      90
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596787000,
+    "hrAnomalies": [
+      92
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596841000,
+    "hrAnomalies": [
+      88
+    ],
+    "rrAnomalies": [
+      683
+    ]
+  },
+  {
+    "timestamp": 1694596851000,
+    "hrAnomalies": [
+      90
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596882000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      687
+    ]
+  },
+  {
+    "timestamp": 1694596893000,
+    "hrAnomalies": [
+      92
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596903000,
+    "hrAnomalies": [
+      92
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596915000,
+    "hrAnomalies": [
+      93
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596958000,
+    "hrAnomalies": [
+      87
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694596980000,
+    "hrAnomalies": [
+      87
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694597021000,
+    "hrAnomalies": [
+      90,
+      92
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694597062000,
+    "hrAnomalies": [
+      84,
+      86
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694597072000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      686,
+      705
+    ]
+  },
+  {
+    "timestamp": 1694597083000,
+    "hrAnomalies": [
+      87
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694597105000,
+    "hrAnomalies": [
+      93
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694597115000,
+    "hrAnomalies": [
+      89
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694597126000,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      671
+    ]
+  },
+  {
+    "timestamp": 1694597136000,
+    "hrAnomalies": [
+      92
+    ],
+    "rrAnomalies": []
+  }
+]
