@@ -1,0 +1,26 @@
+{
+  "metrics": {
+    "dfa": null,
+    "median3dp": 555,
+    "mean": 555,
+    "max": 555,
+    "min": 555,
+    "rmssd": 0,
+    "sdnn": 0,
+    "hf": 0,
+    "lf": 0,
+    "lfHfRatio": 0
+  },
+  "filteredLogs": [
+    {
+      "timestamp": 1694610532,
+      "HR": 111,
+      "RR": 555
+    },
+    {
+      "timestamp": 1694610532,
+      "HR": 111,
+      "RR": 555
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "timestamp": 1723080443,
+    "hrAnomalies": [
+      109,
+      108
+    ],
+    "rrAnomalies": [
+      570,
+      606
+    ]
+  },
+  {
+    "timestamp": 1723086788,
+    "hrAnomalies": [
+      110,
+      111,
+      111
+    ],
+    "rrAnomalies": [
+      544,
+      549,
+      577
+    ]
+  },
+  {
+    "timestamp": 1723087779,
+    "hrAnomalies": [
+      114,
+      114,
+      119,
+      123,
+      114,
+      113
+    ],
+    "rrAnomalies": [
+      530,
+      544,
+      496,
+      525,
+      539,
+      542
+    ]
+  },
+  {
+    "timestamp": 1723088382,
+    "hrAnomalies": [
+      112,
+      112,
+      109
+    ],
+    "rrAnomalies": [
+      575,
+      560,
+      597
+    ]
+  }
+]

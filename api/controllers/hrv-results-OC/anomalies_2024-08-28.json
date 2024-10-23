@@ -1,0 +1,37 @@
+[
+  {
+    "timestamp": 1724835897,
+    "hrAnomalies": [
+      81,
+      84
+    ],
+    "rrAnomalies": [
+      282,
+      706
+    ]
+  },
+  {
+    "timestamp": 1724843362,
+    "hrAnomalies": [
+      112,
+      111,
+      111,
+      111
+    ],
+    "rrAnomalies": [
+      550,
+      431,
+      471,
+      552
+    ]
+  },
+  {
+    "timestamp": 1724844276,
+    "hrAnomalies": [
+      103
+    ],
+    "rrAnomalies": [
+      355
+    ]
+  }
+]

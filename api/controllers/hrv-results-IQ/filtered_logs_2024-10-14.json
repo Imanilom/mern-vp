@@ -1,0 +1,1286 @@
+{
+  "metrics": {
+    "dfa": 1.3467464486420515,
+    "median3dp": 520,
+    "mean": 481.15384615384613,
+    "max": 1485,
+    "min": 0,
+    "rmssd": 29.831438595585205,
+    "sdnn": 391.2786723087486,
+    "hf": 1235.289856463812,
+    "lf": 3883.7885005414137,
+    "lfHfRatio": 3.1440301077670108
+  },
+  "filteredLogs": [
+    {
+      "timestamp": 1728946355,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946357,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946360,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946364,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946383,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946384,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946385,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946386,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946389,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946394,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946395,
+      "HR": 117,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946401,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946402,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946406,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946417,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946417,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946418,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946419,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946420,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946422,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946422,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946423,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946424,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946425,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946427,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946431,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946433,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946437,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946440,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946441,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946442,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946445,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946450,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946454,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946456,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946458,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946460,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946460,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946461,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946463,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946464,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946464,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946465,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946466,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946469,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946475,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946480,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946483,
+      "HR": 118,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946485,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946492,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946493,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946495,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946496,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946504,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946505,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946506,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946507,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946517,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946525,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946528,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946528,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946530,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946532,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946533,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946536,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946537,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946538,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946539,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946540,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946541,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946542,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946544,
+      "HR": 119,
+      "RR": null
+    },
+    {
+      "timestamp": 1728946544,
+      "HR": 119,
+      "RR": 264
+    },
+    {
+      "timestamp": 1728946545,
+      "HR": 119,
+      "RR": 281
+    },
+    {
+      "timestamp": 1728946546,
+      "HR": 119,
+      "RR": 282
+    },
+    {
+      "timestamp": 1728946549,
+      "HR": 119,
+      "RR": 283
+    },
+    {
+      "timestamp": 1728946552,
+      "HR": 119,
+      "RR": 285
+    },
+    {
+      "timestamp": 1728946557,
+      "HR": 119,
+      "RR": 287
+    },
+    {
+      "timestamp": 1728946557,
+      "HR": 119,
+      "RR": 289
+    },
+    {
+      "timestamp": 1728946559,
+      "HR": 119,
+      "RR": 294
+    },
+    {
+      "timestamp": 1728946560,
+      "HR": 119,
+      "RR": 306
+    },
+    {
+      "timestamp": 1728946561,
+      "HR": 119,
+      "RR": 318
+    },
+    {
+      "timestamp": 1728946567,
+      "HR": 119,
+      "RR": 325
+    },
+    {
+      "timestamp": 1728946570,
+      "HR": 119,
+      "RR": 326
+    },
+    {
+      "timestamp": 1728946571,
+      "HR": 119,
+      "RR": 338
+    },
+    {
+      "timestamp": 1728946573,
+      "HR": 119,
+      "RR": 344
+    },
+    {
+      "timestamp": 1728946576,
+      "HR": 119,
+      "RR": 352
+    },
+    {
+      "timestamp": 1728946578,
+      "HR": 119,
+      "RR": 354
+    },
+    {
+      "timestamp": 1728946579,
+      "HR": 119,
+      "RR": 355
+    },
+    {
+      "timestamp": 1728946581,
+      "HR": 119,
+      "RR": 365
+    },
+    {
+      "timestamp": 1728946581,
+      "HR": 119,
+      "RR": 388
+    },
+    {
+      "timestamp": 1728946581,
+      "HR": 119,
+      "RR": 395
+    },
+    {
+      "timestamp": 1728946583,
+      "HR": 119,
+      "RR": 409
+    },
+    {
+      "timestamp": 1728946584,
+      "HR": 119,
+      "RR": 423
+    },
+    {
+      "timestamp": 1728946584,
+      "HR": 119,
+      "RR": 425
+    },
+    {
+      "timestamp": 1728946586,
+      "HR": 119,
+      "RR": 429
+    },
+    {
+      "timestamp": 1728946588,
+      "HR": 119,
+      "RR": 430
+    },
+    {
+      "timestamp": 1728946588,
+      "HR": 119,
+      "RR": 432
+    },
+    {
+      "timestamp": 1728946589,
+      "HR": 119,
+      "RR": 438
+    },
+    {
+      "timestamp": 1728946591,
+      "HR": 119,
+      "RR": 452
+    },
+    {
+      "timestamp": 1728946592,
+      "HR": 119,
+      "RR": 455
+    },
+    {
+      "timestamp": 1728946595,
+      "HR": 119,
+      "RR": 503
+    },
+    {
+      "timestamp": 1728946597,
+      "HR": 120,
+      "RR": 505
+    },
+    {
+      "timestamp": 1728946599,
+      "HR": 120,
+      "RR": 505
+    },
+    {
+      "timestamp": 1728946602,
+      "HR": 120,
+      "RR": 506
+    },
+    {
+      "timestamp": 1728946603,
+      "HR": 120,
+      "RR": 508
+    },
+    {
+      "timestamp": 1728946608,
+      "HR": 120,
+      "RR": 508
+    },
+    {
+      "timestamp": 1728946609,
+      "HR": 120,
+      "RR": 510
+    },
+    {
+      "timestamp": 1728946612,
+      "HR": 120,
+      "RR": 512
+    },
+    {
+      "timestamp": 1728946612,
+      "HR": 120,
+      "RR": 513
+    },
+    {
+      "timestamp": 1728946616,
+      "HR": 120,
+      "RR": 514
+    },
+    {
+      "timestamp": 1728946617,
+      "HR": 120,
+      "RR": 515
+    },
+    {
+      "timestamp": 1728946619,
+      "HR": 120,
+      "RR": 517
+    },
+    {
+      "timestamp": 1728946620,
+      "HR": 120,
+      "RR": 518
+    },
+    {
+      "timestamp": 1728946621,
+      "HR": 120,
+      "RR": 519
+    },
+    {
+      "timestamp": 1728946622,
+      "HR": 120,
+      "RR": 519
+    },
+    {
+      "timestamp": 1728946623,
+      "HR": 120,
+      "RR": 520
+    },
+    {
+      "timestamp": 1728946623,
+      "HR": 120,
+      "RR": 520
+    },
+    {
+      "timestamp": 1728946625,
+      "HR": 120,
+      "RR": 521
+    },
+    {
+      "timestamp": 1728946625,
+      "HR": 120,
+      "RR": 522
+    },
+    {
+      "timestamp": 1728946626,
+      "HR": 120,
+      "RR": 522
+    },
+    {
+      "timestamp": 1728946628,
+      "HR": 120,
+      "RR": 525
+    },
+    {
+      "timestamp": 1728946628,
+      "HR": 120,
+      "RR": 525
+    },
+    {
+      "timestamp": 1728946633,
+      "HR": 120,
+      "RR": 583
+    },
+    {
+      "timestamp": 1728947722,
+      "HR": 91,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947723,
+      "HR": 91,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947724,
+      "HR": 91,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947726,
+      "HR": 91,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947730,
+      "HR": 91,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947732,
+      "HR": 91,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947734,
+      "HR": 91,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947735,
+      "HR": 91,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947736,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947737,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947738,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947739,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947742,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947742,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947743,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947745,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947748,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947750,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947751,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947752,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947753,
+      "HR": 92,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947755,
+      "HR": 93,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947756,
+      "HR": 93,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947757,
+      "HR": 93,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947760,
+      "HR": 93,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947762,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947762,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947763,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947764,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947767,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947769,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947770,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947770,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947772,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947775,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947777,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947778,
+      "HR": 94,
+      "RR": null
+    },
+    {
+      "timestamp": 1728947780,
+      "HR": 94,
+      "RR": 259
+    },
+    {
+      "timestamp": 1728947780,
+      "HR": 94,
+      "RR": 267
+    },
+    {
+      "timestamp": 1728947781,
+      "HR": 94,
+      "RR": 299
+    },
+    {
+      "timestamp": 1728947786,
+      "HR": 94,
+      "RR": 307
+    },
+    {
+      "timestamp": 1728947789,
+      "HR": 94,
+      "RR": 314
+    },
+    {
+      "timestamp": 1728947790,
+      "HR": 94,
+      "RR": 315
+    },
+    {
+      "timestamp": 1728947791,
+      "HR": 95,
+      "RR": 328
+    },
+    {
+      "timestamp": 1728947793,
+      "HR": 95,
+      "RR": 334
+    },
+    {
+      "timestamp": 1728947796,
+      "HR": 95,
+      "RR": 348
+    },
+    {
+      "timestamp": 1728947798,
+      "HR": 95,
+      "RR": 358
+    },
+    {
+      "timestamp": 1728947802,
+      "HR": 95,
+      "RR": 360
+    },
+    {
+      "timestamp": 1728947806,
+      "HR": 95,
+      "RR": 381
+    },
+    {
+      "timestamp": 1728947809,
+      "HR": 96,
+      "RR": 388
+    },
+    {
+      "timestamp": 1728947811,
+      "HR": 96,
+      "RR": 392
+    },
+    {
+      "timestamp": 1728947813,
+      "HR": 96,
+      "RR": 401
+    },
+    {
+      "timestamp": 1728947814,
+      "HR": 96,
+      "RR": 412
+    },
+    {
+      "timestamp": 1728947816,
+      "HR": 96,
+      "RR": 414
+    },
+    {
+      "timestamp": 1728947817,
+      "HR": 96,
+      "RR": 430
+    },
+    {
+      "timestamp": 1728947819,
+      "HR": 96,
+      "RR": 432
+    },
+    {
+      "timestamp": 1728947820,
+      "HR": 96,
+      "RR": 434
+    },
+    {
+      "timestamp": 1728947822,
+      "HR": 96,
+      "RR": 453
+    },
+    {
+      "timestamp": 1728947822,
+      "HR": 96,
+      "RR": 509
+    },
+    {
+      "timestamp": 1728947824,
+      "HR": 96,
+      "RR": 511
+    },
+    {
+      "timestamp": 1728947827,
+      "HR": 96,
+      "RR": 516
+    },
+    {
+      "timestamp": 1728947829,
+      "HR": 96,
+      "RR": 516
+    },
+    {
+      "timestamp": 1728947830,
+      "HR": 96,
+      "RR": 517
+    },
+    {
+      "timestamp": 1728947833,
+      "HR": 96,
+      "RR": 518
+    },
+    {
+      "timestamp": 1728947834,
+      "HR": 96,
+      "RR": 519
+    },
+    {
+      "timestamp": 1728947837,
+      "HR": 96,
+      "RR": 521
+    },
+    {
+      "timestamp": 1728947837,
+      "HR": 98,
+      "RR": 521
+    },
+    {
+      "timestamp": 1728947839,
+      "HR": 98,
+      "RR": 523
+    },
+    {
+      "timestamp": 1728947844,
+      "HR": 98,
+      "RR": 526
+    },
+    {
+      "timestamp": 1728947847,
+      "HR": 98,
+      "RR": 552
+    },
+    {
+      "timestamp": 1728947849,
+      "HR": 99,
+      "RR": 566
+    },
+    {
+      "timestamp": 1728947850,
+      "HR": 99,
+      "RR": 578
+    },
+    {
+      "timestamp": 1728947854,
+      "HR": 99,
+      "RR": 581
+    },
+    {
+      "timestamp": 1728947856,
+      "HR": 99,
+      "RR": 585
+    },
+    {
+      "timestamp": 1728947857,
+      "HR": 99,
+      "RR": 587
+    },
+    {
+      "timestamp": 1728947862,
+      "HR": 99,
+      "RR": 589
+    },
+    {
+      "timestamp": 1728947863,
+      "HR": 99,
+      "RR": 592
+    },
+    {
+      "timestamp": 1728947863,
+      "HR": 99,
+      "RR": 598
+    },
+    {
+      "timestamp": 1728947864,
+      "HR": 99,
+      "RR": 599
+    },
+    {
+      "timestamp": 1728947865,
+      "HR": 99,
+      "RR": 599
+    },
+    {
+      "timestamp": 1728947869,
+      "HR": 99,
+      "RR": 601
+    },
+    {
+      "timestamp": 1728947870,
+      "HR": 99,
+      "RR": 602
+    },
+    {
+      "timestamp": 1728947871,
+      "HR": 99,
+      "RR": 603
+    },
+    {
+      "timestamp": 1728947872,
+      "HR": 100,
+      "RR": 614
+    },
+    {
+      "timestamp": 1728947873,
+      "HR": 100,
+      "RR": 617
+    },
+    {
+      "timestamp": 1728947873,
+      "HR": 100,
+      "RR": 619
+    },
+    {
+      "timestamp": 1728947875,
+      "HR": 100,
+      "RR": 620
+    },
+    {
+      "timestamp": 1728947876,
+      "HR": 100,
+      "RR": 620
+    },
+    {
+      "timestamp": 1728947880,
+      "HR": 100,
+      "RR": 621
+    },
+    {
+      "timestamp": 1728947881,
+      "HR": 100,
+      "RR": 625
+    },
+    {
+      "timestamp": 1728947882,
+      "HR": 100,
+      "RR": 626
+    },
+    {
+      "timestamp": 1728947882,
+      "HR": 101,
+      "RR": 626
+    },
+    {
+      "timestamp": 1728947883,
+      "HR": 101,
+      "RR": 634
+    },
+    {
+      "timestamp": 1728947885,
+      "HR": 101,
+      "RR": 634
+    },
+    {
+      "timestamp": 1728947885,
+      "HR": 101,
+      "RR": 640
+    },
+    {
+      "timestamp": 1728947887,
+      "HR": 101,
+      "RR": 644
+    },
+    {
+      "timestamp": 1728947888,
+      "HR": 101,
+      "RR": 646
+    },
+    {
+      "timestamp": 1728947892,
+      "HR": 101,
+      "RR": 648
+    },
+    {
+      "timestamp": 1728947894,
+      "HR": 102,
+      "RR": 655
+    },
+    {
+      "timestamp": 1728947896,
+      "HR": 102,
+      "RR": 668
+    },
+    {
+      "timestamp": 1728947896,
+      "HR": 102,
+      "RR": 678
+    },
+    {
+      "timestamp": 1728947898,
+      "HR": 102,
+      "RR": 692
+    },
+    {
+      "timestamp": 1728947899,
+      "HR": 102,
+      "RR": 700
+    },
+    {
+      "timestamp": 1728947900,
+      "HR": 102,
+      "RR": 714
+    },
+    {
+      "timestamp": 1728947902,
+      "HR": 102,
+      "RR": 717
+    },
+    {
+      "timestamp": 1728947905,
+      "HR": 102,
+      "RR": 745
+    },
+    {
+      "timestamp": 1728947908,
+      "HR": 102,
+      "RR": 747
+    },
+    {
+      "timestamp": 1728947909,
+      "HR": 102,
+      "RR": 761
+    },
+    {
+      "timestamp": 1728947911,
+      "HR": 103,
+      "RR": 774
+    },
+    {
+      "timestamp": 1728947911,
+      "HR": 103,
+      "RR": 811
+    },
+    {
+      "timestamp": 1728947912,
+      "HR": 104,
+      "RR": 833
+    },
+    {
+      "timestamp": 1728947914,
+      "HR": 105,
+      "RR": 844
+    },
+    {
+      "timestamp": 1728947918,
+      "HR": 105,
+      "RR": 853
+    },
+    {
+      "timestamp": 1728947918,
+      "HR": 105,
+      "RR": 880
+    },
+    {
+      "timestamp": 1728947919,
+      "HR": 105,
+      "RR": 939
+    },
+    {
+      "timestamp": 1728947922,
+      "HR": 106,
+      "RR": 1037
+    },
+    {
+      "timestamp": 1728947923,
+      "HR": 108,
+      "RR": 1054
+    },
+    {
+      "timestamp": 1728947924,
+      "HR": 108,
+      "RR": 1088
+    },
+    {
+      "timestamp": 1728947925,
+      "HR": 108,
+      "RR": 1106
+    },
+    {
+      "timestamp": 1728947926,
+      "HR": 108,
+      "RR": 1151
+    },
+    {
+      "timestamp": 1728947931,
+      "HR": 108,
+      "RR": 1152
+    },
+    {
+      "timestamp": 1728947935,
+      "HR": 108,
+      "RR": 1221
+    },
+    {
+      "timestamp": 1728947936,
+      "HR": 108,
+      "RR": 1225
+    },
+    {
+      "timestamp": 1728947937,
+      "HR": 108,
+      "RR": 1238
+    },
+    {
+      "timestamp": 1728947940,
+      "HR": 109,
+      "RR": 1305
+    },
+    {
+      "timestamp": 1728947941,
+      "HR": 113,
+      "RR": 1328
+    },
+    {
+      "timestamp": 1728947942,
+      "HR": 113,
+      "RR": 1341
+    },
+    {
+      "timestamp": 1728947944,
+      "HR": 114,
+      "RR": 1370
+    },
+    {
+      "timestamp": 1728947948,
+      "HR": 114,
+      "RR": 1449
+    },
+    {
+      "timestamp": 1728947950,
+      "HR": 114,
+      "RR": 1485
+    }
+  ]
+}

@@ -1,0 +1,260 @@
+[
+  {
+    "timestamp": 1716859891,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      763,
+      774
+    ]
+  },
+  {
+    "timestamp": 1716860492,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      803,
+      835
+    ]
+  },
+  {
+    "timestamp": 1716861094,
+    "hrAnomalies": [
+      95,
+      96,
+      96,
+      98,
+      99
+    ],
+    "rrAnomalies": [
+      608,
+      625,
+      631,
+      632,
+      633
+    ]
+  },
+  {
+    "timestamp": 1716861696,
+    "hrAnomalies": [
+      98,
+      99
+    ],
+    "rrAnomalies": [
+      594,
+      608,
+      612,
+      790,
+      791,
+      791,
+      803,
+      814
+    ]
+  },
+  {
+    "timestamp": 1716862297,
+    "hrAnomalies": [
+      99,
+      101,
+      104
+    ],
+    "rrAnomalies": [
+      570
+    ]
+  },
+  {
+    "timestamp": 1716869217,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      777,
+      777,
+      778,
+      778,
+      786,
+      786,
+      788,
+      788,
+      790,
+      790
+    ]
+  },
+  {
+    "timestamp": 1716869921,
+    "hrAnomalies": [
+      118,
+      118,
+      119
+    ],
+    "rrAnomalies": [
+      513
+    ]
+  },
+  {
+    "timestamp": 1716870550,
+    "hrAnomalies": [
+      103
+    ],
+    "rrAnomalies": [
+      600
+    ]
+  },
+  {
+    "timestamp": 1716871180,
+    "hrAnomalies": [
+      98,
+      99,
+      100
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716871782,
+    "hrAnomalies": [
+      110,
+      112,
+      113,
+      119
+    ],
+    "rrAnomalies": [
+      525,
+      532,
+      536
+    ]
+  },
+  {
+    "timestamp": 1716876903,
+    "hrAnomalies": [
+      86,
+      87,
+      87,
+      89,
+      102,
+      102,
+      102,
+      104
+    ],
+    "rrAnomalies": [
+      576,
+      581,
+      581,
+      709,
+      711,
+      730,
+      743,
+      751
+    ]
+  },
+  {
+    "timestamp": 1716877565,
+    "hrAnomalies": [
+      86,
+      86,
+      86,
+      86,
+      87,
+      87,
+      87,
+      87,
+      100,
+      100,
+      100,
+      101,
+      101,
+      101,
+      103,
+      104,
+      107
+    ],
+    "rrAnomalies": [
+      546,
+      573
+    ]
+  },
+  {
+    "timestamp": 1716878166,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      734,
+      737
+    ]
+  },
+  {
+    "timestamp": 1716879255,
+    "hrAnomalies": [
+      103,
+      104
+    ],
+    "rrAnomalies": [
+      561,
+      604,
+      613
+    ]
+  },
+  {
+    "timestamp": 1716880587,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      796
+    ]
+  },
+  {
+    "timestamp": 1716881811,
+    "hrAnomalies": [
+      100,
+      100
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716884221,
+    "hrAnomalies": [
+      83,
+      95,
+      95,
+      95,
+      96,
+      97,
+      97
+    ],
+    "rrAnomalies": [
+      610,
+      623,
+      765,
+      774
+    ]
+  },
+  {
+    "timestamp": 1716885085,
+    "hrAnomalies": [
+      104,
+      106
+    ],
+    "rrAnomalies": [
+      576,
+      808,
+      809
+    ]
+  },
+  {
+    "timestamp": 1716886485,
+    "hrAnomalies": [
+      98,
+      98,
+      98
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1716887728,
+    "hrAnomalies": [
+      93
+    ],
+    "rrAnomalies": [
+      642,
+      781,
+      790,
+      795,
+      808,
+      818,
+      821
+    ]
+  }
+]

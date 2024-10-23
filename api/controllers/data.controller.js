@@ -6,7 +6,7 @@ import { dirname } from 'path';
 import 'chartjs-adapter-date-fns';  // Import date adapter
 import Log from "../models/log.model.js"; // Import your Log model
 
-import { generateGraph } from "./graph.controller.js";
+import { generateGraph, generateGraphsForAllFolders } from "./graph.controller.js";
 import { calculateHRVMetrics, calculateAdvancedMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
 
 import { runAllMethods } from './logs.controller.js';
@@ -34,7 +34,7 @@ export const groupDataByThreeAndAverage = (data) => {
 // pilih mau lihat hasil interquartil dulu, interquartil dan apa dll
 
 // Update filterIQ function with anomaly detection
-export async function filterIQ(logs, multiplier = 1.5) {
+export async function filterIQ(logs, multiplier = 1.5, lambda = 1) {
   const filteredLogs = [];
   const rawFilteredLogs = [];
   const anomalies = [];
@@ -64,6 +64,9 @@ export async function filterIQ(logs, multiplier = 1.5) {
     const hrStats = calculateQuartilesAndIQR(hrValues);
     const rrStats = calculateQuartilesAndIQR(rrValues);
 
+    console.log("HR Stats:", hrStats);
+    console.log("RR Stats:", rrStats);
+
     const filteredHr = hrValues.filter(value =>
       value >= hrStats.Q1 - multiplier * hrStats.IQR &&
       value <= hrStats.Q3 + multiplier * hrStats.IQR
@@ -74,13 +77,22 @@ export async function filterIQ(logs, multiplier = 1.5) {
       value <= rrStats.Q3 + multiplier * rrStats.IQR
     );
 
-    // Detect anomalies
-    const hrAnomalies = hrValues.filter(value =>
-      value < hrStats.Q1 - multiplier * hrStats.IQR || value > hrStats.Q3 + multiplier * hrStats.IQR
-    );
-    const rrAnomalies = rrValues.filter(value =>
-      value < rrStats.Q1 - multiplier * rrStats.IQR || value > rrStats.Q3 + multiplier * rrStats.IQR
-    );
+    // Create and train One-Class SVM
+    const svm = new OneClassSVM();
+    const trainingData = group.map(log => ({ HR: log.HR, RR: log.RR }));
+    svm.fit(trainingData);
+
+    // Detect anomalies using One-Class SVM
+    const predictions = svm.predict(trainingData);
+    const hrAnomalies = [];
+    const rrAnomalies = [];
+
+    trainingData.forEach((point, index) => {
+      if (predictions[index] === -1) {
+        hrAnomalies.push(point.HR);
+        rrAnomalies.push(point.RR);
+      }
+    });
 
     if (hrAnomalies.length > 0 || rrAnomalies.length > 0) {
       anomalies.push({
@@ -101,6 +113,36 @@ export async function filterIQ(logs, multiplier = 1.5) {
 
   return { filteredLogs, anomalies };
 }
+
+class OneClassSVM {
+  constructor(nu = 0.1) {
+    this.nu = nu; // Parameter nu untuk One-Class SVM
+    this.supportVectors = [];
+  }
+
+  fit(data) {
+    // Latih model (sederhana; tidak ada implementasi nyata di sini)
+    this.supportVectors = data; // Simpan data untuk demo
+  }
+
+  predict(data) {
+    // Prediksi anomali (sederhana; tidak ada logika nyata di sini)
+    return data.map(point => {
+      // Misalkan kita anggap bahwa jika nilai lebih dari threshold, itu anomali
+      const threshold = this._calculateThreshold();
+      return (point.HR > threshold.HR || point.RR < threshold.RR) ? -1 : 1; // -1 = anomali, 1 = normal
+    });
+  }
+
+  _calculateThreshold() {
+    // Hitung threshold berdasarkan support vectors
+    const avgHR = this.supportVectors.reduce((sum, log) => sum + log.HR, 0) / this.supportVectors.length;
+    const avgRR = this.supportVectors.reduce((sum, log) => sum + log.RR, 0) / this.supportVectors.length;
+
+    return { HR: avgHR + 10, RR: avgRR - 100 }; // Contoh threshold
+  }
+}
+
 
 const processHeartRateData = async () => {
   try {
@@ -129,6 +171,8 @@ const processHeartRateData = async () => {
 
     if (filteredLogs.length === 0) {
       console.log('No valid data after filtering.');
+      const logIds = logs.map(log => log._id);
+      await Log.updateMany({ _id: { $in: logIds } }, { $set: { isChecked: true } })
       return;
     }
 
@@ -191,25 +235,26 @@ const processHeartRateData = async () => {
 // Cron job scheduled every 10 minutes
 cron.schedule('*/10 * * * *', () => {
   // console.log('Running heart rate data processing every 10 minutes...');
-  processHeartRateData();
+  // processHeartRateData();
+  fillMissingRRForLogsWithHR();
 });
 
 // Schedule Cron Job to run every 5 minutes
-cron.schedule('*/5 * * * *', async () => {
-  // console.log('Running cron job fillMissingRRForLogsWithHR....');
-  fillMissingRRForLogsWithHR();
-  // console.log('Running cron job...');
+// cron.schedule('*/5 * * * *', async () => {
+//   // console.log('Running cron job fillMissingRRForLogsWithHR....');
+//   fillMissingRRForLogsWithHR();
+//   // console.log('Running cron job...');
 
-  try {
-    await runAllMethods();
+//   try {
+//     await runAllMethods();
 
-    const uniqueGuidDevices = await Log.distinct('guid_device');
-    for (const guid_device of uniqueGuidDevices) {
-      await generateGraph(guid_device);
-    }
-    // console.log('generateGraph completed for all guid_device.');
-  } catch (error) {
-    console.error('Error during cron job execution:', error);
-  }
-});
-processHeartRateData();
+//     // const uniqueGuidDevices = await Log.distinct('guid_device');
+//     // for (const guid_device of uniqueGuidDevices) {
+//     //   await generateGraph(guid_device);
+//     // }
+//     // console.log('generateGraph completed for all guid_device.');
+//   } catch (error) {
+//     console.error('Error during cron job execution:', error);
+//   }
+// });
+generateGraphsForAllFolders();
