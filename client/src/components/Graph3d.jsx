@@ -202,6 +202,9 @@ function Graph3d({ data, label, color }) {
 
     const processData = (rawData) => {
         const sortedData = rawData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        return sortedData;
+        
         const uniqueValues = new Set();
         return sortedData.filter(item => {
             const value = item["avg"];

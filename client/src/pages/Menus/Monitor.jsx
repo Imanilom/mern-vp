@@ -100,12 +100,11 @@ export default function Monitor() {
         return
       }
 
-      let payloadRedux = {};
+      // let payloadRedux = {};
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
       const tes = groupDataByThreeAndAverage(sortedLogs);
 
-      console.log({ sortedLogs, tes })
-
+      console.log({sortedLogs, tes})
       set3dpData(tes);
       setLogs(sortedLogs);
       setIQRData(data.filterIQRResult);
@@ -124,46 +123,44 @@ export default function Monitor() {
 
       if (data && sortedLogs.length > 0) {
         const resultCalculateMetric = calculateMetrics(sortedLogs);
-        console.log({ resultCalculateMetric })
+
         setMetrics(resultCalculateMetric);
-        //   // payloadRedux.metricsR = resultCalculateMetric;
-        let dfaHR = sortedLogs.map(log => log.HR);
-        // console.log({dfaHR})
-        const dailyMetrictResult = calculateDailyMetrics(sortedLogs, dfaHR); // call here
-        console.log({ dailyMetrictResult })
-        //   setDailyMetrics(dailyMetrictResult);
+        const dailyMetrictResult = data.dailyMetric;
+        console.log({dailyMetrictResult})
+        setDailyMetrics(dailyMetrictResult);
 
         //   // payloadRedux.dailymetricR = dailyMetrictResult;
+        let property = {
+          tSdnn: 0,
+          tRmssd: 0,
+          tPnn50: 0,
+          tS1: 0,
+          tS2: 0,
+          dfa : 0
+        }
 
-        //   let property = {
-        //     tSdnn: 0,
-        //     tRmssd: 0,
-        //     tPnn50: 0,
-        //     tS1: 0,
-        //     tS2: 0,
-        //   }
+        dailyMetrictResult.forEach((val) => {
+          // console.log(val)
+          property.tSdnn += Math.floor(val.sdnn);
+          property.tRmssd += Math.floor(val.rmssd);
+          property.tPnn50 += Math.floor(val.pnn50);
+          property.tS1 += Math.floor(val.s1);
+          property.tS2 += Math.floor(val.s2);
+          property.dfa += Math.floor(val.dfa)
+        });
 
-        //   dailyMetrictResult.forEach((val) => {
-        //     // console.log(val)
-        //     property.tSdnn += Math.floor(val.sdnn);
-        //     property.tRmssd += Math.floor(val.rmssd);
-        //     property.tPnn50 += Math.floor(val.pnn50);
-        //     property.tS1 += Math.floor(val.s1);
-        //     property.tS2 += Math.floor(val.s2);
-        //   });
+        let median = {
+          sdnn: property.tSdnn / dailyMetrictResult.length,
+          rmssd: property.tRmssd / dailyMetrictResult.length,
+          pnn50: property.tPnn50 / dailyMetrictResult.length,
+          s1: property.tS1 / dailyMetrictResult.length,
+          s2: property.tS2 / dailyMetrictResult.length,
+          total: dailyMetrictResult.length,
+          dfa : property.dfa / dailyMetrictResult.length
+        }
 
-        //   let median = {
-        //     sdnn: property.tSdnn / dailyMetrictResult.length,
-        //     rmssd: property.tRmssd / dailyMetrictResult.length,
-        //     pnn50: property.tPnn50 / dailyMetrictResult.length,
-        //     s1: property.tS1 / dailyMetrictResult.length,
-        //     s2: property.tS2 / dailyMetrictResult.length,
-        //     total: dailyMetrictResult.length
-        //   }
-
-        //   console.log({results})
-
-        //   setMedianProperty(median);
+        console.log({median, dailyMetrictResult})
+        setMedianProperty(median);
 
         //   payloadRedux.medianPropertyR = median;
       }
@@ -249,7 +246,7 @@ export default function Monitor() {
     // Petakan data untuk mengambil nilai HR dan created_at
     const data = datalog.map(log => ({
       HR: log.HR,
-      date: log.create_at
+      date: new Date(log.timestamp * 1000)
     }));
 
     // Loop melalui data dan kelompokan berdasarkan 3 log
@@ -294,7 +291,7 @@ export default function Monitor() {
           // console.log('HRPOINT : ', HRPoint);
         }
 
-       
+
         const dfa = calculateDFA(HRPoint);
         // console.log(groupedLogs[date], i)
         const metrics = calculateMetrics(groupedLogs[date]);
@@ -413,7 +410,7 @@ export default function Monitor() {
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isIQRVisible ? 'Hide' : 'Show'} Graphic IQR</button>
                     </div>
                     {isIQRVisible ? (
-                      <InterquartileGraph data={IQRData.filteredLogs} label={`InterQuartile`} color={borderColor} />
+                      <InterquartileGraph data={IQRData} label={`InterQuartile`} color={borderColor} />
                     ) : null}
 
                   </div>

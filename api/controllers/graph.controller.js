@@ -151,7 +151,7 @@ const generateGraphForFolder = async (folderName) => {
 
 // Fungsi utama untuk memanggil generateGraphForFolder untuk semua folder
 export const generateGraphsForAllFolders = async () => {
-  const folders = ['hrv-result-IQ', 'hrv-result-BC', 'hrv-result-OC']; // Ganti dengan nama folder sesuai kebutuhan
+  const folders = ['hrv-results-IQ', 'hrv-results-BC', 'hrv-results-OC']; // Ganti dengan nama folder sesuai kebutuhan
   for (const folder of folders) {
     await generateGraphForFolder(folder);
   }

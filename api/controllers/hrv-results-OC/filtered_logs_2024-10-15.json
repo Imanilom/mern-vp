@@ -1,31 +1,5 @@
 {
   "metrics": {
-<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-15.json
-    "dfa": null,
-    "median3dp": 0,
-    "mean": 301,
-    "max": 1042,
-    "min": 0,
-    "rmssd": 363.5876785591063,
-    "sdnn": 474.5216538789352,
-    "hf": 34579.39927433638,
-    "lf": 43676.53822566364,
-    "lfHfRatio": 1.2630797278794499
-  },
-  "filteredLogs": [
-    {
-      "timestamp": 1728960854,
-      "HR": 106,
-      "RR": 546
-    },
-    {
-      "timestamp": 1728960858,
-      "HR": 117,
-      "RR": 561
-    },
-    {
-      "timestamp": 1728962175,
-=======
     "pnn50": 0,
     "dfa": null,
     "minRR": 0,
@@ -1936,48 +1910,25 @@
     },
     {
       "timestamp": 1728965687,
->>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-15.json
       "HR": 120,
       "RR": null
     },
     {
-<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-15.json
-      "timestamp": 1728962175,
-=======
       "timestamp": 1728965688,
->>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-15.json
       "HR": 120,
       "RR": null
     },
     {
-<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-15.json
-      "timestamp": 1728962175,
-=======
       "timestamp": 1728965689,
->>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-15.json
       "HR": 120,
       "RR": null
     },
     {
-<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-15.json
-      "timestamp": 1728962176,
-=======
       "timestamp": 1728965690,
->>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-15.json
       "HR": 120,
       "RR": null
     },
     {
-<<<<<<< HEAD:api/controllers/hrv-results-OC/filtered_logs_2024-10-15.json
-      "timestamp": 1728962176,
-      "HR": 120,
-      "RR": 764
-    },
-    {
-      "timestamp": 1728962177,
-      "HR": 120,
-      "RR": 1042
-=======
       "timestamp": 1728965691,
       "HR": 120,
       "RR": null
@@ -2001,7 +1952,6 @@
       "timestamp": 1728965714,
       "HR": 120,
       "RR": null
->>>>>>> e45be8e3faa9b7864150d80db6119037de74a947:api/controllers/hrv-results/filtered_logs_2024-10-15.json
     }
   ]
 }

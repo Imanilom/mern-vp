@@ -44,12 +44,12 @@ function DailyMetric(props) {
                 return (
                   <tr key={index} className={index % 2 == 0 ? `bg-[#2C2C2C]` : `bg-[#141414]`}>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.sdnn !== null ? metric.sdnn.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.rmssd !== null ? metric.rmssd.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.pnn50 !== null ? metric.pnn50.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.s1 !== null ? metric.s1.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.s2 !== null ? metric.s2.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa ? metric.dfa.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.sdnn !== null && metric.hasOwnProperty('sdnn') ? metric.sdnn.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.rmssd !== null && metric.hasOwnProperty('rmssd') ? metric.rmssd.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.pnn50 !== null && metric.hasOwnProperty('pnn50') ? metric.pnn50.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.s1 !== null && metric.hasOwnProperty('s1') ?  metric.s1.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.s2 !== null && metric.hasOwnProperty('s2') ? metric.s2.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.hasOwnProperty('dfa') ? metric.dfa.toFixed(2) : 'N/A'}</td>
                   </tr>
                 );
               })

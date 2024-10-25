@@ -25,6 +25,8 @@ function InterquartileGraph({ data, label, color }) {
         AOS.init({
             duration: 700
         })
+
+        console.log('Interquartile log ', {data})
     }, [])
 
     let styleTooltype = {

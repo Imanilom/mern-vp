@@ -67,7 +67,7 @@ function LineGraph({ data, label, keyValue, color }) {
     //   const parseDate = d3.timeParse('%d-%m-%Y %H:%M:%S'); // function untuk merubah string to date
     data.forEach(d => {
         // const mergeDateTime = `${d.date} ${d.time}`;
-        d.create_at = new Date(d.create_at); // merubah isi dari array
+        d.create_at = new Date(d.timestamp * 1000); // merubah isi dari array
     });
 
     const changeZoomText = (zoomV) => {
@@ -93,6 +93,8 @@ function LineGraph({ data, label, keyValue, color }) {
         const lastSvg = d3.select(chartRef.current);
         lastSvg.selectAll('*').remove()
     
+        console.log(processedData.length);
+
         const height = 500;
         const width = 25 * processedData.length / 2;
         const margin = { top: 20, right: 20, bottom: 90, left: 50 };
@@ -210,8 +212,9 @@ function LineGraph({ data, label, keyValue, color }) {
     // Fungsi untuk memproses data dan menghilangkan duplikat
     const processData = (rawData) => {
         // Urutkan data berdasarkan create_at
-        const sortedData = rawData.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
+        const sortedData = rawData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
+        return sortedData;
         // Gunakan Set untuk menyimpan nilai unik
         const uniqueValues = new Set();
 
