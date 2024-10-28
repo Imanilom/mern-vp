@@ -257,4 +257,4 @@ cron.schedule('*/10 * * * *', () => {
 //     console.error('Error during cron job execution:', error);
 //   }
 // });
-generateGraphsForAllFolders();
+// generateGraphsForAllFolders();
