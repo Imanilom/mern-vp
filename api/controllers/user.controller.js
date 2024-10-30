@@ -863,46 +863,52 @@ export const logdfa = async (req, res, next) => {
         return res.status(404).json({ message: 'Tidak ada log valid yang tersedia dalam data harian' });
       }
 
-      // Group log berdasarkan tanggal
-      const logsByDate = validLogs.reduce((acc, log) => {
-        if (!acc[log.tanggal]) acc[log.tanggal] = [];
-        acc[log.tanggal].push(log);
+      // Kelompokkan log berdasarkan tanggal terlebih dahulu
+      const logsByDate = filteredLogs.reduce((acc, log) => {
+        const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(log);
         return acc;
       }, {});
 
       let result = [];
 
-      Object.keys(logsByDate).forEach(tanggal => {
-        const dateLogs = logsByDate[tanggal].sort((a, b) => a.timestamp - b.timestamp);
+      // Proses log untuk setiap tanggal
+      Object.entries(logsByDate).forEach(([date, logs]) => {
+        // Urutkan log berdasarkan timestamp
+        const sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
         
-        // Tidak perlu memecah dateLogs jika jumlahnya kurang dari atau sama dengan 500
-        const chunks = dateLogs.length <= 500 ? [dateLogs] : splitArrayIntoChunks(dateLogs, 500); 
+        // Bagi menjadi chunk 500 jika diperlukan
+        const chunks = sortedLogs.length <= 500 ? [sortedLogs] : splitArrayIntoChunks(sortedLogs, 500);
         
-        chunks.forEach(dataLog => {
-          // Hitung waktu awal dan waktu akhir dari dataLog
-          const startLog = dataLog[0];
-          const endLog = dataLog[dataLog.length - 1];
-      
-          const date = new Date(startLog.timestamp * 1000);
-          const timeStart = new Date(startLog.timestamp * 1000);
-          const timeEnd = new Date(endLog.timestamp * 1000);
-      
-          // Hitung jumlah data untuk chunk saat ini
-          const count = dataLog.length;
-      
+        // Proses setiap chunk
+        chunks.forEach(chunk => {
+          const firstLog = chunk[0];
+          const lastLog = chunk[chunk.length - 1];
+          
           result.push({
-            dfa: calculateDFA(dataLog.map(log => log.HR)),
-            tanggal: date.toISOString().split('T')[0],
-            waktu_awal: timeStart.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            waktu_akhir: timeEnd.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            count: count, // Total data dalam chunk ini
-            timestamp_tanggal: date.getTime()
+            dfa: calculateDFA(chunk.map(log => log.HR)),
+            tanggal: date,
+            waktu_awal: new Date(firstLog.timestamp * 1000).toLocaleTimeString('id-ID', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            }),
+            waktu_akhir: new Date(lastLog.timestamp * 1000).toLocaleTimeString('id-ID', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            }),
+            count: chunk.length,
+            timestamp_tanggal: new Date(firstLog.timestamp * 1000).getTime()
           });
         });
       });
 
-      console.log({ result });
-      res.json({ result, HRCollection, splittedLog });
+      // Urutkan hasil berdasarkan timestamp_tanggal secara menurun
+      result.sort((a, b) => b.timestamp_tanggal - a.timestamp_tanggal);
+
+      res.json({ result });
     } else {
       console.log('ngga masuk filterdate')
       // Filter dan urutkan file untuk mendapatkan file data harian terbaru
