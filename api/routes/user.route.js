@@ -8,6 +8,7 @@ router.get('/testLogActivity', verifyToken, getLogWithActivity)
 router.post('/pushActivity', verifyToken, pushActivity);
 router.get('/logdfa', verifyToken, logdfa);
 router.get('/test', verifyToken, test);
+// router.get('/test', test);
 router.get('/test/:device', verifyToken, test);
 router.get('/riwayatdeteksi/:userId', verifyToken, getRiwayatDeteksiWithDfa);
 router.post('/update/:id', verifyToken, updateUser)

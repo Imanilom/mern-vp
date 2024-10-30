@@ -148,7 +148,7 @@ function InputLabotarium() {
         <main class="bgg-bl text-white flex">
             <Side />
             <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8">
-                <ButtonOffCanvas />
+                {/* <ButtonOffCanvas /> */}
                 <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-5">Pengisian Dokumen Labotarium Baru</h1>
                 <p>Labotarium Patalogi, RS. sukabumi Bandung utara,  2024</p>
                 <p>Berikan Informasi pasien dengan jelas dan akurat!</p>

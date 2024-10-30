@@ -147,7 +147,7 @@ function DetectionHistories() {
     <main class="bgg-bl text-white flex">
       <Side />
       <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
-        <ButtonOffCanvas />
+        {/* <ButtonOffCanvas /> */}
         <div data-aos="fade-up">
 
           <h1 class="text-3xl font-semibold capitalize lg:text-4xl mb-3">Riwayat Deteksi </h1>
@@ -157,10 +157,10 @@ function DetectionHistories() {
           <li>*Orange menandakan adanya deteksi yang perlu diwaspadai ketika anda sedang melakukan aktifitas</li>
           <li>*Merah menandakan adanya deteksi berbahaya ketika anda sedang beraktivitas dan perlu ditindak lanjuti</li>
         </ul> */}
-          <div className="flex gap-5 items-end justify-between">
-            <div className="md:w-6/12 flex gap-5 my-3 items-center">
-              <div className="w-fit text-sm text-[#101010] font-semibold flex flex-col gap-2 py-3">
-                <button onClick={() => setState('safe')} className='bg-[#46FF59]/70 py-1 rounded px-3'>Click me</button>
+          <div className="flex gap-5 lg:items-end lg:flex-row flex-col lg:justify-between">
+            <div className="lg:w-6/12 md:w-8/12 flex lg:flex-row flex-col gap-5 my-3 lg:items-center">
+              <div className="w-fit text-sm text-[#101010] font-semibold flex lg:flex-col gap-2 py-3">
+                <button onClick={() => setState('safe')} className='bg-[#46FF59]/70 py-1 rounded lg:ms-0 px-3'>Click me</button>
                 <button onClick={() => setState('warning')} className='bg-[#F47500]/70 py-1 rounded px-3'>Click me</button>
                 <button onClick={() => setState('danger')} className='bg-[#F40000]/70 py-1 rounded px-3'>Click me</button>
                 <button onClick={() => setState('undefined')} className='bg-[#FFFFFF]/70 py-1 rounded px-3'>Click me</button>

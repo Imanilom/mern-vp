@@ -180,16 +180,14 @@ function Acitivity() {
     <main class="bgg-bl flex text-white">
       <Side />
 
-      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
-        <ButtonOffCanvas index={3} />
+      <div class="xl:w-8/12 mb-12 xl:mb-0 px-4 mt-8 lg:mt-16 lg:w-screen w-11/12 mx-auto">
+        {/* <ButtonOffCanvas index={3} /> */}
         
         {logs && isViewUnrelationAct ? (
           <div>
             {/* <h3 class="font-semibold text-[20px] text-blueGray-700 mb-3">
               Please Fill The Activity To See History Activity
             </h3> */}
-
-
             <div data-aos="fade-right" className="containers mt-5 font-semibold flex gap-3 mb-8">
               <div className="w-7/12">
                 <table class="items-center w-full rounded-md">
@@ -322,14 +320,14 @@ function Acitivity() {
                 }}
                 isClearable
                 placeholderText='Cari berdasarkan range tanggal beraktivitas'
-                className="py-3 px-3 bg-[#2C2C2C] rounded text-sm md:text-[14px] lg:min-w-[320px] mb-3"
+                className="lg:p-3  p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
               />
               {/* {loading ? (
                       <span class="ms-4 loader "></span>
                     ) : null} */}
 
 
-            <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words bg-[#363636]/20 lg:w-10/12 mb-6 shadow-lg rounded ">
+            <div data-aos="fade-right" class="mt-4 relative flex flex-col min-w-0 break-words bg-[#363636]/20 lg:w-10/12 mb-6 shadow-lg rounded ">
               <div class="rounded-md  mb-0 px-4 py-3 border-0">
                 <div class="flex flex-wrap items-center">
                   <div class="relative w-full px-4 max-w-full flex-grow flex-1">

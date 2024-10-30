@@ -74,7 +74,7 @@ function RiskFactor() {
     <main class="bgg-bl text-white flex">
       <Side />
       <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8">
-        <ButtonOffCanvas />
+        {/* <ButtonOffCanvas /> */}
 
         {modal && docValue.length > 0 ? (
           <div className="fixed inset-0 z-50 flex flex-col  items-center justify-center bg-[#000000]/80">

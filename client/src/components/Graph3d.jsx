@@ -58,7 +58,15 @@ function Graph3d({ data, label, color }) {
     };
 
     const drawChart = (rawData) => {
-        const processedData = processData(rawData);
+        let processedData;
+        if (rawData.length <= 30) {
+            // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
+            processedData = rawData;
+        } else {
+            // klo lebih maka di filter biar ga terlalu banyak slide
+            processedData = processData(rawData);
+        }
+        
         processedData.forEach(d => {
             d.date = new Date(d.date);
         });
@@ -70,7 +78,10 @@ function Graph3d({ data, label, color }) {
         lastSvg.selectAll('*').remove();
 
         const height = 500;
-        const width = 25 * processedData.length / 2;
+        let width = 50 * processedData.length;
+        if(processedData.length > 30){
+            width = 25 * processedData.length / 2;
+        }
         const margin = { top: 20, right: 20, bottom: 90, left: 50 };
         let svgWidth;
 
@@ -164,7 +175,7 @@ function Graph3d({ data, label, color }) {
         const formatDateTime = d3.timeFormat("%H:%M:%S");
 
         svg.append('g')
-            .attr('transform', `translate(0,${height - margin.bottom})`)
+            .attr('transform', `translate(-15,${height - margin.bottom})`)
             .call(d3.axisBottom(x)
                 .tickFormat(formatDateTime)
                 .ticks(XCount)
@@ -203,7 +214,7 @@ function Graph3d({ data, label, color }) {
     const processData = (rawData) => {
         const sortedData = rawData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        return sortedData;
+        // return sortedData;
         
         const uniqueValues = new Set();
         return sortedData.filter(item => {
@@ -237,7 +248,7 @@ function Graph3d({ data, label, color }) {
                 ) : null}
 
                 <div className="flex sm:flex-row flex-col">
-                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id={`zoom_panel_${label}`} className='md:mb-0 mb-2 rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
                     <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>

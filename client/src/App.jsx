@@ -54,6 +54,7 @@ import FaktorResiko from './pages/Menus/FaktorResiko';
 import WriteDoc from './pages/Menus/WriteDoc';
 import InputLabotarium from './pages/Menus/InputLabotarium';
 import MonitorDFA from './pages/Menus/MonitorDFA';
+import Metrics from './pages/Menus/Metrics';
 
 export default function App() {
 
@@ -119,6 +120,7 @@ function MainContent() {
         <Route path='/treatment' element={<Treatment />} />
         <Route path='/rekomendasi' element={<Recommendation />} />
         <Route path='/add/pasient/:id' element={<AddPatient />} />
+        <Route path='/monitor/metrics' element={<Metrics />} />
 
       </Route>
     </Routes>

@@ -90,7 +90,7 @@ function FaktorResiko() {
         <main class="bgg-bl text-white flex">
             <Side />
             <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-16">
-                <ButtonOffCanvas />
+                {/* <ButtonOffCanvas /> */}
                 <div className="flex flex-col justify-start items-start mb-4">
                     <div>
                         <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Faktor Resiko</h1>

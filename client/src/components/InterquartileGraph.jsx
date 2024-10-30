@@ -76,8 +76,15 @@ function InterquartileGraph({ data, label, color }) {
     const drawChart = (rawData) => {
         // Proses data untuk menghilangkan duplikat
         console.log({ rawData })
-        const processedData2 = processData(rawData);
-        console.log({ processedData2 })
+
+        let processedData2;
+        if (rawData.length <= 30) {
+            // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
+            processedData2 = rawData;
+        } else {
+            // klo lebih maka di filter biar ga terlalu banyak slide
+            processedData2 = processData(rawData);
+        }
 
         processedData2.forEach(d => {
             d.date = new Date(d.timestamp * 1000);
@@ -98,7 +105,11 @@ function InterquartileGraph({ data, label, color }) {
 
         // Tentukan ukuran chart
         const height = 500;
-        const width = 25 * processedData.length / 2;
+        // const width = 25 * processedData.length / 2;
+        let width = 50 * processedData.length;
+        if(processedData.length > 30){
+            width = 25 * processedData.length / 2;
+        }
         const margin = { top: 20, right: 20, bottom: 90, left: 50 }
         let svgWidth;
 
@@ -284,7 +295,7 @@ function InterquartileGraph({ data, label, color }) {
         const formatDateTime = d3.timeFormat("%H:%M:%S");
 
         svg.append('g') // g = group
-            .attr('transform', `translate(0,${height - margin.bottom})`) // translate x, y
+            .attr('transform', `translate(-15,${height - margin.bottom})`) // translate x, y
             .call(d3.axisBottom(x)
                 .tickFormat(formatDateTime)
                 .ticks(XCount) // memberikan jumlah titk yang dapat dicetak pada sumbu x
@@ -372,9 +383,9 @@ function InterquartileGraph({ data, label, color }) {
     return (
         <div className='relative p-4'>
             <div data-aos="fade-right" style={styleTooltype} id={`tooltip${label}`}></div>
-            <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
+            <div data-aos="fade-up" className="me-auto mb-3 flex md:flex-row flex-col md:items-center md:gap-0 gap-2 sm:justify-start justify-between">
                 {slice > 1 ? (
-                    <div>
+                    <div className='md:flex-col lg:flex-row flex-row flex'>
                         <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
                             <FaAngleLeft color='white' size={16} />
 
@@ -385,17 +396,17 @@ function InterquartileGraph({ data, label, color }) {
                     </div>
                 ) : null}
 
-                <div className="flex sm:flex-row flex-col">
-                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                <div className="flex sm:flex-row overflow-x-auto">
+                    <button id={`zoom_panel_${label}`} className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
-                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='whitespace-nowrap rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
-                    <button id='' className='rounded-md bg-[#005A8F] px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='whitespace-nowrap rounded-md bg-[#005A8F] px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         HR Point
                     </button>
-                    <button id='' className='rounded-md bg-[#07AC7B] px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='whitespace-nowrap rounded-md bg-[#07AC7B] px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         RR Point
                     </button>
                 </div>

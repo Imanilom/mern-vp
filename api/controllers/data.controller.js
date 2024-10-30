@@ -31,6 +31,8 @@ export const groupDataByThreeAndAverage = (data) => {
   }
   return groupedData;
 };
+
+
 // pilih mau lihat hasil interquartil dulu, interquartil dan apa dll
 
 // Update filterIQ function with anomaly detection
@@ -257,4 +259,4 @@ cron.schedule('*/10 * * * *', () => {
 //     console.error('Error during cron job execution:', error);
 //   }
 // });
-generateGraphsForAllFolders();
+// generateGraphsForAllFolders();

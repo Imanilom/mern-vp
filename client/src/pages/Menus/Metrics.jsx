@@ -21,7 +21,7 @@ import InterquartileGraph from '../../components/InterquartileGraph';
 
 let results = []
 
-export default function Monitor() {
+export default function Metrics() {
 
   const dispatch = useDispatch();
   const { currentUser, DocterPatient } = useSelector((state) => state.user);
@@ -40,8 +40,7 @@ export default function Monitor() {
   const [metode, setMetode] = useState("OC");
   const metodeCollection = ["OC", "IQ", "BC"];
   const [loading, setLoading] = useState(false);
-  const [data3Dp, set3dpData] = useState([]);
-  const [IQRData, setIQRData] = useState([]);
+
   const [medianProperty, setMedianProperty] = useState({
     sdnn: 0,
     rmssd: 0,
@@ -65,7 +64,7 @@ export default function Monitor() {
     if (startDate && endDate) {
 
       dispatch(clearLogsWithDailytMetric());
-      fetchLogs(device, metode);
+      fetchLogs(device);
 
     }
   }, [startDate, endDate]);
@@ -95,9 +94,7 @@ export default function Monitor() {
 
         setMetrics([]);
         setDailyMetrics([]);
-        set3dpData([]);
-        setIQRData([]);
-
+      
         dispatch(clearLogsWithDailytMetric());
         setLoading(false);
         return
@@ -105,12 +102,9 @@ export default function Monitor() {
 
       // let payloadRedux = {};
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
-      const tes = groupDataByThreeAndAverage(sortedLogs);
 
-      console.log({sortedLogs, tes})
-      set3dpData(tes);
+      // console.log({sortedLogs, tes})
       setLogs(sortedLogs);
-      setIQRData(data.filterIQRResult);
 
       // // setBorderColor
       const borderColor = sortedLogs.map(item => {
@@ -124,7 +118,49 @@ export default function Monitor() {
       setBorderColor(borderColor);
       // // payloadRedux.borderColorR = borderColor;
 
-      
+      if (data && sortedLogs.length > 0) {
+        const resultCalculateMetric = calculateMetrics(sortedLogs);
+
+        setMetrics(resultCalculateMetric);
+        const dailyMetrictResult = data.dailyMetric;
+        console.log({dailyMetrictResult})
+        setDailyMetrics(dailyMetrictResult);
+
+        //   // payloadRedux.dailymetricR = dailyMetrictResult;
+        let property = {
+          tSdnn: 0,
+          tRmssd: 0,
+          tPnn50: 0,
+          tS1: 0,
+          tS2: 0,
+          dfa : 0
+        }
+
+        dailyMetrictResult.forEach((val) => {
+          // console.log(val)
+          property.tSdnn += Math.floor(val.sdnn);
+          property.tRmssd += Math.floor(val.rmssd);
+          property.tPnn50 += Math.floor(val.pnn50);
+          property.tS1 += Math.floor(val.s1);
+          property.tS2 += Math.floor(val.s2);
+          property.dfa += Math.floor(val.dfa)
+        });
+
+        let median = {
+          sdnn: property.tSdnn / dailyMetrictResult.length,
+          rmssd: property.tRmssd / dailyMetrictResult.length,
+          pnn50: property.tPnn50 / dailyMetrictResult.length,
+          s1: property.tS1 / dailyMetrictResult.length,
+          s2: property.tS2 / dailyMetrictResult.length,
+          total: dailyMetrictResult.length,
+          dfa : property.dfa / dailyMetrictResult.length
+        }
+
+        console.log({median, dailyMetrictResult})
+        setMedianProperty(median);
+
+        //   payloadRedux.medianPropertyR = median;
+      }
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
@@ -132,40 +168,48 @@ export default function Monitor() {
     }
   };
 
-  const groupDataByThreeAndAverage = (datalog) => {
-    const groupedData = [];
+  const calculateMetrics = (logs) => {
+    const rrIntervals = logs.map((log) => log.RR);
+    const nnIntervals = [];
+    if (rrIntervals.length < 2) {
+      // Not enough data points to calculate metrics
+      return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null };
+    }
+    let sumSquaredDiffs = 0; // For RMSSD
+    let sumSuccessiveDiffs = 0; // For RMSSD
+    let nn50Count = 0;
 
-    // Petakan data untuk mengambil nilai HR dan created_at
-    const data = datalog.map(log => ({
-      HR: log.HR,
-      date: new Date(log.timestamp * 1000)
-    }));
+    for (let i = 1; i < rrIntervals.length; i++) {
+      const diff = Math.abs(rrIntervals[i] - rrIntervals[i - 1]);
+      nnIntervals.push(diff);
 
-    // Loop melalui data dan kelompokan berdasarkan 3 log
-    for (let i = 0; i < data.length; i += 3) {
-      const chunk = data.slice(i, i + 3);
-
-      // Jika ada 3 item dalam grup
-      if (chunk.length === 3) {
-        const avg = chunk.reduce((sum, log) => sum + log.HR, 0) / 3;
-
-        // Ambil tanggal dari log pertama di chunk
-        const date = chunk[0].date;
-
-        // Tambahkan [date, avg] ke hasil groupedData
-        groupedData.push({ date, avg });
+      sumSquaredDiffs += diff * diff; // Square the difference and add to sum (for RMSSD)
+      if (diff > 50) {
+        nn50Count++;
       }
     }
-    return groupedData;
+
+    const avgNN = nnIntervals.reduce((sum, interval) => sum + interval, 0) / nnIntervals.length;
+
+    const squaredDiffsFromMean = nnIntervals.map((interval) => Math.pow(interval - avgNN, 2));
+    const sumSquaredDiffsFromMean = squaredDiffsFromMean.reduce((sum, diff) => sum + diff, 0);
+
+    const variance = sumSquaredDiffsFromMean / (nnIntervals.length - 1);
+    const sdnn = Math.sqrt(variance);
+
+    const rmssd = Math.sqrt(sumSquaredDiffs / nnIntervals.length);
+    const pnn50 = (nn50Count / nnIntervals.length) * 100;
+
+    // Calculate S1 & S2
+    const diff1 = rrIntervals.slice(1).map((val, index) => val - rrIntervals[index]);
+    const sum1 = rrIntervals.slice(1).map((val, index) => val + rrIntervals[index]);
+
+    const s1 = Math.sqrt(diff1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / diff1.length) / Math.sqrt(2);
+    const s2 = Math.sqrt(sum1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / sum1.length) / Math.sqrt(2);
+
+    // task calculate DFA
+    return { sdnn, rmssd, pnn50, s1, s2 };
   };
-
- 
-
-  const toggleVisibilityHR = () => setHRIsVisible(!isHRVisible);
-  const toggleVisibilityRR = () => setRRIsVisible(!isRRVisible);
-  const toggleVisibilityPoincare = () => setPoincareIsVisible(!isPoincareVisible);
-  const toggleVisibility3dp = () => set3dpIsVisible(!is3dpVisible);
-  const toggleVisibilityIQR = () => setIQRIsVisible(!isIQRVisible);
 
   const handleChangeDevice = (e) => {
     e.preventDefault();
@@ -201,7 +245,7 @@ export default function Monitor() {
                 <div className="flex flex-wrap items-center">
                   {/* <ButtonOffCanvas index={2} /> */}
 
-                  <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Grafik Monitoring</h1>
+                  <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Metrics Data</h1>
 
                 </div>
                 <DatePicker
@@ -219,26 +263,11 @@ export default function Monitor() {
                   className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
-                {/* {currentUser.role !== 'user' && ( */}
-                <div data-aos="fade-up" className="inline-block relative">
-                  <select
-                    name=""
-                    id=""
-                    className="lg:p-2.5 p-3 pe-8 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[220px] px-3 py-3"
-                    onChange={handleChangeDevice}
-                  >
-                    <option value="" disabled>Select device Monitoring</option>
-                    <option value="C0680226" selected>C0680226</option>
-                    <option value="BA903328">BA903328</option>
-                  </select>
-                  {loading ? <span className="ms-4 loader"></span> : null}
-                </div>
-                {/* )} */}
-
+            
                 <select
                     name=""
                     id=""
-                    className="lg:p-2.5 p-3 pe-8 ms-3 bg-[#2C2C2C] rounded text-sm  md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                    className="lg:p-2.5 p-3 pe-8 bg-[#2C2C2C] rounded text-sm  md:text-[16px] lg:min-w-[220px] px-3 py-3"
                     onChange={handleChangeMetode}
                   >
                     <option value="" disabled selected>Choose metode</option>
@@ -247,60 +276,11 @@ export default function Monitor() {
                     <option value="BC">BC</option>
                   </select>
 
-                {/* <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} /> */}
+                <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
 
               </div>
             </div>
-            {logs ? (
-              <div style={{ overflowX: 'auto', marginRight: 40 }}>
-                <div className='flex flex-col gap-3 ms-4 cursor-pointer pt-3 pb-5'>
-                  <div className="flex-col flex">
-                    <div onClick={toggleVisibilityHR} className={isHRVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                      <button className='text-xs py-0.5 px-1.5 m-2'>{isHRVisible ? 'Hide' : 'Show'} Graphic HR</button>
-                    </div>
-                    {isHRVisible ? (
-                      <LineGraph data={logs} label={`HR`} keyValue={`HR`} color={borderColor} />
-                    ) : null}
-                  </div>
-                  <div className="flex-col flex gap-2">
-                    <div onClick={toggleVisibilityRR} className={isRRVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                      <button className='text-xs py-0.5 px-1.5 m-2'>{isRRVisible ? 'Hide' : 'Show'} Graphic RR</button>
-                    </div>
-                    {isRRVisible ? (
-                      <LineGraph data={logs} label={`RR`} keyValue={`RR`} color={borderColor} />
-                    ) : null}
-                  </div>
-                  <div className="flex-col flex gap-2">
-                    <div onClick={toggleVisibility3dp} className={is3dpVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                      <button className='text-xs py-0.5 px-1.5 m-2'>{is3dpVisible ? 'Hide' : 'Show'} Graphic 3dpfilter</button>
-                    </div>
-                    {is3dpVisible ? (
-                      <Graph3d data={data3Dp} label={`Data3dp`} color={borderColor} />
-                    ) : null}
-                  </div>
-                  <div className="flex-col flex gap-2">
-                    <div onClick={toggleVisibilityIQR} className={isIQRVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                      <button className='text-xs py-0.5 px-1.5 m-2'>{isIQRVisible ? 'Hide' : 'Show'} Graphic IQR</button>
-                    </div>
-                    {isIQRVisible ? (
-                      <InterquartileGraph data={IQRData} label={`InterQuartile`} color={borderColor} />
-                    ) : null}
-
-                  </div>
-                  <div className="flex-col flex gap-2">
-                    <div onClick={toggleVisibilityPoincare} className={isPoincareVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
-                      <button className='text-xs py-0.5 px-1.5 m-2'>{isPoincareVisible ? 'Hide' : 'Show'} Graphic Pointcare</button>
-                    </div>
-
-                    {isPoincareVisible ? (
-                      <ScatterGraph data={logs} label={`PointCare`} keyValue={`HR`} color={borderColor} />
-                    ) : null}
-                  </div>
-
-
-                </div>
-              </div>
-            ) : null}
+            
           </div>
         </section>
       </main>

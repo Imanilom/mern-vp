@@ -10,12 +10,12 @@ import AOS from 'aos';
 let scroolState = {
     HR: 1, // daftarkan label 
     RR: 1,
-
 };
 
 function LineGraph({ data, label, keyValue, color }) {
+
     const [scroolLevel, setScroolLevel] = useState(1);
-    const chartRef = useRef();
+    const chartRef = useRef(); // buat canvas
     const [slice, setSlice] = useState(1);
     const [slider, setSlider] = useState(1);
     const XCount = 10;
@@ -75,9 +75,13 @@ function LineGraph({ data, label, keyValue, color }) {
     }
 
     const drawChart = (rawData) => {
-        const processedData2 = processData(rawData);
+        let processedData2 = processData(rawData);
+        if (processedData2.length <= 30) {
+            // klo hasil filter krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
+            processedData2 = rawData;
+        }
+       
         const processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
-
 
         // filtering warna circle
         color = processedData.map(item => {
@@ -90,16 +94,20 @@ function LineGraph({ data, label, keyValue, color }) {
 
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
-        const lastSvg = d3.select(chartRef.current);
-        lastSvg.selectAll('*').remove()
-    
+        const lastSvg = d3.select(chartRef.current); // variabel yang menampung element canvas
+
+        lastSvg.selectAll('*').remove(); // 
+
         console.log(processedData.length);
 
         const height = 500;
-        const width = 25 * processedData.length / 2;
+        let width = 50 * processedData.length ;
+        if(processedData.length > 30){
+            width = 25 * processedData.length / 2;
+        }
         const margin = { top: 20, right: 20, bottom: 90, left: 50 };
         let svgWidth;
-    
+
         if (window.innerWidth > 980) {
             svgWidth = 768;
         } else if (window.innerWidth > 540) {
@@ -107,39 +115,40 @@ function LineGraph({ data, label, keyValue, color }) {
         } else {
             svgWidth = window.innerWidth * 0.8;
         }
-    
+
         setSlice(Math.floor(width / svgWidth) + 1);
-    
-        const svg = d3.select(chartRef.current)
+
+        const svg = d3.select(chartRef.current) // gambar canvas 
             .append('svg')
             .attr('height', height)
             .attr('width', width)
             .attr('class', 'svgOne bgg-bl min-w-lg')
-    
+
         const x = d3.scaleBand()
             .domain(processedData.map(d => d.create_at))
+            // .range([margin.left, width - margin.right]);
             .range([margin.left, width - margin.right]);
-    
+
         const y = d3.scaleLinear()
             .domain([0, d3.max(processedData, d => d[keyValue]) + 10])
             .range([height - margin.bottom, margin.top]);
-    
+
         const line = d3.line()
             .x(d => x(d.create_at))
             .y(d => y(d[[keyValue]]));
-    
+
         svg.append('path')
             .datum(processedData)
             .attr('fill', 'none')
             .attr('stroke', 'rgba(75, 192, 192, 1)')
             .attr('stroke-width', 2)
             .attr('d', line);
-    
+
         // Deteksi perubahan tanggal
         let previousDate = null;
-        
+
         processedData.forEach((d, i) => {
-            console.log({d}, 'Linegraph');
+            console.log({ d }, 'Linegraph');
             const currentDate = d.create_at.toDateString();
             if (previousDate !== currentDate) {
                 // Gambar garis putus-putus di sini
@@ -151,7 +160,7 @@ function LineGraph({ data, label, keyValue, color }) {
                     .attr('stroke', 'white')
                     .attr('stroke-width', 1)
                     .attr('stroke-dasharray', '5,5'); // Mengatur garis menjadi putus-putus
-    
+
                 // Tambahkan label tanggal di dekat garis putus-putus
                 svg.append('text')
                     .attr('x', x(d.create_at) + 5)
@@ -162,7 +171,7 @@ function LineGraph({ data, label, keyValue, color }) {
             }
             previousDate = currentDate;
         });
-    
+
         // Memberikan titik pada ujung sumbu y
         svg.selectAll('circle')
             .data(processedData)
@@ -188,11 +197,11 @@ function LineGraph({ data, label, keyValue, color }) {
             .on('mouseout', () => {
                 tooltip.style('opacity', 0);
             });
-    
+
         // Sumbu X dengan format jam menit detik saja
         const formatTime = d3.timeFormat("%H:%M:%S");
         svg.append('g')
-            .attr('transform', `translate(0,${height - margin.bottom})`)
+            .attr('transform', `translate(-15,${height - margin.bottom})`)
             .call(d3.axisBottom(x)
                 .tickFormat(formatTime)
                 .ticks(XCount)
@@ -201,20 +210,18 @@ function LineGraph({ data, label, keyValue, color }) {
             .attr('transform', 'rotate(-45)')
             .style('text-anchor', 'end')
             .style('font-size', 8);
-    
+
         svg.append('g')
             .attr('transform', `translate(${margin.left}, 0)`)
             .call(d3.axisLeft(y)
                 .ticks(15));
     }
-    
+
 
     // Fungsi untuk memproses data dan menghilangkan duplikat
     const processData = (rawData) => {
         // Urutkan data berdasarkan create_at
         const sortedData = rawData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-        return sortedData;
         // Gunakan Set untuk menyimpan nilai unik
         const uniqueValues = new Set();
 
@@ -249,7 +256,7 @@ function LineGraph({ data, label, keyValue, color }) {
                 ) : null}
 
                 <div className="flex sm:flex-row flex-col">
-                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id={`zoom_panel_${label}`} className='rounded-md md:mb-0 mb-2 bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
                     <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
