@@ -31,6 +31,8 @@ export const groupDataByThreeAndAverage = (data) => {
   }
   return groupedData;
 };
+
+
 // pilih mau lihat hasil interquartil dulu, interquartil dan apa dll
 
 // Update filterIQ function with anomaly detection

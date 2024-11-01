@@ -41,6 +41,7 @@ export default function MonitorDFA() {
   const [is3dpVisible, set3dpIsVisible] = useState(false); // Show RR chart by default
   const [isPoincareVisible, setPoincareIsVisible] = useState(false); // Show Poincare chart by default
   const [device, setDevice] = useState("C0680226");
+  const [metode, setMetode] = useState("OC");
   const [loading, setLoading] = useState(false);
   const [data3Dp, set3dpData] = useState([]);
   const [IQRData, setIQRData] = useState([]);
@@ -67,23 +68,35 @@ export default function MonitorDFA() {
   }, []);
 
   useEffect(() => {
+    console.log({ resultsDFA2, splittedLog, resultsDFA })
     if (startDate && endDate) {
       fetchLogs(device);
     }
   }, [startDate, endDate]);
 
-  const fetchLogs = async (device) => {
+  const fetchLogs = async (device, metode) => {
     try {
       setLoading(true);
       results = [];
       let url = `/api/user/logdfa`;
       if (device) {
-        url = `/api/user/logdfa`;
+        url = `/api/user/logdfa`; 
       }
 
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+        if(metode) url += `&method=${metode}`;
+      }else{
+        if(metode) url += `?method=${metode}`;
       }
+      // let url = `/api/user/logdfa`;
+      // if (device) {
+      //   url = `/api/user/logdfa`;
+      // }
+
+      // if (startDate && endDate) {
+      //   url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+      // }
 
       const response = await fetch(url);
       const data = await response.json();
@@ -103,7 +116,7 @@ export default function MonitorDFA() {
 
       setResults(data.result);
       setResults2(data.result);
-
+      console.log(data.result)
 
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -112,11 +125,11 @@ export default function MonitorDFA() {
     }
   };
 
-  const toggleVisibilityHR = () => setHRIsVisible(!isHRVisible);
-  const toggleVisibilityRR = () => setRRIsVisible(!isRRVisible);
-  const toggleVisibilityPoincare = () => setPoincareIsVisible(!isPoincareVisible);
-  const toggleVisibility3dp = () => set3dpIsVisible(!is3dpVisible);
-  const toggleVisibilityIQR = () => setIQRIsVisible(!isIQRVisible);
+  const handleChangeMetode = (e) => {
+    e.preventDefault();
+    setMetode(e.target.value);
+    fetchLogs(device, e.target.value);
+  }
 
   return (
     <div>
@@ -138,7 +151,7 @@ export default function MonitorDFA() {
             <div className="relative flex flex-col min-w-0 break-words bgg-bl w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0">
                 <div className="flex flex-wrap items-center">
-                  <ButtonOffCanvas index={2} />
+                  {/* <ButtonOffCanvas index={2} /> */}
 
                   <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Monitoring DFA</h1>
 
@@ -157,6 +170,19 @@ export default function MonitorDFA() {
                   placeholderText='Cari berdasarkan range tanggal'
                   className="p-3 bg-[#2C2C2C] rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] w-fit inline-block"
                 />
+
+                <select
+                  name=""
+                  id=""
+                  className="lg:p-2.5 p-3 pe-8 bg-[#2C2C2C] rounded text-sm  md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                  onChange={handleChangeMetode}
+                >
+                  <option value="" disabled selected>Choose metode</option>
+                  <option value="OC">OC</option>
+                  <option value="IQ">IQ</option>
+                  <option value="BC">BC</option>
+                </select>
+
 
                 {/* {currentUser.role !== 'user' && ( */}
                 {/* <div data-aos="fade-up" className="inline-block relative">
@@ -179,7 +205,7 @@ export default function MonitorDFA() {
               </div>
             </div>
 
-            <div onClick={() => setDfaGraphVisible(!isDFAGraphVisible)} className={isDFAGraphVisible  && resultsDFA2.length > 0 ? `border-transparent bgg-dg rounded-md flex mx-4 cursor-pointer` : `cursor-pointer border border-gray-400 rounded-md flex mx-4`}>
+            <div onClick={() => setDfaGraphVisible(!isDFAGraphVisible)} className={isDFAGraphVisible && resultsDFA2.length > 0 ? `border-transparent bgg-dg rounded-md flex mx-4 cursor-pointer` : `cursor-pointer border border-gray-400 rounded-md flex mx-4`}>
               <button className='text-xs py-0.5 px-1.5 m-2'>{isDFAGraphVisible ? 'Hide' : 'Show'} Graphic DFA</button>
             </div>
             {isDFAGraphVisible && resultsDFA2.length > 0 ? (

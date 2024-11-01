@@ -60,7 +60,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
 
     useEffect(() => {
         const result2 = poincareData(data);
-        console.log({result2})
+        console.log({ result2 })
         const result = result2.filter(d => d[0] !== null && d[1] !== null);
         drawChart(result)
     }, [data])
@@ -132,7 +132,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
     //                 .html(`<p>Date: ${String(d[2]).split('GMT')[0]} </p> <p>Aktivitas Pasien: ${d[3] == undefined ? `Tidak ada riwayat` : d[3]}</p> <p>Point Care: [${d[0]}, ${d[1]}]</p>`);
 
     //         })
-       
+
     //         .on('mouseout', () => {
     //             tooltip.style('opacity', 0);
     //         });
@@ -200,42 +200,52 @@ function ScatterGraph({ data, label, keyValue, color }) {
     // }
 
     const drawChart = (data) => {
-        console.log({data}, 'Scatter')
-    
+        console.log({ data }, 'Scatter')
+
         const tooltip = d3.select('#tooltip');
         const lastSvg = d3.select(chartRef.current);
         lastSvg.selectAll('*').remove();
-    
+
         const height = 500;
-        const width = 768 * slice;
+        let width = 768 * slice;
+
+
+        if (window.innerWidth > 980) {
+            width = 768;
+        } else if (window.innerWidth > 540) {
+            width = window.innerWidth * 0.8;
+        } else {
+            width = window.innerWidth * 0.7;
+        }
+
         const margin = { top: 20, right: 20, bottom: 30, left: 40 }
-    
+
         const svg = d3.select(chartRef.current)
             .append('svg')
             .attr('width', width)
             .attr('height', height)
             .style('background', 'white')
             .attr('class', 'svgTwo bgg-bl')
-    
+
         const x = d3.scaleLinear()
             .domain([d3.min(data, d => d[0]) - 50, d3.max(data, d => d[0])])
             .range([margin.left, width - margin.right]);
-    
+
         const y = d3.scaleLinear()
             .domain([0, d3.max(data, d => d[1]) + 100])
             .range([height - margin.top, margin.bottom])
-    
+
         const line = d3.line()
             .x(d => x(d[0]))
             .y(d => y(d[1]))
-    
+
         const linepath = svg.append('path')
             .datum(data)
             .attr('fill', 'none')
             .attr('stroke', 'transparent')
             .attr('stroke-width', 2)
             .attr('d', line);
-    
+
         const circles = svg.selectAll("circle")
             .data(data)
             .enter()
@@ -258,7 +268,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
             .on('mouseout', () => {
                 tooltip.style('opacity', 0);
             });
-    
+
         // Membuat sumbu x dan y sebagai variabel tersendiri
         const xAxis = svg.append('g')
             .attr('transform', `translate(0, ${height - margin.bottom - 10})`)
@@ -266,42 +276,42 @@ function ScatterGraph({ data, label, keyValue, color }) {
                 .ticks(YCount)
                 .tickPadding(10)
             );
-    
+
         const yAxis = svg.append('g')
             .attr('transform', `translate(${margin.left},${-margin.top})`)
             .call(d3.axisLeft(y)
                 .ticks(YCount)
             );
-    
+
         // Fungsi zoom
         const zoomed = (e) => {
             const newX = e.transform.rescaleX(x);
             const newY = e.transform.rescaleY(y);
-    
+
             changeZoomText(e.transform.k);
-    
+
             // Update sumbu dengan skala yang sudah di-zoom
             xAxis.call(d3.axisBottom(newX).ticks(YCount).tickPadding(10));
             yAxis.call(d3.axisLeft(newY).ticks(YCount));
-    
+
             // Update garis dan lingkaran berdasarkan skala baru
             linepath.attr('d', d3.line()
                 .x(d => newX(d[0]))
                 .y(d => newY(d[1]))
             );
-    
+
             circles
                 .attr('cx', d => newX(d[0]))
                 .attr('cy', d => newY(d[1]))
         }
-    
+
         svg.call(d3.zoom()
             .scaleExtent([1, 120])
             .translateExtent([[0, 0], [width, height]])
             .on('zoom', zoomed));
     }
 
-    
+
     let styleTooltype = {
         position: 'absolute',
         pointerEvents: 'none',
@@ -332,7 +342,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
                         </button>
                     </div>
                 ) : null}
-                <div data-aos="fade-up" className="flex sm:flex-row flex-col">
+                <div data-aos="fade-up" className="flex sm:flex-row flex-col md:gap-0 gap-2">
                     <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Zoom level 1
                     </button>

@@ -17,21 +17,12 @@ function DfaMetrics(props) {
   }, []);
 
   console.log({ results });
+  console.log('amann')
 
-  const formatedDate = (date) => {
-    if(typeof date == 'string'){
-      console.log({date})
-      const [d, m, y] = date.split('-');
-      console.log(`${y}-${m}-${d}`)
-      return `${y}-${m}-${d}`;
-    }else{
-      return date;
-    }
-  }
 
-  const formatTanggal = (tgl) => {
-    const [d, m, y] = tgl.split(' ');
-    return `${m}, ${d} ${y}`
+  const formatTanggal = (tgl_timestamp) => {
+    const date = new Date(tgl_timestamp);
+    return date.toISOString().split('T')[0];
     // September, 18 2024
   }
 
@@ -92,11 +83,11 @@ function DfaMetrics(props) {
                 return (
                   <tr key={index} className={index % 2 == 1 ? `bg-[#2C2C2C]` : `bg-[#141414]`}>
                     <td className="px-6 py-4 whitespace-nowrap">{index + 1 + page * itemsPerPage}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{formatTanggal(new Intl.DateTimeFormat('id-ID', {
-                      day: '2-digit',
-                      year: 'numeric',
-                      month: 'long',
-                    }).format(new Date(formatedDate(metric.tanggal))))}</td>
+                    {typeof metric.tanggal == 'string' ? (
+                      <td className="px-6 py-4 whitespace-nowrap">{metric.tanggal}</td>
+                    ) : (
+                      <td className="px-6 py-4 whitespace-nowrap">{formatTanggal(metric.timestamp_tanggal)}</td>
+                    ) }
                     <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_awal ?? null}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_akhir ?? null}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa ? metric.dfa.toFixed(2) : 'N/A'}</td>
