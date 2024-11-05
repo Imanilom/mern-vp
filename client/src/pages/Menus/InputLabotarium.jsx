@@ -19,14 +19,15 @@ function InputLabotarium() {
     const [file, setFile] = useState(null);
     const [downloadUrl, setDownloadUrl] = useState(null);
     const [inputItem, setInputItem] = useState({});
-    const {DocterPatient, currentUser} = useSelector(state => state.user)
+    const { DocterPatient, currentUser } = useSelector(state => state.user)
+    const [lab, setLab] = useState(null);
     const navigate = useNavigate();
     useEffect(() => {
         AOS.init({
             duration: 1000
         })
 
-        if(currentUser.role == 'user'){
+        if (currentUser.role == 'user') {
             return window.location = '/ringkasan-pasien';
         }
     }, []);
@@ -35,32 +36,32 @@ function InputLabotarium() {
         console.log({ inputItem })
     }, [inputItem])
 
-    const {id} = useParams();
+    const { id } = useParams();
 
-    const handleSubmit = async(e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        try{
+        try {
             const convertedArray = Object.entries(inputItem).map(([key, value]) => {
                 return {
                     label: key,
                     jawaban: value
                 };
             });
-            console.log(e.target[0].value, {convertedArray, downloadUrl})
+            console.log(e.target[0].value, { convertedArray, downloadUrl })
 
             const res = await fetch('/api/faktorresiko/fillDoc', {
-                method : 'POST', 
-                body : JSON.stringify({
-                    tanggal : e.target[0].value,
-                    file : downloadUrl,
-                    detail : convertedArray,
-                    patientid : DocterPatient._id,
-                    docter : currentUser._id,
-                    lab : id
+                method: 'POST',
+                body: JSON.stringify({
+                    tanggal: e.target[0].value,
+                    file: downloadUrl,
+                    detail: convertedArray,
+                    patientid: DocterPatient._id,
+                    docter: currentUser._id,
+                    lab: id
                 }),
-                headers : {
-                    "Content-Type" : "application/json"
+                headers: {
+                    "Content-Type": "application/json"
                 }
             });
 
@@ -74,15 +75,19 @@ function InputLabotarium() {
                 navigate('/faktor-resiko')
             });
 
-        }catch(err){
-            console.log({err})
+        } catch (err) {
+            console.log({ err })
         }
 
-       
+
 
         // const res = await fetch('/api')
 
     }
+
+    useEffect(() => {
+        fetchInit();
+    }, [])
 
     useEffect(() => {
         handleUpload();
@@ -105,6 +110,18 @@ function InputLabotarium() {
             [name]: value
         }));
     };
+
+    const fetchInit = async () => {
+        try {
+            const res = await fetch(`/api/faktorresiko/docs/${id}`);
+            const data = await res.json();
+
+            setLab(data.lab__);
+        }catch(err){
+            console.log({err});
+        }
+            
+    }
 
     const handleUpload = () => {
         if (file) {
@@ -150,7 +167,7 @@ function InputLabotarium() {
             <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8">
                 {/* <ButtonOffCanvas /> */}
                 <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-5">Pengisian Dokumen Labotarium Baru</h1>
-                <p>Labotarium Patalogi, RS. sukabumi Bandung utara,  2024</p>
+                <p className='darkgreen'>{lab ? lab.name_lab : null}</p>
                 <p>Berikan Informasi pasien dengan jelas dan akurat!</p>
 
 
@@ -519,9 +536,9 @@ function InputLabotarium() {
                             onDrop={handleDrop}
                             onDragOver={handleDragOver}
                             className="areadrop rounded-[10px] my-6 p-2 bgg-dg cursor-pointer" id="areadrop">
-                            <div className="bg-[#181818] border-white border-2 border-dashed rounded-sm flex gap-4 items-center flex-col p-12">
+                            <div className="bg-[#181818] border-white border-2 border-dashed rounded-sm flex gap-4 items-center flex-col p-8 md:p-12">
                                 <FaFileLines size={48} color="#07AC7B" />
-                                <div className="text-xl darkgreen font-semibold">
+                                <div className="text-md md:text-xl darkgreen font-semibold text-center md:text-start">
                                     DRAG OR CLICK HERE
                                 </div>
                                 <div className="text-xs font-medium max-w-[250px] text-center">
@@ -534,7 +551,7 @@ function InputLabotarium() {
                     {/* file */}
                     <input type="file" name="" id="fileinput" hidden onChange={(e) => { console.log(e); setFile(e.target.files[0]) }} />
 
-                    <div className="flex gap-4 mt-5 items-center">
+                    <div className="flex md:flex-row flex-col gap-4 mt-5 md:items-center">
                         <button type="submit" className='bg-[#07AC7B] hover:bg-transparent duration-200 text-sm  hover:text-[#07AC7B] px-4 text-[#141414] font-semibold py-2 rounded-md'>Save dan selesai</button>
                         <Link to={'/faktor-resiko'} className='blue font-medium text-sm underline'>Kembali ke dashboard</Link>
                     </div>

@@ -2,13 +2,15 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import Side from "../../components/Side";
 import { useEffect } from "react";
+import { useSelector } from "react-redux";
 
 function CreateAnamnesa() {
     const { riwayatid } = useParams();
     const navigate = useNavigate();
+    const {currentUser} = useSelector((state) => state.user);
 
     useEffect(() => {
-        if(currentUser.role != 'user'){
+        if(currentUser.role == 'user'){
             return window.location = '/ringkasan-pasien';
         }
     }, [])
@@ -47,9 +49,9 @@ function CreateAnamnesa() {
     return (
         <main class="bgg-bl text-white flex pb-8">
             <Side />
-            <div class="flex w-full min-h-[90vh] items-start">
-                <div class="md:p-16 w-full max-w-lg">
-                    <h1 class="text-4xl font-semibold">Create Anamnesa</h1>
+            <div class="mt-8 flex w-full md:min-h-[90vh] md:justify-start justify-center items-start">
+                <div class="md:p-16 w-10/12 md:w-full max-w-lg">
+                    <h1 class="text-2xl md:text-4xl font-semibold">Create Anamnesa</h1>
                     <p class="mt-3">Berikan informasi tambahan riwayat medis pasien</p>
 
                     <form onSubmit={handleSubmit} method='post' class="mt-4">
@@ -64,9 +66,9 @@ function CreateAnamnesa() {
                             </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col md:flex-row gap-2">
                             <button type="submit" class="mt-5 rounded-md bgg-dg px-5 py-2 text-white">Create Anamnesa</button>
-                            <Link to='/riwayat-medis' class="mt-5 rounded-md  px-10 py-2 text-white hover:text-[#007CC6]">Cancel</Link>
+                            <Link to='/riwayat-medis' class="md:mt-5 rounded-md  md:px-10 py-2 text-white hover:text-[#007CC6]">Cancel</Link>
                         </div>
                     </form>
                 </div>

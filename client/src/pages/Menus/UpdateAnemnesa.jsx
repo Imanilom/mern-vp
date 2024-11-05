@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import Side from "../../components/Side";
+import { useSelector } from "react-redux";
 
 function UpdateAnemnesa() {
 
     const [anamnesa, setAnamnesa] = useState(null);
     const navigate = useNavigate();
+    const {currentUser} = useSelector((state) => state.user);
 
     const { id } = useParams();
     useEffect(() => {
@@ -24,7 +26,7 @@ function UpdateAnemnesa() {
 
         fetchData();
 
-        if(currentUser.role != 'user'){
+        if(currentUser.role == 'user'){
             return window.location = '/ringkasan-pasien';
         }
     }, []);
@@ -65,7 +67,7 @@ function UpdateAnemnesa() {
     return (
         <main class="bgg-bl text-white flex pb-8">
             <Side />
-            <div class="flex min-h-[90vh] items-start m-16 justify-start w-full">
+            <div class="flex min-h-[90vh] items-start m-8 md:m-16 justify-start w-full">
                 <div class=" w-full max-w-lg">
                     <h1 class="text-3xl font-semibold">Update Anamnesa</h1>
                     <p class="mt-3">Berikan informasi  yang tepat, cepat dan akurat</p>
@@ -93,9 +95,9 @@ function UpdateAnemnesa() {
                             </div>
                         </div>
 
-                        <div className="flex gap-3 items-center">
+                        <div className="flex md:flex-row flex-col gap-3 md:items-center">
                             <button type="submit" class="mt-5 rounded-md bgg-dg px-5 py-2 text-white">Save Anamnesa</button>
-                            <Link to='/riwayat-medis' class="mt-5 rounded-md px-1py-2 text-white">Cancel</Link>
+                            <Link to='/riwayat-medis' class="md:mt-5 rounded-md px-1 py-2 text-white">Cancel</Link>
                         </div>
                     </form>
                 </div>

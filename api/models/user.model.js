@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const UserSchema = new mongoose.Schema(
   {
     guid: {
-      required: true,
+      // required: true,
       type: String,
       unique: true, // Added unique constraint for guid
     },
@@ -60,7 +60,7 @@ const UserSchema = new mongoose.Schema(
     },
     requestAppointment: {
       type: String, // Added type specification
-      enum: ['pending', 'accept'], // Limited the values for this field
+      enum: ['pending', 'accepted', ''], // Limited the values for this field
     },
   },
   {

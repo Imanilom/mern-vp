@@ -158,12 +158,12 @@ function DetectionHistories() {
           <li>*Merah menandakan adanya deteksi berbahaya ketika anda sedang beraktivitas dan perlu ditindak lanjuti</li>
         </ul> */}
           <div className="flex gap-5 lg:items-end lg:flex-row flex-col lg:justify-between">
-            <div className="lg:w-6/12 md:w-8/12 flex lg:flex-row flex-col gap-5 my-3 lg:items-center">
+            <div className="lg:w-6/12 md:w-8/12 flex overflow-x-auto lg:flex-row flex-col gap-5 my-3 lg:items-center">
               <div className="w-fit text-sm text-[#101010] font-semibold flex lg:flex-col gap-2 py-3">
-                <button onClick={() => setState('safe')} className='bg-[#46FF59]/70 py-1 rounded lg:ms-0 px-3'>Click me</button>
-                <button onClick={() => setState('warning')} className='bg-[#F47500]/70 py-1 rounded px-3'>Click me</button>
-                <button onClick={() => setState('danger')} className='bg-[#F40000]/70 py-1 rounded px-3'>Click me</button>
-                <button onClick={() => setState('undefined')} className='bg-[#FFFFFF]/70 py-1 rounded px-3'>Click me</button>
+                <button onClick={() => setState('safe')} className='bg-[#46FF59]/70 py-1 min-w-[90px] md:min-w-[0px] rounded lg:ms-0 px-3'>Click me</button>
+                <button onClick={() => setState('warning')} className='bg-[#F47500]/70 py-1 min-w-[90px] md:min-w-[0px] rounded px-3'>Click me</button>
+                <button onClick={() => setState('danger')} className='bg-[#F40000]/70 py-1 min-w-[90px] md:min-w-[0px] rounded px-3'>Click me</button>
+                <button onClick={() => setState('undefined')} className='bg-[#FFFFFF]/70 py-1 min-w-[90px] md:min-w-[0px] rounded px-3'>Click me</button>
               </div>
 
               {/* <div className='md:w-6/12 flex-col flex gap-3'>
@@ -187,7 +187,7 @@ function DetectionHistories() {
                 }}
                 isClearable
                 placeholderText='Cari berdasarkan range tanggal'
-                className="px-4 py-3 bg-[#2C2C2C] md:w-5/12 rounded ms-auto text-sm  lg:min-w-[320px]"
+                className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 md:mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
               />
             {/* </div> */}
 
@@ -335,4 +335,4 @@ function HandleSimbol(props) {
 
 }
 
-export default DetectionHistories
+export default DetectionHistories;

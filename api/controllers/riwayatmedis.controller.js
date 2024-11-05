@@ -1,5 +1,6 @@
 import { anamnesa } from '../models/anamnesa.model.js';
 import Patient from '../models/patient.model.js';
+import User from '../models/user.model.js';
 import { riwayatmedis } from '../models/riwayatmedis.model.js';
 
 import mongoose from 'mongoose';
@@ -8,44 +9,44 @@ export const createRiwayatMedis = async (req, res) => {
     try {
         console.log(req.body);
         console.log(req.user.id);
-        const patient = await Patient.findOne({
+        const patient = await User.findOne({
             _id: req.user.id
         });
 
         // check riwayatamedis apakah sudah ada?
         // if true kita update,
         // if false kita create
-        let isHaveRiwayat = await riwayatmedis.findOne({
+        // let isHaveRiwayat = await riwayatmedis.findOne({
+        //     Doctor: patient.docter,
+        //     Patient: req.user.id
+        // });
+
+        // if (isHaveRiwayat) {
+
+        //     // console.log('update medis', req.body)
+        //     res.json({ message: 'update action' })
+        // } else {
+        console.log('sedang create..')
+        const riwayatmedisCreate = await riwayatmedis.create({
             Doctor: patient.docter,
-            Patient: req.user.id
+            Patient: req.user.id,
+            Date: new Date()
+        });
+        console.log(patient, patient.docter, riwayatmedisCreate)
+
+        let question = req.body.questions;
+
+        // forearch 
+        question.forEach(async (value) => {
+            const anamnesaCreate = await anamnesa.create({
+                riwayatmedis: riwayatmedisCreate._id,
+                pertanyaan: value.pertanyaan,
+                jawaban: value.jawaban
+            });
         });
 
-        if (isHaveRiwayat) {
-
-            // console.log('update medis', req.body)
-            res.json({ message: 'update action' })
-        } else {
-            console.log('sedang create..')
-            const riwayatmedisCreate = await riwayatmedis.create({
-                Doctor: patient.docter,
-                Patient: req.user.id,
-                Date: new Date()
-            });
-            console.log(patient, patient.docter, riwayatmedisCreate)
-
-            let question = req.body.questions;
-
-            // forearch 
-            question.forEach(async (value) => {
-                const anamnesaCreate = await anamnesa.create({
-                    riwayatmedis: riwayatmedisCreate._id,
-                    pertanyaan: value.pertanyaan,
-                    jawaban: value.jawaban
-                });
-            });
-
-            return res.json({ message: 'Berhasil membuat riwayat medis' })
-        }
+        return res.json({ message: 'Berhasil membuat riwayat medis' })
+        // }
 
     } catch (error) {
         console.log(error);
@@ -89,14 +90,14 @@ export const deleteRiwayat = async (req, res) => {
     const id = req.params.id;
     try {
         await anamnesa.deleteMany({
-            riwayatmedis : id
+            riwayatmedis: id
         })
 
         await riwayatmedis.deleteOne({
-            _id : id
+            _id: id
         });
 
-        return res.json({message : 'ok'});
+        return res.json({ message: 'ok' });
     } catch (error) {
         console.log(error);
     }

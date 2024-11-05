@@ -1,9 +1,11 @@
 import {Appointments} from '../models/appointment.model.js';
 import Patient from '../models/patient.model.js';
+import User from '../models/user.model.js';
+
 
 export const requestAppointmentUser = async (req, res) => {
     try {
-        const patient = await Patient.findById(req.user.id);
+        const patient = await User.findById(req.user.id);
         patient.requestAppointment = 'pending';
         await patient.save();
         
@@ -19,7 +21,7 @@ export const acceptAndCreateAppointment = async (req, res) => { // docter only
         const {date, time, note, patient} = req.body;
 
         // Tell to patient the Appointment is Accepted;
-        const __patient = await Patient.findById(patient);
+        const __patient = await User.findById(patient);
         __patient.requestAppointment = 'accepted';
         await __patient.save();
 
@@ -38,7 +40,7 @@ export const EndedAppointment = async (req, res) => { // docter only
         const {patient} = req.body;
 
         // Dengan ini user bisa minta temu janji lain waktu
-        const __patient = await Patient.findById(patient);
+        const __patient = await User.findById(patient);
         __patient.requestAppointment = '';
         await __patient.save();
 

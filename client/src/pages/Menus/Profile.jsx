@@ -44,6 +44,9 @@ export default function Profile() {
     }
   }, [image]);
 
+  useEffect(() => {
+    console.log({formData})
+  }, [formData])
   const handleFileUpload = async (image) => {
     const storage = getStorage(app);
     const fileName = new Date().getTime() + image.name;
@@ -155,7 +158,7 @@ export default function Profile() {
               <img
                 src={formData.profilePicture || currentUser.profilePicture}
                 alt='profile'
-                className='h-full w-[80%] me-auto py-3 self-center cursor-pointer object-cover mt-2'
+                className='h-full md:w-[80%] me-auto py-3 self-center cursor-pointer object-cover mt-2'
                 onClick={() => fileRef.current.click()}
               />
 
@@ -236,6 +239,17 @@ export default function Profile() {
                 onChange={handleChange}
               />
             </div>
+            {/* <div className="mb-3">
+              <div className='text-sm font-semibold text-gray-400 mb-1'>Guid Device</div>
+              <input
+                defaultValue={currentUser.guid}
+                type='text'
+                id='phone_number'
+                placeholder='Phone'
+                className='bg-[#2C2C2C]/40 rounded-lg p-3  min-w-[100%]'
+                onChange={handleChange}
+              />
+            </div> */}
             <div className="mb-3">
               <div className='text-sm font-semibold text-gray-400 mb-1 min-w-[100%]'>Select your device</div>
               <select onChange={handleChange} id='current_device' name="" className='bg-[#2C2C2C]/40 rounded-md p-3 lg:w-[270px] min-w-[100%]'>
@@ -257,8 +271,9 @@ export default function Profile() {
 
 
           </div>
-
+              
           <div className="md:flex-col gap-3">
+            <div className="flex flex-col md:flex-row justify-between">
 
             <div className="mb-3">
               <div className='text-sm font-semibold text-gray-400 mb-1'>Password</div>
@@ -269,6 +284,18 @@ export default function Profile() {
                 className='bg-[#2C2C2C]/40 rounded-lg p-3  min-w-[100%]'
                 onChange={handleChange}
               />
+            </div>
+            <div className="mb-3">
+              <div className='text-sm font-semibold text-gray-400 mb-1'>Guid Device</div>
+              <input
+                defaultValue={currentUser.guid}
+                type='text'
+                id='guid'
+                placeholder='guid device..'
+                className='bg-[#2C2C2C]/40 rounded-lg p-3  min-w-[100%] lg:w-[270px]'
+                onChange={handleChange}
+              />
+            </div>
             </div>
 
             <div className="mb-3">

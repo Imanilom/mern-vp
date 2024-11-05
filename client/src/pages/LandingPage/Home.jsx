@@ -83,9 +83,9 @@ export default function Home() {
 
         </div>
 
-        <div className='relative ' data-aos="fade-left">
+        <div className='relative ' data-aos="fade-up">
           <img src={image8} className='sm:w-[80%] relative z-[3]' alt="" />
-          <div className="rectangle w-[300px] h-[300px] sm:w-[175px] sm:h-[175px] lg:w-[250px] z-[1] lg:h-[250px] absolute start-1/3 top-1/4 sm:start-1/4 sm:top-1/3"></div>
+          <div className="rectangle w-[200px] h-[200px] sm:w-[175px] sm:h-[175px] lg:w-[250px] z-[1] lg:h-[250px] absolute start-1/3 top-1/4 sm:start-1/4 sm:top-1/3"></div>
         </div>
 
         <div data-aos="fade-right" className="px-8 md:px-0 absolute sm:start-0 top-1/2 left-0 sm:bottom-0 z-[4] font-bold">
@@ -140,7 +140,7 @@ export default function Home() {
       <div className="md:w-10/12 mx-auto flex flex-col sm:flex-row relative justify-between gap-12 text-white">
         <div className='flex flex-col gap-6 md:w-7/12 px-4 md:px-0' data-aos="zoom-in">
 
-          <div className="rectangle w-[450px] lg:w-[400px] h-[280px] absolute z-[2] lg:end-1/3 lg:bottom-1/4 md:end-1/2 end-0 bottom-0 md:top-1/2"></div>
+          <div className="w rectangle w-[150px] md:w-[450px] lg:w-[400px] h-[280px] absolute z-[2] lg:end-1/3 lg:bottom-1/4 md:end-1/2 end-0 bottom-0 md:top-1/2"></div>
           {/* text */}
           <h2 className='font-bold text-[32px] md:text-[40px]'>What are the Smart eHealth tasks to do?</h2>
 
@@ -221,7 +221,7 @@ export default function Home() {
 
       {/* What are vidyamedic do?, What we do to your data?, How we build? END */}
 
-      <div data-aos="zoom-out-down" data-aos-duration="500" className="flex-col flex gap-12 md:px-4 text-white w-screen md:w-10/12 mx-auto mb-16">
+      <div data-aos="fade-up" data-aos-duration="500" className="flex-col flex gap-12 md:px-4 text-white w-screen md:w-10/12 mx-auto mb-16">
 
         <div className="text-center text-[32px] font-bold text-white">
           OUR HAPPY CLIENT

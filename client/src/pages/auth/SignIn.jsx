@@ -49,7 +49,7 @@ export default function SignIn() {
       });
 
       const data = await res.json();
-      if (data.success === false) {
+      if (!res.ok) {
         dispatch(signInFailure(data));
         // return;
         throw new Error(data.message);

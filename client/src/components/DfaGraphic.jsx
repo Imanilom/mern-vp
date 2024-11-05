@@ -10,7 +10,7 @@ import AOS from 'aos';
 let scroolState = {
     HR: 1, // daftarkan label 
     RR: 1,
-
+    DFA : 1
 };
 
 function DfaGraphic({ data, label, keyValue, color }) {
@@ -67,10 +67,12 @@ function DfaGraphic({ data, label, keyValue, color }) {
             if (opt == 'plus' && scroolState[label] < slice) {
                 scroolState[label]++;
                 setSlider(slider + 1);
+                console.log('plus..')
                 simulateScroll(768 * (scroolState[label] - 1))
             } else if (opt == 'decrement' && scroolState[label] > 1) {
                 setSlider(slider - 1);
                 scroolState[label]--;
+                console.log('decrement..')
                 simulateScroll((768 * (scroolState[label] - 1)));
             }
         }
@@ -138,6 +140,8 @@ function DfaGraphic({ data, label, keyValue, color }) {
             } else if (window.innerWidth > 540) {
                 svgWidth = window.innerWidth * 0.7;
             } else {
+
+                console.log('hp')
                 svgWidth = window.innerWidth * 0.8;
             }
 
@@ -276,17 +280,17 @@ function DfaGraphic({ data, label, keyValue, color }) {
             <div className='relative p-4'>
                 <div data-aos="fade-right" style={styleTooltype} id={`tooltip${label}`}></div>
                 <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
-                    {/* {slice > 1 ? (
+                    {slice > 1 ? (
                     <div>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
+                        <button type='button' className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
                             <FaAngleLeft color='white' size={16} />
 
                         </button>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
+                        <button type='button' className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
                             <FaAngleRight color='white' size={16} />
                         </button>
                     </div>
-                ) : null} */}
+                ) : null}
 
                     <div className="flex sm:flex-row flex-col">
                         {/* <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
@@ -297,8 +301,8 @@ function DfaGraphic({ data, label, keyValue, color }) {
                         </button>
                     </div>
                 </div>
-                <div className="relative" data-aos="fade-right">
-                    <div ref={chartRef} className='svg-container relative ' id={`svg-container-${label}`}>
+                <div className="relative overflow-x-auto" data-aos="fade-right">
+                    <div ref={chartRef} className='svg-container flex max-w-screen relative ' id={`svg-container-${label}`}>
 
                     </div>
                     {/* <div className="rectangle w-full h-full z-[2] absolute top-0 left-0"></div> */}

@@ -4,6 +4,8 @@ import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
+import AOS from 'aos';
+
 function Treatment() {
   const { currentUser, DocterPatient } = useSelector(state => state.user);
   const [history, setHistory] = useState([]);
@@ -14,6 +16,9 @@ function Treatment() {
 
   useEffect(() => {
     fetchInit();
+    AOS.init({
+      duration: 500
+    })
   }, [])
 
   useEffect(() => {
@@ -39,7 +44,7 @@ function Treatment() {
       const res = await fetch(url);
       const data = await res.json();
 
-      if(!res.ok){
+      if (!res.ok) {
         console.log({ data, res })
         throw new Error(data.message)
       }
@@ -113,17 +118,15 @@ function Treatment() {
   return (
     <main class="bgg-bl text-white flex">
       <Side />
-      <div class="w-full xl:w-9/12 mb-12 xl:mb-0 px-4 mx-auto mt-12 sm:mt-16">
-        <ButtonOffCanvas />
-        
-        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-1 ">Treatment Pasien</h1>
-        <h1 data-aos="fade-up" class="text-md  mb-4 ">Histori treatment pasien yang pernah dijalani.</h1>
+      <div class="w-full xl:w-9/12 mb-12 xl:mb-0 px-4 mx-auto md:mt-0 mt-4 sm:mt-16">
+        {/* <ButtonOffCanvas /> */}
+
 
         {treatment ? (
-          <div class="flex w-full py-4 overflow-x-auto justify-between gap-8 mt-12 items-center flex-col sm:flex-row">
+          <div class="flex w-full py-4 overflow-x-auto justify-between gap-8 md:mt-12 items-center flex-col sm:flex-row">
             <div data-aos="fade-right" className="left lg:min-w-[480px]" >
-              <h1 class="text-3xl font-semibold capitalize lg:text-4xl mb-3" >Treatment</h1>
-              <h1 class="font-semibold mb-3">Pengobatan anda saat ini</h1>
+              <h1 class="text-2xl font-semibold capitalize md:text-4xl md:mb-3" >Treatment</h1>
+              <h1 class="text-sm md:text-[16px] font-semibold mb-3">Pengobatan anda saat ini</h1>
 
               {currentUser.role == 'user' ? (
                 <div className="flex gap-2 items-center justify-end mb-3 ">
@@ -131,11 +134,11 @@ function Treatment() {
                   <button type='button' className="w-fit px-3 py-1 bg-orange-500 hover:bg-orange-500/90 text-[12px] font-medium text-white rounded-md">Ongoing</button>
                 </div>
               ) : (
-                <div className="flex gap-2 items-center justify-end mb-3 ">
+                <div className="flex gap-2 md:items-center md:justify-end mb-3 ">
                   {/* <h1 className='text-slate-900 font-bold text-[20px]'>Treatment Pasien</h1> */}
-                  <div className="flex justify-between gap-1">
-                    <button onClick={() => handleSwitchSubmit()} type='button' className="w-fit px-3 py-1 text-[12px] font-medium text-[#101010] bgg-dg rounded-md">Tandai treatment telah usai</button>
-                    <Link to={`/treatment/update/${treatment._id}`} className="w-fit px-3 py-1 text-xs font-medium bg-orange-500 text-white rounded-md">Update</Link>
+                  <div className="flex w-full md:w-fit flex-col md:flex-row md:justify-between gap-1">
+                    <button onClick={() => handleSwitchSubmit()} type='button' className="w-full md:w-fit px-3 py-2 md:py-1 text-[12px] font-semibold text-white md:text-[#101010] bgg-dg rounded-md">Tandai treatment telah usai</button>
+                    <Link to={`/treatment/update/${treatment._id}`} className="w-full md:w-fit px-3 py-2 md:py-1 text-xs font-medium bg-orange-500 text-white text-center md:text-start rounded-md">Update</Link>
                   </div>
 
                 </div>
@@ -279,7 +282,7 @@ function Treatment() {
                 {treatment.medications.length > 0 ? (
                   treatment.medications.map((medision) => {
                     return (
-                      <div className="py-5 w-[90%] hover:w-full px-4 rounded-md duration-150 bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
+                      <div className="py-5 w-full md:w-[90%] hover:w-full px-4 rounded-md bg-[#00C34E]/80 duration-150 md:bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
                         <p className='text-[18px]'>{medision.name}</p>
                         <p className=''>Dosis Obat :  {medision.dosage}</p>
                         <p className=''>Frequency :  {medision.frequency}</p>
@@ -336,10 +339,17 @@ function Treatment() {
           </div>
         ) : null}
 
+        <div className="flex md:flex-row flex-col justify-between md:items-end">
+          <div data-aos="fade-up">
+            <h1 class="text-2xl md:text-3xl font-semibold capitalize lg:text-4xl mb-1 ">Treatment Pasien</h1>
+            <h1 class="text-sm md:text-md  mb-4 ">Histori treatment pasien yang pernah dijalani.</h1>
+          </div>
+          {currentUser.role != 'user' && treatment == null ? (
+            <Link to={`/treatment/create`} className="darkgreen uppercase text-sm pb-3 font-semibold">Create Treatment</Link>
+          ) : null}
+        </div>
 
         <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
-          
-
           <div class="block w-full bgg-bl overflow-x-auto rounded">
             <table class="items-center w-full  ">
               <thead>

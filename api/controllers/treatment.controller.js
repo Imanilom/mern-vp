@@ -74,7 +74,7 @@ export const createTreatment = async (req, res) => {
 
         const { patient_id, diagnosis, followUpDate, notes, medications } = req.body;
         const __docter = await User.findOne({ _id: req.user.id });
-        const __patient = await Patient.findById(patient_id);
+        const __patient = await User.findById(patient_id);
 
         if (!__docter || !__patient) return res.status(403).json({ message: "Invalid patient" });
 

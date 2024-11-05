@@ -1,5 +1,6 @@
 import {Appointments} from '../models/appointment.model.js';
 import Patient from '../models/patient.model.js';
+import User from '../models/user.model.js';
 import {PredictionFactor} from '../models/prediction_factor.model.js';
 
 export const getAppointmentPredictionPatient = async (req, res) => {
@@ -9,11 +10,13 @@ export const getAppointmentPredictionPatient = async (req, res) => {
         let appointment;
 
         if(req.user.role == 'user'){
-            patient = await Patient.findById(req.user.id);
-            appointment = await Appointments.findOne({patient : patient._id}).populate('doctor');
+            patient = await User.findById(req.user.id);
+            if(patient){
+                appointment = await Appointments.findOne({patient : patient._id}).populate('doctor');
+            }
         }else{
             // docter
-            patient = await Patient.findById(req.query.patient);
+            patient = await User.findById(req.query.patient);
             console.log(req.query);
             if(!patient) return res.status(403).json({message : 'patient not found'})
             appointment = await Appointments.findOne({patient : patient._id}).populate('doctor');;
@@ -39,7 +42,7 @@ export const createFactorPrediction = async (req, res) => { // doctor only
     try {
 
         const {result_prediction, supporting_risks, patient} = req.body;
-        const __patient = await Patient.findById(patient);
+        const __patient = await User.findById(patient);
         if(!__patient) res.status(403).json({message : 'Pasient is invalid'});
 
         const factor_prediction = await PredictionFactor.create({result_prediction, supporting_risks, patient : __patient._id, doctor : req.user.id});

@@ -27,7 +27,7 @@ const Schema = mongoose.Schema({
     patient: {
         required: true,
         type: mongoose.Schema.Types.ObjectId,
-        ref: Patient
+        ref: User
     },
     treatmentDate: {
         type: Date,

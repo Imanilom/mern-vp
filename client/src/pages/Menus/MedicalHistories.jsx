@@ -11,7 +11,6 @@ import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 import AOS from 'aos';
 
 
-
 function MedicalHistories() {
 
   const { currentUser, loading, error, DocterPatient } = useSelector((state) => state.user);
@@ -121,8 +120,9 @@ function MedicalHistories() {
       <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
         {/* <ButtonOffCanvas /> */}
 
-        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl text-white mb-4">Riwayat Medis</h1>
-        <div data-aos="fade-right" className="flex lg:flex-row flex-col-reverse gap-4">
+        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl text-white mb-4 hidden md:block">Riwayat Medis</h1>
+        <div data-aos="fade-right" className="flex lg:flex-row md:flex-col-reverse flex-col gap-4">
+          <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl text-white mb-4 md:hidden block">Riwayat Medis</h1>
           <div class="relative text-white flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg rounded ">
             <div class="rounded-t mb-0 px-4 py-3 border-0">
               <div class="flex md:flex-row flex-col items-center">
@@ -134,20 +134,20 @@ function MedicalHistories() {
                 <div class="relative w-full px-4 max-w-full flex-grow flex-1 md:text-right">
                   {currentUser.role != 'user' && riwayat != null ? (
                     <Link to={`/createAnamnesa/${riwayat._id}`} >
-                      <button class="darkgreen text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none  min-w-[150px] md:min-w-[100px] mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Anamnesa</button>
+                      <button class="my-2 darkgreen text-xs font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none  min-w-full text-end md:text-start md:min-w-[100px] mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Anamnesa</button>
                     </Link>
                   ) : null}
 
 
                   {currentUser.role == 'user' && riwayat == null ? (
                     <Link to={`/input-medical`} onClick={() => dispacth(setActionRiwayat('create'))}>
-                      <button class=" text-[#07AC7B] text-xs font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none  min-w-[150px] md:min-w-[100px] mr-1 mb-1 ease-linear transition-all duration-150" type="button">Isi Formulir</button>
+                      <button class=" text-[#07AC7B] text-xs font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none  md:min-w-[150px] mr-1 mb-1 ease-linear transition-all duration-150" type="button">Isi Formulir</button>
                     </Link>
                   ) : null}
 
                   {currentUser.role == 'user' && riwayat != null ? (
                     // <Link to={`/input-medical`} onClick={() => dispacth(setActionRiwayat('create'))}>
-                    <button onClick={handleResetRiwayat} class="bg-red-500 text-white active:bg-red-600 text-xs font-bold uppercase px-1 md:px-3 py-1 rounded min-w-[150px] md:min-w-[100px] outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Ulang Riwayat</button>
+                    <button onClick={handleResetRiwayat} class="bg-red-500 text-white active:bg-red-600 text-xs font-bold uppercase px-1 md:px-3 py-1 rounded  min-w-full my-2 md:my-0 md:min-w-[100px] outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Ulang Riwayat</button>
                     // </Link>
                   ) : null}
                 </div>

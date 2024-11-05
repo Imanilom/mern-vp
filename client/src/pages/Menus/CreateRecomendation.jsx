@@ -12,7 +12,7 @@ function CreateRecomendation() {
     const { currentUser, DocterPatient } = useSelector((state) => state.user);
     const navigate = useNavigate();
     useEffect(() => {
-        if(currentUser.role != 'user'){
+        if(currentUser.role == 'user'){
             return window.location = '/ringkasan-pasien';
         }
     }, []);
@@ -55,14 +55,14 @@ function CreateRecomendation() {
     return (
         <section class="bgg-bl md:flex">
             <Side />
-            <div class="flex min-h-[90vh] p-12 justify-start bgg-bl text-white">
-                <div class="mx-auto w-10/12 lg:w-full max-w-lg">
+            <div class="flex md:min-h-[90vh] md:p-12 p-8 justify-start bgg-bl text-white">
+                <div class="mx-auto md:w-10/12 lg:w-full max-w-lg">
                     <h1 class="text-2xl lg:text-4xl font-medium mb-3">Rekomendasi Aktivitas</h1>
-                    <p>Buat Rekomendasi aktivitas untuk pasien, berikan detail lengkap waktu dan aktivitasnya</p>
+                    <p className="max-w-[90%]">Buat Rekomendasi aktivitas untuk pasien, berikan detail lengkap waktu dan aktivitasnya</p>
 
                     <form onSubmit={handleSubmit} method='post' class="mt-6">
 
-                        <div class="flex gap-3 justify-between items-end">
+                        <div class="flex flex-col md:flex-row gap-3 md:justify-between md:items-end">
                             <div>
                                 <label for="first_name"  class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Berlaku dari</label>
                                 <input type="date" id="first_name" name="berlaku_dari" class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" placeholder="Start Date" required />
@@ -95,9 +95,9 @@ function CreateRecomendation() {
                             <input type="text" id="first_name" class="bg-[#2C2C2C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " placeholder="Masukan aktivitas yang perlu pasien lakukan" required />
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col md:flex-row gap-2">
                             <button type="submit" class="mt-5 rounded-md bgg-dg px-4 md:px-10 py-2 text-white md:text-base text-sm">Kirim rekomendasi</button>
-                            <Link to='/rekomendasi' class="mt-5 rounded-md text-white text-sm px-3 py-2 hover:text-[#007CC6]">Kembali Dashboard</Link>
+                            <Link to='/rekomendasi' class="md:mt-5 rounded-md text-white text-sm md:px-3 py-2 hover:text-[#007CC6]">Kembali Dashboard</Link>
                         </div>
                     </form>
                 </div>

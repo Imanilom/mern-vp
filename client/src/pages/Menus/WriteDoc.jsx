@@ -132,8 +132,8 @@ function WriteDoc() {
     return (
         <main class="bgg-bl text-white flex">
             <Side />
-            <div class="w-11/12 lg:w-full xl:w-10/12 xl:px-8 mb-12 xl:mb-0 px-4 mx-auto pb-8 mt-16">
-                <ButtonOffCanvas />
+            <div class="w-11/12 lg:w-full xl:w-10/12 xl:px-8 mb-12 xl:mb-0 px-4 mx-auto pb-8 mt-8 md:mt-16">
+                {/* <ButtonOffCanvas /> */}
                 <div className="flex flex-col justify-start items-start mb-4">
                     <div>
                         <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-3">Pengisian Labotarium Baru</h1>
@@ -161,7 +161,7 @@ function WriteDoc() {
                             <button type='button' className='darkgreen'>Next {"->"}</button>
                         </div>
                     </div> */}
-                    <div className="w-7/12 flex flex-col justify-start gap-4">
+                    <div className="md:w-7/12 w-full flex flex-col justify-start gap-4">
                         <div>
                             <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nama Labotarium rujukan</label>
                             <textarea id="message" rows="4" class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" placeholder="Example. Labotarium Patalogi, RS. sukabumi Bandung utara,  2024"></textarea>
@@ -196,7 +196,7 @@ function WriteDoc() {
                         {/* file */}
                         <input type="file" name="" id="fileinput" hidden onChange={(e) => { console.log(e); setFile(e.target.files[0]) }} />
 
-                        <div className="flex gap-4 mt-3 items-center">
+                        <div className="flex flex-col md:flex-row gap-4 mt-3 md:items-center">
                             <button type="submit" className='bg-[#07AC7B] hover:bg-transparent text-sm hover:text-[#07AC7B] duration-200 px-4 py-2 rounded-md'>Save dan selesai</button>
                             <Link to={'/faktor-resiko'} className='blue font-medium text-sm'>Kembali ke dashboard</Link>
                         </div>

@@ -11,7 +11,7 @@ const schema = mongoose.Schema({
     Patient: {
         type: mongoose.Types.ObjectId,
         required: true,
-        ref: Patient // Pastikan nama model yang dirujuk benar (case-sensitive)
+        ref: User // Pastikan nama model yang dirujuk benar (case-sensitive)
     },
     Date: {
         type: Date,

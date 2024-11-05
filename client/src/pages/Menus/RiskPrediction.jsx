@@ -130,10 +130,10 @@ function RiskPrediction() {
 
   const ButtonActionUser = (state) => {
     const { status } = state;
-    if (status == 'pending') return (<button disabled class="bg-orange-500 text-white active:bg-orange-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Pending..</button>)
-    else if (status == 'accepted') return (<button disabled class="bg-green-500 text-white active:bg-green-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Accepted</button>
+    if (status == 'pending') return (<button disabled class="bg-orange-500 text-white active:bg-orange-600 md:w-fit w-full text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Pending..</button>)
+    else if (status == 'accepted') return (<button disabled class="bg-green-500 text-white active:bg-green-600 md:w-fit w-full text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Accepted</button>
     )
-    else return (<button onClick={handleRequestAppointmentUser} class="text-[#07AC7B]  text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 min-w-[150px]" type="button">{loading ? 'Loadingg..' : 'Meminta Temu Janji'}</button>)
+    else return (<button onClick={handleRequestAppointmentUser} class="text-[#07AC7B]  text-xs font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear space-nowrap transition-all duration-150 min-w-[150px]" type="button">{loading ? 'Loadingg..' : 'Meminta Temu Janji'}</button>)
   }
 
   const handleResetPrediction = async () => {
@@ -191,10 +191,10 @@ function RiskPrediction() {
           <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-4 ">Prediksi Resiko</h1>
 
           <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words bgg-bl w-full mb-6 shadow-lg rounded ">
-            <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/20">
-              <div class="flex flex-wrap items-center">
+            <div class="rounded-t mb-0 px-2 md:px-4 py-3 border-0 bg-[#363636]/20">
+              <div class="flex flex-col md:flex-row flex-wrap items-center">
                 <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-                  <h3 class="font-semibold text-sm md:text-base text-blueGray-700">Prediksi Resiko</h3>
+                  <h3 class="font-semibold text-sm md:text-base text-blueGray-700 md:mb-0 mb-3">Prediksi Resiko</h3>
                 </div>
                 <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
                   {currentUser.role == 'user' ? (
@@ -204,10 +204,10 @@ function RiskPrediction() {
 
                     </div>
                   ) : (
-                    <div className="flex gap-1 justify-end">
+                    <div className="flex flex-row gap-1 justify-end">
 
                       {detailPrediction ? (
-                        <button onClick={() => handleResetPrediction(detailPrediction._id)} class="bg-red-500 text-white active:bg-red-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Reset Prediction</button>
+                        <button onClick={() => handleResetPrediction(detailPrediction._id)} class="bg-red-500 text-white active:bg-red-600 text-xs font-bold w-full md:w-fit uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Reset Prediction</button>
                       ) : (
                         <Link to='/create/prediksi_factor' class="bg-green-500 text-white active:bg-green-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 min-w-[150px]" type="button">Create Prediction</Link>
                       )}
@@ -262,7 +262,7 @@ function RiskPrediction() {
 
           {currentUser.role != 'user' && statusAppointment == 'pending' ? (
             <div data-aos="fade-up" className="flex ms-2 text-center flex-col gap-2 font-semibold pt-4">
-              <p>Pasient ini meminta temu janji dengan anda</p>
+              <p className='md:text-[16px] text-sm'>Pasient ini meminta temu janji dengan anda</p>
               <button onClick={() => setModal(true)} class=" text-xs font-bold uppercase px-3  rounded outline-none focus:outline-none mr-1 py-3 bg-[#07AC7B] my-3 ease-linear transition-all duration-150 min-w-[150px]" type="button">Buat Temu Janji</button>
             </div>
           ) : null}
@@ -271,7 +271,7 @@ function RiskPrediction() {
           {detailAppointment != null ? (
             <div class="flex text-white flex-col sm:flex-row w-full py-4 overflow-x-auto justify-between gap-4 mt-12 items-center">
               <div data-aos="fade-up" className="rigth lg:w-6/12">
-                <div className="w-[100%] py-3 text-sm rounded-md mb-3 bg-[#363636]/20 flex justify-between px-3">
+                <div className="w-[100%] py-3 text-sm rounded-md mb-3 bg-[#363636]/20 flex md:gap-0 gap-12 justify-between px-3">
                   <p>Informasi dokter pribadi anda</p>
                   <p className='text-[#07AC7B] cursor-pointer' onClick={() => setShowInfoDokter(!showInfoDokter)}>{showInfoDokter ? 'Hidee' : 'Show'}</p>
                 </div>
@@ -314,10 +314,10 @@ function RiskPrediction() {
               </div>
 
               <div data-aos="fade-right" className="left">
-                <div className="flex justify-between">
-                  <h1 className=' font-bold text-[24px] mb-4'>Appointment</h1>
+                <div className="flex flex-col md:flex-row justify-between">
+                  <h1 className=' font-bold text-[24px]  md:mb-4 mb-2'>Appointment</h1>
                   {currentUser.role != 'user' ? (
-                    <button onClick={handleEndedAppointment} class="bg-red-500 text-white active:bg-red-600 h-fit py-2 text-xs font-bold uppercase px-3 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Temu Janji Selesai</button>
+                    <button onClick={handleEndedAppointment} class="bg-red-500 text-white active:bg-red-600 h-fit py-2 text-xs font-bold uppercase px-3 rounded outline-none focus:outline-none mr-1 md:mb-1 ease-linear transition-all duration-150 mb-3" type="button">Temu Janji Selesai</button>
                   ) : null}
 
                 </div>
@@ -418,10 +418,5 @@ function RiskPrediction() {
     </div>
   )
 }
-
-
-
-
-
 
 export default RiskPrediction

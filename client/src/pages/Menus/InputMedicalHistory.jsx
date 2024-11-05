@@ -79,9 +79,9 @@ function InputMedicalHistory() {
         <main class="bgg-bl text-white flex pb-8">
             <Side />
             <form onSubmit={handleOnSubmit} class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16 flex flex-col gap-4">
-                <ButtonOffCanvas /> 
-                <div class="font-semibold text-4xl  text-blueGray-700">Riwayat Medis Pasien</div>
-                <p class="mt-3 font-medium mb-3">Berikan informasi yang jelas dan valid</p>
+                {/* <ButtonOffCanvas />  */}
+                <div class="font-semibold text-2xl md:text-4xl  text-blueGray-700">Riwayat Medis Pasien</div>
+                <p class="md:mt-3 font-medium mb-3">Berikan informasi yang jelas dan valid</p>
                 {/* <h3 class="font-semibold text-base text-blueGray-700"></h3> */}
 
                 <section className='riwayat-keluhan shadow-lg rounded-md border px-8 py-6 border-[#07AC7B]'>
@@ -516,10 +516,10 @@ function InputMedicalHistory() {
                 ) : null}
 
                 <div className="flex justify-start md:justify-end py-4">
-                    <div className='flex gap-2 font-semibold'>
-                        <Link to={`/riwayat-medis`} className='px-3 font-semibold py-1 hover:text-[#005A8F] text-white rounded-md' type='button'>Back To Riwayat Medis</Link>
+                    <div className='flex flex-col-reverse w-full md:flex-row gap-2 font-semibold'>
+                        <Link to={`/riwayat-medis`} className='md:px-3 font-semibold py-1 hover:text-[#005A8F] text-white rounded-md' type='button'>Back To Riwayat Medis</Link>
                         {currentUser.role == 'user' && Actionriwayatmedis == 'create' ? (
-                            <button type='submit' className='px-8 py-1 bg-[#07AC7B] text-white rounded-md'>Submit</button>
+                            <button type='submit' className='px-8 py-2 md:py-1 bg-[#07AC7B] text-white rounded-md'>Submit</button>
                         ) : null}
                     </div>
                 </div>

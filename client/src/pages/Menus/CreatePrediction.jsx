@@ -20,7 +20,7 @@ function CreatePrediction() {
     const [text, setText] = useState("");
 
     useEffect(() => {
-        if(currentUser.role != 'user'){
+        if(currentUser.role == 'user'){
             return window.location = '/ringkasan-pasien';
         }
     }, [])
@@ -66,28 +66,28 @@ function CreatePrediction() {
     return (
         <section class="bgg-bl md:flex">
             <Side />
-            <div class="min-h-[90vh] p-8 w-full items-center justify-start bgg-bl text-white ">
+            <div class="md:min-h-[90vh] p-8 w-full items-center justify-start bgg-bl text-white ">
                 <div class="justify-start max-w-lg">
-                    <h1 class="text-2xl lg:text-4xl font-medium mb-3">Create Prediction</h1>
-                    <form onSubmit={handleSubmit} method='post' class="mt-8">
-                        <div class="grid gap-6 mt-5 mb-5 sm:grid-cols-1">
+                    <h1 class="text-2xl lg:text-4xl font-medium md:mb-3">Create Prediction</h1>
+                    <form onSubmit={handleSubmit} method='post' class="mt-2 md:mt-8">
+                        <div class="grid gap-6 md:mt-5 md:mb-5 mb-3 sm:grid-cols-1">
                             <div className='mt-3'>
                                 <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Prediksi Penyakit</label>
                                 <input type="text" id="first_name" class="bg-[#2C2C2C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " placeholder="Masukan prediksi penyakit pasien anda" required />
                             </div>
                         </div>
 
-                        <div className="mb-4 flex gap-3">
+                        <div className="mb-4 flex flex-col md:flex-row gap-3">
                             <textarea onChange={(e) => setText(e.target.value)} id="message" rows="4" class="block max-h-[100px] p-2.5 w-full text-sm bg-[#2c2c2c] text-white rounded-lg  border-slate-400" placeholder="Factor Pendukung yang memperkuat Prediksi..." value={text}></textarea>
 
 
                             <div className="flex flex-col lg:min-w-[130px]">
-                                <div className="flex ">
-                                    <button onClick={() => { setListFactor([...listFactor, text]); setText(""); }} type="button" class="focus:outline-none text-white bgg-dg hover:bg-blue-800  focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-4 me-2 mb-2">
+                                <div className="flex md:flex-row">
+                                    <button onClick={() => { setListFactor([...listFactor, text]); setText(""); }} type="button" class="focus:outline-none text-white bgg-dg hover:bg-blue-800  focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-4 me-2 mb-2 w-full md:w-fit">
                                         <TiPlus color='white' size={20} />
                                     </button>
 
-                                    <button onClick={() => { setListFactor([]); setText(""); }} type="button" class="focus:outline-none text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900">
+                                    <button onClick={() => { setListFactor([]); setText(""); }} type="button" class="focus:outline-none text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900 w-full md:w-fit">
                                         <FaTrash color='white' size={20} />
                                     </button>
                                 </div>

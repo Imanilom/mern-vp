@@ -82,10 +82,6 @@ function FaktorResiko() {
         }
     }
 
-
-
-
-
     return (
         <main class="bgg-bl text-white flex">
             <Side />

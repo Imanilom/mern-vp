@@ -271,11 +271,20 @@ function ScatterGraph({ data, label, keyValue, color }) {
 
         // Membuat sumbu x dan y sebagai variabel tersendiri
         const xAxis = svg.append('g')
+
             .attr('transform', `translate(0, ${height - margin.bottom - 10})`)
+            .attr('fontSize', 8)
             .call(d3.axisBottom(x)
                 .ticks(YCount)
                 .tickPadding(10)
-            );
+            )
+
+
+        xAxis
+            .selectAll('text')
+            .attr('transform', 'rotate(-45)')
+            .style('text-anchor', 'end'); // Agar teks tetap rapi
+
 
         const yAxis = svg.append('g')
             .attr('transform', `translate(${margin.left},${-margin.top})`)
@@ -285,24 +294,35 @@ function ScatterGraph({ data, label, keyValue, color }) {
 
         // Fungsi zoom
         const zoomed = (e) => {
-            const newX = e.transform.rescaleX(x);
-            const newY = e.transform.rescaleY(y);
+            try {
 
-            changeZoomText(e.transform.k);
 
-            // Update sumbu dengan skala yang sudah di-zoom
-            xAxis.call(d3.axisBottom(newX).ticks(YCount).tickPadding(10));
-            yAxis.call(d3.axisLeft(newY).ticks(YCount));
+                const newX = e.transform.rescaleX(x);
+                const newY = e.transform.rescaleY(y);
 
-            // Update garis dan lingkaran berdasarkan skala baru
-            linepath.attr('d', d3.line()
-                .x(d => newX(d[0]))
-                .y(d => newY(d[1]))
-            );
+                changeZoomText(e.transform.k);
 
-            circles
-                .attr('cx', d => newX(d[0]))
-                .attr('cy', d => newY(d[1]))
+                // Update sumbu dengan skala yang sudah di-zoom
+                xAxis.call(d3.axisBottom(newX).ticks(YCount).tickPadding(10))  
+                .selectAll('text')
+                .attr('transform', 'rotate(-45)')
+                .style('text-anchor', 'end'); // Agar teks tetap rapi
+
+                yAxis.call(d3.axisLeft(newY).ticks(YCount));
+
+                // Update garis dan lingkaran berdasarkan skala baru
+                linepath.attr('d', d3.line()
+                    .x(d => newX(d[0]))
+                    .y(d => newY(d[1]))
+                );
+
+                circles
+                    .attr('cx', d => newX(d[0]))
+                    .attr('cy', d => newY(d[1]))
+
+            } catch (err) {
+                console.log({ err })
+            }
         }
 
         svg.call(d3.zoom()

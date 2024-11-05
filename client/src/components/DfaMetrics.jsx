@@ -16,6 +16,7 @@ function DfaMetrics(props) {
     })
   }, []);
 
+
   console.log({ results });
   console.log('amann')
 
@@ -39,14 +40,14 @@ function DfaMetrics(props) {
   return (
     <div className="mt-8" data-aos="fade-right">
       <h4 className="text-lg font-semibold mb-2">
-        Metrics DFA <span className='sm:hidden text-sm'> | this table can be scrolled.</span>
+        Metrics DFA <span className='sm:hidden text-sm'></span>
       </h4>
 
       <div style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl rounded-md'>
         <table className="min-w-full rounded-md">
           <thead className="bg-[#363636]/20 ">
             <tr className="">
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document {page + 1}</th>
+              <th className="px-6 py-4 text-left text-xs whitespace-nowrap font-medium text-gray-500 uppercase tracking-wider">Document {page + 1}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
@@ -58,8 +59,7 @@ function DfaMetrics(props) {
                 ) : null}
               </th>
               <th className="px-6 py-3 text-left text-xs  uppercase tracking-wider darkgreen cursor-pointer font-semibold">
-                {page <= 2 ? (
-
+                {page < results.length / 5 - 1? (
                   <button onClick={() => setPage(page + 1)}>
                     Next {'->'}
                   </button>

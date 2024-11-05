@@ -14,6 +14,7 @@ function RiskFactor() {
   const [lengthDoc, setLengthDoc] = useState(0);
   const [docValue, setDocValue] = useState([]);
   const [modal, setModal] = useState(false);
+  const [lab, setLab] = useState(null);
   const { DoctorPatient, currentUser } = useSelector(state => state.user);
   useEffect(() => {
     AOS.init({
@@ -31,6 +32,7 @@ function RiskFactor() {
       console.log({ data })
       setLengthDoc(data.docs.length);
       setDocValue(data.docs);
+      setLab(data.lab__);
     } catch (error) {
       console.log({ error })
     }
@@ -92,10 +94,15 @@ function RiskFactor() {
           </div>
 
         ) : null}
-        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-5">Detail Labotarium</h1>
-        <p>Labotarium Patalogi, RS. sukabumi Bandung utara,  2024</p>
-        <p>Total : <span className="darkgreen">{lengthDoc} Dokumen</span> </p>
-        <Link to={`/faktor-resiko/${id}/add`} className="darkgreen w-full justify-end flex text-end my-3 font-medium text-xs uppercase cursor-pointer">Tambahkan dokumen lab terbaru</Link>
+        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-3 md:mb-5">Detail Labotarium</h1>
+        {lab ? (
+          <p className='text-sm md:text-[16px]'>Nama Lab : {lab.name_lab}</p>
+        ) : null}
+        {lab ? (
+          <p className='text-sm md:text-[16px]'>Lokasi Lab : {lab.location}</p>
+        ) : null}
+        <p className='text-sm md:text-[16px]'>Total : <span className="darkgreen">{lengthDoc} Dokumen</span> </p>
+        <Link to={`/faktor-resiko/${id}/add`} className="darkgreen w-full justify-end flex text-end md:my-3 mb-3 mt-8 font-medium text-xs uppercase cursor-pointer">Tambahkan dokumen lab terbaru</Link>
         <div class="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
           <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/30">
             <div class="flex flex-wrap items-center">
@@ -105,7 +112,7 @@ function RiskFactor() {
 
                     <p className='font-medium'>Dokumen {doc}</p>
                     {currentUser.role != 'user' ? (
-                      <h3 onClick={() => handlerDeleteDoc(docValue[doc - 1]['_id'])} class="font-semibold text-blueGray-700 text-red-600 cursor-pointer text-sm">Hapus Dokumen</h3>
+                      <h3 onClick={() => handlerDeleteDoc(docValue[doc - 1]['_id'])} class="font-semibold text-blueGray-700 text-red-600 cursor-pointer text-sm whitespace-nowrap">Hapus Dokumen</h3>
                     ) : null}
                   </>
                 ) : (

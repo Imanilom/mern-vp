@@ -7,17 +7,12 @@ import Side from "../../components/Side";
 import { useDispatch } from 'react-redux';
 
 import '../../loading.css';
-import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 import DailyMetric from '../../components/DailyMetric';
-
-// import '../../tableresponsive.css';
 import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
-import LineGraph from '../../components/LineGraph';
-import ScatterGraph from '../../components/ScatterGraph';
 import AOS from 'aos';
-import Graph3d from '../../components/Graph3d';
-import InterquartileGraph from '../../components/InterquartileGraph';
 
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 let results = []
 
@@ -25,7 +20,7 @@ export default function Metrics() {
 
   const dispatch = useDispatch();
   const { currentUser, DocterPatient } = useSelector((state) => state.user);
-
+  const navigate = useNavigate();
   const [logs, setLogs] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
@@ -53,10 +48,24 @@ export default function Metrics() {
   const [borderColor, setBorderColor] = useState([]);
 
   useEffect(() => {
-    AOS.init({
-      duration: 700
-    })
-    fetchLogs(device);
+    if (currentUser.guid == '' || !currentUser.guid) {
+      setLoading(true);
+      Swal.fire({
+        title: "Error!",
+        text: "Kamu belum memiliki guid yang valid. akses ditolak!",
+        icon: "error",
+        confirmButtonColor: "#3085d6",
+      }).then(() => {
+        return navigate('/profile');
+      });
+    } else {
+
+      AOS.init({
+        duration: 700
+      })
+      fetchLogs(device);
+    }
+
     // readFileExistOnFTP('2023-07-24', '2024-08-29');
   }, []);
 
@@ -75,14 +84,14 @@ export default function Metrics() {
       results = [];
       let url = `/api/user/test`;
       if (device) {
-        url = `/api/user/test/${device}`; 
+        url = `/api/user/test/${device}`;
       }
 
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        if(metode) url += `&method=${metode}`;
-      }else{
-        if(metode) url += `?method=${metode}`;
+        if (metode) url += `&method=${metode}`;
+      } else {
+        if (metode) url += `?method=${metode}`;
       }
       const response = await fetch(url);
       const data = await response.json();
@@ -94,7 +103,7 @@ export default function Metrics() {
 
         setMetrics([]);
         setDailyMetrics([]);
-      
+
         dispatch(clearLogsWithDailytMetric());
         setLoading(false);
         return
@@ -123,7 +132,7 @@ export default function Metrics() {
 
         setMetrics(resultCalculateMetric);
         const dailyMetrictResult = data.dailyMetric;
-        console.log({dailyMetrictResult})
+        console.log({ dailyMetrictResult })
         setDailyMetrics(dailyMetrictResult);
 
         //   // payloadRedux.dailymetricR = dailyMetrictResult;
@@ -133,7 +142,7 @@ export default function Metrics() {
           tPnn50: 0,
           tS1: 0,
           tS2: 0,
-          dfa : 0
+          dfa: 0
         }
 
         dailyMetrictResult.forEach((val) => {
@@ -153,10 +162,10 @@ export default function Metrics() {
           s1: property.tS1 / dailyMetrictResult.length,
           s2: property.tS2 / dailyMetrictResult.length,
           total: dailyMetrictResult.length,
-          dfa : property.dfa / dailyMetrictResult.length
+          dfa: property.dfa / dailyMetrictResult.length
         }
 
-        console.log({median, dailyMetrictResult})
+        console.log({ median, dailyMetrictResult })
         setMedianProperty(median);
 
         //   payloadRedux.medianPropertyR = median;
@@ -260,27 +269,27 @@ export default function Metrics() {
                   }}
                   isClearable
                   placeholderText='Cari berdasarkan range tanggal'
-                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm me-3 sm:me-0 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
-            
+
                 <select
-                    name=""
-                    id=""
-                    className="lg:p-2.5 p-3 pe-8 bg-[#2C2C2C] rounded text-sm  md:text-[16px] lg:min-w-[220px] px-3 py-3"
-                    onChange={handleChangeMetode}
-                  >
-                    <option value="" disabled selected>Choose metode</option>
-                    <option value="OC">OC</option>
-                    <option value="IQ">IQ</option>
-                    <option value="BC">BC</option>
-                  </select>
+                  name=""
+                  id=""
+                  className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] rounded text-sm w-full md:max-w-[200px]  md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                  onChange={handleChangeMetode}
+                >
+                  <option value="" disabled selected>Choose metode</option>
+                  <option value="OC">OC</option>
+                  <option value="IQ">IQ</option>
+                  <option value="BC">BC</option>
+                </select>
 
                 <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
 
               </div>
             </div>
-            
+
           </div>
         </section>
       </main>

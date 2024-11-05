@@ -12,10 +12,10 @@ function CreateTreatment() {
     const { currentUser, DocterPatient } = useSelector((state) => state.user);
     const navigate = useNavigate();
     const [medicine, setMedicine] = useState([]);
-    const [isShowList, setShowList] = useState(false);
+    const [isShowList, setShowList] = useState(true);
 
     useEffect(() => {
-        if(currentUser.role != 'user'){
+        if(currentUser.role == 'user'){
             return window.location = '/ringkasan-pasien';
         }
     }, []);
@@ -141,6 +141,7 @@ function CreateTreatment() {
                                 {isShowList ? 'Hide' : 'Show'} List
                             </div>
                             <button type='submit' className='mt-3 text-white bgg-dg w-fit px-5 py-2 rounded-md ms-auto'>Tambah Obat</button>
+                            <button type='reset' id='reset' className='mt-3 hidden text-white bgg-dg w-fit px-5 py-2 rounded-md ms-auto'>Tambah Obat</button>
                         </div>
 
                         {medicine.length > 0 && isShowList ? (

@@ -167,9 +167,9 @@ function Recommendation() {
     <main class="bgg-bl flex text-white">
       <Side />
       <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
-        <ButtonOffCanvas />
+        {/* <ButtonOffCanvas /> */}
 
-        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-4">Rekomendasi aktivitas</h1>
+        <h1 data-aos="fade-up" class="text-lg md:text-3xl font-semibold capitalize lg:text-4xl md:mb-4">Rekomendasi aktivitas</h1>
 
         {/* <div data-aos="fade-up" className=""> */}
         {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
@@ -186,7 +186,7 @@ function Recommendation() {
           }}
           isClearable
           placeholderText='Cari berdasarkan range tanggal'
-          className="py-3 px-4 bg-[#2C2C2C] rounded text-sm md:text-[14px] lg:min-w-[320px] mb-3"
+          className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
         />
         {/* {loading ? (
                       <span class="ms-4 loader "></span>
@@ -194,16 +194,16 @@ function Recommendation() {
 
         {/* </div> */}
 
-        <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg rounded ">
+        <div data-aos="fade-right" class="md:mt-4 mt-0 relative flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg rounded ">
           <div class="rounded-t bg-[#363636]/20 mb-0 px-4 py-3 border-0">
             <div class="flex  flex-wrap flex-col sm:flex-row sm:items-center items-start sm:gap-0 gap-1">
-              <div class="relative w-full px-4 max-w-full flex-grow flex-1">
+              <div class="relative w-full md:px-4 max-w-full flex-grow flex-1">
                 <h3 class="font-semibold text-sm md:text-base text-blueGray-700">Rekomendasi</h3>
               </div>
-              <div class="relative w-full px-4 max-w-full flex-grow flex-1 md:text-right">
+              <div class="relative w-full md:px-4 max-w-full flex-grow flex-1 md:text-right">
                 {currentUser.role !== 'user' ? (
                   <Link to="/createRecomendation">
-                    <button class="darkgreen  text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat rekomendasi aktivitas</button>
+                    <button class="darkgreen text-xs w-full md:w-fit text-end font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat rekomendasi aktivitas</button>
                   </Link>
                 ) : null}
               </div>

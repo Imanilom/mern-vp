@@ -7,19 +7,11 @@ import Side from "../../components/Side";
 import { useDispatch } from 'react-redux';
 
 import '../../loading.css';
-import ButtonOffCanvas from '../../components/ButtonOffCanvas';
-import DailyMetric from '../../components/DailyMetric';
-
-// import '../../tableresponsive.css';
 import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
-import LineGraph from '../../components/LineGraph';
-import ScatterGraph from '../../components/ScatterGraph';
 import AOS from 'aos';
-import Graph3d from '../../components/Graph3d';
-import InterquartileGraph from '../../components/InterquartileGraph';
 import DfaMetrics from '../../components/DfaMetrics';
 import DfaGraphic from '../../components/DfaGraphic';
-
+import Swal from 'sweetalert2';
 
 let results = []
 
@@ -60,10 +52,24 @@ export default function MonitorDFA() {
   const [splittedLog, setSplittedLog] = useState([]);
 
   useEffect(() => {
-    AOS.init({
-      duration: 700
-    })
-    fetchLogs(device);
+    if (currentUser.guid == '' || !currentUser.guid) {
+      setLoading(true);
+      Swal.fire({
+        title: "Error!",
+        text: "Kamu belum memiliki guid yang valid. akses ditolak!",
+        icon: "error",
+        confirmButtonColor: "#3085d6",
+      }).then(() => {
+        return navigate('/profile');
+      });
+    }else{
+      
+          AOS.init({
+            duration: 700
+          })
+          fetchLogs(device);
+
+    }
     // readFileExistOnFTP('2023-07-24', '2024-08-29');
   }, []);
 
@@ -168,13 +174,13 @@ export default function MonitorDFA() {
                   }}
                   isClearable
                   placeholderText='Cari berdasarkan range tanggal'
-                  className="p-3 bg-[#2C2C2C] rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] w-fit inline-block"
+                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm lg:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
                 <select
                   name=""
                   id=""
-                  className="lg:p-2.5 p-3 pe-8 bg-[#2C2C2C] rounded text-sm  md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                   className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] md:max-w-[200px] rounded text-sm w-full  md:text-[16px] lg:min-w-[220px] px-3 py-3"
                   onChange={handleChangeMetode}
                 >
                   <option value="" disabled selected>Choose metode</option>

@@ -7,17 +7,14 @@ import Side from "../../components/Side";
 import { useDispatch } from 'react-redux';
 
 import '../../loading.css';
-import ButtonOffCanvas from '../../components/ButtonOffCanvas';
-import DailyMetric from '../../components/DailyMetric';
-
-// import '../../tableresponsive.css';
 import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
 import LineGraph from '../../components/LineGraph';
 import ScatterGraph from '../../components/ScatterGraph';
 import AOS from 'aos';
 import Graph3d from '../../components/Graph3d';
 import InterquartileGraph from '../../components/InterquartileGraph';
-
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 let results = []
 
@@ -25,7 +22,7 @@ export default function Monitor() {
 
   const dispatch = useDispatch();
   const { currentUser, DocterPatient } = useSelector((state) => state.user);
-
+  const navigate = useNavigate();
   const [logs, setLogs] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
@@ -54,10 +51,24 @@ export default function Monitor() {
   const [borderColor, setBorderColor] = useState([]);
 
   useEffect(() => {
-    AOS.init({
-      duration: 700
-    })
-    fetchLogs(device);
+    if (currentUser.guid == '' || !currentUser.guid) {
+      setLoading(true);
+      Swal.fire({
+        title: "Error!",
+        text: "Kamu belum memiliki guid yang valid. akses ditolak!",
+        icon: "error",
+        confirmButtonColor: "#3085d6",
+      }).then(() => {
+        return navigate('/profile');
+      });
+    }else{
+
+      AOS.init({
+        duration: 700
+      })
+      fetchLogs(device);
+    }
+
     // readFileExistOnFTP('2023-07-24', '2024-08-29');
   }, []);
 
@@ -76,14 +87,14 @@ export default function Monitor() {
       results = [];
       let url = `/api/user/test`;
       if (device) {
-        url = `/api/user/test/${device}`; 
+        url = `/api/user/test/${device}`;
       }
 
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        if(metode) url += `&method=${metode}`;
-      }else{
-        if(metode) url += `?method=${metode}`;
+        if (metode) url += `&method=${metode}`;
+      } else {
+        if (metode) url += `?method=${metode}`;
       }
       const response = await fetch(url);
       const data = await response.json();
@@ -107,7 +118,7 @@ export default function Monitor() {
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
       const tes = groupDataByThreeAndAverage(sortedLogs);
 
-      console.log({sortedLogs, tes})
+      console.log({ sortedLogs, tes })
       set3dpData(tes);
       setLogs(sortedLogs);
       setIQRData(data.filterIQRResult);
@@ -124,7 +135,7 @@ export default function Monitor() {
       setBorderColor(borderColor);
       // // payloadRedux.borderColorR = borderColor;
 
-      
+
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
@@ -159,7 +170,7 @@ export default function Monitor() {
     return groupedData;
   };
 
- 
+
 
   const toggleVisibilityHR = () => setHRIsVisible(!isHRVisible);
   const toggleVisibilityRR = () => setRRIsVisible(!isRRVisible);
@@ -216,36 +227,36 @@ export default function Monitor() {
                   }}
                   isClearable
                   placeholderText='Cari berdasarkan range tanggal'
-                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
                 {/* {currentUser.role !== 'user' && ( */}
-                <div data-aos="fade-up" className="inline-block relative">
-                  <select
-                    name=""
-                    id=""
-                    className="lg:p-2.5 p-3 pe-8 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[220px] px-3 py-3"
-                    onChange={handleChangeDevice}
-                  >
-                    <option value="" disabled>Select device Monitoring</option>
-                    <option value="C0680226" selected>C0680226</option>
-                    <option value="BA903328">BA903328</option>
-                  </select>
-                  {loading ? <span className="ms-4 loader"></span> : null}
-                </div>
+                {/* <div data-aos="fade-up" className="inline-block relative"> */}
+                <select
+                  name=""
+                  id=""
+                  className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] rounded text-sm w-full md:max-w-[200px] md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                  onChange={handleChangeDevice}
+                >
+                  <option value="" disabled>Select device Monitoring</option>
+                  <option value="C0680226" selected>C0680226</option>
+                  <option value="BA903328">BA903328</option>
+                </select>
+                {loading ? <span className="ms-4 loader"></span> : null}
+                {/* </div> */}
                 {/* )} */}
 
                 <select
-                    name=""
-                    id=""
-                    className="lg:p-2.5 p-3 pe-8 ms-3 bg-[#2C2C2C] rounded text-sm  md:text-[16px] lg:min-w-[220px] px-3 py-3"
-                    onChange={handleChangeMetode}
-                  >
-                    <option value="" disabled selected>Choose metode</option>
-                    <option value="OC">OC</option>
-                    <option value="IQ">IQ</option>
-                    <option value="BC">BC</option>
-                  </select>
+                  name=""
+                  id=""
+                  className="lg:p-2.5 p-3 mt-4 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] rounded text-sm w-full md:max-w-[200px] md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                  onChange={handleChangeMetode}
+                >
+                  <option value="" disabled selected>Choose metode</option>
+                  <option value="OC">OC</option>
+                  <option value="IQ">IQ</option>
+                  <option value="BC">BC</option>
+                </select>
 
                 {/* <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} /> */}
 

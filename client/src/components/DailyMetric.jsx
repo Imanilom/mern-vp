@@ -22,7 +22,7 @@ function DailyMetric(props) {
   return (
     <div className="mt-8" data-aos="fade-right">
       <h4 className="text-lg font-semibold mb-2">
-        Daily Metrics <span className='sm:hidden text-sm'> | this table can be scrolled.</span>
+        Daily Metrics <span className='sm:hidden text-sm'></span>
       </h4>
 
       <div  style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl'>
