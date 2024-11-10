@@ -128,7 +128,6 @@ class OneClassSVM {
   }
 
   predict(data) {
-    // Prediksi anomali (sederhana; tidak ada logika nyata di sini)
     return data.map(point => {
       // Misalkan kita anggap bahwa jika nilai lebih dari threshold, itu anomali
       const threshold = this._calculateThreshold();
