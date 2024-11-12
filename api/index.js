@@ -23,7 +23,7 @@ import './controllers/cornjob.controller.js';
 import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import './controllers/data.controller.js';
 
-dotenv.config();
+dotenv.config({path : '../.env'});
 
 mongoose
   .connect(process.env.MONGO, {
@@ -78,6 +78,7 @@ const PORT = process.env.PORT || 5173;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);
+  console.log(process.env.PORT);
 });
 
 
