@@ -127,6 +127,8 @@ export const calculateDFA = (data, order = 1) => {
     (logBoxSizes.reduce((acc, val) => acc + Math.pow(val, 2), 0) - Math.pow(logBoxSizes.reduce((acc, val) => acc + val, 0), 2) / logBoxSizes.length);
   return alpha;
 };
+// Nilai DFA disimpan dan masuk ke array untuk di olah standar deviasi
+// data dfa / minggu untuk menentukan apakah ada anomali
 
 // Additional helper functions
 export const calculateQuartilesAndIQR = (values) => {

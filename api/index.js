@@ -59,6 +59,7 @@ app.use('/api/predictionfactor', predictionFactorRoute);
 app.use('/api/treatment', treatmentRoute);
 app.use('/api/data', data);
 app.use('/api/faktorresiko', faktorresiko);
+
 app.use(express.static(path.join(__dirname, '/client/dist')));
 
 app.get('*', (req, res) => {
