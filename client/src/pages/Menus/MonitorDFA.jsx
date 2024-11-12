@@ -120,8 +120,9 @@ export default function MonitorDFA() {
         return
       }
 
-      setResults(data.result);
-      setResults2(data.result);
+      let sortedResult = data.result.sort((a, b) => a.timestamp_tanggal - b.timestamp_tanggal)
+      setResults(sortedResult);
+      setResults2(sortedResult);
       console.log(data.result)
 
     } catch (error) {

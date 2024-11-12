@@ -12,10 +12,14 @@ function DailyMetric(props) {
   const handleDfaAvg = () => {
     let result = 0;
     let dfaValues = dailyMetrics.map(val => val.dfa);
+    let i = 0;
     dfaValues.forEach(val => {
-      result += val
+      if(typeof val == "number"){
+        result += val
+        i++;
+      }
     });
-    result = result / dfaValues.length;
+    result = result / i;
     return result.toFixed(2);
   }
 
@@ -49,7 +53,7 @@ function DailyMetric(props) {
                     <td className="px-6 py-4 whitespace-nowrap">{metric.pnn50 !== null && metric.hasOwnProperty('pnn50') ? metric.pnn50.toFixed(2) : 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.s1 !== null && metric.hasOwnProperty('s1') ?  metric.s1.toFixed(2) : 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.s2 !== null && metric.hasOwnProperty('s2') ? metric.s2.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.hasOwnProperty('dfa') ? metric.dfa.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.hasOwnProperty('dfa') ? metric.dfa.toFixed(2) : 'Data tidak mencukupi'}</td>
                   </tr>
                 );
               })

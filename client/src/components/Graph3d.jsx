@@ -66,7 +66,7 @@ function Graph3d({ data, label, color }) {
             // klo lebih maka di filter biar ga terlalu banyak slide
             processedData = processData(rawData);
         }
-        
+
         processedData.forEach(d => {
             d.date = new Date(d.date);
         });
@@ -79,7 +79,7 @@ function Graph3d({ data, label, color }) {
 
         const height = 500;
         let width = 50 * processedData.length;
-        if(processedData.length > 30){
+        if (processedData.length > 30) {
             width = 25 * processedData.length / 2;
         }
         const margin = { top: 20, right: 20, bottom: 90, left: 50 };
@@ -215,7 +215,7 @@ function Graph3d({ data, label, color }) {
         const sortedData = rawData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
         // return sortedData;
-        
+
         const uniqueValues = new Set();
         return sortedData.filter(item => {
             const value = item["avg"];
@@ -256,9 +256,10 @@ function Graph3d({ data, label, color }) {
                     </button>
                 </div>
             </div>
+            <div className="relative" data-aos="fade-right">
+                <div className='overflow-auto' id={`svg-container-${label}`} ref={chartRef}></div>
+            </div>
 
-
-            <div className='overflow-auto' id={`svg-container-${label}`} ref={chartRef}></div>
             <div id={`zoom_panel_${label}`}></div>
         </div>
     );

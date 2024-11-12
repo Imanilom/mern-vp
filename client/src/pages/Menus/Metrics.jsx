@@ -112,28 +112,36 @@ export default function Metrics() {
       // let payloadRedux = {};
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
 
-      // console.log({sortedLogs, tes})
-      setLogs(sortedLogs);
-
-      // // setBorderColor
-      const borderColor = sortedLogs.map(item => {
-        if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan 
-        if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
-        if (item.activity === 'Berolahraga') return 'rgba(116, 12, 224, 0.8)'; // Ungu untuk Berolahraga
-        // return 'rgba(75, 192, 192, 1)'; // Warna default
-        return 'rgba(7, 172, 123, 1)'; // Warna default
-      });
-
-      setBorderColor(borderColor);
-      // // payloadRedux.borderColorR = borderColor;
-
+      // dari coomit sebelumnya
       if (data && sortedLogs.length > 0) {
         const resultCalculateMetric = calculateMetrics(sortedLogs);
-
         setMetrics(resultCalculateMetric);
-        const dailyMetrictResult = data.dailyMetric;
-        console.log({ dailyMetrictResult })
+
+        let dfaHR = sortedLogs.map(log => log.HR);
+        const dailyMetrictResult = calculateDailyMetrics(sortedLogs, dfaHR, data.dailyMetric); // call here
         setDailyMetrics(dailyMetrictResult);
+        console.log({ dailyMetrictResult });
+
+        // const dailyMetrictResult = data.dailyMetric;
+        // console.log({ dailyMetrictResult })
+        // setDailyMetrics(dailyMetrictResult); // dri json
+
+        // console.log({sortedLogs, tes})
+        setLogs(sortedLogs);
+
+        // // setBorderColor
+        const borderColor = sortedLogs.map(item => {
+          if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan 
+          if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
+          if (item.activity === 'Berolahraga') return 'rgba(116, 12, 224, 0.8)'; // Ungu untuk Berolahraga
+          // return 'rgba(75, 192, 192, 1)'; // Warna default
+          return 'rgba(7, 172, 123, 1)'; // Warna default
+        });
+
+        setBorderColor(borderColor);
+        // // payloadRedux.borderColorR = borderColor;
+
+
 
         //   // payloadRedux.dailymetricR = dailyMetrictResult;
         let property = {
@@ -165,16 +173,73 @@ export default function Metrics() {
           dfa: property.dfa / dailyMetrictResult.length
         }
 
-        console.log({ median, dailyMetrictResult })
+        console.log({ median })
         setMedianProperty(median);
 
-        //   payloadRedux.medianPropertyR = median;
-      }
-    } catch (error) {
+      };
+
+
+      //   payloadRedux.medianPropertyR = median;
+    }
+    catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateDailyMetrics = (logs, CollectionHR, dailyMetric) => {
+    // console.log('HR', logs)
+    const groupedLogs = logs.reduce((acc, log) => {
+      let date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
+      let [y, m, d] = date.split('-');
+      date = `${d}-${m}-${y}`;
+
+      if (!acc[date]) acc[date] = [];
+      acc[date].push({ ...log });
+      return acc;
+    }, {});
+    // Add DFA value here..
+    // console.log(groupedLogs)
+    const dailyMetrics = Object.keys(groupedLogs).map((date, i) => {
+      // groupedLogs[date] adalah kumpulan logs sesuai dengan tanggal tanggal
+      let groupData = groupedLogs[date];
+      let HRPoint = [];
+      for (let i = 0; i < groupData.length; i++) {
+        // const element = groupData[i];
+        HRPoint.push(groupData[i]['HR']);
+        // let HRPoint = groupData[i].map(data => data.HR)
+        // console.log('HRPOINT : ', HRPoint);
+      }
+      console.log({ HRPoint }, typeof dailyMetric[i]['dfa'])
+      const dfa = dailyMetric[i]['dfa'];
+      // console.log(groupedLogs[date], i)
+      const metrics = calculateMetrics(groupedLogs[date]);
+      return { date, ...metrics, dfa };
+    });
+    // setDailyMetrics(dailyMetrics);
+    return dailyMetrics;
+  };
+
+  const calculateDFA = (data, order = 1) => {
+    const y = data.map((val, i) => data.slice(0, i + 1)
+      .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
+    const boxSizes = [...new Set(Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(val => val <= data.length / 2))];
+    const fluctuation = boxSizes.map(boxSize => {
+      const reshaped = Array.from({ length: Math.floor(data.length / boxSize) }, (_, i) => y.slice(i * boxSize, (i + 1) * boxSize));
+      const localTrends = reshaped.map(segment => {
+        const x = Array.from({ length: segment.length }, (_, i) => i);
+        const [a, b] = [0, 1].map(deg => segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length);
+        return segment.map((val, i) => a * x[i] + b);
+      });
+      return Math.sqrt(localTrends.flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
+        .reduce((acc, val) => acc + val, 0) / (reshaped.length * reshaped[0].length));
+    });
+    const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr => arr.map(val => Math.log10(val)));
+    const alpha = (logFluctuation.reduce((acc, val, i) => acc + (val * logBoxSizes[i]), 0) -
+      (logFluctuation.reduce((acc, val) => acc + val, 0) * logBoxSizes.reduce((acc, val) => acc + val, 0) / logBoxSizes.length)) /
+      (logBoxSizes.reduce((acc, val) => acc + Math.pow(val, 2), 0) - Math.pow(logBoxSizes.reduce((acc, val) => acc + val, 0), 2) / logBoxSizes.length);
+    return alpha;
   };
 
   const calculateMetrics = (logs) => {

@@ -111,8 +111,8 @@ function DfaGraphic({ data, label, keyValue, color }) {
         const drawChart = (rawData) => {
 
             let processedData = rawData.filter(d => d.dfa !== null);
-            processedData.sort((a, b) => b.tanggal - a.tanggal)
-            console.log(processedData.length)
+            processedData.sort((a, b) => a.tanggal - b.tanggal)
+            console.log(processedData.length);
             // filtering warna circle
             color = processedData.map(item => {
                 if (item.status === 'Safe') return 'rgba(69, 252, 124, 0.9)'; // Merah untuk berjalan 
