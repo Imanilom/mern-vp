@@ -10,6 +10,8 @@ import AOS from 'aos';
 let scroolState = {
     HR: 1, // daftarkan label 
     RR: 1,
+    iHR: 0,
+    iRR: 0
 };
 
 function LineGraph({ data, label, keyValue, color }) {
@@ -54,19 +56,22 @@ function LineGraph({ data, label, keyValue, color }) {
         if (opt == 'plus' && scroolState[label] < slice) {
             scroolState[label]++;
             setSlider(slider + 1);
-            simulateScroll(768 * (scroolState[label] - 1))
+            drawChart(data)
+            // simulateScroll(768 * (scroolState[label] - 1))
         } else if (opt == 'decrement' && scroolState[label] > 1) {
             setSlider(slider - 1);
             scroolState[label]--;
-            simulateScroll((768 * (scroolState[label] - 1)));
+            drawChart(data)
+            // simulateScroll((768 * (scroolState[label] - 1)));
         }
     }
 
     // useEffect(() => {
     //   // init for using label x date
     //   const parseDate = d3.timeParse('%d-%m-%Y %H:%M:%S'); // function untuk merubah string to date
-    data.forEach(d => {
+    data.forEach((d, i) => {
         // const mergeDateTime = `${d.date} ${d.time}`;
+
         d.create_at = new Date(d.timestamp * 1000); // merubah isi dari array
     });
 
@@ -76,12 +81,33 @@ function LineGraph({ data, label, keyValue, color }) {
 
     const drawChart = (rawData) => {
         let processedData2 = processData(rawData);
-        if (processedData2.length <= 30) {
-            // klo hasil filter krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
-            processedData2 = rawData;
+        // if (processedData2.length <= 30) {
+        //     // klo hasil filter krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
+        //     processedData2 = rawData;
+        // }
+
+        // let processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
+        let processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
+        console.log({ processedData, processedData2 }, keyValue)
+        processedData.forEach((d, i) => {
+            d.index = i;
+        });
+
+        let page = scroolState[keyValue] - 1;
+        let maxTitik = 40;
+
+        // Fungsi untuk mendapatkan data sesuai dengan halaman
+        function getPaginatedData(data, page, maxTitik) {
+            const startIndex = page * maxTitik;
+            const endIndex = startIndex + maxTitik;
+            return data.slice(startIndex, endIndex);
         }
-       
-        const processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
+
+        // Mendapatkan data yang diproses untuk halaman saat ini
+        const paginatedData = getPaginatedData(processedData, page, maxTitik);
+        processedData = paginatedData;
+        // console.log({ paginatedData, page }, paginatedData[0]);
+
 
         // filtering warna circle
         color = processedData.map(item => {
@@ -101,22 +127,24 @@ function LineGraph({ data, label, keyValue, color }) {
         console.log(processedData.length);
 
         const height = 500;
-        let width = 50 * processedData.length ;
-        if(processedData.length > 30){
-            width = 25 * processedData.length / 2;
-        }
+        // let width = 50 * processedData.length;
+        let width = 648;
+        // if (processedData.length > 30) {
+        //     width = 25 * processedData.length / 2;
+        // }
         const margin = { top: 20, right: 20, bottom: 90, left: 50 };
         let svgWidth;
 
         if (window.innerWidth > 980) {
-            svgWidth = 768;
+            svgWidth = 648;
         } else if (window.innerWidth > 540) {
             svgWidth = window.innerWidth * 0.7;
         } else {
             svgWidth = window.innerWidth * 0.8;
         }
 
-        setSlice(Math.floor(width / svgWidth) + 1);
+        // setSlice(Math.floor(width / svgWidth) + 1);
+        setSlice(Math.floor(processedData2.length / maxTitik) + 1);
 
         const svg = d3.select(chartRef.current) // gambar canvas 
             .append('svg')
@@ -130,7 +158,7 @@ function LineGraph({ data, label, keyValue, color }) {
             .range([margin.left, width - margin.right]);
 
         const y = d3.scaleLinear()
-            .domain([0, d3.max(processedData, d => d[keyValue]) + 10])
+            .domain([0, d3.max(processedData, d => d[keyValue]) + 50])
             .range([height - margin.bottom, margin.top]);
 
         const line = d3.line()
@@ -148,7 +176,7 @@ function LineGraph({ data, label, keyValue, color }) {
         let previousDate = null;
 
         processedData.forEach((d, i) => {
-            console.log({ d }, 'Linegraph');
+            // console.log({ d }, 'Linegraph');
             const currentDate = d.create_at.toDateString();
             if (previousDate !== currentDate) {
                 // Gambar garis putus-putus di sini
@@ -181,16 +209,20 @@ function LineGraph({ data, label, keyValue, color }) {
             .attr('cy', d => y(d[keyValue]))
             .attr('r', 4)
             .attr('fill', (d, i) => color[i % color.length])
-            .on('mouseover', (event, d) => {
+            .on('mouseover', function (event, d, i) { // Menggunakan function untuk akses parameter dengan benar
+                // console.log({ d });
                 const [xPos, yPos] = d3.pointer(event);
                 let x = xPos + 10;
+                x = xPos;
+                console.log({ x })
                 if (scroolState[label] > 1) {
-                    x = xPos - (768 * (scroolState[label] - 1));
+                    // x = xPos - (768 * (scroolState[label] - 1));
                 }
                 tooltip.style('left', `${x}px`)
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
-                    .html(`<p>Date: ${String(d.create_at).split('GMT')[0]}</p> 
+                    .html(` <p>index ${d.index} : </p> <!-- Indeks sekarang harus tampil -->
+                            <p>Date: ${String(d.create_at).split('GMT')[0]}</p> 
                             <p>Aktivitas Pasien: ${d.activity === undefined ? 'Tidak ada riwayat' : d.activity}</p>
                             <p>${keyValue}: ${d[keyValue]}</p>`);
             })
@@ -201,7 +233,7 @@ function LineGraph({ data, label, keyValue, color }) {
         // Sumbu X dengan format jam menit detik saja
         const formatTime = d3.timeFormat("%H:%M:%S");
         svg.append('g')
-            .attr('transform', `translate(-15,${height - margin.bottom})`)
+            .attr('transform', `translate(0,${height - margin.bottom})`)
             .call(d3.axisBottom(x)
                 .tickFormat(formatTime)
                 .ticks(XCount)
@@ -245,13 +277,16 @@ function LineGraph({ data, label, keyValue, color }) {
             <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
                 {slice > 1 ? (
                     <div>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
-                            <FaAngleLeft color='white' size={16} />
-
-                        </button>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
-                            <FaAngleRight color='white' size={16} />
-                        </button>
+                        {scroolState[keyValue] > 1 ? (
+                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
+                                <FaAngleLeft color='white' size={16} />
+                            </button>
+                        ) : null}
+                        {scroolState[keyValue] < slice ? (
+                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
+                                <FaAngleRight color='white' size={16} />
+                            </button>
+                        ) : null}
                     </div>
                 ) : null}
 
