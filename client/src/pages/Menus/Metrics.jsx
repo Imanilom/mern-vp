@@ -117,14 +117,14 @@ export default function Metrics() {
         const resultCalculateMetric = calculateMetrics(sortedLogs);
         setMetrics(resultCalculateMetric);
 
-        let dfaHR = sortedLogs.map(log => log.HR);
-        const dailyMetrictResult = calculateDailyMetrics(sortedLogs, dfaHR, data.dailyMetric); // call here
-        setDailyMetrics(dailyMetrictResult);
-        console.log({ dailyMetrictResult });
+        // let dfaHR = sortedLogs.map(log => log.HR);
+        // const dailyMetrictResult = calculateDailyMetrics(sortedLogs, dfaHR, data.dailyMetric); // call here
+        // setDailyMetrics(dailyMetrictResult);
+        // console.log({ dailyMetrictResult });
 
-        // const dailyMetrictResult = data.dailyMetric;
-        // console.log({ dailyMetrictResult })
-        // setDailyMetrics(dailyMetrictResult); // dri json
+        const dailyMetrictResult = data.dailyMetric;
+        console.log({ dailyMetrictResult })
+        setDailyMetrics(dailyMetrictResult); // dri json
 
         // console.log({sortedLogs, tes})
         setLogs(sortedLogs);
@@ -147,9 +147,11 @@ export default function Metrics() {
         let property = {
           tSdnn: 0,
           tRmssd: 0,
-          tPnn50: 0,
-          tS1: 0,
-          tS2: 0,
+          tMin: 0,
+          tMax: 0,
+          tHf: 0,
+          tLf: 0,
+          tRatio: 0,
           dfa: 0
         }
 
@@ -157,18 +159,22 @@ export default function Metrics() {
           // console.log(val)
           property.tSdnn += Math.floor(val.sdnn);
           property.tRmssd += Math.floor(val.rmssd);
-          property.tPnn50 += Math.floor(val.pnn50);
-          property.tS1 += Math.floor(val.s1);
-          property.tS2 += Math.floor(val.s2);
+          property.tMin += Math.floor(val.min);
+          property.tMax += Math.floor(val.max);
+          property.tHf += Math.floor(val.hf);
+          property.tLf += Math.floor(val.lf);
+          property.tRatio += Math.floor(val.lfHfRatio);
           property.dfa += Math.floor(val.dfa)
         });
 
         let median = {
           sdnn: property.tSdnn / dailyMetrictResult.length,
           rmssd: property.tRmssd / dailyMetrictResult.length,
-          pnn50: property.tPnn50 / dailyMetrictResult.length,
-          s1: property.tS1 / dailyMetrictResult.length,
-          s2: property.tS2 / dailyMetrictResult.length,
+          min: property.tMin / dailyMetrictResult.length,
+          max: property.tMax / dailyMetrictResult.length,
+          hf: property.tHf / dailyMetrictResult.length,
+          lf: property.tLf / dailyMetrictResult.length,
+          lfHfRatio: property.tRatio / dailyMetrictResult.length,
           total: dailyMetrictResult.length,
           dfa: property.dfa / dailyMetrictResult.length
         }
