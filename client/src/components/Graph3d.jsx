@@ -7,7 +7,8 @@ import AOS from 'aos';
 let scroolState = {
     HR: 1,
     RR: 1,
-    Data3dp: 1
+    Data3dp: 1,
+    iData3dp: 1
 };
 
 function Graph3d({ data, label, color }) {
@@ -49,23 +50,28 @@ function Graph3d({ data, label, color }) {
         if (opt === 'plus' && scroolState[label] < slice) {
             scroolState[label]++;
             setSlider(slider + 1);
-            simulateScroll(768 * (scroolState[label] - 1));
+            drawChart(data);
+            // simulateScroll(768 * (scroolState[label] - 1));
         } else if (opt === 'decrement' && scroolState[label] > 1) {
             setSlider(slider - 1);
             scroolState[label]--;
-            simulateScroll(768 * (scroolState[label] - 1));
+            drawChart(data);
+            // simulateScroll(768 * (scroolState[label] - 1));
         }
     };
 
     const drawChart = (rawData) => {
+        let processedData2 = processData(rawData);
         let processedData;
-        if (rawData.length <= 30) {
-            // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
-            processedData = rawData;
-        } else {
-            // klo lebih maka di filter biar ga terlalu banyak slide
-            processedData = processData(rawData);
-        }
+        // if (rawData.length <= 30) {
+        //     // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
+        //     processedData = rawData;
+        // } else {
+        //     // klo lebih maka di filter biar ga terlalu banyak slide
+        //     processedData = processData(rawData);
+        // }
+
+        processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
 
         processedData.forEach(d => {
             d.date = new Date(d.date);
@@ -73,15 +79,31 @@ function Graph3d({ data, label, color }) {
 
         XCount = processedData.length;
 
+        let page = scroolState[label] - 1;
+        let maxTitik = 40;
+
+        // Fungsi untuk mendapatkan data sesuai dengan halaman
+        function getPaginatedData(data, page, maxTitik) {
+            const startIndex = page * maxTitik;
+            const endIndex = startIndex + maxTitik;
+            return data.slice(startIndex, endIndex);
+        }
+
+        // Mendapatkan data yang diproses untuk halaman saat ini
+        const paginatedData = getPaginatedData(processedData, page, maxTitik);
+        processedData = paginatedData;
+
+
         const tooltip = d3.select(`#tooltip${label}`);
         const lastSvg = d3.select(chartRef.current);
         lastSvg.selectAll('*').remove();
 
         const height = 500;
-        let width = 50 * processedData.length;
-        if (processedData.length > 30) {
-            width = 25 * processedData.length / 2;
-        }
+        let width = 648;
+        // let width = 50 * processedData.length;
+        // if (processedData.length > 30) {
+        //     width = 25 * processedData.length / 2;
+        // }
         const margin = { top: 20, right: 20, bottom: 90, left: 50 };
         let svgWidth;
 
@@ -93,7 +115,8 @@ function Graph3d({ data, label, color }) {
             svgWidth = window.innerWidth * 0.8;
         }
 
-        setSlice(Math.floor(width / svgWidth) + 1);
+        setSlice(Math.floor(processedData2.length / maxTitik) + 1);
+        // setSlice(Math.floor(width / svgWidth) + 1);
 
         const svg = d3.select(chartRef.current)
             .append('svg')
@@ -159,9 +182,9 @@ function Graph3d({ data, label, color }) {
             .attr('fill', (d, i) => color[i % color.length])
             .on('mouseover', (event, d) => {
                 const [xPos, yPos] = d3.pointer(event);
-                let x = xPos + 10;
+                let x = xPos;
                 if (scroolState[label] > 1) {
-                    x = xPos - (768 * (scroolState[label] - 1));
+                    // x = xPos - (768 * (scroolState[label] - 1));
                 }
                 tooltip.style('left', `${x}px`)
                     .style('top', `${(yPos + 10)}px`)
@@ -237,13 +260,18 @@ function Graph3d({ data, label, color }) {
             <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
                 {slice > 1 ? (
                     <div>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
-                            <FaAngleLeft color='white' size={16} />
+                        {scroolState[label] > 1 ? (
+                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
+                                <FaAngleLeft color='white' size={16} />
+                            </button>
+                        ) : null}
 
-                        </button>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
-                            <FaAngleRight color='white' size={16} />
-                        </button>
+                        {scroolState[label] < slice ? (
+                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
+                                <FaAngleRight color='white' size={16} />
+                            </button>
+
+                        ) : null}
                     </div>
                 ) : null}
 

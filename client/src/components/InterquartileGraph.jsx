@@ -26,7 +26,7 @@ function InterquartileGraph({ data, label, color }) {
             duration: 700
         })
 
-        console.log('Interquartile log ', {data})
+        console.log('Interquartile log ', { data })
     }, [])
 
     let styleTooltype = {
@@ -57,11 +57,13 @@ function InterquartileGraph({ data, label, color }) {
         if (opt == 'plus' && scroolState[label] < slice) {
             scroolState[label]++;
             setSlider(slider + 1);
-            simulateScroll(768 * (scroolState[label] - 1))
+            drawChart(data)
+            // simulateScroll(768 * (scroolState[label] - 1))
         } else if (opt == 'decrement' && scroolState[label] > 1) {
             setSlider(slider - 1);
             scroolState[label]--;
-            simulateScroll((768 * (scroolState[label] - 1)));
+            drawChart(data)
+            // simulateScroll((768 * (scroolState[label] - 1)));
         }
     }
 
@@ -75,26 +77,41 @@ function InterquartileGraph({ data, label, color }) {
 
     const drawChart = (rawData) => {
         // Proses data untuk menghilangkan duplikat
-        console.log({ rawData })
+        // console.log({ rawData })
 
-        let processedData2;
-        if (rawData.length <= 30) {
-            // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
-            processedData2 = rawData;
-        } else {
-            // klo lebih maka di filter biar ga terlalu banyak slide
-            processedData2 = processData(rawData);
-        }
+        let processedData2 = processData(rawData);
+        // if (rawData.length <= 30) {
+        //     // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
+        //     processedData2 = rawData;
+        // } else {
+        //     // klo lebih maka di filter biar ga terlalu banyak slide
+        //     processedData2 = processData(rawData);
+        // }
 
         processedData2.forEach(d => {
             d.date = new Date(d.timestamp * 1000);
         });
 
-        const processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
+        let processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
 
         XCount = processedData.length;
-        console.log({ processedData, XCount })
+        // console.log({ processedData, XCount })
 
+        let page = scroolState[label] - 1;
+        let maxTitik = 40;
+
+        // Fungsi untuk mendapatkan data sesuai dengan halaman
+        function getPaginatedData(data, page, maxTitik) {
+            const startIndex = page * maxTitik;
+            const endIndex = startIndex + maxTitik;
+            return data.slice(startIndex, endIndex);
+        }
+
+        // Mendapatkan data yang diproses untuk halaman saat ini
+        const paginatedData = getPaginatedData(processedData, page, maxTitik);
+        processedData = paginatedData;
+
+        console.log({ paginatedData })
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
         // console.log({ label, data, tooltip })
@@ -106,10 +123,11 @@ function InterquartileGraph({ data, label, color }) {
         // Tentukan ukuran chart
         const height = 500;
         // const width = 25 * processedData.length / 2;
-        let width = 50 * processedData.length;
-        if(processedData.length > 30){
-            width = 25 * processedData.length / 2;
-        }
+        const width = 648;
+        // let width = 50 * processedData.length;
+        // if(processedData.length > 30){
+        //     width = 25 * processedData.length / 2;
+        // }
         const margin = { top: 20, right: 20, bottom: 90, left: 50 }
         let svgWidth;
 
@@ -124,7 +142,8 @@ function InterquartileGraph({ data, label, color }) {
             svgWidth = window.innerWidth * 0.8;
         }
 
-        setSlice(Math.floor(width / svgWidth) + 1); // layar lebar svg
+        // setSlice(Math.floor(width / svgWidth) + 1);
+        setSlice(Math.floor(processedData2.length / maxTitik) + 1); // layar lebar svg
         console.log({ width, svgWidth })
 
         // Buat SVG di dalam div yang menggunakan useRef
@@ -151,7 +170,7 @@ function InterquartileGraph({ data, label, color }) {
 
 
         const y = d3.scaleLinear()
-            .domain([0, d3.max(processedData, d => Math.max(d.HR, d.RR))]) // membentuk garis dari 0 hingga data value paling tinggi (max)
+            .domain([0, d3.max(processedData, d => Math.max(d.HR, d.RR)) + 50]) // membentuk garis dari 0 hingga data value paling tinggi (max)
             .range([height - margin.bottom, margin.top]);
         // Pada sumbu Y, kita biasanya ingin nilai 0 berada di bawah (koordinat terbesar), 
         // dan nilai terbesar berada di atas (koordinat terkecil). Oleh karena itu, range Y 
@@ -247,10 +266,10 @@ function InterquartileGraph({ data, label, color }) {
                 // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
                 // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
                 // console.log({ xPos, yPos, scrollX })
-                let x = xPos + 10;
+                let x = xPos;
                 if (scroolState[label] > 1) {
-                    x = xPos - (768 * (scroolState[label] - 1));
-                    console.log(x, xPos, (768 * (scroolState[label] - 1)))
+                    // x = xPos - (768 * (scroolState[label] - 1));
+                    // console.log(x, xPos, (768 * (scroolState[label] - 1)))
                 }
                 // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
                 tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
@@ -275,10 +294,10 @@ function InterquartileGraph({ data, label, color }) {
                 // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
                 // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
                 // console.log({ xPos, yPos, scrollX })
-                let x = xPos + 10;
+                let x = xPos;
                 if (scroolState[label] > 1) {
-                    x = xPos - (768 * (scroolState[label] - 1));
-                    console.log(x, xPos, (768 * (scroolState[label] - 1)), d)
+                    // x = xPos - (768 * (scroolState[label] - 1));
+                    // console.log(x, xPos, (768 * (scroolState[label] - 1)), d)
                 }
                 // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
                 tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
@@ -386,13 +405,17 @@ function InterquartileGraph({ data, label, color }) {
             <div data-aos="fade-up" className="me-auto mb-3 flex md:flex-row flex-col md:items-center md:gap-0 gap-2 sm:justify-start justify-between">
                 {slice > 1 ? (
                     <div className='md:flex-col lg:flex-row flex-row flex'>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
-                            <FaAngleLeft color='white' size={16} />
+                        {scroolState[label] > 1 ? (
+                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
+                                <FaAngleLeft color='white' size={16} />
 
-                        </button>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
-                            <FaAngleRight color='white' size={16} />
-                        </button>
+                            </button>
+                        ) : null}
+                        {scroolState[label] < slice ? (
+                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
+                                <FaAngleRight color='white' size={16} />
+                            </button>
+                        ) : null}
                     </div>
                 ) : null}
 

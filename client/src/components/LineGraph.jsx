@@ -88,7 +88,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
         // let processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
         let processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
-        console.log({ processedData, processedData2 }, keyValue)
+        // console.log({ processedData, processedData2 }, keyValue)
         processedData.forEach((d, i) => {
             d.index = i;
         });
@@ -221,7 +221,7 @@ function LineGraph({ data, label, keyValue, color }) {
                 tooltip.style('left', `${x}px`)
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
-                    .html(` <p>index ${d.index} : </p> <!-- Indeks sekarang harus tampil -->
+                    .html(` 
                             <p>Date: ${String(d.create_at).split('GMT')[0]}</p> 
                             <p>Aktivitas Pasien: ${d.activity === undefined ? 'Tidak ada riwayat' : d.activity}</p>
                             <p>${keyValue}: ${d[keyValue]}</p>`);

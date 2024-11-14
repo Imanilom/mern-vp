@@ -123,7 +123,7 @@ export default function MonitorDFA() {
       let sortedResult = data.result.sort((a, b) => a.timestamp_tanggal - b.timestamp_tanggal)
       setResults(sortedResult);
       setResults2(sortedResult);
-      console.log(data.result)
+      console.log({sortedResult})
 
     } catch (error) {
       console.error('Error fetching logs:', error);
