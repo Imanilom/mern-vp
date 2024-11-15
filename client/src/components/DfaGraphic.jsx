@@ -323,7 +323,7 @@ function DfaGraphic({ data, label, keyValue, color }) {
                     <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
-                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
                 </div>

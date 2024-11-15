@@ -413,7 +413,7 @@ function InterquartileGraph({ data, label, color }) {
                         ) : null}
                         {scroolState[label] < slice ? (
                             <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
-                                <FaAngleRight color='white' size={16} />
+                                <FaAngleRight color='white' size={16} /> 
                             </button>
                         ) : null}
                     </div>
@@ -423,13 +423,13 @@ function InterquartileGraph({ data, label, color }) {
                     <button id={`zoom_panel_${label}`} className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
-                    <button id='' className='whitespace-nowrap rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
-                    <button id='' className='whitespace-nowrap rounded-md bg-[#005A8F] px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         HR Point
                     </button>
-                    <button id='' className='whitespace-nowrap rounded-md bg-[#07AC7B] px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         RR Point
                     </button>
                 </div>

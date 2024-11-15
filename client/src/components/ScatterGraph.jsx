@@ -218,7 +218,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
             width = window.innerWidth * 0.7;
         }
 
-        const margin = { top: 20, right: 20, bottom: 30, left: 40 }
+        const margin = { top: 20, right: 20, bottom: 30, left: 30 }
 
         const svg = d3.select(chartRef.current)
             .append('svg')
@@ -366,7 +366,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
                     <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Zoom level 1
                     </button>
-                    <button id='' className='rounded-md bg-blue-500 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
                 </div>
