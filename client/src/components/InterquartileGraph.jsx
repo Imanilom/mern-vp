@@ -78,7 +78,8 @@ function InterquartileGraph({ data, label, color }) {
     const drawChart = (rawData) => {
         // Proses data untuk menghilangkan duplikat
         // console.log({ rawData })
-
+        let sizeCircleHR = [];
+        let sizeCircleRR = [];
         let processedData2 = processData(rawData);
         // if (rawData.length <= 30) {
         //     // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
@@ -110,6 +111,84 @@ function InterquartileGraph({ data, label, color }) {
         // Mendapatkan data yang diproses untuk halaman saat ini
         const paginatedData = getPaginatedData(processedData, page, maxTitik);
         processedData = paginatedData;
+
+        let colorHR = processedData.map((item, i) => {
+            if (i > 0) {
+              
+                if (processedData[i - 1]["HR"] - processedData[i]["HR"] >= 10) {
+              
+                    return 'rgba(249, 39, 39, 0.8)';
+                } else if (processedData[i - 1]["HR"] - processedData[i]["HR"] >= 5) {
+                    
+                    return 'rgba(255, 161, 0, 1)';
+                } else {
+                    return 'rgba(0, 90, 143, 1)'; // Warna default
+                }
+            } else {
+                return 'rgba(0, 90, 143, 1)'; // Warna default
+            }
+        });
+
+        let colorRR = processedData.map((item, i) => {
+            if (i > 0) {
+              
+                if (processedData[i - 1]["RR"] - processedData[i]["RR"] >= 10) {
+              
+                    return 'rgba(249, 39, 39, 0.8)';
+                } else if (processedData[i - 1]["RR"] - processedData[i]["RR"] >= 5) {
+                    
+                    return 'rgba(255, 161, 0, 1)';
+                } else {
+                    return 'rgba(7, 172, 123, 1)'; // Warna default
+                }
+            } else {
+                return 'rgba(7, 172, 123, 1)'; // Warna default
+            }
+        });
+
+        sizeCircleHR = processedData.map((item, i) => {
+            if (i > 0) {
+               
+                if (processedData[i - 1]["HR"] - processedData[i]["HR"] >= 10) {
+                   
+                    processedData[i]['label'] = "Danger";
+                    return 8; // ukuran 6 untuk damger
+                } else if (processedData[i - 1]["HR"] - processedData[i]["HR"] >= 5) {
+                    processedData[i]['label'] = "Warning";
+                    // console.log('oke kuning')
+                    return 6;
+                } else {
+                    processedData[i]['label'] = "Safe";
+                    return 4; // Warna default
+                }
+            } else {
+                processedData[i]['label'] = "Safe";
+                return 4; // Warna default
+            }
+        })
+
+        sizeCircleRR = processedData.map((item, i) => {
+            if (i > 0) {
+               
+                if (processedData[i - 1]["RR"] - processedData[i]["RR"] >= 10) {
+                   
+                    processedData[i]['label'] = "Danger";
+                    return 8; // ukuran 6 untuk damger
+                } else if (processedData[i - 1]["RR"] - processedData[i]["RR"] >= 5) {
+                    processedData[i]['label'] = "Warning";
+                    // console.log('oke kuning')
+                    return 6;
+                } else {
+                    processedData[i]['label'] = "Safe";
+                    return 4; // Warna default
+                }
+            } else {
+                processedData[i]['label'] = "Safe";
+                return 4; // Warna default
+            }
+        })
+
+
 
         console.log({ paginatedData })
         // mengambil element tooltip
@@ -202,7 +281,7 @@ function InterquartileGraph({ data, label, color }) {
         const linepathHR = svg.append('path')
             .datum(processedData)
             .attr('fill', 'none')
-            .attr('stroke', 'rgba(75, 192, 192, 1)')
+            .attr('stroke', 'rgba(0, 90, 143, 1)')
             .attr('stroke-width', 2)
             .attr('d', lineHR);
 
@@ -259,9 +338,14 @@ function InterquartileGraph({ data, label, color }) {
             .append('circle')
             .attr('cx', d => x(d.date))
             .attr('cy', d => y(d["HR"]))
-            .attr('r', 4)
-            .attr('fill', 'rgba(0, 90, 143, 1)') // Menggunakan modulo untuk memastikan warna selalu tersedia
+            .attr('r', (d, i) => sizeCircleHR[i])
+            .attr('fill', (d,i) => colorHR[i % colorHR.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
             .on('mouseover', (event, d) => {
+                let labelsPurposion;
+
+                if(d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                if(d.label == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                if(d.label == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
                 const [xPos, yPos] = d3.pointer(event); // mouse x, y
                 // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
                 // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
@@ -275,7 +359,9 @@ function InterquartileGraph({ data, label, color }) {
                 tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
-                    .html(`<p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile HR: ${d["HR"]} </p>`);
+                    .html(`
+                         ${labelsPurposion}
+                        <p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile HR: ${d["HR"]} </p>`);
             })
             .on('mouseout', () => {
                 tooltip.style('opacity', 0);
@@ -287,9 +373,15 @@ function InterquartileGraph({ data, label, color }) {
             .append('circle')
             .attr('cx', d => x(d.date))
             .attr('cy', d => y(d["RR"]))
-            .attr('r', 4)
-            .attr('fill', 'rgba(7, 172, 123, 1)') // Menggunakan modulo untuk memastikan warna selalu tersedia
+            .attr('r', (d, i) => sizeCircleRR[i])
+            .attr('fill',(d, i) => colorRR[i % colorRR.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
             .on('mouseover', (event, d) => {
+                let labelsPurposion;
+
+                if(d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                if(d.label == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                if(d.label == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
                 const [xPos, yPos] = d3.pointer(event); // mouse x, y
                 // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
                 // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
@@ -303,7 +395,9 @@ function InterquartileGraph({ data, label, color }) {
                 tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
-                    .html(`<p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile RR: ${d["RR"]} </p>`);
+                    .html(`
+                         ${labelsPurposion}
+                        <p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile RR: ${d["RR"]} </p>`);
             })
             .on('mouseout', () => {
                 tooltip.style('opacity', 0);
@@ -428,9 +522,11 @@ function InterquartileGraph({ data, label, color }) {
                     </button>
                     <button id='' className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         HR Point
+                        <span className='ms-2 w-4 h-4 bg-[#005A8F] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
                     <button id='' className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
-                        RR Point
+                        RR Point 
+                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
                 </div>
             </div>

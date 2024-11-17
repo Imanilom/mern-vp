@@ -367,7 +367,9 @@ function ScatterGraph({ data, label, keyValue, color }) {
                         Zoom level 1
                     </button>
                     <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
-                        Graphic {label}
+                        Graphic {label} 
+                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] rounded-full text-xs text-transparent'>lLL</span>
+                    
                     </button>
                 </div>
             </div>

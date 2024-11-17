@@ -326,6 +326,19 @@ function DfaGraphic({ data, label, keyValue, color }) {
                     <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
+
+                    <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                        Safe
+                        <span className='ms-2 w-4 h-4 bg-[#43ff64d9] rounded-full text-xs text-transparent'>wii</span>
+                    </button>
+                    <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                        Warning
+                        <span className='ms-2 w-4 h-4 bg-[#f67625e6] rounded-full text-xs text-transparent'>wii</span>
+                    </button>
+                    <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                        Danger
+                        <span className='ms-2 w-4 h-4 bg-[#ff0000e6] rounded-full text-xs text-transparent'>wii</span>
+                    </button>
                 </div>
             </div>
             <div className="relative overflow-x-auto" data-aos="fade-right">

@@ -43,6 +43,12 @@ function LineGraph({ data, label, keyValue, color }) {
         zIndex: 99
     }
 
+    let styleCircleInfo = {
+        width : 20 + "px",
+        height : 20 + "px",
+        borderRadius : 50 + "%"
+    }
+
     useEffect(() => {
         drawChart(data);
     }, [data])
@@ -80,6 +86,7 @@ function LineGraph({ data, label, keyValue, color }) {
     }
 
     const drawChart = (rawData) => {
+        let sizeCircle = [];
         let processedData2 = processData(rawData);
         // if (processedData2.length <= 30) {
         //     // klo hasil filter krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
@@ -110,13 +117,54 @@ function LineGraph({ data, label, keyValue, color }) {
 
 
         // filtering warna circle
-        color = processedData.map(item => {
-            if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan 
-            if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
-            if (item.activity === 'Berolahraga') return 'rgba(116, 12, 224, 0.8)'; // Ungu untuk Berolahraga
-            // return 'rgba(75, 192, 192, 1)'; // Warna default
-            return 'rgba(7, 172, 123, 1)'; // Warna default
+        // color = processedData.map(item => {
+        //     if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan 
+        //     if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
+        //     if (item.activity === 'Berolahraga') return 'rgba(116, 12, 224, 0.8)'; // Ungu untuk Berolahraga
+        //     // return 'rgba(75, 192, 192, 1)'; // Warna default
+        //     return 'rgba(7, 172, 123, 1)'; // Warna default
+        // });
+
+        color = processedData.map((item, i) => {
+            if (i > 0) {
+              
+                if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 10) {
+              
+                    return 'rgba(249, 39, 39, 0.8)';
+                } else if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 5) {
+                    
+                    return 'rgba(255, 161, 0, 1)';
+                } else {
+                    return 'rgba(7, 172, 123, 1)'; // Warna default
+                }
+            } else {
+                return 'rgba(7, 172, 123, 1)'; // Warna default
+            }
         });
+
+        sizeCircle = processedData.map((item, i) => {
+            if (i > 0) {
+               
+                if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 10) {
+                   
+                    processedData[i]['label'] = "Danger";
+                    return 8; // ukuran 6 untuk damger
+                } else if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 5) {
+                    processedData[i]['label'] = "Warning";
+                    // console.log('oke kuning')
+                    return 6;
+                } else {
+                    processedData[i]['label'] = "Safe";
+                    return 4; // Warna default
+                }
+            } else {
+                processedData[i]['label'] = "Safe";
+                return 4; // Warna default
+            }
+        })
+
+    
+        console.log({ color, processedData })
 
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
@@ -207,10 +255,15 @@ function LineGraph({ data, label, keyValue, color }) {
             .append('circle')
             .attr('cx', d => x(d.create_at))
             .attr('cy', d => y(d[keyValue]))
-            .attr('r', 4)
+            .attr('r', (d, i) => sizeCircle[i])
             .attr('fill', (d, i) => color[i % color.length])
             .on('mouseover', function (event, d, i) { // Menggunakan function untuk akses parameter dengan benar
                 // console.log({ d });
+                let labelsPurposion;
+
+                if(d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                if(d.label == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                if(d.label == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
                 const [xPos, yPos] = d3.pointer(event);
                 let x = xPos + 10;
                 x = xPos;
@@ -222,6 +275,7 @@ function LineGraph({ data, label, keyValue, color }) {
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
                     .html(` 
+                            ${labelsPurposion}
                             <p>Date: ${String(d.create_at).split('GMT')[0]}</p> 
                             <p>Aktivitas Pasien: ${d.activity === undefined ? 'Tidak ada riwayat' : d.activity}</p>
                             <p>${keyValue}: ${d[keyValue]}</p>`);
@@ -295,7 +349,8 @@ function LineGraph({ data, label, keyValue, color }) {
                         Slide {slider}
                     </button>
                     <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
-                        Graphic {label}
+                        Graphic {label} 
+                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
                 </div>
             </div>

@@ -63,6 +63,7 @@ function Graph3d({ data, label, color }) {
     const drawChart = (rawData) => {
         let processedData2 = processData(rawData);
         let processedData;
+        let sizeCircle = [];
         // if (rawData.length <= 30) {
         //     // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
         //     processedData = rawData;
@@ -93,6 +94,44 @@ function Graph3d({ data, label, color }) {
         const paginatedData = getPaginatedData(processedData, page, maxTitik);
         processedData = paginatedData;
 
+        color = processedData.map((_v, i) => {
+            if (i > 0) {
+               
+                console.log('kuning', processedData[i - 1]["avg"] - processedData[i - 1]["avg"] >= 5);
+                if (processedData[i - 1]["avg"] - processedData[i]["avg"] >= 10) {
+                   
+                    return 'rgba(249, 39, 39, 0.8)';
+                } else if (processedData[i - 1]["avg"] - processedData[i]["avg"] >= 5) {
+                   
+                    return 'rgba(255, 161, 0, 1)';
+                } else {
+                    return 'rgba(7, 172, 123, 1)'; // Warna default
+                }
+            } else {
+                return 'rgba(7, 172, 123, 1)'; // Warna default
+            }
+        })
+
+        sizeCircle = processedData.map((item, i) => {
+            if (i > 0) {
+               
+                if (processedData[i - 1]["avg"] - processedData[i]["avg"] >= 10) {
+                   
+                    processedData[i]['label'] = "Danger";
+                    return 8; // ukuran 6 untuk damger
+                } else if (processedData[i - 1]["avg"] - processedData[i]["avg"] >= 5) {
+                    processedData[i]['label'] = "Warning";
+                    // console.log('oke kuning')
+                    return 6;
+                } else {
+                    processedData[i]['label'] = "Safe";
+                    return 4; // Warna default
+                }
+            } else {
+                processedData[i]['label'] = "Safe";
+                return 4; // Warna default
+            }
+        })
 
         const tooltip = d3.select(`#tooltip${label}`);
         const lastSvg = d3.select(chartRef.current);
@@ -178,9 +217,16 @@ function Graph3d({ data, label, color }) {
             .append('circle')
             .attr('cx', d => x(d.date))
             .attr('cy', d => y(d["avg"]))
-            .attr('r', 4)
+            .attr('r', (d, i) => sizeCircle[i])
             .attr('fill', (d, i) => color[i % color.length])
             .on('mouseover', (event, d) => {
+
+                let labelsPurposion;
+
+                if(d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                if(d.label == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                if(d.label == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
                 const [xPos, yPos] = d3.pointer(event);
                 let x = xPos;
                 if (scroolState[label] > 1) {
@@ -189,7 +235,7 @@ function Graph3d({ data, label, color }) {
                 tooltip.style('left', `${x}px`)
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
-                    .html(`<p>Date: ${String(d.date).split('GMT')[0]}</p> <p>Average: ${d["avg"]}</p>`);
+                    .html(`${labelsPurposion} <p>Date: ${String(d.date).split('GMT')[0]}</p> <p>Average: ${d["avg"]}</p>`);
             })
             .on('mouseout', () => {
                 tooltip.style('opacity', 0);
@@ -281,6 +327,7 @@ function Graph3d({ data, label, color }) {
                     </button>
                     <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
                         Graphic {label}
+                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
                 </div>
             </div>
