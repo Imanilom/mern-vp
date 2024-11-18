@@ -56,8 +56,8 @@ export const dbscan = (data, epsilon, minPoints) => {
 };
 
 // Other metric calculation functions
-export const calculateHRVMetrics = (rrIntervals) => {
-  if (rrIntervals.length < 2) {
+export const calculateHRVMetrics = (allHRIntervals) => {
+  if (allHRIntervals.length < 2) {
     // Not enough data points to calculate metrics
     return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null, dfa: null, minRR: null, maxRR: null, hf: null, lf: null, lfhratio: null };
   }
@@ -67,8 +67,8 @@ export const calculateHRVMetrics = (rrIntervals) => {
   let nn50Count = 0;
 
   // Calculate NN intervals and differences
-  for (let i = 1; i < rrIntervals.length; i++) {
-    const diff = Math.abs(rrIntervals[i] - rrIntervals[i - 1]);
+  for (let i = 1; i < allHRIntervals.length; i++) {
+    const diff = Math.abs(allHRIntervals[i] - allHRIntervals[i - 1]);
     nnIntervals.push(diff);
 
     // For RMSSD
@@ -93,16 +93,16 @@ export const calculateHRVMetrics = (rrIntervals) => {
   const pnn50 = (nn50Count / (nnIntervals.length - 1)) * 100; // Number of intervals above 50 ms
 
   // Calculate S1 and S2
-  const diff1 = rrIntervals.slice(1).map((val, index) => val - rrIntervals[index]);
-  const sum1 = rrIntervals.slice(1).map((val, index) => val + rrIntervals[index]);
+  const diff1 = allHRIntervals.slice(1).map((val, index) => val - allHRIntervals[index]);
+  const sum1 = allHRIntervals.slice(1).map((val, index) => val + allHRIntervals[index]);
 
   const s1 = Math.sqrt(diff1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / diff1.length) / Math.sqrt(2);
   const s2 = Math.sqrt(sum1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / sum1.length) / Math.sqrt(2);
 
-  const dfa = calculateDFA(rrIntervals); // Make sure calculateDFA is defined correctly
-  const minRR = Math.min(...rrIntervals);
-  const maxRR = Math.max(...rrIntervals);
-  const { hf, lf, lfhratio } = calculateFrequencyDomain(rrIntervals); // Ensure this function is implemented correctly
+  const dfa = calculateDFA(allHRIntervals); // Make sure calculateDFA is defined correctly
+  const minRR = Math.min(...allHRIntervals);
+  const maxRR = Math.max(...allHRIntervals);
+  const { hf, lf, lfhratio } = calculateFrequencyDomain(allHRIntervals); // Ensure this function is implemented correctly
 
   return { pnn50, dfa, minRR, maxRR, rmssd, sdnn, hf, lf, lfhratio, s1, s2 };
 };
@@ -161,12 +161,12 @@ const calculatePercentile = (values, percentile) => {
   };
   
   
-  export function calculateAdvancedMetrics(rrIntervals) {
-    if (rrIntervals.length < 2) {
+  export function calculateAdvancedMetrics(allHRIntervals) {
+    if (allHRIntervals.length < 2) {
         return null; // Not enough data for calculation
     }
 
-    const sortedIntervals = rrIntervals.slice().sort((a, b) => a - b); // Copy and sort
+    const sortedIntervals = allHRIntervals.slice().sort((a, b) => a - b); // Copy and sort
 
     // Median 3dp
     const midIndex = Math.floor(sortedIntervals.length / 2);
@@ -177,15 +177,15 @@ const calculatePercentile = (values, percentile) => {
     const median3dp = parseFloat(median.toFixed(3)); // Round to 3 decimals
 
     // Mean, Max, Min
-    const sum = rrIntervals.reduce((acc, val) => acc + val, 0);
-    const mean = sum / rrIntervals.length;
-    const max = Math.max(...rrIntervals);
-    const min = Math.min(...rrIntervals);
-    const dfa = calculateDFA(rrIntervals); // Make sure calculateDFA is defined correctly
+    const sum = allHRIntervals.reduce((acc, val) => acc + val, 0);
+    const mean = sum / allHRIntervals.length;
+    const max = Math.max(...allHRIntervals);
+    const min = Math.min(...allHRIntervals);
+    const dfa = calculateDFA(allHRIntervals); // Make sure calculateDFA is defined correctly
     // RMSSD
     const squaredDiffs = [];
-    for (let i = 1; i < rrIntervals.length; i++) {
-        const diff = rrIntervals[i] - rrIntervals[i - 1];
+    for (let i = 1; i < allHRIntervals.length; i++) {
+        const diff = allHRIntervals[i] - allHRIntervals[i - 1];
         squaredDiffs.push(diff * diff);
     }
     const rmssd = Math.sqrt(
@@ -195,20 +195,20 @@ const calculatePercentile = (values, percentile) => {
     // SDNN (Standard Deviation of NN intervals)
     const avgNN = mean; // Mean RR is the same as the average NN interval
     const sdnn = Math.sqrt(
-        rrIntervals.reduce((acc, val) => acc + Math.pow(val - avgNN, 2), 0) /
-        (rrIntervals.length - 1)
+        allHRIntervals.reduce((acc, val) => acc + Math.pow(val - avgNN, 2), 0) /
+        (allHRIntervals.length - 1)
     );
 
     // Pad to power of two
-    const paddedRRIntervals = padToPowerOfTwo(rrIntervals);
+    const paddedallHRIntervals = padToPowerOfTwo(allHRIntervals);
 
     // FFT implementation
-    const fftResult = fft(paddedRRIntervals);
-    const powerSpectrum = fftResult.map((value) => Math.sqrt(value.real * value.real + value.imag * value.imag) / paddedRRIntervals.length);
+    const fftResult = fft(paddedallHRIntervals);
+    const powerSpectrum = fftResult.map((value) => Math.sqrt(value.real * value.real + value.imag * value.imag) / paddedallHRIntervals.length);
 
     // Frequency bins
     const samplingRate = 1; // Adjust according to actual sampling rate
-    const frequencies = Array.from({ length: paddedRRIntervals.length / 2 }, (_, i) => i * (samplingRate / paddedRRIntervals.length));
+    const frequencies = Array.from({ length: paddedallHRIntervals.length / 2 }, (_, i) => i * (samplingRate / paddedallHRIntervals.length));
 
     let hf = 0, lf = 0;
     for (let i = 0; i < powerSpectrum.length; i++) {
@@ -372,13 +372,13 @@ function boxCoxTransform(values, lambda) {
 };
 
 // Function to calculate frequency domain features
-export const calculateFrequencyDomain = (rrIntervals) => {
-    if (!Array.isArray(rrIntervals) || rrIntervals.length === 0) {
+export const calculateFrequencyDomain = (allHRIntervals) => {
+    if (!Array.isArray(allHRIntervals) || allHRIntervals.length === 0) {
       throw new Error('Invalid RR intervals array');
     }
   
     const fs = 4; // Sampling frequency (4 Hz is common in HRV analysis)
-    const interpolatedRR = interpolateRR(rrIntervals, fs);
+    const interpolatedRR = interpolateRR(allHRIntervals, fs);
   
     // Pad RR intervals to the next power of two
     const paddedRR = padToPowerOfTwo(interpolatedRR);
@@ -491,14 +491,14 @@ const bitReverse = (n, bits) => {
   };
   
   // Function to interpolate RR intervals
-  const interpolateRR = (rrIntervals, fs) => {
+  const interpolateRR = (allHRIntervals, fs) => {
     const time = [];
     const interpolatedRR = [];
   
     let currentTime = 0;
-    for (let i = 0; i < rrIntervals.length; i++) {
+    for (let i = 0; i < allHRIntervals.length; i++) {
       time.push(currentTime);
-      currentTime += rrIntervals[i] / 1000; // RR interval in seconds
+      currentTime += allHRIntervals[i] / 1000; // RR interval in seconds
     }
   
     const duration = time[time.length - 1];
@@ -510,8 +510,8 @@ const bitReverse = (n, bits) => {
     for (let i = 1; i < time.length; i++) {
       const t1 = time[i - 1];
       const t2 = time[i];
-      const rr1 = rrIntervals[i - 1];
-      const rr2 = rrIntervals[i];
+      const rr1 = allHRIntervals[i - 1];
+      const rr2 = allHRIntervals[i];
   
       const slope = (rr2 - rr1) / (t2 - t1);
       for (let t of interpolatedTime) {
