@@ -23,10 +23,11 @@ import './controllers/cornjob.controller.js';
 import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import './controllers/data.controller.js';
 
-dotenv.config();
+dotenv.config({path : '../.env'});
 
 mongoose
-  .connect(process.env.MONGO, {
+  // .connect(process.env.MONGO, {
+  .connect("mongodb://localhost:27017/healthdevice", {
     serverSelectionTimeoutMS: 30000, // Increase server selection timeout to 30 seconds
     socketTimeoutMS: 45000, // Increase socket timeout to 45 seconds
   })
@@ -79,6 +80,7 @@ const PORT = process.env.PORT || 5173;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);
+  console.log(process.env.PORT);
 });
 
 

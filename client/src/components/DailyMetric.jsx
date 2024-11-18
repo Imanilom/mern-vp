@@ -8,14 +8,18 @@ function DailyMetric(props) {
     })
   }, []);
   const { dailyMetrics, medianProperty } = props;
-  console.log({ dailyMetrics })
+  console.log({ dailyMetrics, medianProperty })
   const handleDfaAvg = () => {
     let result = 0;
     let dfaValues = dailyMetrics.map(val => val.dfa);
+    let i = 0;
     dfaValues.forEach(val => {
-      result += val
+      if(typeof val == "number"){
+        result += val
+        i++;
+      }
     });
-    result = result / dfaValues.length;
+    result = result / i;
     return result.toFixed(2);
   }
 
@@ -32,9 +36,11 @@ function DailyMetric(props) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SDNN</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RMSSD</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">pNN50</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">hf</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">lf</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">lfHfRatio</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
             </tr>
           </thead>
@@ -46,10 +52,12 @@ function DailyMetric(props) {
                     <td className="px-6 py-4 whitespace-nowrap">{metric.date}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.sdnn !== null && metric.hasOwnProperty('sdnn') ? metric.sdnn.toFixed(2) : 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.rmssd !== null && metric.hasOwnProperty('rmssd') ? metric.rmssd.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.pnn50 !== null && metric.hasOwnProperty('pnn50') ? metric.pnn50.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.s1 !== null && metric.hasOwnProperty('s1') ?  metric.s1.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.s2 !== null && metric.hasOwnProperty('s2') ? metric.s2.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.hasOwnProperty('dfa') ? metric.dfa.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.min !== null && metric.hasOwnProperty('min') ? metric.min.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.max !== null && metric.hasOwnProperty('max') ? metric.max.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.hf !== null && metric.hasOwnProperty('hf') ?  metric.hf.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.lf !== null && metric.hasOwnProperty('lf') ? metric.lf.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.lfHfRatio !== null && metric.hasOwnProperty('lfHfRatio') ? metric.lfHfRatio.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.hasOwnProperty('dfa') ? metric.dfa.toFixed(2) : 'Data tidak mencukupi'}</td>
                   </tr>
                 );
               })
@@ -64,12 +72,14 @@ function DailyMetric(props) {
         <table className="min-w-full ">
           <thead className="bg-[#363636]/20">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SDNN</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RMSSD</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">pNN50</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S1</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S2</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">hf</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">lf</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">lfHfRatio</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
               {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th> */}
             </tr>
@@ -81,9 +91,12 @@ function DailyMetric(props) {
                 <td className="px-6 py-4 whitespace-nowrap">{dailyMetrics[dailyMetrics.length - 1]['date']} - {dailyMetrics[0]['date']} </td>
                 <td className="px-6 py-4 whitespace-nowrap">{medianProperty.sdnn.toFixed(2)}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{medianProperty.rmssd.toFixed(2)}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{medianProperty.pnn50.toFixed(2)}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s1.toFixed(2)}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{medianProperty.s2.toFixed(2)}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{medianProperty.min.toFixed(2)}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{medianProperty.max.toFixed(2)}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{medianProperty.hf.toFixed(2)}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{medianProperty.lf.toFixed(2)}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{medianProperty.lfHfRatio.toFixed(2)}</td>
+
                 <td className="px-6 py-4 whitespace-nowrap">{handleDfaAvg()}</td>
                 {/* <td className="px-6 py-4 whitespace-nowrap">{medianProperty.total}</td> */}
               </tr>
