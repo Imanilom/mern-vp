@@ -214,10 +214,6 @@ class OneClassSVM {
 }
 
 
-const fs = require("fs");
-const path = require("path");
-const Log = require("./models/Log"); // Sesuaikan dengan model log Anda
-const { filterIQ, calculateAdvancedMetrics } = require("./utils"); // Sesuaikan dengan utility functions Anda
 
 const processHeartRateData = async () => {
   try {
