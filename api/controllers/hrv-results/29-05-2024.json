@@ -1,0 +1,4924 @@
+{
+  "metrics": {
+    "dfa": 1.2300536877010657,
+    "adfa": {
+      "alphaPlus": 1.224991408999485,
+      "alphaMinus": null
+    },
+    "median3dp": 109,
+    "mean": 108.10929853181077,
+    "max": 123,
+    "min": 90,
+    "rmssd": 3.7564758898615485,
+    "sdnn": 5.856909918052705,
+    "hf": 3.7903224977032344,
+    "lf": 10.207706165842477,
+    "lfHfRatio": 2.6930970048136773
+  },
+  "filteredLogs": [
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:38:51",
+      "HR": 94,
+      "RR": 661,
+      "rrRMS": 646,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:38:53",
+      "HR": 94,
+      "RR": 678,
+      "rrRMS": 662,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:38:56",
+      "HR": 94,
+      "RR": 629,
+      "rrRMS": 614,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:38:58",
+      "HR": 95,
+      "RR": 624,
+      "rrRMS": 609,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:39:00",
+      "HR": 95,
+      "RR": 655,
+      "rrRMS": 640,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:39:03",
+      "HR": 93,
+      "RR": 656,
+      "rrRMS": 641,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:39:05",
+      "HR": 93,
+      "RR": 649,
+      "rrRMS": 634,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:39:08",
+      "HR": 95,
+      "RR": 643,
+      "rrRMS": 628,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:39:10",
+      "HR": 95,
+      "RR": 632,
+      "rrRMS": 617,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:39:12",
+      "HR": 96,
+      "RR": 635,
+      "rrRMS": 620,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:39:18",
+      "HR": 95,
+      "RR": 639,
+      "rrRMS": 624,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:39:21",
+      "HR": 96,
+      "RR": 653,
+      "rrRMS": 638,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:54:31",
+      "HR": 95,
+      "RR": 651,
+      "rrRMS": 636,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:54:33",
+      "HR": 95,
+      "RR": 625,
+      "rrRMS": 610,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:54:35",
+      "HR": 96,
+      "RR": 629,
+      "rrRMS": 614,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:54:38",
+      "HR": 98,
+      "RR": 620,
+      "rrRMS": 605,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:54:43",
+      "HR": 100,
+      "RR": 593,
+      "rrRMS": 579,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:54:51",
+      "HR": 100,
+      "RR": 610,
+      "rrRMS": 596,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:01",
+      "HR": 100,
+      "RR": 605,
+      "rrRMS": 591,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:05",
+      "HR": 106,
+      "RR": 567,
+      "rrRMS": 554,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:11",
+      "HR": 102,
+      "RR": 623,
+      "rrRMS": 608,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:22",
+      "HR": 99,
+      "RR": 612,
+      "rrRMS": 598,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:26",
+      "HR": 102,
+      "RR": 596,
+      "rrRMS": 582,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:29",
+      "HR": 101,
+      "RR": 643,
+      "rrRMS": 628,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:31",
+      "HR": 99,
+      "RR": 638,
+      "rrRMS": 623,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:41",
+      "HR": 94,
+      "RR": 654,
+      "rrRMS": 639,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:43",
+      "HR": 94,
+      "RR": 637,
+      "rrRMS": 622,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:45",
+      "HR": 96,
+      "RR": 639,
+      "rrRMS": 624,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:48",
+      "HR": 95,
+      "RR": 665,
+      "rrRMS": 649,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:52",
+      "HR": 92,
+      "RR": 687,
+      "rrRMS": 671,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:56",
+      "HR": 90,
+      "RR": 667,
+      "rrRMS": 651,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:55:58",
+      "HR": 91,
+      "RR": 674,
+      "rrRMS": 658,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:03",
+      "HR": 92,
+      "RR": 648,
+      "rrRMS": 633,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:06",
+      "HR": 96,
+      "RR": 604,
+      "rrRMS": 590,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:10",
+      "HR": 103,
+      "RR": 580,
+      "rrRMS": 566,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:14",
+      "HR": 105,
+      "RR": 619,
+      "rrRMS": 604,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:20",
+      "HR": 100,
+      "RR": 616,
+      "rrRMS": 602,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:29",
+      "HR": 97,
+      "RR": 652,
+      "rrRMS": 637,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:35",
+      "HR": 97,
+      "RR": 625,
+      "rrRMS": 610,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:38",
+      "HR": 98,
+      "RR": 622,
+      "rrRMS": 607,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:40",
+      "HR": 97,
+      "RR": 628,
+      "rrRMS": 613,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:43",
+      "HR": 97,
+      "RR": 628,
+      "rrRMS": 613,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:51",
+      "HR": 99,
+      "RR": 620,
+      "rrRMS": 605,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:56:54",
+      "HR": 99,
+      "RR": 609,
+      "rrRMS": 595,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:08",
+      "HR": 97,
+      "RR": 631,
+      "rrRMS": 616,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:13",
+      "HR": 97,
+      "RR": 625,
+      "rrRMS": 610,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:16",
+      "HR": 98,
+      "RR": 618,
+      "rrRMS": 604,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:19",
+      "HR": 99,
+      "RR": 626,
+      "rrRMS": 611,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:23",
+      "HR": 98,
+      "RR": 636,
+      "rrRMS": 621,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:24",
+      "HR": 97,
+      "RR": 632,
+      "rrRMS": 617,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:32",
+      "HR": 96,
+      "RR": 635,
+      "rrRMS": 620,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:34",
+      "HR": 96,
+      "RR": 636,
+      "rrRMS": 621,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:39",
+      "HR": 97,
+      "RR": 626,
+      "rrRMS": 611,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:42",
+      "HR": 97,
+      "RR": 630,
+      "rrRMS": 615,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:44",
+      "HR": 97,
+      "RR": 640,
+      "rrRMS": 625,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:57:59",
+      "HR": 100,
+      "RR": 612,
+      "rrRMS": 598,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:58:08",
+      "HR": 98,
+      "RR": 627,
+      "rrRMS": 612,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:58:17",
+      "HR": 99,
+      "RR": 630,
+      "rrRMS": 615,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "08:58:22",
+      "HR": 98,
+      "RR": 623,
+      "rrRMS": 608,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "09:04:04",
+      "HR": 101,
+      "RR": 622,
+      "rrRMS": 607,
+      "aktivitas": "perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:02",
+      "HR": 103,
+      "RR": 575,
+      "rrRMS": 562,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:11",
+      "HR": 110,
+      "RR": 542,
+      "rrRMS": 529,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:13",
+      "HR": 110,
+      "RR": 567,
+      "rrRMS": 554,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:19",
+      "HR": 109,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:26",
+      "HR": 110,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:30",
+      "HR": 109,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:37",
+      "HR": 110,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:45",
+      "HR": 109,
+      "RR": 565,
+      "rrRMS": 552,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:48",
+      "HR": 111,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:53",
+      "HR": 107,
+      "RR": 572,
+      "rrRMS": 559,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "15:59:58",
+      "HR": 109,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:00:04",
+      "HR": 110,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:00:12",
+      "HR": 111,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:00:18",
+      "HR": 111,
+      "RR": 548,
+      "rrRMS": 535,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:00:24",
+      "HR": 109,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:00:32",
+      "HR": 112,
+      "RR": 531,
+      "rrRMS": 519,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:00:38",
+      "HR": 111,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:00:42",
+      "HR": 107,
+      "RR": 569,
+      "rrRMS": 556,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:00:48",
+      "HR": 110,
+      "RR": 553,
+      "rrRMS": 540,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:00",
+      "HR": 109,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:12",
+      "HR": 110,
+      "RR": 565,
+      "rrRMS": 552,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:16",
+      "HR": 110,
+      "RR": 549,
+      "rrRMS": 536,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:19",
+      "HR": 102,
+      "RR": 607,
+      "rrRMS": 593,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:20",
+      "HR": 106,
+      "RR": 603,
+      "rrRMS": 589,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:24",
+      "HR": 104,
+      "RR": 572,
+      "rrRMS": 559,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:28",
+      "HR": 108,
+      "RR": 567,
+      "rrRMS": 554,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:33",
+      "HR": 108,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:38",
+      "HR": 108,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:44",
+      "HR": 109,
+      "RR": 555,
+      "rrRMS": 542,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:01:55",
+      "HR": 116,
+      "RR": 529,
+      "rrRMS": 517,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:02:07",
+      "HR": 114,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:02:14",
+      "HR": 111,
+      "RR": 572,
+      "rrRMS": 559,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:02:22",
+      "HR": 109,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:02:28",
+      "HR": 113,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:02:36",
+      "HR": 112,
+      "RR": 546,
+      "rrRMS": 533,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:02:44",
+      "HR": 114,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:02:48",
+      "HR": 107,
+      "RR": 598,
+      "rrRMS": 584,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:00",
+      "HR": 112,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:02",
+      "HR": 108,
+      "RR": 547,
+      "rrRMS": 534,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:04",
+      "HR": 107,
+      "RR": 609,
+      "rrRMS": 595,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:10",
+      "HR": 102,
+      "RR": 593,
+      "rrRMS": 579,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:11",
+      "HR": 103,
+      "RR": 605,
+      "rrRMS": 591,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:15",
+      "HR": 103,
+      "RR": 578,
+      "rrRMS": 564,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:26",
+      "HR": 108,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:31",
+      "HR": 110,
+      "RR": 569,
+      "rrRMS": 556,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:31",
+      "HR": 105,
+      "RR": 588,
+      "rrRMS": 574,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:40",
+      "HR": 108,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:42",
+      "HR": 111,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:50",
+      "HR": 113,
+      "RR": 533,
+      "rrRMS": 521,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:03:59",
+      "HR": 113,
+      "RR": 550,
+      "rrRMS": 537,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:04:10",
+      "HR": 114,
+      "RR": 533,
+      "rrRMS": 521,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:04:16",
+      "HR": 113,
+      "RR": 538,
+      "rrRMS": 525,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:13:34",
+      "HR": 110,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:13:39",
+      "HR": 107,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:13:48",
+      "HR": 113,
+      "RR": 539,
+      "rrRMS": 526,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:13:54",
+      "HR": 110,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:03",
+      "HR": 114,
+      "RR": 538,
+      "rrRMS": 525,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:08",
+      "HR": 110,
+      "RR": 570,
+      "rrRMS": 557,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:13",
+      "HR": 107,
+      "RR": 564,
+      "rrRMS": 551,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:24",
+      "HR": 110,
+      "RR": 574,
+      "rrRMS": 561,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:26",
+      "HR": 109,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:30",
+      "HR": 108,
+      "RR": 549,
+      "rrRMS": 536,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:36",
+      "HR": 111,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:46",
+      "HR": 117,
+      "RR": 528,
+      "rrRMS": 516,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:50",
+      "HR": 111,
+      "RR": 586,
+      "rrRMS": 572,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:14:55",
+      "HR": 106,
+      "RR": 584,
+      "rrRMS": 570,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:02",
+      "HR": 112,
+      "RR": 543,
+      "rrRMS": 530,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:06",
+      "HR": 108,
+      "RR": 589,
+      "rrRMS": 575,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:10",
+      "HR": 105,
+      "RR": 596,
+      "rrRMS": 582,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:13",
+      "HR": 105,
+      "RR": 592,
+      "rrRMS": 578,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:18",
+      "HR": 106,
+      "RR": 560,
+      "rrRMS": 547,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:26",
+      "HR": 112,
+      "RR": 538,
+      "rrRMS": 525,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:35",
+      "HR": 113,
+      "RR": 552,
+      "rrRMS": 539,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:44",
+      "HR": 115,
+      "RR": 531,
+      "rrRMS": 519,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:52",
+      "HR": 112,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:15:58",
+      "HR": 109,
+      "RR": 573,
+      "rrRMS": 560,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:16:06",
+      "HR": 114,
+      "RR": 525,
+      "rrRMS": 513,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:16:26",
+      "HR": 119,
+      "RR": 541,
+      "rrRMS": 528,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:16:32",
+      "HR": 112,
+      "RR": 569,
+      "rrRMS": 556,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:16:38",
+      "HR": 109,
+      "RR": 564,
+      "rrRMS": 551,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:16:52",
+      "HR": 117,
+      "RR": 510,
+      "rrRMS": 498,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:16:55",
+      "HR": 119,
+      "RR": 510,
+      "rrRMS": 498,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:17:15",
+      "HR": 113,
+      "RR": 569,
+      "rrRMS": 556,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:17:21",
+      "HR": 113,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:17:30",
+      "HR": 114,
+      "RR": 536,
+      "rrRMS": 523,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:17:43",
+      "HR": 116,
+      "RR": 547,
+      "rrRMS": 534,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:17:48",
+      "HR": 110,
+      "RR": 564,
+      "rrRMS": 551,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:17:53",
+      "HR": 110,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:17:58",
+      "HR": 108,
+      "RR": 572,
+      "rrRMS": 559,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:18:05",
+      "HR": 111,
+      "RR": 539,
+      "rrRMS": 526,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:18:15",
+      "HR": 115,
+      "RR": 530,
+      "rrRMS": 518,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:18:24",
+      "HR": 114,
+      "RR": 543,
+      "rrRMS": 530,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:18:29",
+      "HR": 111,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:18:35",
+      "HR": 110,
+      "RR": 563,
+      "rrRMS": 550,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:18:44",
+      "HR": 113,
+      "RR": 540,
+      "rrRMS": 527,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:18:55",
+      "HR": 116,
+      "RR": 545,
+      "rrRMS": 532,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:19:04",
+      "HR": 113,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:19:07",
+      "HR": 107,
+      "RR": 564,
+      "rrRMS": 551,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:19:21",
+      "HR": 117,
+      "RR": 521,
+      "rrRMS": 509,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:19:29",
+      "HR": 111,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:19:39",
+      "HR": 112,
+      "RR": 565,
+      "rrRMS": 552,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:19:46",
+      "HR": 115,
+      "RR": 527,
+      "rrRMS": 515,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:19:52",
+      "HR": 120,
+      "RR": 505,
+      "rrRMS": 493,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:19:55",
+      "HR": 111,
+      "RR": 615,
+      "rrRMS": 601,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:19:58",
+      "HR": 104,
+      "RR": 597,
+      "rrRMS": 583,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:20:02",
+      "HR": 104,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:20:13",
+      "HR": 112,
+      "RR": 546,
+      "rrRMS": 533,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:20:23",
+      "HR": 115,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:20:28",
+      "HR": 110,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:20:34",
+      "HR": 109,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:20:45",
+      "HR": 117,
+      "RR": 518,
+      "rrRMS": 506,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:20:56",
+      "HR": 115,
+      "RR": 534,
+      "rrRMS": 521,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:21:05",
+      "HR": 113,
+      "RR": 560,
+      "rrRMS": 547,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:21:14",
+      "HR": 114,
+      "RR": 549,
+      "rrRMS": 536,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:21:25",
+      "HR": 116,
+      "RR": 526,
+      "rrRMS": 514,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:21:36",
+      "HR": 113,
+      "RR": 552,
+      "rrRMS": 539,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:21:43",
+      "HR": 112,
+      "RR": 560,
+      "rrRMS": 547,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:21:53",
+      "HR": 114,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:22:32",
+      "HR": 114,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:22:39",
+      "HR": 112,
+      "RR": 540,
+      "rrRMS": 527,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:22:53",
+      "HR": 113,
+      "RR": 548,
+      "rrRMS": 535,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:23:02",
+      "HR": 111,
+      "RR": 553,
+      "rrRMS": 540,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:23:04",
+      "HR": 108,
+      "RR": 563,
+      "rrRMS": 550,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:23:09",
+      "HR": 107,
+      "RR": 574,
+      "rrRMS": 561,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:23:13",
+      "HR": 107,
+      "RR": 568,
+      "rrRMS": 555,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:23:17",
+      "HR": 105,
+      "RR": 597,
+      "rrRMS": 583,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:23:29",
+      "HR": 117,
+      "RR": 527,
+      "rrRMS": 515,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:23:38",
+      "HR": 115,
+      "RR": 538,
+      "rrRMS": 525,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:23:55",
+      "HR": 118,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:01",
+      "HR": 109,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:07",
+      "HR": 111,
+      "RR": 577,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:12",
+      "HR": 110,
+      "RR": 578,
+      "rrRMS": 564,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:17",
+      "HR": 106,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:27",
+      "HR": 108,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:30",
+      "HR": 107,
+      "RR": 593,
+      "rrRMS": 579,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:34",
+      "HR": 111,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:39",
+      "HR": 110,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:45",
+      "HR": 109,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:50",
+      "HR": 109,
+      "RR": 579,
+      "rrRMS": 565,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:24:54",
+      "HR": 106,
+      "RR": 593,
+      "rrRMS": 579,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:00",
+      "HR": 105,
+      "RR": 590,
+      "rrRMS": 576,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:02",
+      "HR": 104,
+      "RR": 598,
+      "rrRMS": 584,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:06",
+      "HR": 106,
+      "RR": 568,
+      "rrRMS": 555,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:11",
+      "HR": 107,
+      "RR": 575,
+      "rrRMS": 562,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:15",
+      "HR": 106,
+      "RR": 585,
+      "rrRMS": 571,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:23",
+      "HR": 106,
+      "RR": 577,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:24",
+      "HR": 108,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:29",
+      "HR": 108,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:36",
+      "HR": 112,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:46",
+      "HR": 115,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:50",
+      "HR": 110,
+      "RR": 591,
+      "rrRMS": 577,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:25:59",
+      "HR": 109,
+      "RR": 552,
+      "rrRMS": 539,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:26:05",
+      "HR": 113,
+      "RR": 550,
+      "rrRMS": 537,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:26:08",
+      "HR": 108,
+      "RR": 590,
+      "rrRMS": 576,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:26:12",
+      "HR": 106,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:26:16",
+      "HR": 105,
+      "RR": 586,
+      "rrRMS": 572,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:26:21",
+      "HR": 106,
+      "RR": 547,
+      "rrRMS": 534,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:26:25",
+      "HR": 106,
+      "RR": 612,
+      "rrRMS": 598,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:27:40",
+      "HR": 108,
+      "RR": 568,
+      "rrRMS": 555,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:27:44",
+      "HR": 108,
+      "RR": 577,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:27:53",
+      "HR": 115,
+      "RR": 520,
+      "rrRMS": 508,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:27:59",
+      "HR": 111,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:28:07",
+      "HR": 112,
+      "RR": 560,
+      "rrRMS": 547,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:28:12",
+      "HR": 110,
+      "RR": 565,
+      "rrRMS": 552,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:28:18",
+      "HR": 110,
+      "RR": 555,
+      "rrRMS": 542,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:28:23",
+      "HR": 108,
+      "RR": 578,
+      "rrRMS": 564,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:28:30",
+      "HR": 111,
+      "RR": 539,
+      "rrRMS": 526,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:28:44",
+      "HR": 115,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:28:48",
+      "HR": 110,
+      "RR": 584,
+      "rrRMS": 570,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:28:52",
+      "HR": 106,
+      "RR": 576,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:28:58",
+      "HR": 108,
+      "RR": 542,
+      "rrRMS": 529,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:05",
+      "HR": 112,
+      "RR": 578,
+      "rrRMS": 564,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:09",
+      "HR": 107,
+      "RR": 585,
+      "rrRMS": 571,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:13",
+      "HR": 104,
+      "RR": 599,
+      "rrRMS": 585,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:17",
+      "HR": 103,
+      "RR": 587,
+      "rrRMS": 573,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:21",
+      "HR": 105,
+      "RR": 592,
+      "rrRMS": 578,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:25",
+      "HR": 104,
+      "RR": 593,
+      "rrRMS": 579,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:27",
+      "HR": 103,
+      "RR": 595,
+      "rrRMS": 581,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:31",
+      "HR": 104,
+      "RR": 594,
+      "rrRMS": 580,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:36",
+      "HR": 106,
+      "RR": 569,
+      "rrRMS": 556,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:29:40",
+      "HR": 105,
+      "RR": 579,
+      "rrRMS": 565,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:32:14",
+      "HR": 108,
+      "RR": 591,
+      "rrRMS": 577,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:32:19",
+      "HR": 107,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:32:25",
+      "HR": 111,
+      "RR": 570,
+      "rrRMS": 557,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:32:29",
+      "HR": 107,
+      "RR": 588,
+      "rrRMS": 574,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:32:33",
+      "HR": 106,
+      "RR": 579,
+      "rrRMS": 565,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:32:38",
+      "HR": 106,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:32:43",
+      "HR": 108,
+      "RR": 588,
+      "rrRMS": 574,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:32:46",
+      "HR": 105,
+      "RR": 592,
+      "rrRMS": 578,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:32:52",
+      "HR": 109,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:00",
+      "HR": 112,
+      "RR": 555,
+      "rrRMS": 542,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:03",
+      "HR": 109,
+      "RR": 576,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:07",
+      "HR": 106,
+      "RR": 602,
+      "rrRMS": 588,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:11",
+      "HR": 104,
+      "RR": 599,
+      "rrRMS": 585,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:15",
+      "HR": 104,
+      "RR": 601,
+      "rrRMS": 587,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:18",
+      "HR": 103,
+      "RR": 592,
+      "rrRMS": 578,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:22",
+      "HR": 104,
+      "RR": 591,
+      "rrRMS": 577,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:30",
+      "HR": 104,
+      "RR": 582,
+      "rrRMS": 568,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:30",
+      "HR": 105,
+      "RR": 591,
+      "rrRMS": 577,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:36",
+      "HR": 109,
+      "RR": 536,
+      "rrRMS": 523,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:43",
+      "HR": 113,
+      "RR": 569,
+      "rrRMS": 556,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:49",
+      "HR": 108,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:54",
+      "HR": 110,
+      "RR": 575,
+      "rrRMS": 562,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:33:58",
+      "HR": 107,
+      "RR": 577,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:02",
+      "HR": 105,
+      "RR": 589,
+      "rrRMS": 575,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:07",
+      "HR": 103,
+      "RR": 604,
+      "rrRMS": 590,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:09",
+      "HR": 103,
+      "RR": 583,
+      "rrRMS": 569,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:13",
+      "HR": 103,
+      "RR": 605,
+      "rrRMS": 591,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:17",
+      "HR": 103,
+      "RR": 588,
+      "rrRMS": 574,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:21",
+      "HR": 105,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:25",
+      "HR": 105,
+      "RR": 588,
+      "rrRMS": 574,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:29",
+      "HR": 105,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:35",
+      "HR": 110,
+      "RR": 568,
+      "rrRMS": 555,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:43",
+      "HR": 114,
+      "RR": 528,
+      "rrRMS": 516,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:51",
+      "HR": 111,
+      "RR": 545,
+      "rrRMS": 532,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:34:58",
+      "HR": 113,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:03",
+      "HR": 108,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:09",
+      "HR": 110,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:14",
+      "HR": 107,
+      "RR": 569,
+      "rrRMS": 556,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:23",
+      "HR": 114,
+      "RR": 560,
+      "rrRMS": 547,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:29",
+      "HR": 111,
+      "RR": 547,
+      "rrRMS": 534,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:35",
+      "HR": 112,
+      "RR": 568,
+      "rrRMS": 555,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:41",
+      "HR": 109,
+      "RR": 533,
+      "rrRMS": 521,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:46",
+      "HR": 109,
+      "RR": 578,
+      "rrRMS": 564,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:48",
+      "HR": 105,
+      "RR": 607,
+      "rrRMS": 593,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:54",
+      "HR": 103,
+      "RR": 600,
+      "rrRMS": 586,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:35:55",
+      "HR": 103,
+      "RR": 591,
+      "rrRMS": 577,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:02",
+      "HR": 108,
+      "RR": 563,
+      "rrRMS": 550,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:05",
+      "HR": 107,
+      "RR": 584,
+      "rrRMS": 570,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:09",
+      "HR": 106,
+      "RR": 579,
+      "rrRMS": 565,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:14",
+      "HR": 106,
+      "RR": 588,
+      "rrRMS": 574,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:21",
+      "HR": 113,
+      "RR": 542,
+      "rrRMS": 529,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:27",
+      "HR": 109,
+      "RR": 572,
+      "rrRMS": 559,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:31",
+      "HR": 109,
+      "RR": 578,
+      "rrRMS": 564,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:35",
+      "HR": 106,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:39",
+      "HR": 104,
+      "RR": 604,
+      "rrRMS": 590,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:43",
+      "HR": 105,
+      "RR": 580,
+      "rrRMS": 566,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:47",
+      "HR": 106,
+      "RR": 586,
+      "rrRMS": 572,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:51",
+      "HR": 105,
+      "RR": 587,
+      "rrRMS": 573,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:36:55",
+      "HR": 105,
+      "RR": 590,
+      "rrRMS": 576,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:01",
+      "HR": 107,
+      "RR": 560,
+      "rrRMS": 547,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:04",
+      "HR": 107,
+      "RR": 596,
+      "rrRMS": 582,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:09",
+      "HR": 102,
+      "RR": 628,
+      "rrRMS": 613,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:10",
+      "HR": 102,
+      "RR": 585,
+      "rrRMS": 571,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:15",
+      "HR": 107,
+      "RR": 578,
+      "rrRMS": 564,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:20",
+      "HR": 108,
+      "RR": 574,
+      "rrRMS": 561,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:27",
+      "HR": 111,
+      "RR": 543,
+      "rrRMS": 530,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:37",
+      "HR": 113,
+      "RR": 567,
+      "rrRMS": 554,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:41",
+      "HR": 108,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:47",
+      "HR": 109,
+      "RR": 573,
+      "rrRMS": 560,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:52",
+      "HR": 108,
+      "RR": 577,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:55",
+      "HR": 107,
+      "RR": 582,
+      "rrRMS": 568,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:37:59",
+      "HR": 105,
+      "RR": 604,
+      "rrRMS": 590,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:02",
+      "HR": 102,
+      "RR": 601,
+      "rrRMS": 587,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:07",
+      "HR": 103,
+      "RR": 579,
+      "rrRMS": 565,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:10",
+      "HR": 104,
+      "RR": 593,
+      "rrRMS": 579,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:17",
+      "HR": 105,
+      "RR": 582,
+      "rrRMS": 568,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:17",
+      "HR": 104,
+      "RR": 621,
+      "rrRMS": 606,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:21",
+      "HR": 100,
+      "RR": 622,
+      "rrRMS": 607,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:23",
+      "HR": 100,
+      "RR": 618,
+      "rrRMS": 604,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:26",
+      "HR": 100,
+      "RR": 623,
+      "rrRMS": 608,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:28",
+      "HR": 99,
+      "RR": 626,
+      "rrRMS": 611,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:31",
+      "HR": 99,
+      "RR": 607,
+      "rrRMS": 593,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:35",
+      "HR": 101,
+      "RR": 607,
+      "rrRMS": 593,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:38",
+      "HR": 101,
+      "RR": 591,
+      "rrRMS": 577,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:41",
+      "HR": 103,
+      "RR": 588,
+      "rrRMS": 574,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:44",
+      "HR": 102,
+      "RR": 631,
+      "rrRMS": 616,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:47",
+      "HR": 99,
+      "RR": 627,
+      "rrRMS": 612,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:50",
+      "HR": 100,
+      "RR": 596,
+      "rrRMS": 582,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:38:56",
+      "HR": 107,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:39:19",
+      "HR": 123,
+      "RR": 583,
+      "rrRMS": 569,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:39:21",
+      "HR": 101,
+      "RR": 766,
+      "rrRMS": 748,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:39:23",
+      "HR": 90,
+      "RR": 648,
+      "rrRMS": 633,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:39:26",
+      "HR": 95,
+      "RR": 603,
+      "rrRMS": 589,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:39:35",
+      "HR": 115,
+      "RR": 537,
+      "rrRMS": 524,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:00",
+      "HR": 123,
+      "RR": 538,
+      "rrRMS": 525,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:12",
+      "HR": 116,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:18",
+      "HR": 110,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:29",
+      "HR": 116,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:37",
+      "HR": 113,
+      "RR": 535,
+      "rrRMS": 522,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:40",
+      "HR": 109,
+      "RR": 588,
+      "rrRMS": 574,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:44",
+      "HR": 105,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:48",
+      "HR": 104,
+      "RR": 603,
+      "rrRMS": 589,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:51",
+      "HR": 102,
+      "RR": 604,
+      "rrRMS": 590,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:55",
+      "HR": 104,
+      "RR": 598,
+      "rrRMS": 584,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:40:58",
+      "HR": 104,
+      "RR": 615,
+      "rrRMS": 601,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:41:03",
+      "HR": 101,
+      "RR": 602,
+      "rrRMS": 588,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:41:05",
+      "HR": 101,
+      "RR": 579,
+      "rrRMS": 565,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:41:10",
+      "HR": 104,
+      "RR": 590,
+      "rrRMS": 576,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:41:15",
+      "HR": 112,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:41:19",
+      "HR": 107,
+      "RR": 595,
+      "rrRMS": 581,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:41:24",
+      "HR": 108,
+      "RR": 569,
+      "rrRMS": 556,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:41:32",
+      "HR": 111,
+      "RR": 565,
+      "rrRMS": 552,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:41:43",
+      "HR": 117,
+      "RR": 545,
+      "rrRMS": 532,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:41:51",
+      "HR": 113,
+      "RR": 536,
+      "rrRMS": 523,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:42:01",
+      "HR": 116,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:42:06",
+      "HR": 110,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:42:11",
+      "HR": 107,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:42:18",
+      "HR": 106,
+      "RR": 582,
+      "rrRMS": 568,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:42:19",
+      "HR": 107,
+      "RR": 568,
+      "rrRMS": 555,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:42:24",
+      "HR": 107,
+      "RR": 580,
+      "rrRMS": 566,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:42:30",
+      "HR": 108,
+      "RR": 552,
+      "rrRMS": 539,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:42:40",
+      "HR": 114,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:42:46",
+      "HR": 111,
+      "RR": 534,
+      "rrRMS": 521,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:43:01",
+      "HR": 117,
+      "RR": 536,
+      "rrRMS": 523,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:43:07",
+      "HR": 113,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:43:16",
+      "HR": 113,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:49:07",
+      "HR": 118,
+      "RR": 528,
+      "rrRMS": 516,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:50:21",
+      "HR": 118,
+      "RR": 536,
+      "rrRMS": 523,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:50:35",
+      "HR": 117,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:50:41",
+      "HR": 109,
+      "RR": 572,
+      "rrRMS": 559,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:50:47",
+      "HR": 110,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:50:51",
+      "HR": 108,
+      "RR": 580,
+      "rrRMS": 566,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:50:58",
+      "HR": 109,
+      "RR": 548,
+      "rrRMS": 535,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:51:12",
+      "HR": 115,
+      "RR": 537,
+      "rrRMS": 524,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:51:18",
+      "HR": 113,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:51:21",
+      "HR": 111,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:51:31",
+      "HR": 114,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:51:38",
+      "HR": 111,
+      "RR": 545,
+      "rrRMS": 532,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:51:51",
+      "HR": 114,
+      "RR": 563,
+      "rrRMS": 550,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:51:55",
+      "HR": 110,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:52:11",
+      "HR": 120,
+      "RR": 537,
+      "rrRMS": 524,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:52:13",
+      "HR": 112,
+      "RR": 568,
+      "rrRMS": 555,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:52:21",
+      "HR": 112,
+      "RR": 535,
+      "rrRMS": 522,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:52:35",
+      "HR": 118,
+      "RR": 540,
+      "rrRMS": 527,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:52:54",
+      "HR": 119,
+      "RR": 515,
+      "rrRMS": 503,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:53:03",
+      "HR": 112,
+      "RR": 539,
+      "rrRMS": 526,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:53:13",
+      "HR": 112,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:53:19",
+      "HR": 111,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:53:28",
+      "HR": 111,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:53:33",
+      "HR": 112,
+      "RR": 573,
+      "rrRMS": 560,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:53:39",
+      "HR": 110,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:53:49",
+      "HR": 113,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:53:57",
+      "HR": 113,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:54:06",
+      "HR": 112,
+      "RR": 549,
+      "rrRMS": 536,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:54:18",
+      "HR": 118,
+      "RR": 526,
+      "rrRMS": 514,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:54:24",
+      "HR": 112,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:54:32",
+      "HR": 113,
+      "RR": 543,
+      "rrRMS": 530,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:54:40",
+      "HR": 112,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:54:47",
+      "HR": 111,
+      "RR": 539,
+      "rrRMS": 526,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:00",
+      "HR": 113,
+      "RR": 560,
+      "rrRMS": 547,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:06",
+      "HR": 110,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:12",
+      "HR": 109,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:18",
+      "HR": 111,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:26",
+      "HR": 112,
+      "RR": 532,
+      "rrRMS": 520,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:35",
+      "HR": 114,
+      "RR": 567,
+      "rrRMS": 554,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:40",
+      "HR": 108,
+      "RR": 579,
+      "rrRMS": 565,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:45",
+      "HR": 109,
+      "RR": 555,
+      "rrRMS": 542,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:53",
+      "HR": 113,
+      "RR": 542,
+      "rrRMS": 529,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:55:58",
+      "HR": 111,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:56:04",
+      "HR": 109,
+      "RR": 552,
+      "rrRMS": 539,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:56:21",
+      "HR": 115,
+      "RR": 539,
+      "rrRMS": 526,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:56:28",
+      "HR": 112,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:56:35",
+      "HR": 111,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:56:45",
+      "HR": 113,
+      "RR": 527,
+      "rrRMS": 515,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:56:51",
+      "HR": 110,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:56:57",
+      "HR": 110,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:57:05",
+      "HR": 115,
+      "RR": 533,
+      "rrRMS": 521,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:57:10",
+      "HR": 111,
+      "RR": 603,
+      "rrRMS": 589,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:57:13",
+      "HR": 105,
+      "RR": 580,
+      "rrRMS": 566,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:57:26",
+      "HR": 117,
+      "RR": 542,
+      "rrRMS": 529,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:57:30",
+      "HR": 108,
+      "RR": 598,
+      "rrRMS": 584,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:57:35",
+      "HR": 107,
+      "RR": 541,
+      "rrRMS": 528,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:57:43",
+      "HR": 110,
+      "RR": 576,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:57:51",
+      "HR": 114,
+      "RR": 532,
+      "rrRMS": 520,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:57:55",
+      "HR": 110,
+      "RR": 601,
+      "rrRMS": 587,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:58:02",
+      "HR": 112,
+      "RR": 527,
+      "rrRMS": 515,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:58:11",
+      "HR": 113,
+      "RR": 530,
+      "rrRMS": 518,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:58:22",
+      "HR": 113,
+      "RR": 550,
+      "rrRMS": 537,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:58:26",
+      "HR": 111,
+      "RR": 546,
+      "rrRMS": 533,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:58:34",
+      "HR": 112,
+      "RR": 547,
+      "rrRMS": 534,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:58:45",
+      "HR": 114,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:58:56",
+      "HR": 113,
+      "RR": 575,
+      "rrRMS": 562,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:59:03",
+      "HR": 111,
+      "RR": 549,
+      "rrRMS": 536,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:59:10",
+      "HR": 112,
+      "RR": 555,
+      "rrRMS": 542,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:59:42",
+      "HR": 119,
+      "RR": 521,
+      "rrRMS": 509,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:59:44",
+      "HR": 120,
+      "RR": 510,
+      "rrRMS": 498,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:59:47",
+      "HR": 120,
+      "RR": 517,
+      "rrRMS": 505,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "16:59:59",
+      "HR": 115,
+      "RR": 549,
+      "rrRMS": 536,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:00:06",
+      "HR": 112,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:00:12",
+      "HR": 109,
+      "RR": 565,
+      "rrRMS": 552,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:00:18",
+      "HR": 110,
+      "RR": 559,
+      "rrRMS": 546,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:00:23",
+      "HR": 108,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:00:30",
+      "HR": 109,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:00:36",
+      "HR": 111,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:06:51",
+      "HR": 107,
+      "RR": 579,
+      "rrRMS": 565,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:40:15",
+      "HR": 117,
+      "RR": 535,
+      "rrRMS": 522,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:40:28",
+      "HR": 113,
+      "RR": 537,
+      "rrRMS": 524,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:40:33",
+      "HR": 114,
+      "RR": 525,
+      "rrRMS": 513,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:40:44",
+      "HR": 113,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:40:54",
+      "HR": 115,
+      "RR": 574,
+      "rrRMS": 561,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:40:57",
+      "HR": 108,
+      "RR": 601,
+      "rrRMS": 587,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:41:03",
+      "HR": 103,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:41:06",
+      "HR": 107,
+      "RR": 560,
+      "rrRMS": 547,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:41:13",
+      "HR": 111,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:41:21",
+      "HR": 113,
+      "RR": 543,
+      "rrRMS": 530,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:41:33",
+      "HR": 113,
+      "RR": 539,
+      "rrRMS": 526,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:41:40",
+      "HR": 112,
+      "RR": 553,
+      "rrRMS": 540,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:41:46",
+      "HR": 112,
+      "RR": 547,
+      "rrRMS": 534,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:41:55",
+      "HR": 112,
+      "RR": 536,
+      "rrRMS": 523,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:00",
+      "HR": 110,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:06",
+      "HR": 111,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:11",
+      "HR": 107,
+      "RR": 586,
+      "rrRMS": 572,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:17",
+      "HR": 107,
+      "RR": 567,
+      "rrRMS": 554,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:21",
+      "HR": 107,
+      "RR": 568,
+      "rrRMS": 555,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:24",
+      "HR": 106,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:29",
+      "HR": 107,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:35",
+      "HR": 108,
+      "RR": 582,
+      "rrRMS": 568,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:41",
+      "HR": 110,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:48",
+      "HR": 114,
+      "RR": 522,
+      "rrRMS": 510,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:42:55",
+      "HR": 110,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:43:05",
+      "HR": 114,
+      "RR": 542,
+      "rrRMS": 529,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:43:14",
+      "HR": 113,
+      "RR": 542,
+      "rrRMS": 529,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:43:18",
+      "HR": 109,
+      "RR": 586,
+      "rrRMS": 572,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:43:41",
+      "HR": 120,
+      "RR": 520,
+      "rrRMS": 508,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:48:37",
+      "HR": 111,
+      "RR": 564,
+      "rrRMS": 551,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:48:48",
+      "HR": 112,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:48:59",
+      "HR": 116,
+      "RR": 533,
+      "rrRMS": 521,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:49:03",
+      "HR": 111,
+      "RR": 574,
+      "rrRMS": 561,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:49:13",
+      "HR": 108,
+      "RR": 541,
+      "rrRMS": 528,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:49:18",
+      "HR": 111,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:49:28",
+      "HR": 112,
+      "RR": 542,
+      "rrRMS": 529,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:49:40",
+      "HR": 116,
+      "RR": 540,
+      "rrRMS": 527,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:49:51",
+      "HR": 113,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:50:02",
+      "HR": 115,
+      "RR": 527,
+      "rrRMS": 515,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:50:18",
+      "HR": 113,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:50:23",
+      "HR": 108,
+      "RR": 555,
+      "rrRMS": 542,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:50:41",
+      "HR": 109,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:50:54",
+      "HR": 110,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:50:58",
+      "HR": 111,
+      "RR": 567,
+      "rrRMS": 554,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:51:00",
+      "HR": 109,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:51:05",
+      "HR": 110,
+      "RR": 555,
+      "rrRMS": 542,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:51:11",
+      "HR": 110,
+      "RR": 552,
+      "rrRMS": 539,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:51:20",
+      "HR": 112,
+      "RR": 545,
+      "rrRMS": 532,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:51:26",
+      "HR": 110,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:51:38",
+      "HR": 111,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:51:41",
+      "HR": 112,
+      "RR": 548,
+      "rrRMS": 535,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:51:58",
+      "HR": 111,
+      "RR": 556,
+      "rrRMS": 543,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:04",
+      "HR": 112,
+      "RR": 546,
+      "rrRMS": 533,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:07",
+      "HR": 111,
+      "RR": 552,
+      "rrRMS": 539,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:07",
+      "HR": 111,
+      "RR": 558,
+      "rrRMS": 545,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:18",
+      "HR": 115,
+      "RR": 535,
+      "rrRMS": 522,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:26",
+      "HR": 113,
+      "RR": 553,
+      "rrRMS": 540,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:37",
+      "HR": 114,
+      "RR": 543,
+      "rrRMS": 530,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:42",
+      "HR": 110,
+      "RR": 582,
+      "rrRMS": 568,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:46",
+      "HR": 107,
+      "RR": 591,
+      "rrRMS": 577,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:50",
+      "HR": 105,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:52:59",
+      "HR": 113,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:53:05",
+      "HR": 111,
+      "RR": 549,
+      "rrRMS": 536,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:53:25",
+      "HR": 119,
+      "RR": 521,
+      "rrRMS": 509,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:53:32",
+      "HR": 112,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:53:38",
+      "HR": 110,
+      "RR": 538,
+      "rrRMS": 525,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:53:43",
+      "HR": 108,
+      "RR": 565,
+      "rrRMS": 552,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:53:54",
+      "HR": 122,
+      "RR": 552,
+      "rrRMS": 539,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:04",
+      "HR": 116,
+      "RR": 518,
+      "rrRMS": 506,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:09",
+      "HR": 111,
+      "RR": 569,
+      "rrRMS": 556,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:13",
+      "HR": 107,
+      "RR": 580,
+      "rrRMS": 566,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:18",
+      "HR": 108,
+      "RR": 578,
+      "rrRMS": 564,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:23",
+      "HR": 106,
+      "RR": 567,
+      "rrRMS": 554,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:28",
+      "HR": 107,
+      "RR": 562,
+      "rrRMS": 549,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:35",
+      "HR": 113,
+      "RR": 534,
+      "rrRMS": 521,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:43",
+      "HR": 111,
+      "RR": 535,
+      "rrRMS": 522,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:51",
+      "HR": 112,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:54:56",
+      "HR": 110,
+      "RR": 564,
+      "rrRMS": 551,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:55:03",
+      "HR": 111,
+      "RR": 546,
+      "rrRMS": 533,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:55:11",
+      "HR": 113,
+      "RR": 541,
+      "rrRMS": 528,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:55:21",
+      "HR": 114,
+      "RR": 526,
+      "rrRMS": 514,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:56:02",
+      "HR": 117,
+      "RR": 545,
+      "rrRMS": 532,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:56:10",
+      "HR": 112,
+      "RR": 555,
+      "rrRMS": 542,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:56:16",
+      "HR": 111,
+      "RR": 543,
+      "rrRMS": 530,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "17:56:23",
+      "HR": 111,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:00:47",
+      "HR": 114,
+      "RR": 545,
+      "rrRMS": 532,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:00:57",
+      "HR": 115,
+      "RR": 554,
+      "rrRMS": 541,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:01:04",
+      "HR": 113,
+      "RR": 545,
+      "rrRMS": 532,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:01:11",
+      "HR": 111,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:01:17",
+      "HR": 111,
+      "RR": 544,
+      "rrRMS": 531,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:01:23",
+      "HR": 110,
+      "RR": 557,
+      "rrRMS": 544,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:01:32",
+      "HR": 112,
+      "RR": 553,
+      "rrRMS": 540,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:01:45",
+      "HR": 114,
+      "RR": 546,
+      "rrRMS": 533,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:01:57",
+      "HR": 111,
+      "RR": 555,
+      "rrRMS": 542,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:02:12",
+      "HR": 114,
+      "RR": 541,
+      "rrRMS": 528,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:02:28",
+      "HR": 120,
+      "RR": 517,
+      "rrRMS": 505,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:02:45",
+      "HR": 116,
+      "RR": 529,
+      "rrRMS": 517,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:02:51",
+      "HR": 112,
+      "RR": 543,
+      "rrRMS": 530,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:02:58",
+      "HR": 111,
+      "RR": 565,
+      "rrRMS": 552,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:03",
+      "HR": 109,
+      "RR": 592,
+      "rrRMS": 578,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:06",
+      "HR": 106,
+      "RR": 593,
+      "rrRMS": 579,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:11",
+      "HR": 106,
+      "RR": 577,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:16",
+      "HR": 106,
+      "RR": 575,
+      "rrRMS": 562,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:20",
+      "HR": 106,
+      "RR": 585,
+      "rrRMS": 571,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:25",
+      "HR": 105,
+      "RR": 576,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:33",
+      "HR": 108,
+      "RR": 577,
+      "rrRMS": 563,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:35",
+      "HR": 108,
+      "RR": 560,
+      "rrRMS": 547,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:45",
+      "HR": 109,
+      "RR": 564,
+      "rrRMS": 551,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:03:59",
+      "HR": 110,
+      "RR": 566,
+      "rrRMS": 553,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:04:34",
+      "HR": 112,
+      "RR": 551,
+      "rrRMS": 538,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:04:39",
+      "HR": 112,
+      "RR": 549,
+      "rrRMS": 536,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:10:48",
+      "HR": 107,
+      "RR": 584,
+      "rrRMS": 570,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "18:22:56",
+      "HR": 116,
+      "RR": 528,
+      "rrRMS": 516,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:17",
+      "HR": 102,
+      "RR": 565,
+      "rrRMS": 552,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:21",
+      "HR": 105,
+      "RR": 590,
+      "rrRMS": 576,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:27",
+      "HR": 108,
+      "RR": 568,
+      "rrRMS": 555,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:30",
+      "HR": 106,
+      "RR": 624,
+      "rrRMS": 609,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:33",
+      "HR": 102,
+      "RR": 586,
+      "rrRMS": 572,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:36",
+      "HR": 103,
+      "RR": 614,
+      "rrRMS": 600,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:42",
+      "HR": 105,
+      "RR": 590,
+      "rrRMS": 576,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:44",
+      "HR": 104,
+      "RR": 587,
+      "rrRMS": 573,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:49",
+      "HR": 107,
+      "RR": 574,
+      "rrRMS": 561,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:52",
+      "HR": 105,
+      "RR": 605,
+      "rrRMS": 591,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:08:56",
+      "HR": 105,
+      "RR": 595,
+      "rrRMS": 581,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:09:00",
+      "HR": 104,
+      "RR": 581,
+      "rrRMS": 567,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:09:12",
+      "HR": 116,
+      "RR": 525,
+      "rrRMS": 513,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:09:22",
+      "HR": 113,
+      "RR": 549,
+      "rrRMS": 536,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:09:30",
+      "HR": 112,
+      "RR": 542,
+      "rrRMS": 529,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:09:39",
+      "HR": 113,
+      "RR": 535,
+      "rrRMS": 522,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:10:00",
+      "HR": 118,
+      "RR": 522,
+      "rrRMS": 510,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:11:39",
+      "HR": 115,
+      "RR": 532,
+      "rrRMS": 520,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:23",
+      "HR": 103,
+      "RR": 535,
+      "rrRMS": 522,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:24",
+      "HR": 103,
+      "RR": 575,
+      "rrRMS": 562,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:28",
+      "HR": 105,
+      "RR": 597,
+      "rrRMS": 583,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:31",
+      "HR": 103,
+      "RR": 620,
+      "rrRMS": 605,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:34",
+      "HR": 101,
+      "RR": 625,
+      "rrRMS": 610,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:37",
+      "HR": 99,
+      "RR": 640,
+      "rrRMS": 625,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:40",
+      "HR": 99,
+      "RR": 609,
+      "rrRMS": 595,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:43",
+      "HR": 101,
+      "RR": 603,
+      "rrRMS": 589,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:46",
+      "HR": 101,
+      "RR": 606,
+      "rrRMS": 592,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:51",
+      "HR": 104,
+      "RR": 571,
+      "rrRMS": 558,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:55",
+      "HR": 106,
+      "RR": 570,
+      "rrRMS": 557,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:28:58",
+      "HR": 106,
+      "RR": 600,
+      "rrRMS": 586,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:02",
+      "HR": 104,
+      "RR": 588,
+      "rrRMS": 574,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:06",
+      "HR": 104,
+      "RR": 594,
+      "rrRMS": 580,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:13",
+      "HR": 109,
+      "RR": 561,
+      "rrRMS": 548,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:20",
+      "HR": 114,
+      "RR": 531,
+      "rrRMS": 519,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:24",
+      "HR": 111,
+      "RR": 606,
+      "rrRMS": 592,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:27",
+      "HR": 105,
+      "RR": 655,
+      "rrRMS": 640,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:31",
+      "HR": 100,
+      "RR": 587,
+      "rrRMS": 573,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:34",
+      "HR": 104,
+      "RR": 604,
+      "rrRMS": 590,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:37",
+      "HR": 103,
+      "RR": 586,
+      "rrRMS": 572,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:41",
+      "HR": 103,
+      "RR": 595,
+      "rrRMS": 581,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:29:44",
+      "HR": 103,
+      "RR": 597,
+      "rrRMS": 583,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:08",
+      "HR": 101,
+      "RR": 615,
+      "rrRMS": 601,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:11",
+      "HR": 100,
+      "RR": 602,
+      "rrRMS": 588,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:15",
+      "HR": 105,
+      "RR": 575,
+      "rrRMS": 562,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:19",
+      "HR": 103,
+      "RR": 636,
+      "rrRMS": 621,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:21",
+      "HR": 100,
+      "RR": 654,
+      "rrRMS": 639,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:23",
+      "HR": 97,
+      "RR": 636,
+      "rrRMS": 621,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:26",
+      "HR": 99,
+      "RR": 609,
+      "rrRMS": 595,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:29",
+      "HR": 101,
+      "RR": 621,
+      "rrRMS": 606,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:31",
+      "HR": 99,
+      "RR": 640,
+      "rrRMS": 625,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:34",
+      "HR": 97,
+      "RR": 647,
+      "rrRMS": 632,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:37",
+      "HR": 97,
+      "RR": 626,
+      "rrRMS": 611,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:40",
+      "HR": 98,
+      "RR": 621,
+      "rrRMS": 606,
+      "aktivitas": "sampe rumah"
+    },
+    {
+      "date_created": "29/05/2024",
+      "time_created": "19:33:43",
+      "HR": 98,
+      "RR": 594,
+      "rrRMS": 580,
+      "aktivitas": "sampe rumah"
+    }
+  ]
+}

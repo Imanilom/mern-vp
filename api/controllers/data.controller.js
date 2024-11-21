@@ -216,6 +216,10 @@ class OneClassSVM {
 
 
 const processHeartRateData = async () => {
+  // const filter = { date_created: "28/05/2024" };
+  // const update = { $set: { isChecked: true } };
+  // await Log.updateMany(filter, update);
+
   try {
     const firstLog = await Log.findOne({ isChecked: false }).sort({ date_created: 1, time_created: 1 });
 
@@ -229,6 +233,8 @@ const processHeartRateData = async () => {
       isChecked: false,
       date_created: firstLog.date_created,
     }).sort({ time_created: 1 });
+    
+    await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
 
     const { filteredLogs, anomalies } = await filterIQ(logs);
 
@@ -308,7 +314,7 @@ const processHeartRateData = async () => {
     console.log(`Anomalies written to ${anomalyFileName}`);
 
     // Tandai log sebagai telah diproses
-    await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
+   
   } catch (error) {
     console.error("Error processing heart rate data:", error);
   }
@@ -318,13 +324,13 @@ processHeartRateData();
 
 
 
-processHeartRateData()
+
 // Cron job scheduled every 10 minutes
-cron.schedule('*/5 * * * *', () => {
-  // console.log('Running heart rate data processing every 10 minutes...');
-  // processHeartRateData();
-  processHeartRateData()
-});
+// cron.schedule('*/5 * * * *', () => {
+//   // console.log('Running heart rate data processing every 10 minutes...');
+//   // processHeartRateData();
+//   processHeartRateData()
+// });
 
 // Schedule Cron Job to run every 5 minutes
 // cron.schedule('*/5 * * * *', async () => {
@@ -351,7 +357,6 @@ const createHRVDirectory = async () => {
   try {
     // 1. Buat direktori utama hrv-results
     const baseDir = path.join(__dirname, 'hrv-results');
-    console.log('Creating base directory:', baseDir);
     fs.mkdirSync(baseDir, { recursive: true });
 
     // 2. Dapatkan semua user
@@ -629,4 +634,4 @@ cron.schedule('*/30 * * * *', async () => {
   }
 });
 // startup folder hrv-results setelah server berjalan
-createHRVDirectory()
+// createHRVDirectory()

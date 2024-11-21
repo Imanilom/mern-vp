@@ -130,6 +130,70 @@ export const calculateDFA = (data, order = 1) => {
 // Nilai DFA disimpan dan masuk ke array untuk di olah standar deviasi
 // data dfa / minggu untuk menentukan apakah ada anomali
 
+// Fungsi ADFA
+export const calculateADFA = (data, order = 1) => {
+  // Calculate cumulative profile
+  const y = data.map((val, i) => 
+      data.slice(0, i + 1)
+          .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0)
+  );
+
+  // Define box sizes
+  const boxSizes = [...new Set(
+      Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1))
+          .filter(val => val <= data.length / 2)
+  )];
+
+  // Separate upward and downward trends
+  const splitTrends = (segment) => {
+      const diff = segment.map((val, idx, arr) => (idx > 0 ? val - arr[idx - 1] : 0));
+      const upward = diff.map(d => (d >= 0 ? 1 : 0));
+      const downward = diff.map(d => (d < 0 ? 1 : 0));
+      return { upward, downward };
+  };
+
+  // Helper to calculate fluctuation for a specific trend
+  const calculateFluctuation = (boxSize, trend) => {
+      const reshaped = Array.from(
+          { length: Math.floor(data.length / boxSize) },
+          (_, i) => y.slice(i * boxSize, (i + 1) * boxSize)
+      );
+      const filtered = reshaped.filter((segment, i) => trend[i % trend.length]);
+      if (filtered.length === 0) return 0; // Avoid division by zero
+      const localTrends = filtered.map(segment => {
+          const x = Array.from({ length: segment.length }, (_, i) => i);
+          const [a, b] = [0, 1].map(deg => 
+              segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length
+          );
+          return segment.map((val, i) => a * x[i] + b);
+      });
+      return Math.sqrt(localTrends.flatMap((trend, i) => 
+          trend.map((val, j) => Math.pow(val - filtered[i][j], 2))
+      ).reduce((acc, val) => acc + val, 0) / (filtered.length * filtered[0].length));
+  };
+
+  // Calculate fluctuation for upward and downward trends
+  const fluctuationsUp = boxSizes.map(boxSize => calculateFluctuation(boxSize, splitTrends(data).upward));
+  const fluctuationsDown = boxSizes.map(boxSize => calculateFluctuation(boxSize, splitTrends(data).downward));
+
+  // Calculate α+ and α-
+  const calculateAlpha = (fluctuation) => {
+      const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr => arr.map(val => Math.log10(val)));
+      return (logFluctuation.reduce((acc, val, i) => acc + (val * logBoxSizes[i]), 0) - 
+          (logFluctuation.reduce((acc, val) => acc + val, 0) * 
+           logBoxSizes.reduce((acc, val) => acc + val, 0) / logBoxSizes.length)) /
+          (logBoxSizes.reduce((acc, val) => acc + Math.pow(val, 2), 0) - 
+           Math.pow(logBoxSizes.reduce((acc, val) => acc + val, 0), 2) / logBoxSizes.length);
+  };
+
+  const alphaPlus = calculateAlpha(fluctuationsUp);
+  const alphaMinus = calculateAlpha(fluctuationsDown);
+
+  return { alphaPlus, alphaMinus };
+};
+
+
+
 // Additional helper functions
 export const calculateQuartilesAndIQR = (values) => {
   // Ensure values is an array and has valid data
@@ -181,7 +245,8 @@ const calculatePercentile = (values, percentile) => {
     const mean = sum / allHRIntervals.length;
     const max = Math.max(...allHRIntervals);
     const min = Math.min(...allHRIntervals);
-    const dfa = calculateDFA(allHRIntervals); // Make sure calculateDFA is defined correctly
+    const dfa = calculateDFA(allHRIntervals);
+    const adfa = calculateADFA(allHRIntervals); // Make sure calculateDFA is defined correctly
     // RMSSD
     const squaredDiffs = [];
     for (let i = 1; i < allHRIntervals.length; i++) {
@@ -223,6 +288,7 @@ const calculatePercentile = (values, percentile) => {
 
     return {
         dfa,
+        adfa,
         median3dp,
         mean,
         max,
