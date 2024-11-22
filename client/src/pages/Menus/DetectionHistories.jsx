@@ -5,18 +5,12 @@ import '../../loading2.css';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 import DatePicker from 'react-datepicker';
 import AOS from 'aos';
+import 'react-datepicker/dist/react-datepicker.css';
 
-let data1 = [
-  {
-    dfa: -1,
-    date: "",
-    Aktifitas: "",
-  },
-];
 
 function DetectionHistories() {
 
-  const [data, setData] = useState(data1);
+  const [data, setData] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
   const [sort, setSort] = useState(null);
   const [sortByKey, setSortByKey] = useState(null);
@@ -28,33 +22,35 @@ function DetectionHistories() {
   // const {currentUser} = useSelector(state => state.user);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [metode, setMetode] = useState("OC");
+  const [isShowTable, setShowTable] = useState(true);
 
-  const sortedData = React.useMemo(() => {
-    let sortableItems = [...data];
-    if (sortConfig !== null) {
-      sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-    return sortableItems;
-  }, [data, sortConfig]);
+  // const sortedData = React.useMemo(() => {
+  //   let sortableItems = [...data];
+  //   if (sortConfig !== null) {
+  //     sortableItems.sort((a, b) => {
+  //       if (a[sortConfig.key] < b[sortConfig.key]) {
+  //         return sortConfig.direction === 'ascending' ? -1 : 1;
+  //       }
+  //       if (a[sortConfig.key] > b[sortConfig.key]) {
+  //         return sortConfig.direction === 'ascending' ? 1 : -1;
+  //       }
+  //       return 0;
+  //     });
+  //   }
+  //   return sortableItems;
+  // }, [data, sortConfig]);
 
-  const requestSort = (key) => {
-    setSortByKey(key);
-    setSort('ascending')
-    let direction = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-      setSort('descending')
-    }
-    setSortConfig({ key, direction });
-  };
+  // const requestSort = (key) => {
+  //   setSortByKey(key);
+  //   setSort('ascending')
+  //   let direction = 'ascending';
+  //   if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+  //     direction = 'descending';
+  //     setSort('descending')
+  //   }
+  //   setSortConfig({ key, direction });
+  // };
 
   useEffect(() => {
     fectInit();
@@ -62,7 +58,8 @@ function DetectionHistories() {
 
   useEffect(() => {
     if (startDate && endDate) {
-      fectInit();
+      setShowTable(true);
+      fectInit(metode);
     }
   }, [startDate, endDate]);
 
@@ -72,25 +69,73 @@ function DetectionHistories() {
     }
   }
 
-  const fectInit = async () => {
+  const processData = (rawData, keyValue) => {
+    // Urutkan data berdasarkan create_at
+    const sortedData = rawData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    // Gunakan Set untuk menyimpan nilai unik
+    const uniqueValues = new Set();
+
+    // Filter data untuk menghilangkan duplikat
+    return sortedData.filter(item => {
+      const value = item[keyValue];
+      if (!uniqueValues.has(value)) {
+        uniqueValues.add(value);
+        return true;
+      }
+      return false;
+    });
+  }
+
+  const fectInit = async (metode) => {
     try {
       setLoading(true)
-      let url = `/api/user/riwayatdeteksi/${currentUser._id}?page=${currentPagination - 1}`
-      if (currentUser.role != 'user') {
-        url = `/api/user/riwayatdeteksi/${DocterPatient._id}?page=${currentPagination - 1}`
-      }
-      if (startDate && endDate) {
-        url += `&startDate=${startDate}&endDate=${endDate}`;
-      }
-      // if (currentPagination > 0) {
-      //   url += `?page=${currentPagination - 1}`;
+
+      // let url = `/api/user/riwayatdeteksi/${currentUser._id}?page=${currentPagination - 1}`
+      // if (currentUser.role != 'user') {
+      //   url = `/api/user/riwayatdeteksi/${DocterPatient._id}?page=${currentPagination - 1}`
       // }
+      // if (startDate && endDate) {
+      //   url += `&startDate=${startDate}&endDate=${endDate}`;
+      // }
+
+      let url = `/api/user/test`;
+
+      if (startDate && endDate) {
+        url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+        if (metode) url += `&method=${metode}`;
+      } else {
+        if (metode) url += `?method=${metode}`;
+      }
 
       const res = await fetch(url);
       const data = await res.json();
-      console.log(data)
-      setData(data.riwayat);
-      setPagination(data.totalPagination);
+
+      console.log({ data });
+
+      if(!data.logs){
+        setData([]);
+        return;
+      }
+
+      let properties = "RR";
+      let logsData = processData(data.logs, properties);
+
+      logsData = logsData.filter(d => d.HR !== null && d.RR !== null);
+      let results = [];
+
+      for (let i = 0; i < logsData.length; i++) {
+        if (i > 0) {
+          if (logsData[i - 1][properties] - logsData[i][properties] >= 10) {
+            results.push(logsData[i]);
+          }
+        }
+      }
+
+
+      console.log({ results })
+
+      setData(results);
+      // setPagination(data.totalPagination);
 
     } catch (error) {
       console.log(error);
@@ -103,7 +148,7 @@ function DetectionHistories() {
     AOS.init({
       duration: 700
     })
-    fectInit();
+    fectInit(metode);
   }, [])
 
   const handleText = (state) => {
@@ -143,6 +188,13 @@ function DetectionHistories() {
 
   }
 
+  const handleChangeMetode = (e) => {
+    e.preventDefault();
+    setMetode(e.target.value);
+    fectInit(e.target.value);
+  }
+
+
   return (
     <main class="bgg-bl text-white flex">
       <Side />
@@ -158,7 +210,7 @@ function DetectionHistories() {
           <li>*Merah menandakan adanya deteksi berbahaya ketika anda sedang beraktivitas dan perlu ditindak lanjuti</li>
         </ul> */}
           <div className="flex gap-5 lg:items-end lg:flex-row flex-col lg:justify-between">
-            <div className="lg:w-6/12 md:w-8/12 flex overflow-x-auto lg:flex-row flex-col gap-5 my-3 lg:items-center">
+            {/* <div className="lg:w-6/12 md:w-8/12 flex overflow-x-auto lg:flex-row flex-col gap-5 my-3 lg:items-center">
               <div className="w-fit text-sm text-[#101010] font-semibold flex lg:flex-col gap-2 py-3">
                 <button onClick={() => setState('safe')} className='bg-[#46FF59]/70 py-1 min-w-[90px] md:min-w-[0px] rounded lg:ms-0 px-3'>Click me</button>
                 <button onClick={() => setState('warning')} className='bg-[#F47500]/70 py-1 min-w-[90px] md:min-w-[0px] rounded px-3'>Click me</button>
@@ -166,104 +218,119 @@ function DetectionHistories() {
                 <button onClick={() => setState('undefined')} className='bg-[#FFFFFF]/70 py-1 min-w-[90px] md:min-w-[0px] rounded px-3'>Click me</button>
               </div>
 
-              {/* <div className='md:w-6/12 flex-col flex gap-3'>
+              <div className='md:w-6/12 flex-col flex gap-3'>
               <p>Hijau, warna hijau memiliki arti bahwa system kami mengenali bahwa aktivitas anda aman, tidak ada anomali.</p>
               <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#46FF59]'>Safe</button>
-            </div> */}
-
-              {handleText(state)}
             </div>
 
+              {handleText(state)}
+            </div> */}
+
             {/* <div className=" ms-auto flex justify-end"> */}
+
+
+            <div
+              onFocus={() => setShowTable(false)}
+              onBlur={() => {console.log('out'); setShowTable(true)}}
+            >
+
               <DatePicker
+                data-aos="fade-left"
                 selectsRange
                 startDate={startDate}
                 endDate={endDate}
                 onChange={(dates) => {
                   const [start, end] = dates;
-                  console.log(start, end)
                   setStartDate(start);
                   setEndDate(end);
                 }}
                 isClearable
                 placeholderText='Cari berdasarkan range tanggal'
-                className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 md:mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+                className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
               />
+            </div>
+
+            <select
+              name=""
+              id=""
+              className="lg:p-2.5 p-3 mt-4 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] rounded text-sm w-full md:max-w-[200px] md:text-[16px] lg:min-w-[220px] px-3 py-3"
+              onChange={handleChangeMetode}
+            >
+              <option value="" disabled selected>Choose metode</option>
+              <option value="OC">OC</option>
+              <option value="IQ">IQ</option>
+              <option value="BC">BC</option>
+            </select>
+
+
+
             {/* </div> */}
 
 
 
           </div>
         </div>
-        <div class="relative mt-4 flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
-          <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/20">
-            <div class="flex flex-wrap items-center">
-              <div class="relative text-sm w-full px-4 max-w-full flex-grow flex-1">
-                {sortByKey && sort ? (
-                  <>
-                    Filter by {sortByKey} : {sort ?? ''}
-                  </>
-                ) : null}
-              </div>
+        <div class=" mt-4 flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
+          {isShowTable && data.length > 0 ? (
+            <div data-aos="fade-right" class=" w-full overflow-x-auto">
+              <table class="z-[1] rounded-t items-center bg-transparent w-full ">
+                <thead>
+                  <tr className='bg-neutral-800 '>
+                    <th title='sort by date' onClick={() => requestSort('date')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Tanggal
+                    </th>
+                    <th title='sort by date' onClick={() => requestSort('time')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Time
+                    </th>
+                    <th title='sort by dfa' onClick={() => requestSort('dfa')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Nilai DFA
+                    </th>
+                    <th title='sort by activity' onClick={() => requestSort('aktifitas')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Aktivitas
+                    </th>
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                      Simbolis
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {data.length > 0 ?
+                    data.map((val, _i) => {
+                      return (
+                        <tr className={_i % 2 === 0 ? 'bg-[#141414]' : 'bg-[#2f2f2f]'}>
+                          <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                            {/* {val.date ? val.date.replace('-', '/').replace('-', '/') : ''} */}
+                            {val.datetime.split('T')[0]}
+                          </th>
+                          <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                            {/* {val.time} */}
+                            {val.datetime.split('T')[1].replace('.000Z', '')}
+                          </th>
+                          <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                            {val.dfa && val.dfa > 0 ? val.dfa.toFixed(2) : '-'}
+                          </td>
+                          <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                            {val.aktifitas ?? '-'}
+                          </td>
+                          <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                            {val.dfa && val.dfa == 0 ? (
+                              <span
+                                className="w-fit px-3 py-1 text-[12px] rounded-md bg-white/90 text-[#101010]  font-semibold" >
+                                Data kurang untuk di proses
+                              </span>
+                            ) : (
+                              <HandleSimbol dfa={val.dfa ?? 2} />
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    }) : null}
+                </tbody>
+              </table>
+
             </div>
-          </div>
-
-          <div data-aos="fade-right" class="block w-full overflow-x-auto">
-            <table class="items-center bg-transparent w-full ">
-              <thead>
-                <tr className='bg-[#2f2f2f]'>
-                  <th title='sort by date' onClick={() => requestSort('date')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Tanggal
-                  </th>
-                  <th title='sort by date' onClick={() => requestSort('time')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Time
-                  </th>
-                  <th title='sort by dfa' onClick={() => requestSort('dfa')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Nilai DFA
-                  </th>
-                  <th title='sort by activity' onClick={() => requestSort('aktifitas')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Aktivitas
-                  </th>
-                  <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                    Simbolis
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {sortedData.length > 0 ?
-                  sortedData.map((val, _i) => {
-                    return (
-                      <tr className={_i % 2 === 0 ? 'bg-[#141414]' : 'bg-[#2f2f2f]'}>
-                        <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
-                          {val.date.replace('-', '/').replace('-', '/')}
-                        </th>
-                        <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
-                          {val.time}
-                        </th>
-                        <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                          {val.dfa > 0 ? val.dfa.toFixed(2) : null}
-                        </td>
-                        <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                          {val.aktifitas}
-                        </td>
-                        <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                          {val.dfa == 0 ? (
-                            <span
-                              className="w-fit px-3 py-1 text-[12px] rounded-md bg-white/90 text-[#101010]  font-semibold" >
-                              Data kurang untuk di proses
-                            </span>
-                          ) : (
-                            <HandleSimbol dfa={val.dfa} />
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  }) : null}
-              </tbody>
-            </table>
-
-          </div>
+          ) : null}
 
         </div>
 
