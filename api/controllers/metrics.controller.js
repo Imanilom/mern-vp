@@ -108,31 +108,82 @@ export const calculateHRVMetrics = (allHRIntervals) => {
 };
 
 export const calculateDFA = (data, order = 1) => {
-    const y = data.map((val, i) => data.slice(0, i + 1)
-    .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
-  const boxSizes = [...new Set(Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(val => val <= data.length / 2))];
+  // Baseline
+  const y = data.map((val, i) =>
+    data.slice(0, i + 1).reduce(
+      (acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length),
+      0
+    )
+  );
+
+  // Segmentasi ukuran kotak
+  const boxSizes = [...new Set(
+    Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(
+      val => val <= data.length / 2
+    )
+  )];
+
   const fluctuation = boxSizes.map(boxSize => {
-    const reshaped = Array.from({ length: Math.floor(data.length / boxSize) }, (_, i) => y.slice(i * boxSize, (i + 1) * boxSize));
+    const reshaped = Array.from(
+      { length: Math.floor(data.length / boxSize) },
+      (_, i) => y.slice(i * boxSize, (i + 1) * boxSize)
+    );
+
     const localTrends = reshaped.map(segment => {
       const x = Array.from({ length: segment.length }, (_, i) => i);
-      const [a, b] = [0, 1].map(deg => segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length);
+      const [a, b] = [0, 1].map(deg =>
+        segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length
+      );
       return segment.map((val, i) => a * x[i] + b);
     });
-    return Math.sqrt(localTrends.flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
-      .reduce((acc, val) => acc + val, 0) / (reshaped.length * reshaped[0].length));
+
+    return Math.sqrt(
+      localTrends
+        .flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
+        .reduce((acc, val) => acc + val, 0) /
+        (reshaped.length * reshaped[0].length)
+    );
   });
-  const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr => arr.map(val => Math.log10(val)));
-  const alpha = (logFluctuation.reduce((acc, val, i) => acc + (val * logBoxSizes[i]), 0) -
-    (logFluctuation.reduce((acc, val) => acc + val, 0) * logBoxSizes.reduce((acc, val) => acc + val, 0) / logBoxSizes.length)) /
-    (logBoxSizes.reduce((acc, val) => acc + Math.pow(val, 2), 0) - Math.pow(logBoxSizes.reduce((acc, val) => acc + val, 0), 2) / logBoxSizes.length);
-  return alpha;
+
+  // Log-log transform
+  const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr =>
+    arr.map(val => Math.log10(val))
+  );
+
+  // Pembagian ukuran kotak menjadi small scales dan large scales
+  const midPoint = Math.floor(logBoxSizes.length / 2);
+
+  const calculateAlpha = (x, y) => {
+    const n = x.length;
+    const sumX = x.reduce((acc, val) => acc + val, 0);
+    const sumY = y.reduce((acc, val) => acc + val, 0);
+    const sumXY = x.reduce((acc, val, i) => acc + val * y[i], 0);
+    const sumX2 = x.reduce((acc, val) => acc + val * val, 0);
+
+    return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  };
+
+  // Hitung Alpha1 (small scales)
+  const alpha1 = calculateAlpha(
+    logBoxSizes.slice(0, midPoint),
+    logFluctuation.slice(0, midPoint)
+  );
+
+  // Hitung Alpha2 (large scales)
+  const alpha2 = calculateAlpha(
+    logBoxSizes.slice(midPoint),
+    logFluctuation.slice(midPoint)
+  );
+
+  return { alpha1, alpha2 };
 };
+
 // Nilai DFA disimpan dan masuk ke array untuk di olah standar deviasi
 // data dfa / minggu untuk menentukan apakah ada anomali
 
 // Fungsi ADFA
 export const calculateADFA = (data, order = 1) => {
-  // Calculate cumulative profile
+  // Calculate cumulative profile  baseline
   const y = data.map((val, i) => 
       data.slice(0, i + 1)
           .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0)
@@ -225,12 +276,12 @@ const calculatePercentile = (values, percentile) => {
   };
   
   
-  export function calculateAdvancedMetrics(allHRIntervals) {
-    if (allHRIntervals.length < 2) {
+  export function calculateAdvancedMetrics(allRRIntervals) {
+    if (allRRIntervals.length < 2) {
         return null; // Not enough data for calculation
     }
 
-    const sortedIntervals = allHRIntervals.slice().sort((a, b) => a - b); // Copy and sort
+    const sortedIntervals = allRRIntervals.slice().sort((a, b) => a - b); // Copy and sort
 
     // Median 3dp
     const midIndex = Math.floor(sortedIntervals.length / 2);
@@ -241,16 +292,23 @@ const calculatePercentile = (values, percentile) => {
     const median3dp = parseFloat(median.toFixed(3)); // Round to 3 decimals
 
     // Mean, Max, Min
-    const sum = allHRIntervals.reduce((acc, val) => acc + val, 0);
-    const mean = sum / allHRIntervals.length;
-    const max = Math.max(...allHRIntervals);
-    const min = Math.min(...allHRIntervals);
-    const dfa = calculateDFA(allHRIntervals);
-    const adfa = calculateADFA(allHRIntervals); // Make sure calculateDFA is defined correctly
+    const sum = allRRIntervals.reduce((acc, val) => acc + val, 0);
+    const mean = sum / allRRIntervals.length;
+    const max = Math.max(...allRRIntervals);
+    const min = Math.min(...allRRIntervals);
+    const dfa = calculateDFA(allRRIntervals);
+    const adfa = calculateADFA(allRRIntervals); // Make sure calculateDFA is defined correctly
+
+    // S1 & S2
+    const diff1 = allRRIntervals.slice(1).map((val, index) => val - allRRIntervals[index]);
+    const sum1 = allRRIntervals.slice(1).map((val, index) => val + allRRIntervals[index]);
+  
+    const s1 = Math.sqrt(diff1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / diff1.length) / Math.sqrt(2);
+    const s2 = Math.sqrt(sum1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / sum1.length) / Math.sqrt(2);
     // RMSSD
     const squaredDiffs = [];
-    for (let i = 1; i < allHRIntervals.length; i++) {
-        const diff = allHRIntervals[i] - allHRIntervals[i - 1];
+    for (let i = 1; i < allRRIntervals.length; i++) {
+        const diff = allRRIntervals[i] - allRRIntervals[i - 1];
         squaredDiffs.push(diff * diff);
     }
     const rmssd = Math.sqrt(
@@ -260,20 +318,20 @@ const calculatePercentile = (values, percentile) => {
     // SDNN (Standard Deviation of NN intervals)
     const avgNN = mean; // Mean RR is the same as the average NN interval
     const sdnn = Math.sqrt(
-        allHRIntervals.reduce((acc, val) => acc + Math.pow(val - avgNN, 2), 0) /
-        (allHRIntervals.length - 1)
+      allRRIntervals.reduce((acc, val) => acc + Math.pow(val - avgNN, 2), 0) /
+        (allRRIntervals.length - 1)
     );
 
     // Pad to power of two
-    const paddedallHRIntervals = padToPowerOfTwo(allHRIntervals);
+    const paddedallRRIntervals = padToPowerOfTwo(allRRIntervals);
 
     // FFT implementation
-    const fftResult = fft(paddedallHRIntervals);
-    const powerSpectrum = fftResult.map((value) => Math.sqrt(value.real * value.real + value.imag * value.imag) / paddedallHRIntervals.length);
+    const fftResult = fft(paddedallRRIntervals);
+    const powerSpectrum = fftResult.map((value) => Math.sqrt(value.real * value.real + value.imag * value.imag) / paddedallRRIntervals.length);
 
     // Frequency bins
     const samplingRate = 1; // Adjust according to actual sampling rate
-    const frequencies = Array.from({ length: paddedallHRIntervals.length / 2 }, (_, i) => i * (samplingRate / paddedallHRIntervals.length));
+    const frequencies = Array.from({ length: paddedallRRIntervals.length / 2 }, (_, i) => i * (samplingRate / paddedallRRIntervals.length));
 
     let hf = 0, lf = 0;
     for (let i = 0; i < powerSpectrum.length; i++) {
@@ -298,6 +356,8 @@ const calculatePercentile = (values, percentile) => {
         hf,
         lf,
         lfHfRatio,
+        s1,
+        s2
     };
 }
 
@@ -348,7 +408,7 @@ function fft(input) {
 // Fungsi Box-Cox Transformasi
 function boxCoxTransform(values, lambda) {
   if (lambda === 0) {
-    return values.map(x => Math.log(x)); // Jika lambda = 0, gunakan logaritma natural
+    return values.map(x => Math.log(x)); 
   }
   return values.map(x => (Math.pow(x, lambda) - 1) / lambda);
 }

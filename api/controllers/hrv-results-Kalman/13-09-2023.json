@@ -1,0 +1,8568 @@
+{
+  "dailyMetrics": {
+    "dfa": {
+      "alpha1": null,
+      "alpha2": null
+    },
+    "adfa": {
+      "alphaPlus": null,
+      "alphaMinus": null
+    },
+    "median3dp": null,
+    "mean": null,
+    "max": null,
+    "min": null,
+    "rmssd": null,
+    "sdnn": null,
+    "hf": null,
+    "lf": null,
+    "lfHfRatio": null,
+    "s1": null,
+    "s2": null
+  },
+  "activityMetrics": {
+    "Unknown": {
+      "dfa": {
+        "alpha1": null,
+        "alpha2": null
+      },
+      "adfa": {
+        "alphaPlus": null,
+        "alphaMinus": null
+      },
+      "median3dp": null,
+      "mean": null,
+      "max": null,
+      "min": null,
+      "rmssd": null,
+      "sdnn": null,
+      "hf": null,
+      "lf": null,
+      "lfHfRatio": null,
+      "s1": null,
+      "s2": null
+    }
+  },
+  "filteredLogs": [
+    {
+      "HR": 111,
+      "RR": 564,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.51248819826108,
+      "RR": 606.14721288413,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.4748329243521,
+      "RR": 606.2493327524909,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.38879267938887,
+      "RR": 606.7296591631116,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.77603722570255,
+      "RR": 618.1844685326383,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.2308948940287,
+      "RR": 601.0359935466645,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.80920194628621,
+      "RR": 611.4344823507556,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.59345047128771,
+      "RR": 605.9844191714558,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.52141089512382,
+      "RR": 612.442205269128,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.16237006464026,
+      "RR": 569.83305719778,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.56024189276286,
+      "RR": 571.9967690061469,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.2642313007197,
+      "RR": 574.2218141851013,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.91215974528127,
+      "RR": 592.9242839486341,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.92051554265744,
+      "RR": 592.9314864321124,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.49778565537045,
+      "RR": 594.8479036471225,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.0261503749211,
+      "RR": 576.1006868139049,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.02366282254718,
+      "RR": 576.0911089885885,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.72628907153769,
+      "RR": 582.0775607380438,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.7523258022507,
+      "RR": 582.1653077008617,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.70785026646344,
+      "RR": 556.686198911228,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.33289926297488,
+      "RR": 632.4145373131779,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.2025392941848,
+      "RR": 637.0588950666868,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.4474192005506,
+      "RR": 636.7774018345353,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.54754744547267,
+      "RR": 636.1200787451359,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.44833124979347,
+      "RR": 636.9681308079539,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.40568377463903,
+      "RR": 636.9711623623606,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.88241232579736,
+      "RR": 642.0394050146813,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.89359784413081,
+      "RR": 642.1307815377069,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.22794245596744,
+      "RR": 638.9147910693538,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.7306132646731,
+      "RR": 634.3564527508864,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.18494395365019,
+      "RR": 638.325676088853,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.31822805189468,
+      "RR": 637.3017862512551,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.49320512630787,
+      "RR": 636.8105223039894,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.92740044190276,
+      "RR": 621.6708506246227,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.934306469202,
+      "RR": 621.7021609332728,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.79072864151499,
+      "RR": 630.3686356882474,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.08282538663032,
+      "RR": 635.3552485937657,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.88661624286638,
+      "RR": 635.4720782533949,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.45865084914249,
+      "RR": 623.6121824769996,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.29872304821401,
+      "RR": 625.126397104656,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.36543196353377,
+      "RR": 625.2094985119105,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.9403011309337,
+      "RR": 627.9201969746217,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.15038474561901,
+      "RR": 627.5195926428808,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.44752863772243,
+      "RR": 625.8030130391198,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.2182539971702,
+      "RR": 626.5205653123402,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.86468070485085,
+      "RR": 627.5951699469206,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.93035131247684,
+      "RR": 614.4798078024797,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.93697663844297,
+      "RR": 614.4341661227071,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.0735175101204,
+      "RR": 615.7466693622845,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 113.163828561154,
+      "RR": 544.9478107472581,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.08373892525167,
+      "RR": 605.2227177811968,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.39699717377191,
+      "RR": 607.8413715848459,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.4967236529598,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.2863252686728,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.35421352180404,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.32051898818082,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.72834615601987,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.6590622847595,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.59636903634673,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.40223014383886,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.3639680327912,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.32934560207146,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.08732543135956,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.07901860651526,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.65375170400809,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.59156362417492,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.53529118058351,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.81060785436219,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.66711377249398,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.6987795489112,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.72743312081755,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.75336102393207,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.77682253728591,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.79805227601261,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.72213761552693,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.74856925316902,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.6773616613703,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.25182399490923,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 115.40895137547086,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 115.46517482976115,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 116.34582002677078,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 116.1110047174972,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 115.15186947689618,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 114.60828540047355,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 114.41198724975936,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 114.25125853854081,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 113.93845295233328,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 113.94430761044022,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.36437963516498,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.93487894360486,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 112.19883019598366,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 112.27504141107744,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 111.06922184560057,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.96751220096651,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.97060260031463,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.9733990256659,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.71094188693752,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.84939570420481,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.30605944857533,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.37207048938315,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.4318022350848,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.39072708116481,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.44868412002897,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.50112800009342,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.5485831601588,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 111.57118933145782,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 111.24362489963684,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.93220253714354,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 109.25705489489968,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 109.3277274900522,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 109.19671267828927,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.70732014576106,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.73516129405846,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.14296334882064,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.12936397141915,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.37320034273884,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.46898685479877,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.11662593428804,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.0738073157489,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.12613007833914,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.75084223651079,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.96814223800997,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.87604778316098,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.79271380614361,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.71730696718767,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.6490731979036,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.58733016059858,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.33336130223095,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.28200462062816,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.25517895309501,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.23090507509282,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.21975965953649,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.29397996104288,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.50798773509035,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.33480159161843,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.62748861277308,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.6629237294169,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.25938637587622,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.13535786060346,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.35154191120411,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.85422601283307,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.61336315430573,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.26844453734364,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.24290877167488,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.55224687225729,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.59483935359675,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 109.36921522958372,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.45198036613237,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.40898576907092,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.2341825112154,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.2119059181087,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.08743216290709,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.73685072055036,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.05181092200911,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.04688241209567,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.94729780433069,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.04743601855401,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.44915073270873,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.50481728004175,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.55192149763991,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.49942000824197,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.87509563634465,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.70148666970633,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.63475780498577,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.30633451199212,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.27719446544138,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.34595128551757,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.46052682092784,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.51184416499333,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.3103913998809,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.2808654421863,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.13925678697304,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.80510674854649,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.72852103191147,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.75434544756807,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.68258839572785,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.6176572278449,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.6540275542129,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.68693815612303,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 109.02455685970216,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.9270959683666,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.8389060367147,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 108.95417261015648,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 109.40190619003442,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 109.2430041778583,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.06390692764897,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 109.96270286417035,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 109.61610771040542,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 110.04349879213757,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 107.3351700861466,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.17383282206072,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.25242191039844,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.47396004865247,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.42887463600633,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.70451551868055,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.73262345691015,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.05193837619682,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.76819821804588,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.79024834446736,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 106.81920682296271,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.16059149362647,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.54203758853,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.49047630521491,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.44381978495198,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.49672638451108,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.67399628499086,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.70500736294386,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.94540114481032,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.95059485665003,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.95529451705623,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.959547122633,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.96339519943609,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.87175230626104,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.78882693614861,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.71378983539766,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.64589063300069,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.60138019762715,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.26386581185268,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.48333030265314,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 104.53247846729882,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.31940997719977,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.90473264387884,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.5154105163105,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.56150705313516,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.60321866049117,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.6409624544521,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.67511587295753,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.61089552822006,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.55278413876476,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.50020059069713,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.45261904853646,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.40956369686116,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.53726443454065,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.82908593763229,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.21451285204162,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.28923225570156,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.26171905994602,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 103.36428257778579,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.58495679691019,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.62443774921933,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.56503815704815,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.14437603565644,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.13064227652991,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.29731949950936,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.8923584992201,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.90259788858279,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.2750242355568,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.24886257660891,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.22518954342712,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.2037684056796,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.18438495198886,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.7252097260576,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.86107819527923,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.87429312111358,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.88625097815905,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.89707134498612,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.90686242526304,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.8205972078201,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.83766288442786,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.63679501844955,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.72696901758309,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.65781614650906,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.20657733619906,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.80788991739136,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.73103945203714,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.86585156853843,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.88111066018533,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.63537627416842,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.05777507767937,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.05227922792317,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.04730617044619,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.13793109664618,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.02838376428119,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.02568376091865,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.9281156731928,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.83982874219889,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.85506502059945,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.77372702723352,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.79525122611241,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.10812627312852,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.19296569180649,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.470899057193,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.42610482112059,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.48069655523189,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.5300952548955,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.57479490710807,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.61524250839173,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.29187541944967,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.26411079294883,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.33411219634998,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.39745472171462,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.64642779694975,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.68006132517655,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.61537054468262,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.5568334696355,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.50386472928476,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.45593463622684,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.1642794366826,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.24377729005899,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.31571291633595,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.38080567177629,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.43970648393439,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.49300436093183,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.99628811542655,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.99664120815697,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.09208563494147,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.17845091807538,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.05890904964079,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.14843025286274,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.13431083664081,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.12153452878529,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.9183112461474,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.11431443080949,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.41262549440825,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.3733745264488,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.4661095031057,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.51689579496463,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.80602726665222,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.82447890777672,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.36219801870033,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.32774396043285,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.0687283090863,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.06219053404716,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.05627466434849,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.14604646326582,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.2272787268158,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.30078377763394,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.36729666622841,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.33235759951268,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.30074210879206,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.07470425245675,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 97.0675980162708,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.8174046961866,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.73964913824189,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.06619252962417,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.15502089238102,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.23539946406167,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.30813203038294,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.37394591700803,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.43349926280321,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.39226267925392,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.35494872249717,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.32118425296538,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.29063162596326,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.26298531522076,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.23796885763048,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.31045701058899,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.3760497336534,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.43540295405434,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.48911020399582,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.44258363400476,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.40048290035375,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.13275772261952,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.12012915461409,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.2038268001273,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.2795627136418,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.3480942542927,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.41010673748654,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.37109536608274,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.33579494833977,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.8955592110562,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.81036921098271,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.73328290301906,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.75865434605811,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.78161233255773,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.80238644238293,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.82118441663197,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.03478708897788,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.73018305664577,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.7558493723292,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.77907418173592,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.80008973296,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.72398125954118,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.65511259871776,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.59279506388154,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.53640547968412,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.48537995028354,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.43920822038581,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.39742857269192,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.35962321072496,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.32541408086524,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.29445909181419,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.94220170037427,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.9476997591163,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.55168538371295,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.59433127660638,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.05759519865428,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.9569915379038,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.86595779253236,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.73666504545689,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.66658984048793,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.69830545589636,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.839049008282,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.85435945881058,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.06195077724794,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.1511826363686,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.23192632185295,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.20986434858332,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.89640147131135,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.90625627326932,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.91517363796,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.92324273903026,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.83541934551832,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.75595014546157,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.71388602860608,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.74110259781017,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.76573019299236,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.69289016813198,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.95652441209897,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.86553510203326,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.78320114298789,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.70869919537239,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.64128423971061,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.534131585226,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.81879744850576,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.83603432707787,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.04694617941759,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.45783655641942,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.50940981168637,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.46095224309768,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.91847083188613,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.28475961144846,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.2576718756285,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.02694750279355,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.11950904566547,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.20326567899403,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.27905496911254,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.25250988694967,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.2284899036563,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.30187974137199,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.36828837650141,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.42837989539584,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.38763029127172,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.35075699006032,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.09591526238707,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.08679133053653,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.07853531199135,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.07106464656609,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.06430462760649,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.96306273295045,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.8714514656239,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.88367963492611,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.6883505027999,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.47754446801984,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.52724300973355,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.17538125375816,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.55356936494891,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.50091112230177,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.91522152123036,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.92328606740827,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.93058347426026,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.93718671585485,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.84803690263549,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.76736745844248,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.78949661080641,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.8095207292784,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.82764005504318,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.84403578135839,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.85887186548717,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.06564553090193,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.15452592686955,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.23495158210586,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.37970688144915,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.34358729397889,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.3109035794484,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.97126252107586,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.87887124954369,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.79526869050697,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.71961881837532,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.74629005639993,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.77042419498854,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.79226257552703,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.8120235818208,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.58230531543586,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.52691356774085,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.17742016652808,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.25566800900326,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.17623240486716,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.15946831110514,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.14429890045417,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.13057247880775,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.11815178194941,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.10691260291055,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.90633882922535,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.82012341881463,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.74210924259206,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.67151615879543,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.60763823658674,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.54983669674391,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.49753352386853,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.45020568623183,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.40737990545745,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.36862792373763,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.21575596979311,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.19523220000144,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.17666075220978,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.15985591194023,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.14464963079007,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.13088984594782,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.11843895956504,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.10717246277791,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.19210261259107,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.26895378853014,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.24336958038201,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.31534399001019,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.28534691756597,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.25820331429742,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.23364174417183,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.21141659148797,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.28643052669149,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.35430876716192,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.41573009530397,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.47130872439907,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.52160044073815,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.55932673544238,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.60124574534879,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.54405229073619,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.58742428100345,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.62667051408074,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.66218345229885,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.69431822503994,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.72339618003143,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.65458317485073,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.59231600141854,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.53597198800054,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.55961626450066,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.60150773297799,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.63941427878511,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.67371496738008,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.70475280564884,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.7328381719741,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.75825192001909,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.1911302996375,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.26807396677042,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.33769837357103,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.40069976410734,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.45770815228474,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.50929362198498,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.55597202790507,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.50308523213171,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.45522928867966,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.41192563811441,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.3727412439303,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.432409184158,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.48640121622728,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.08176486692454,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.07398699033826,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.06694898365535,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.060580466809,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.05481775463073,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.04960321999877,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.9497597955943,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.69158611119647,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.72092395830414,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.05231884298614,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.95221709515688,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.56157971831665,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.50815949143043,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.45982085945853,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.4160804360812,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.94938514306045,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.95419987737748,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.95855661046828,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.05762383163626,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.87753141399567,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.88918122868341,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.80459793368549,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.72806061802441,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.65880390854359,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.6912601601207,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.72062901329903,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.74720415661034,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.67612641951524,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.70693486858781,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.04195417638635,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.8062330591568,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.82466512428536,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.74621891868426,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.67523490227002,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.61100323487847,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.5528815998357,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.29738914749645,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.36422495001788,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.4247030020395,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.38430316210899,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.92808065284402,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.93492197513055,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.94111251716838,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.9467141843779,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.9517829934312,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.9563696324188,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.96051996773059,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.0594004246922,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.14887488590072,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.22983809596826,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.30309968699548,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.36939227489265,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.33425386356623,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.30245799087548,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.27368669809348,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.24765227229243,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.2240943692143,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.20277740982831,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.27861314651311,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.34723501466304,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.4093292329596,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.46551674358577,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.42123449967528,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.38116460076154,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.79156070280513,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.8113884746868,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.4962988749788,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.4490884832214,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.40636897629622,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.4628380811065,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.1178052556539,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.20172396187438,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.27070669771001,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.24495574421292,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.24461916621213,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.22134978711323,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.20029390588545,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.18124096371652,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.06232373177262,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.05639519165072,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.05103060344533,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.04617632127437,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.04178380231617,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.13293404335364,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.21541362482465,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.2900473425439,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.26245661171608,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.23749044700541,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.91686994391421,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.92477768401294,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.2894324258284,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.35702511087766,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.4181880470357,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.12645904893863,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.20955456374813,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.28474562419511,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.35278414088404,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.41435049898182,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.4700603620694,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.65216217496598,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.68525022093142,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.28847415717975,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.35615799745945,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.41740341771374,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.37769795017266,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.01877723168055,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.01699104898208,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.11049969874593,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.35775429689576,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.94135855060267,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.1096755506703,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.0992426724705,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.0898022209954,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.08125979173025,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.0735299603824,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.06653542863839,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.06020625118076,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.14960405820743,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.32402999356086,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.65767562874863,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.55081854196985,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.24414301179925,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.22091892685172,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.19990403117271,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.18088817580542,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.16368120219619,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.95282089626299,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.79168545612163,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.8115013608538,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.11942861195168,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.203192896531,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.27898911007561,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.34757521472099,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.40963707151359,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.37067037704881,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.33541038635452,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.30350449952378,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.27463365768828,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.94438974705936,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.94967966803121,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.95446638568338,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.05392268916488,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.25375738420132,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.32474365480172,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.29385243997764,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.95862914897343,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.86743962597676,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.78492449923986,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.29179479882812,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.35916276333012,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.32499743349291,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.29408207799064,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.05392421221256,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.04879467573342,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.0441530860116,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.94482810517741,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.85495140539498,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.86874914163901,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.88123436929942,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.89253194065283,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.90275483141276,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.81688034851432,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.73917466910102,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.76398565835123,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.78643650418496,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.80675171506054,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.82513444308672,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.2403425904301,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.7079083179372,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.64056859442974,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.91174437541022,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.82501476284045,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.44729793251761,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.40474875158841,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.36624705817509,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.33140783534353,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.2998826908654,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.18090730112874,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.70523599022637,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.63815047168389,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.1659313642423,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.24527207813846,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.47407008216926,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.37169732450796,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.43146456748926,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.85327928018525,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.86723607720937,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.0724941383166,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.06559813906577,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.05935812120559,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.05371168455747,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.4307563954241,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.48490564889272,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.29656440484877,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.36347866095021,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.42402770366115,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.61447068458257,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.89542180178177,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.8102448727548,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.73317039245538,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.66342761608051,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.60031911586645,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.54321380681105,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.58666555779627,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.62598396435945,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.66156221056622,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.59863115690615,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.54168641481515,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.49015853687229,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.44353224429815,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.40134127416701,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.24254162536359,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.2194698721758,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.29687740087276,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.26863696127934,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.24308289129871,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.20281277802479,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.27864515031266,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.102398965788,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.09265827215735,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.84777865742997,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.05656242427139,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.73753018565961,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.76249760626888,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.68996508096834,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.62433220647748,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.96028334543851,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.96406138910469,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.9674800466619,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.97057350468575,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.97337269775643,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.97590561780468,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.88307267205849,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.89419537500538,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.09456838188103,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.18069749390604,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.2586335808701,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.32915600364286,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.3810105435393,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.43989186728693,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.39804718773492,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.36018298006026,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.3259206021862,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.29491743033401,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.26686343278516,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.24147806956415,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.21850748703879,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.19772197938381,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.17891369152268,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.16189454057677,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.04648290165463,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.04206121926167,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.27554422771969,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.24933310455788,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.92564429590391,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.11815404248702,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.1069146484147,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.19186932279904,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.13603718177094,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.12309665546962,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.111387095723,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.91000253904882,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.82343861852702,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.74510908419049,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.67423064069587,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.70521942558071,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.73326040472135,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.66350906593671,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.60039281781143,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.63840541983677,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.67280207606048,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.11020450619614,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.19484623311571,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.27143642236645,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.34074097584084,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.74386465709289,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.76822951160132,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.79027666122578,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.81022657746249,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.82827875947382,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.94525621747353,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.85533879354233,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.61427429793403,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.55584150327334,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.50296712364539,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.45512241525388,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.43009029964556,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.38917799345064,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.93134889406306,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.84275440318613,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.85771237831358,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.87124747722416,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.88349505090697,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.89457757509886,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.90460587504174,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.81855531176252,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.74069030160094,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.67023219445535,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.70160133122683,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.03800250135497,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.12951243835131,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.11719257775867,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.91475606139328,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.14622777650634,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.13231787067596,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.21485606552484,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.28954282102897,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.54636304100576,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.58951522133393,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.11892105376025,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.20273361977291,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.1834486000108,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.16599806624882,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.83771561808658,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.75802798528095,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.68592063232812,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.62067248569858,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.65675598589853,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.09944669949546,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.08998683996553,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.08142684883526,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.07368112619334,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.06667221481335,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.0603300255815,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.95946621463295,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.0224041000925,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.11539783379185,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.68007631784621,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.71050903314826,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.59035379408715,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.62932135746094,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.66458213440934,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.69648873270184,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.51888260997713,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.56464886416266,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.60606160698983,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.64353496588689,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.67744367444283,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.61300189777069,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.64981506204876,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.58800145497482,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.53206786245062,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.10220287597696,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.09248083537429,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.17880852509786,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.25692430007241,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.32760931804769,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.39157042920344,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.44944724465122,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.50181853254553,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.45408308379278,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.50601338785046,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.55300382578665,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.5955243019807,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.63400002119457,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.66881574062037,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.10753194075023,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.19242789524932,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.26924812870091,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.3387608434395,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.40166116661248,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.36345317947908,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.32887972414048,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.98604794785979,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.08250005770348,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.16977716812421,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.24875205022619,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.22508953085791,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.90768197214427,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.10561119287527,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.1906898583661,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.26767542244058,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.23700255692673,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.21445770719178,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.28918235650127,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.50405946173625,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.45611084476909,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.50784825822211,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.73484020584412,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.09425235005992,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 96.08528660261474,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.71802431207061,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.87712830597522,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.79369154430945,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.71819169808678,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.64987376884498,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.03728816152201,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.03374112806674,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.03053150589213,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.93250227680393,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.67745567367623,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.70813767755045,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.73590105820018,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.76102344943192,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.68863115318545,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.62312516847085,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.29771576684153,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.26939557775074,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.6870786181681,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.62172031822588,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.56257922146592,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.07737032397263,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.33717782534423,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.3051038110175,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.17847115156692,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.25661901917228,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.18612386102637,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.16841884326902,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.05182499356691,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.04689514509764,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.04243424807933,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.13352261551432,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.21594620910446,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.17529001256818,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.14223061800124,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.74186915371132,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.67129890835072,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.60744165207363,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.38122060331416,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.07868341167772,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.33760822479672,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.91425576518449,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.82728725685841,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.05266833488886,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.29030610086438,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.97042505367841,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.9922786733132,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.63672333869258,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.67128000275387,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.23686131965425,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.18831245727233,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.17039924946785,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.15419003415805,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.78510174193092,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.80554392196177,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.72891661923973,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.65957848271009,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.69196105298005,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.93573499384023,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.84672327556423,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.4633820024122,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.51442774756178,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.56061777018698,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.50728904854154,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.95280226798835,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.86216702659073,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.78015345545901,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.70594141888189,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.35907521495146,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.42004313511944,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.84562199043806,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.8603071865519,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.87359545453127,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.07770118951592,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.07030986992605,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.06362164903544,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.96244472266268,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.87089224351655,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.78804868680558,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.80821053893517,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.02186548472656,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.01978553219806,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.01790343499154,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.11132529410743,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.1958604061644,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.1772292003105,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.78614556876123,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.80648845484629,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.92762912956037,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.26453441759205,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.33449552373206,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.3026766631369,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.56251054692106,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.604126697009,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.54665919209451,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.49465827910096,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.07170980523607,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.96976349363582,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.87751481697194,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.79404128847777,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.71850817286838,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.65016013898767,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.68343862846935,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.71355150423571,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.9517315907269,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.95632311939274,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.96047787925251,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.8691124959323,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.78643823757142,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.80675328355875,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.73001094040916,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.66056870666367,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.59773215998482,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.5408729349058,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.48942243917585,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.44286616783766,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.40073855817785,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.93909946254615,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.9632088751549,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.87158370606257,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.78867437403086,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.71365178573946,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.64576571530546,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.58433730202451,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.5287522617638,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.47845474412074,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.43294177391888,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.39175822145621,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.44961717318061,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.50197229663681,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.54934714305938,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.59221546091254,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.63100593337482,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.66610646517086,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.6978680616186,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.72660833868254,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.75261469913329,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.77614720657537,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.79744118608322,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.8167095774519,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.83414506459509,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.84992200238423,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.05831739277693,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.14789487731188,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.22895131061996,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.30229725703424,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.27354125404635,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.24752066359893,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.22397527978751,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.20266964877395,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.27851563622063,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.34714678002953,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.40924939163872,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.4654444971643,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.51629404766152,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.80419949891325,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.8228250063013,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.83967876375237,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.85492930884097,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.77360422504546,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.70001518350041,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.6785940995709,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.61404288879822,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.55563210691352,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.50277764609795,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.66788921390312,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.60435630454431,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.54686695823094,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.58997120347239,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.62897516074855,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.66426886963221,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.60108034523968,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.54390262429955,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.49216392960241,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.5404717961738,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.95300383929447,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.95747434541458,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.96151959498884,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.87005511854049,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.78729119327755,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.71240017994738,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.64463316841669,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.58331248857016,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.52782493360934,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.4776156279846,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.43218247863972,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.39107115408123,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.44899546303606,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.50140972662125,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.45371316550015,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.41055373603405,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.37149984392829,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.91949690311277,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.83202983195021,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.75288305910715,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.68126511685516,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.71158474774423,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.73902022611074,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.76384590673835,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.78631004643336,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.80663728659269,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.82503089961796,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.8416748216394,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.85673549187723,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.87036351703384,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.88269517736079,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.48107807901876,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.43531556428941,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.39390620520297,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.45156083014105,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.50373106338054,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.55093860725384,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.59365553719968,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.53718410054502,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.16981008102763,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.15365691031974,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.13904030871504,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.12581411019748,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.11384605278191,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.10301645589415,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.09321702356533,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.08434976147217,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.07632599699373,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.84914868580015,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.76837348332035,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.79040693764627,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.81034446134865,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.1185714527009,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.20241727448708,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.27828726901811,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.34694013623933,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.40906240482293,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.86726166434477,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.87988838816673,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.89131399587036,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.9016527435327,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.91100801863035,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.91947337391431,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.51002417957599,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.91606657480528,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.51475919650676,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.01406402743,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.0127261879181,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.91639068831289,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.8292190955908,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.75033969382461,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.67896368899667,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.6143773210587,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 78.89756464523124,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 78.81218387838834,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 78.73492495032933,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 78.66501527177361,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 78.60175574593562,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 78.6396386995295,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 78.67391804011866,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.11095268382081,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.19552324040222,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.0365906438828,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.12823488371103,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.11603655040386,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.10499858260074,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.09501060062362,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.08597272465273,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.92465136452441,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.93181889759475,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.03342954161356,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.71617577046429,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.74317452815278,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.6724801091503,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.60851049123931,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.55062597824073,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.49824772502454,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.4508519490586,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.40796469258325,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.36915708303373,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.33404104431455,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.30226541603851,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.27351244192286,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.24749459222645,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.22395168845229,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.20264830156266,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.18337139768865,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.16592820779152,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.15014429997231,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.13586183515282,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.12293798868487,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.11124352210376,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.10066149074369,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.09108607429106,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.08242151858134,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.07458117805744,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.0674866493141,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.06106698706391,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.15038291665687,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.23120267541638,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.30433446093006,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.37050959105305,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.8124131347675,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.7351323987133,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.66520298664624,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.69705052641814,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.03463076126614,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.12646143477535,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.11443180065982,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.10354648455088,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.09369663328745,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.89551760774518,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.81033156518342,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.73324883827348,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.95146469999999,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.8609566946529,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.77905825625234,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.7049504004143,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.23817763180847,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.2155210031671,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.19501958455739,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.17646836179325,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.15968182264706,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.14449210172734,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.13074730182488,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.11830997494067,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.20218066977837,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.27807317131386,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.82167130079107,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.83863480438878,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.85398465603038,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.86787435423227,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.88044279597649,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.083307785206,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.48477726011579,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.43866286107323,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.3969350906414,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.35917667111599,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.32501001830174,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.38921838764301,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.44731894086071,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.49989268348702,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.5474653529482,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.59051267593885,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.6294651256889,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.54586484628294,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.58906441734524,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.5330297106085,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.48232530097785,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.53156906632947,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.86785684855613,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.78530203355392,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.71060023888725,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.64300444660947,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.93781989731642,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.94373477473243,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.94908699989578,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.04905501703058,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.04438866236319,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.04016619431943,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.03634538821886,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.03288803600049,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.12488448611461,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.20812978108988,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.18833145190355,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.17041643723626,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.26345575395108,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.23839454591328,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.21571728333461,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.30566505903053,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.27658869414053,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.25027821619193,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.22647052040526,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.20492752982264,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.18543381453824,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.16779443739922,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.24695792660671,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.30267094208772,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.27387939233827,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.34295155848473,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.40545324021602,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.46200945434947,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.51318576302643,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.46436900736114,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.62847293484816,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.6638144179314,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.10939674171692,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.09899038519706,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.08957393252916,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.08105321918656,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.07334303803582,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.06636628726544,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.06005319936772,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.05434064346366,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.04917149399425,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.94936913749227,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.40204368895816,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.45892423638898,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.2995391959421,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.36617047527291,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.24326948755255,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.31525341850333,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.40518734109868,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.36664392689242,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.33176695195509,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.3002076465373,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.2716504175849,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.24580969280834,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.22242706495986,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.20126870776097,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.1821230376397,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.16479859789483,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.14912214412891,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.23006183377677,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.30330214176242,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.36957547116567,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.42954455528059,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.4838090849483,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.0801923326206,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.16768896520978,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.24686248745105,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.31850463456684,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.38333182802829,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.44199233977002,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.49507277490946,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.543103937798,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.11616396372972,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.33456791457104,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.30274216780296,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.27394384271292,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.34300987802251,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.79397645679046,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.71844950829026,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.65010705487296,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.5882656720044,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.53230694585588,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.48167128916592,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.53097726734012,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.57559301818772,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.6159646992172,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.65249602723885,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.59042739356039,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.53426303381752,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.48344130441284,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.43745398805228,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.39584121157225,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.35818684720793,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.3241143513157,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.8877281691223,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.80328309630174,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.89574481161164,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.8105371562998,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.1187142224568,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.10742154130857,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.40482435306093,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.46144039003595,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.51267083091132,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.46390305812331,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.41977431591653,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.3798433168689,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.43883567296247,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.43011506965655,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.48432532918878,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.71150605375861,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.73894901788437,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.9705488809702,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.97335041636991,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.97588545593332,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.97817935005607,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.07537995965188,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.16333436884422,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.54406981419535,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.58744013754493,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.73357931494883,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.51457776996483,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.56075352172064,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.50741188672116,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.45914437058889,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.51059322013501,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.30019600470447,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.76515398034752,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.78749368964252,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.0065161489034,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.08927332991968,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.08078121137684,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.16822182692029,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.24734466073292,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.22381601918039,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.24373880953539,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.02286671261291,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.02069151835984,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.72667552003371,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.65755056789118,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.55897903137641,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.60093111660497,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.63889251299958,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.57811791255168,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.3495340870753,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.91380810728545,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.69251472444027,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.62663931531308,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.42701541516612,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.3863956071174,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.09244072903816,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.08364731190132,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.8455973007068,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.8602848454294,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.8735752386063,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.88560138416928,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.89648354357394,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.70508437742735,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.63801328104054,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.67244723943665,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.0148416905205,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.91830495389529,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.83095126680904,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.66227071026556,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.44545587170334,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.86265949335284,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.87572399833131,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.8875457432931,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.89824294568783,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 90.90792257753942,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.31062275925072,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.28107479351411,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.25433757571264,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.92935216225398,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.8409476103346,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.85607745649105,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.96823254989815,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.97125442611035,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.97398884658365,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.8813382335503,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.79750100285244,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.7216387821831,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.49674238509441,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.44948980447187,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.40673212189404,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.94311773735679,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.94852865815234,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.85829994355691,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.77665422839706,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.70277505552117,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.731048555173,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.75663254037656,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.68465792901138,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.96548364143797,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.96876700735295,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.06686296531397,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.15562755292814,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.23594841607158,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.28128647132499,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.95836763881259,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.96232791392207,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.96591146817077,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.87402921512869,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.72470291666973,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.14119488495967,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.12776373254496,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.74949607319087,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.77332523968239,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.86637909996595,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.78396485568308,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.70939025995705,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.73703448880308,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.76204906253714,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.78468412689658,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.80516603252498,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.82369959847864,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.83316429350396,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.84903452706662,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.23331350852337,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.30624450120246,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.27711301692106,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.25075266280888,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.32202475729729,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 95.29139217738617,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.8707301428416,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.78790200594469,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.01281664904695,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.10672238827891,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.33770105731378,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.30557727058678,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.92761789417845,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.61844261488741,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.53981405328578,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 92.58358920555982,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.73282333485443,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.75823849427928,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.68611111667441,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.6208448502363,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.56178703230054,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.50834708468778,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.95789385596152,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.96189919962774,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.96552353529025,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 89.87367818433314,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.60876759239339,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.55085862266758,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.49845823916844,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.451042438061,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.40813706133416,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.36931305522066,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.88969536414398,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.80506316205049,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.72848159157749,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.65918483702028,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.59647993083327,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.53973982395459,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 80.48839711531545,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 94.06711092416026,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.85155013486565,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.39400721548174,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.84851038616456,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.8629208238603,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.40163048526418,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.45855033866415,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.24744208154338,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.11652913468053,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.10544430983653,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.90513659246142,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.81903554472906,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.06832931054988,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.1569544121879,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.23714905794779,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.30971519428715,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.28025356059689,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.2535944625126,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.22947130905342,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.20764286868479,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.187890857003,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.17001775389124,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.1538448283184,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.13921035102874,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.12596797724936,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.11398528324249,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.10314244206803,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.09333102531426,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.08445291881362,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.07641934150112,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.06914995760364,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.0625720732822,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.05661990969357,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.05123394520187,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.9512353981897,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.6927943329885,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.62689232611997,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.56725924251265,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.51329875133045,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.46447124766156,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.42028845646928,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.95220633311177,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.86162777997279,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.22449424401931,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.2031392465737,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.18381564159382,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.16633019302989,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.24563296836875,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.3173920733913,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.65821281971873,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.69072529857418,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.72014503041538,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.74676621256073,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.77085505683169,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.08931332938182,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.17594232786578,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.1592058276559,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.14406138572257,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 81.93675621198207,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.9461073422324,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.85610895512492,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.7746716575687,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.70098107658816,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.63430030637352,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.5739625392226,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.51936439746392,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.46995989967986,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.4252550008926,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.38480265211427,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.3481983298571,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.31507599089849,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.38022933382136,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 79.43918497008245,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.57554004413933,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 93.61591676432103,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 100.26230279805245,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.13554835566346,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.21777925087997,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 99.19706301663278,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.9820417491511,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 98.88862510438935,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.36080613829934,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.42160940451892,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 91.73542855805196,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.56310785472803,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.50954226398493,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.46107209588166,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.41721264873722,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.9501442142594,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.85976182001535,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.14547406442809,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.13163585540035,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.9265822013374,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.67260832235586,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.7037514301462,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.73193205223801,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.7574319948522,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.78050625741491,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.70626066057928,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.63843138831434,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.57770065231614,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.6178718448136,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.07337754063549,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.1615224297805,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.24128254322333,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.21833056012589,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.1975618826297,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.07568728233728,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.06848753551064,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.0619726640391,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.96095259723545,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.86954205640416,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.89972714419193,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.81414066980413,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.73669560211437,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.76174241241826,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.78440664684632,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.80491494774286,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.82347239811682,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.74513965049945,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.67425829938708,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.94113312090819,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.94673282818856,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.95179986375082,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.86125997597809,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.77933268796512,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 82.87423463551899,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.07822455020994,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.16590836794738,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.2452512693643,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.84034466781331,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.85553186883007,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.86927438853512,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 83.88170965212552,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.08434508563595,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.17144668791856,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 84.25026275708036,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.0984134490185,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.05542491338966,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.14527754480063,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.13145802968712,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.11895309487048,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.10763769100254,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 88.09739866404462,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 87.89854882648221,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.47396335244416,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.42887762552508,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.38808067486124,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.35116453094604,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.31776003234029,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.28753313405794,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.35530648908868,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.41663290901029,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.47212565802201,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.52233966361395,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.56777706584204,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.60889223872854,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.64609633400234,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.67976139261614,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.61509914318361,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.55658788518292,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.43585680165003,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.4895208793744,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.5380801658925,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 85.58202025406952,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 86.04934149950374,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.48493868656578,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 102.43880893184476,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.3715519028223,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 101.4313329790301,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.83669979332073,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.85223371273919,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.86628996928505,
+      "RR": null,
+      "aktivitas": "Unknown"
+    },
+    {
+      "HR": 105.87900912552375,
+      "RR": null,
+      "aktivitas": "Unknown"
+    }
+  ]
+}
