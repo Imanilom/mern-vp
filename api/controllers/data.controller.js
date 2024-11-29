@@ -102,6 +102,52 @@ export const groupDataByThreeAndAverage = (data) => {
 //   return { filteredLogs, anomalies };
 // }
 
+
+export async function kalmanFilter(logs, options = {}) {
+  const {
+    initialEstimate = 0,      // Perkiraan awal
+    initialError = 1,         // Kesalahan awal
+    processNoise = 0.01,      // Noise proses (Q)
+    measurementNoise = 1,     // Noise pengukuran (R)
+  } = options;
+
+  let estimate = initialEstimate; // Perkiraan (X)
+  let error = initialError;       // Kesalahan (P)
+
+  const filteredLogs = [];
+  const anomalies = [];
+
+  logs.forEach((log) => {
+    const measurement = log.RR; // Data RR dari log
+
+    // Update Kalman Gain
+    const kalmanGain = error / (error + measurementNoise);
+
+    // Update estimate dengan data pengukuran
+    estimate = estimate + kalmanGain * (measurement - estimate);
+
+    // Update error (P)
+    error = (1 - kalmanGain) * error + processNoise;
+
+    // Tentukan apakah nilai termasuk anomali
+    const deviation = Math.abs(measurement - estimate);
+    const threshold = 3 * Math.sqrt(error); // Anomali jika di luar 3x standar deviasi
+
+    if (deviation > threshold) {
+      anomalies.push(log); // Tambahkan ke daftar anomali
+    } else {
+      // Menyimpan data lengkap dengan nilai RR yang difilter
+      filteredLogs.push({ 
+        filteredRR: estimate,
+        timestamp: `${log.date_created} ${log.time_created}`
+      });
+    }
+  });
+
+  return { filteredLogs, anomalies };
+}
+
+
 export async function filterIQ(logs, multiplier = 1.5) {
   if (!logs || logs.length === 0) {
     console.error("No logs available for processing.");
@@ -191,14 +237,11 @@ class OneClassSVM {
   }
 
   fit(data) {
-    // Latih model (sederhana; tidak ada implementasi nyata di sini)
     this.supportVectors = data; // Simpan data untuk demo
   }
 
   predict(data) {
-    // Prediksi anomali (sederhana; tidak ada logika nyata di sini)
     return data.map(point => {
-      // Misalkan kita anggap bahwa jika nilai lebih dari threshold, itu anomali
       const threshold = this._calculateThreshold();
       return (point.HR > threshold.HR || point.RR < threshold.RR) ? -1 : 1; // -1 = anomali, 1 = normal
     });
@@ -209,17 +252,13 @@ class OneClassSVM {
     const avgHR = this.supportVectors.reduce((sum, log) => sum + log.HR, 0) / this.supportVectors.length;
     const avgRR = this.supportVectors.reduce((sum, log) => sum + log.RR, 0) / this.supportVectors.length;
 
-    return { HR: avgHR + 10, RR: avgRR - 100 }; // Contoh threshold
+    return { HR: avgHR + 10, RR: avgRR - 100 }; 
   }
 }
 
 
 
 const processHeartRateData = async () => {
-  // const filter = { date_created: "28/05/2024" };
-  // const update = { $set: { isChecked: true } };
-  // await Log.updateMany(filter, update);
-
   try {
     const firstLog = await Log.findOne({ isChecked: false }).sort({ date_created: 1, time_created: 1 });
 
@@ -228,30 +267,53 @@ const processHeartRateData = async () => {
       return;
     }
 
-    // Ambil semua log dengan `date_created` yang sama
     const logs = await Log.find({
       isChecked: false,
       date_created: firstLog.date_created,
     }).sort({ time_created: 1 });
     
+    // Tambahkan validasi pada setiap log
+    logs.forEach((log) => {
+      if (!log.aktivitas && log.activity) {
+        log.aktivitas = log.activity; // Salin nilai dari 'activity' jika 'aktivitas' kosong
+      } else if (!log.aktivitas && !log.activity) {
+        log.aktivitas = "Unknown"; // Atur nilai default jika keduanya tidak ada
+      }
+    });
+    
+
     await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
 
-    const { filteredLogs, anomalies } = await filterIQ(logs);
-
+    const { filteredLogs, anomalies } = await kalmanFilter(logs);
+    console.log(filteredLogs)
     if (filteredLogs.length === 0) {
       console.log("No valid data after filtering.");
-      await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
       return;
     }
 
-    // Calculate metrics
-    const allHRIntervals = filteredLogs.map((log) => log.HR);
-    const hrvMetrics = calculateAdvancedMetrics(allHRIntervals);
+    // Kelompokkan data berdasarkan aktivitas
+    const groupedByActivity = filteredLogs.reduce((acc, log) => {
+      // Cari aktivitas di 'aktivitas' atau 'activity'
+      const activity = log.aktivitas || log.activity || log.acitivity || "Unknown"; // Gunakan "Unknown" jika keduanya tidak ada
+      acc[activity] = acc[activity] || [];
+      acc[activity].push(log);
+      return acc;
+    }, {});
+    
 
-    // Format nama file berdasarkan tanggal
-    const [day, month, year] = firstLog.date_created.split("/"); // Pisahkan format DD/MM/YYYY
-    const formattedDateString = `${year}-${month}-${day}T${firstLog.time_created}`; // Susun menjadi format ISO
+    // Hitung metrik untuk semua data (satu hari)
+    const allRRIntervals = filteredLogs.map((log) => log.RR);
+    const dailyMetrics = calculateAdvancedMetrics(allRRIntervals);
 
+    // Hitung metrik untuk setiap aktivitas
+    const activityMetrics = {};
+    for (const [activity, logs] of Object.entries(groupedByActivity)) {
+      const rrIntervals = logs.map((log) => log.RR);
+      activityMetrics[activity] = calculateAdvancedMetrics(rrIntervals);
+    }
+
+    const [day, month, year] = firstLog.date_created.split("/");
+    const formattedDateString = `${year}-${month}-${day}T${firstLog.time_created}`;
     const oldestTimestamp = new Date(formattedDateString);
 
     if (isNaN(oldestTimestamp.getTime())) {
@@ -263,29 +325,25 @@ const processHeartRateData = async () => {
       oldestTimestamp.getMonth() + 1
     ).padStart(2, "0")}-${oldestTimestamp.getFullYear()}`;
 
-
     const resultsDir = path.join(__dirname, "hrv-results");
-    const anomalyDir = path.join(__dirname, "anomaly-results");
-
-    const filteredFileName = path.join(resultsDir, `${formattedDate}.json`);
-    const anomalyFileName = path.join(anomalyDir, `${formattedDate}-anomalies.json`);
-
-    // Buat direktori jika belum ada
     if (!fs.existsSync(resultsDir)) {
       fs.mkdirSync(resultsDir, { recursive: true });
     }
-    if (!fs.existsSync(anomalyDir)) {
-      fs.mkdirSync(anomalyDir, { recursive: true });
-    }
 
-    // Baca dan perbarui file JSON untuk filtered logs
-    let jsonData = { metrics: {}, filteredLogs: [] };
+    const filteredFileName = path.join(resultsDir, `${formattedDate}.json`);
+
+    // Baca atau buat JSON untuk hari ini
+    let jsonData = { dailyMetrics: {}, activityMetrics: {}, filteredLogs: [] };
     if (fs.existsSync(filteredFileName)) {
       const existingData = fs.readFileSync(filteredFileName);
       jsonData = JSON.parse(existingData);
     }
 
-    jsonData.metrics = hrvMetrics;
+    // Tambahkan metrik harian dan per aktivitas
+    jsonData.dailyMetrics = dailyMetrics;
+    jsonData.activityMetrics = activityMetrics;
+
+    // Tambahkan log yang difilter
     jsonData.filteredLogs = jsonData.filteredLogs.concat(
       filteredLogs.map((log) => ({
         date_created: log.date_created,
@@ -293,14 +351,21 @@ const processHeartRateData = async () => {
         HR: log.HR,
         RR: log.RR,
         rrRMS: log.rrRMS,
-        aktivitas: log.aktivitas,
+        aktivitas: log.aktivitas || log.activity || "Unknown", // Cari aktivitas di kedua properti
       }))
     );
+    
 
     fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
-    console.log(`Filtered logs written to ${filteredFileName}`);
+    console.log(`Data written to ${filteredFileName}`);
 
-    // Simpan data anomali ke file JSON terpisah
+    // Simpan data anomali
+    const anomalyDir = path.join(__dirname, "anomaly-results");
+    if (!fs.existsSync(anomalyDir)) {
+      fs.mkdirSync(anomalyDir, { recursive: true });
+    }
+
+    const anomalyFileName = path.join(anomalyDir, `${formattedDate}-anomalies.json`);
     const anomalyData = anomalies.map((log) => ({
       date_created: log.date_created,
       time_created: log.time_created,
@@ -313,12 +378,138 @@ const processHeartRateData = async () => {
     fs.writeFileSync(anomalyFileName, JSON.stringify(anomalyData, null, 2));
     console.log(`Anomalies written to ${anomalyFileName}`);
 
-    // Tandai log sebagai telah diproses
-   
   } catch (error) {
     console.error("Error processing heart rate data:", error);
   }
 };
+
+
+const processHeartRateData10 = async () => {
+  try {
+    const firstLog = await Log.findOne({ isChecked: false }).sort({ date_created: 1, time_created: 1 });
+
+    if (!firstLog) {
+      console.log("No data to process.");
+      return;
+    }
+
+    const logs = await Log.find({
+      isChecked: false,
+      date_created: firstLog.date_created,
+    }).sort({ time_created: 1 });
+
+    // Validasi aktivitas
+    logs.forEach((log) => {
+      if (!log.aktivitas && log.activity) {
+        log.aktivitas = log.activity; // Salin nilai dari 'activity' jika 'aktivitas' kosong
+      } else if (!log.aktivitas && !log.activity) {
+        log.aktivitas = "Unknown"; // Atur nilai default jika keduanya tidak ada
+      }
+    });
+
+    await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
+
+    const { filteredLogs, anomalies } = await kalmanFilter(logs);
+
+    if (filteredLogs.length === 0) {
+      console.log("No valid data after filtering.");
+      return;
+    }
+
+   // Membagi data ke dalam segmen 10 menit
+    const segmentedLogs = [];
+    const intervalMs = 10 * 60 * 1000; // 10 menit dalam milidetik
+
+    // Fungsi untuk parsing manual
+    const parseDateTime = (date, time) => {
+      const [day, month, year] = date.split("/");
+      return new Date(`${year}-${month}-${day}T${time}`);
+    };
+
+    let segmentStart = parseDateTime(filteredLogs[0].date_created, filteredLogs[0].time_created).getTime();
+
+    let currentSegment = [];
+    filteredLogs.forEach((log) => {
+      const logTime = parseDateTime(log.date_created, log.time_created).getTime();
+
+      if (logTime - segmentStart < intervalMs) {
+        currentSegment.push(log);
+      } else {
+        segmentedLogs.push({
+          startTime: new Date(segmentStart).toISOString(),
+          logs: currentSegment,
+        });
+        currentSegment = [log];
+        segmentStart += intervalMs;
+      }
+    });
+
+    // Tambahkan segmen terakhir
+    if (currentSegment.length > 0) {
+      segmentedLogs.push({
+        startTime: new Date(segmentStart).toISOString(),
+        logs: currentSegment,
+      });
+}
+
+    // Hitung metrik per segmen
+    const metricsPerSegment = segmentedLogs.map((segment) => {
+      const rrIntervals = segment.logs.map((log) => log.RR);
+      const metrics = calculateAdvancedMetrics(rrIntervals);
+
+      return {
+        timestamp: segment.startTime,
+        metrics,
+        logCount: segment.logs.length,
+      };
+    });
+
+    // Simpan hasil ke file JSON
+    const [day, month, year] = firstLog.date_created.split("/");
+    const formattedDateString = `${year}-${month}-${day}`;
+    const resultsDir = path.join(__dirname, "hrv-results");
+    if (!fs.existsSync(resultsDir)) {
+      fs.mkdirSync(resultsDir, { recursive: true });
+    }
+
+    const filteredFileName = path.join(resultsDir, `${formattedDateString}.json`);
+
+    let jsonData = { metricsBySegment: [] };
+    if (fs.existsSync(filteredFileName)) {
+      const existingData = fs.readFileSync(filteredFileName);
+      jsonData = JSON.parse(existingData);
+    }
+
+    jsonData.metricsBySegment = jsonData.metricsBySegment.concat(metricsPerSegment);
+
+    fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
+    console.log(`Data written to ${filteredFileName}`);
+
+    // Simpan data anomali
+    const anomalyDir = path.join(__dirname, "anomaly-results");
+    if (!fs.existsSync(anomalyDir)) {
+      fs.mkdirSync(anomalyDir, { recursive: true });
+    }
+
+    const anomalyFileName = path.join(anomalyDir, `${formattedDateString}-anomalies.json`);
+    const anomalyData = anomalies.map((log) => ({
+      date_created: log.date_created,
+      time_created: log.time_created,
+      HR: log.HR,
+      RR: log.RR,
+      rrRMS: log.rrRMS,
+      aktivitas: log.aktivitas,
+    }));
+
+    fs.writeFileSync(anomalyFileName, JSON.stringify(anomalyData, null, 2));
+    console.log(`Anomalies written to ${anomalyFileName}`);
+
+  } catch (error) {
+    console.error("Error processing heart rate data:", error);
+  }
+};
+
+
 
 processHeartRateData();
 

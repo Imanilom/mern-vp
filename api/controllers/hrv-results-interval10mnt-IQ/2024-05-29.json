@@ -1,0 +1,654 @@
+{
+  "metricsBySegment": [
+    {
+      "timestamp": "2024-05-29T01:38:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": 2.196721902648194,
+          "alphaMinus": -0.5205232817186427
+        },
+        "median3dp": 646,
+        "mean": 646.1666666666666,
+        "max": 678,
+        "min": 624,
+        "rmssd": 19.31556131959175,
+        "sdnn": 15.47921382390141,
+        "hf": 6579.218122410606,
+        "lf": 31808.643692733844,
+        "lfHfRatio": 4.834714870507933,
+        "s1": 13.658164391507905,
+        "s2": 912.5708938836677
+      },
+      "logCount": 12
+    },
+    {
+      "timestamp": "2024-05-29T01:48:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": 2.085249467126528,
+          "alpha2": 1.3041697099752554
+        },
+        "adfa": {
+          "alphaPlus": 1.6428267897301514,
+          "alphaMinus": 1.1255134201744506
+        },
+        "median3dp": 627,
+        "mean": 627.936170212766,
+        "max": 687,
+        "min": 567,
+        "rmssd": 20.945062715922173,
+        "sdnn": 22.21476619700934,
+        "hf": 1775.3076175167478,
+        "lf": 4628.359030139705,
+        "lfHfRatio": 2.607074393458486,
+        "s1": 14.810395878806094,
+        "s2": 888.1825850284534
+      },
+      "logCount": 47
+    },
+    {
+      "timestamp": "2024-05-29T01:58:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T02:08:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T02:18:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T02:28:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T02:38:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T02:48:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T02:58:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T03:08:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T03:18:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T03:28:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T03:38:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T03:48:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T03:58:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T04:08:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T04:18:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T04:28:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T04:38:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T04:48:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T04:58:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T05:08:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T05:18:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T05:28:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T05:38:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T05:48:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T05:58:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T06:08:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T06:18:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T06:28:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T06:38:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T06:48:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T06:58:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T07:08:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T07:18:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T07:28:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T07:38:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T07:48:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T07:58:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T08:08:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T08:18:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T08:28:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T08:38:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T08:48:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T08:58:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": 1.7696681314267633,
+          "alphaMinus": 2.4731947185309355
+        },
+        "median3dp": 554,
+        "mean": 561.1818181818181,
+        "max": 605,
+        "min": 533,
+        "rmssd": 18.742998692845283,
+        "sdnn": 23.310161654601117,
+        "hf": 3681.0060039483096,
+        "lf": 29227.881879118868,
+        "lfHfRatio": 7.940188591860091,
+        "s1": 13.253301475481495,
+        "s2": 792.5902156852554
+      },
+      "logCount": 11
+    },
+    {
+      "timestamp": "2024-05-29T09:08:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": 2.1926585326528905,
+          "alpha2": 1.1934474215139788
+        },
+        "adfa": {
+          "alphaPlus": 1.6016376339415024,
+          "alphaMinus": null
+        },
+        "median3dp": 558,
+        "mean": 555.3488372093024,
+        "max": 596,
+        "min": 510,
+        "rmssd": 26.128801842302025,
+        "sdnn": 20.51582864049614,
+        "hf": 1418.391507984119,
+        "lf": 3268.0252373382987,
+        "lfHfRatio": 2.304036099301639,
+        "s1": 18.475852966971317,
+        "s2": 785.9441243922284
+      },
+      "logCount": 43
+    },
+    {
+      "timestamp": "2024-05-29T09:18:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": 2.2074562378437466,
+          "alpha2": 1.0717234108547544
+        },
+        "adfa": {
+          "alphaPlus": 1.5099105721741481,
+          "alphaMinus": null
+        },
+        "median3dp": 560,
+        "mean": 562.0540540540541,
+        "max": 615,
+        "min": 505,
+        "rmssd": 28.127157451498185,
+        "sdnn": 21.857503580957243,
+        "hf": 707.7519748657003,
+        "lf": 2283.795331093159,
+        "lfHfRatio": 3.2268300367886944,
+        "s1": 19.888903769456096,
+        "s2": 795.1625878371608
+      },
+      "logCount": 74
+    },
+    {
+      "timestamp": "2024-05-29T09:28:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": 2.1852023822773834,
+          "alpha2": 1.1101824391891442
+        },
+        "adfa": {
+          "alphaPlus": 1.4881622019791658,
+          "alphaMinus": 1.3913315829457813
+        },
+        "median3dp": 582.5,
+        "mean": 582.51,
+        "max": 631,
+        "min": 528,
+        "rmssd": 21.08089278005181,
+        "sdnn": 21.347767370785448,
+        "hf": 748.4841971213062,
+        "lf": 2752.7072060718406,
+        "lfHfRatio": 3.6777091843205763,
+        "s1": 14.906442238241162,
+        "s2": 824.1605708019806
+      },
+      "logCount": 100
+    },
+    {
+      "timestamp": "2024-05-29T09:38:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": 2.2202466219994763,
+          "alpha2": 1.1101372168793748
+        },
+        "adfa": {
+          "alphaPlus": 1.6512620953727595,
+          "alphaMinus": null
+        },
+        "median3dp": 567,
+        "mean": 574.7105263157895,
+        "max": 766,
+        "min": 534,
+        "rmssd": 43.14995850425489,
+        "sdnn": 41.58281082938312,
+        "hf": 1094.303700188187,
+        "lf": 5677.414079822675,
+        "lfHfRatio": 5.188152136236342,
+        "s1": 30.511628266276766,
+        "s2": 815.3291409658482
+      },
+      "logCount": 38
+    },
+    {
+      "timestamp": "2024-05-29T09:48:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": 1.864339699792232,
+          "alpha2": 0.7039782300602073
+        },
+        "adfa": {
+          "alphaPlus": 1.181875409141837,
+          "alphaMinus": null
+        },
+        "median3dp": 551,
+        "mean": 552.8615384615384,
+        "max": 603,
+        "min": 515,
+        "rmssd": 26.365815936549357,
+        "sdnn": 17.864837078634494,
+        "hf": 591.9032561237663,
+        "lf": 1762.2188910128273,
+        "lfHfRatio": 2.977207631113875,
+        "s1": 18.643447240250392,
+        "s2": 782.4156404207421
+      },
+      "logCount": 65
+    },
+    {
+      "timestamp": "2024-05-29T09:58:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": 2.143569611411602,
+          "alphaMinus": 2.3039871915068195
+        },
+        "median3dp": 556.5,
+        "mean": 551.7857142857143,
+        "max": 579,
+        "min": 510,
+        "rmssd": 17.3249486623726,
+        "sdnn": 21.566279132117245,
+        "hf": 8931.495015257715,
+        "lf": 7676.55752715768,
+        "lfHfRatio": 0.8594930091819769,
+        "s1": 12.25058868287247,
+        "s2": 778.0332700024911
+      },
+      "logCount": 14
+    },
+    {
+      "timestamp": "2024-05-29T10:08:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T10:18:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T10:28:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T10:38:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": 1.3736837197824614
+        },
+        "adfa": {
+          "alphaPlus": 1.6383084465127047,
+          "alphaMinus": null
+        },
+        "median3dp": 559,
+        "mean": 558.9285714285714,
+        "max": 601,
+        "min": 520,
+        "rmssd": 25.596585420426397,
+        "sdnn": 19.540894576414892,
+        "hf": 2756.807697136969,
+        "lf": 9415.502483025044,
+        "lfHfRatio": 3.4153642609179222,
+        "s1": 18.09951912600422,
+        "s2": 791.1299701247764
+      },
+      "logCount": 28
+    },
+    {
+      "timestamp": "2024-05-29T10:48:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": 2.03764359279398,
+          "alpha2": 1.15365869974035
+        },
+        "adfa": {
+          "alphaPlus": 1.245122935962932,
+          "alphaMinus": 1.673257892924923
+        },
+        "median3dp": 553.5,
+        "mean": 552.8518518518518,
+        "max": 591,
+        "min": 518,
+        "rmssd": 21.248751350662094,
+        "sdnn": 15.840487184483594,
+        "hf": 1421.3871828616168,
+        "lf": 6091.018044869457,
+        "lfHfRatio": 4.285263099535396,
+        "s1": 15.025136171799977,
+        "s2": 782.231604461791
+      },
+      "logCount": 54
+    },
+    {
+      "timestamp": "2024-05-29T10:58:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": 1.4744183874742758
+        },
+        "adfa": {
+          "alphaPlus": 2.2039582217848164,
+          "alphaMinus": 0.43656322430810884
+        },
+        "median3dp": 556,
+        "mean": 558.3076923076923,
+        "max": 593,
+        "min": 517,
+        "rmssd": 12.8,
+        "sdnn": 18.429908802312028,
+        "hf": 1882.2327660477872,
+        "lf": 11275.03686510285,
+        "lfHfRatio": 5.990245770068904,
+        "s1": 9.050966799187808,
+        "s2": 790.5769538760917
+      },
+      "logCount": 26
+    },
+    {
+      "timestamp": "2024-05-29T11:08:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T11:18:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T11:28:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T11:38:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T11:48:51.000Z",
+      "metrics": null,
+      "logCount": 1
+    },
+    {
+      "timestamp": "2024-05-29T11:58:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 588.5,
+        "mean": 595.8333333333334,
+        "max": 624,
+        "min": 574,
+        "rmssd": 24.42130217658346,
+        "sdnn": 19.02016473815794,
+        "hf": 14303.585009563576,
+        "lf": 19048.399365436424,
+        "lfHfRatio": 1.3317220370068343,
+        "s1": 17.268468374467957,
+        "s2": 841.8411964260242
+      },
+      "logCount": 6
+    },
+    {
+      "timestamp": "2024-05-29T12:08:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": 3.5249272981170683,
+          "alphaMinus": 1.3112081824140351
+        },
+        "median3dp": 542,
+        "mean": 554,
+        "max": 605,
+        "min": 522,
+        "rmssd": 23.385358667337133,
+        "sdnn": 31.40461749488441,
+        "hf": 6010.732842737398,
+        "lf": 31225.137969286592,
+        "lfHfRatio": 5.194896992804307,
+        "s1": 16.53594569415369,
+        "s2": 781.7473616840673
+      },
+      "logCount": 9
+    },
+    {
+      "timestamp": "2024-05-29T12:18:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": 1.9849535419681754,
+          "alphaMinus": null
+        },
+        "median3dp": 606,
+        "mean": 601.1111111111111,
+        "max": 640,
+        "min": 535,
+        "rmssd": 21.991475621249247,
+        "sdnn": 30.819816857196134,
+        "hf": 5820.822257131827,
+        "lf": 38239.09147902288,
+        "lfHfRatio": 6.569362504098337,
+        "s1": 15.550321540083985,
+        "s2": 856.1413799717894
+      },
+      "logCount": 9
+    },
+    {
+      "timestamp": "2024-05-29T12:28:51.000Z",
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": 1.4424404099636263
+        },
+        "adfa": {
+          "alphaPlus": 1.7170940155654466,
+          "alphaMinus": 1.984233980063635
+        },
+        "median3dp": 602,
+        "mean": 604.4814814814815,
+        "max": 655,
+        "min": 531,
+        "rmssd": 30.68888548493888,
+        "sdnn": 29.73132299363025,
+        "hf": 2202.109028299306,
+        "lf": 13087.933054516297,
+        "lfHfRatio": 5.943362879096018,
+        "s1": 21.70031903345769,
+        "s2": 856.790287149572
+      },
+      "logCount": 27
+    }
+  ]
+}
