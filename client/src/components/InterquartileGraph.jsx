@@ -112,6 +112,13 @@ function InterquartileGraph({ data, label, color }) {
         const paginatedData = getPaginatedData(processedData, page, maxTitik);
         processedData = paginatedData;
 
+        let defaultColor = "rgba(7, 172, 123, 1)";
+
+        const theme = localStorage.getItem('_isLightMode');
+        if (theme == "true") { // is light state
+            defaultColor = "rgba(33,113,122, 1)";
+        }
+
         let colorHR = processedData.map((item, i) => {
             if (i > 0) {
               
@@ -139,10 +146,10 @@ function InterquartileGraph({ data, label, color }) {
                     
                     return 'rgba(255, 161, 0, 1)';
                 } else {
-                    return 'rgba(7, 172, 123, 1)'; // Warna default
+                    return defaultColor; // Warna default
                 }
             } else {
-                return 'rgba(7, 172, 123, 1)'; // Warna default
+                return defaultColor; // Warna default
             }
         });
 
@@ -190,7 +197,7 @@ function InterquartileGraph({ data, label, color }) {
 
 
 
-        console.log({ paginatedData })
+        console.log('IQR', { paginatedData, processedData, processedData2, rawData})
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
         // console.log({ label, data, tooltip })
@@ -232,7 +239,7 @@ function InterquartileGraph({ data, label, color }) {
             .attr('height', height)
             .attr('width', width)
             // .style('background', '#2C2C2C')
-            .attr('class', 'svgOne bgg-bl min-w-lg')
+            .attr('class', 'svgOne bg-[#101010] bg-[#FEFCF5] min-w-lg')
 
         const x = d3.scaleBand()
             .domain(processedData.map(d => d.date)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
@@ -312,7 +319,7 @@ function InterquartileGraph({ data, label, color }) {
                     .attr('y1', margin.top)
                     .attr('x2', linePosition) // Posisi X untuk garis vertikal
                     .attr('y2', height - margin.bottom)
-                    .attr('stroke', 'white')
+                    .attr('stroke', theme == "true" ? "gray" : "white")
                     .attr('stroke-width', 1)
                     .attr('stroke-dasharray', '5,5'); // Mengatur garis menjadi putus-putus
 
@@ -320,7 +327,7 @@ function InterquartileGraph({ data, label, color }) {
                 svg.append('text')
                     .attr('x', linePosition + 5)
                     .attr('y', margin.top - 5)
-                    .attr('fill', 'white')
+                    .attr('fill', theme == "true" ? "gray" : "white")
                     .attr('font-size', 10)
                     .text(currentDate);
 
@@ -500,13 +507,13 @@ function InterquartileGraph({ data, label, color }) {
                 {slice > 1 ? (
                     <div className='md:flex-col lg:flex-row flex-row flex'>
                         {scroolState[label] > 1 ? (
-                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
+                            <button className='rounded-md bg-slate-800 dark:bg-[#FFD166] px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
                                 <FaAngleLeft color='white' size={16} />
 
                             </button>
                         ) : null}
                         {scroolState[label] < slice ? (
-                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
+                            <button className='rounded-md bg-slate-800 dark:bg-[#FFD166] px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
                                 <FaAngleRight color='white' size={16} /> 
                             </button>
                         ) : null}
@@ -514,19 +521,19 @@ function InterquartileGraph({ data, label, color }) {
                 ) : null}
 
                 <div className="flex sm:flex-row overflow-x-auto">
-                    <button id={`zoom_panel_${label}`} className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id={`zoom_panel_${label}`} className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
-                    <button id='' className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
                         Graphic {label}
                     </button>
-                    <button id='' className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
                         HR Point
                         <span className='ms-2 w-4 h-4 bg-[#005A8F] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
-                    <button id='' className='whitespace-nowrap rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
                         RR Point 
-                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] rounded-full text-xs text-transparent'>lLL</span>
+                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] dark:bg-[#217071] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
                 </div>
             </div>

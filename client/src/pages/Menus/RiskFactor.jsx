@@ -73,7 +73,7 @@ function RiskFactor() {
   }
 
   return (
-    <main class="bgg-bl text-white flex">
+    <main class="bg-[#101010] dark:bg-[#FEFCF5] text-white dark:text-[#073B4C] flex">
       <Side />
       <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8">
         {/* <ButtonOffCanvas /> */}
@@ -96,21 +96,24 @@ function RiskFactor() {
         ) : null}
         <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-3 md:mb-5">Detail Labotarium</h1>
         {lab ? (
-          <p className='text-sm md:text-[16px]'>Nama Lab : {lab.name_lab}</p>
+          <p className='text-sm md:text-[16px] mb-1'>Nama Lab : {lab.name_lab}</p>
         ) : null}
         {lab ? (
-          <p className='text-sm md:text-[16px]'>Lokasi Lab : {lab.location}</p>
+          <p className='text-sm md:text-[16px] mb-1'>Lokasi Lab : {lab.location}</p>
         ) : null}
-        <p className='text-sm md:text-[16px]'>Total : <span className="darkgreen">{lengthDoc} Dokumen</span> </p>
-        <Link to={`/faktor-resiko/${id}/add`} className="darkgreen w-full justify-end flex text-end md:my-3 mb-3 mt-8 font-medium text-xs uppercase cursor-pointer">Tambahkan dokumen lab terbaru</Link>
-        <div class="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
-          <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/30">
+        <p className='text-sm font-medium'>Total : <span className="text-[#07AC7B] dark:text-[#D39504]">{lengthDoc} Dokumen</span> </p>
+        {currentUser.role != 'user' ? (
+          <Link to={`/faktor-resiko/${id}/add`} className=" w-full text-[#07AC7B] dark:text-[#D39504] justify-end flex text-end md:my-3 mb-3 mt-8 font-medium text-xs uppercase cursor-pointer">Tambahkan dokumen lab terbaru</Link>
+
+        ) : null}
+
+        <div class="relative flex flex-col mt-3 min-w-0 break-words w-full mb-6 shadow-lg rounded ">
+          <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/30 dark:bg-[#217170]">
             <div class="flex flex-wrap items-center">
               <div class="relative w-full px-4 max-w-full flex-grow flex-1">
                 {docValue.length > 0 ? (
                   <>
-
-                    <p className='font-medium'>Dokumen {doc}</p>
+                    <p className='font-medium text-white dark:text-white'>Dokumen {doc}</p>
                     {currentUser.role != 'user' ? (
                       <h3 onClick={() => handlerDeleteDoc(docValue[doc - 1]['_id'])} class="font-semibold text-blueGray-700 text-red-600 cursor-pointer text-sm whitespace-nowrap">Hapus Dokumen</h3>
                     ) : null}
@@ -120,7 +123,7 @@ function RiskFactor() {
                 )}
               </div>
               <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                <Link to={'/faktor-resiko'} class=" text-xs font-bold uppercase py-1 rounded outline-none focus:outline-none mb-1 ease-linear transition-all duration-150" type="button">Kembali</Link>
+                <Link to={'/faktor-resiko'} class=" text-xs font-semibold uppercase py-1 rounded outline-none focus:outline-none mb-1 ease-linear text-[#005A8F] dark:text-[#FFD166] transition-all duration-150" type="button">Kembali</Link>
                 {doc > 1 ? (
                   <button onClick={() => setDoc(doc - 1)} class="blue text-xs font-bold uppercase ps-4 py-1 rounded outline-none focus:outline-none mb-1 ease-linear transition-all duration-150" type="button">{"<-"} Back</button>
                 ) : null}
@@ -138,7 +141,7 @@ function RiskFactor() {
 
               <table class="items-center bg-transparent w-full  ">
                 <thead>
-                  <tr className='bg-[#2c2c2c]'>
+                  <tr className='bg-[#2c2c2c] dark:bg-[#E7E7E7]'>
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Tanggal
                     </th>
@@ -152,7 +155,7 @@ function RiskFactor() {
                     <th></th>
                     <th></th>
                   </tr>
-                  <tr className='bg-[#141414]'>
+                  <tr className='bg-[#141414] dark:bg-[#CBCBCB]'>
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Ditulis Oleh
                     </th>
@@ -163,7 +166,7 @@ function RiskFactor() {
                     <th></th>
                     <th></th>
                   </tr>
-                  <tr className='bg-[#2c2c2c]'>
+                  <tr className='bg-[#2c2c2c] dark:bg-[#E7E7E7]'>
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Bukti Dokumen
                     </th>
@@ -183,7 +186,7 @@ function RiskFactor() {
                     <th></th>
                     <th></th>
                   </tr>
-                  <tr className='bg-[#141414]'>
+                  <tr className='bg-[#141414] dark:bg-[#CBCBCB]'>
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-4 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left"></th>
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left"></th>
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left"></th>
@@ -198,7 +201,7 @@ function RiskFactor() {
                 </thead>
 
                 <thead>
-                  <tr className='bg-[#2c2c2c]'>
+                  <tr className='bg-[#2c2c2c] dark:bg-[#E7E7E7]'>
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       No
                     </th>
@@ -216,7 +219,7 @@ function RiskFactor() {
                   {docValue[doc - 1]['penilaian'].length > 0 ? (
                     docValue[doc - 1]['penilaian'].map((data, _i) => {
                       return (
-                        <tr className={_i % 2 ? 'bg-[#2c2c2c]' : 'bg-[#141414]'}>
+                        <tr className={_i % 2 ? 'bg-[#2c2c2c] dark:bg-[#E7E7E7]' : 'bg-[#141414] dark:bg-[#CBCBCB]'}>
                           <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                             {_i + 1}
                           </th>

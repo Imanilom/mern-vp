@@ -225,7 +225,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
             .attr('width', width)
             .attr('height', height)
             .style('background', 'white')
-            .attr('class', 'svgTwo bgg-bl')
+            .attr('class', 'svgTwo bg-[#101010] dark:bg-[#FEFCF5]')
 
         const x = d3.scaleLinear()
             .domain([d3.min(data, d => d[0]) - 50, d3.max(data, d => d[0])])
@@ -363,12 +363,12 @@ function ScatterGraph({ data, label, keyValue, color }) {
                     </div>
                 ) : null}
                 <div data-aos="fade-up" className="flex sm:flex-row flex-col md:gap-0 gap-2">
-                    <button id={`zoom_panel_${label}`} className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id={`zoom_panel_${label}`} className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
                         Zoom level 1
                     </button>
-                    <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
                         Graphic {label} 
-                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] rounded-full text-xs text-transparent'>lLL</span>
+                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] dark:bg-[#217071] rounded-full text-xs text-transparent'>lLL</span>
                     
                     </button>
                 </div>

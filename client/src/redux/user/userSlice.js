@@ -1,10 +1,11 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
+  isLightMode_ : true,
   currentUser: null,
   error: null,
   loading: false,
-  DocterPatient : null
+  DocterPatient : null,
 };
 
 const userSlice = createSlice({
@@ -64,6 +65,10 @@ const userSlice = createSlice({
     },
     docterUnsetUser: (state) => {
       state.DocterPatient = null;
+    },
+    setThemeWeb : (state, property) => {
+      // true / false
+      state.isLightMode_ = property.payload;
     }
   },
 });
@@ -82,7 +87,8 @@ export const {
   signOutUserSuccess,
   signOutUserStart,
   docterGetUser,
-  docterUnsetUser
+  docterUnsetUser,
+  setThemeWeb
 } = userSlice.actions;
 
 export default userSlice.reducer;

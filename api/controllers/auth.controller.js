@@ -25,11 +25,11 @@ export const signin = async (req, res, next) => {
 
     const token = jwt.sign({ id: validUser._id, current_device : validUser.current_device, role : validUser.role, guid : validUser.guid }, 'asnjkKkjsnklnly1xcx?23r');
     const { password: pass, ...rest } = validUser._doc;
+    console.log('woy',req.cookie)
     res
       .cookie('access_token', token, { httpOnly: true })
       .status(200)
       .json(rest);
-      console.log(req.cookie)
   } catch (error) {
     next(error);
   }

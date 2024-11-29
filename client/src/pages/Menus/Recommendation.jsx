@@ -164,7 +164,7 @@ function Recommendation() {
   }, [startDate, endDate]);
 
   return (
-    <main class="bgg-bl flex text-white">
+    <main class="bg-[#101010] dark:bg-[#FEFCF5] flex dark:text-[#073B4C] text-white">
       <Side />
       <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
         {/* <ButtonOffCanvas /> */}
@@ -186,7 +186,7 @@ function Recommendation() {
           }}
           isClearable
           placeholderText='Cari berdasarkan range tanggal'
-          className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+          className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
         />
         {/* {loading ? (
                       <span class="ms-4 loader "></span>
@@ -195,15 +195,15 @@ function Recommendation() {
         {/* </div> */}
 
         <div data-aos="fade-right" class="md:mt-4 mt-0 relative flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg rounded ">
-          <div class="rounded-t bg-[#363636]/20 mb-0 px-4 py-3 border-0">
+          <div class="rounded-t bg-[#363636]/20 dark:bg-[#217170] mb-0 px-4 py-3 border-0">
             <div class="flex  flex-wrap flex-col sm:flex-row sm:items-center items-start sm:gap-0 gap-1">
               <div class="relative w-full md:px-4 max-w-full flex-grow flex-1">
-                <h3 class="font-semibold text-sm md:text-base text-blueGray-700">Rekomendasi</h3>
+                <h3 class="font-semibold text-sm md:text-base text-blueGray-700 dark:text-white">Rekomendasi</h3>
               </div>
               <div class="relative w-full md:px-4 max-w-full flex-grow flex-1 md:text-right">
                 {currentUser.role !== 'user' ? (
                   <Link to="/createRecomendation">
-                    <button class="darkgreen text-xs w-full md:w-fit text-end font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat rekomendasi aktivitas</button>
+                    <button class="text-[#07AC7B] dark:text-[#FFD166] text-xs w-full md:w-fit text-end font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat rekomendasi aktivitas</button>
                   </Link>
                 ) : null}
               </div>
@@ -213,7 +213,7 @@ function Recommendation() {
           <div class="block w-full overflow-x-auto" data-aos="fade-right">
             <table class="items-center bg-transparent w-full  ">
               <thead>
-                <tr className='bg-[#2f2f2f]'>
+                <tr className='bg-[#2f2f2f] dark:bg-[#E7E7E7]'>
                   {currentUser.role == 'user' ? (
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Doctor
@@ -246,7 +246,7 @@ function Recommendation() {
                 {recomendation.length > 0 ? (
                   recomendation.map((recomendation, i) => {
                     return (
-                      <tr className={i % 2 == 0 ? 'bg-[#141414]' : 'bg-[#2f2f2f]'}>
+                      <tr className={i % 2 == 0 ? 'bg-[#141414] dark:bg-[#CBCBCB]' : 'bg-[#2f2f2f] dark:bg-[#E7E7E7]'}>
                         {currentUser.role == 'user' ? (
                           <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                             {recomendation.doctor.name}
@@ -273,7 +273,7 @@ function Recommendation() {
                         {currentUser.role != 'user' ? (
                           <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                             {recomendation.status ? (
-                              <span className="w-fit px-3 py-1 bg-green-500 text-white rounded-full">Done</span>
+                              <span className="w-fit px-3 py-1 bg-green-500 dark:bg-[#217170] text-white rounded-full">Done</span>
                             ) : (
                               <span className="w-fit px-3 py-1 bg-slate-800 text-white rounded-full">Noy yet</span>
 
@@ -290,7 +290,7 @@ function Recommendation() {
                                   type="checkbox"
                                   checked
                                   onChange={() => checkboxAction(event, { id: recomendation._id, checked: true })}
-                                  className="form-checkbox h-5 w-5 text-indigo-600 bg-[#2f2f2f] checked:accent-[#07AC7B]"
+                                  className="form-checkbox h-5 w-5 text-indigo-600 bg-[#2f2f2f] checked:accent-[#07AC7B] dark:checked:accent-[#FFD166]"
                                 /> Selesai
                               </>
                             ) : (
@@ -298,7 +298,7 @@ function Recommendation() {
                                 <input
                                   type="checkbox"
                                   onChange={() => checkboxAction(event, { id: recomendation._id, checked: false })}
-                                  className="form-checkbox h-5 w-5 text-indigo-600 bg-[#2f2f2f] checked:accent-[#07AC7B]"
+                                  className="form-checkbox h-5 w-5 text-indigo-600 bg-[#2f2f2f] checked:accent-[#07AC7B] dark:checked:accent-[#FFD166]"
                                 />
                               </>
                             )}
@@ -310,7 +310,7 @@ function Recommendation() {
                               <span className='bg-indigo-600 text-white font-medium py-1 px-3 rounded-md active:bg-indigo-600/80'>Detail</span>
                             </Link> */}
                             <Link to={`/updateRecomendation/${recomendation._id}`}>
-                              <span className='darkgreen font-medium py-1 px-3 rounded-md '>Edit</span>
+                              <span className='text-[#07AC7B] dark:text-[#D39504] font-medium py-1 px-3 rounded-md '>Edit</span>
                             </Link>
                             <button onClick={() => { setId(recomendation._id); setModal(true) }} data-modal-target="popup-modal" data-modal-toggle="popup-modal">
                               <span className='bg-red-600 font-medium py-1 px-3 rounded-md active:bg-red-600/80 text-white'>Delete</span>
@@ -332,13 +332,13 @@ function Recommendation() {
 
               if (i + 1 == currentPagination) {
                 return (
-                  <div className="py-3 px-7 bgg-b text-white rounded-[5px]">
+                  <div className="py-3 px-7 bg-[#005A8F] dark:bg-[#FFD166] text-white rounded-[5px]">
                     {i + 1}
                   </div>
                 )
               } else {
                 return (
-                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 rounded-[5px] bg-[#272727] text-white cursor-pointer">
+                  <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 rounded-[5px] bg-[#272727] dark:bg-[#073B4C] text-white cursor-pointer">
                     {i + 1}
                   </div>
 

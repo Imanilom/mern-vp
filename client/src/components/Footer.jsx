@@ -3,8 +3,8 @@ import logo_vidyamedic from '../assets/images/logoreal.png';
 
 function Footer() {
     return (
-        <div className=" border-t border-[#363636] bg-[#101010] text-white/90">
-            <footer className="py-8 px-8 md:px-24 md:justify-between bg-[#101010] md:py-16 flex flex-col md:flex-row gap-8">
+        <div className=" border-t border-[#363636] dark:bg-[#073B4C] bg-[#101010] dark: text-white/90">
+            <footer className="py-8 px-8 md:px-24 md:justify-between dark:bg-[#073B4C] bg-[#101010] md:py-16 flex flex-col md:flex-row gap-8">
                 <div className="md:w-5/12">
                     {/* logo */}
                     {/* <div className="w-16 h-16 bg-green-500 mb-3"></div> */}
@@ -42,7 +42,7 @@ function Footer() {
 
                     <div className="product text-normal">
                         <p className="font-bold mb-3">COMPANY</p>
-                        <div className="flex flex-col gap-3 blue cursor-pointer font-medium">
+                        <div className="flex flex-col gap-3 dark:text-white text-[#073B4C] cursor-pointer font-medium">
                             <a href="">
                                 About us
                             </a>
@@ -60,7 +60,7 @@ function Footer() {
 
                     <div className="product text-normal lg:w-5/12">
                         <p className="font-bold mb-3">OUR LOCATION</p>
-                        <div className="flex flex-col gap-3 blue cursor-pointer font-medium">
+                        <div className="flex flex-col gap-3 text-[#073B4C] dark:text-white cursor-pointer font-medium">
                            <a href="">Jl. Ganesa No.10, Lb. Siliwangi, Kecamatan Coblong, Kota Bandung, Jawa Barat 40132</a>
                         </div>
                     </div>

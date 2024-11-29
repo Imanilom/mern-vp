@@ -177,7 +177,7 @@ function Acitivity() {
   };
 
   return (
-    <main class="bgg-bl flex text-white">
+    <main class="bg-[#101010] dark:bg-[#FEFCF5] flex dark:text-[#073B4C] text-white">
       <Side />
 
       <div class="xl:w-8/12 mb-12 xl:mb-0 px-4 mt-8 lg:mt-16 lg:w-screen w-11/12 mx-auto">
@@ -319,19 +319,19 @@ function Acitivity() {
                   setEndDate(end);
                 }}
                 isClearable
-                placeholderText='Cari berdasarkan range tanggal beraktivitas'
-                className="lg:p-3  p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+                placeholderText='Cari berdasarkan range tanggal'
+                className="lg:p-3  p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
               />
               {/* {loading ? (
                       <span class="ms-4 loader "></span>
                     ) : null} */}
 
 
-            <div data-aos="fade-right" class="mt-4 relative flex flex-col min-w-0 break-words bg-[#363636]/20 lg:w-10/12 mb-6 shadow-lg rounded ">
+            <div data-aos="fade-right" class="mt-4 relative flex flex-col min-w-0 break-words bg-[#363636]/20 dark:bg-[#217170] lg:w-10/12 mb-6 shadow-lg rounded ">
               <div class="rounded-md  mb-0 px-4 py-3 border-0">
                 <div class="flex flex-wrap items-center">
                   <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-                    <h3 class="font-semibold text-base text-blueGray-700">{currentUser.role == 'user' ? "Aktivitas" : "Aktifitas Pasien"}</h3>
+                    <h3 class="font-semibold text-base text-blueGray-700 dark:text-white">{currentUser.role == 'user' ? "Aktivitas" : "Aktifitas Pasien"}</h3>
                   </div>
                   <div class="relative w-full px-4 max-w-full hidden md:block flex-grow flex-1 text-right">
                     {/* <Link to={'/createActivity'}>
@@ -344,9 +344,9 @@ function Acitivity() {
               </div>
 
               <div class="block overflow-x-auto">
-                <table class="items-center bg-[#2c2c2c] w-full  ">
+                <table class="items-center bg-[#2c2c2c] dark:bg-[#E7E7E7] w-full  ">
                   <thead>
-                    <tr className='bg-[#2c2c2c]'>
+                    <tr className='bg-[#2c2c2c] dark:bg-[#E7E7E7]'>
                       <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                         Tanggal
                       </th>
@@ -369,7 +369,7 @@ function Acitivity() {
 
                   <tbody>
                     {aktivitas?.map((aktivitas, _i) => (
-                      <tr key={aktivitas._id} className={_i % 2 == 0 ? 'bg-[#141414]' : 'bg-[#2c2c2c]'}>
+                      <tr key={aktivitas._id} className={_i % 2 == 0 ? 'bg-[#CBCBCB]' : 'bg-[#E7E7E7]'}>
                         <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                           {new Date(aktivitas.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </th>
@@ -416,11 +416,11 @@ function Acitivity() {
           <div data-aos="fade-right" className="pagination flex gap-2 text-sm mb-8">
             {Array.from({ length: paginationCount }).map((_, _i) => (
               _i + 1 === paginationActive ? (
-                <div className="py-3 px-7 bgg-b text-white rounded-[5px]">
+                <div className="py-3 px-7 bg-[#005A8F] dark:bg-[#DDA420] text-white rounded-[5px]">
                   {_i + 1}
                 </div>
               ) : (
-                <div onClick={() => { setPaginationActive(_i + 1); }} className="py-3 px-4 bg-[#272727] text-white rounded-[5px]">
+                <div onClick={() => { setPaginationActive(_i + 1); }} className="py-3 px-4 bg-[#272727] dark:bg-[#217170] text-white rounded-[5px]">
                   {_i + 1}
                 </div>
               )))

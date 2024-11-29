@@ -61,7 +61,7 @@ export default function Monitor() {
       }).then(() => {
         return navigate('/profile');
       });
-    }else{
+    } else {
 
       AOS.init({
         duration: 700
@@ -118,7 +118,7 @@ export default function Monitor() {
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
       const tes = groupDataByThreeAndAverage(sortedLogs);
 
-      console.log({ sortedLogs, tes })
+      console.log({ sortedLogs, tes, data })
       set3dpData(tes);
       setLogs(sortedLogs);
       setIQRData(data.filterIQRResult);
@@ -193,10 +193,10 @@ export default function Monitor() {
   return (
     <div>
       {loading ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bgg-bl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101010] dark:bg-[#FEFCF5]">
           <div className="flex flex-col items-center">
-            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
-            <p className="text-center font-semibold mt-4 text-[#07AC7B]">
+            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] dark:border-[#217170] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
+            <p className="text-center font-semibold mt-4 text-[#07AC7B] dark:text-[#217170]">
               Loading...
             </p>
           </div>
@@ -204,10 +204,10 @@ export default function Monitor() {
 
       ) : null}
       <main className=''>
-        <section className="bgg-bl flex text-white">
+        <section className="bg-[#101010] dark:bg-[#FEFCF5] flex dark:text-[#073B4C] text-white">
           <Side />
           <div className="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-5">
-            <div className="relative flex flex-col min-w-0 break-words bgg-bl w-full">
+            <div className="relative flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0 ">
                 <div className="flex flex-wrap items-center">
                   {/* <ButtonOffCanvas index={2} /> */}
@@ -227,7 +227,7 @@ export default function Monitor() {
                   }}
                   isClearable
                   placeholderText='Cari berdasarkan range tanggal'
-                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C]  dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
                 {/* {currentUser.role !== 'user' && ( */}
@@ -235,7 +235,7 @@ export default function Monitor() {
                 <select
                   name=""
                   id=""
-                  className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] rounded text-sm w-full md:max-w-[200px] md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                  className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] rounded text-sm w-full md:max-w-[200px] md:text-[16px] lg:min-w-[220px] px-3 py-3"
                   onChange={handleChangeDevice}
                 >
                   <option value="" disabled>Select device Monitoring</option>
@@ -249,7 +249,7 @@ export default function Monitor() {
                 <select
                   name=""
                   id=""
-                  className="lg:p-2.5 p-3 mt-4 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] rounded text-sm w-full md:max-w-[200px] md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                  className="lg:p-2.5 p-3 mt-4 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] rounded text-sm w-full md:max-w-[200px] md:text-[16px] lg:min-w-[220px] px-3 py-3"
                   onChange={handleChangeMetode}
                 >
                   <option value="" disabled selected>Choose metode</option>
@@ -266,7 +266,7 @@ export default function Monitor() {
               <div style={{ overflowX: 'auto', marginRight: 40 }}>
                 <div className='flex flex-col gap-3 ms-4 cursor-pointer pt-3 pb-5'>
                   <div className="flex-col flex">
-                    <div onClick={toggleVisibilityHR} className={isHRVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
+                    <div onClick={toggleVisibilityHR} className={isHRVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isHRVisible ? 'Hide' : 'Show'} Graphic HR</button>
                     </div>
                     {isHRVisible ? (
@@ -274,7 +274,7 @@ export default function Monitor() {
                     ) : null}
                   </div>
                   <div className="flex-col flex gap-2">
-                    <div onClick={toggleVisibilityRR} className={isRRVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
+                    <div onClick={toggleVisibilityRR} className={isRRVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isRRVisible ? 'Hide' : 'Show'} Graphic RR</button>
                     </div>
                     {isRRVisible ? (
@@ -282,7 +282,7 @@ export default function Monitor() {
                     ) : null}
                   </div>
                   <div className="flex-col flex gap-2">
-                    <div onClick={toggleVisibility3dp} className={is3dpVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
+                    <div onClick={toggleVisibility3dp} className={is3dpVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{is3dpVisible ? 'Hide' : 'Show'} Graphic 3dpfilter</button>
                     </div>
                     {is3dpVisible ? (
@@ -290,7 +290,7 @@ export default function Monitor() {
                     ) : null}
                   </div>
                   <div className="flex-col flex gap-2">
-                    <div onClick={toggleVisibilityIQR} className={isIQRVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
+                    <div onClick={toggleVisibilityIQR} className={isIQRVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isIQRVisible ? 'Hide' : 'Show'} Graphic IQR</button>
                     </div>
                     {isIQRVisible ? (
@@ -299,7 +299,7 @@ export default function Monitor() {
 
                   </div>
                   <div className="flex-col flex gap-2">
-                    <div onClick={toggleVisibilityPoincare} className={isPoincareVisible ? `border-transparent bgg-dg rounded-md flex` : `border border-gray-400 rounded-md flex`}>
+                    <div onClick={toggleVisibilityPoincare} className={isPoincareVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isPoincareVisible ? 'Hide' : 'Show'} Graphic Pointcare</button>
                     </div>
 

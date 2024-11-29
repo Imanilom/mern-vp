@@ -44,9 +44,9 @@ function LineGraph({ data, label, keyValue, color }) {
     }
 
     let styleCircleInfo = {
-        width : 20 + "px",
-        height : 20 + "px",
-        borderRadius : 50 + "%"
+        width: 20 + "px",
+        height: 20 + "px",
+        borderRadius: 50 + "%"
     }
 
     useEffect(() => {
@@ -125,45 +125,53 @@ function LineGraph({ data, label, keyValue, color }) {
         //     return 'rgba(7, 172, 123, 1)'; // Warna default
         // });
 
+        let defaultColor = "rgba(7, 172, 123, 1)";
+
+        const theme = localStorage.getItem('_isLightMode');
+        if (theme == "true") { // is light state
+            defaultColor = "rgba(33,113,122, 1)";
+        }
+
         color = processedData.map((item, i) => {
             if (i > 0) {
-              
+
                 if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 10) {
-              
+
                     return 'rgba(249, 39, 39, 0.8)';
                 } else if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 5) {
-                    
+
                     return 'rgba(255, 161, 0, 1)';
                 } else {
-                    return 'rgba(7, 172, 123, 1)'; // Warna default
+                    return defaultColor; // Warna default
                 }
             } else {
-                return 'rgba(7, 172, 123, 1)'; // Warna default
+                return defaultColor; // Warna default
             }
         });
 
         sizeCircle = processedData.map((item, i) => {
             if (i > 0) {
-               
+
                 if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 10) {
-                   
+
                     processedData[i]['label'] = "Danger";
                     return 8; // ukuran 6 untuk damger
-                } else if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 5) {
+
+                } 
+                else if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 5) {
                     processedData[i]['label'] = "Warning";
-                    // console.log('oke kuning')
                     return 6;
                 } else {
                     processedData[i]['label'] = "Safe";
-                    return 4; // Warna default
+                    return 4;
                 }
             } else {
                 processedData[i]['label'] = "Safe";
-                return 4; // Warna default
+                return 4;
             }
         })
 
-    
+
         console.log({ color, processedData })
 
         // mengambil element tooltip
@@ -198,7 +206,7 @@ function LineGraph({ data, label, keyValue, color }) {
             .append('svg')
             .attr('height', height)
             .attr('width', width)
-            .attr('class', 'svgOne bgg-bl min-w-lg')
+            .attr('class', 'svgOne bg-[#101010] dark:bg-[#FEFCF5] min-w-lg')
 
         const x = d3.scaleBand()
             .domain(processedData.map(d => d.create_at))
@@ -216,7 +224,7 @@ function LineGraph({ data, label, keyValue, color }) {
         svg.append('path')
             .datum(processedData)
             .attr('fill', 'none')
-            .attr('stroke', 'rgba(75, 192, 192, 1)')
+            .attr('stroke', defaultColor)
             .attr('stroke-width', 2)
             .attr('d', line);
 
@@ -233,7 +241,7 @@ function LineGraph({ data, label, keyValue, color }) {
                     .attr('y1', margin.top)
                     .attr('x2', x(d.create_at)) // Posisi X untuk garis vertikal
                     .attr('y2', height - margin.bottom)
-                    .attr('stroke', 'white')
+                    .attr('stroke', theme == "true" ? "gray" : "white")
                     .attr('stroke-width', 1)
                     .attr('stroke-dasharray', '5,5'); // Mengatur garis menjadi putus-putus
 
@@ -241,7 +249,7 @@ function LineGraph({ data, label, keyValue, color }) {
                 svg.append('text')
                     .attr('x', x(d.create_at) + 5)
                     .attr('y', margin.top - 5)
-                    .attr('fill', 'white')
+                    .attr('fill', theme == "true" ? "gray" : "white")
                     .attr('font-size', 10)
                     .text(currentDate);
             }
@@ -261,9 +269,9 @@ function LineGraph({ data, label, keyValue, color }) {
                 // console.log({ d });
                 let labelsPurposion;
 
-                if(d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
-                if(d.label == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
-                if(d.label == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                if (d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                if (d.label == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                if (d.label == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
                 const [xPos, yPos] = d3.pointer(event);
                 let x = xPos + 10;
                 x = xPos;
@@ -332,12 +340,12 @@ function LineGraph({ data, label, keyValue, color }) {
                 {slice > 1 ? (
                     <div>
                         {scroolState[keyValue] > 1 ? (
-                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
+                            <button className='rounded-md bg-slate-800 dark:bg-[#FFD166] px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
                                 <FaAngleLeft color='white' size={16} />
                             </button>
                         ) : null}
                         {scroolState[keyValue] < slice ? (
-                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
+                            <button className='rounded-md bg-slate-800 dark:bg-[#FFD166] px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
                                 <FaAngleRight color='white' size={16} />
                             </button>
                         ) : null}
@@ -345,12 +353,12 @@ function LineGraph({ data, label, keyValue, color }) {
                 ) : null}
 
                 <div className="flex sm:flex-row flex-col">
-                    <button id={`zoom_panel_${label}`} className='rounded-md md:mb-0 mb-2 bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id={`zoom_panel_${label}`} className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
-                    <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
-                        Graphic {label} 
-                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] rounded-full text-xs text-transparent'>lLL</span>
+                    <button id='' className='rounded-md bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
+                        Graphic {label}
+                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] dark:bg-[#217170] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
                 </div>
             </div>

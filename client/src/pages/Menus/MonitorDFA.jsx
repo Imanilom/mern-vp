@@ -110,12 +110,12 @@ export default function MonitorDFA() {
       if (!response.ok) {
         console.log('error');
         setLogs([]);
-
         setMetrics([]);
         setDailyMetrics([]);
         set3dpData([]);
         setIQRData([]);
-
+        setResults([]);
+        setResults2([]);
         dispatch(clearLogsWithDailytMetric());
         return
       }
@@ -124,11 +124,13 @@ export default function MonitorDFA() {
       setResults(sortedResult);
       setResults2(sortedResult);
       console.log({sortedResult})
+     
 
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
       setLoading(false);
+
     }
   };
 
@@ -141,10 +143,10 @@ export default function MonitorDFA() {
   return (
     <div>
       {loading ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bgg-bl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101010] dark:bg-[#FEFCF5]">
           <div className="flex flex-col items-center">
-            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
-            <p className="text-center font-semibold mt-4 text-[#07AC7B]">
+            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] dark:border-[#217170] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
+            <p className="text-center font-semibold mt-4 text-[#07AC7B] dark:text-[#217170]">
               Loading...
             </p>
           </div>
@@ -152,10 +154,10 @@ export default function MonitorDFA() {
 
       ) : null}
       <main className=''>
-        <section className="bgg-bl flex text-white">
+        <section className="bg-[#101010] dark:bg-[#FEFCF5] flex text-white  dark:text-[#073B4C]">
           <Side />
           <div className="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-5">
-            <div className="relative flex flex-col min-w-0 break-words bgg-bl w-full">
+            <div className="relative flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0">
                 <div className="flex flex-wrap items-center">
                   {/* <ButtonOffCanvas index={2} /> */}
@@ -175,19 +177,20 @@ export default function MonitorDFA() {
                   }}
                   isClearable
                   placeholderText='Cari berdasarkan range tanggal'
-                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm lg:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm lg:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
                 <select
                   name=""
                   id=""
-                   className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] md:max-w-[200px] rounded text-sm w-full  md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                   className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] md:max-w-[200px] rounded text-sm w-full  md:text-[16px] lg:min-w-[220px] px-3 py-3"
                   onChange={handleChangeMetode}
                 >
                   <option value="" disabled selected>Choose metode</option>
                   <option value="OC">OC</option>
                   <option value="IQ">IQ</option>
                   <option value="BC">BC</option>
+                  <option value="no-filter">No filter</option>
                 </select>
 
 
@@ -212,7 +215,7 @@ export default function MonitorDFA() {
               </div>
             </div>
 
-            <div onClick={() => setDfaGraphVisible(!isDFAGraphVisible)} className={isDFAGraphVisible && resultsDFA2.length > 0 ? `border-transparent bgg-dg rounded-md flex mx-4 cursor-pointer` : `cursor-pointer border border-gray-400 rounded-md flex mx-4`}>
+            <div onClick={() => setDfaGraphVisible(!isDFAGraphVisible)} className={isDFAGraphVisible && resultsDFA2.length > 0 ? `border-transparent bg-[#07AC7B] rounded-md flex mx-4 cursor-pointer dark:bg-[#101010]/10` : `cursor-pointer border border-gray-400 rounded-md flex mx-4 dark:bg-[#101010]/10`}>
               <button className='text-xs py-0.5 px-1.5 m-2'>{isDFAGraphVisible ? 'Hide' : 'Show'} Graphic DFA</button>
             </div>
             {isDFAGraphVisible && resultsDFA2.length > 0 ? (

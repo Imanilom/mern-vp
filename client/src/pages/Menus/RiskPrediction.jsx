@@ -183,7 +183,7 @@ function RiskPrediction() {
 
   return (
     <div>
-      <main class="bgg-bl text-white flex ">
+      <main class="bg-[#101010] dark:bg-[#FEFCF5] text-white dark:text-[#073B4C] flex ">
         <Side />
         <div class="w-11/12 py-8 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
           {/* <ButtonOffCanvas /> */}
@@ -191,15 +191,14 @@ function RiskPrediction() {
           <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-4 ">Prediksi Resiko</h1>
 
           <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words bgg-bl w-full mb-6 shadow-lg rounded ">
-            <div class="rounded-t mb-0 px-2 md:px-4 py-3 border-0 bg-[#363636]/20">
+            <div class="rounded-t mb-0 px-2 md:px-4 py-3 border-0 bg-[#363636]/20 dark:bg-[#217170]">
               <div class="flex flex-col md:flex-row flex-wrap items-center">
                 <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-                  <h3 class="font-semibold text-sm md:text-base text-blueGray-700 md:mb-0 mb-3">Prediksi Resiko</h3>
+                  <h3 class="font-semibold text-sm md:text-base text-blueGray-700 dark:text-white md:mb-0 mb-3">Prediksi Resiko</h3>
                 </div>
                 <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
                   {currentUser.role == 'user' ? (
                     <div>
-
                       <ButtonActionUser status={statusAppointment} />
 
                     </div>
@@ -220,7 +219,7 @@ function RiskPrediction() {
             <div class="block w-full overflow-x-auto">
               <table class="items-center bg-transparent w-full  ">
                 <thead>
-                  <tr className='bg-[#2c2c2c]'>
+                  <tr className='bg-[#2c2c2c] dark:bg-[#E7E7E7]'>
                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Hasil Prediksi:
                     </th>
@@ -231,7 +230,7 @@ function RiskPrediction() {
                 </thead>
 
                 <tbody>
-                  <tr>
+                  <tr className='dark:bg-[#CBCBCB]'>
                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                       Faktor reskio dominan:
                     </th>
@@ -263,7 +262,7 @@ function RiskPrediction() {
           {currentUser.role != 'user' && statusAppointment == 'pending' ? (
             <div data-aos="fade-up" className="flex ms-2 text-center flex-col gap-2 font-semibold pt-4">
               <p className='md:text-[16px] text-sm'>Pasient ini meminta temu janji dengan anda</p>
-              <button onClick={() => setModal(true)} class=" text-xs font-bold uppercase px-3  rounded outline-none focus:outline-none mr-1 py-3 bg-[#07AC7B] my-3 ease-linear transition-all duration-150 min-w-[150px]" type="button">Buat Temu Janji</button>
+              <button onClick={() => setModal(true)} class=" text-xs font-bold uppercase px-3  rounded outline-none focus:outline-none mr-1 py-3 bg-[#07AC7B] dark:bg-[#FFD166] my-3 ease-linear transition-all duration-150 min-w-[150px]" type="button">Buat Temu Janji</button>
             </div>
           ) : null}
           {/* Form submit Appointment */}
@@ -378,8 +377,8 @@ function RiskPrediction() {
 
       {modal ? (
         <div className="w-full h-[100vh] flex justify-center items-center top-0 left-0 fixed z-20 bg-black/60">
-          <div className="boxModal flex flex-col bg-[#141414] text-white rounded-lg p-8 w-11/12 lg:w-5/12">
-            <div className="flex justify-end" onClick={() => setModal(!modal)}>
+          <div className="boxModal flex flex-col bg-[#141414] dark:bg-[#F5F2E7] text-white dark:text-[#073B4C] rounded-lg p-8 w-11/12 lg:w-5/12">
+            <div className="flex justify-end cursor-pointer" onClick={() => setModal(!modal)}>
               <IoMdCloseCircle size={24} color='red' />
             </div>
 
@@ -406,8 +405,8 @@ function RiskPrediction() {
                 </div>
               </div>
 
-              <button type="submit" class="text-white bgg-dg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 w-fit">
-                <BsFillSendFill size={16} color='white' className='me-2' />
+              <button type="submit" class="text-white dark:text-[#073B4C] bg-[#07AC7B] dark:bg-[#FFD166] hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center  w-fit">
+                <BsFillSendFill size={16} className='me-2 text-white dark:text-[#073B4C]' />
                 Buat Temu Janji
 
               </button>

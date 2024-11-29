@@ -90,14 +90,6 @@ function DetectionHistories() {
     try {
       setLoading(true)
 
-      // let url = `/api/user/riwayatdeteksi/${currentUser._id}?page=${currentPagination - 1}`
-      // if (currentUser.role != 'user') {
-      //   url = `/api/user/riwayatdeteksi/${DocterPatient._id}?page=${currentPagination - 1}`
-      // }
-      // if (startDate && endDate) {
-      //   url += `&startDate=${startDate}&endDate=${endDate}`;
-      // }
-
       let url = `/api/user/test`;
 
       if (startDate && endDate) {
@@ -196,7 +188,7 @@ function DetectionHistories() {
 
 
   return (
-    <main class="bgg-bl text-white flex">
+    <main class="bg-[#101010] dark:bg-[#FEFCF5] dark:text-[#073B4C] text-white flex">
       <Side />
       <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8 lg:mt-16">
         {/* <ButtonOffCanvas /> */}
@@ -246,14 +238,14 @@ function DetectionHistories() {
                 }}
                 isClearable
                 placeholderText='Cari berdasarkan range tanggal'
-                className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+                className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
               />
             </div>
 
             <select
               name=""
               id=""
-              className="lg:p-2.5 p-3 mt-4 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] rounded text-sm w-full md:max-w-[200px] md:text-[16px] lg:min-w-[220px] px-3 py-3"
+              className="lg:p-2.5 p-3 mt-4 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] rounded text-sm w-full md:max-w-[200px] md:text-[16px] lg:min-w-[220px] px-3 py-3"
               onChange={handleChangeMetode}
             >
               <option value="" disabled selected>Choose metode</option>
@@ -275,20 +267,20 @@ function DetectionHistories() {
             <div data-aos="fade-right" class=" w-full overflow-x-auto">
               <table class="z-[1] rounded-t items-center bg-transparent w-full ">
                 <thead>
-                  <tr className='bg-neutral-800 '>
-                    <th title='sort by date' onClick={() => requestSort('date')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                  <tr className='bg-neutral-800 dark:bg-[#217170] '>
+                    <th title='sort by date' onClick={() => requestSort('date')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Tanggal
                     </th>
-                    <th title='sort by date' onClick={() => requestSort('time')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                    <th title='sort by date' onClick={() => requestSort('time')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Time
                     </th>
-                    <th title='sort by dfa' onClick={() => requestSort('dfa')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                    <th title='sort by dfa' onClick={() => requestSort('dfa')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Nilai DFA
                     </th>
-                    <th title='sort by activity' onClick={() => requestSort('aktifitas')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                    <th title='sort by activity' onClick={() => requestSort('aktifitas')} class="cursor-pointer px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Aktivitas
                     </th>
-                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                    <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                       Simbolis
                     </th>
                   </tr>
@@ -298,7 +290,7 @@ function DetectionHistories() {
                   {data.length > 0 ?
                     data.map((val, _i) => {
                       return (
-                        <tr className={_i % 2 === 0 ? 'bg-[#141414]' : 'bg-[#2f2f2f]'}>
+                        <tr className={_i % 2 === 0 ? 'bg-[#141414] dark:bg-[#E7E7E7]' : 'bg-[#2f2f2f] dark:bg-[#CBCBCB]'}>
                           <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                             {/* {val.date ? val.date.replace('-', '/').replace('-', '/') : ''} */}
                             {val.datetime.split('T')[0]}

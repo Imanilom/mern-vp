@@ -116,11 +116,10 @@ function Treatment() {
   }
 
   return (
-    <main class="bgg-bl text-white flex">
+    <main class="bg-[#101010] dark:bg-[#FEFCF5] text-white dark:text-[#073B4C] flex">
       <Side />
       <div class="w-full xl:w-9/12 mb-12 xl:mb-0 px-4 mx-auto md:mt-0 mt-4 sm:mt-16">
         {/* <ButtonOffCanvas /> */}
-
 
         {treatment ? (
           <div class="flex w-full py-4 overflow-x-auto justify-between gap-8 md:mt-12 items-center flex-col sm:flex-row">
@@ -137,7 +136,7 @@ function Treatment() {
                 <div className="flex gap-2 md:items-center md:justify-end mb-3 ">
                   {/* <h1 className='text-slate-900 font-bold text-[20px]'>Treatment Pasien</h1> */}
                   <div className="flex w-full md:w-fit flex-col md:flex-row md:justify-between gap-1">
-                    <button onClick={() => handleSwitchSubmit()} type='button' className="w-full md:w-fit px-3 py-2 md:py-1 text-[12px] font-semibold text-white md:text-[#101010] bgg-dg rounded-md">Tandai treatment telah usai</button>
+                    <button onClick={() => handleSwitchSubmit()} type='button' className="w-full md:w-fit px-3 py-2 md:py-1 text-[12px] font-semibold text-white md:text-[#101010] bg-[#07AC7B] dark:bg-[#FFD166] rounded-md">Tandai treatment telah usai</button>
                     <Link to={`/treatment/update/${treatment._id}`} className="w-full md:w-fit px-3 py-2 md:py-1 text-xs font-medium bg-orange-500 text-white text-center md:text-start rounded-md">Update</Link>
                   </div>
 
@@ -148,7 +147,7 @@ function Treatment() {
 
               <table class="max-w-[480px] indi overflow-hidden">
                 <tbody>
-                  <tr class="bg-[#363636]/20 text-white">
+                  <tr class="bg-[#363636]/20 dark:bg-[#217170] text-white">
                     <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold ">
                       Detail Treatment
                     </th>
@@ -156,7 +155,7 @@ function Treatment() {
 
                     </td>
                   </tr>
-                  <tr class="bg-[#2f2f2f] ">
+                  <tr class="bg-[#2f2f2f] dark:bg-[#E7E7E7]">
                     <th class="px-6 py-4 text-left text-sm font-medium ">
                       Tanggal
                     </th>
@@ -169,7 +168,7 @@ function Treatment() {
                       }).format(new Date(treatment.createdAt))}
                     </td>
                   </tr>
-                  <tr class="bg-[#141414]">
+                  <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                     <th class="px-6 py-4 text-left text-sm font-medium ">
                       Diagnosa
                     </th>
@@ -177,7 +176,7 @@ function Treatment() {
                       {treatment.diagnosis}
                     </td>
                   </tr>
-                  <tr class="bg-[#2f2f2f]">
+                  <tr class="bg-[#2f2f2f] dark:bg-[#E7E7E7]">
                     <th class="px-6 py-4 text-left text-sm font-medium ">
                       Tanggal Checkup ulang
                     </th>
@@ -192,7 +191,7 @@ function Treatment() {
                       ) : '- dokter tidak meminta anda untuk checkup ulang'}
                     </td>
                   </tr>
-                  <tr class="bg-[#141414]">
+                  <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                     <th class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                       Catatan dokter
                     </th>
@@ -204,9 +203,9 @@ function Treatment() {
                 </tbody>
               </table>
 
-              <div className="flex text-sm justify-between bg-[#363636]/20 rounded-md my-3 px-6 py-3">
+              <div className="flex text-sm justify-between bg-[#363636]/20 dark:bg-[#207170] text-white rounded-md my-3 px-6 py-3">
                 <p>Informasi pribadi dokter anda</p>
-                <p className='text-[#07AC7B] cursor-pointer' onClick={() => setShowInfo(!showInfoDokter)}>
+                <p className='text-[#07AC7B] dark:text-[#FFD166] font-semibold cursor-pointer' onClick={() => setShowInfo(!showInfoDokter)}>
                   {showInfoDokter ? 'Hide' : 'Show'}
                 </p>
               </div>
@@ -223,66 +222,13 @@ function Treatment() {
 
             <div data-aos="fade-up" className="rigth w-full">
               <h1 class="text-xl font-semibold capitalize lg:text-2xl mb-3">List Obat Pasien </h1>
-              {/* <div class="max-w-[480px] mt-4 relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-lg rounded-lg ">
-                <div class="rounded-t mb-0 px-4 py-3 border-0">
-                  <div class="flex flex-wrap items-center">
-                    <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-                      <h3 class="font-semibold text-base text-blueGray-700">Medicines</h3>
-                    </div>
-                    <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                    </div>
-                  </div>
-                </div>
-
-
-                <div class="block w-full overflow-x-auto">
-                  <table class="items-center bg-transparent w-full border-collapse ">
-                    <thead>
-                      <tr>
-                        <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                          Name
-                        </th>
-                        <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                          Dosis
-                        </th>
-
-                        <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                          Frequency
-                        </th>
-
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {treatment.medications ? (
-                        treatment.medications.map((medision) => (
-                          <tr>
-                            <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
-                              {medision.name}
-                            </th>
-                            <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                              {medision.dosage}
-                            </td>
-
-                            <td class="border-t-0 px-6 font-semibold align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                              {medision.frequency}
-                            </td>
-
-                          </tr>
-
-                        ))
-                      ) : null}
-
-                    </tbody>
-                  </table>
-                </div>
-              </div> */}
+             
 
               <div className="flex flex-col my-3 gap-3">
                 {treatment.medications.length > 0 ? (
                   treatment.medications.map((medision) => {
                     return (
-                      <div className="py-5 w-full md:w-[90%] hover:w-full px-4 rounded-md bg-[#00C34E]/80 duration-150 md:bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80">
+                      <div className="py-5 w-full md:w-[90%] hover:w-full px-4 rounded-md bg-[#00C34E]/80 duration-150 md:bg-[#363636]/20 text-sm flex flex-col gap-3 hover:bg-[#00C34E]/80 dark:hover:bg-[#217170] dark:hover:text-white">
                         <p className='text-[18px]'>{medision.name}</p>
                         <p className=''>Dosis Obat :  {medision.dosage}</p>
                         <p className=''>Frequency :  {medision.frequency}</p>
@@ -306,7 +252,7 @@ function Treatment() {
               {showInfoDokter ? (
                 <table class="my-3 sm:max-w-[480px] border border-slate-800 lg:min-w-[480px] shadow-md rounded-lg overflow-hidden">
                   <tbody>
-                    <tr class="bg-[#363636]/20 ">
+                    <tr class="bg-[#363636]/20 dark:bg-[#217170] text-white">
                       <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold ">
                         Ditulis oleh:
                       </th>
@@ -315,7 +261,7 @@ function Treatment() {
                       </td>
                     </tr>
 
-                    <tr class="bg-[#2f2f2f]">
+                    <tr class="bg-[#2f2f2f] dark:bg-[#E7E7E7]">
                       <th class="px-6 py-4 text-left text-sm font-medium ">
                         Name
                       </th>
@@ -323,7 +269,7 @@ function Treatment() {
                         {treatment.doctor.name}
                       </td>
                     </tr>
-                    <tr class="bg-[#141414]">
+                    <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                       <th class="px-6 py-4 text-left text-sm font-medium ">
                         No Handphone
                       </th>
@@ -353,7 +299,7 @@ function Treatment() {
           <div class="block w-full bgg-bl overflow-x-auto rounded">
             <table class="items-center w-full  ">
               <thead>
-                <tr className="bg-[#2f2f2f] darkgreen">
+                <tr className="bg-[#2f2f2f] dark:bg-[#217170] text-[#07AC7B] dark:text-white">
                   <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-4 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                     Tanggal
                   </th>

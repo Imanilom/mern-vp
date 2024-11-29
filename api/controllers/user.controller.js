@@ -199,6 +199,7 @@ export const test = async (req, res, next) => {
       // Kirim logs dan filterIQRResult ke frontend
       // console.log({ filterIQRResult, formattedLogs, dailyMetric : [dailyMetric] }, 'ok kirim')
       const AverageThree = groupDataByThreeAndAverage(formattedLogs);
+      console.log({filterIQRResult})
       res.status(200).json({ logs: formattedLogs, filterIQRResult, dailyMetric: [dailyMetric], AverageThree });
     }
 
@@ -592,7 +593,7 @@ export const getLogWithActivity = async (req, res, next) => {
         result[key].push(log);
       });
     });
-    
+
     res.status(200).json({ result });
 
   } catch (error) {
@@ -805,10 +806,13 @@ export const logdfa = async (req, res, next) => {
     const splitCount = 500;
     const HRCollection = [];
     let splittedLog;
+    let fileStartWith;
     // let filter = {date_created : "27-05-2024"} // 
 
     let filter = {};
     let folderChoose = 'hrv-results-OC';
+
+    console.log({ method })
 
     if (method) {
       if (method == 'BC') folderChoose = 'hrv-results-BC';
@@ -816,7 +820,14 @@ export const logdfa = async (req, res, next) => {
       if (method == 'IQ') folderChoose = 'hrv-results-IQ';
     }
 
-    console.log({folderChoose, method})
+    if (method == "no-filter") {
+      fileStartWith = "";
+      folderChoose = 'hrv-results';
+    } else {
+      fileStartWith = "filtered_logs_";
+    }
+
+    console.log({ folderChoose, method })
 
     const resultsDir = path.join(__dirname, `../controllers/${folderChoose}`);
     console.log({ method, folderChoose })
@@ -837,22 +848,44 @@ export const logdfa = async (req, res, next) => {
       const dateStart = new Date(startDate).getTime() / 1000;
       const dateEnd = new Date(endDate).getTime() / 1000;
 
-      const filteredFiles = files
-        .filter(file => file.startsWith('filtered_logs_'))
+      let filteredFiles = files
+        .filter(file => file.startsWith(fileStartWith))
         .sort((a, b) => {
-          const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-          const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
-          return dateB - dateA;
+          if (method != 'no-filter') {
+            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+            return dateB - dateA;
+          } else {
+            const dateA = new Date(a.match(/(.+)\.json/));
+            const dateB = new Date(b.match(/(.+)\.json/));
+            return dateB - dateA;
+          }
         });
 
+       
+      filteredFiles = filteredFiles.filter(file => file.endsWith('.json'));
+      let fileDate;
+
       filteredFiles.forEach(file => {
-        const fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
-        if (fileDate >= dateStart && fileDate <= dateEnd) {
-          const filePath = path.join(resultsDir, file);
-          const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-          filteredLogs.push(...fileData.filteredLogs);
+        if(file.endsWith('.json')){
+          // console.log({file, dateStart, dateEnd}, new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000)
+          if (method != 'no-filter') {
+            fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
+          } else {
+            const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
+            fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
+          }
+          console.log({fileDate}, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEnd)
+          if (fileDate >= dateStart && fileDate <= dateEnd) {
+            const filePath = path.join(resultsDir, file);
+            const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+            // console.log('ok sip', {filePath, fileData})
+            filteredLogs.push(...fileData.filteredLogs);
+          }
         }
       });
+
+      console.log({method, folderChoose}, filteredLogs.length);
 
       if (filteredLogs.length === 0) {
         return res.status(404).json({ message: 'Tidak ada log yang tersedia dalam rentang tanggal yang diberikan' });
@@ -861,6 +894,20 @@ export const logdfa = async (req, res, next) => {
       const validLogs = filteredLogs.filter(log => log.RR !== null || log.HR !== null);
       if (validLogs.length === 0) {
         return res.status(404).json({ message: 'Tidak ada log valid yang tersedia dalam data harian' });
+      }
+
+      // ubah dlu date nya
+      if (method == "no-filter") {
+        filteredLogs.map((_val, _i) => {
+
+          // Buat objek Date
+          const [day, month, year] = _val.date_created.split('/');
+          const formattedDate = `${year}-${month}-${day}T${_val.time_created}`; // Format ISO 8601
+
+          const tanggal = new Date(formattedDate);
+          filteredLogs[_i]["timestamp"] = tanggal.getTime() / 1000;
+
+        })
       }
 
       // Kelompokkan log berdasarkan tanggal terlebih dahulu
@@ -877,15 +924,15 @@ export const logdfa = async (req, res, next) => {
       Object.entries(logsByDate).forEach(([date, logs]) => {
         // Urutkan log berdasarkan timestamp
         const sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
-        
+
         // Bagi menjadi chunk 500 jika diperlukan
-        const chunks = sortedLogs.length <= 500 ? [sortedLogs] : splitArrayIntoChunks(sortedLogs, 500);
-        
+        const chunks = sortedLogs.length <= splitCount ? [sortedLogs] : splitArrayIntoChunks(sortedLogs, splitCount);
+
         // Proses setiap chunk
         chunks.forEach(chunk => {
           const firstLog = chunk[0];
           const lastLog = chunk[chunk.length - 1];
-          
+
           result.push({
             dfa: calculateDFA(chunk.map(log => log.HR)),
             tanggal: date,
@@ -913,13 +960,19 @@ export const logdfa = async (req, res, next) => {
       console.log('ngga masuk filterdate')
       // Filter dan urutkan file untuk mendapatkan file data harian terbaru
       const latestDailyFile = files
-        .filter(file => file.startsWith('filtered_logs_'))
+        .filter(file => file.startsWith(fileStartWith))
         .sort((a, b) => {
-          const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-          const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
-          return dateB - dateA;
+          if (method != 'no-filter') {
+            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+            return dateB - dateA;
+          } else {
+            const dateA = new Date(a.match(/(.+)\.json/));
+            const dateB = new Date(b.match(/(.+)\.json/));
+            return dateB - dateA;
+          }
         })[0];
-
+        console.log('ok')
 
       if (!latestDailyFile) {
         return res.status(404).json({ message: 'Tidak ada data harian yang tersedia' });
@@ -933,6 +986,17 @@ export const logdfa = async (req, res, next) => {
       const logs = dailyData.filteredLogs || [];
       if (logs.length === 0) {
         return res.status(404).json({ message: 'Tidak ada log yang tersedia dalam data harian' });
+      }
+
+      // FILTERING METHD NO FILTER FOR TIMESTAMP
+      if (method == "no-filter") {
+        logs.map((_val, _i) => {
+          const [day, month, year] = _val.date_created.split('/');
+          let dateWithTime = `${year}-${month}-${day}T${_val.time_created}`;
+
+          let date = new Date(dateWithTime);
+          logs[_i]['timestamp'] = date.getTime() / 1000;
+        })
       }
 
       // filteredLogs = logs;

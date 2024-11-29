@@ -83,7 +83,7 @@ function FaktorResiko() {
     }
 
     return (
-        <main class="bgg-bl text-white flex">
+        <main class="bg-[#101010] dark:bg-[#FEFCF5] text-white dark:text-[#073B4C] flex">
             <Side />
             <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-16">
                 {/* <ButtonOffCanvas /> */}
@@ -98,11 +98,11 @@ function FaktorResiko() {
 
                 <div class="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
                     {currentUser.role != 'user' ? (
-                        <div class="rounded-t mb-0 py-3 border-0 bg-[#363636]/30">
+                        <div class="rounded-t mb-0 py-3 border-0 bg-[#363636]/30 dark:bg-[#217170]">
                             <div class="flex flex-wrap items-center">
 
                                 <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-                                    <Link to={'/faktor-resiko/doc'} class="darkgreen text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Tambah Labotarium Baru</Link>
+                                    <Link to={'/faktor-resiko/doc'} class="text-[#07AC7B] dark:text-[#FFD166] text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Tambah Labotarium Baru</Link>
                                 </div>
 
                             </div>
@@ -112,14 +112,14 @@ function FaktorResiko() {
                     <div class="block w-full overflow-x-auto rounded">
                         <table class="items-center bg-transparent w-full  ">
                             <thead>
-                                <tr className='bg-[#2c2c2c]'>
-                                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-4 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                <tr className='bg-[#2c2c2c] dark:bg-[#E7E7E7]'>
+                                    <th class="px-6 bg-blueGray-50 text-blueGray-500  align-middle  border-solid border-blueGray-100 py-4 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                         Tanggal
                                     </th>
                                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                         Nama Labotarium
                                     </th>
-                                    <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                    <th class="px-6 bg-blueGray-50 text-blueGray-50 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                         Location
                                     </th>
 
@@ -131,28 +131,28 @@ function FaktorResiko() {
                             </thead>
 
                             <tbody>
-                                {labs.length > 0 ? (
+                                {labs && labs.length > 0 ? (
                                     labs.map((data, _i) => {
                                         return (
-                                            <tr className={_i % 2 == 0 ? 'bg-[#141414]' : 'bg-[#2c2c2c]'}>
-                                                <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
+                                            <tr className={_i % 2 == 0 ? 'bg-[#141414] dark:bg-[#CBCBCB]' : 'bg-[#2c2c2c] dark:bg-[#E7E7E7]'}>
+                                                <th class="border-t-0 px-6 font-semibold align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                                                     {_i + 1}
                                                 </th>
-                                                <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                                                <td class="border-t-0 px-6 font-semibold align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                                                     {data.name_lab}
                                                 </td>
-                                                <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                                                <td class="border-t-0 px-6 font-semibold align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                                                     {data.location}
                                                 </td>
 
-                                                <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 flex items-center gap-3">
-                                                    <Link to={`/faktor-resiko/${data._id}`} className="darkgreen cursor-pointer font-medium">
+                                                <td class="border-t-0 px-6 font-semibold align-middle border-l-0 border-r-0 text-xs  p-4 flex items-center gap-3">
+                                                    <Link to={`/faktor-resiko/${data._id}`} className="text-[#07AC7B] dark:text-[#D39504] cursor-pointer font-medium">
                                                         Detail Labotarium
                                                     </Link>
 
                                                     {currentUser.role != 'user' ? (
 
-                                                        <button onClick={() => handleDelete(data._id)} className='rounded-md font-medium px-3 py-1.5 hover:bg-red-600 hover:text-[#141414] text-red-600 bg-[#363636]/30'>
+                                                        <button onClick={() => handleDelete(data._id)} className='rounded-md font-medium px-3 py-1.5 dark:bg-red-600 dark:text-white hover:bg-red-600 hover:text-[#141414] text-red-600 bg-[#363636]/30'>
                                                             Delete</button>
                                                     ) : null}
                                                 </td>
@@ -175,13 +175,13 @@ function FaktorResiko() {
 
                             if (i + 1 == currentPagination) {
                                 return (
-                                    <div className="py-3 px-7 bgg-b text-white rounded-[5px]">
+                                    <div className="py-3 px-7 bg-[#005A8F] dark:bg-[#FFD166] text-white rounded-[5px]">
                                         {i + 1}
                                     </div>
                                 )
                             } else {
                                 return (
-                                    <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 bg-[#272727] text-white cursor-pointer rounded-[5px]">
+                                    <div onClick={() => { handleChangePagination(i + 1); }} className="py-3 px-4 bg-[#272727] dark:bg-[#073B4C] text-white cursor-pointer rounded-[5px]">
                                         {i + 1}
                                     </div>
 

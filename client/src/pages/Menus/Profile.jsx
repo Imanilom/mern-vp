@@ -131,8 +131,8 @@ export default function Profile() {
   };
 
   return (
-    <div className='bgg-bl pb-12 pt-8' >
-      <form  onSubmit={handleSubmit} className='p-3 md:flex lg:w-10/12 items-center w-11/12 mx-auto text-white bgg-bl'>
+    <div className='bg-[#101010] dark:bg-[#FEFCF5] pb-12 pt-8' >
+      <form  onSubmit={handleSubmit} className='p-3 md:flex lg:w-10/12 items-center w-11/12 mx-auto text-white dark:text-[#073B4C] bg-[#101010] dark:bg-[#FEFCF5]'>
         <div className="md:w-6/12 md:py-20 py-4">
           <h1 className='text-3xl font-semibold my-2'>Profile Informasi</h1>
           <div className='flex flex-col gap-4'>
@@ -179,7 +179,7 @@ export default function Profile() {
           </div>
 
           <div className="flex-col flex gap-3">
-            <button className='bg-[#07AC7B] md:w-3/4 text-white p-3 rounded-lg uppercase hover:opacity-95 disabled:opacity-80'>
+            <button className='bg-[#07AC7B] dark:bg-[#FFD166] md:w-3/4 text-white p-3 rounded-lg uppercase hover:opacity-95 disabled:opacity-80'>
               {loading ? 'Loading...' : 'Update Profile'}
             </button>
 
@@ -193,7 +193,7 @@ export default function Profile() {
             <p className='text-white px-16 py-4 mt-5 md:w-3/4 text-center text-sm bg-red-700'>{error && 'Something went wrong!'}</p>
           ) : null}
           {updateSuccess ? (
-            <p className='text-green md:w-3/4 rounded-md text-sm text-center text-white px-16 py-2 bg-green-500 mt-5'>
+            <p className='text-green md:w-3/4 rounded-md text-sm text-center text-white px-16 py-2 bg-green-500 dark:bg-[#FFD166] mt-5'>
               {updateSuccess && 'User is updated successfully!'}
             </p>
 
@@ -204,24 +204,25 @@ export default function Profile() {
 
           <div className="md:flex-col gap-3">
             <div className="mb-3">
-              <div className='text-sm font-semibold text-gray-400 mb-1'>Username</div>
+              <div className='text-sm font-semibold text-gray-400 dark:text-[#101010]/60 mb-1'>Username</div>
               <input
                 defaultValue={currentUser.name}
                 type='text'
                 id='name'
                 placeholder='Name'
-                className='bg-[#2C2C2C]/40 rounded-lg p-3 min-w-[100%]'
+                className='bg-[#2C2C2C]/40 dark:bg-[#F5F2E7] rounded-lg p-3 min-w-[100%]'
                 onChange={handleChange}
               />
             </div>
             <div className="mb-3">
-              <div className='text-sm font-semibold text-gray-400 mb-1'>Email Address</div>
+              <div className='text-sm font-semibold text-gray-400 dark:text-[#101010]/60 mb-1'>Email Address</div>
               <input
                 defaultValue={currentUser.email}
                 type='email'
                 id='email'
                 placeholder='Email'
-                className='bg-[#2C2C2C]/40 rounded-lg p-3 min-w-[100%] '
+                disabled
+                className='bg-[#2C2C2C]/40 dark:bg-[#E7E7E7] rounded-lg p-3 min-w-[100%] '
                 onChange={handleChange}
               />
             </div>
@@ -229,13 +230,13 @@ export default function Profile() {
 
           <div className="lg:flex justify-between gap-1">
             <div className="mb-3">
-              <div className='text-sm font-semibold text-gray-400 mb-1'>Phone Number</div>
+              <div className='text-sm font-semibold text-gray-400 dark:text-[#101010]/60 mb-1'>Phone Number</div>
               <input
                 defaultValue={currentUser.phone_number}
                 type='text'
                 id='phone_number'
                 placeholder='Phone'
-                className='bg-[#2C2C2C]/40 rounded-lg p-3  min-w-[100%]'
+                className='bg-[#2C2C2C]/40 dark:bg-[#F5F2E7] rounded-lg p-3  min-w-[100%]'
                 onChange={handleChange}
               />
             </div>
@@ -251,12 +252,12 @@ export default function Profile() {
               />
             </div> */}
             <div className="mb-3">
-              <div className='text-sm font-semibold text-gray-400 mb-1 min-w-[100%]'>Select your device</div>
-              <select onChange={handleChange} id='current_device' name="" className='bg-[#2C2C2C]/40 rounded-md p-3 lg:w-[270px] min-w-[100%]'>
+              <div className='text-sm font-semibold text-gray-400 dark:text-[#101010]/60 mb-1 min-w-[100%]'>Select your device</div>
+              <select onChange={handleChange} id='current_device' name="" className='bg-[#2C2C2C]/40 dark:bg-[#F5F2E7] rounded-md p-3 lg:w-[270px] min-w-[100%]'>
                 {currentUser.current_device == 'C0680226' ? (
                   <>
-                    <option className='bg-[#2C2C2C]/40' value="C0680226" selected>C0680226</option>
-                    <option className='bg-[#2C2C2C]/40' value="BA903328">BA903328</option>
+                    <option className='bg-[#2C2C2C]/40 dark:bg-[#F5F2E7]' value="C0680226" selected>C0680226</option>
+                    <option className='bg-[#2C2C2C]/40 dark:bg-[#F5F2E7]' value="BA903328">BA903328</option>
                   </>
 
                 ) : (
@@ -276,7 +277,7 @@ export default function Profile() {
             <div className="flex flex-col md:flex-row justify-between">
 
             <div className="mb-3">
-              <div className='text-sm font-semibold text-gray-400 mb-1'>Password</div>
+              <div className='text-sm font-semibold dark:text-[#101010]/60 text-gray-400 mb-1'>Password</div>
               <input
                 type='password'
                 id='password'
@@ -286,38 +287,35 @@ export default function Profile() {
               />
             </div>
             <div className="mb-3">
-              <div className='text-sm font-semibold text-gray-400 mb-1'>Guid Device</div>
+              <div className='text-sm font-semibold dark:text-[#101010]/60 text-gray-400 mb-1' >Guid Device</div>
               <input
                 defaultValue={currentUser.guid}
                 type='text'
                 id='guid'
                 placeholder='guid device..'
-                className='bg-[#2C2C2C]/40 rounded-lg p-3  min-w-[100%] lg:w-[270px]'
+                className='bg-[#2C2C2C]/40 dark:bg-[#F5F2E7] rounded-lg p-3  min-w-[100%] lg:w-[270px]'
                 onChange={handleChange}
               />
             </div>
             </div>
 
             <div className="mb-3">
-              <div className='text-sm font-semibold text-gray-400 mb-1'>Address</div>
+              <div className='text-sm font-semibold dark:text-[#101010]/60 text-gray-400 mb-1'>Address</div>
               <textarea
                 type='text'
                 id='address'
                 placeholder='Address'
-                className='bg-[#2C2C2C]/40 h-32 rounded-lg p-3 min-w-[100%] items-start align-top'
+                className='bg-[#2C2C2C]/40 dark:bg-[#F5F2E7] h-32 rounded-lg p-3 min-w-[100%] items-start align-top'
                 onChange={handleChange}
               >{currentUser.address}</textarea>
             </div>
-
-
-
 
           </div>
 
           <div className='flex justify-end mt-5'>
             <span
               onClick={handleDeleteAccount}
-              className='text-red-700 cursor-pointer'
+              className='text-red-700 font-semibold cursor-pointer'
             >
               Delete Account
             </span>

@@ -194,59 +194,7 @@ export default function Metrics() {
     }
   };
 
-  const calculateDailyMetrics = (logs, CollectionHR, dailyMetric) => {
-    // console.log('HR', logs)
-    const groupedLogs = logs.reduce((acc, log) => {
-      let date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
-      let [y, m, d] = date.split('-');
-      date = `${d}-${m}-${y}`;
 
-      if (!acc[date]) acc[date] = [];
-      acc[date].push({ ...log });
-      return acc;
-    }, {});
-    // Add DFA value here..
-    // console.log(groupedLogs)
-    const dailyMetrics = Object.keys(groupedLogs).map((date, i) => {
-      // groupedLogs[date] adalah kumpulan logs sesuai dengan tanggal tanggal
-      let groupData = groupedLogs[date];
-      let HRPoint = [];
-      for (let i = 0; i < groupData.length; i++) {
-        // const element = groupData[i];
-        HRPoint.push(groupData[i]['HR']);
-        // let HRPoint = groupData[i].map(data => data.HR)
-        // console.log('HRPOINT : ', HRPoint);
-      }
-      console.log({ HRPoint }, typeof dailyMetric[i]['dfa'])
-      const dfa = dailyMetric[i]['dfa'];
-      // console.log(groupedLogs[date], i)
-      const metrics = calculateMetrics(groupedLogs[date]);
-      return { date, ...metrics, dfa };
-    });
-    // setDailyMetrics(dailyMetrics);
-    return dailyMetrics;
-  };
-
-  const calculateDFA = (data, order = 1) => {
-    const y = data.map((val, i) => data.slice(0, i + 1)
-      .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0));
-    const boxSizes = [...new Set(Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(val => val <= data.length / 2))];
-    const fluctuation = boxSizes.map(boxSize => {
-      const reshaped = Array.from({ length: Math.floor(data.length / boxSize) }, (_, i) => y.slice(i * boxSize, (i + 1) * boxSize));
-      const localTrends = reshaped.map(segment => {
-        const x = Array.from({ length: segment.length }, (_, i) => i);
-        const [a, b] = [0, 1].map(deg => segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length);
-        return segment.map((val, i) => a * x[i] + b);
-      });
-      return Math.sqrt(localTrends.flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
-        .reduce((acc, val) => acc + val, 0) / (reshaped.length * reshaped[0].length));
-    });
-    const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr => arr.map(val => Math.log10(val)));
-    const alpha = (logFluctuation.reduce((acc, val, i) => acc + (val * logBoxSizes[i]), 0) -
-      (logFluctuation.reduce((acc, val) => acc + val, 0) * logBoxSizes.reduce((acc, val) => acc + val, 0) / logBoxSizes.length)) /
-      (logBoxSizes.reduce((acc, val) => acc + Math.pow(val, 2), 0) - Math.pow(logBoxSizes.reduce((acc, val) => acc + val, 0), 2) / logBoxSizes.length);
-    return alpha;
-  };
 
   const calculateMetrics = (logs) => {
     const rrIntervals = logs.map((log) => log.RR);
@@ -306,21 +254,20 @@ export default function Metrics() {
   return (
     <div>
       {loading ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bgg-bl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101010] dark:bg-[#FEFCF5]">
           <div className="flex flex-col items-center">
-            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
-            <p className="text-center font-semibold mt-4 text-[#07AC7B]">
+            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] dark:border-[#217170] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
+            <p className="text-center font-semibold mt-4 text-[#07AC7B] dark:text-[#217170]">
               Loading...
             </p>
           </div>
         </div>
-
       ) : null}
       <main className=''>
-        <section className="bgg-bl flex text-white">
+        <section className="bg-[#101010] dark:bg-[#FEFCF5] flex text-white dark:text-[#073B4C]">
           <Side />
           <div className="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-5">
-            <div className="relative flex flex-col min-w-0 break-words bgg-bl w-full">
+            <div className="relative flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0 ">
                 <div className="flex flex-wrap items-center">
                   {/* <ButtonOffCanvas index={2} /> */}
@@ -340,14 +287,14 @@ export default function Metrics() {
                   }}
                   isClearable
                   placeholderText='Cari berdasarkan range tanggal'
-                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] lg:mb-0 mb-4 rounded text-sm me-3 sm:me-0 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm me-3 sm:me-0 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
 
                 <select
                   name=""
                   id=""
-                  className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] rounded text-sm w-full md:max-w-[200px]  md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                  className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] rounded text-sm w-full md:max-w-[200px]  md:text-[16px] lg:min-w-[220px] px-3 py-3"
                   onChange={handleChangeMetode}
                 >
                   <option value="" disabled selected>Choose metode</option>

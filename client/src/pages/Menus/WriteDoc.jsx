@@ -130,7 +130,7 @@ function WriteDoc() {
     }, [startDate, endDate]);
 
     return (
-        <main class="bgg-bl text-white flex">
+        <main class="bg-[#101010] dark:bg-[#FEFCF5] dark:text-[#073B4C] text-white flex">
             <Side />
             <div class="w-11/12 lg:w-full xl:w-10/12 xl:px-8 mb-12 xl:mb-0 px-4 mx-auto pb-8 mt-8 md:mt-16">
                 {/* <ButtonOffCanvas /> */}
@@ -163,13 +163,13 @@ function WriteDoc() {
                     </div> */}
                     <div className="md:w-7/12 w-full flex flex-col justify-start gap-4">
                         <div>
-                            <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nama Labotarium rujukan</label>
-                            <textarea id="message" rows="4" class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" placeholder="Example. Labotarium Patalogi, RS. sukabumi Bandung utara,  2024"></textarea>
+                            <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-[#101010]/60">Nama Labotarium rujukan</label>
+                            <textarea id="message" rows="4" class="bg-[#2C2C2C] dark:bg-[#E7E7E7] text-white dark:text-[#073B4C] text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" placeholder="Example. Labotarium Patalogi, RS. sukabumi Bandung utara,  2024"></textarea>
                         </div>
 
                         <div>
-                            <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Location Lab</label>
-                            <input type="text" id="first_name" class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" placeholder="example. Jln. Bojongnegara bandung 1942" />
+                            <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-[#101010]/60">Location Lab</label>
+                            <input type="text" id="first_name" class="bg-[#2C2C2C] dark:bg-[#E7E7E7] text-white dark:text-[#073B4C] text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" placeholder="example. Jln. Bojongnegara bandung 1942" />
                         </div>
                         {/* {successmsg ? (
                         <div className="w-full bgg-dg py-2 px-4 rounded-md text-sm">
@@ -197,7 +197,7 @@ function WriteDoc() {
                         <input type="file" name="" id="fileinput" hidden onChange={(e) => { console.log(e); setFile(e.target.files[0]) }} />
 
                         <div className="flex flex-col md:flex-row gap-4 mt-3 md:items-center">
-                            <button type="submit" className='bg-[#07AC7B] hover:bg-transparent text-sm hover:text-[#07AC7B] duration-200 px-4 py-2 rounded-md'>Save dan selesai</button>
+                            <button type="submit" className='bg-[#07AC7B] dark:bg-[#FFD166] text-white dark:text-[#073B4C] hover:bg-transparent text-sm hover:text-[#07AC7B] duration-200 px-4 py-2 rounded-md'>Save dan selesai</button>
                             <Link to={'/faktor-resiko'} className='blue font-medium text-sm'>Kembali ke dashboard</Link>
                         </div>
                     </div>

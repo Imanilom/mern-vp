@@ -14,7 +14,7 @@ import Swal from 'sweetalert2';
 
 
 function Summary() {
-
+    // const isLightMode_ = ;
     const { currentUser, loading, error, DocterPatient } = useSelector((state) => state.user);
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -44,16 +44,23 @@ function Summary() {
                 url4 = `/api/user/riwayatdeteksi/${DocterPatient._id}`
             }
 
-            const [res, res2, res3, res4] = await Promise.all([
+            const res2 = await fetch(url2);
+            const data2 = await res2.json();
+            setInfoDokter(data2.recomendation[data2.recomendation.length - 1]['doctor']);
+
+            console.log({data2})
+
+            const [res, res3, res4] = await Promise.all([
                 await fetch(url),
-                await fetch(url2),
+                // await fetch(url2),
                 await fetch(url3),
                 await fetch(url4),
             ]);
 
-            const [data, data2, data3, data4] = await Promise.all([
+
+            const [data, data3, data4] = await Promise.all([
                 await res.json(),
-                await res2.json(),
+                // await res2.json(),
                 await res3.json(),
                 await res4.json(),
             ]);
@@ -64,7 +71,7 @@ function Summary() {
             property.Riwayat_Deteksi = data4.riwayat[0];
             property.Rekomendasi_Terakhir = data2.recomendation[data2.recomendation.length - 1]['name'];
             property.Treatment_Terakhir = data3.history[data3.history.length - 1]['diagnosis'];
-            setInfoDokter(data2.recomendation[data2.recomendation.length - 1]['doctor']);
+         
             console.log({ data, data2, data3, property });
 
             setData(property);
@@ -78,6 +85,7 @@ function Summary() {
             duration : 700
        })
         fetchInit();
+
     }, []);
 
 
@@ -101,7 +109,7 @@ function Summary() {
     return (
         <div>
             <main>
-                <section class="bgg-bl md:flex text-white/95">
+                <section class="bg-[#101010] dark:bg-[#FEFCF5] md:flex  text-white/95 dark:text-[#073B4C]">
                     <Side />
                     <div class="container px-6 py-10 mx-auto">
                         {/* <ButtonOffCanvas index={1} /> */}
@@ -115,8 +123,8 @@ function Summary() {
 
                                 </div>
 
-                                <div class="rounded-md relative mt-3 flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg duration-300 lg:hover:translate-x-[-20px] group">
-                                    <div class="mb-0 px-4 py-3 border-0">
+                                <div class="rounded-md relative mt-3 flex flex-col min-w-0 break-words bg-[#363636]/20 dark:bg-[#217170]  w-full mb-6 shadow-lg duration-300 lg:hover:translate-x-[-20px] group">
+                                    <div class="mb-0 px-4 py-3 border-0 text-white dark:text-white ">
                                         <div class="flex flex-wrap items-center">
                                             <div class="relative w-full lg:px-4 max-w-full flex-grow flex justify-between flex-1">
 
@@ -125,7 +133,7 @@ function Summary() {
                                                 {currentUser.role != 'user' ? (
                                                     <button onClick={() => handleUnsignPatient()} className='bg-red-600 focus:bg-red-600/90 text-white px-3 py-1 rounded-md text-sm'>Berhenti Monitoring</button>
                                                 ) : (
-                                                    <Link to={`/profile`} className='text-sm text-[#07AC7B]'>Edit information</Link>
+                                                    <Link to={`/profile`} className='text-sm text-[#07AC7B] dark:text-[#FFD166] font-semibold'>Edit information</Link>
 
                                                 )}
                                             </div>
@@ -138,7 +146,7 @@ function Summary() {
 
                                         <table class="min-w-full shadow-xl overflow-hidden">
                                             <tbody>
-                                                <tr class="bg-[#2C2C2C] ">
+                                                <tr class="bg-[#2C2C2C] dark:bg-[#E7E7E7] ">
                                                     <th class="px-6 py-4 text-left text-sm font-medium">
                                                         Nama
                                                     </th>
@@ -146,7 +154,7 @@ function Summary() {
                                                         {currentUser.role != 'user' ? DocterPatient.name : currentUser.name}
                                                     </td>
                                                 </tr>
-                                                <tr class="bg-[#141414] ">
+                                                <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                                                     <th class="px-6 py-4 text-left text-sm font-medium ">
                                                         Usia
                                                     </th>
@@ -154,7 +162,7 @@ function Summary() {
                                                         21
                                                     </td>
                                                 </tr>
-                                                <tr class="bg-[#2C2C2C]  ">
+                                                <tr class="bg-[#2C2C2C] dark:bg-[#E7E7E7]">
                                                     <th class="px-6 py-4 text-left text-sm font-medium ">
                                                         Jenis Kelamin
                                                     </th>
@@ -162,7 +170,7 @@ function Summary() {
                                                         Laki-laki
                                                     </td>
                                                 </tr>
-                                                <tr class="bg-[#141414] ">
+                                                <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                                                     <th class="px-6 py-4 text-left text-sm font-medium ">
                                                         Alamat
                                                     </th>
@@ -187,9 +195,9 @@ function Summary() {
                             </div>
 
                             <div data-aos="fade-up" class="mt-6 lg:w-2/3 lg:mt-0 lg:mx-6 ">
-                                <div className="flex text-sm justify-between bg-[#363636]/20 rounded-md my-3 px-6 py-3">
+                                <div className="flex text-sm justify-between bg-[#363636]/20 dark:bg-[#217170] text-white rounded-md my-3 px-6 py-3">
                                     <p>Informasi pribadi dokter anda</p>
-                                    <p className='text-[#07AC7B] cursor-pointer' onClick={() => setShowInfo(!showInfoDokter)}>
+                                    <p className='text-[#07AC7B] dark:text-[#FFD166] cursor-pointer' onClick={() => setShowInfo(!showInfoDokter)}>
                                         {showInfoDokter ? 'Hide' : 'Show'}
                                     </p>
                                 </div>
@@ -202,11 +210,11 @@ function Summary() {
 
                                 {showInfoDokter ? (
                                     <div class="relative flex flex-col min-w-0 break-words bgg-bl w-full mb-6 shadow-lg rounded duration-300 lg:hover:translate-x-[-20px] group">
-                                        <div class=" bg-[#363636]/20 rounded-t mb-0 px-4 py-3 border-0">
+                                        <div class=" bg-[#363636]/20 dark:bg-[#217071] rounded-t mb-0 px-4 py-3 border-0">
                                             <div class="flex flex-wrap items-center">
                                                 <div class="relative w-full lg:px-4 max-w-full flex-grow flex justify-between flex-1">
 
-                                                    <h3 class="font-semibold text-base text-blueGray-700">Biodata Dokter</h3>
+                                                    <h3 class="font-semibold text-base text-blueGray-700 text-white">Biodata Dokter</h3>
                                                 </div>
 
                                             </div>
@@ -216,28 +224,28 @@ function Summary() {
                                             <table class="min-w-full bgg-bl shadow-xl overflow-hidden">
 
                                                 <tbody>
-                                                    <tr class="bg-[#2C2C2C]">
+                                                    <tr class="bg-[#2C2C2C] dark:bg-[#E7E7E7]">
                                                         <th class="px-6 py-4 text-left text-sm font-medium">
                                                             Nama
                                                         </th>
-                                                        <td class="px-6 py-4 text-sm text-[#07AC7B]">
+                                                        <td class="px-6 py-4 text-sm text-[#07AC7B] dark:text-[#073B4C]">
                                                             {currentUser.role != 'user' ? currentUser.name : infoDokter.name}
                                                         </td>
                                                     </tr>
-                                                    <tr class="bg-[#141414]">
+                                                    <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                                                         <th class="px-6 py-4 text-left text-sm font-medium ">
                                                             Email
                                                         </th>
-                                                        <td class="px-6 py-4 text-sm text-[#07AC7B]">
+                                                        <td class="px-6 py-4 text-sm text-[#07AC7B] dark:text-[#073B4C]">
                                                             {currentUser.role != 'user' ? currentUser.email : infoDokter.email}
                                                         </td>
                                                     </tr>
 
-                                                    <tr class="bg-[#2C2C2C]">
+                                                    <tr class="bg-[#2C2C2C] dark:bg-[#E7E7E7]">
                                                         <th class="px-6 py-4 text-left text-sm font-medium ">
                                                             Role
                                                         </th>
-                                                        <td class="px-6 py-4 text-sm text-[#07AC7B]">
+                                                        <td class="px-6 py-4 text-sm text-[#07AC7B] dark:text-[#073B4C]">
                                                             Dokter
                                                         </td>
                                                     </tr>
@@ -254,11 +262,11 @@ function Summary() {
 
                         </div>
 
-                        <div data-aos="fade-right" class="w-11/12 mx-auto lg:mx-16 relative flex flex-col min-w-0 break-words bg-[#363636]/20 mb-6 shadow-lg rounded duration-300 lg:hover:translate-x-[-20px] group">
+                        <div data-aos="fade-right" class="w-11/12 mx-auto lg:mx-16 relative flex flex-col min-w-0 break-words bg-[#363636]/20 dark:bg-[#217170] mb-6 shadow-lg rounded duration-300 lg:hover:translate-x-[-20px] group">
                             <div class=" mb-0 px-4 py-3 border-0">
                                 <div class="flex flex-wrap items-center">
                                     <div class="relative w-full px-4 max-w-full flex-grow flex-1">
-                                        <h3 class="font-semibold text-base text-blueGray-700">Ringkasan Riwayat Medis</h3>
+                                        <h3 class="font-semibold text-base text-blueGray-700 text-white">Ringkasan Riwayat Medis</h3>
                                     </div>
 
 
@@ -271,7 +279,7 @@ function Summary() {
                             <div class="block w-full overflow-x-auto">
                                 <table class="min-w-full shadow-md text-sm">
                                     <thead>
-                                        <tr class="bg-[#2C2C2C]">
+                                        <tr class="bg-[#2C2C2C] dark:bg-[#E7E7E7]">
                                             <th class="py-3 px-4 text-left">Feature</th>
                                             <th class="py-3 px-4 text-left">Keterangan</th>
                                             <th class="py-3 px-4 text-left">Tanggal</th>
@@ -279,31 +287,31 @@ function Summary() {
                                         </tr>
                                     </thead>
                                     <tbody class="text-blue-gray-900">
-                                        <tr class="bg-[#141414]">
+                                        <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                                             <td class="py-3 px-4">Faktor Resiko</td>
                                             <td class="py-3 px-4 text-sm">{data.Faktor_Resiko.length > 0 && data.Faktor_Resiko.map((val) => (<p>-{val}</p>))}</td>
                                             <td class="py-3 px-4">-</td>
                                         </tr>
 
-                                        <tr class="bg-[#2C2C2C]">
+                                        <tr class="bg-[#2C2C2C] dark:bg-[#E7E7E7]">
                                             <td class="py-3 px-4">Hasil Prediksi</td>
                                             <td class="py-3 px-4">{data.Hasil_Prediksi}</td>
                                             <td class="py-3 px-4">-</td>
                                         </tr>
 
-                                        <tr class="bg-[#141414]">
+                                        <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                                             <td class="py-3 px-4">Riwayat Deteksi</td>
                                             <td class="py-3 px-4">{data.Riwayat_Deteksi['dfa'] || data.Riwayat_Deteksi['dfa'] <= 0 ? `Tidak dapat menghitung secara akurat` : data.Riwayat_Deteksi['dfa']}</td>
                                             <td class="py-3 px-4">-</td>
                                         </tr>
 
-                                        <tr class="bg-[#2C2C2C]">
+                                        <tr class="bg-[#2C2C2C] dark:bg-[#E7E7E7]">
                                             <td class="py-3 px-4">Rekomendasi Terakhir</td>
                                             <td class="py-3 px-4">{data.Rekomendasi_Terakhir}</td>
                                             <td class="py-3 px-4">-</td>
                                         </tr>
 
-                                        <tr class="bg-[#141414]">
+                                        <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                                             <td class="py-3 px-4">Treatment Terakhir</td>
                                             <td class="py-3 px-4">{data.Treatment_Terakhir}</td>
                                             <td class="py-3 px-4">-</td>

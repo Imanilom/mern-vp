@@ -94,6 +94,14 @@ function Graph3d({ data, label, color }) {
         const paginatedData = getPaginatedData(processedData, page, maxTitik);
         processedData = paginatedData;
 
+        let defaultColor = "rgba(7, 172, 123, 1)";
+
+        const theme = localStorage.getItem('_isLightMode');
+        if (theme == "true") { // is light state
+            defaultColor = "rgba(33,113,122, 1)";
+        }
+
+
         color = processedData.map((_v, i) => {
             if (i > 0) {
                
@@ -105,10 +113,10 @@ function Graph3d({ data, label, color }) {
                    
                     return 'rgba(255, 161, 0, 1)';
                 } else {
-                    return 'rgba(7, 172, 123, 1)'; // Warna default
+                    return defaultColor; // Warna default
                 }
             } else {
-                return 'rgba(7, 172, 123, 1)'; // Warna default
+                return defaultColor; // Warna default
             }
         })
 
@@ -161,7 +169,7 @@ function Graph3d({ data, label, color }) {
             .append('svg')
             .attr('height', height)
             .attr('width', width)
-            .attr('class', 'svgOne bgg-bl min-w-lg');
+            .attr('class', 'svgOne bg-[#101010] dark:bg-[#FEFCF5] min-w-lg');
 
         const x = d3.scaleBand()
             .domain(processedData.map(d => d.date))
@@ -178,7 +186,7 @@ function Graph3d({ data, label, color }) {
         const linepath = svg.append('path')
             .datum(processedData)
             .attr('fill', 'none')
-            .attr('stroke', 'rgba(75, 192, 192, 1)')
+            .attr('stroke', defaultColor)
             .attr('stroke-width', 2)
             .attr('d', line);
 
@@ -195,7 +203,7 @@ function Graph3d({ data, label, color }) {
                     .attr('y1', margin.top)
                     .attr('x2', x(d.date)) // Posisi X untuk garis vertikal
                     .attr('y2', height - margin.bottom)
-                    .attr('stroke', 'white')
+                    .attr('stroke', theme == "true" ? "gray" : "white")
                     .attr('stroke-width', 1)
                     .attr('stroke-dasharray', '5,5'); // Mengatur garis menjadi putus-putus
 
@@ -203,7 +211,7 @@ function Graph3d({ data, label, color }) {
                 svg.append('text')
                     .attr('x', x(d.date) + 5)
                     .attr('y', margin.top - 5)
-                    .attr('fill', 'white')
+                    .attr('fill', theme == "true" ? "gray" : "white")
                     .attr('font-size', 10)
                     .text(currentDate);
             }
@@ -307,13 +315,13 @@ function Graph3d({ data, label, color }) {
                 {slice > 1 ? (
                     <div>
                         {scroolState[label] > 1 ? (
-                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
+                            <button className='rounded-md bg-slate-800 dark:bg-[#FFD166] px-3 py-1 me-1' onClick={() => triggerSimulate('decrement')}>
                                 <FaAngleLeft color='white' size={16} />
                             </button>
                         ) : null}
 
                         {scroolState[label] < slice ? (
-                            <button className='rounded-md bg-slate-800 px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
+                            <button className='rounded-md bg-slate-800 dark:bg-[#FFD166] px-3 py-1 me-1'  onClick={() => triggerSimulate('plus')}>
                                 <FaAngleRight color='white' size={16} />
                             </button>
 
@@ -322,12 +330,12 @@ function Graph3d({ data, label, color }) {
                 ) : null}
 
                 <div className="flex sm:flex-row flex-col">
-                    <button id={`zoom_panel_${label}`} className='md:mb-0 mb-2 rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id={`zoom_panel_${label}`} className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
                         Slide {slider}
                     </button>
-                    <button id='' className='rounded-md bg-slate-800 px-3 py-1 me-1 text-white font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
                         Graphic {label}
-                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] rounded-full text-xs text-transparent'>lLL</span>
+                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] dark:bg-[#217071] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
                 </div>
             </div>

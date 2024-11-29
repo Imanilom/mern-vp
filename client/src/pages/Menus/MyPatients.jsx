@@ -111,15 +111,15 @@ function MyPatients() {
             ) : null}
 
             <main>
-                <section className="bgg-bl text-white flex">
+                <section className="bg-[#101010] dark:bg-[#FEFCF5] text-white dark:text-[#073B4C] flex">
                     <Side />
-                    <div className="md:w-11/12 py-4 px-16 lg:w-10/12 mb-12 xl:mb-0 mx-auto mt-8 lg:mt-16">
+                    <div className="md:w-11/12 py-16 px-16 lg:w-10/12 mb-12 xl:mb-0 mx-auto mt-8 lg:mt-0">
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-3">
                                 <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl " >List Pasien Anda </h1>
-                                <p className='darkgreen cursor-pointer' onClick={() => setShowBook(!isShowBook)}>{isShowBook ? 'Hide' : 'Show'}  book guide</p>
+                                <p className='text-[#07AC7B] dark:text-[#D39504] cursor-pointer mb-2' onClick={() => setShowBook(!isShowBook)}>{isShowBook ? 'Hide' : 'Show'}  book guide</p>
                                 {isShowBook ? (
-                                    <ul className='text-sm'>
+                                    <ul className='text-sm mb-3'>
                                         <li>- To Monitoring pasien, click the button Monitoring</li>
                                         <li>- Info "You have Appointment" is indicate you with pasien have meet schedule</li>
                                         <li>- To use search input, fill with correctly name pasien </li>
@@ -130,51 +130,47 @@ function MyPatients() {
                             <form action="" method="post" onSubmit={handleSearchName}>
                                 <div className="relative flex w-full group hover:shadow-lg duration-300">
                                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                                        <FaSearch className="h-5 w-5 text-white" />
+                                        <FaSearch className="h-5 w-5 text-white dark:text-[#217170]" />
                                     </span>
                                     <input
                                         onChange={(e) => setSearchInput(e.target.value)}
                                         type="text"
                                         placeholder="Search patient name..."
-                                        className="block md:min-w-[350px] pl-10 pr-3 py-4 rounded-md leading-5 bg-[#2C2C2C] text-white/60 shadow-sm focus:outline-none  sm:text-sm"
+                                        className="block md:min-w-[350px] pl-10 pr-3 py-4 rounded-md leading-5 bg-[#2C2C2C] dark:bg-[#F5F2E7] text-white/60 dark:text-[#073B4C] shadow-sm focus:outline-none  sm:text-sm"
                                     />
                                 </div>
                             </form>
                         </div>
                         {/* <ButtonOffCanvas /> */}
-                        <div className="relative flex flex-col min-w-0 break-words bgg-bl w-full mb-6 shadow-lg rounded ">
-                            <div className="rounded-t mb-0 px-4 py-3 border-0">
-                                <div className="flex md:flex-row flex-col flex-wrap gap-3 md:items-center">
-
-                                </div>
-                            </div>
+                        <div className="relative flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#E7E7E7] w-full mb-6 shadow-lg rounded ">
+                            
                             <div className="block w-full overflow-x-auto">
                                 <table className="items-center w-full ">
                                     <thead>
-                                        <tr className='bg-[#363636]/30'>
-                                            <th className=" hidden sm:table-cell px-6 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                        <tr className='bg-[#363636]/30 dark:bg-[#217170]'>
+                                            <th className=" hidden sm:table-cell px-6 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 No.
                                             </th>
-                                            <th className="px-6 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            <th className="px-6 text-blueGray-500  dark:text-white  align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Profile
                                             </th>
-                                            <th className="px-6  text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            <th className="px-6  text-blueGray-500 dark:text-white  align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Name
                                             </th>
-                                            <th className="hidden sm:table-cell px-6 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            <th className="hidden sm:table-cell px-6 text-blueGray-500 dark:text-white  align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Address
                                             </th>
-                                            <th className="px-6  text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            <th className="px-6  text-blueGray-500 dark:text-white  align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Info
                                             </th>
-                                            <th className="px-6 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            <th className="px-6 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Action
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {patients.length > 0 ? patients.map((patient, i) => (
-                                            <tr key={patient._id} className={i % 2 == 0 ? 'bg-[#141414]' : 'bg-[#2C2C2C]'}>
+                                            <tr key={patient._id} className={i % 2 == 0 ? 'bg-[#141414] dark:bg-[#E7E7E7]' : 'dark:bg-[#CBCBCB] bg-[#2C2C2C]'}>
                                                 <th className="hidden sm:table-cell border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                                                     {i + 1}
                                                 </th>
@@ -216,7 +212,7 @@ function MyPatients() {
                         </div>
 
 
-                        <Link to={`/add/pasient/${currentUser._id}`} className='py-3 mb-4 text-center w-full text-white font-semibold rounded-md bgg-dg focus:translate-y-2 duration-150 block'>
+                        <Link to={`/add/pasient/${currentUser._id}`} className='py-3 mb-4 text-center w-full text-white dark:text-[#073B4C] font-semibold rounded-md bg-[#07AC7B] dark:bg-[#FFD166] focus:translate-y-2 duration-150 block'>
                             <button >
                                 Add new Patient
                             </button>

@@ -159,10 +159,8 @@ function InputLabotarium() {
         }
     };
 
-
-
     return (
-        <main class="bgg-bl text-white flex">
+        <main class="bg-[#101010] dark:bg-[#FEFCF5] dark:text-[#073B4C] text-white flex">
             <Side />
             <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8">
                 {/* <ButtonOffCanvas /> */}
@@ -171,15 +169,15 @@ function InputLabotarium() {
                 <p>Berikan Informasi pasien dengan jelas dan akurat!</p>
 
 
-                <form onSubmit={handleSubmit} class="my-5 relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
+                <form onSubmit={handleSubmit} class="my-5 relative flex flex-col min-w-0 break-words w-full mb-6 rounded ">
                     <div className='my-3 max-w-sm'>
-                        <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tanggal Pengisian</label>
-                        <input type="date" id="first_name" class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" placeholder="John" required />
+                        <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-[#101010]/60">Tanggal Pengisian</label>
+                        <input type="date" id="first_name" class="bg-[#2C2C2C] dark:bg-[#E7E7E7] text-white dark:text-[#101010]/60 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" placeholder="John" required />
                     </div>
-                    <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/30">
+                    <div class="rounded-t mb-0 px-4 py-3 border-0 bg-[#363636]/30 dark:bg-[#217170]">
                         <div class="flex flex-wrap items-center">
                             <div class="relative w-full px-2 max-w-full flex-grow flex-1">
-                                <p className='font-medium'>Dokumen Pasien</p>
+                                <p className='font-medium text-white'>Dokumen Pasien</p>
                             </div>
 
                         </div>
@@ -189,7 +187,7 @@ function InputLabotarium() {
                         <table class="items-center bg-transparent w-full  ">
 
                             <thead>
-                                <tr className='bg-[#2c2c2c]'>
+                                <tr className='bg-[#2c2c2c] dark:bg-[#E7E7E7]'>
                                     <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0  font-semibold text-left">
                                         No
                                     </th>
@@ -206,7 +204,7 @@ function InputLabotarium() {
                             </thead>
 
                             <tbody>
-                                <tr className='bg-[#141414]'>
+                                <tr className='bg-[#141414] dark:bg-[#CBCBCB]'>
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         1
                                     </th>
@@ -221,11 +219,11 @@ function InputLabotarium() {
                                     <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4">
                                         <i class="fas fa-arrow-up text-emerald-500 mr-4"></i>
                                         <div className='my-3 max-w-sm'>
-                                            <input type="number" name='Usia subjek' onChange={handleInputChange} id="first_name" class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
+                                            <input type="number" name='Usia subjek' onChange={handleInputChange} id="first_name" class="bg-[#2C2C2C] dark:bg-[#E7E7E7] text-white dark:text-[#073B4C] text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
                                         </div>
                                     </td>
                                 </tr>
-                                <tr className="bg-[#2c2c2c]">
+                                <tr className="bg-[#2c2c2c] dark:bg-[#E7E7E7]">
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         2
                                     </th>
@@ -243,7 +241,7 @@ function InputLabotarium() {
                                         <select
                                             onChange={handleInputChange}
                                             name='Jenis Kelamin'
-                                            class="bg-[#141414] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
+                                            class="bg-[#141414]  dark:bg-[#CBCBCB] dark:text-[#073B4C] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
                                             <option value="" disabled selected>Pilih Jenis Kelamin</option>
                                             <option value="Laki-Laki">Laki Laki</option>
                                             <option value="Perempuan">Perempuan</option>
@@ -252,7 +250,7 @@ function InputLabotarium() {
                                         </select>
                                     </td>
                                 </tr>
-                                <tr className='bg-[#141414]'>
+                                <tr className='bg-[#141414] dark:bg-[#CBCBCB]'>
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         3
                                     </th>
@@ -270,7 +268,7 @@ function InputLabotarium() {
                                         <select
                                             onChange={handleInputChange}
                                             name='Tipe Nyeri dada'
-                                            class="bg-[#2c2c2c] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
+                                            class="bg-[#2c2c2c] dark:bg-[#E7E7E7] text-white dark:text-[#073B4C]  text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
                                             <option value="" disabled selected>Pilih Type Nyeri dada</option>
                                             <option value="typical angina">typical angina</option>
                                             <option value="atypical angina">atypical angina</option>
@@ -279,7 +277,7 @@ function InputLabotarium() {
                                         </select>
                                     </td>
                                 </tr>
-                                <tr className="bg-[#2c2c2c]">
+                                <tr className="bg-[#2c2c2c] dark:bg-[#E7E7E7]">
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         4
                                     </th>
@@ -295,10 +293,10 @@ function InputLabotarium() {
                                         <i class="fas fa-arrow-up text-emerald-500 mr-4"></i>
                                         <input
                                             onChange={handleInputChange}
-                                            name='Tekanan darah istirahat (mmHg)' type="number" id="first_name" class="bg-[#141414] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
+                                            name='Tekanan darah istirahat (mmHg)' type="number" id="first_name" class="bg-[#141414] dark:bg-[#CBCBCB] dark:text-[#073B4C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
                                     </td>
                                 </tr>
-                                <tr className='bg-[#141414]'>
+                                <tr className='bg-[#141414] dark:bg-[#CBCBCB]'>
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         5
                                     </th>
@@ -312,10 +310,10 @@ function InputLabotarium() {
                                     </td>
                                     <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4">
                                         <input onChange={handleInputChange}
-                                            name='Kolesterol (md/dl)' type="number" id="first_name" class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
+                                            name='Kolesterol (md/dl)' type="number" id="first_name" class="bg-[#2C2C2C] dark:bg-[#E7E7E7] text-white dark:text-[#073B4C]  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
                                     </td>
                                 </tr>
-                                <tr className="bg-[#2c2c2c]">
+                                <tr className="bg-[#2c2c2c] dark:bg-[#E7E7E7]">
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         6
                                     </th>
@@ -333,7 +331,7 @@ function InputLabotarium() {
                                         <select
                                             onChange={handleInputChange}
                                             name='Gula darah puasa > 120mg/dl'
-                                            class="bg-[#141414] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
+                                            class="bg-[#141414] dark:bg-[#CBCBCB] dark:text-[#073B4C] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
                                             <option value="" disabled selected>Gula darah puasa {">"} 120mg/dl</option>
                                             <option value="salah">Salah</option>
                                             <option value="benar">Ya, benar</option>
@@ -341,7 +339,7 @@ function InputLabotarium() {
                                         </select>
                                     </td>
                                 </tr>
-                                <tr className='bg-[#141414]'>
+                                <tr className='bg-[#141414] dark:bg-[#CBCBCB]'>
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         7
                                     </th>
@@ -361,7 +359,7 @@ function InputLabotarium() {
                                         <select
                                             onChange={handleInputChange}
                                             name='Hasil ECG saat istirahat'
-                                            class="bg-[#2c2c2c] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
+                                            class="bg-[#2c2c2c] dark:bg-[#E7E7E7] text-white dark:text-[#073B4C] text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
                                             <option value="" disabled selected>Hasil ECG saat istirahat</option>
                                             <option value="normal">Normal</option>
                                             <option value="ketidaknormalan pada ST-T">ketidaknormalan pada ST-T</option>
@@ -370,7 +368,7 @@ function InputLabotarium() {
                                         </select>
                                     </td>
                                 </tr>
-                                <tr className="bg-[#2c2c2c]">
+                                <tr className="bg-[#2c2c2c] dark:bg-[#E7E7E7]">
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         8
                                     </th>
@@ -384,10 +382,10 @@ function InputLabotarium() {
                                     </td>
                                     <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4">
                                         <input onChange={handleInputChange}
-                                            name='Detak jantung maksimum' type="number" id="first_name" class="bg-[#141414] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
+                                            name='Detak jantung maksimum' type="number" id="first_name" class="bg-[#141414] dark:bg-[#CBCBCB] dark:text-[#073B4C]  text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
                                     </td>
                                 </tr>
-                                <tr className='bg-[#141414]'>
+                                <tr className='bg-[#141414] dark:bg-[#CBCBCB]'>
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         9
                                     </th>
@@ -405,14 +403,14 @@ function InputLabotarium() {
                                         <select
                                             onChange={handleInputChange}
                                             name='Latihan yang diinduksi angina'
-                                            class="bg-[#2c2c2c] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
+                                            class="bg-[#2c2c2c] dark:bg-[#E7E7E7] text-white dark:text-[#073B4C] text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
                                             <option value="" disabled selected>Latihan yang diinduksi angina</option>
                                             <option value="tidak">Tidak</option>
                                             <option value="benar">Benar</option>
                                         </select>
                                     </td>
                                 </tr>
-                                <tr className="bg-[#2c2c2c]">
+                                <tr className="bg-[#2c2c2c] dark:bg-[#E7E7E7]">
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         10
                                     </th>
@@ -428,10 +426,10 @@ function InputLabotarium() {
                                         <input
                                             onChange={handleInputChange}
                                             name='Depresi ST yang diinduksi oleh olahraga relatif terhadap istirahat'
-                                            type="number" id="first_name" class="bg-[#141414] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
+                                            type="number" id="first_name" class="bg-[#141414] dark:bg-[#CBCBCB] dark:text-[#073B4C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" required />
                                     </td>
                                 </tr>
-                                <tr className='bg-[#141414]'>
+                                <tr className='bg-[#141414] dark:bg-[#CBCBCB]'>
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         11
                                     </th>
@@ -453,7 +451,7 @@ function InputLabotarium() {
                                         <select
                                             onChange={handleInputChange}
                                             name='Kemiringan segmen ST pada latihan puncak'
-                                            class="bg-[#2c2c2c] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
+                                            class="bg-[#2c2c2c] dark:bg-[#E7E7E7] text-white dark:text-[#073B4C] text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
                                             <option value="" disabled selected>Kemiringan segmen ST pada latihan puncak</option>
                                             <option value="up-sloping">up-sloping</option>
                                             <option value="flat">flat</option>
@@ -461,7 +459,7 @@ function InputLabotarium() {
                                         </select>
                                     </td>
                                 </tr>
-                                <tr className="bg-[#2c2c2c]">
+                                <tr className="bg-[#2c2c2c] dark:bg-[#E7E7E7]">
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         12
                                     </th>
@@ -477,7 +475,7 @@ function InputLabotarium() {
                                         <select
                                             onChange={handleInputChange}
                                             name='Jumlah vessel utama yang diwarnai oleh flourosopy'
-                                            class="bg-[#141414] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
+                                            class="bg-[#141414] dark:bg-[#CBCBCB] dark:text-[#073B4C] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
                                             <option value="" disabled selected>Jumlah vessel utama yang diwarnai oleh flourosopy</option>
                                             <option value="0">0</option>
                                             <option value="1">1</option>
@@ -487,7 +485,7 @@ function InputLabotarium() {
                                         </select>
                                     </td>
                                 </tr>
-                                <tr className='bg-[#141414]'>
+                                <tr className='bg-[#141414] dark:bg-[#CBCBCB]'>
                                     <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs  p-4 text-left text-blueGray-700 ">
                                         13
                                     </th>
@@ -510,7 +508,7 @@ function InputLabotarium() {
 
                                             onChange={handleInputChange}
                                             name='Jenis cacat'
-                                            class="bg-[#2c2c2c] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
+                                            class="bg-[#2c2c2c] dark:bg-[#E7E7E7] dark:text-[#073B4C] text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
                                             <option value="" disabled selected>Pilih Jenis cacat</option>
                                             <option value="normal">normal</option>
                                             <option value="fixed defect">fixed defect</option>
@@ -535,10 +533,10 @@ function InputLabotarium() {
                             onClick={() => document.getElementById('fileinput').click()}
                             onDrop={handleDrop}
                             onDragOver={handleDragOver}
-                            className="areadrop rounded-[10px] my-6 p-2 bgg-dg cursor-pointer" id="areadrop">
-                            <div className="bg-[#181818] border-white border-2 border-dashed rounded-sm flex gap-4 items-center flex-col p-8 md:p-12">
-                                <FaFileLines size={48} color="#07AC7B" />
-                                <div className="text-md md:text-xl darkgreen font-semibold text-center md:text-start">
+                            className="areadrop rounded-[10px] my-6 p-2 bg-[#07AC7B] dark:bg-[#FFD166] cursor-pointer" id="areadrop">
+                            <div className="bg-[#181818] dark:bg-[#F5F2E7] border-white border-2 border-dashed rounded-sm flex gap-4 items-center flex-col p-8 md:p-12">
+                                <FaFileLines size={48} className='text-[#07AC7B] dark:text-[#FFD166]' />
+                                <div className="text-md md:text-xl text-[#07AC7B] dark:text-[#073B4C] font-semibold text-center md:text-start">
                                     DRAG OR CLICK HERE
                                 </div>
                                 <div className="text-xs font-medium max-w-[250px] text-center">
@@ -552,8 +550,8 @@ function InputLabotarium() {
                     <input type="file" name="" id="fileinput" hidden onChange={(e) => { console.log(e); setFile(e.target.files[0]) }} />
 
                     <div className="flex md:flex-row flex-col gap-4 mt-5 md:items-center">
-                        <button type="submit" className='bg-[#07AC7B] hover:bg-transparent duration-200 text-sm  hover:text-[#07AC7B] px-4 text-[#141414] font-semibold py-2 rounded-md'>Save dan selesai</button>
-                        <Link to={'/faktor-resiko'} className='blue font-medium text-sm underline'>Kembali ke dashboard</Link>
+                        <button type="submit" className='bg-[#07AC7B] dark:bg-[#FFD166] hover:bg-transparent duration-200 text-sm  hover:text-[#07AC7B] px-4 text-[#141414] font-semibold py-2 rounded-md'>Save dan selesai</button>
+                        <Link to={'/faktor-resiko'} className='blue font-medium text-sm '>Kembali ke dashboard</Link>
                     </div>
                 </form>
             </div>
