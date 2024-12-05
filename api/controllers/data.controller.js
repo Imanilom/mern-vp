@@ -164,7 +164,7 @@ export async function filterIQ(logs, multiplier = 1.5) {
 
   logs.forEach(log => {
     const logTime = new Date(`${log.date_created}T${log.time_created}`).getTime();
-    if (logTime - startTime < 10000) {
+    if (logTime - startTime < 1000) {
       currentGroup.push(log);
     } else {
       if (currentGroup.length > 0) groupedLogs.push(currentGroup);
@@ -256,6 +256,99 @@ class OneClassSVM {
   }
 }
 
+export async function filterIQBC(logs, multiplier = 1.5) {
+  if (!logs || logs.length === 0) {
+    console.error("No logs available for processing.");
+    return { filteredLogs: [], anomalies: [] };
+  }
+
+  const filteredLogs = [];
+  const anomalies = [];
+
+  // Mengelompokkan log berdasarkan interval waktu 1 detik
+  const groupedLogs = [];
+  let currentGroup = [];
+  let startTime = new Date(`${logs[0].date_created}T${logs[0].time_created}`).getTime();
+
+  logs.forEach((log) => {
+    const logTime = new Date(`${log.date_created}T${log.time_created}`).getTime();
+    if (logTime - startTime < 1000) {
+      currentGroup.push(log);
+    } else {
+      if (currentGroup.length > 0) groupedLogs.push(currentGroup);
+      currentGroup = [log];
+      startTime = logTime;
+    }
+  });
+
+  if (currentGroup.length > 0) groupedLogs.push(currentGroup);
+
+  // Proses setiap grup
+  groupedLogs.forEach((group, index) => {
+    const hrValues = group.map((log) => log.HR).filter((value) => value !== undefined && value !== null);
+    const rrValues = group.map((log) => log.RR).filter((value) => value !== undefined && value !== null);
+
+    if (hrValues.length === 0 || rrValues.length === 0) {
+      console.warn(`Group ${index} skipped due to invalid data.`);
+      return;
+    }
+
+    // Terapkan transformasi Box-Cox ke HR dan RR
+    const { transformedData: transformedHr, lambda: lambdaHr } = boxCoxTransform(hrValues);
+    const { transformedData: transformedRr, lambda: lambdaRr } = boxCoxTransform(rrValues);
+
+    // Hitung statistik setelah transformasi
+    const hrStats = calculateQuartilesAndIQR(transformedHr);
+    const rrStats = calculateQuartilesAndIQR(transformedRr);
+
+    const filteredHr = transformedHr.filter(
+      (value) => value >= hrStats.Q1 - multiplier * hrStats.IQR && value <= hrStats.Q3 + multiplier * hrStats.IQR
+    );
+
+    const filteredRr = transformedRr.filter(
+      (value) => value >= rrStats.Q1 - multiplier * rrStats.IQR && value <= rrStats.Q3 + multiplier * rrStats.IQR
+    );
+
+    // Transformasi balik ke bentuk asli (invers Box-Cox)
+    const inverseTransform = (value, lambda) =>
+      lambda === 0 ? Math.exp(value) : Math.pow((value * lambda) + 1, 1 / lambda);
+
+    const restoredHr = filteredHr.map((value) => inverseTransform(value, lambdaHr));
+    const restoredRr = filteredRr.map((value) => inverseTransform(value, lambdaRr));
+
+    // Memeriksa apakah ada data setelah filtering
+    if (restoredHr.length > 0 && restoredRr.length > 0) {
+      for (let i = 0; i < Math.min(restoredHr.length, restoredRr.length); i++) {
+        const filteredLog = {
+          _id: group[i]._id,
+          HR: restoredHr[i],
+          RR: restoredRr[i],
+          rrRMS: group[i].rrRMS,
+          date_created: group[i].date_created,
+          time_created: group[i].time_created,
+          aktivitas: group[i].aktivitas,
+        };
+        filteredLogs.push(filteredLog);
+      }
+    }
+
+    // Deteksi anomali
+    const anomaliesInGroup = group.filter(
+      (log, i) =>
+        transformedHr[i] < hrStats.Q1 - multiplier * hrStats.IQR ||
+        transformedHr[i] > hrStats.Q3 + multiplier * hrStats.IQR ||
+        transformedRr[i] < rrStats.Q1 - multiplier * rrStats.IQR ||
+        transformedRr[i] > rrStats.Q3 + multiplier * rrStats.IQR
+    );
+    if (anomaliesInGroup.length > 0) {
+      anomalies.push(...anomaliesInGroup);
+    }
+  });
+
+  return { filteredLogs, anomalies };
+}
+
+
 
 
 const processHeartRateData = async () => {
@@ -284,8 +377,7 @@ const processHeartRateData = async () => {
 
     await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
 
-    const { filteredLogs, anomalies } = await kalmanFilter(logs);
-    console.log(filteredLogs)
+    const { filteredLogs, anomalies } = await filterIQBC(logs);
     if (filteredLogs.length === 0) {
       console.log("No valid data after filtering.");
       return;
@@ -513,6 +605,43 @@ const processHeartRateData10 = async () => {
 
 processHeartRateData();
 
+
+const boxCoxTransform = (data) => {
+  if (!data || data.length === 0) {
+    throw new Error("Data is empty or invalid for Box-Cox transformation.");
+  }
+
+  // Fungsi untuk menghitung log likelihood
+  const logLikelihood = (lambda, data) => {
+    const n = data.length;
+    const transformedData = data.map((x) =>
+      lambda === 0 ? Math.log(x) : (Math.pow(x, lambda) - 1) / lambda
+    );
+    const mean = transformedData.reduce((sum, x) => sum + x, 0) / n;
+    const variance = transformedData.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / n;
+
+    return -n / 2 * Math.log(variance);
+  };
+
+  // Estimasi lambda menggunakan metode grid search
+  let bestLambda = 0;
+  let maxLogLikelihood = -Infinity;
+
+  for (let lambda = 0; lambda <= 1; lambda += 0.01) {
+    const likelihood = logLikelihood(lambda, data);
+    if (likelihood > maxLogLikelihood) {
+      maxLogLikelihood = likelihood;
+      bestLambda = lambda;
+    }
+  }
+
+  // Terapkan transformasi dengan lambda optimal
+  const transformedData = data.map((x) =>
+    bestLambda === 0 ? Math.log(x) : (Math.pow(x, bestLambda) - 1) / bestLambda
+  );
+
+  return { transformedData, lambda: bestLambda };
+};
 
 
 
