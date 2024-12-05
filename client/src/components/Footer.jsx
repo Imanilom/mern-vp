@@ -42,7 +42,7 @@ function Footer() {
 
                     <div className="product text-normal">
                         <p className="font-bold mb-3">COMPANY</p>
-                        <div className="flex flex-col gap-3 dark:text-white text-[#073B4C] cursor-pointer font-medium">
+                        <div className="flex flex-col gap-3 dark:text-white text-[#005A8F] cursor-pointer font-medium">
                             <a href="">
                                 About us
                             </a>
@@ -60,7 +60,7 @@ function Footer() {
 
                     <div className="product text-normal lg:w-5/12">
                         <p className="font-bold mb-3">OUR LOCATION</p>
-                        <div className="flex flex-col gap-3 text-[#073B4C] dark:text-white cursor-pointer font-medium">
+                        <div className="flex flex-col gap-3 text-[#005A8F] dark:text-white cursor-pointer font-medium">
                            <a href="">Jl. Ganesa No.10, Lb. Siliwangi, Kecamatan Coblong, Kota Bandung, Jawa Barat 40132</a>
                         </div>
                     </div>

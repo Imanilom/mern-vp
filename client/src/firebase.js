@@ -1,3 +1,7 @@
+// FILE untuk konfigurasi firebase service
+// Make sure, punya file .env yang isinya FIREBASE API_KEY
+
+
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";

@@ -1,11 +1,9 @@
+/* FILE Konfigurasi untuk kebutuhan grafik */
 
 .svg-container{
     overflow-y: auto!important; /* Mengaktifkan scroll horizontal */
     width: 786px; /* Atur lebar sesuai kebutuhan */
     scroll-behavior: smooth; /* Menambahkan scroll smooth */
-    /* transition: all 3s; */
-    /* pointer-events: none; */
-    /* touch-action: none; */
 }
 
 #tooltip {

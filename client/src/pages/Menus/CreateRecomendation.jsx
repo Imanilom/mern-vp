@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import Swal from 'sweetalert2';
-import { axiosConfig } from '../../utls/axiosConfig.js';
 import Side from '../../components/Side.jsx';
 
 function CreateRecomendation() {

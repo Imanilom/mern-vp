@@ -3,8 +3,6 @@ import React, { useEffect } from 'react'
 import image8 from './../../assets/images/jam1.png';
 import image4 from './../../assets/images/doctor4.png';
 
-
-import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
 import AOS from 'aos';
@@ -59,7 +57,7 @@ export default function Home() {
 
 
   return (
-    <section className='flex flex-col gap-24 bgg-bl'>
+    <section className='flex flex-col gap-24 bg-[#101010]'>
       {/* Hero 1 Explain Smart Future e-healt */}
 
       <div className="md:w-10/12 relative text-white/95 mx-auto pb-16 flex md:justify-between md:flex-row flex-col-reverse gap-8 items-start md:min-h-[90vh] lg:min-h-[90vh]">
@@ -185,7 +183,7 @@ export default function Home() {
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
             </p>
 
-            <button className="px-5 py-2 bgg-b w-fit ">
+            <button className="px-5 py-2 bg-[#005A8F] w-fit ">
               More About Us
             </button>
           </div>

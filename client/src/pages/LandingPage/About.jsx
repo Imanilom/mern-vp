@@ -10,7 +10,7 @@ function About() {
   }, [])
 
   return (
-    <div className=" relative bgg-bl md:py-16 overflow-hidden flex flex-col gap-16">
+    <div className=" relative bg-[#101010] md:py-16 overflow-hidden flex flex-col gap-16">
       <div data-aos="zoom-in" data-aos-duration="500" className="w-10/12 mx-auto relative my-8">
 
         <div className="rectangle w-[230px] h-32 absolute top-0start-1/4"></div>

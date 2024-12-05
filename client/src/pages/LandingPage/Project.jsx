@@ -19,7 +19,7 @@ function Project() {
     })
   }, []);
   return (
-    <div className="bgg-bl">
+    <div className="bg-[#101010]">
       <div className='flex flex-col justify-center items-center min-h-[90vh] relative gap-8'>
 
         {/* image jam */}
@@ -73,7 +73,7 @@ function Project() {
             If you are interested in joining this project, please fill out this online form or contact us at <a href="" className='blue'>vidya@pptik.itb.ac.id</a> We are looking for people who are 18 years or older, have a smartphone or computer with internet access, and are willing to wear the sensor device and use the app or dashboard for at least 3 months.
           </p>
           <p>
-            <button className='px-4 py-3 bgg-b font-bold flex gap-2 mt-4'>
+            <button className='px-4 py-3 bg-[#005A8F] font-bold flex gap-2 mt-4'>
               <span>
                 <IoMail size={24} color="white" />
               </span>

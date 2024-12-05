@@ -363,7 +363,7 @@ const Side = () => {
           </div>
 
           <h1 className='font-bold px-8 mt-[5vh] text-[18px] sm:text-xl flex flex-wrap'>
-            <span className='blue'>Vidya</span>
+            <span className='text-[#005A8F]'>Vidya</span>
             <span className='text-white dark:text-[#217170]'>Medic</span>
           </h1>
         </div>

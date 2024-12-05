@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import Swal from 'sweetalert2';
-import { axiosConfig } from '../../utls/axiosConfig.js';
 import { IoIosCloseCircle } from "react-icons/io";
 import Side from '../../components/Side.jsx';
 
@@ -130,10 +129,6 @@ function UpdateTreatment() {
 
                     <form onSubmit={handleAddMedicine} className="md:w-6/12 mt-6 w-full p-4 text-white dark:text-[#073B4C] flex-col flex gap-0">
                         <div className="text-3xl font-bold mb-3">Add medicine list</div>
-                        {/* <div class="relative z-0 w-full">
-                        <input type="text" name="name" class="peer block w-full sm:w-[20vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm  focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
-                        <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Nama Obat</label>
-                    </div> */}
 
                         <div className='mt-2'>
                             <label for="first_name" class="block mb-2 text-sm font-medium dark:text-[#101010]/60 text-white">Nama Obat</label>
@@ -150,17 +145,6 @@ function UpdateTreatment() {
                             <input type="text" id="first_name" class="bg-[#2C2C2C] dark:bg-[#F5F2E7] dark:text-[#073B4C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " placeholder="" required />
                         </div>
 
-
-                        {/* <div class="relative z-0 w-full">
-                        <input type="text" name="name" class="peer block w-full sm:w-[20vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm  focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
-                        <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Dosis obat</label>
-                    </div> */}
-                        {/* <div class="relative z-0 w-full">
-                        <input type="text" name="name" class="peer block w-full sm:w-[20vw] appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " required />
-                        <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 ">frequency</label>
-                    </div> */}
-
-                        {/* <button type="reset" id='reset' hidden>reset</button> */}
                         <div className="flex items-center">
                             <div onClick={() => setShowList(!isShowList)} className="w-fit text-[#005A8F] dark:text-[#D39504] font-semibold cursor-pointer">
                                 {isShowList ? 'Hide' : 'Show'} List
@@ -181,18 +165,7 @@ function UpdateTreatment() {
                                             </div>
                                         </div>
                                     ))}
-                                    {/* <div className="bg-white/20 text-white p-2">
-                            <div className="font-medium text-green-400">Lorem, ipsum dolor.</div>
-                            <div className="text-sm">
-                                Lorem, ipsum. | Lorem ipsum dolor sit.
-                            </div>
-                        </div>
-                        <div className="bg-white/20 text-white p-2">
-                            <div className="font-medium text-green-400">Lorem, ipsum dolor.</div>
-                            <div className="text-sm">
-                                Lorem, ipsum. | Lorem ipsum dolor sit.
-                            </div>
-                        </div> */}
+                                
 
 
                                 </div>

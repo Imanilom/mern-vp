@@ -376,7 +376,7 @@ function ButtonOffCanvas() {
                         </Sidebar>
 
                         <h1 className='font-bold px-8 mt-[10vh] text-[18px] sm:text-xl flex flex-wrap'>
-                            <span className='blue'>Vidya</span>
+                            <span className='text-[#005A8F]'>Vidya</span>
                             <span className='text-white'>Medic</span>
                         </h1>
                     </div>
