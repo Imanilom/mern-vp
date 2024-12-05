@@ -10,16 +10,89 @@ import AOS from 'aos';
 let scroolState = {
     HR: 1, // daftarkan label 
     RR: 1,
-    DFA: 1
+    DFA: 1,
+    DfaActivity: 1
 };
 
-function DfaGraphic({ data, label, keyValue, color }) {
+function DfaGraphicActivity({ data, label, keyValue, color }) {
 
     const [scroolLevel, setScroolLevel] = useState(1);
     const chartRef = useRef();
     const [slice, setSlice] = useState(1);
     const [slider, setSlider] = useState(1);
     const XCount = 5;
+
+    const calculateDFA = (data, order = 1) => {
+        // Baseline
+        const y = data.map((val, i) =>
+            data.slice(0, i + 1).reduce(
+                (acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length),
+                0
+            )
+        );
+
+        // Segmentasi ukuran kotak
+        const boxSizes = [...new Set(
+            Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(
+                val => val <= data.length / 2
+            )
+        )];
+
+        const fluctuation = boxSizes.map(boxSize => {
+            const reshaped = Array.from(
+                { length: Math.floor(data.length / boxSize) },
+                (_, i) => y.slice(i * boxSize, (i + 1) * boxSize)
+            );
+
+            const localTrends = reshaped.map(segment => {
+                const x = Array.from({ length: segment.length }, (_, i) => i);
+                const [a, b] = [0, 1].map(deg =>
+                    segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length
+                );
+                return segment.map((val, i) => a * x[i] + b);
+            });
+
+            return Math.sqrt(
+                localTrends
+                    .flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
+                    .reduce((acc, val) => acc + val, 0) /
+                (reshaped.length * reshaped[0].length)
+            );
+        });
+
+        // Log-log transform
+        const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr =>
+            arr.map(val => Math.log10(val))
+        );
+
+        // Pembagian ukuran kotak menjadi small scales dan large scales
+        const midPoint = Math.floor(logBoxSizes.length / 2);
+
+        const calculateAlpha = (x, y) => {
+            const n = x.length;
+            const sumX = x.reduce((acc, val) => acc + val, 0);
+            const sumY = y.reduce((acc, val) => acc + val, 0);
+            const sumXY = x.reduce((acc, val, i) => acc + val * y[i], 0);
+            const sumX2 = x.reduce((acc, val) => acc + val * val, 0);
+
+            return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        };
+
+        // Hitung Alpha1 (small scales)
+        const alpha1 = calculateAlpha(
+            logBoxSizes.slice(0, midPoint),
+            logFluctuation.slice(0, midPoint)
+        );
+
+        // Hitung Alpha2 (large scales)
+        const alpha2 = calculateAlpha(
+            logBoxSizes.slice(midPoint),
+            logFluctuation.slice(midPoint)
+        );
+
+        return { alpha1, alpha2 };
+    };
+
 
     const formatedDate = (date) => {
         // console.log({ date })
@@ -36,6 +109,8 @@ function DfaGraphic({ data, label, keyValue, color }) {
         AOS.init({
             duration: 700
         })
+
+        // drawChart();
     }, [])
 
     let styleTooltype = {
@@ -54,13 +129,18 @@ function DfaGraphic({ data, label, keyValue, color }) {
     }
 
     useEffect(() => {
-
         drawChart(data);
     }, [data])
 
     function simulateScroll(left) {
         const container = document.getElementById(`svg-container-${label}`);
         container.scrollLeft = left;
+    }
+
+    const changeSelect = (e) => {
+        scroolState["DfaActivity"] = e.target.value;
+        setSlider(e.target.value)
+        drawChart(data);
     }
 
     const triggerSimulate = (opt) => {
@@ -83,33 +163,23 @@ function DfaGraphic({ data, label, keyValue, color }) {
     //   // init for using label x date
     //   const parseDate = d3.timeParse('%d-%m-%Y %H:%M:%S'); // function untuk merubah string to date
 
-    data.forEach(d => {
+    data.forEach((d, i) => {
         // Format tanggal asli tanpa waktu
         // const dateStr = new Date(formatedDate(d.tanggal)).toISOString().split('T')[0]; // Ambil bagian tanggal saja (yyyy-mm-dd)
-        const dateStr = new Date(d.timestamp_tanggal);
+        const dateStr = new Date(d.details[0]['timestamp'] * 1000);
         // Gabungkan dengan waktu_awal
         const combinedDateTime = `${dateStr}T${d.waktu_awal}`; // Format ISO: yyyy-mm-ddTHH:MM:SS
         // console.log({ combinedDateTime, dateStr }, d);
         // console.log(typeof d.tanggal != 'object')
         // Buat objek Date baru berdasarkan gabungan
-        if (typeof d.tanggal != 'object') {
-            d.tanggal = dateStr // Update tanggal agar mengikuti waktu_awal
-        }
+        // if (typeof d.tanggal != 'object') {
+        //     d.tanggal = dateStr // Update tanggal agar mengikuti waktu_awal
+        // }
 
-        let statusA1 = 'Safe';
-        let statusA2 = 'Safe';
-
-        if (d.dfa.alpha1 > 1.2) statusA1 = 'Warning'
-        if (d.dfa.alpha1 > 1.5) statusA1 = 'Danger'
-
-        if (d.dfa.alpha2 > 1.2) statusA2 = 'Warning'
-        if (d.dfa.alpha2 > 1.5) statusA2 = 'Danger'
+        d.tanggal_waktu = combinedDateTime;
+        d.tanggal_timestamp = dateStr;
 
 
-        // Debugging, lihat hasilnya
-
-        d.statusA1 = statusA1;
-        d.statusA2 = statusA2;
         // console.log(d.tanggal);
     });
 
@@ -120,14 +190,15 @@ function DfaGraphic({ data, label, keyValue, color }) {
     }
 
     const drawChart = (rawData) => {
-        // console.log({rawData})
-        let processedData = rawData.filter(d => d.dfa !== null);
-        processedData.sort((a, b) => a.tanggal - b.tanggal)
-        console.log(processedData.length);
+        console.log({ rawData }, 'woy')
+        // let processedData = rawData.filter(d => d.dfa !== null);
+        let processedData = rawData;
+        
+        // console.log(processedData.length);
         // filtering warna circle
 
         let page = scroolState[label] - 1;
-        let maxTitik = 20;
+        let maxTitik = 10;
 
         // Fungsi untuk mendapatkan data sesuai dengan halaman
         function getPaginatedData(data, page, maxTitik) {
@@ -139,6 +210,62 @@ function DfaGraphic({ data, label, keyValue, color }) {
         // Mendapatkan data yang diproses untuk halaman saat ini
         const paginatedData = getPaginatedData(processedData, page, maxTitik);
         processedData = paginatedData;
+
+        processedData.sort((a, b) => a.tanggal_timestamp - b.tanggal_timestamp)
+
+        const HitungDFA = () => {
+            let arrayOfDataDfa = [];
+
+            processedData.map((d, i) => {
+                let HrColl = [];
+                d.details.map((val, _i) => {
+                    HrColl.push(val.HR);
+                })
+
+                if (HrColl.length > 8) {
+                    let dfaVal = calculateDFA(HrColl);
+                    if(
+                        isNaN(dfaVal.alpha1) || // Cek jika nilai adalah NaN
+                        isNaN(dfaVal.alpha2) || // Cek jika nilai adalah NaN
+                        typeof dfaVal.alpha1 !== "number" || // Cek jika bukan angka
+                        typeof dfaVal.alpha2 !== "number"   // Cek jika bukan angka
+                    ){
+                        d.dfa = {
+                            alpha1: 0,
+                            alpha2: 0
+                        };
+                    }else{
+                        d.dfa = dfaVal;
+                    }
+                } else {
+                    d.dfa = {
+                        alpha1: 0,
+                        alpha2: 0
+                    };
+                }
+
+                console.log({ i, }, d.dfa)
+
+                let statusA1 = 'Safe';
+                if (d.dfa.alpha1 > 1.2) statusA1 = 'Warning'
+                if (d.dfa.alpha1 > 1.5) statusA1 = 'Danger'
+
+                let statusA2 = 'Safe';
+                if (d.dfa.alpha2 > 1.2) statusA2 = 'Warning'
+                if (d.dfa.alpha2 > 1.5) statusA2 = 'Danger'
+
+                // Debugging, lihat hasilnya
+
+                d.statusA1 = statusA1;
+                d.statusA2 = statusA2;
+
+                arrayOfDataDfa.push(d);
+            })
+
+            processedData = arrayOfDataDfa;
+        }
+
+        HitungDFA();
 
         console.log({ processedData, page, maxTitik })
 
@@ -158,6 +285,7 @@ function DfaGraphic({ data, label, keyValue, color }) {
             return 'rgba(7, 172, 123, 1)'; // Warna default
         });
 
+
         let sizeCircleA1 = processedData.map((item, i) => {
             if (item.statusA1 === 'Safe') return 4; // Merah untuk berjalan 
             if (item.statusA1 === 'Warning') return 6; // Hijau untuk tidur
@@ -165,14 +293,13 @@ function DfaGraphic({ data, label, keyValue, color }) {
             // return 'rgba(75, 192, 192, 1)'; // Warna default
             return 4; // Warna default
         })
-
-        let sizeCircleA2 = processedData.map(item => {
+        let sizeCircleA2 = processedData.map((item, i) => {
             if (item.statusA2 === 'Safe') return 4; // Merah untuk berjalan 
             if (item.statusA2 === 'Warning') return 6; // Hijau untuk tidur
             if (item.statusA2 === 'Danger') return 8; // Ungu untuk Berolahraga
             // return 'rgba(75, 192, 192, 1)'; // Warna default
             return 4; // Warna default
-        });
+        })
 
 
         // mengambil element tooltip
@@ -195,7 +322,6 @@ function DfaGraphic({ data, label, keyValue, color }) {
         } else if (window.innerWidth > 540) {
             svgWidth = window.innerWidth * 0.7;
         } else {
-
             console.log('hp')
             svgWidth = window.innerWidth * 0.8;
         }
@@ -220,12 +346,12 @@ function DfaGraphic({ data, label, keyValue, color }) {
         //     .range([margin.left, width - margin.right]);
 
         const x = d3.scaleBand()
-            .domain(processedData.map(d => d.tanggal))
+            .domain(processedData.map(d => d.tanggal_timestamp))
             .range([margin.left, width - margin.right])
             .padding(0.05);  // Kurangi padding agar lebih banyak label ditampilkan
 
         const y = d3.scaleLinear()
-            .domain([0, d3.max(processedData, d => Math.max(d[keyValue].alpha1, d[keyValue].alpha2)) + 0.2])
+            .domain([0, d3.max(processedData, d => Math.max(d.dfa.alpha1, d.dfa.alpha2)) + 0.2])
             .range([height - margin.bottom, margin.top]);
 
         // const line = d3.line()
@@ -233,13 +359,17 @@ function DfaGraphic({ data, label, keyValue, color }) {
         //     .y(d => y(d[[keyValue]]));
 
         const lineA1 = d3.line()
-            .x(d => x(d.tanggal))
-            .y(d => y(d.dfa.alpha1));
+            .x(d => x(d.tanggal_timestamp))
+            .y(d => y(d["dfa"].alpha1 ?? 0));
 
         const lineA2 = d3.line()
-            .x(d => x(d.tanggal))
-            // .y(d => y(d[["dfa"]?.alpha2]));
-            .y(d => y(d.dfa.alpha2));
+            .x(d => x(d.tanggal_timestamp))
+            .y(d => y(d["dfa"].alpha2 ?? 0));
+
+        // const lineA2 = d3.line()
+        //     .x(d => x(d.tanggal))
+        //     // .y(d => y(d[["dfa"]?.alpha2]));
+        //     .y(d => y(d.dfa.alpha2));
 
         // svg.append('path')
         //     .datum(processedData)
@@ -249,25 +379,23 @@ function DfaGraphic({ data, label, keyValue, color }) {
         //     .attr('d', line);
 
         processedData.forEach(d => {
-            if (!d.tanggal || isNaN(d[keyValue]?.alpha1) || isNaN(d[keyValue]?.alpha2)) {
+            if (!d.tanggal_timestamp || isNaN(d["dfa"]?.alpha1) || isNaN(d["dfa"]?.alpha2)) {
                 console.error('Invalid data:', d);
             }
-
-            console.log(d[keyValue])
         });
 
-        console.log({ defaultColor, lineA1, lineA2 }, paginatedData[0][keyValue].alpha1)
+        console.log({ defaultColor, })
         let linePathA1 = svg.append('path')
             .datum(processedData)
             .attr('fill', 'none')
-            .attr('stroke', colorA1[0])
+            .attr('stroke', "#217170")
             .attr('stroke-width', 2)
             .attr('d', lineA1);
 
         let linePathA2 = svg.append('path')
             .datum(processedData)
             .attr('fill', 'none')
-            .attr('stroke', colorA2[0])
+            .attr('stroke', "#FFD166")
             .attr('stroke-width', 2)
             .attr('d', lineA2);
 
@@ -276,13 +404,13 @@ function DfaGraphic({ data, label, keyValue, color }) {
 
         processedData.forEach((d, i) => {
             // console.log({ d }, 'DfaGraphic');
-            const currentDate = d.tanggal.toDateString();
+            const currentDate = d.tanggal_timestamp.toDateString();
             if (previousDate !== currentDate) {
                 // Gambar garis putus-putus di sini
                 svg.append('line')
-                    .attr('x1', x(d.tanggal)) // Posisi X berdasarkan tanggal
+                    .attr('x1', x(d.tanggal_timestamp)) // Posisi X berdasarkan tanggal
                     .attr('y1', margin.top)
-                    .attr('x2', x(d.tanggal)) // Posisi X untuk garis vertikal
+                    .attr('x2', x(d.tanggal_timestamp)) // Posisi X untuk garis vertikal
                     .attr('y2', height - margin.bottom)
                     .attr('stroke', theme == "true" ? "gray" : "white")
                     .attr('stroke-width', 1)
@@ -290,7 +418,7 @@ function DfaGraphic({ data, label, keyValue, color }) {
 
                 // Tambahkan label tanggal di dekat garis putus-putus
                 svg.append('text')
-                    .attr('x', x(d.tanggal) + 5)
+                    .attr('x', x(d.tanggal_timestamp) + 5)
                     .attr('y', margin.top - 5)
                     .attr('fill', theme == "true" ? "gray" : "white")
                     .attr('font-size', 10)
@@ -307,11 +435,20 @@ function DfaGraphic({ data, label, keyValue, color }) {
                 .data(processedData)
                 .enter()
                 .append('circle')
-                .attr('cx', d => x(d.tanggal))
-                .attr('cy', d => y(d[keyValue].alpha1))
+                .attr('cx', d => x(d.tanggal_timestamp))
+                .attr('cy', d => y(d["dfa"].alpha1 ?? 0))
                 .attr('r', (d, i) => sizeCircleA1[i])
-                .attr('fill', (d, i) => colorA1[i % colorA1.length])
+                .attr('fill', "#217170")
                 .on('mouseover', (event, d) => {
+
+                    let labelsPurposion;
+
+                    if(d.statusA1 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                    if(d.statusA1 == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                    if(d.statusA1 == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
+
+
                     const [xPos, yPos] = d3.pointer(event);
                     let x = xPos + 10;
                     if (scroolState[label] > 1) {
@@ -320,11 +457,12 @@ function DfaGraphic({ data, label, keyValue, color }) {
                     tooltip.style('left', `${x}px`)
                         .style('top', `${(yPos + 10)}px`)
                         .style('opacity', 1)
-                        .html(`<p>Date: ${String(d.tanggal).split('GMT')[0]}</p> 
-                            <p>Waktu awal : ${d.waktu_awal}</p>
-                            <p>Waktu akhir : ${d.waktu_akhir}</p>
-                            <p>${keyValue}: ${d[keyValue].alpha1}</p>
-                            <p>Status Dfa: ${d["statusA1"]}</p>`);
+                        .html(`
+                            <p>${labelsPurposion}</p>
+                            <p>Date: ${String(d.tanggal).split('GMT')[0]}</p> 
+                          <p> Alpha_1: ${d["dfa"].alpha1}</p>
+                            <p> Aktivitas : ${d.Aktivitas}</p>
+                            <p>Status Dfa Alpha1: ${d["statusA1"]}</p>`);
                 })
                 .on('mouseout', () => {
                     tooltip.style('opacity', 0);
@@ -336,11 +474,18 @@ function DfaGraphic({ data, label, keyValue, color }) {
                 .data(processedData)
                 .enter()
                 .append('circle')
-                .attr('cx', d => x(d.tanggal))
-                .attr('cy', d => y(d[keyValue].alpha2))
+                .attr('cx', d => x(d.tanggal_timestamp))
+                .attr('cy', d => y(d["dfa"].alpha2 ?? 0))
                 .attr('r', (d, i) => sizeCircleA2[i])
-                .attr('fill', (d, i) => colorA2[i % colorA2.length])
+                .attr('fill', '#FFD166')
                 .on('mouseover', (event, d) => {
+
+                    let labelsPurposion;
+
+                    if(d.statusA2 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                    if(d.statusA2 == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                    if(d.statusA2 == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
                     const [xPos, yPos] = d3.pointer(event);
                     let x = xPos + 10;
                     if (scroolState[label] > 1) {
@@ -349,11 +494,12 @@ function DfaGraphic({ data, label, keyValue, color }) {
                     tooltip.style('left', `${x}px`)
                         .style('top', `${(yPos + 10)}px`)
                         .style('opacity', 1)
-                        .html(`<p>Date: ${String(d.tanggal).split('GMT')[0]}</p> 
-                            <p>Waktu awal : ${d.waktu_awal}</p>
-                            <p>Waktu akhir : ${d.waktu_akhir}</p>
-                            <p>${keyValue}: ${d[keyValue].alpha2}</p>
-                            <p>Status Dfa: ${d["statusA2"]}</p>`);
+                        .html(`
+                              <p>${labelsPurposion}</p>
+                            <p>Date: ${String(d.tanggal_waktu).split('GMT')[0]}</p> 
+                            <p> Alpha_2: ${d["dfa"].alpha2}</p>
+                            <p> Aktivitas : ${d.Aktivitas}</p>
+                            <p> Status Dfa Alpha2: ${d["statusA2"]}</p>`);
                 })
                 .on('mouseout', () => {
                     tooltip.style('opacity', 0);
@@ -380,29 +526,6 @@ function DfaGraphic({ data, label, keyValue, color }) {
 
     }
 
-
-    // Fungsi untuk memproses data dan menghilangkan duplikat
-    // const processData = (rawData) => {
-    //     // Urutkan data berdasarkan tanggal
-    //     const sortedData = rawData.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
-
-    //     // Gunakan Set untuk menyimpan nilai unik
-    //     const uniqueValues = new Set();
-
-    //     // Filter data untuk menghilangkan duplikat
-    //     return sortedData.filter(item => {
-    //         const value = item[keyValue];
-    //         if (!uniqueValues.has(value)) {
-    //             uniqueValues.add(value);
-    //             return true;
-    //         }
-    //         return false;
-    //     });
-    // }
-
-    // const y = d3.scaleTime()
-    // .domain()
-
     return (
         <div className='relative p-4'>
             <div data-aos="fade-right" style={styleTooltype} id={`tooltip${label}`}></div>
@@ -420,6 +543,14 @@ function DfaGraphic({ data, label, keyValue, color }) {
                                 <FaAngleRight color='white' size={16} />
                             </button>
                         ) : null}
+
+                        <select onChange={changeSelect} name="" className="mx-2 shadow-2xl bg-slate-800 px-3 py-2 rounded-md dark:bg-[#101010]/10 text-white dark:text-[#101010]/70" id="">
+                            {Array.from({ length: slice - 1 }).map((_d, _i) => {
+                                return (
+                                    <option value={_i + 1}>Slide ke- {_i + 1}</option>
+                                )
+                            })}
+                        </select>
                     </div>
                 ) : null}
 
@@ -432,17 +563,17 @@ function DfaGraphic({ data, label, keyValue, color }) {
                     </button>
 
                     <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
-                       Safe
-                        <span className='ms-2 w-4 h-4 bg-[#43ff64d9] rounded-full text-xs text-transparent'>wii</span>
+                        Alpha_1
+                        <span className='ms-2 w-4 h-4 bg-[#217170] rounded-full text-xs text-transparent'>wii</span>
                     </button>
                     <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
-                      Warning
-                        <span className='ms-2 w-4 h-4 bg-[#f67625e6] rounded-full text-xs text-transparent'>wii</span>
+                        Alpha_2
+                        <span className='ms-2 w-4 h-4 bg-[#FFD166] rounded-full text-xs text-transparent'>wii</span>
                     </button>
-                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
-                     Danger
+                    {/* <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
+                        Danger
                         <span className='ms-2 w-4 h-4 bg-[#ff0000e6] rounded-full text-xs text-transparent'>wii</span>
-                    </button>
+                    </button> */}
                 </div>
             </div>
             <div className="relative overflow-x-auto" data-aos="fade-right">
@@ -457,4 +588,4 @@ function DfaGraphic({ data, label, keyValue, color }) {
 
 }
 
-export default DfaGraphic;
+export default DfaGraphicActivity;

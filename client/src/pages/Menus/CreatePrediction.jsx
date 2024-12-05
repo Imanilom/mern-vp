@@ -64,26 +64,26 @@ function CreatePrediction() {
     };
 
     return (
-        <section class="bgg-bl md:flex">
+        <section class="bg-[#101010] dark:bg-[#FEFCF5] md:flex">
             <Side />
-            <div class="md:min-h-[90vh] p-8 w-full items-center justify-start bgg-bl text-white ">
+            <div class="md:min-h-[90vh] p-8 md:p-16 w-full items-center justify-start bg-[#101010] dark:bg-[#FEFCF5] text-white dark:text-[#073B4C]">
                 <div class="justify-start max-w-lg">
-                    <h1 class="text-2xl lg:text-4xl font-medium md:mb-3">Create Prediction</h1>
-                    <form onSubmit={handleSubmit} method='post' class="mt-2 md:mt-8">
-                        <div class="grid gap-6 md:mt-5 md:mb-5 mb-3 sm:grid-cols-1">
+                    <h1 class="text-2xl lg:text-4xl font-semibold">Create Prediction</h1>
+                    <form onSubmit={handleSubmit} method='post' class="pt-3">
+                        <div class="grid gap-6 md:mb-5 mb-3 sm:grid-cols-1">
                             <div className='mt-3'>
-                                <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Prediksi Penyakit</label>
-                                <input type="text" id="first_name" class="bg-[#2C2C2C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " placeholder="Masukan prediksi penyakit pasien anda" required />
+                                <label for="first_name" class="block mb-2 text-sm font-semi-bold text-white dark:text-[#073B4C]">Prediksi Penyakit</label>
+                                <input type="text" id="first_name" class="bg-[#2C2C2C] dark:bg-[#F5F2E7] dark:text-[#073B4C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " placeholder="Masukan prediksi penyakit pasien anda" required />
                             </div>
                         </div>
 
                         <div className="mb-4 flex flex-col md:flex-row gap-3">
-                            <textarea onChange={(e) => setText(e.target.value)} id="message" rows="4" class="block max-h-[100px] p-2.5 w-full text-sm bg-[#2c2c2c] text-white rounded-lg  border-slate-400" placeholder="Factor Pendukung yang memperkuat Prediksi..." value={text}></textarea>
+                            <textarea onChange={(e) => setText(e.target.value)} id="message" rows="4" class="block max-h-[100px] p-2.5 w-full text-sm bg-[#2c2c2c] dark:bg-[#F5F2E7] dark:text-[#073B4C] text-white rounded-lg  border-slate-400" placeholder="Factor Pendukung yang memperkuat Prediksi..." value={text}></textarea>
 
 
                             <div className="flex flex-col lg:min-w-[130px]">
                                 <div className="flex md:flex-row">
-                                    <button onClick={() => { setListFactor([...listFactor, text]); setText(""); }} type="button" class="focus:outline-none text-white bgg-dg hover:bg-blue-800  focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-4 me-2 mb-2 w-full md:w-fit">
+                                    <button onClick={() => { setListFactor([...listFactor, text]); setText(""); }} type="button" class="focus:outline-none text-white bg-[#07AC7B] dark:bg-[#217170] hover:bg-blue-800  focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-4 me-2 mb-2 w-full md:w-fit">
                                         <TiPlus color='white' size={20} />
                                     </button>
 
@@ -92,13 +92,13 @@ function CreatePrediction() {
                                     </button>
                                 </div>
 
-                                <button type="submit" class="text-white  font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center bgg-dg hover:opacity-70 duration-200">
+                                <button type="submit" class="text-white  font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center bg-[#07AC7B] dark:bg-[#217170]  hover:opacity-70 duration-200">
                                     Submit
                                     <svg class="rtl:rotate-180 w-3.5 h-3.5 ms-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9" />
                                     </svg>
                                 </button>
-                                <Link to={'/prediksi-faktor'} type="button" class=" text-white mt-2 hover:text-[#007CC6] font-medium rounded-lg text-sm  py-2.5 text-center inline-flex items-center">
+                                <Link to={'/prediksi-faktor'} type="button" class=" text-white dark:text-[#073B4C]  mt-2 hover:text-[#007CC6] font-medium rounded-lg text-sm  py-2.5 text-center inline-flex items-center">
                                     Cancel
                                     
                                 </Link>

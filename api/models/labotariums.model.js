@@ -13,6 +13,7 @@ const lab_docSchema = mongoose.Schema({
     type: Date,
     default: Date.now
   }
+  
 }, {
   timestamp: true
 });

@@ -47,6 +47,7 @@ export default function Profile() {
   useEffect(() => {
     console.log({formData})
   }, [formData])
+  
   const handleFileUpload = async (image) => {
     const storage = getStorage(app);
     const fileName = new Date().getTime() + image.name;
@@ -221,7 +222,7 @@ export default function Profile() {
                 type='email'
                 id='email'
                 placeholder='Email'
-                disabled
+                readOnly
                 className='bg-[#2C2C2C]/40 dark:bg-[#E7E7E7] rounded-lg p-3 min-w-[100%] '
                 onChange={handleChange}
               />
@@ -282,7 +283,7 @@ export default function Profile() {
                 type='password'
                 id='password'
                 placeholder='Password'
-                className='bg-[#2C2C2C]/40 rounded-lg p-3  min-w-[100%]'
+                className='bg-[#2C2C2C]/40 dark:bg-[#F5F2E7] rounded-lg p-3  min-w-[100%]'
                 onChange={handleChange}
               />
             </div>

@@ -72,50 +72,32 @@ function UpdateRecomendation() {
     };
 
     return (
-        <main class="bgg-bl w-full text-white flex pb-8">
+        <main class="bg-[#101010] dark:bg-[#FEFCF5] w-full text-white dark:text-[#073B4C] flex pb-8">
             <Side />
             <div class="flex md:min-h-[90vh] justify-start m-8 md:m-16">
                 <div class="mx-auto w-[80vw]  md:w-10/12 lg:w-full max-w-lg">
-                    <h1 class="text-2xl lg:text-4xl font-semibold w-full">Update The Activity</h1>
+                    <h1 class="text-2xl md:text-3xl font-bold w-full">Update The Activity</h1>
 
                     <form onSubmit={handleSubmit} method='post' class="mt-6">
-                        {/* <div class="grid gap-6 mt-5 mb-5 sm:grid-cols-1">
-                            <div class="relative z-0">
-                                <input defaultValue={detail != null ? detail.name : ''} type="text" name="name" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
-                                <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Nama aktivitas</label>
-                            </div>
-                        </div> 
-                        <div class="grid gap-6 sm:grid-cols-2">
-                            <div class="relative z-0">
-                                <input defaultValue={detail != null ? detail.berlaku_dari.split('T')[0] : ''} type="date" name="berlaku_dari" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
-                                <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Berlaku dari</label>
-                            </div>
-                            <div class="relative z-0">
-                                <input defaultValue={detail != null ? detail.hingga_tanggal.split('T')[0] : ''} type="date" name="hingga_tanggal" class="peer block w-full appearance-none border-0 border-b border-gray-500 bg-transparent py-2.5 px-0 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-0" placeholder=" " />
-                                <label class="absolute top-3 -z-10 origin-[0] -translate-y-6 scale-75 transform text-sm text-gray-500 duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:left-0 peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-blue-600 peer-focus:dark:text-blue-500">Hingga tanggal</label>
-                            </div>
-
-                        </div> */}
-
                         <div className='mt-3'>
-                            <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Rekomedasi Aktivitas</label>
-                            <input defaultValue={detail != null ? detail.name : ''} type="text" id="first_name" class="bg-[#2C2C2C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " placeholder="Masukan diagnosa pasien" required />
+                            <label for="first_name" class="block mb-2 text-sm font-medium dark:text-[#101010]/60 text-white">Rekomedasi Aktivitas</label>
+                            <input defaultValue={detail != null ? detail.name : ''} type="text" id="first_name" class="bg-[#2C2C2C] dark:bg-[#F5F2E7] dark:text-[#073B4C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " placeholder="Masukan diagnosa pasien" required />
                         </div>
 
                         <div className="flex flex-col md:flex-row gap-3 mt-3 ">
                             <div>
-                                <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Berlaki dari</label>
-                                <input defaultValue={detail != null ? detail.berlaku_dari.split('T')[0] : ''} type="date" id="first_name" class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" />
+                                <label for="first_name" class="block mb-2 text-sm font-medium dark:text-[#101010]/60 text-white">Berlaku dari</label>
+                                <input defaultValue={detail != null ? detail.berlaku_dari.split('T')[0] : ''} type="date" id="first_name" class="bg-[#2C2C2C] dark:bg-[#F5F2E7] dark:text-[#073B4C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" />
                             </div>
                             <div>
-                                <label for="first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Berlaki dari</label>
-                                <input defaultValue={detail != null ? detail.hingga_tanggal.split('T')[0] : ''} type="date" id="first_name" class="bg-[#2C2C2C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" />
+                                <label for="first_name" class="block mb-2 text-sm font-medium dark:text-[#101010]/60 text-white">Hingga</label>
+                                <input defaultValue={detail != null ? detail.hingga_tanggal.split('T')[0] : ''} type="date" id="first_name" class="bg-[#2C2C2C] dark:bg-[#F5F2E7] dark:text-[#073B4C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" />
                             </div>
                         </div>
 
                         <div className="flex flex-col md:flex-row gap-2">
-                            <button type="submit" class="mt-5 rounded-md bgg-dg px-3 text-sm md:text-base md:px-4 py-2 text-white">Update Recomendation</button>
-                            <Link to='/rekomendasi' class="md:mt-5 rounded-md md:px-5 py-2 text-white hover:text-[#007CC6]">Cancel</Link>
+                            <button type="submit" class="mt-5 rounded-md bg-[#07AC7B] dark:bg-[#217170] px-3 text-sm md:text-base md:px-4 py-2 text-white font-semibold">Update Recomendation</button>
+                            <Link to='/rekomendasi' class="md:mt-5 rounded-md md:px-5 py-2 text-white font-semibold dark:text-[#007CC6] hover:text-[#007CC6]">Cancel</Link>
                         </div>
                     </form>
                 </div>

@@ -270,9 +270,9 @@ function RiskPrediction() {
           {detailAppointment != null ? (
             <div class="flex text-white flex-col sm:flex-row w-full py-4 overflow-x-auto justify-between gap-4 mt-12 items-center">
               <div data-aos="fade-up" className="rigth lg:w-6/12">
-                <div className="w-[100%] py-3 text-sm rounded-md mb-3 bg-[#363636]/20 flex md:gap-0 gap-12 justify-between px-3">
+                <div className="w-[100%] py-3 text-sm rounded-md mb-3 bg-[#363636]/20 dark:bg-[#217170] flex md:gap-0 gap-12 justify-between px-3">
                   <p>Informasi dokter pribadi anda</p>
-                  <p className='text-[#07AC7B] cursor-pointer' onClick={() => setShowInfoDokter(!showInfoDokter)}>{showInfoDokter ? 'Hidee' : 'Show'}</p>
+                  <p className='text-[#07AC7B] dark:text-[#FFD166] cursor-pointer' onClick={() => setShowInfoDokter(!showInfoDokter)}>{showInfoDokter ? 'Hidee' : 'Show'}</p>
                 </div>
                 <div className="relative w-full group">
                   <div className="w-full bg-center bg-cover h-[30vh] group-hover:h-[40vh] duration-200 mb-4 rounded-md border" style={{ backgroundImage: `url('${detailAppointment.doctor.profilePicture}')` }}></div>
@@ -280,10 +280,10 @@ function RiskPrediction() {
                 </div>
 
                 {showInfoDokter ? (
-                  <table class="max-w-[480px] border border-slate-800 lg:min-w-[400px] text-white shadow-md rounded-lg overflow-hidden">
+                  <table class="max-w-[480px] border border-slate-800 lg:min-w-[400px] text-white dark:text-[#073B4C] shadow-md rounded-lg overflow-hidden">
                     <tbody>
-                      <tr class="bg-[#363636]/20">
-                        <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold ">
+                      <tr class="bg-[#363636]/20 dark:bg-[#217170]">
+                        <th class="px-6 py-4 text-white whitespace-nowrap text-left text-[14px] font-semibold ">
                           Detail Docter
                         </th>
                         <td class="px-6 py-4 text-sm text-gray-700">
@@ -291,7 +291,7 @@ function RiskPrediction() {
                         </td>
                       </tr>
 
-                      <tr class="bg-[#2f2f2f]">
+                      <tr class="bg-[#2f2f2f] dark:bg-[#E7E7E7]">
                         <th class="px-6 py-4 text-left text-sm font-medium">
                           Name
                         </th>
@@ -299,7 +299,7 @@ function RiskPrediction() {
                           {detailAppointment.doctor.name}
                         </td>
                       </tr>
-                      <tr class="bg-[#141414]">
+                      <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                         <th class="px-6 py-4 text-left text-sm font-medium">
                           No Handphone
                         </th>
@@ -311,30 +311,29 @@ function RiskPrediction() {
                   </table>
                 ) : null}
               </div>
-
               <div data-aos="fade-right" className="left">
                 <div className="flex flex-col md:flex-row justify-between">
-                  <h1 className=' font-bold text-[24px]  md:mb-4 mb-2'>Appointment</h1>
+                  <h1 className=' font-bold text-[24px]  md:mb-4 mb-2 text-white dark:text-[#073B4C]'>Appointment</h1>
                   {currentUser.role != 'user' ? (
                     <button onClick={handleEndedAppointment} class="bg-red-500 text-white active:bg-red-600 h-fit py-2 text-xs font-bold uppercase px-3 rounded outline-none focus:outline-none mr-1 md:mb-1 ease-linear transition-all duration-150 mb-3" type="button">Temu Janji Selesai</button>
                   ) : null}
 
                 </div>
-                <table class="max-w-[480px] text-white shadow-md rounded-lg overflow-hidden">
+                <table class="max-w-[480px] text-white dark:text-[#073B4C] shadow-md rounded-lg overflow-hidden">
                   <tbody>
-                    <tr class="bg-[#363636]/20 ">
-                      <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold ">
+                    <tr class="bg-[#363636]/20 dark:bg-[#217170]">
+                      <th class="px-6 py-4 text-white whitespace-nowrap text-left text-[14px] font-semibold ">
                         Detail Temu Janji
                       </th>
                       <td class="px-6 py-4 text-sm ">
 
                       </td>
                     </tr>
-                    <tr class="bg-[#2f2f2f]">
+                    <tr class="bg-[#2f2f2f] dark:bg-[#E7E7E7]">
                       <th class="px-6 py-4 text-left text-sm font-medium ">
                         Tanggal
                       </th>
-                      <td class="px-6 py-4 text-sm text-[#07AC7B]">
+                      <td class="px-6 py-4 text-sm text-[#07AC7B] dark:text-[#D39504]">
                         {/* January, 21 2024 */}
                         {new Intl.DateTimeFormat('id-ID', {
                           month: 'long',
@@ -343,22 +342,22 @@ function RiskPrediction() {
                         }).format(new Date(detailAppointment.date))}
                       </td>
                     </tr>
-                    <tr class="bg-[#141414]">
+                    <tr class="bg-[#141414] dark:bg-[#CBCBCB]">
                       <th class="px-6 py-4 text-left text-sm font-medium ">
                         Jam
                       </th>
-                      <td class="px-6 py-4 text-sm text-[#07AC7B]">
+                      <td class="px-6 py-4 text-sm text-[#07AC7B] dark:text-[#D39504]">
                         {new Intl.DateTimeFormat('id-ID', {
                           hour: '2-digit',
                           minute: '2-digit'
                         }).format(new Date().setHours(Number(detailAppointment.time.split(':')[0]), Number(detailAppointment.time.split(':')[1]))).replace('.', ' : ')}
                       </td>
                     </tr>
-                    <tr class="bg-[#2f2f2f]">
+                    <tr class="bg-[#2f2f2f] dark:bg-[#E7E7E7]">
                       <th class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium ">
                         Catatan dokter
                       </th>
-                      <td class="px-6 py-4 text-sm text-[#07AC7B]">
+                      <td class="px-6 py-4 text-sm text-[#07AC7B] dark:text-[#D39504]">
                         {detailAppointment.note}
                       </td>
                     </tr>
@@ -418,4 +417,4 @@ function RiskPrediction() {
   )
 }
 
-export default RiskPrediction
+export default RiskPrediction;

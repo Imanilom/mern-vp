@@ -134,7 +134,7 @@ function MedicalHistories() {
                 <div class="relative w-full px-4 max-w-full flex-grow flex-1 md:text-right">
                   {currentUser.role != 'user' && riwayat != null ? (
                     <Link to={`/createAnamnesa/${riwayat._id}`} >
-                      <button class="my-2 darkgreen text-xs font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none  min-w-full text-end md:text-start md:min-w-[100px] mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Anamnesa</button>
+                      <button class="my-2 text-[#07AC7B] dark:text-[#FFD166] text-xs font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none  min-w-full text-end md:text-start md:min-w-[100px] mr-1 mb-1 ease-linear transition-all duration-150" type="button">Buat Anamnesa</button>
                     </Link>
                   ) : null}
 
@@ -276,7 +276,7 @@ function MedicalHistories() {
                             </td>
                             {currentUser.role != 'user' ? (
                               <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 flex flex-col justify-end gap-1 text-white font-semibold">
-                                <Link to={`/updateAnemnesa/${val._id}`} className='w-fit rounded-md px-3 py-1 darkgreen'>Edit</Link>
+                                <Link to={`/updateAnemnesa/${val._id}`} className='w-fit rounded-md px-3 py-1 text-[#07AC7B] font-semibold dark:text-[#217170]'>Edit</Link>
                                 <button onClick={() => handleDelete(val._id)} className='w-fit bg-red-500 active:bg-red-600 rounded-md px-3 py-1'>Delete</button>
                               </td>
                             ) : null}

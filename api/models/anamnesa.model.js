@@ -12,6 +12,6 @@ const schema = mongoose.Schema({
     status : String
 }, {
     timestamps : true
-})
+});
 
 export const anamnesa = mongoose.model('anamnesa', schema);

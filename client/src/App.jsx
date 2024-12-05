@@ -55,6 +55,7 @@ import WriteDoc from './pages/Menus/WriteDoc';
 import InputLabotarium from './pages/Menus/InputLabotarium';
 import MonitorDFA from './pages/Menus/MonitorDFA';
 import Metrics from './pages/Menus/Metrics';
+import MonitorActivity from './pages/Menus/MonitorActivity';
 
 export default function App() {
 
@@ -122,6 +123,7 @@ function MainContent() {
         <Route path='/add/pasient/:id' element={<AddPatient />} />
         <Route path='/monitor/metrics' element={<Metrics />} />
 
+        <Route path='/monitor/activity' element={<MonitorActivity />} />
       </Route>
     </Routes>
     <Footer />

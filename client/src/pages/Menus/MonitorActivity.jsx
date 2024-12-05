@@ -12,44 +12,30 @@ import AOS from 'aos';
 import DfaMetrics from '../../components/DfaMetrics';
 import DfaGraphic from '../../components/DfaGraphic';
 import Swal from 'sweetalert2';
+import DfaActivityMetric from '../../components/DfaActivityMetric';
+import DfaGraphicActivity from '../../components/DfaGraphicActivity';
 
 let results = []
 
-export default function MonitorDFA() {
+export default function MonitorActivity() {
 
   const dispatch = useDispatch();
   const { currentUser, DocterPatient } = useSelector((state) => state.user);
   // set redux and make good performance
   const { dailymetricR, logsR, medianPropertyR, metricsR, borderColorR } = useSelector((state) => state.data);
 
-  const [logs, setLogs] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [metrics, setMetrics] = useState({ rmssd: null, pnn50: null, sdnn: null, s1: null, s2: null });
-  const [dailyMetrics, setDailyMetrics] = useState([]);
-  const [isDFAGraphVisible, setDfaGraphVisible] = useState(false); // Show HR chart by default
-  const [isRRVisible, setRRIsVisible] = useState(false); // Show RR chart by default
-  const [isIQRVisible, setIQRIsVisible] = useState(false); // Show RR chart by default
-  const [is3dpVisible, set3dpIsVisible] = useState(false); // Show RR chart by default
-  const [isPoincareVisible, setPoincareIsVisible] = useState(false); // Show Poincare chart by default
+  const [metrics, setMetrics] = useState([]);
+  const [logsGroup, setLogsGroup] = useState([]);
+  const [isDfaActivity, setIsDfaActivity] = useState(false); // Show Grafik
   const [device, setDevice] = useState("C0680226");
-  const [metode, setMetode] = useState("OC");
   const [loading, setLoading] = useState(false);
-  const [data3Dp, set3dpData] = useState([]);
-  const [IQRData, setIQRData] = useState([]);
-  const [medianProperty, setMedianProperty] = useState({
-    sdnn: 0,
-    rmssd: 0,
-    pnn50: 0,
-    s1: 0,
-    s2: 0,
-    dfa: 0,
-    total: 0
-  });
-  const [borderColor, setBorderColor] = useState([]);
+
   const [resultsDFA, setResults] = useState([]);
   const [resultsDFA2, setResults2] = useState([]);
   const [splittedLog, setSplittedLog] = useState([]);
+  const [isDoneCalculate, setDoneCalculate] = useState(false);
 
   useEffect(() => {
     if (currentUser.guid == '' || !currentUser.guid) {
@@ -62,12 +48,12 @@ export default function MonitorDFA() {
       }).then(() => {
         return navigate('/profile');
       });
-    }else{
-      
-          AOS.init({
-            duration: 700
-          })
-          fetchLogs(device);
+    } else {
+
+      AOS.init({
+        duration: 700
+      })
+      fetchLogs(device);
 
     }
     // readFileExistOnFTP('2023-07-24', '2024-08-29');
@@ -80,20 +66,126 @@ export default function MonitorDFA() {
     }
   }, [startDate, endDate]);
 
+  // const calculateDFA = (data, order = 1) => {
+  //   // Baseline
+  //   const y = data.map((val, i) =>
+  //     data.slice(0, i + 1).reduce(
+  //       (acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length),
+  //       0
+  //     )
+  //   );
+
+  //   // Segmentasi ukuran kotak
+  //   const boxSizes = [...new Set(
+  //     Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(
+  //       val => val <= data.length / 2
+  //     )
+  //   )];
+
+  //   const fluctuation = boxSizes.map(boxSize => {
+  //     const reshaped = Array.from(
+  //       { length: Math.floor(data.length / boxSize) },
+  //       (_, i) => y.slice(i * boxSize, (i + 1) * boxSize)
+  //     );
+
+  //     const localTrends = reshaped.map(segment => {
+  //       const x = Array.from({ length: segment.length }, (_, i) => i);
+  //       const [a, b] = [0, 1].map(deg =>
+  //         segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length
+  //       );
+  //       return segment.map((val, i) => a * x[i] + b);
+  //     });
+
+  //     return Math.sqrt(
+  //       localTrends
+  //         .flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
+  //         .reduce((acc, val) => acc + val, 0) /
+  //       (reshaped.length * reshaped[0].length)
+  //     );
+  //   });
+
+  //   // Log-log transform
+  //   const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr =>
+  //     arr.map(val => Math.log10(val))
+  //   );
+
+  //   // Pembagian ukuran kotak menjadi small scales dan large scales
+  //   const midPoint = Math.floor(logBoxSizes.length / 2);
+
+  //   const calculateAlpha = (x, y) => {
+  //     const n = x.length;
+  //     const sumX = x.reduce((acc, val) => acc + val, 0);
+  //     const sumY = y.reduce((acc, val) => acc + val, 0);
+  //     const sumXY = x.reduce((acc, val, i) => acc + val * y[i], 0);
+  //     const sumX2 = x.reduce((acc, val) => acc + val * val, 0);
+
+  //     return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  //   };
+
+  //   // Hitung Alpha1 (small scales)
+  //   const alpha1 = calculateAlpha(
+  //     logBoxSizes.slice(0, midPoint),
+  //     logFluctuation.slice(0, midPoint)
+  //   );
+
+  //   // Hitung Alpha2 (large scales)
+  //   const alpha2 = calculateAlpha(
+  //     logBoxSizes.slice(midPoint),
+  //     logFluctuation.slice(midPoint)
+  //   );
+
+  //   return { alpha1, alpha2 };
+  // };
+
+
+  // const handleDataCalculateDfa = async (grouplog) => {
+  //   try {
+  //     let result = [];
+
+  //     grouplog.map((d, i) => {
+  //       let HrColl = [];
+
+  //       d.details.map((val, _i) => {
+  //         HrColl.push(val.HR);
+  //       })
+
+  //       if (HrColl.length > 8) {
+  //         d.dfa = calculateDFA(HrColl);
+  //       } else {
+  //         d.dfa = {
+  //           alpha1: 0,
+  //           alpha2: 0
+  //         };
+  //       }
+  //       result.push(d);
+  //       console.log({ i }, d.dfa)
+  //     });
+
+  //     // setLogsGroup
+  //     console.log({ result });
+  //     setDoneCalculate(true);
+  //   } catch (err) {
+  //     console.log({ err })
+  //   }
+
+
+  // }
+  
   const fetchLogs = async (device, metode) => {
     try {
+      setDoneCalculate(false)
       setLoading(true);
       results = [];
-      let url = `/api/user/logdfa`;
+      let url = `/api/user/dfa/activity`;
       if (device) {
-        url = `/api/user/logdfa`; 
+        url = `/api/user/dfa/activity`;
       }
 
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        if(metode) url += `&method=${metode}`;
-      }else{
-        if(metode) url += `?method=${metode}`;
+        if (metode) url += `&method=${metode}`;
+      } else {
+        if (metode) url += `?method=${metode}`;
       }
       // let url = `/api/user/logdfa`;
       // if (device) {
@@ -107,38 +199,29 @@ export default function MonitorDFA() {
       const response = await fetch(url);
       const data = await response.json();
       console.log({ data })
+
       if (!response.ok) {
-        console.log('error');
-        setLogs([]);
         setMetrics([]);
-        setDailyMetrics([]);
-        set3dpData([]);
-        setIQRData([]);
-        setResults([]);
-        setResults2([]);
-        dispatch(clearLogsWithDailytMetric());
+        setLogsGroup([]);
         return
       }
 
-      let sortedResult = data.result.sort((a, b) => a.timestamp_tanggal - b.timestamp_tanggal)
-      setResults(sortedResult);
-      setResults2(sortedResult);
-      console.log({sortedResult})
-     
-
+      setMetrics(data.Metrics);
+      setLogsGroup(data.groupLogsByActivity);
+      
+      // handleDataCalculateDfa(data.groupLogsByActivity);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
       setLoading(false);
-
     }
   };
 
-  const handleChangeMetode = (e) => {
-    e.preventDefault();
-    setMetode(e.target.value);
-    fetchLogs(device, e.target.value);
-  }
+  // const handleChangeMetode = (e) => {
+  //   e.preventDefault();
+  //   setMetode(e.target.value);
+  //   fetchLogs(device, e.target.value);
+  // }
 
   return (
     <div>
@@ -156,13 +239,13 @@ export default function MonitorDFA() {
       <main className=''>
         <section className="bg-[#101010] dark:bg-[#FEFCF5] flex text-white  dark:text-[#073B4C]">
           <Side />
-          <div className="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-5">
-            <div className=" flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
+          <div className="w-full  xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8">
+            <div className="relative flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0">
                 <div className="flex flex-wrap items-center">
                   {/* <ButtonOffCanvas index={2} /> */}
 
-                  <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Monitoring DFA</h1>
+                  <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Monitoring DFA Activity</h1>
 
                 </div>
                 <DatePicker
@@ -180,7 +263,7 @@ export default function MonitorDFA() {
                   className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm lg:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
-                <select
+                {/* <select
                   name=""
                   id=""
                    className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] md:max-w-[200px] rounded text-sm w-full  md:text-[16px] lg:min-w-[220px] px-3 py-3"
@@ -191,7 +274,7 @@ export default function MonitorDFA() {
                   <option value="IQ">IQ</option>
                   <option value="BC">BC</option>
                   <option value="no-filter">No filter</option>
-                </select>
+                </select> */}
 
 
                 {/* {currentUser.role !== 'user' && ( */}
@@ -209,17 +292,18 @@ export default function MonitorDFA() {
                     {loading ? <span className="ms-4 loader"></span> : null}
                   </div> */}
                 {/* )} */}
+
                 {resultsDFA ? (
-                  <DfaMetrics results={resultsDFA} splittedLog={splittedLog} />
+                  <DfaActivityMetric results={metrics} />
                 ) : null}
               </div>
             </div>
 
-            <div onClick={() => setDfaGraphVisible(!isDFAGraphVisible)} className={isDFAGraphVisible && resultsDFA2.length > 0 ? `border-transparent bg-[#07AC7B] rounded-md flex mx-4 cursor-pointer dark:bg-[#101010]/10` : `cursor-pointer border border-gray-400 rounded-md flex mx-4 dark:bg-[#101010]/10`}>
-              <button className='text-xs py-0.5 px-1.5 m-2'>{isDFAGraphVisible ? 'Hide' : 'Show'} Graphic DFA</button>
+            <div onClick={() => setIsDfaActivity(!isDfaActivity)} className={isDfaActivity && resultsDFA2.length > 0 ? `border-transparent bg-[#07AC7B] rounded-md flex mx-4 cursor-pointer dark:bg-[#101010]/10` : `cursor-pointer border border-gray-400 rounded-md flex mx-4 dark:bg-[#101010]/10`}>
+              <button className='text-xs py-0.5 px-1.5 m-2'>{isDfaActivity ? 'Hide' : 'Show'} Graphic Aktivitas DFA</button>
             </div>
-            {isDFAGraphVisible && resultsDFA2.length > 0 ? (
-              <DfaGraphic data={resultsDFA2} label={`DFA`} keyValue={`dfa`} color={borderColor} />
+            {isDfaActivity && logsGroup.length > 0 ? (
+              <DfaGraphicActivity data={logsGroup} label={"DfaActivity"} />
             ) : null}
           </div>
         </section>

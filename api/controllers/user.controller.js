@@ -199,7 +199,7 @@ export const test = async (req, res, next) => {
       // Kirim logs dan filterIQRResult ke frontend
       // console.log({ filterIQRResult, formattedLogs, dailyMetric : [dailyMetric] }, 'ok kirim')
       const AverageThree = groupDataByThreeAndAverage(formattedLogs);
-      console.log({filterIQRResult})
+      console.log({ filterIQRResult })
       res.status(200).json({ logs: formattedLogs, filterIQRResult, dailyMetric: [dailyMetric], AverageThree });
     }
 
@@ -862,12 +862,12 @@ export const logdfa = async (req, res, next) => {
           }
         });
 
-       
+
       filteredFiles = filteredFiles.filter(file => file.endsWith('.json'));
       let fileDate;
 
       filteredFiles.forEach(file => {
-        if(file.endsWith('.json')){
+        if (file.endsWith('.json')) {
           // console.log({file, dateStart, dateEnd}, new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000)
           if (method != 'no-filter') {
             fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
@@ -875,7 +875,7 @@ export const logdfa = async (req, res, next) => {
             const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
             fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
           }
-          console.log({fileDate}, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEnd)
+          console.log({ fileDate }, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEnd)
           if (fileDate >= dateStart && fileDate <= dateEnd) {
             const filePath = path.join(resultsDir, file);
             const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -885,7 +885,7 @@ export const logdfa = async (req, res, next) => {
         }
       });
 
-      console.log({method, folderChoose}, filteredLogs.length);
+      console.log({ method, folderChoose }, filteredLogs.length);
 
       if (filteredLogs.length === 0) {
         return res.status(404).json({ message: 'Tidak ada log yang tersedia dalam rentang tanggal yang diberikan' });
@@ -972,7 +972,7 @@ export const logdfa = async (req, res, next) => {
             return dateB - dateA;
           }
         })[0];
-        console.log('ok')
+      console.log('ok')
 
       if (!latestDailyFile) {
         return res.status(404).json({ message: 'Tidak ada data harian yang tersedia' });
@@ -1044,6 +1044,336 @@ export const logdfa = async (req, res, next) => {
 
       // console.log({ result, HRCollection, splittedLog });
       res.json({ result, HRCollection, splittedLog });
+    }
+    // titik yang bisa digunakan kedua kondisi
+  }
+  catch (error) {
+    console.error('Error in /api/user/logdfa:', error.message);
+    next(error);
+  }
+}
+
+export const dfaActivity = async (req, res, next) => {
+  try {
+    await Log.deleteMany({
+      $or: [{ HR: 0 }, { RR: 0 }, { rrRMS: 0 }],
+    });
+
+    // let ip = 0; // index page
+
+    // const device = req.params.device || false;
+    // const method = req.query.method || 'OC';
+    const { startDate, endDate } = req.query;
+
+    // const splitCount = 500;
+    // const HRCollection = [];
+    // let splittedLog;
+    let fileStartWith = "";
+    // let filter = {date_created : "27-05-2024"} // 
+
+    // let filter = {};
+    let folderChoose = 'hrv-results-GroupActivity';
+
+    // console.log({ method })
+
+    // if (method) {
+    //   if (method == 'BC') folderChoose = 'hrv-results-BC';
+    //   if (method == 'OC') folderChoose = 'hrv-results-OC';
+    //   if (method == 'IQ') folderChoose = 'hrv-results-IQ';
+    // }
+
+    // if (method == "no-filter") {
+    //   fileStartWith = "";
+    //   folderChoose = 'hrv-results';
+    // } else {
+    //   fileStartWith = "filtered_logs_";
+    // }
+
+    // console.log({ folderChoose, method })
+
+    const resultsDir = path.join(__dirname, `../controllers/${folderChoose}`);
+    // console.log({ method, folderChoose })
+    const files = fs.readdirSync(resultsDir);
+    let filteredLogs = [];
+    let MetricsLogs = [];
+
+    if (startDate && endDate) {
+      console.log('masuk filterdate');
+      const dateStart = new Date(startDate).getTime() / 1000;
+      const dateEnd = new Date(endDate).getTime() / 1000;
+
+      let filteredFiles = files
+        .filter(file => file.startsWith(fileStartWith))
+        .sort((a, b) => {
+          // if (method != 'no-filter') {
+          //   const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+          //   const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+          //   return dateB - dateA;
+          // } else {
+          const dateA = new Date(a.match(/(.+)\.json/));
+          const dateB = new Date(b.match(/(.+)\.json/));
+          return dateB - dateA;
+          // }
+        });
+
+
+      filteredFiles = filteredFiles.filter(file => file.endsWith('.json'));
+      let fileDate;
+
+      console.log({filteredFiles})
+      let tanggals = [];
+
+      filteredFiles.forEach((file, i) => {
+        if (file.endsWith('.json')) {
+          // console.log({file, dateStart, dateEnd}, new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000)
+          // if (method != 'no-filter') {
+          //   fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
+          // } else {
+            const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
+            fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
+          // }
+          console.log({ fileDate }, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEnd)
+          if (fileDate >= dateStart && fileDate <= dateEnd) {
+            const filePath = path.join(resultsDir, file);
+            const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+            // console.log('ok sip', {filePath, fileData})
+            filteredLogs.push(...fileData.filteredLogs);
+            MetricsLogs.push(fileData.activityMetrics);
+            tanggals.push(filteredFiles[i]);
+          }
+        }
+      });
+
+      // console.log({ folderChoose }, filteredLogs.length);
+
+      if (filteredLogs.length === 0) {
+        return res.status(404).json({ message: 'Tidak ada log yang tersedia dalam rentang tanggal yang diberikan' });
+      }
+
+      // const validLogs = filteredLogs.filter(log => log.RR !== null || log.HR !== null);
+      // if (validLogs.length === 0) {
+      //   return res.status(404).json({ message: 'Tidak ada log valid yang tersedia dalam data harian' });
+      // }
+
+      // ubah dlu date nya
+      // if (method == "no-filter") {
+        filteredLogs.map((_val, _i) => {
+
+          // Buat objek Date
+          const [day, month, year] = _val.date_created.split('/');
+          const formattedDate = `${year}-${month}-${day}T${_val.time_created}`; // Format ISO 8601
+
+          const tanggal = new Date(formattedDate);
+          filteredLogs[_i]["timestamp"] = tanggal.getTime() / 1000;
+          filteredLogs[_i]['datetime'] = formattedDate;
+        })
+      // }
+
+      // Kelompokkan log berdasarkan tanggal terlebih dahulu
+      // const logsByDate = filteredLogs.reduce((acc, log) => {
+      //   const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
+      //   if (!acc[date]) acc[date] = [];
+      //   acc[date].push(log);
+      //   return acc;
+      // }, {});
+
+      const groupLogsByActivity = [];
+
+      let activity = "";
+      let groups = [];
+
+      for (let i = 0; i < filteredLogs.length; i++) {
+        if (filteredLogs[i]['aktivitas'] != activity) {
+          // array groups masukin ke groupLogsWithActivty, set ulang groups baru dan set activity 
+          if (activity != "") {
+            let result = {
+              Aktivitas: activity,
+              startTime: groups[0]['time_created'],
+              endTime: groups[groups.length - 1]['time_created'],
+              tanggal : groups[0]['date_created'], 
+              details: [...groups]
+            }
+
+            groupLogsByActivity.push(result);
+          }
+
+          activity = filteredLogs[i]['aktivitas'];
+          groups = [];
+
+          groups.push(filteredLogs[i]);
+        } else {
+          // masukin data ke group yang sudah di set karena activity nya sama
+          groups.push(filteredLogs[i]);
+
+          if (filteredLogs.length - i === 1) {
+            // untuk memasukan LogsActivity terakhir
+            let result = {
+              Aktivitas: activity,
+              startTime: groups[0]['time_created'],
+              endTime: groups[groups.length - 1]['time_created'],
+              tanggal : groups[0]['date_created'], 
+              details: [...groups]
+            }
+
+            groupLogsByActivity.push(result);
+          }
+        }
+      }
+
+      let Metrics = [];
+      console.log({MetricsLogs})
+      for(let i  = 0; i < MetricsLogs.length; i++){
+
+        let metric = MetricsLogs[i];
+        console.log({metric})
+
+        let tanggal = tanggals[i].split('.')[0];
+        let [day, month, year] = tanggal.split('-');
+        for (const [key, value] of Object.entries(metric)) {  
+          Metrics.push({
+            aktivitas: key,
+            tanggal : `${day}/${month}/${year}`,
+            metrics: value,
+          })
+        }
+      }
+
+      // let result = [];
+
+      // Proses log untuk setiap tanggal
+      // Object.entries(logsByDate).forEach(([date, logs]) => {
+      //   // Urutkan log berdasarkan timestamp
+      //   const sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
+
+      //   // Bagi menjadi chunk 500 jika diperlukan
+      //   const chunks = sortedLogs.length <= splitCount ? [sortedLogs] : splitArrayIntoChunks(sortedLogs, splitCount);
+
+      //   // Proses setiap chunk
+      //   chunks.forEach(chunk => {
+      //     const firstLog = chunk[0];
+      //     const lastLog = chunk[chunk.length - 1];
+
+      //     result.push({
+      //       dfa: calculateDFA(chunk.map(log => log.HR)),
+      //       tanggal: date,
+      //       waktu_awal: new Date(firstLog.timestamp * 1000).toLocaleTimeString('id-ID', {
+      //         hour: '2-digit',
+      //         minute: '2-digit',
+      //         second: '2-digit'
+      //       }),
+      //       waktu_akhir: new Date(lastLog.timestamp * 1000).toLocaleTimeString('id-ID', {
+      //         hour: '2-digit',
+      //         minute: '2-digit',
+      //         second: '2-digit'
+      //       }),
+      //       count: chunk.length,
+      //       timestamp_tanggal: new Date(firstLog.timestamp * 1000).getTime()
+      //     });
+      //   });
+      // });
+
+      // // Urutkan hasil berdasarkan timestamp_tanggal secara menurun
+      // result.sort((a, b) => b.timestamp_tanggal - a.timestamp_tanggal);
+
+      res.json({ logs : filteredLogs, groupLogsByActivity, Metrics });
+    } else {
+      console.log('ngga masuk filterdate')
+      // Filter dan urutkan file untuk mendapatkan file data harian terbaru
+      const latestDailyFile = files
+        .filter(file => file.startsWith(fileStartWith))
+        .sort((a, b) => {
+
+          const dateA = new Date(a.match(/(.+)\.json/));
+          const dateB = new Date(b.match(/(.+)\.json/));
+          return dateB - dateA;
+
+        })[0];
+
+      console.log('ok', { latestDailyFile });
+
+      if (!latestDailyFile) {
+        return res.status(404).json({ message: 'Tidak ada data harian yang tersedia' });
+      }
+
+      const dailyFilePath = path.join(resultsDir, latestDailyFile);
+      console.log({ dailyFilePath })
+      const dailyData = JSON.parse(fs.readFileSync(dailyFilePath, 'utf-8'));
+
+      // Periksa apakah dailyData mengandung logs
+      const logs = dailyData.filteredLogs || [];
+      const MetricsActivities = dailyData.activityMetrics;
+
+      if (logs.length === 0) {
+        return res.status(404).json({ message: 'Tidak ada log yang tersedia dalam data harian' });
+      }
+
+      // FILTERING METHD NO FILTER FOR TIMESTAMP
+      // if (method == "no-filter") {
+      logs.map((_val, _i) => {
+        const [day, month, year] = _val.date_created.split('/');
+        let dateWithTime = `${year}-${month}-${day}T${_val.time_created}`;
+
+        let date = new Date(dateWithTime);
+        logs[_i]['timestamp'] = date.getTime() / 1000;
+        logs[_i]['datetime'] = dateWithTime;
+      })
+
+      // console.log(logs[0]);
+      const groupLogsByActivity = [];
+
+      let activity = "";
+      let groups = [];
+
+      for (let i = 0; i < logs.length; i++) {
+        if (logs[i]['aktivitas'] != activity) {
+          // array groups masukin ke groupLogsWithActivty, set ulang groups baru dan set activity 
+          if (activity != "") {
+            let result = {
+              Aktivitas: activity,
+              startTime: groups[0]['time_created'],
+              endTime: groups[groups.length - 1]['time_created'],
+              tanggal : groups[0]['date_created'], 
+              details: [...groups]
+            }
+
+            groupLogsByActivity.push(result);
+          }
+
+          activity = logs[i]['aktivitas'];
+          groups = [];
+
+          groups.push(logs[i]);
+        } else {
+          // masukin data ke group yang sudah di set karena activity nya sama
+          groups.push(logs[i]);
+
+          if (logs.length - i === 1) {
+            // untuk memasukan LogsActivity terakhir
+            let result = {
+              Aktivitas: activity,
+              startTime: groups[0]['time_created'],
+              endTime: groups[groups.length - 1]['time_created'],
+              tanggal : groups[0]['date_created'], 
+              details: [...groups]
+            }
+
+            groupLogsByActivity.push(result);
+          }
+        }
+      }
+
+      let Metrics = [];
+      // console.log({MetricsActivities})
+      for (const [key, value] of Object.entries(MetricsActivities)) {
+        
+        Metrics.push({
+          aktivitas: key,
+          tanggal : logs[0]["date_created"],
+          metrics: value,
+        })
+      }
+      // console.log({Metrics})
+      res.json({ logs, groupLogsByActivity, Metrics });
     }
     // titik yang bisa digunakan kedua kondisi
   }

@@ -51,6 +51,7 @@ function DfaMetrics(props) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider"></th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider"></th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider"></th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider"></th>
               <th className="px-6 py-3 text-left text-xs  uppercase tracking-wider text-[#07AC7B] dark:text-[#FFD166] cursor-pointer font-semibold">
                 {page > 0 ? (
                   <button onClick={() => setPage(page - 1)}>
@@ -59,7 +60,7 @@ function DfaMetrics(props) {
                 ) : null}
               </th>
               <th className="px-6 py-3 text-left text-xs  uppercase tracking-wider text-[#07AC7B] dark:text-[#FFD166] cursor-pointer font-semibold">
-                {page < results.length / 5 - 1? (
+                {page < results.length / 5 - 1 ? (
                   <button onClick={() => setPage(page + 1)}>
                     Next {'->'}
                   </button>
@@ -73,7 +74,8 @@ function DfaMetrics(props) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time start</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time end</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA alpha1</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA alpha2</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
@@ -87,11 +89,17 @@ function DfaMetrics(props) {
                       <td className="px-6 py-4 whitespace-nowrap">{metric.tanggal}</td>
                     ) : (
                       <td className="px-6 py-4 whitespace-nowrap">{formatTanggal(metric.timestamp_tanggal)}</td>
-                    ) }
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_awal ?? null}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_akhir ?? null}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa ? metric.dfa.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{HandleSimbol({ dfa: metric.dfa })}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha1 ? metric.dfa.alpha1.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha2 ? metric.dfa.alpha2.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex gap-1">
+                        {HandleSimbol({ dfa: metric.dfa.alpha1, name: "alpha1" })} {HandleSimbol({ dfa: metric.dfa.alpha2, name: "alpha2" })}
+
+                      </div>
+                    </td>
                   </tr>
                 );
               })
@@ -105,12 +113,12 @@ function DfaMetrics(props) {
 }
 
 function HandleSimbol(props) {
-  const { dfa } = props;
+  const { dfa, name } = props;
   if (dfa >= 1.5) {
     return (
       <span
-        className="w-fit px-3 py-1 text-[12px] rounded-md bg-red-600 text-white font-medium">
-        Danger Area
+        className="w-fit px-3 text-xs py-1 text-[12px] rounded-md bg-red-600 text-white font-medium">
+        Danger {name}
       </span>
     )
   }
@@ -118,8 +126,8 @@ function HandleSimbol(props) {
   else if (dfa >= 1.2) {
     return (
       <span
-        className="w-fit px-3 py-1 text-[12px] rounded-md bg-orange-600 text-white font-medium">
-        Warning Area
+        className="w-fit text-xs px-3 py-1 text-[12px] rounded-md bg-orange-600 text-white font-medium">
+        Warning {name}
       </span>
 
     )
@@ -128,12 +136,11 @@ function HandleSimbol(props) {
   else if (dfa > 0) {
     return (
       <span
-        className="w-fit px-3 py-1 text-[12px] rounded-md bg-green-500 text-white font-medium" >
-        Safe Area
+        className="w-fit text-xs px-3 py-1 text-[12px] rounded-md bg-green-500 text-white font-medium" >
+        Safe {name}
       </span>
     )
   }
-
 }
 
 export default DfaMetrics;

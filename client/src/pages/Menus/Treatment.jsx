@@ -145,7 +145,7 @@ function Treatment() {
 
 
 
-              <table class="max-w-[480px] indi overflow-hidden">
+              <table class="max-w-[480px] md:w-full overflow-hidden">
                 <tbody>
                   <tr class="bg-[#363636]/20 dark:bg-[#217170] text-white">
                     <th class="px-6 py-4 whitespace-nowrap text-left text-[14px] font-semibold ">
@@ -285,17 +285,17 @@ function Treatment() {
           </div>
         ) : null}
 
-        <div className="flex md:flex-row flex-col justify-between md:items-end">
+        <div className="max-w-3xl flex md:flex-row md:mt-12 flex-col justify-between md:items-end">
           <div data-aos="fade-up">
             <h1 class="text-2xl md:text-3xl font-semibold capitalize lg:text-4xl mb-1 ">Treatment Pasien</h1>
             <h1 class="text-sm md:text-md  mb-4 ">Histori treatment pasien yang pernah dijalani.</h1>
           </div>
           {currentUser.role != 'user' && treatment == null ? (
-            <Link to={`/treatment/create`} className="darkgreen uppercase text-sm pb-3 font-semibold">Create Treatment</Link>
+            <Link to={`/treatment/create`} className="text-[#07AC7B] dark:text-[#D39504] uppercase text-sm pb-3 font-semibold">Create Treatment</Link>
           ) : null}
         </div>
 
-        <div data-aos="fade-right" class="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
+        <div data-aos="fade-right" class="max-w-3xl relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
           <div class="block w-full bgg-bl overflow-x-auto rounded">
             <table class="items-center w-full  ">
               <thead>
@@ -321,7 +321,7 @@ function Treatment() {
               <tbody>
                 {history.length > 0 ? (
                   history.map((val, i) => (
-                    <tr className={i % 2 == 0 ? 'bg-[#141414]' : 'bg-[#2f2f2f]'}>
+                    <tr className={i % 2 == 0 ? 'bg-[#141414] dark:bg-[#E7E7E7]' : 'bg-[#2f2f2f] dark:bg-[#CBCBCB]'}>
                       <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                         {new Intl.DateTimeFormat('ID-id', {
                           month: 'long',
@@ -355,19 +355,19 @@ function Treatment() {
         </div>
 
         {/* pagination */}
-        <nav data-aos="fade-right" aria-label="Page navigation example" className='pb-5 max-w-[400px]' style={{ overflowX: 'auto' }}>
+        <nav data-aos="fade-right" aria-label="Page navigation example" className='max-w-3xl pb-5' style={{ overflowX: 'auto' }}>
           <div className="pagination flex gap-2 mb-8 text-sm">
             {Array.from({ length: pagination }).map((_i, i) => {
 
               if (i + 1 == currentPagination) {
                 return (
-                  <div className="py-3 px-7 bgg-b text-white rounded-[5px]">
+                  <div className="py-3 px-7 bg-[#005A8F] dark:bg-[#FFD166] text-white rounded-[5px]">
                     {i + 1}
                   </div>
                 )
               } else {
                 return (
-                  <div onClick={() => { handleChangePagination(i + 1); }} className=" rounded-[5px] py-3 px-4 bg-[#272727] text-white cursor-pointer">
+                  <div onClick={() => { handleChangePagination(i + 1); }} className=" rounded-[5px] py-3 px-4 bg-[#272727] dark:bg-[#073B4C] text-white cursor-pointer">
                     {i + 1}
                   </div>
 
