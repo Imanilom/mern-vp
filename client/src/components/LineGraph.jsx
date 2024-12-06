@@ -88,12 +88,26 @@ function LineGraph({ data, label, keyValue, color }) {
     const drawChart = (rawData) => {
         let sizeCircle = [];
         let processedData2 = processData(rawData);
-        // if (processedData2.length <= 30) {
-        //     // klo hasil filter krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
-        //     processedData2 = rawData;
-        // }
+        
+         // Membuat array waktu dengan interval 10 menit
+        const startTime = new Date();
+        startTime.setHours(0, 0, 0, 0); // Mulai dari jam 00:00
+        const endTime = new Date();
+        endTime.setHours(23, 59, 59, 999); // Sampai jam 23:59
 
-        // let processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
+        const timeIntervals = [];
+        const interval = 10 * 60 * 1000; // 10 menit dalam milidetik
+        for (let time = startTime; time <= endTime; time = new Date(time.getTime() + interval)) {
+            timeIntervals.push(new Date(time));
+        }
+
+          // Gabungkan waktu dengan data asli
+        const dataWithIntervals = timeIntervals.map(time => {
+            const existingData = processedData.find(d => d.create_at.getTime() === time.getTime());
+            return existingData || { create_at: time, [keyValue]: null }; // Isi dengan null jika data tidak ditemukan
+        });
+
+
         let processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
         // console.log({ processedData, processedData2 }, keyValue)
         processedData.forEach((d, i) => {
@@ -172,7 +186,7 @@ function LineGraph({ data, label, keyValue, color }) {
         })
 
 
-        console.log({ color, processedData })
+     
 
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
@@ -208,25 +222,30 @@ function LineGraph({ data, label, keyValue, color }) {
             .attr('width', width)
             .attr('class', 'svgOne bg-[#101010] dark:bg-[#FEFCF5] min-w-lg')
 
-        const x = d3.scaleBand()
-            .domain(processedData.map(d => d.create_at))
-            // .range([margin.left, width - margin.right]);
-            .range([margin.left, width - margin.right]);
+         // Atur skala waktu X
+         const x = d3.scaleTime()
+         .domain([startTime, endTime])
+         .range([margin.left, width - margin.right]);
 
-        const y = d3.scaleLinear()
-            .domain([0, d3.max(processedData, d => d[keyValue]) + 50])
-            .range([height - margin.bottom, margin.top]);
+         const y = d3.scaleLinear()
+         .domain([0, d3.max(processedData, d => d[keyValue]) || 100]) // Default maksimum 100 jika data kosong
+         .range([height - margin.bottom, margin.top]);
+ 
 
-        const line = d3.line()
-            .x(d => x(d.create_at))
-            .y(d => y(d[[keyValue]]));
+         const line = d3.line()
+         .x(d => x(d.create_at))
+         .y(d => d[keyValue] !== null ? y(d[keyValue]) : y(0)); // Titik kosong ke nol
 
-        svg.append('path')
-            .datum(processedData)
-            .attr('fill', 'none')
-            .attr('stroke', defaultColor)
-            .attr('stroke-width', 2)
-            .attr('d', line);
+         svg.append('path')
+         .datum(dataWithIntervals)
+         .attr('fill', 'none')
+         .attr('stroke', defaultColor)
+         .attr('stroke-width', 2)
+         .attr('d', line);
+
+         const xAxis = d3.axisBottom(x)
+         .ticks(d3.timeMinute.every(10)) // Interval 10 menit
+         .tickFormat(d3.timeFormat('%H:%M')); // Format HH:MM
 
         // Deteksi perubahan tanggal
         let previousDate = null;
@@ -295,20 +314,13 @@ function LineGraph({ data, label, keyValue, color }) {
         // Sumbu X dengan format jam menit detik saja
         const formatTime = d3.timeFormat("%H:%M:%S");
         svg.append('g')
-            .attr('transform', `translate(0,${height - margin.bottom})`)
-            .call(d3.axisBottom(x)
-                .tickFormat(formatTime)
-                .ticks(XCount)
-                .tickPadding(8))
-            .selectAll('text')
-            .attr('transform', 'rotate(-45)')
-            .style('text-anchor', 'end')
-            .style('font-size', 8);
+        .attr('transform', `translate(0, ${height - margin.bottom})`)
+        .call(xAxis);
 
+        const yAxis = d3.axisLeft(y);
         svg.append('g')
             .attr('transform', `translate(${margin.left}, 0)`)
-            .call(d3.axisLeft(y)
-                .ticks(15));
+            .call(yAxis);
     }
 
 
