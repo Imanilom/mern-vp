@@ -199,7 +199,7 @@ export const test = async (req, res, next) => {
       // Kirim logs dan filterIQRResult ke frontend
       // console.log({ filterIQRResult, formattedLogs, dailyMetric : [dailyMetric] }, 'ok kirim')
       const AverageThree = groupDataByThreeAndAverage(formattedLogs);
-      console.log({ filterIQRResult })
+      console.log(filterIQRResult[0])
       res.status(200).json({ logs: formattedLogs, filterIQRResult, dailyMetric: [dailyMetric], AverageThree });
     }
 

@@ -67,7 +67,7 @@ export default function Home() {
             <br /> Dengan Perangkat Pintar
           </p>
 
-          <p className='text-[20px] blue font-bold'>Only RP.2.300.000</p>
+          <p className='text-[20px] text-[#005A8F] font-bold'>Only RP.2.300.000</p>
 
 
           <ul className='text-sm' style={{ listStyle: 'inside' }}>
@@ -87,7 +87,7 @@ export default function Home() {
         </div>
 
         <div data-aos="fade-right" className="px-8 md:px-0 absolute sm:start-0 top-1/2 left-0 sm:bottom-0 z-[4] font-bold">
-          <div className='text-[32px]'>SMART <span className='blue'>DEVICE</span></div>
+          <div className='text-[32px]'>SMART <span className='text-[#005A8F]'>DEVICE</span></div>
           <div className='md:text-[84px] lg:text-[140px]'>
             VIDYAMEDIC
           </div>
@@ -171,7 +171,7 @@ export default function Home() {
           <div className='md:w-6/12'>
 
             <h2 className='text-[24px] md:text-[40px] font-bold'>
-              What are the <span className='blue'> Vidya</span>Medic  do?
+              What are the <span className='text-[#005A8F]'> Vidya</span>Medic  do?
             </h2>
             <img src={image4} alt="" className='md:max-w-[470px] max-w-screen' />
           </div>

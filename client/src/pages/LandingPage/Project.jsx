@@ -38,10 +38,10 @@ function Project() {
 
         <div data-aos="fade-up" data-aos-duration="1500" className="lg:w-7/12 flex-col flex gap-4 font-bold text-center text-white">
           <p className='md:text-[32px] hidden md:block '>Welcome To Our Project</p>
-          <p className='text-[64px] lg:text-[90px] lg:z-1 z-[5]'>SMART <span className='blue'>DEVICE</span></p>
+          <p className='text-[64px] lg:text-[90px] lg:z-1 z-[5]'>SMART <span className='text-[#005A8F]'>DEVICE</span></p>
           <p className='font-medium md:font-bold md:text-normal w-[90%] md:w-[70%] mx-auto lg:z-1 z-[5]'>
             Are you looking for a way to improve your health and well-being? If so, you might be interested in joining our project
-            <span className='blue'> Activity Tracking.
+            <span className='text-[#005A8F]'> Activity Tracking.
             </span>
           </p>
 
@@ -51,7 +51,7 @@ function Project() {
       <div data-aos="fade-up" className='flex flex-col md:flex-row justify-center items-center py-8 relative gap-8 text-white'>
         <div className="w-10/12 md:w-4/12">
           <p className='text-[32px] font-bold mb-3'>
-            What is <span className='blue'>Activity Tracking </span>
+            What is <span className='text-[#005A8F]'>Activity Tracking </span>
           </p>
           <p>
             Activity Tracking is a project that aims to develop and test a smart wearable sensor system that can monitor your physical activity, sleep quality, stress level, and other health indicators. By using this system, you can get personalized insights and recommendations on how to improve your lifestyle and prevent or manage chronic diseases.
@@ -70,7 +70,7 @@ function Project() {
           <p>
             By joining this project, you will not only benefit from the latest technology and scientific knowledge, but also contribute to the advancement of health research and innovation. You will help us understand how IoT-assisted wearable sensor systems can improve health outcomes and quality of life for people around the world.
             <br /><br />
-            If you are interested in joining this project, please fill out this online form or contact us at <a href="" className='blue'>vidya@pptik.itb.ac.id</a> We are looking for people who are 18 years or older, have a smartphone or computer with internet access, and are willing to wear the sensor device and use the app or dashboard for at least 3 months.
+            If you are interested in joining this project, please fill out this online form or contact us at <a href="" className='text-[#005A8F]'>vidya@pptik.itb.ac.id</a> We are looking for people who are 18 years or older, have a smartphone or computer with internet access, and are willing to wear the sensor device and use the app or dashboard for at least 3 months.
           </p>
           <p>
             <button className='px-4 py-3 bg-[#005A8F] font-bold flex gap-2 mt-4'>
@@ -203,7 +203,7 @@ function Project() {
       </div>
 
       <div className='md:w-9/12 w-11/12 mx-auto py-8 relative gap-8 text-white'>
-        <p className='lg:w-1/2'>This iterative process enhances the accuracy and effectiveness of the system over time.The Heart Disease Decision Support Monitoring, Detection, and Predictive System aims to enhance clinical decision-making, improve patient outcomes, and optimize the management of heart disease by providing valuable insights and support to healthcare professionals.Futher information please email: <a className='blue' href="">vidya@pptik.itb.ac.id</a></p>
+        <p className='lg:w-1/2'>This iterative process enhances the accuracy and effectiveness of the system over time.The Heart Disease Decision Support Monitoring, Detection, and Predictive System aims to enhance clinical decision-making, improve patient outcomes, and optimize the management of heart disease by providing valuable insights and support to healthcare professionals.Futher information please email: <a className='text-[#005A8F]' href="">vidya@pptik.itb.ac.id</a></p>
       </div>
 
 

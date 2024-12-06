@@ -10,9 +10,11 @@ import { Input, Timepicker, initTE } from 'tw-elements';
 initTE({ Input, Timepicker });
 
 ReactDOM.createRoot(document.getElementById('root')).render(
+  // panggil store redux disini.
   <Provider store={store}>
+    {/* Panggil juga persistor, supaya state management nya ga reset ketika pindah halaman */}
     <PersistGate persistor={persistor} loading={null}>
-       <App />
+      <App />
     </PersistGate>
   </Provider>
 )

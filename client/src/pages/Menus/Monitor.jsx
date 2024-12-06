@@ -118,7 +118,7 @@ export default function Monitor() {
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
       const tes = groupDataByThreeAndAverage(sortedLogs);
 
-      console.log({ sortedLogs, tes, data })
+      console.log({ sortedLogs, tes, data }, "ini filterIQ RESULT", data.filterIQRResult[0])
       set3dpData(tes);
       setLogs(sortedLogs);
       setIQRData(data.filterIQRResult);
