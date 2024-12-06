@@ -41,105 +41,53 @@ export const groupDataByThreeAndAverage = (data) => {
 };
 
 
-// pilih mau lihat hasil interquartil dulu, interquartil dan apa dll
-
-// Update filterIQ function with anomaly detection
-// export async function filterIQ(logs, multiplier = 1.5, lambda = 1) {
-//   if (!logs || logs.length === 0) {
-//     console.error("No logs available for processing.");
-//     return { filteredLogs: [], anomalies: [] };
-//   }
-
-//   const filteredLogs = [];
-//   const rawFilteredLogs = [];
-//   const anomalies = [];
-
-//   const groupedLogs = [];
-//   let currentGroup = [];
-//   let startTime = new Date(logs[0].time_created).getTime();
-
-//   logs.forEach(log => {
-//     const logTime = new Date(log.time_created).getTime();
-//     if (logTime - startTime < 10000) {
-//       currentGroup.push(log);
-//     } else {
-//       if (currentGroup.length > 0) groupedLogs.push(currentGroup);
-//       currentGroup = [log];
-//       startTime = logTime;
-//     }
-//   });
-//   if (currentGroup.length > 0) groupedLogs.push(currentGroup);
-
-//   groupedLogs.forEach((group, index) => {
-//     const hrValues = group.map(log => log.HR).filter(value => value !== undefined && value !== null);
-//     const rrValues = group.map(log => log.RR).filter(value => value !== undefined && value !== null);
-
-//     if (hrValues.length === 0 || rrValues.length === 0) {
-//       console.warn(`Group ${index} skipped due to invalid data.`);
-//       return;
-//     }
-
-//     const hrStats = calculateQuartilesAndIQR(hrValues);
-//     const rrStats = calculateQuartilesAndIQR(rrValues);
-
-//     const filteredHr = hrValues.filter(value =>
-//       value >= hrStats.Q1 - multiplier * hrStats.IQR &&
-//       value <= hrStats.Q3 + multiplier * hrStats.IQR
-//     );
-
-//     const filteredRr = rrValues.filter(value =>
-//       value >= rrStats.Q1 - multiplier * rrStats.IQR &&
-//       value <= rrStats.Q3 + rrStats.IQR
-//     );
-
-//     if (filteredHr.length > 0 && filteredRr.length > 0) {
-//       for (let i = 0; i < Math.min(filteredHr.length, filteredRr.length); i++) {
-//         filteredLogs.push({ HR: filteredHr[i], RR: filteredRr[i], timestamp: group[i].timestamp });
-//         rawFilteredLogs.push(group[i]);
-//       }
-//     }
-//   });
-
-//   return { filteredLogs, anomalies };
-// }
-
-
 export async function kalmanFilter(logs, options = {}) {
   const {
-    initialEstimate = 0,      // Perkiraan awal
-    initialError = 1,         // Kesalahan awal
-    processNoise = 0.01,      // Noise proses (Q)
-    measurementNoise = 1,     // Noise pengukuran (R)
+    initialEstimateRR = 550,  // Perkiraan awal RR
+    initialErrorRR = 1,       // Kesalahan awal RR
+    processNoiseRR = 0.01,    // Noise proses RR (Q)
+    measurementNoiseRR = 1,   // Noise pengukuran RR (R)
+
+    initialEstimateHR = 70,   // Perkiraan awal HR
+    initialErrorHR = 1,       // Kesalahan awal HR
+    processNoiseHR = 0.01,    // Noise proses HR (Q)
+    measurementNoiseHR = 1,   // Noise pengukuran HR (R)
   } = options;
 
-  let estimate = initialEstimate; // Perkiraan (X)
-  let error = initialError;       // Kesalahan (P)
+  let estimateRR = initialEstimateRR; // Perkiraan RR (X)
+  let errorRR = initialErrorRR;       // Kesalahan RR (P)
+
+  let estimateHR = initialEstimateHR; // Perkiraan HR (X)
+  let errorHR = initialErrorHR;       // Kesalahan HR (P)
 
   const filteredLogs = [];
   const anomalies = [];
 
   logs.forEach((log) => {
-    const measurement = log.RR; // Data RR dari log
+    const measurementRR = log.RR; 
+    const measurementHR = log.HR; 
 
-    // Update Kalman Gain
-    const kalmanGain = error / (error + measurementNoise);
+    const kalmanGainRR = errorRR / (errorRR + measurementNoiseRR);
+    estimateRR = estimateRR + kalmanGainRR * (measurementRR - estimateRR);
+    errorRR = (1 - kalmanGainRR) * errorRR + processNoiseRR;
 
-    // Update estimate dengan data pengukuran
-    estimate = estimate + kalmanGain * (measurement - estimate);
+    const kalmanGainHR = errorHR / (errorHR + measurementNoiseHR);
+    estimateHR = estimateHR + kalmanGainHR * (measurementHR - estimateHR);
+    errorHR = (1 - kalmanGainHR) * errorHR + processNoiseHR;
 
-    // Update error (P)
-    error = (1 - kalmanGain) * error + processNoise;
+    const deviationRR = Math.abs(measurementRR - estimateRR);
+    const thresholdRR = 3 * Math.sqrt(errorRR); 
 
-    // Tentukan apakah nilai termasuk anomali
-    const deviation = Math.abs(measurement - estimate);
-    const threshold = 3 * Math.sqrt(error); // Anomali jika di luar 3x standar deviasi
+    const deviationHR = Math.abs(measurementHR - estimateHR);
+    const thresholdHR = 3 * Math.sqrt(errorHR);
 
-    if (deviation > threshold) {
-      anomalies.push(log); // Tambahkan ke daftar anomali
+    if (deviationRR > thresholdRR || deviationHR > thresholdHR) {
+      anomalies.push(log); 
     } else {
-      // Menyimpan data lengkap dengan nilai RR yang difilter
-      filteredLogs.push({ 
-        filteredRR: estimate,
+     
+      filteredLogs.push({
+        filteredRR: estimateRR,
+        filteredHR: estimateHR,
         timestamp: `${log.date_created} ${log.time_created}`
       });
     }
@@ -360,7 +308,6 @@ export async function filterIQBC(logs, multiplier = 1.5) {
 
 
 
-
 const processHeartRateData = async () => {
   try {
     const firstLog = await Log.findOne({ isChecked: false }).sort({ date_created: 1, time_created: 1 });
@@ -374,16 +321,15 @@ const processHeartRateData = async () => {
       isChecked: false,
       date_created: firstLog.date_created,
     }).sort({ time_created: 1 });
-    
+
     // Tambahkan validasi pada setiap log
     logs.forEach((log) => {
       if (!log.aktivitas && log.activity) {
-        log.aktivitas = log.activity; // Salin nilai dari 'activity' jika 'aktivitas' kosong
+        log.aktivitas = log.activity ; // Salin nilai dari 'activity' jika 'aktivitas' kosong
       } else if (!log.aktivitas && !log.activity) {
         log.aktivitas = "Unknown"; // Atur nilai default jika keduanya tidak ada
       }
     });
-    
 
     await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
 
@@ -395,13 +341,19 @@ const processHeartRateData = async () => {
 
     // Kelompokkan data berdasarkan aktivitas
     const groupedByActivity = filteredLogs.reduce((acc, log) => {
-      // Cari aktivitas di 'aktivitas' atau 'activity'
-      const activity = log.aktivitas || log.activity || log.acitivity || "Unknown"; // Gunakan "Unknown" jika keduanya tidak ada
-      acc[activity] = acc[activity] || [];
-      acc[activity].push(log);
+      const activity = log.aktivitas || log.activity || log.acitivity || "Unknown"; // Gunakan "Unknown" jika tidak ada
+      acc[activity] = acc[activity] || { logs: [], timestamps: { start: null, end: null } };
+
+      acc[activity].logs.push(log);
+
+      // Atur timestamp awal dan akhir
+      if (!acc[activity].timestamps.start) {
+        acc[activity].timestamps.start = `${log.date_created} ${log.time_created}`;
+      }
+      acc[activity].timestamps.end = `${log.date_created} ${log.time_created}`;
+
       return acc;
     }, {});
-    
 
     // Hitung metrik untuk semua data (satu hari)
     const allRRIntervals = filteredLogs.map((log) => log.RR);
@@ -409,9 +361,12 @@ const processHeartRateData = async () => {
 
     // Hitung metrik untuk setiap aktivitas
     const activityMetrics = {};
-    for (const [activity, logs] of Object.entries(groupedByActivity)) {
-      const rrIntervals = logs.map((log) => log.RR);
-      activityMetrics[activity] = calculateAdvancedMetrics(rrIntervals);
+    for (const [activity, data] of Object.entries(groupedByActivity)) {
+      const rrIntervals = data.logs.map((log) => log.RR);
+      activityMetrics[activity] = {
+        metrics: calculateAdvancedMetrics(rrIntervals),
+        timestamps: data.timestamps, // Tambahkan timestamp awal dan akhir aktivitas
+      };
     }
 
     const [day, month, year] = firstLog.date_created.split("/");
@@ -453,10 +408,9 @@ const processHeartRateData = async () => {
         HR: log.HR,
         RR: log.RR,
         rrRMS: log.rrRMS,
-        aktivitas: log.aktivitas || log.activity || "Unknown", // Cari aktivitas di kedua properti
+        aktivitas: log.aktivitas || log.activity || log.acitivity || "Unknown",
       }))
     );
-    
 
     fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
     console.log(`Data written to ${filteredFileName}`);
@@ -474,12 +428,11 @@ const processHeartRateData = async () => {
       HR: log.HR,
       RR: log.RR,
       rrRMS: log.rrRMS,
-      aktivitas: log.aktivitas,
+      aktivitas: log.aktivitas || log.activity || log.acitivity || "Unknown",
     }));
 
     fs.writeFileSync(anomalyFileName, JSON.stringify(anomalyData, null, 2));
     console.log(`Anomalies written to ${anomalyFileName}`);
-
   } catch (error) {
     console.error("Error processing heart rate data:", error);
   }
