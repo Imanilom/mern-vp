@@ -126,16 +126,6 @@ function DfaActivityMetric(props) {
         // September, 18 2024
     }
 
-    //   const handleDfaAvg = () => {
-    //     let result = 0;
-    //     let dfaValues = resultss.map(val => val.dfa);
-    //     dfaValues.forEach(val => {
-    //       result += val
-    //     });
-    //     result = result / dfaValues.length;
-    //     return result.toFixed(2);
-    //   }
-
     return (
         <div className="mt-8" data-aos="fade-right">
             <h4 className="text-lg font-semibold mb-2">
@@ -190,7 +180,7 @@ function DfaActivityMetric(props) {
                                         <td className="px-6 py-4 whitespace-nowrap">{metric.tanggal}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">{metric.aktivitas}</td>
 
-                                        <td className="px-6 py-4 whitespace-nowrap">{metric.metrics.dfa !== null && metric.metrics.dfa ? metric.metrics.dfa.toFixed(2) : 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">{metric.metrics.dfa !== null && metric.metrics.dfa ? metric.metrics.dfa.toFixed(2) : 'properti kosong.'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">{metric.metrics.adfa.alphaPlus !== null && metric.metrics.adfa.alphaPlus ? metric.metrics.adfa.alphaPlus.toFixed(2) : 'properti kosong.'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">{metric.metrics.adfa.alphaMinus !== null && metric.metrics.adfa.alphaMinus ? metric.metrics.adfa.alphaMinus.toFixed(2) : 'properti kosong.'}</td>
                                         {/* <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_akhir ?? null}</td> */}

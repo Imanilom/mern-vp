@@ -19,7 +19,7 @@ function Project() {
     })
   }, []);
   return (
-    <div className="bg-[#101010]">
+    <div className="bg-[#101010] dark:bg-[#FEFCF5]">
       <div className='flex flex-col justify-center items-center min-h-[90vh] relative gap-8'>
 
         {/* image jam */}
@@ -31,27 +31,35 @@ function Project() {
         </div>
 
         {/* box */}
-        <div className="rectangle absolute w-36 h-36 top-1/3 end-1/3 hidden lg:block"></div>
-        <div className="rectangle absolute w-60 h-60 top-1/3 end-[5%] hidden md:block"></div>
-        <div className="rectangle z-[1] absolute w-screen md:w-36 h-[240px] bottom-2/4 end-1/2 md:start-1/4"></div>
-        <div className="rectangle absolute w-[300px] h-36 bottom-[5%] z-[3] start-1/4 hidden lg:block"></div>
+        <div className="rectangle dark:hidden absolute w-36 h-36 top-1/3 end-1/3 hidden lg:block"></div>
+        <div className="rectangle-white-theme dark:lg:block absolute w-36 h-36 top-1/3 end-1/3 hidden lg:hidden"></div>
 
-        <div data-aos="fade-up" data-aos-duration="1500" className="lg:w-7/12 flex-col flex gap-4 font-bold text-center text-white">
+        <div className="rectangle absolute dark:hidden w-60 h-60 top-1/3 end-[5%] hidden md:block"></div>
+        <div className="rectangle-white-theme dark:md:block absolute w-60 h-60 top-1/3 end-[5%] hidden md:hidden"></div>
+
+        <div className="rectangle z-[1] absolute dark:hidden block w-screen md:w-36 h-[240px] bottom-2/4 end-1/2 md:start-1/4"></div>
+        <div className="rectangle-white-theme dark:block hidden z-[1] absolute w-screen md:w-36 h-[240px] bottom-2/4 end-1/2 md:start-1/4"></div>
+
+        <div className="rectangle absolute dark:hidden w-[300px] h-36 bottom-[5%] z-[3] start-1/4 hidden lg:block"></div>
+
+        <div className="rectangle-white-theme dark:block absolute w-[300px] h-36 bottom-[5%] z-[3] dark:z-[1] start-1/4 hidden lg:hidden"></div>
+
+        <div data-aos="fade-up" data-aos-duration="1500" className="lg:w-7/12 flex-col flex gap-4 font-bold text-center text-white dark:text-[#073B4C]">
           <p className='md:text-[32px] hidden md:block '>Welcome To Our Project</p>
-          <p className='text-[64px] lg:text-[90px] lg:z-1 z-[5]'>SMART <span className='text-[#005A8F]'>DEVICE</span></p>
+          <p className='text-[64px] lg:text-[90px] lg:z-1 z-[5] text-white dark:text-[#FFD166]'>SMART <span className='text-[#005A8F] dark:text-[#217170]'>DEVICE</span></p>
           <p className='font-medium md:font-bold md:text-normal w-[90%] md:w-[70%] mx-auto lg:z-1 z-[5]'>
             Are you looking for a way to improve your health and well-being? If so, you might be interested in joining our project
-            <span className='text-[#005A8F]'> Activity Tracking.
+            <span className='text-[#005A8F] dark:text-[#217170]'> Activity Tracking.
             </span>
           </p>
 
         </div>
       </div>
 
-      <div data-aos="fade-up" className='flex flex-col md:flex-row justify-center items-center py-8 relative gap-8 text-white'>
+      <div data-aos="fade-up" className='flex flex-col md:flex-row justify-center items-center py-8 relative gap-8 text-white dark:text-[#073B4C]'>
         <div className="w-10/12 md:w-4/12">
           <p className='text-[32px] font-bold mb-3'>
-            What is <span className='text-[#005A8F]'>Activity Tracking </span>
+            What is <span className='text-[#005A8F] dark:text-[#217170]'>Activity Tracking </span>
           </p>
           <p>
             Activity Tracking is a project that aims to develop and test a smart wearable sensor system that can monitor your physical activity, sleep quality, stress level, and other health indicators. By using this system, you can get personalized insights and recommendations on how to improve your lifestyle and prevent or manage chronic diseases.
@@ -62,7 +70,7 @@ function Project() {
       </div>
 
 
-      <div data-aos="fade-up" className='flex lg:flex-row flex-col mt-8 justify-between w-9/12 mx-auto items-center py-8 relative gap-8 text-white'>
+      <div data-aos="fade-up" className='flex lg:flex-row flex-col mt-8 justify-between w-9/12 mx-auto items-center py-8 relative gap-8 text-white dark:text-[#073B4C]'>
         <div className="lg:w-5/12">
           <p className='text-[32px] font-bold mb-3'>
             What benefit join with us
@@ -70,10 +78,10 @@ function Project() {
           <p>
             By joining this project, you will not only benefit from the latest technology and scientific knowledge, but also contribute to the advancement of health research and innovation. You will help us understand how IoT-assisted wearable sensor systems can improve health outcomes and quality of life for people around the world.
             <br /><br />
-            If you are interested in joining this project, please fill out this online form or contact us at <a href="" className='text-[#005A8F]'>vidya@pptik.itb.ac.id</a> We are looking for people who are 18 years or older, have a smartphone or computer with internet access, and are willing to wear the sensor device and use the app or dashboard for at least 3 months.
+            If you are interested in joining this project, please fill out this online form or contact us at <a href="" className='text-[#005A8F] font-semibold dark:text-[#217170] underline'>vidya@pptik.itb.ac.id</a> We are looking for people who are 18 years or older, have a smartphone or computer with internet access, and are willing to wear the sensor device and use the app or dashboard for at least 3 months.
           </p>
           <p>
-            <button className='px-4 py-3 bg-[#005A8F] font-bold flex gap-2 mt-4'>
+            <button className='px-6 py-3 bg-[#005A8F] text-white dark:bg-[#217170] rounded-[2px]font-bold flex gap-2 mt-4'>
               <span>
                 <IoMail size={24} color="white" />
               </span>
@@ -86,18 +94,19 @@ function Project() {
         </div>
 
         <div className="lg:w-5/12 relative">
-          <div className="absolute lg:top-[-5%] lg:start-[-5%] start-[5%] top-[5%] rectangle w-[90%] h-full"></div>
+          <div className="absolute dark:hidden block lg:top-[-5%] lg:start-[-5%] start-[5%] top-[5%] rectangle w-[90%] h-full"></div>
+          <div className="absolute rectangle-white-theme lg:top-[-5%] lg:start-[-5%] start-[5%] top-[5%]  w-[90%] h-full hidden dark:block"></div>
           <img src={jam3} className='w-[90%]' alt="" />
         </div>
       </div>
 
-      <div data-aos="zoom-in" data-aos-duration="700" className='flex flex-col lg:flex-row mt-8 justify-between w-9/12 mx-auto lg:items-center py-8 relative gap-8 text-white'>
+      <div data-aos="zoom-in" data-aos-duration="700" className='flex flex-col lg:flex-row mt-8 justify-between w-9/12 mx-auto lg:items-center py-8 relative gap-8 text-white dark:text-[#073B4C]'>
         <div className="lg:w-5/12 relative">
           <div className="w rectangle w-[200px] md:w-96 absolute top-0 start-0 h-16">
 
           </div>
 
-          <p  className='text-[32px] text-start font-bold mb-3'>
+          <p  className='text-[32px] text-start font-bold mb-3 text-white dark:text-[#217170]'>
             Features available in our project
           </p>
         </div>
@@ -202,8 +211,8 @@ function Project() {
 
       </div>
 
-      <div className='md:w-9/12 w-11/12 mx-auto py-8 relative gap-8 text-white'>
-        <p className='lg:w-1/2'>This iterative process enhances the accuracy and effectiveness of the system over time.The Heart Disease Decision Support Monitoring, Detection, and Predictive System aims to enhance clinical decision-making, improve patient outcomes, and optimize the management of heart disease by providing valuable insights and support to healthcare professionals.Futher information please email: <a className='text-[#005A8F]' href="">vidya@pptik.itb.ac.id</a></p>
+      <div className='md:w-9/12 w-11/12 mx-auto py-8 relative gap-8 text-white dark:text-[#073B4C]'>
+        <p className='lg:w-1/2'>This iterative process enhances the accuracy and effectiveness of the system over time.The Heart Disease Decision Support Monitoring, Detection, and Predictive System aims to enhance clinical decision-making, improve patient outcomes, and optimize the management of heart disease by providing valuable insights and support to healthcare professionals.Futher information please email: <a className='text-[#005A8F] underline dark:text-[#217170] font-semibold' href="">vidya@pptik.itb.ac.id</a></p>
       </div>
 
 

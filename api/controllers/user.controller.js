@@ -568,6 +568,7 @@ export const getLogWithActivity = async (req, res, next) => {
 
     // Fungsi untuk mendapatkan interval waktu 15 menit
     const getTimeInterval = (time) => {
+      // console.log({log}, logs[i])
       const [hour, minute] = time.split(":").map(Number);
       const startMinute = Math.floor(minute / parseInt(gap)) * parseInt(gap);
       const endMinute = startMinute + parseInt(gap);
@@ -575,7 +576,8 @@ export const getLogWithActivity = async (req, res, next) => {
       const endHour = endMinute >= 60 ? hour + 1 : hour;
       const endTime = `${endHour.toString().padStart(2, '0')}:${(endMinute % 60).toString().padStart(2, '0')}`;
       return `${startTime}-${endTime}`;
-    };
+    }
+    
 
     // Loop melalui setiap kelompok tanggal
     Object.keys(groupedData).forEach((dateKey) => {
@@ -583,7 +585,7 @@ export const getLogWithActivity = async (req, res, next) => {
 
       logsForDate.forEach((log) => {
         const logTime = new Date(log.create_at);
-        const timeInterval = getTimeInterval(log.time);
+        const timeInterval = getTimeInterval(log.time_created);
 
         const key = `${dateKey}/${timeInterval}`;
 
@@ -594,10 +596,11 @@ export const getLogWithActivity = async (req, res, next) => {
       });
     });
 
+    console.log({result})
     res.status(200).json({ result });
 
   } catch (error) {
-    console.error('Error in /api/user/test:', error.message);
+    console.error('Error in /api/user/fgfgfgfg:', error.message);
     next(error);
   }
 };
@@ -824,8 +827,11 @@ export const logdfa = async (req, res, next) => {
       fileStartWith = "";
       folderChoose = 'hrv-results';
     } else {
-      fileStartWith = "filtered_logs_";
+      // fileStartWith = "filtered_logs_";
+      fileStartWith = "";
     }
+
+    folderChoose = "hrv-results-GroupActivity";
 
     console.log({ folderChoose, method })
 
@@ -852,8 +858,12 @@ export const logdfa = async (req, res, next) => {
         .filter(file => file.startsWith(fileStartWith))
         .sort((a, b) => {
           if (method != 'no-filter') {
-            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+            // const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            // const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+
+            const dateA = new Date(a.match(/(.+)\.json/));
+            const dateB = new Date(b.match(/(.+)\.json/));
+
             return dateB - dateA;
           } else {
             const dateA = new Date(a.match(/(.+)\.json/));
@@ -870,7 +880,10 @@ export const logdfa = async (req, res, next) => {
         if (file.endsWith('.json')) {
           // console.log({file, dateStart, dateEnd}, new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000)
           if (method != 'no-filter') {
-            fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
+            // fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
+            const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
+            fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
+
           } else {
             const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
             fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
@@ -963,8 +976,11 @@ export const logdfa = async (req, res, next) => {
         .filter(file => file.startsWith(fileStartWith))
         .sort((a, b) => {
           if (method != 'no-filter') {
-            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+            // const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            // const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+
+            const dateA = new Date(a.match(/(.+)\.json/));
+            const dateB = new Date(b.match(/(.+)\.json/));
             return dateB - dateA;
           } else {
             const dateA = new Date(a.match(/(.+)\.json/));
@@ -1023,10 +1039,17 @@ export const logdfa = async (req, res, next) => {
         // console.log( splittedLog[1][0 * splitCount]['date_created']);
       }
 
+      console.log({splittedLog}, splittedLog[0])
       let result = HRCollection.map((data, i) => {
-        const date = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
-        const timeStart = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
-        const timeEnd = new Date(splittedLog[i][splittedLog[i].length - 1]['timestamp'] * 1000);
+      // let result = splittedLog.map((data, i) => {
+        const [d, m, y] = splittedLog[i][0 * splittedLog[i].length]['date_created'].split('/');
+
+        const date = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`)
+        const timeStart = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`)
+        const timeEnd = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`)
+        // const date = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+        // const timeStart = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+        // const timeEnd = new Date(splittedLog[i][splittedLog[i].length - 1]['timestamp'] * 1000);
         console.log(splittedLog[i][0 * splittedLog[i].length]['timestamp'], { date });
 
         return {

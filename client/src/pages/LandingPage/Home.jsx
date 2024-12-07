@@ -57,17 +57,17 @@ export default function Home() {
 
 
   return (
-    <section className='flex flex-col gap-24 bg-[#101010]'>
+    <section className='flex flex-col gap-24 bg-[#101010] dark:bg-[#FEFCF5]'>
       {/* Hero 1 Explain Smart Future e-healt */}
 
-      <div className="md:w-10/12 relative text-white/95 mx-auto pb-16 flex md:justify-between md:flex-row flex-col-reverse gap-8 items-start md:min-h-[90vh] lg:min-h-[90vh]">
+      <div className="md:w-10/12 relative text-white/95 dark:text-[#073B4C] mx-auto pb-16 flex md:justify-between md:flex-row flex-col-reverse gap-8 items-start md:min-h-[90vh] lg:min-h-[90vh]">
         <div data-aos="fade-up" className="px-8 md:px-0 flex flex-col mt-8 gap-4  md:w-8/12 lg:w-5/12">
           <p className=''>
             Sebuah alat modern untuk memantau aktivitas kesehatan, serta kebugaran anda secara otomatis.
             <br /> Dengan Perangkat Pintar
           </p>
 
-          <p className='text-[20px] text-[#005A8F] font-bold'>Only RP.2.300.000</p>
+          <p className='text-[20px] text-[#005A8F] dark:text-[#217170] font-bold'>Only RP.2.300.000</p>
 
 
           <ul className='text-sm' style={{ listStyle: 'inside' }}>
@@ -83,12 +83,13 @@ export default function Home() {
 
         <div className='relative ' data-aos="fade-up">
           <img src={image8} className='sm:w-[80%] relative z-[3]' alt="" />
-          <div className="rectangle w-[200px] h-[200px] sm:w-[175px] sm:h-[175px] lg:w-[250px] z-[1] lg:h-[250px] absolute start-1/3 top-1/4 sm:start-1/4 sm:top-1/3"></div>
+          <div className="rectangle block dark:hidden  w-[200px] h-[200px] sm:w-[175px] sm:h-[175px] lg:w-[250px] z-[1] lg:h-[250px] absolute start-1/3 top-1/4 sm:start-1/4 sm:top-1/3"></div>
+          <div className="rectangle-white-theme dark:block hidden w-[200px] h-[200px] sm:w-[175px] sm:h-[175px] lg:w-[250px] z-[1] lg:h-[250px] absolute start-1/3 top-1/4 sm:start-1/4 sm:top-1/3"></div>
         </div>
 
-        <div data-aos="fade-right" className="px-8 md:px-0 absolute sm:start-0 top-1/2 left-0 sm:bottom-0 z-[4] font-bold">
-          <div className='text-[32px]'>SMART <span className='text-[#005A8F]'>DEVICE</span></div>
-          <div className='md:text-[84px] lg:text-[140px]'>
+        <div data-aos="fade-right" className="px-8 md:px-0 text-white absolute sm:start-0 top-1/2 left-0 sm:bottom-0 z-[4] font-bold">
+          <div className='text-[32px] dark:text-[#217170]'>SMART <span className='text-[#005A8F] dark:text-[#217170]'>DEVICE</span></div>
+          <div className='md:text-[84px] lg:text-[140px] dark:text-[#217170]'>
             VIDYAMEDIC
           </div>
         </div>
@@ -103,26 +104,26 @@ export default function Home() {
         {/* text */}
 
         <div className="flex flex-col" data-aos="zoom-in">
-          <p className="text-[32px] font-bold text-white mb-3">
+          <p className="text-[32px] font-bold text-white dark:text-[#073B4C] mb-3">
             Tradisional Health
           </p>
           <div className="lg:w-7/12 md:w-9/12 flex items-start gap-3 mb-3">
-            <div className='ps-6 py-3 pe-10 text-white bg-white/10 rounded-[10px]'>
+            <div className='ps-6 py-3 pe-10 text-white dark:text-[#073B4C] mb-3 bg-white/10 rounded-[10px]'>
               Traditional Health approaches rely on routine check-ups and generalized treatment plans, often based on limited data collected during doctor visits. While effective in some cases, this method can be reactive, treating issues after they arise rather than preventing them.
             </div>
-            <div className="hidden sm:block w-fit text-[120px] text-white">
+            <div className="hidden sm:block w-fit text-[120px] text-white dark:text-[#217170]">
               &
             </div>
           </div>
           <div className="flex flex-col" data-aos="zoom-in-up">
-            <p className="text-[32px] font-bold text-white mb-3">
+            <p className="text-[32px] font-bold text-white mb-3 dark:text-[#073B4C]">
               Smart eHealth
             </p>
             <div className="lg:w-7/12 md:w-9/12 md:flex items-start gap-3 mb-3">
-              <div className='ps-6 py-3 pe-10 text-white bg-white/10 rounded-[10px]'>
+              <div className='ps-6 py-3 pe-10 text-white dark:text-[#073B4C] bg-white/10 rounded-[10px]'>
                 Smart Health harnesses advanced technology like wearables and real-time monitoring to give individuals full control of their health. With continuous updates on key metrics like heart rate, activity, and sleep, it enables early detection and prevention of health issues. No more relying solely on doctor visits—Smart Health puts personalized, proactive care in your hands every day.
               </div>
-              <div className="md:w-1/12 text-[32px] font-semibold text-[#B76DFD]">
+              <div className="md:w-1/12 text-[32px] font-semibold text-[#B76DFD] dark:text-[#217170]">
                 Im Better than him
               </div>
             </div>
@@ -135,10 +136,11 @@ export default function Home() {
 
 
       {/* What are the Smart eHealth tasks to do? */}
-      <div className="md:w-10/12 mx-auto flex flex-col sm:flex-row relative justify-between gap-12 text-white">
+      <div className="md:w-10/12 mx-auto flex flex-col sm:flex-row relative justify-between gap-12 text-white dark:text-[#073B4C]">
         <div className='flex flex-col gap-6 md:w-7/12 px-4 md:px-0' data-aos="zoom-in">
 
-          <div className="w rectangle w-[150px] md:w-[450px] lg:w-[400px] h-[280px] absolute z-[2] lg:end-1/3 lg:bottom-1/4 md:end-1/2 end-0 bottom-0 md:top-1/2"></div>
+          <div className="w rectangle dark:hidden block w-[150px] md:w-[450px] lg:w-[400px] h-[280px] absolute z-[2] lg:end-1/3 lg:bottom-1/4 md:end-1/2 end-0 bottom-0 md:top-1/2"></div>
+          <div className="w rectangle-white-theme dark:block hidden w-[150px] md:w-[450px] lg:w-[400px] h-[280px] absolute z-[-1] lg:end-1/3 lg:bottom-1/4 md:end-1/2 end-0 bottom-0 md:top-1/2"></div>
           {/* text */}
           <h2 className='font-bold text-[32px] md:text-[40px]'>What are the Smart eHealth tasks to do?</h2>
 
@@ -164,14 +166,15 @@ export default function Home() {
 
 
       {/* What are vidyamedic do?, What we do to your data?, How we build? */}
-      <div data-aos="fade-up" className="flex-col flex gap-12 md:px-4 text-white w-10/12 mx-auto mb-16">
+      <div data-aos="fade-up" className="flex-col flex gap-12 md:px-4 dark:text-[#073B4C] text-white w-10/12 mx-auto mb-16">
 
         {/* What are vidyamedic do? */}
         <div className="flex md:flex-row flex-col gap-4 md:gap-8 md:justify-between items-center">
           <div className='md:w-6/12'>
 
             <h2 className='text-[24px] md:text-[40px] font-bold'>
-              What are the <span className='text-[#005A8F]'> Vidya</span>Medic  do?
+              What are the <span className='text-[#005A8F] dark:text-[#217170]'> Vidya</span> 
+              <span className='text-white dark:text-[#217170]'>Medic</span>  do?
             </h2>
             <img src={image4} alt="" className='md:max-w-[470px] max-w-screen' />
           </div>
@@ -183,7 +186,7 @@ export default function Home() {
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
             </p>
 
-            <button className="px-5 py-2 bg-[#005A8F] w-fit ">
+            <button className="px-5 py-2 bg-[#005A8F] dark:bg-[#217170] text-white rounded-[2px] w-fit ">
               More About Us
             </button>
           </div>
@@ -219,9 +222,9 @@ export default function Home() {
 
       {/* What are vidyamedic do?, What we do to your data?, How we build? END */}
 
-      <div data-aos="fade-up" data-aos-duration="500" className="flex-col flex gap-12 md:px-4 text-white w-screen md:w-10/12 mx-auto mb-16">
+      <div data-aos="fade-up" data-aos-duration="500" className="flex-col flex gap-12 md:px-4 text-white dark:text-[#073B4C] w-screen md:w-10/12 mx-auto mb-16">
 
-        <div className="text-center text-[32px] font-bold text-white">
+        <div className="text-center text-[32px] font-bold text-white dark:text-[#073B4C]">
           OUR HAPPY CLIENT
         </div>
         <div class="relative overflow-hidden">
@@ -229,7 +232,7 @@ export default function Home() {
             {customerFeedback.length > 0 ? (
               customerFeedback.map((feedback) => {
                 return (
-                  <div className="py-6 px-4 max-w-[250px] min-w-[250px] rounded-[10px] md:max-w-[350px] md:min-w-[250px] bg-[#292929] text-white">
+                  <div className="py-6 px-4 max-w-[250px] min-w-[250px] rounded-[10px] md:max-w-[350px] md:min-w-[250px] bg-[#292929] dark:bg-[#217170] text-white">
                     {feedback.comment}
                   </div>
                 )
@@ -239,7 +242,7 @@ export default function Home() {
             {customerFeedback.length > 0 ? (
               customerFeedback.map((feedback) => {
                 return (
-                  <div className="py-6 px-4 max-w-[250px] min-w-[250px] rounded-[10px] md:max-w-[350px] md:min-w-[250px] bg-[#292929] text-white">
+                  <div className="py-6 px-4 max-w-[250px] min-w-[250px] rounded-[10px] md:max-w-[350px] md:min-w-[250px] bg-[#292929] dark:bg-[#217170] text-white">
                     {feedback.comment}
                   </div>
                 )

@@ -193,22 +193,6 @@ export default function MonitorDFA() {
                   <option value="no-filter">No filter</option>
                 </select>
 
-
-                {/* {currentUser.role !== 'user' && ( */}
-                {/* <div data-aos="fade-up" className="inline-block relative">
-                    <select
-                      name=""
-                      id=""
-                      className="p-3 bg-[#2C2C2C] rounded text-sm md:text-[16px] lg:min-w-[220px] px-3 py-3"
-                      onChange={handleChangeDevice}
-                    >
-                      <option value="" disabled>Select device Monitoring</option>
-                      <option value="C0680226" selected>C0680226</option>
-                      <option value="BA903328">BA903328</option>
-                    </select>
-                    {loading ? <span className="ms-4 loader"></span> : null}
-                  </div> */}
-                {/* )} */}
                 {resultsDFA ? (
                   <DfaMetrics results={resultsDFA} splittedLog={splittedLog} />
                 ) : null}

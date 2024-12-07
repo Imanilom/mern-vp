@@ -68,7 +68,7 @@ function Acitivity() {
       setLogs(ordered);
       console.log({ ordered })
     } catch (error) {
-      console.log(error)
+      console.log({error})
     } finally {
       setLoading(false)
     }
@@ -192,7 +192,7 @@ function Acitivity() {
               <div className="w-7/12">
                 <table class="items-center w-full rounded-md">
                   <thead>
-                    <tr className='bg-[#363636]/20 text-[#07AC7B]'>
+                    <tr className='bg-[#363636]/20 text-[#07AC7B] dark:bg-[#217170] dark:text-white'>
                       <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                         Tanggal
                       </th>
@@ -216,7 +216,7 @@ function Acitivity() {
 
                       if (_i < 5) {
                         return (
-                          <tr className={_i % 2 == 0 ? 'bg-[#2c2c2c]' : 'bg-[#141414]'}>
+                          <tr className={_i % 2 == 0 ? 'bg-[#2c2c2c] dark:bg-[#E7E7E7]' : 'bg-[#141414] dark:bg-[#CBCBCB]'}>
                             <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                               {timeSlot.split('/')[0].replace('-', '/').replace('-', '/')}
                             </th>
@@ -226,7 +226,7 @@ function Acitivity() {
                             <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                               {timeSlot.split('/')[1].split('-')[1]}
                             </td>
-                            <td class="text-[#07AC7B] border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                            <td class="text-[#07AC7B] dark:text-[#217170] font-semibold dark:underline border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                               <Link to={`/set/activity/${encryptStr(JSON.stringify({ date: timeSlot.split('/')[0], awal: timeSlot.split('/')[1].split('-')[0], akhir: timeSlot.split('/')[1].split('-')[1] }))}`}>
                                 Set Activity
                               </Link>
@@ -251,7 +251,7 @@ function Acitivity() {
                     onChange={(e) => setTimeGap(e.target.value)}
                     id="yourSelect"
                     name="yourSelect"
-                    className="block w-60 mt-2 p-3 rounded-md focus:outline-none shadow-lg bg-[#2C2C2C]/50 "
+                    className="block w-60 mt-2 p-3 rounded-md focus:outline-none shadow-lg bg-[#2C2C2C]/50 dark:bg-[#E7E7E7] "
                   >
                     <option value="5">5 minutes</option>
                     <option value="10">10 minutes</option>
@@ -369,7 +369,7 @@ function Acitivity() {
 
                   <tbody>
                     {aktivitas?.map((aktivitas, _i) => (
-                      <tr key={aktivitas._id} className={_i % 2 == 0 ? 'bg-[#CBCBCB]' : 'bg-[#E7E7E7]'}>
+                      <tr key={aktivitas._id} className={_i % 2 == 0 ? 'bg-[#141414] dark:bg-[#CBCBCB]' : 'bg-[#2c2c2c] dark:bg-[#E7E7E7]'}>
                         <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                           {new Date(aktivitas.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </th>
@@ -392,10 +392,10 @@ function Acitivity() {
                           <td>
                             <div class="relative w-full px-4 max-w-full flex-grow flex-1 py-2 sm:py-0 text-right">
                               <Link to={`/updateActivity/${aktivitas._id}`}>
-                                <button class="darkgreen text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Update</button>
+                                <button class="text-[#07AC7B] dark:text-[#217170] text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Update</button>
                               </Link>
 
-                              <button class="bgg-red text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button" onClick={() => confirmDelete(aktivitas)}>Delete</button>
+                              <button class="text-red-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button" onClick={() => confirmDelete(aktivitas)}>Delete</button>
                             </div>
                           </td>
                         ) : null}
@@ -413,7 +413,8 @@ function Acitivity() {
         ) : null}
 
         {paginationCount >= 1 ? (
-          <div data-aos="fade-right" className="pagination flex gap-2 text-sm mb-8">
+          <div className="flex items-center gap-8 mb-8">
+          <div data-aos="fade-right" className="pagination flex gap-2 text-sm overflow-x-auto max-w-sm">
             {Array.from({ length: paginationCount }).map((_, _i) => (
               _i + 1 === paginationActive ? (
                 <div className="py-3 px-7 bg-[#005A8F] dark:bg-[#DDA420] text-white rounded-[5px]">
@@ -426,6 +427,8 @@ function Acitivity() {
               )))
             }
 
+          </div>
+            <p className="font-semibold text-[#07AC7B] dark:text-[#217170] text-sm">/ Pagination bisa di scrool</p>
           </div>
 
         ) : null}
