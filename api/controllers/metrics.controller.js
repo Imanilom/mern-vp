@@ -180,7 +180,6 @@ export const calculateDFA = (data, order = 1) => {
 
 // Nilai DFA disimpan dan masuk ke array untuk di olah standar deviasi
 // data dfa / minggu untuk menentukan apakah ada anomali
-
 // Fungsi ADFA
 export const calculateADFA = (data, order = 1) => {
   // Calculate cumulative profile  baseline
@@ -242,7 +241,6 @@ export const calculateADFA = (data, order = 1) => {
 
   return { alphaPlus, alphaMinus };
 };
-
 
 
 // Additional helper functions

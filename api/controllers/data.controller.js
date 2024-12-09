@@ -40,61 +40,116 @@ export const groupDataByThreeAndAverage = (data) => {
 };
 
 
+// jika buat sesuatu fungsi sertakan visualisasi dan RMSE
+
 export async function kalmanFilter(logs, options = {}) {
   const {
-    initialEstimateRR = 550,  // Perkiraan awal RR
     initialErrorRR = 1,       // Kesalahan awal RR
     processNoiseRR = 0.01,    // Noise proses RR (Q)
     measurementNoiseRR = 1,   // Noise pengukuran RR (R)
 
-    initialEstimateHR = 70,   // Perkiraan awal HR
     initialErrorHR = 1,       // Kesalahan awal HR
     processNoiseHR = 0.01,    // Noise proses HR (Q)
-    measurementNoiseHR = 1,   // Noise pengukuran HR (R)
+    measurementNoiseHR = 1,   // Noise pengukuran HR (R),
+
+    debug = false,            // Aktifkan debug
   } = options;
 
-  let estimateRR = initialEstimateRR; // Perkiraan RR (X)
-  let errorRR = initialErrorRR;       // Kesalahan RR (P)
+  if (!Array.isArray(logs) || logs.length === 0) {
+    throw new Error("Input logs must be a non-empty array.");
+  }
 
-  let estimateHR = initialEstimateHR; // Perkiraan HR (X)
-  let errorHR = initialErrorHR;       // Kesalahan HR (P)
+  // Validasi dan estimasi awal
+  const isValidValue = (value, min, max) => value >= min && value <= max;
+
+  const validRR = logs
+    .map((log) => log.RR)
+    .filter((value) => isValidValue(value, 400, 1200));
+
+  const validHR = logs
+    .map((log) => log.HR)
+    .filter((value) => isValidValue(value, 40, 180));
+
+  const initialEstimateRR = validRR.length > 0 
+    ? validRR.reduce((sum, value) => sum + value, 0) / validRR.length 
+    : 500;
+
+  const initialEstimateHR = validHR.length > 0
+    ? validHR.reduce((sum, value) => sum + value, 0) / validHR.length
+    : 70;
+
+  // Variabel Kalman Filter
+  let estimateRR = initialEstimateRR;
+  let errorRR = initialErrorRR;
+
+  let estimateHR = initialEstimateHR;
+  let errorHR = initialErrorHR;
 
   const filteredLogs = [];
   const anomalies = [];
 
-  logs.forEach((log) => {
-    const measurementRR = log.RR; 
-    const measurementHR = log.HR; 
+  // Debugging opsional
+  if (debug) {
+    console.log("Initial Estimate RR:", estimateRR);
+    console.log("Initial Estimate HR:", estimateHR);
+  }
 
+  // Proses logs dengan Kalman Filter
+  logs.forEach((log, index) => {
+    const measurementRR = log.RR;
+    const measurementHR = log.HR;
+
+    if (
+      !isValidValue(measurementRR, 400, 1200) || 
+      !isValidValue(measurementHR, 40, 180)
+    ) {
+      anomalies.push({ ...log, reason: "Invalid measurement range" });
+      return;
+    }
+
+    // Kalman Gain dan Pembaruan untuk RR
     const kalmanGainRR = errorRR / (errorRR + measurementNoiseRR);
-    estimateRR = estimateRR + kalmanGainRR * (measurementRR - estimateRR);
+    estimateRR += kalmanGainRR * (measurementRR - estimateRR);
     errorRR = (1 - kalmanGainRR) * errorRR + processNoiseRR;
 
+    // Kalman Gain dan Pembaruan untuk HR
     const kalmanGainHR = errorHR / (errorHR + measurementNoiseHR);
-    estimateHR = estimateHR + kalmanGainHR * (measurementHR - estimateHR);
+    estimateHR += kalmanGainHR * (measurementHR - estimateHR);
     errorHR = (1 - kalmanGainHR) * errorHR + processNoiseHR;
 
+    // Hitung deviasi dan threshold
     const deviationRR = Math.abs(measurementRR - estimateRR);
-    const thresholdRR = 3 * Math.sqrt(errorRR); 
+    const thresholdRR = 3 * Math.sqrt(errorRR);
 
     const deviationHR = Math.abs(measurementHR - estimateHR);
     const thresholdHR = 3 * Math.sqrt(errorHR);
 
+    // Pisahkan anomali
     if (deviationRR > thresholdRR || deviationHR > thresholdHR) {
-      anomalies.push(log); 
+      anomalies.push({ ...log, reason: "Out of threshold" });
     } else {
-     
       filteredLogs.push({
-        filteredRR: estimateRR,
-        filteredHR: estimateHR,
-        timestamp: `${log.date_created} ${log.time_created}`
+        RR: parseFloat(estimateRR.toFixed(2)),
+        HR: parseFloat(estimateHR.toFixed(2)),
+        timestamp: `${log.date_created} ${log.time_created}`,
+        aktivitas: log.aktivitas || log.activity || log.acitivity || "Unknown",
+      });
+    }
+
+    if (debug) {
+      console.log(`Log ${index + 1}:`, {
+        measurementRR,
+        estimateRR,
+        errorRR,
+        measurementHR,
+        estimateHR,
+        errorHR,
       });
     }
   });
 
   return { filteredLogs, anomalies };
 }
-
 
 export async function filterIQ(logs, multiplier = 1.5) {
   if (!logs || logs.length === 0) {
@@ -323,11 +378,13 @@ const processHeartRateData = async () => {
 
     await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
 
-    const { filteredLogs, anomalies } = await filterIQBC(logs);
+    const { filteredLogs, anomalies } = await kalmanFilter(logs);
     if (filteredLogs.length === 0) {
       console.log("No valid data after filtering.");
       return;
     }
+
+    console.log(filteredLogs)
 
     // Kelompokkan data berdasarkan aktivitas
     const groupedByActivity = filteredLogs.reduce((acc, log) => {
@@ -338,10 +395,10 @@ const processHeartRateData = async () => {
 
       // Atur timestamp awal dan akhir
       if (!acc[activity].timestamps.start) {
-        acc[activity].timestamps.start = `${log.date_created} ${log.time_created}`;
+        acc[activity].timestamps.start = `${log.timestamp || log.date_created + " " + log.time_created}`;
       }
-      acc[activity].timestamps.end = `${log.date_created} ${log.time_created}`;
-
+      acc[activity].timestamps.end = `${log.timestamp || log.date_created + " " + log.time_created}`;
+    
       return acc;
     }, {});
 
