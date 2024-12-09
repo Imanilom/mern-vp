@@ -15,6 +15,8 @@ import Swal from 'sweetalert2';
 
 function Summary() {
     // const isLightMode_ = ;
+    // current user = informasi user yang login
+    // DocterPatient = informasi pasien yang sedang di monitoring
     const { currentUser, loading, error, DocterPatient } = useSelector((state) => state.user);
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -30,14 +32,17 @@ function Summary() {
 
     const fetchInit = async () => {
         try {
+            // Set default url untuk user
             let url = '/api/predictionfactor/getinfo';
             let url2 = `/api/recomendation/getAll/${currentUser._id}`;
             let url3 = '/api/treatment/getTreatment';
             let url4 = `/api/user/riwayatdeteksi/${currentUser._id}`
 
             if (currentUser.role == 'user') {
-                url3 += `/${currentUser._id}`
+                // Jika usser role == user
+                url3 += `/${currentUser._id}`;
             } else {
+                // Jika role nya dokter, ubah url API nya 
                 url += `?patient=${DocterPatient._id}`;
                 url2 = `/api/recomendation/getAll/${DocterPatient._id}`;
                 url3 += `/${DocterPatient._id}`
@@ -46,17 +51,16 @@ function Summary() {
 
             const res2 = await fetch(url2);
             const data2 = await res2.json();
+
             setInfoDokter(data2.recomendation[data2.recomendation.length - 1]['doctor']);
 
-            console.log({data2})
-
+            // Lakukan request ke API server
             const [res, res3, res4] = await Promise.all([
                 await fetch(url),
                 // await fetch(url2),
                 await fetch(url3),
                 await fetch(url4),
             ]);
-
 
             const [data, data3, data4] = await Promise.all([
                 await res.json(),
@@ -65,15 +69,16 @@ function Summary() {
                 await res4.json(),
             ]);
 
+            console.log({ data, data2, data3, data4 })
             let property = {};
-            property.Faktor_Resiko = data.prediction.supporting_risks;
-            property.Hasil_Prediksi = data.prediction.result_prediction;
-            property.Riwayat_Deteksi = data4.riwayat[0];
+
+            property.Faktor_Resiko = data.prediction.supporting_risks ?? [];
+            property.Hasil_Prediksi = data.prediction.result_prediction ?? '';
+            property.Riwayat_Deteksi = data4.riwayat[0] ?? [];
             property.Rekomendasi_Terakhir = data2.recomendation[data2.recomendation.length - 1]['name'];
             property.Treatment_Terakhir = data3.history[data3.history.length - 1]['diagnosis'];
-         
-            console.log({ data, data2, data3, property });
 
+            // Simpan informasi untuk ditampilkan
             setData(property);
         } catch (error) {
             console.log({ error })
@@ -81,15 +86,18 @@ function Summary() {
     }
 
     useEffect(() => {
+        // Panggil AOS untuk animasi on scrool
         AOS.init({
-            duration : 700
-       })
-        fetchInit();
+            duration: 700
+        })
 
+        fetchInit(); // run function
     }, []);
 
 
+    // handle untuk stop monitoring pasien
     const handleUnsignPatient = () => {
+        // Panggil pop up sweetalert2 untuk konfirmasi
         Swal.fire({
             title: "Are you sure?",
             text: "Kamu bisa monitoring pasien ini di lain waktu",
@@ -98,12 +106,15 @@ function Summary() {
             confirmButtonColor: "#3085d6",
             cancelButtonColor: "#d33",
             confirmButtonText: "Yes, of course"
-          }).then((result) => {
+        }).then((result) => {
             if (result.isConfirmed) {
+                // Jika dokter mengkonfirmsi, maka informasi pasien di redux akan di hapus
                 dispatch(docterUnsetUser());
+
+                // arahkan ke halaman pilih pasien
                 navigate('/my-patients');
             }
-          });
+        });
     }
 
     return (
@@ -120,7 +131,6 @@ function Summary() {
 
                                     <img class="object-cover rounded-xl h-72 lg:h-96" src={currentUser.role != 'user' ? DocterPatient.profilePicture : currentUser.profilePicture}
                                         alt="" />
-
                                 </div>
 
                                 <div class="rounded-md relative mt-3 flex flex-col min-w-0 break-words bg-[#363636]/20 dark:bg-[#217170]  w-full mb-6 shadow-lg duration-300 lg:hover:translate-x-[-20px] group">

@@ -20,7 +20,7 @@ function MyPatients() {
     const [searchInput, setSearchInput] = useState('');
     const [isModal, setModal] = useState(false);
     const [isShowBook, setShowBook] = useState(false);
-    const [patients, setPatients] = useState([]);
+    const [patients, setPatients] = useState([]); // variabel yang menampung patient
     const [modalProperty, setModalProperty] = useState({});
     const [allPatient, setAllPatient] = useState([]);
     const dispatch = useDispatch();
@@ -28,34 +28,35 @@ function MyPatients() {
 
     useEffect(() => {
 
+       // Panggil AOS untuk animasi on scrool
         AOS.init({
             duration: 700
         })
+
+        // Fetch Pasients to server
         const fetchPatients = async () => {
             try {
-                const response = await fetch('/api/patient/all'); // Adjust the API endpoint as needed
+                const response = await fetch('/api/patient/all');
                 const data = await response.json();
-                setPatients(data);
+                setPatients(data); // tampung data pasient untuk ditampilkan
                 setAllPatient(data);
             } catch (error) {
                 console.error('Error fetching patients:', error);
             }
         };
 
-        fetchPatients();
+        fetchPatients(); // run function
 
+        // Mencegah hak akses tak layar
         if(currentUser.role == 'user'){
+            // jika role user, tendang ke ringkasan-pasien 
             return window.location = '/ringkasan-pasien';
         }
     }, []);
 
-    const handleChangePropertyModal = (property) => {
-        setModal(true);
-        setModalProperty(property);
-    
-    };
-
+    // function untuk monitoring pasien
     const handleChoosePatient = (property) => {
+        // set redux statement dan arahkan dokter ke ringkasan-pasien
         dispatch(docterGetUser(property));
         navigate('/ringkasan-pasien')
     }
@@ -63,6 +64,7 @@ function MyPatients() {
     const handleSearchName = (e) => {
         e.preventDefault();
     };
+
     useEffect(() => {
         if (searchInput !== '') {
             let resultQuery = [];

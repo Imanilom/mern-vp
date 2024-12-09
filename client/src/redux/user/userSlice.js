@@ -1,11 +1,11 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  isLightMode_ : true,
-  currentUser: null,
-  error: null,
-  loading: false,
-  DocterPatient : null,
+  isLightMode_ : true, // untuk mengatur thema
+  currentUser: null, // untuk menyimpan data pasien / dokter yang login
+  error: null, // untuk menampilkan error di halaman web
+  loading: false, // gatau masi kepake atau ga
+  DocterPatient : null, // untuk menyimpan data pasien yang sedang di monitroing dokter
 };
 
 const userSlice = createSlice({

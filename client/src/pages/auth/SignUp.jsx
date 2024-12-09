@@ -15,20 +15,25 @@ export default function SignUp() {
   const navigate = useNavigate();
 
   useEffect(() => {
+      // Panggil AOS untuk animasi on scrool
     AOS.init({
       duration: 500
     })
   }, [])
+
+
   const handleChange = (e) => {
+     // ambil data sebelumnya dan gabungkan
     setFormData({
       ...formData,
       [e.target.id]: e.target.value,
     });
   };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // mencegah aplikasi di reload
     try {
-      setLoading(true);
+      setLoading(true); // beri informasi bahwa proses registrasi sedang di proses
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -37,17 +42,24 @@ export default function SignUp() {
         body: JSON.stringify(formData),
       });
       const data = await res.json();
-      console.log(data);
+
       if (data.success === false) {
+
+          // Jika response error, kirim message error
         setLoading(false);
         setError(data.message);
         return;
       }
+
       setLoading(false);
       setError(null);
+
+      // Arahkan ke halaman login
       navigate('/sign-in');
     } catch (error) {
       setLoading(false);
+
+      // Set message error dan tampilkan popup error
       setError(error.message);
     }
   };

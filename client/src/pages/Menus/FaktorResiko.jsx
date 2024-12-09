@@ -111,24 +111,46 @@ function FaktorResiko() {
 
                     <div class="block w-full overflow-x-auto rounded">
                         <table class="items-center bg-transparent w-full  ">
-                            <thead>
-                                <tr className='bg-[#2c2c2c] dark:bg-[#217170]'>
-                                    <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-white  align-middle  border-solid border-blueGray-100 py-4 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                                        Tanggal
-                                    </th>
-                                    <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                                        Nama Labotarium
-                                    </th>
-                                    <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                                        Location
-                                    </th>
+                            {currentUser.role == "user" ? (
+                                <thead>
+                                    <tr className='bg-[#2c2c2c] dark:bg-[#217170]'>
+                                        <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-white  align-middle  border-solid border-blueGray-100 py-4 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            Tanggal
+                                        </th>
+                                        <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            Nama Labotarium
+                                        </th>
+                                        <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            Location
+                                        </th>
 
-                                    <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                                        Action
-                                    </th>
+                                        <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            Action
+                                        </th>
 
-                                </tr>
-                            </thead>
+                                    </tr>
+                                </thead>
+                            ) : (
+                                <thead>
+                                    <tr className='bg-[#2c2c2c] dark:bg-[#E7E7E7]'>
+                                        <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-[#073B4C]  align-middle  border-solid border-blueGray-100 py-4 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            Tanggal
+                                        </th>
+                                        <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-[#073B4C] align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            Nama Labotarium
+                                        </th>
+                                        <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-[#073B4C] align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            Location
+                                        </th>
+
+                                        <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-[#073B4C] align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                            Action
+                                        </th>
+
+                                    </tr>
+                                </thead>
+                            )}
+
 
                             <tbody>
                                 {labs && labs.length > 0 ? (

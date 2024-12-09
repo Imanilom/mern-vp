@@ -1,3 +1,5 @@
+// THIS STATE MEANAGEMENT IS CANCELED. NOT IN USE
+
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {

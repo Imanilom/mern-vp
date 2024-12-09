@@ -22,24 +22,25 @@ export default function SignIn() {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
   useEffect(() => {
-    // <script>
+    // Panggil AOS untuk animasi on scrool
     AOS.init({
       duration: 500
     });
-    // </script>
   }, [])
+
   const handleChange = (e) => {
+    // ambil data sebelumnya dan gabungkan
     setFormData({
-      ...formData,
+      ...formData, 
       [e.target.id]: e.target.value
     });
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // mencegah aplikasi di reload
     try {
-      dispatch(signInStart());
       const res = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: {
@@ -50,14 +51,18 @@ export default function SignIn() {
 
       const data = await res.json();
       if (!res.ok) {
-        dispatch(signInFailure(data));
-        // return;
+        // Jika response error, kirim message error
         throw new Error(data.message);
       }
+
+      // Simpan informasi login user ke redux statement
       dispatch(signInSuccess(data));
+
+      // navigasikan ke halaman home
       navigate('/');
+
     } catch (error) {
-      dispatch(signInFailure(error));
+      // Set variabel error dengan informasi error dan munculkan popup
       setErr(error.message);
     }
   };
@@ -108,6 +113,7 @@ export default function SignIn() {
           </div>
           <div className="bg-[#0E0E0E]/50 absolute z-[1] w-full rounded-[29px] h-full start-0 top-0"></div>
         </div>
+
         <div className="md:w-7/12 flex items-center px-8 lg:px-16">
           <div data-aos="fade-left">
             <h1 className='text-[24px] lg:text-[32px] font-semibold'>

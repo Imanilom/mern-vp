@@ -1,3 +1,5 @@
+// File untuk menampung component dari package tertentu
+
 import CryptoJS from 'crypto-js';
 
 const secretKey = "mySecretKey";

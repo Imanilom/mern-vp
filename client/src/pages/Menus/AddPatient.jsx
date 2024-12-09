@@ -20,7 +20,6 @@ function AddPatient() {
     const { currentUser, error, DocterPatient } = useSelector((state) => state.user);
     const [searchInput, setSearchInput] = useState('');
     const [isModal, setModal] = useState(false);
-    const [isShowBook, setShowBook] = useState(false);
     const [patients, setPatients] = useState([]);
     const [modalProperty, setModalProperty] = useState({});
     const [allPatient, setAllPatient] = useState([]);
@@ -30,67 +29,72 @@ function AddPatient() {
     const [paginationCount, setPaginationCount] = useState(0);
     const [paginationActive, setPaginationActive] = useState(1);
 
+
+
     const fetchPatients = async () => {
         try {
             const response = await fetch(`/api/patient/add/pasient?p=${paginationActive - 1}`); // Adjust the API endpoint as needed
             const data = await response.json();
-            console.log({ data })
             setPatients(data.patients);
-            setAllPatient(data.patients);
-            setPaginationCount(data.lengthPage)
+            setAllPatient(data.patients); // simpan data patients
+            setPaginationCount(data.lengthPage) // hitung pagination
         } catch (error) {
             console.error('Error fetching patients:', error);
         }
     };
 
-    const handleChoosePatient = (property) => {
-        dispatch(docterGetUser(property));
-        console.log(property);
-        navigate('/ringkasan-pasien')
-    }
-
-
     useEffect(() => {
-
+        // Panggil AOS untuk animasi on scrool
         AOS.init({
             duration: 700
         })
-        fetchPatients();
 
-        if(currentUser.role == 'user'){
+        fetchPatients(); // run function
+
+        // tendang jika ada role user mencoba akses
+        if (currentUser.role == 'user') {
             return window.location = '/ringkasan-pasien';
         }
     }, []);
 
     useEffect(() => {
-
         fetchPatients();
-    }, [paginationActive])  
+    }, [paginationActive])
 
     const handleSearchName = (e) => {
         e.preventDefault();
     };
 
-    const handleSetPasient = async(id, patient) => {
+
+    const handleChoosePatient = (property) => {
+        // put patient data information to redux statement
+        dispatch(docterGetUser(property));
+
+        // arahkan ke ringkasan pasien
+        navigate('/ringkasan-pasien')
+    }
+
+    const handleSetPasient = async (id, patient) => {
         try {
             const response = await fetch(`/api/patient/add/pasient`, {
-                method : 'POST',
-                body : JSON.stringify({
-                    id : id
+                method: 'POST',
+                body: JSON.stringify({
+                    id: id // send id patient to server
                 }),
-                headers : {
-                    'Content-Type' : 'application/json'
+                headers: {
+                    'Content-Type': 'application/json'
                 }
             }); // Adjust the API endpoint as needed
 
             const data = await response.json();
 
             Swal.fire('Success!', 'Succesfully to be your patient, start monitoring.', 'success')
-            .then(() => {
-                handleChoosePatient(patient)
-            });
+                .then(() => {
+                    // After success, mulai monitoring pasient ini
+                    handleChoosePatient(patient)
+                });
         } catch (error) {
-            console.log({error})
+            console.log({ error })
         }
     }
 
@@ -170,7 +174,7 @@ function AddPatient() {
                         </div>
                         {/* <ButtonOffCanvas /> */}
                         <div className="relative flex flex-col min-w-0 break-words bgg-bl w-full mb-6 shadow-lg rounded ">
-                            
+
                             <div className="block w-full overflow-x-auto">
                                 <table className="items-center w-full ">
                                     <thead>
@@ -187,7 +191,7 @@ function AddPatient() {
                                             <th className="hidden sm:table-cell px-6 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Address
                                             </th>
-                                         
+
                                             <th className="px-6 text-blueGray-500 dark:text-white align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                                 Action
                                             </th>
@@ -209,7 +213,7 @@ function AddPatient() {
                                                 <td className="hidden sm:table-cell border-t-0 text-gray-400 px-6 w-[360px] align-middle border-l-0 border-r-0 text-xs whitespace-wrap p-4 ">
                                                     {patient.address != '' ? patient.address : patient.alamatLengkap}
                                                 </td>
-                                                
+
                                                 <td>
                                                     <button className='text-[#07AC7B] dark:text-[#D39504] font-medium text-sm px-4 text-start' onClick={() => handleSetPasient(patient._id, patient)}>
                                                         Jadikan Pasien saya
