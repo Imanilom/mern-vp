@@ -1,0 +1,82 @@
+{
+  "dailyMetrics": {
+    "dfa": {
+      "alpha1": null,
+      "alpha2": null
+    },
+    "adfa": {
+      "alphaPlus": null,
+      "alphaMinus": null
+    },
+    "median3dp": 740.205,
+    "mean": 743.0174999999999,
+    "max": 763.5,
+    "min": 728.16,
+    "rmssd": 19.95530756465559,
+    "sdnn": 15.499858870325252,
+    "hf": 86.13703125000015,
+    "lf": 0,
+    "lfHfRatio": 0,
+    "s1": 14.110533299631177,
+    "s2": 1045.3324913873096
+  },
+  "activityMetrics": {
+    "Unknown": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 740.205,
+        "mean": 743.0174999999999,
+        "max": 763.5,
+        "min": 728.16,
+        "rmssd": 19.95530756465559,
+        "sdnn": 15.499858870325252,
+        "hf": 86.13703125000015,
+        "lf": 0,
+        "lfHfRatio": 0,
+        "s1": 14.110533299631177,
+        "s2": 1045.3324913873096
+      },
+      "timestamps": {
+        "start": "11-05-2023 15:06:07",
+        "end": "11-05-2023 15:10:06"
+      }
+    }
+  },
+  "filteredLogs": [
+    {
+      "date_created": "11-05-2023",
+      "time_created": "15:06:07",
+      "HR": 81.49,
+      "RR": 763.5,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "11-05-2023",
+      "time_created": "15:06:33",
+      "HR": 84.61,
+      "RR": 734.52,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "11-05-2023",
+      "time_created": "15:09:39",
+      "HR": 84.97,
+      "RR": 728.16,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "11-05-2023",
+      "time_created": "15:10:06",
+      "HR": 82.76,
+      "RR": 745.89,
+      "aktivitas": "Unknown"
+    }
+  ]
+}

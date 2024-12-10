@@ -64,7 +64,7 @@ export async function kalmanFilter(logs, options = {}) {
 
   const validRR = logs
     .map((log) => log.RR)
-    .filter((value) => isValidValue(value, 400, 1200));
+    .filter((value) => isValidValue(value, 400, 1000));
 
   const validHR = logs
     .map((log) => log.HR)
@@ -100,7 +100,7 @@ export async function kalmanFilter(logs, options = {}) {
     const measurementHR = log.HR;
 
     if (
-      !isValidValue(measurementRR, 400, 1200) || 
+      !isValidValue(measurementRR, 400, 1000) || 
       !isValidValue(measurementHR, 40, 180)
     ) {
       anomalies.push({ ...log, reason: "Invalid measurement range" });
@@ -129,9 +129,10 @@ export async function kalmanFilter(logs, options = {}) {
       anomalies.push({ ...log, reason: "Out of threshold" });
     } else {
       filteredLogs.push({
+        date_created: log.date_created,
+        time_created: log.time_created,
         RR: parseFloat(estimateRR.toFixed(2)),
         HR: parseFloat(estimateHR.toFixed(2)),
-        timestamp: `${log.date_created} ${log.time_created}`,
         aktivitas: log.aktivitas || log.activity || log.acitivity || "Unknown",
       });
     }
@@ -370,7 +371,7 @@ const processHeartRateData = async () => {
     // Tambahkan validasi pada setiap log
     logs.forEach((log) => {
       if (!log.aktivitas && log.activity) {
-        log.aktivitas = log.activity ; // Salin nilai dari 'activity' jika 'aktivitas' kosong
+        log.aktivitas = log.activity; // Salin nilai dari 'activity' jika 'aktivitas' kosong
       } else if (!log.aktivitas && !log.activity) {
         log.aktivitas = "Unknown"; // Atur nilai default jika keduanya tidak ada
       }
@@ -378,13 +379,13 @@ const processHeartRateData = async () => {
 
     await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
 
-    const { filteredLogs, anomalies } = await kalmanFilter(logs);
+    const { filteredLogs, anomalies } = await filterIQ(logs);
+    
+    console.log(filteredLogs)
     if (filteredLogs.length === 0) {
       console.log("No valid data after filtering.");
       return;
     }
-
-    console.log(filteredLogs)
 
     // Kelompokkan data berdasarkan aktivitas
     const groupedByActivity = filteredLogs.reduce((acc, log) => {
@@ -416,7 +417,14 @@ const processHeartRateData = async () => {
       };
     }
 
-    const [day, month, year] = firstLog.date_created.split("/");
+    // Validasi dan format tanggal
+    const [day, month, year] = firstLog.date_created.split("-");
+    if (!day || !month || !year) {
+      console.error("Invalid date format:", firstLog.date_created);
+      return;
+    }
+
+    // Format tanggal menjadi YYYY-MM-DD
     const formattedDateString = `${year}-${month}-${day}T${firstLog.time_created}`;
     const oldestTimestamp = new Date(formattedDateString);
 
@@ -484,6 +492,8 @@ const processHeartRateData = async () => {
     console.error("Error processing heart rate data:", error);
   }
 };
+
+
 
 
 const processHeartRateData10 = async () => {

@@ -1,0 +1,126 @@
+{
+  "dailyMetrics": {
+    "dfa": {
+      "alpha1": null,
+      "alpha2": null
+    },
+    "adfa": {
+      "alphaPlus": 2.0094952677660696,
+      "alphaMinus": 2.6905321983780266
+    },
+    "median3dp": 589,
+    "mean": 1600.111111111111,
+    "max": 8729,
+    "min": 438,
+    "rmssd": 2950.659905004303,
+    "sdnn": 2689.2613039850016,
+    "hf": 1187053.4621237991,
+    "lf": 553090.3572434973,
+    "lfHfRatio": 0.4659355074487916,
+    "s1": 2086.4316278037963,
+    "s2": 2513.923862709449
+  },
+  "activityMetrics": {
+    "Unknown": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": 2.0094952677660696,
+          "alphaMinus": 2.6905321983780266
+        },
+        "median3dp": 589,
+        "mean": 1600.111111111111,
+        "max": 8729,
+        "min": 438,
+        "rmssd": 2950.659905004303,
+        "sdnn": 2689.2613039850016,
+        "hf": 1187053.4621237991,
+        "lf": 553090.3572434973,
+        "lfHfRatio": 0.4659355074487916,
+        "s1": 2086.4316278037963,
+        "s2": 2513.923862709449
+      },
+      "timestamps": {
+        "start": "06-06-2023 11:20:57",
+        "end": "06-06-2023 11:21:44"
+      }
+    }
+  },
+  "filteredLogs": [
+    {
+      "date_created": "06-06-2023",
+      "time_created": "11:20:57",
+      "HR": 40,
+      "RR": 470,
+      "rrRMS": 459,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "06-06-2023",
+      "time_created": "11:21:01",
+      "HR": 40,
+      "RR": 438,
+      "rrRMS": 428,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "06-06-2023",
+      "time_created": "11:21:03",
+      "HR": 40,
+      "RR": 1202,
+      "rrRMS": 1174,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "06-06-2023",
+      "time_created": "11:21:06",
+      "HR": 40,
+      "RR": 589,
+      "rrRMS": 575,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "06-06-2023",
+      "time_created": "11:21:09",
+      "HR": 40,
+      "RR": 804,
+      "rrRMS": 785,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "06-06-2023",
+      "time_created": "11:21:12",
+      "HR": 40,
+      "RR": 1158,
+      "rrRMS": 1131,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "06-06-2023",
+      "time_created": "11:21:29",
+      "HR": 40,
+      "RR": 536,
+      "rrRMS": 523,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "06-06-2023",
+      "time_created": "11:21:41",
+      "HR": 40,
+      "RR": 475,
+      "rrRMS": 464,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "06-06-2023",
+      "time_created": "11:21:44",
+      "HR": 40,
+      "RR": 8729,
+      "rrRMS": 8524,
+      "aktivitas": "Unknown"
+    }
+  ]
+}
