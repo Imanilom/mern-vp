@@ -1,0 +1,110 @@
+{
+  "dailyMetrics": {
+    "dfa": {
+      "alpha1": null,
+      "alpha2": null
+    },
+    "adfa": {
+      "alphaPlus": null,
+      "alphaMinus": null
+    },
+    "median3dp": 515,
+    "mean": 905.4285714285714,
+    "max": 3054,
+    "min": 279,
+    "rmssd": 1519.8222483786276,
+    "sdnn": 979.9941933744398,
+    "hf": 170120.90470605122,
+    "lf": 125579.5640439488,
+    "lfHfRatio": 0.7381783224168448,
+    "s1": 1074.6766180267127,
+    "s2": 1557.3244684393806
+  },
+  "activityMetrics": {
+    "Unknown": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 515,
+        "mean": 905.4285714285714,
+        "max": 3054,
+        "min": 279,
+        "rmssd": 1519.8222483786276,
+        "sdnn": 979.9941933744398,
+        "hf": 170120.90470605122,
+        "lf": 125579.5640439488,
+        "lfHfRatio": 0.7381783224168448,
+        "s1": 1074.6766180267127,
+        "s2": 1557.3244684393806
+      },
+      "timestamps": {
+        "start": "11-06-2024 16:42:56",
+        "end": "11-06-2024 16:43:16"
+      }
+    }
+  },
+  "filteredLogs": [
+    {
+      "date_created": "11-06-2024",
+      "time_created": "16:42:56",
+      "HR": 116,
+      "RR": 1034,
+      "rrRMS": 1010,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "11-06-2024",
+      "time_created": "16:42:58",
+      "HR": 117,
+      "RR": 430,
+      "rrRMS": 420,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "11-06-2024",
+      "time_created": "16:43:07",
+      "HR": 118,
+      "RR": 3054,
+      "rrRMS": 2982,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "11-06-2024",
+      "time_created": "16:43:09",
+      "HR": 119,
+      "RR": 515,
+      "rrRMS": 503,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "11-06-2024",
+      "time_created": "16:43:11",
+      "HR": 119,
+      "RR": 279,
+      "rrRMS": 272,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "11-06-2024",
+      "time_created": "16:43:16",
+      "HR": 119,
+      "RR": 354,
+      "rrRMS": 346,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "11-06-2024",
+      "time_created": "16:43:16",
+      "HR": 119,
+      "RR": 672,
+      "rrRMS": 656,
+      "aktivitas": "Unknown"
+    }
+  ]
+}

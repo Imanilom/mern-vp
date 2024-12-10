@@ -1,0 +1,152 @@
+{
+  "dailyMetrics": {
+    "dfa": {
+      "alpha1": null,
+      "alpha2": null
+    },
+    "adfa": {
+      "alphaPlus": 1.5513825269157417,
+      "alphaMinus": 2.6265991369354538
+    },
+    "median3dp": 813.27,
+    "mean": 834.3685714285715,
+    "max": 931.35,
+    "min": 736.32,
+    "rmssd": 64.77546383766474,
+    "sdnn": 65.70230365439635,
+    "hf": 16726.158745563695,
+    "lf": 22956.268925119366,
+    "lfHfRatio": 1.3724770447493269,
+    "s1": 45.80316973411672,
+    "s2": 1186.5569182123932
+  },
+  "activityMetrics": {
+    "Unknown": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": 1.5513825269157417,
+          "alphaMinus": 2.6265991369354538
+        },
+        "median3dp": 813.27,
+        "mean": 834.3685714285715,
+        "max": 931.35,
+        "min": 736.32,
+        "rmssd": 64.77546383766474,
+        "sdnn": 65.70230365439635,
+        "hf": 16726.158745563695,
+        "lf": 22956.268925119366,
+        "lfHfRatio": 1.3724770447493269,
+        "s1": 45.80316973411672,
+        "s2": 1186.5569182123932
+      },
+      "timestamps": {
+        "start": "24-07-2023 10:09:05",
+        "end": "24-07-2023 11:10:12"
+      }
+    }
+  },
+  "filteredLogs": [
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:09:05",
+      "HR": 79.5,
+      "RR": 780.97,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:09:12",
+      "HR": 79.31,
+      "RR": 775.44,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:09:21",
+      "HR": 78.93,
+      "RR": 785.01,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:11:41",
+      "HR": 76.32,
+      "RR": 811.76,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:12:38",
+      "HR": 77.61,
+      "RR": 798.04,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:12:45",
+      "HR": 77.37,
+      "RR": 795.21,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:17:18",
+      "HR": 70.22,
+      "RR": 873.22,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:20:52",
+      "HR": 66.21,
+      "RR": 925.91,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:21:01",
+      "HR": 66.3,
+      "RR": 924.5,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:21:17",
+      "HR": 66.66,
+      "RR": 913.23,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "10:21:25",
+      "HR": 66.52,
+      "RR": 931.35,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "11:01:22",
+      "HR": 83.34,
+      "RR": 736.32,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "11:09:55",
+      "HR": 75.12,
+      "RR": 814.78,
+      "aktivitas": "Unknown"
+    },
+    {
+      "date_created": "24-07-2023",
+      "time_created": "11:10:12",
+      "HR": 75.34,
+      "RR": 815.42,
+      "aktivitas": "Unknown"
+    }
+  ]
+}

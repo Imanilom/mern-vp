@@ -180,7 +180,6 @@ export const calculateDFA = (data, order = 1) => {
 
 // Nilai DFA disimpan dan masuk ke array untuk di olah standar deviasi
 // data dfa / minggu untuk menentukan apakah ada anomali
-
 // Fungsi ADFA
 export const calculateADFA = (data, order = 1) => {
   // Calculate cumulative profile  baseline
@@ -244,7 +243,6 @@ export const calculateADFA = (data, order = 1) => {
 };
 
 
-
 // Additional helper functions
 export const calculateQuartilesAndIQR = (values) => {
   // Ensure values is an array and has valid data
@@ -274,6 +272,29 @@ const calculatePercentile = (values, percentile) => {
     const weight = index - lower;
     return values[lower] * (1 - weight) + values[upper] * weight; // Linear interpolation for percentile
   };
+
+  // MSE & RMSE
+  function calculateErrors(actual, predicted) {
+    if (actual.length !== predicted.length) {
+      throw new Error("Array 'actual' dan 'predicted' harus memiliki panjang yang sama.");
+    }
+  
+    const n = actual.length;
+  
+    // Hitung error kuadrat
+    const squaredErrors = actual.map((value, index) => {
+      const error = value - predicted[index];
+      return error ** 2;
+    });
+  
+    // Hitung MSE
+    const mse = squaredErrors.reduce((sum, error) => sum + error, 0) / n;
+  
+    // Hitung RMSE
+    const rmse = Math.sqrt(mse);
+  
+    return { mse, rmse };
+  }
   
   
   export function calculateAdvancedMetrics(allRRIntervals) {
@@ -297,7 +318,8 @@ const calculatePercentile = (values, percentile) => {
     const max = Math.max(...allRRIntervals);
     const min = Math.min(...allRRIntervals);
     const dfa = calculateDFA(allRRIntervals);
-    const adfa = calculateADFA(allRRIntervals); // Make sure calculateDFA is defined correctly
+    const adfa = calculateADFA(allRRIntervals);
+    const mseAndRmse = calculateErrors(allRRIntervals, allRRIntervals);
 
     // S1 & S2
     const diff1 = allRRIntervals.slice(1).map((val, index) => val - allRRIntervals[index]);
@@ -357,7 +379,8 @@ const calculatePercentile = (values, percentile) => {
         lf,
         lfHfRatio,
         s1,
-        s2
+        s2,
+        mseAndRmse
     };
 }
 
