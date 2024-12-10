@@ -183,12 +183,15 @@ function LineGraph({ data, label, keyValue, color }) {
         // Paginasi
         let page = scroolState[keyValue] - 1;
         let maxTitik = 40;
+
+           // Fungsi untuk mendapatkan data sesuai dengan halaman
         function getPaginatedData(data, page, maxTitik) {
             const startIndex = page * maxTitik;
             const endIndex = startIndex + maxTitik;
             return data.slice(startIndex, endIndex);
         }
         
+          // Mendapatkan data yang diproses untuk halaman saat ini
         const paginatedData = getPaginatedData(result, page, maxTitik);
         console.log({ paginatedData }, "INI PAGINATE");
         let processedData = paginatedData;        

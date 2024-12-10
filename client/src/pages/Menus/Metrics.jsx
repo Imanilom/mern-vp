@@ -21,19 +21,11 @@ export default function Metrics() {
   const dispatch = useDispatch();
   const { currentUser, DocterPatient } = useSelector((state) => state.user);
   const navigate = useNavigate();
-  const [logs, setLogs] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [metrics, setMetrics] = useState({ rmssd: null, pnn50: null, sdnn: null, s1: null, s2: null });
   const [dailyMetrics, setDailyMetrics] = useState([]);
-  const [isHRVisible, setHRIsVisible] = useState(false); // Show HR chart by default
-  const [isRRVisible, setRRIsVisible] = useState(true); // Show RR chart by default
-  const [isIQRVisible, setIQRIsVisible] = useState(false); // Show RR chart by default
-  const [is3dpVisible, set3dpIsVisible] = useState(false); // Show RR chart by default
-  const [isPoincareVisible, setPoincareIsVisible] = useState(false); // Show Poincare chart by default
   const [device, setDevice] = useState("C0680226");
   const [metode, setMetode] = useState("OC");
-  const metodeCollection = ["OC", "IQ", "BC"];
   const [loading, setLoading] = useState(false);
 
   const [medianProperty, setMedianProperty] = useState({
@@ -45,11 +37,12 @@ export default function Metrics() {
     dfa: 0,
     total: 0
   });
-  const [borderColor, setBorderColor] = useState([]);
 
   useEffect(() => {
+    // Mengecek apakah user sudah memiliki guid device yang valid
     if (currentUser.guid == '' || !currentUser.guid) {
-      setLoading(true);
+      setLoading(true); // set loading page true
+      //tampilkan popup error dan tendang user
       Swal.fire({
         title: "Error!",
         text: "Kamu belum memiliki guid yang valid. akses ditolak!",
@@ -58,50 +51,37 @@ export default function Metrics() {
       }).then(() => {
         return navigate('/profile');
       });
-    } else {
 
+    } else {
+      // jika guid device sudah valid 
       AOS.init({
         duration: 700
       })
-      fetchLogs(device);
+      fetchLogs(device); // run function
     }
-
-    // readFileExistOnFTP('2023-07-24', '2024-08-29');
   }, []);
-
-  useEffect(() => {
-    if (startDate && endDate) {
-
-      dispatch(clearLogsWithDailytMetric());
-      fetchLogs(device);
-
-    }
-  }, [startDate, endDate]);
 
   const fetchLogs = async (device, metode) => {
     try {
-      setLoading(true);
-      results = [];
+      setLoading(true); // set loading page
       let url = `/api/user/test`;
       if (device) {
         url = `/api/user/test/${device}`;
       }
 
+      // jika memakai filtering range tanggal
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        if (metode) url += `&method=${metode}`;
+        if (metode) url += `&method=${metode}`;  // jika metode algorithma di cantum
       } else {
-        if (metode) url += `?method=${metode}`;
+        if (metode) url += `?method=${metode}`;  // jika metode algorithma di cantum
       }
+
       const response = await fetch(url);
       const data = await response.json();
 
-      console.log({ data })
       if (!response.ok) {
-        console.log('error');
-        setLogs([]);
-
-        setMetrics([]);
+        // Jika terjadi kesahalahn
         setDailyMetrics([]);
 
         dispatch(clearLogsWithDailytMetric());
@@ -109,41 +89,14 @@ export default function Metrics() {
         return
       }
 
-      // let payloadRedux = {};
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
 
-      // dari coomit sebelumnya
       if (data && sortedLogs.length > 0) {
-        const resultCalculateMetric = calculateMetrics(sortedLogs);
-        setMetrics(resultCalculateMetric);
 
-        // let dfaHR = sortedLogs.map(log => log.HR);
-        // const dailyMetrictResult = calculateDailyMetrics(sortedLogs, dfaHR, data.dailyMetric); // call here
-        // setDailyMetrics(dailyMetrictResult);
-        // console.log({ dailyMetrictResult });
+        const dailyMetrictResult = data.dailyMetric; // simpan data response
+        setDailyMetrics(dailyMetrictResult);
 
-        const dailyMetrictResult = data.dailyMetric;
-        console.log({ dailyMetrictResult })
-        setDailyMetrics(dailyMetrictResult); // dri json
-
-        // console.log({sortedLogs, tes})
-        setLogs(sortedLogs);
-
-        // // setBorderColor
-        const borderColor = sortedLogs.map(item => {
-          if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan 
-          if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
-          if (item.activity === 'Berolahraga') return 'rgba(116, 12, 224, 0.8)'; // Ungu untuk Berolahraga
-          // return 'rgba(75, 192, 192, 1)'; // Warna default
-          return 'rgba(7, 172, 123, 1)'; // Warna default
-        });
-
-        setBorderColor(borderColor);
-        // // payloadRedux.borderColorR = borderColor;
-
-
-
-        //   // payloadRedux.dailymetricR = dailyMetrictResult;
+        // inisiasi awal untuk menghitung rata2
         let property = {
           tSdnn: 0,
           tRmssd: 0,
@@ -155,8 +108,8 @@ export default function Metrics() {
           dfa: 0
         }
 
+        // loop dan tambahkan value berdasarkan key masing2
         dailyMetrictResult.forEach((val) => {
-          // console.log(val)
           property.tSdnn += Math.floor(val.sdnn);
           property.tRmssd += Math.floor(val.rmssd);
           property.tMin += Math.floor(val.min);
@@ -167,6 +120,7 @@ export default function Metrics() {
           property.dfa += Math.floor(val.dfa)
         });
 
+        // hitung rata - rata 
         let median = {
           sdnn: property.tSdnn / dailyMetrictResult.length,
           rmssd: property.tRmssd / dailyMetrictResult.length,
@@ -179,13 +133,9 @@ export default function Metrics() {
           dfa: property.dfa / dailyMetrictResult.length
         }
 
-        console.log({ median })
-        setMedianProperty(median);
+        setMedianProperty(median); // simpan rata - rata value
 
       };
-
-
-      //   payloadRedux.medianPropertyR = median;
     }
     catch (error) {
       console.error('Error fetching logs:', error);
@@ -194,8 +144,14 @@ export default function Metrics() {
     }
   };
 
+  useEffect(() => {
+    // Jalankan fungsi ini ketika input range berubah
+    if (startDate && endDate) {
+      fetchLogs(device); // run function
+    }
+  }, [startDate, endDate]);
 
-
+  // fungsi untuk menghitung metrics
   const calculateMetrics = (logs) => {
     const rrIntervals = logs.map((log) => log.RR);
     const nnIntervals = [];
@@ -239,12 +195,13 @@ export default function Metrics() {
     return { sdnn, rmssd, pnn50, s1, s2 };
   };
 
-  const handleChangeDevice = (e) => {
-    e.preventDefault();
-    setDevice(e.target.value);
-    fetchLogs(e.target.value, metode);
-  }
+  // const handleChangeDevice = (e) => {
+  //   e.preventDefault();
+  //   setDevice(e.target.value);
+  //   fetchLogs(e.target.value, metode);
+  // }
 
+  // Ketika metode algorithma di ganti
   const handleChangeMetode = (e) => {
     e.preventDefault();
     setMetode(e.target.value);
@@ -253,7 +210,7 @@ export default function Metrics() {
 
   return (
     <div>
-      {loading ? (
+      {loading ? ( // show this screen while loading
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101010] dark:bg-[#FEFCF5]">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] dark:border-[#217170] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
@@ -270,11 +227,11 @@ export default function Metrics() {
             <div className="relative flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0 ">
                 <div className="flex flex-wrap items-center">
-                  {/* <ButtonOffCanvas index={2} /> */}
 
                   <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Metrics Data</h1>
 
                 </div>
+
                 <DatePicker
                   data-aos="fade-left"
                   selectsRange
@@ -290,7 +247,6 @@ export default function Metrics() {
                   className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm me-3 sm:me-0 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
-
                 <select
                   name=""
                   id=""
@@ -303,6 +259,7 @@ export default function Metrics() {
                   <option value="BC">BC</option>
                 </select>
 
+                {/* call component to show the table */}
                 <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
 
               </div>

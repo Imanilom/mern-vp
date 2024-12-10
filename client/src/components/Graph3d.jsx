@@ -64,22 +64,80 @@ function Graph3d({ data, label, color }) {
         let processedData2 = processData(rawData);
         let processedData;
         let sizeCircle = [];
-        // if (rawData.length <= 30) {
-        //     // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
-        //     processedData = rawData;
-        // } else {
-        //     // klo lebih maka di filter biar ga terlalu banyak slide
-        //     processedData = processData(rawData);
-        // }
 
-        processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
+        processedData2 = processedData2.filter(d => d.RR !== null && d.HR !== null);
 
-        processedData.forEach(d => {
-            d.date = new Date(d.date);
+        const logsGroupDate = {};
+        let date = "";
+        let result = [];
+
+        processedData2.forEach(d => {
+            // datetime is required "2024-01-09T04:47:41.000Z"
+            let date = new Date(d.date);
+            d.date = date;
+            d.datetime = date.toISOString()
+        });
+        console.log({processedData2})
+        // Mengelompokkan data berdasarkan tanggal
+        processedData2.forEach((val) => {
+            date = val.datetime.split("T")[0];
+            // const [y,m,d] = date.split("") 
+            if (!logsGroupDate[date]) logsGroupDate[date] = [];
+            logsGroupDate[date].push(val);
         });
 
-        XCount = processedData.length;
+        console.log({ logsGroupDate });
+        // Proses data per tanggal
+        Object.entries(logsGroupDate).forEach(([date, logs]) => {
+            let labelingMinute = ["00", "15", "30", "45"];
+            let labelingHour = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
 
+            let startDataTimeHour = logs[0].date.getHours();
+            let endDataTimeHour = logs[logs.length - 1].date.getHours();
+
+            console.log({ logs, startDataTimeHour, endDataTimeHour });
+
+            // Menambahkan waktu awal
+            for (let hour = 0; hour < startDataTimeHour; hour++) {
+                labelingMinute.forEach((minute) => {
+                    let datetime = new Date(`${date}T${labelingHour[hour]}:${minute}:00`);
+                    result.push({
+                      avg : 0,
+                        date: datetime,
+                        label: "safe",
+                        timestamp: datetime.getTime(),
+                    });
+                });
+            }
+
+            // Menambahkan data asli
+            logs.forEach((log) => result.push(log));
+            console.log({ date, logs })
+
+            // Menambahkan waktu akhir
+            for (let hour = endDataTimeHour; hour < labelingHour.length; hour++) {
+                labelingMinute.forEach((minute) => {
+                    let datetime = new Date(`${date}T${labelingHour[hour]}:${minute}:00`);
+                    console.log("DATA WAKTU AKHIR", datetime)
+                    result.push({
+                        avg: 0,
+                        date: datetime,
+                        label: "safe",
+                        timestamp: datetime.getTime(),
+                    });
+                });
+            }
+        });
+
+        // Mengurutkan data berdasarkan waktu
+        result.sort((a, b) => new Date(a.date) - new Date(b.date));
+        console.log({ result } , "GRAPH 3d");
+
+        // Menambahkan indeks ke data
+        result.forEach((d, i) => (d.index = i));
+
+        // Paginasi
+        XCount = processedData2.length;
         let page = scroolState[label] - 1;
         let maxTitik = 40;
 
@@ -91,7 +149,7 @@ function Graph3d({ data, label, color }) {
         }
 
         // Mendapatkan data yang diproses untuk halaman saat ini
-        const paginatedData = getPaginatedData(processedData, page, maxTitik);
+        const paginatedData = getPaginatedData(result, page, maxTitik);
         processedData = paginatedData;
 
         let defaultColor = "rgba(7, 172, 123, 1)";
@@ -104,13 +162,13 @@ function Graph3d({ data, label, color }) {
 
         color = processedData.map((_v, i) => {
             if (i > 0) {
-               
+
                 console.log('kuning', processedData[i - 1]["avg"] - processedData[i - 1]["avg"] >= 5);
                 if (processedData[i - 1]["avg"] - processedData[i]["avg"] >= 10) {
-                   
+
                     return 'rgba(249, 39, 39, 0.8)';
                 } else if (processedData[i - 1]["avg"] - processedData[i]["avg"] >= 5) {
-                   
+
                     return 'rgba(255, 161, 0, 1)';
                 } else {
                     return defaultColor; // Warna default
@@ -122,9 +180,8 @@ function Graph3d({ data, label, color }) {
 
         sizeCircle = processedData.map((item, i) => {
             if (i > 0) {
-               
+
                 if (processedData[i - 1]["avg"] - processedData[i]["avg"] >= 10) {
-                   
                     processedData[i]['label'] = "Danger";
                     return 8; // ukuran 6 untuk damger
                 } else if (processedData[i - 1]["avg"] - processedData[i]["avg"] >= 5) {
@@ -162,7 +219,7 @@ function Graph3d({ data, label, color }) {
             svgWidth = window.innerWidth * 0.8;
         }
 
-        setSlice(Math.floor(processedData2.length / maxTitik) + 1);
+        setSlice(Math.floor(result.length / maxTitik) + 1);
         // setSlice(Math.floor(width / svgWidth) + 1);
 
         const svg = d3.select(chartRef.current)
@@ -194,7 +251,7 @@ function Graph3d({ data, label, color }) {
         let previousDate = null;
 
         processedData.forEach((d, i) => {
-            console.log({ d })
+            console.log({ d, i }, processData[i])
             const currentDate = d.date.toDateString();
             if (previousDate !== currentDate) {
                 // Gambar garis putus-putus di sini
@@ -231,9 +288,9 @@ function Graph3d({ data, label, color }) {
 
                 let labelsPurposion;
 
-                if(d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
-                if(d.label == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
-                if(d.label == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                if (d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                if (d.label == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                if (d.label == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
 
                 const [xPos, yPos] = d3.pointer(event);
                 let x = xPos;
@@ -321,7 +378,7 @@ function Graph3d({ data, label, color }) {
                         ) : null}
 
                         {scroolState[label] < slice ? (
-                            <button className='rounded-md bg-slate-800 dark:bg-[#FFD166] px-3 py-1 me-1'  onClick={() => triggerSimulate('plus')}>
+                            <button className='rounded-md bg-slate-800 dark:bg-[#FFD166] px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
                                 <FaAngleRight color='white' size={16} />
                             </button>
 

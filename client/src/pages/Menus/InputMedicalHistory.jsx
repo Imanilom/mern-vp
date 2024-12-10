@@ -12,19 +12,22 @@ import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 
 
 function InputMedicalHistory() {
-    const { currentUser, DocterPatient, loading, error } = useSelector((state) => state.user);
+    const { currentUser, DocterPatient } = useSelector((state) => state.user);
     const { Actionriwayatmedis } = useSelector((state) => state.data);
 
     const [inputItem, setInputItem] = useState({});
     const navigate = useNavigate();
-    // const {} = useState(state => state.web);
 
     useEffect(() => {
+
+        // Jika dokter mencoba masuk ke halaman ini
         if(currentUser.role != 'user'){
+            // tendang ke ringkasan pasien
             return window.location = '/ringkasan-pasien';
         }
     }, [])
 
+    // Handle untuk menampung data input change
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setInputItem(prevState => ({
@@ -33,15 +36,16 @@ function InputMedicalHistory() {
         }));
     };
 
+    // Handle untuk submit form
     const handleOnSubmit = async (e) => {
-        e.preventDefault();
-        console.log('process..');
+        e.preventDefault(); // mencegah halaman web di muat ulang
+    
         try {
-            const inputArray = Object.values(inputItem);
-            const keyArray = Object.keys(inputItem)
-            // console.log(inputItem, inputArray, keyArray);
+            const inputArray = Object.values(inputItem); // become array
+            const keyArray = Object.keys(inputItem) // become array
 
             let result = [];
+
             for (let i = 0; i < inputArray.length; i++) {
                 const property = {
                     pertanyaan: keyArray[i],
@@ -59,14 +63,15 @@ function InputMedicalHistory() {
             });
 
             const data = await res.json();
-            console.log(res, data);
 
+            // Show popup yang menginformasikan bahwa input data telah berhasil
             Swal.fire({
                 title: "Successfully",
                 text: data.message,
                 icon: "success",
                 confirmButtonColor: "#3085d6",
             }).then(() => {
+                // arahkan ke riwayat medis
                 navigate('/riwayat-medis')
             });
 

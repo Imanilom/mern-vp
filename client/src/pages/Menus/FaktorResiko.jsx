@@ -142,11 +142,9 @@ function FaktorResiko() {
                                         <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-[#073B4C] align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                             Location
                                         </th>
-
                                         <th class="px-6 bg-blueGray-50 text-blueGray-500 dark:text-[#073B4C] align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                             Action
                                         </th>
-
                                     </tr>
                                 </thead>
                             )}

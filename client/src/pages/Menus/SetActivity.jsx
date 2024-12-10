@@ -29,37 +29,34 @@ function SetActivity() {
 
     const [error, setError] = useState(false);
     const [loading, setLoading] = useState(false);
-    const { encrypt } = useParams();
 
-    //get id by useState
+    const { encrypt } = useParams(); // isinya encrypt value 
+
     useState(() => {
-      
-        let tryHandle = async () => {
+        let ParsingEncryptValue = async () => {
             try {
-                // console.log({ encrypt })
-                // console.log({ decrypt: JSON.parse(decryptHash(encrypt)) });
-                // setActivityUser(JSON.parse(decryptHash(encrypt)))
-                let dummy = {
-                    date: '20-01-2024',
-                    awal: '09:30',
-                    akhir: '10:10',
-                    aktivitas: '',
-                }
-                setActivityUser(dummy);
-                console.log({dummy})
+
+                // Example output dari parsing encrypted -> JSON.parse(decryptHash(encrypt))
+                /**
+                 * {date: '19-10-2024', awal: '12:00', akhir: '12:30'}
+                 */
+                
+                setActivityUser(JSON.parse(decryptHash(encrypt))) // simpan untuk digunakan di form
             } catch (error) {
                 console.log(error);
             }
         }
 
-        tryHandle();
+        ParsingEncryptValue(); // run function
 
         if(currentUser.role != 'user'){
+            // Jika dokter masuk ke page ini tendang.
             return window.location = '/ringkasan-pasien';
         }
 
     }, []);
 
+    // Handle Change input
     const handleChange = (e) => {
         setFormData({
             ...formData,
@@ -67,60 +64,62 @@ function SetActivity() {
         });
     }
 
-    // const handleSelectChange = (event) => {
-    //     setSelectedOption(event.target.value);
-    //     setFormData({
-    //         ...formData,
-    //         aktivitas: event.target.value,
-    //     });
-    // };
-
+    // Function submit set data
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // mencegah halaman untuk di muat ulang
         try {
-            setError(false);
+            setError(false); // set error to false
 
+            // Apakah list aktivitas yang diinput user ada?
             if (!listActivity.length > 0) {
+                // gagal operasi, show error
                 setError('The list activity is empty')
                 return console.log('list kosong');
             }
 
             let isValid = true;
+
+             // Memastikan apakah list aktivitas sudah diisi semua field starttime, endtime dan anama aktivitasnya
             listActivity.map((val) => {
-                console.log({ val })
+                
                 if ((!val.hasOwnProperty('aktivitas') && val.aktivitas != '') || (!val.hasOwnProperty('timeStart') && val.timeStart != '') || (!val.hasOwnProperty('timeEnd') && val.timeEnd != '')) {
                     isValid = false;
                 }
             })
 
             if (!isValid) {
+                // gagal operasi, show error
                 setError('The form detail activity is invalid')
                 return console.log('The form detail activity is invalid')
             }
 
+            // Jika banyak aktivitas yang diinput != aktivitas yang dikerjakan pada rentang waktu
             if (listActivity.length !== parseInt(countActivity)) return setError('There a form with empty value');
 
-            //filter memastikan waktu tidak melebihi atau tidak terlalu kurng dengan waktu yan telah ditentukan
+
+            // filter memastikan waktu tidak melebihi atau tidak terlalu kurng dengan waktu yan telah ditentukan
             let collectAwalWaktu = listActivity.map((listAct) => listAct.timeStart);
             let collectAkhirWaktu = listActivity.map((listAct) => listAct.timeEnd);
 
-            console.log({ collectAwalWaktu, collectAkhirWaktu });
             let isvalidtime = true;
             collectAwalWaktu.forEach((timeStart, i) => {
+                // Pengecekan list aktivitas
                 if (timeStart < activityUser.awal) {
-                    console.log({ timeStart }, 'tidak valid');
+                    // console.log({ timeStart }, 'tidak valid');
                     isvalidtime = false;
                     setError(`Format waktu awal beraktifitas tidak valid ${timeStart}. waktu awal aktifitas minimal harus ${activityUser.awal}. Periksa pada tab ${i + 1}`);
                 }
             });
 
             if (!isvalidtime) {
+                  // gagal operasi.
                 return;
             }
 
             collectAkhirWaktu.forEach((timeEnd, i) => {
                 if (timeEnd > activityUser.akhir) {
-                    console.log({ timeEnd }, 'tidak valid waktu lebih besar dari yang diperkirakan')
+                      // Pengecekan list aktivitas
+                    // console.log({ timeEnd }, 'tidak valid waktu lebih besar dari yang diperkirakan')
                     isvalidtime = false;
                     setError(`Format waktu akhir beraktifitas tidak valid ${timeEnd}. waktu akhir aktifitas tidak boleh melebihi jam ${activityUser.akhir}. Periksa pada tab ${i + 1}`);
                 }
@@ -130,19 +129,7 @@ function SetActivity() {
                 return;
             }
 
-            console.log('aman..',
-                JSON.stringify({
-                    tanggal: activityUser.date,
-                    awal: activityUser.awal,
-                    akhir: activityUser.akhir,
-                    userRef: currentUser._id,
-                    details: listActivity
-                }),
-            );
-            // console.log(formdata, formData);
-            // const res = await axios.post(`/api/activity/update/${id}`, formdata);
-
-
+            // Kirim list activity ke server
             const res = await fetch(`/api/user/pushActivity`, {
                 method: 'POST',
                 headers: {
@@ -155,24 +142,23 @@ function SetActivity() {
                     userRef: currentUser._id,
                     details: listActivity
                 }),
-                // credentials: 'include', // Ensure cookies are sent with the request
             });
 
-            console.log(res)
             const data = await res.json();
-            console.log(data);
             setLoading(false);
 
             if (data.success === false) {
                 setError(data.message);
             }
 
+            // Tampilkan popup bahwa set aktivitas berhasil
             Swal.fire({
                 title: "Success",
                 text: data.message,
                 icon: "success",
                 confirmButtonColor: "#3085d6",
             }).then(() => {
+                // kembali ke halaman aktivitas
                 navigate('/activity');
             });
 
@@ -198,7 +184,6 @@ function SetActivity() {
         const [day, month, year] = dateStr.split('-');
         return `${year}-${month}-${day}`;
     }
-
 
     return (
         <section class="bg-[#101010] dark:bg-[#FEFCF5] md:flex">
