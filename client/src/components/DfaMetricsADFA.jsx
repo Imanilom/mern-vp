@@ -1,7 +1,7 @@
 import AOS from 'aos';
 import { useEffect, useState } from 'react';
 
-function DfaMetrics(props) {
+function DfaMetricsADFA(props) {
 
   const [page, setPage] = useState(0);
   const { results, splittedLog } = props;
@@ -40,7 +40,7 @@ function DfaMetrics(props) {
   return (
     <div className="mt-8" data-aos="fade-right">
       <h4 className="text-lg font-semibold mb-2">
-        Metrics DFA <span className='sm:hidden text-sm'></span>
+        Metrics ADFA <span className='sm:hidden text-sm'></span>
       </h4>
 
       <div style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl rounded-md'>
@@ -74,15 +74,15 @@ function DfaMetrics(props) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktivitas</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time start</th>
-
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA alpha1</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA alpha2</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ADFA alphaPlus</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ADFA alphaMinus</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
           <tbody className="text-xs lg:text-sm">
             {paginatedResults.length > 0 ? (
               paginatedResults.map((metric, index) => {
+                console.log({metric})
                 return (
                   <tr key={index} className={index % 2 == 1 ? `bg-[#2C2C2C] dark:bg-[#E7E7E7]` : `bg-[#141414] dark:bg-[#CBCBCB]`}>
                     <td className="px-6 py-4 whitespace-nowrap">{index + 1 + page * itemsPerPage}</td>
@@ -93,12 +93,14 @@ function DfaMetrics(props) {
                     )}
                     <td className="px-6 py-4 whitespace-nowrap">{metric.aktivitas}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_awal ?? null}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha1 ? metric.dfa.alpha1.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha2 ? metric.dfa.alpha2.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.adfa !== null && metric.adfa.alphaPlus ? metric.adfa.alphaPlus.toFixed(2) : 'properti kosong'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.adfa !== null && metric.adfa.alphaMinus ? metric.adfa.alphaMinus.toFixed(2) : 'properti kosong'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex gap-1">
-                        {HandleSimbol({ dfa: metric.dfa.alpha1, name: "alpha1" })} 
-                      
+                      <div className="flex flex-col gap-1">
+                        
+                        {HandleSimbol({ dfa: metric.adfa.alphaPlus, name: "alphaPlus" })} 
+                        {HandleSimbol({ dfa: metric.adfa.alphaMinus, name: "alphaMinus" })} 
+
                       </div>
                     </td>
                   </tr>
@@ -144,4 +146,4 @@ function HandleSimbol(props) {
   }
 }
 
-export default DfaMetrics;
+export default DfaMetricsADFA;

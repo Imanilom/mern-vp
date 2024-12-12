@@ -1,11 +1,13 @@
 import mongoose from "mongoose";
+import {v4 as uuidv4} from 'uuid';
 
 const UserSchema = new mongoose.Schema(
   {
     guid: {
       // required: true,
       type: String,
-      unique: true, // Added unique constraint for guid
+      unique: false, // Added unique constraint for guid
+      default : uuidv4() // GENERATE RANDOM FOR REGSITER
     },
     name: {
       required: true,

@@ -5,18 +5,22 @@ import { useEffect } from "react";
 import { useSelector } from "react-redux";
 
 function CreateAnamnesa() {
-    const { riwayatid } = useParams();
+    const { riwayatid } = useParams(); // mengambil id riwayat medis
     const navigate = useNavigate();
     const {currentUser} = useSelector((state) => state.user);
 
     useEffect(() => {
+        // Jika role user mencoba mengakses halaman ini
         if(currentUser.role == 'user'){
+            // tendang ke ringkasan pasien
             return window.location = '/ringkasan-pasien';
         }
     }, [])
+
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // mencegah web di muat ulang
         try {
+            // menyiapkan format untuk dikirim ke server
             let formData = {
                 pertanyaan: e.target[0].value,
                 jawaban: e.target[1].value,
@@ -32,19 +36,21 @@ function CreateAnamnesa() {
             });
 
             const data = await res.json();
+
+            // Munculkan popup success!
             Swal.fire({
                 title: "Success",
                 text: data.message,
                 icon: "success",
                 confirmButtonColor: "#3085d6",
             }).then(() => {
+                // Arahkan kembali ke riwayat medis
                 navigate('/riwayat-medis');
             });
-            // console.log(data);
+
         } catch (error) {
             console.log(error)
         }
-
     }
     return (
         <main class="bg-[#101010] dark:bg-[#FEFCF5] text-white dark:text-[#073B4C] flex pb-8">

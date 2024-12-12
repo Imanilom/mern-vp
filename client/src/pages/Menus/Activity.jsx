@@ -2,24 +2,18 @@ import { useSelector } from 'react-redux';
 import { useRef, useState, useEffect } from 'react';
 import Side from '../../components/Side'
 import { Link } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
 import Swal from 'sweetalert2';
 import { encryptStr, decryptHash } from '../../utls/encrypt.js'
 import '../../loading.css';
-import ButtonOffCanvas from '../../components/ButtonOffCanvas.jsx';
 import DatePicker from 'react-datepicker';
 
 import AOS from 'aos';
 
 
 function Acitivity() {
-  const [useractivitys, setUseractivitys] = useState([]);
   const { currentUser, DocterPatient } = useSelector((state) => state.user);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
   const [aktivitas, setAktivitas] = useState(null);
-  const dispatch = useDispatch();
-  const [formData, setFormData] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState(null);
   const [logs, setLogs] = useState(null);
@@ -28,13 +22,14 @@ function Acitivity() {
   const [isViewAct, setViewAct] = useState(true)
   const [isViewUnrelationAct, setViewUnrelationAct] = useState(true)
 
-  const [paginationCount, setPaginationCount] = useState(0);
-  const [paginationActive, setPaginationActive] = useState(1);
+  const [paginationCount, setPaginationCount] = useState(0); // menyipan total pagination
+  const [paginationActive, setPaginationActive] = useState(1); // menyimpan index pagination saat ini
 
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+  const [startDate, setStartDate] = useState(null); // menyimpan data date range
+  const [endDate, setEndDate] = useState(null); // menyimpan data date range
 
   useEffect(() => {
+    // Jalankan fungsi ketika input date range berubah
     if (startDate && endDate) {
       fetchLog();
     }
@@ -43,7 +38,9 @@ function Acitivity() {
   const fetchLogsNoRelation = async () => {
     try {
       setLoading(true)
+
       let url2 = `/api/user/testLogActivity`;
+
       if (timeGap) {
         url2 += `?gap=${timeGap}`;
       }
@@ -51,13 +48,15 @@ function Acitivity() {
       const res2 = await fetch(url2);
       const data2 = await res2.json();
 
-      console.log({ data2 })
+      console.log({data2})
+
       if (data2.result == null) {
+        // Jika terjadi kesalahan
         setLogs(null)
         return;
       }
 
-      // desc
+      // order data dari yang terbaru - terlama
       const ordered = Object.keys(data2.result)
         .sort((a, b) => parseKey(b) - parseKey(a)) // Sortir berdasarkan objek Date
         .reduce((obj, key) => {
@@ -65,53 +64,54 @@ function Acitivity() {
           return obj;
         }, {});
 
-      setLogs(ordered);
-      console.log({ ordered })
+      setLogs(ordered); // data no relation with activity
+
     } catch (error) {
-      console.log(error)
+      console.log({ error })
     } finally {
-      setLoading(false)
+      setLoading(false) // stop loading
     }
   }
+
   useEffect(() => {
     fetchLogsNoRelation();
   }, [timeGap]);
 
+  // Function untuk delete aktivitas
   const handleactivityDelete = async (activityId) => {
     try {
       const res = await fetch(`/api/activity/delete/${activityId}`, {
         method: 'DELETE',
       });
+
       const data = await res.json();
-      console.log(res)
 
-      // get new data to make it reactive
-      const res2 = await fetch(`/api/activity/getActivity`);
-      const data2 = await res2.json();
-      setAktivitas(data2);
-
+      // Show popup bahwa delete action berhasil
       Swal.fire({
+
         title: "Success",
         text: "Your activities deleted",
         icon: "success",
         confirmButtonColor: "#3085d6",
-      });
 
+      }).then(() => {
+        // Muat ulang halaman
+         window.location.reload();
+      });
 
     } catch (error) {
       console.log(error.message);
     }
   };
 
-
   const confirmDelete = (activity) => {
-    setActivityToDelete(activity);
+    setActivityToDelete(activity); // simpan
     setShowModal(true);
   };
 
   const handleConfirmDelete = () => {
-    handleactivityDelete(activityToDelete._id);
-    setShowModal(false);
+    handleactivityDelete(activityToDelete._id); // run fucntion to delete
+    setShowModal(false); // tutupModal
     setActivityToDelete(null);
   };
 
@@ -122,45 +122,49 @@ function Acitivity() {
 
   const fetchLog = async () => {
     try {
-      console.log('oke loading..')
-      setLoading(true);
+      setLoading(true); // tampilkan halaman loading
+
       let url = `/api/activity/getActivity?p=${paginationActive - 1}`;
       if (currentUser.role == 'doctor') {
+        // jika role dokter cantumkan juga id pasient
         url = `/api/activity/getActivity/${DocterPatient._id}?p=${paginationActive - 1}`
       }
 
       if (startDate && endDate) {
+        // Apabila menggunakan filter range
         url += `&startDate=${startDate}&endDate=${endDate}`
       }
 
-      // console.log(url);
       const res = await fetch(url);
       const data = await res.json();
-      console.log({ data })
+      console.log({data})
       if (data.success === false) {
         return;
       }
-      console.log({ data });
-      setAktivitas(data.Activity);
-      setPaginationCount(data.totalPagination)
 
+      setAktivitas(data.Activity); // simpan hasil response
+      setPaginationCount(data.totalPagination) // simpan hasil response
+
+      // run function untuk menampilkan data yang berlum di set
       await fetchLogsNoRelation();
     } catch (error) {
-
+      console.log({error})
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Panggil AOS untuk animatte on scroll
     AOS.init({
-      duration : 700
+      duration: 700
     })
-    fetchLog();
+    
+    fetchLog(); // run function
   }, []);
 
   useEffect(() => {
-    // console.log({ pagination })
+    // Jalankan funngsi ketika kotak pagination di click
     fetchLog();
   }, [paginationActive])
 
@@ -182,7 +186,7 @@ function Acitivity() {
 
       <div class="xl:w-8/12 mb-12 xl:mb-0 px-4 mt-8 lg:mt-16 lg:w-screen w-11/12 mx-auto">
         {/* <ButtonOffCanvas index={3} /> */}
-        
+
         {logs && isViewUnrelationAct ? (
           <div>
             {/* <h3 class="font-semibold text-[20px] text-blueGray-700 mb-3">
@@ -192,7 +196,7 @@ function Acitivity() {
               <div className="w-7/12">
                 <table class="items-center w-full rounded-md">
                   <thead>
-                    <tr className='bg-[#363636]/20 text-[#07AC7B]'>
+                    <tr className='bg-[#363636]/20 text-[#07AC7B] dark:bg-[#217170] dark:text-white'>
                       <th class="px-6 bg-blueGray-50 text-blueGray-500 align-middle  border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                         Tanggal
                       </th>
@@ -216,7 +220,7 @@ function Acitivity() {
 
                       if (_i < 5) {
                         return (
-                          <tr className={_i % 2 == 0 ? 'bg-[#2c2c2c]' : 'bg-[#141414]'}>
+                          <tr className={_i % 2 == 0 ? 'bg-[#2c2c2c] dark:bg-[#E7E7E7]' : 'bg-[#141414] dark:bg-[#CBCBCB]'}>
                             <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                               {timeSlot.split('/')[0].replace('-', '/').replace('-', '/')}
                             </th>
@@ -226,7 +230,7 @@ function Acitivity() {
                             <td class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                               {timeSlot.split('/')[1].split('-')[1]}
                             </td>
-                            <td class="text-[#07AC7B] border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
+                            <td class="text-[#07AC7B] dark:text-[#217170] font-semibold dark:underline border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
                               <Link to={`/set/activity/${encryptStr(JSON.stringify({ date: timeSlot.split('/')[0], awal: timeSlot.split('/')[1].split('-')[0], akhir: timeSlot.split('/')[1].split('-')[1] }))}`}>
                                 Set Activity
                               </Link>
@@ -251,7 +255,7 @@ function Acitivity() {
                     onChange={(e) => setTimeGap(e.target.value)}
                     id="yourSelect"
                     name="yourSelect"
-                    className="block w-60 mt-2 p-3 rounded-md focus:outline-none shadow-lg bg-[#2C2C2C]/50 "
+                    className="block w-60 mt-2 p-3 rounded-md focus:outline-none shadow-lg bg-[#2C2C2C]/50 dark:bg-[#E7E7E7] "
                   >
                     <option value="5">5 minutes</option>
                     <option value="10">10 minutes</option>
@@ -302,27 +306,26 @@ function Acitivity() {
         ) : null}
 
         {isViewAct ? (
-
           <>
             <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl mb-3 ">Aktivitas Pasien</h1>
-         
-              {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
-              <DatePicker
-                selectsRange
-                data-aos="fade-up"
-                startDate={startDate}
-                endDate={endDate}
-                onChange={(dates) => {
-                  const [start, end] = dates;
-                  console.log(start, end)
-                  setStartDate(start);
-                  setEndDate(end);
-                }}
-                isClearable
-                placeholderText='Cari berdasarkan range tanggal'
-                className="lg:p-3  p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
-              />
-              {/* {loading ? (
+
+            {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
+            <DatePicker
+              selectsRange
+              data-aos="fade-up"
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(dates) => {
+                const [start, end] = dates;
+                console.log(start, end)
+                setStartDate(start);
+                setEndDate(end);
+              }}
+              isClearable
+              placeholderText='Cari berdasarkan range tanggal'
+              className="lg:p-3  p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+            />
+            {/* {loading ? (
                       <span class="ms-4 loader "></span>
                     ) : null} */}
 
@@ -369,7 +372,7 @@ function Acitivity() {
 
                   <tbody>
                     {aktivitas?.map((aktivitas, _i) => (
-                      <tr key={aktivitas._id} className={_i % 2 == 0 ? 'bg-[#CBCBCB]' : 'bg-[#E7E7E7]'}>
+                      <tr key={aktivitas._id} className={_i % 2 == 0 ? 'bg-[#141414] dark:bg-[#CBCBCB]' : 'bg-[#2c2c2c] dark:bg-[#E7E7E7]'}>
                         <th class="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-left text-blueGray-700 ">
                           {new Date(aktivitas.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </th>
@@ -392,10 +395,10 @@ function Acitivity() {
                           <td>
                             <div class="relative w-full px-4 max-w-full flex-grow flex-1 py-2 sm:py-0 text-right">
                               <Link to={`/updateActivity/${aktivitas._id}`}>
-                                <button class="darkgreen text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Update</button>
+                                <button class="text-[#07AC7B] dark:text-[#217170] text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button">Update</button>
                               </Link>
 
-                              <button class="bgg-red text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button" onClick={() => confirmDelete(aktivitas)}>Delete</button>
+                              <button class="text-red-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button" onClick={() => confirmDelete(aktivitas)}>Delete</button>
                             </div>
                           </td>
                         ) : null}
@@ -403,29 +406,28 @@ function Acitivity() {
                     ))}
                   </tbody>
                 </table>
-
-
               </div>
-
-
             </div>
           </>
         ) : null}
 
         {paginationCount >= 1 ? (
-          <div data-aos="fade-right" className="pagination flex gap-2 text-sm mb-8">
-            {Array.from({ length: paginationCount }).map((_, _i) => (
-              _i + 1 === paginationActive ? (
-                <div className="py-3 px-7 bg-[#005A8F] dark:bg-[#DDA420] text-white rounded-[5px]">
-                  {_i + 1}
-                </div>
-              ) : (
-                <div onClick={() => { setPaginationActive(_i + 1); }} className="py-3 px-4 bg-[#272727] dark:bg-[#217170] text-white rounded-[5px]">
-                  {_i + 1}
-                </div>
-              )))
-            }
+          <div className="flex items-center gap-8 mb-8">
+            <div data-aos="fade-right" className="pagination flex gap-2 text-sm overflow-x-auto max-w-sm">
+              {Array.from({ length: paginationCount }).map((_, _i) => (
+                _i + 1 === paginationActive ? (
+                  <div className="py-3 px-7 bg-[#005A8F] dark:bg-[#DDA420] text-white rounded-[5px]">
+                    {_i + 1}
+                  </div>
+                ) : (
+                  <div onClick={() => { setPaginationActive(_i + 1); }} className="py-3 px-4 bg-[#272727] dark:bg-[#217170] text-white rounded-[5px]">
+                    {_i + 1}
+                  </div>
+                )))
+              }
 
+            </div>
+            <p className="font-semibold text-[#07AC7B] dark:text-[#217170] text-sm">/ Pagination bisa di scrool</p>
           </div>
 
         ) : null}
@@ -438,8 +440,9 @@ function Acitivity() {
       </div>
       {
         showModal && (
+          // Modal untuk confirm delete
           <div class="fixed bg-black/80 inset-0 flex items-center justify-center z-50">
-            <div class="bgg-bl p-6 rounded shadow-lg max-w-[350px] md:max-w-[500px]">
+            <div class="bg-[#FEFCF5]/10 dark:bg-[#FEFCF5] p-6 rounded shadow-lg max-w-[350px] md:max-w-[500px]">
               <h2 class="text-lg font-semibold mb-4">Konfirmasi Hapus</h2>
               <p>Apakah Anda yakin ingin menghapus aktivitas ini?</p>
               <p><strong>Tanggal:</strong> {new Date(activityToDelete.Date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(activityToDelete.Date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
@@ -447,7 +450,7 @@ function Acitivity() {
               <p><strong>Akhir:</strong> {activityToDelete.akhir}</p>
               <p><strong>Aktivitas:</strong> {activityToDelete.aktivitas}</p>
               <div class="mt-4 flex justify-end">
-                <button class=" text-white px-4 py-2 rounded mr-2" onClick={handleCancelDelete}>Cancel</button>
+                <button class=" text-white dark:text-blue-400 px-4 py-2 rounded mr-2" onClick={handleCancelDelete}>Cancel</button>
                 <button class="bg-red-600 text-white font-medium px-4 py-2 rounded" onClick={handleConfirmDelete}>Delete</button>
               </div>
             </div>
@@ -455,20 +458,6 @@ function Acitivity() {
         )
       }
 
-
-      {/* {Object.keys(logs).map((timeSlot) => (
-        <div key={timeSlot} id={timeSlot}>
-          <h2>{timeSlot}</h2>
-          
-          {logs[timeSlot].map((data, index) => (
-            <div key={index}>
-              <p id={data.create_at}>Data {index + 1}:</p>
-             
-              <pre>{JSON.stringify(data, null, 2)}</pre>
-            </div>
-          ))}
-        </div>
-      ))} */}
     </main >
 
   )

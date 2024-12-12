@@ -3,7 +3,7 @@ import User from '../models/user.model.js';
 import Log from '../models/log.model.js';
 import Aktivitas from '../models/activity.model.js';
 import { errorHandler } from '../utils/error.js';
-import { calculateDFA } from './metrics.controller.js';
+import { calculateDFA, calculateADFA } from './metrics.controller.js';
 import { formatTimestamp, groupDataByThreeAndAverage, filterIQ } from './data.controller.js';
 import { calculateHRVMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
 import fs from 'fs';
@@ -199,7 +199,7 @@ export const test = async (req, res, next) => {
       // Kirim logs dan filterIQRResult ke frontend
       // console.log({ filterIQRResult, formattedLogs, dailyMetric : [dailyMetric] }, 'ok kirim')
       const AverageThree = groupDataByThreeAndAverage(formattedLogs);
-      console.log({ filterIQRResult })
+      console.log(filterIQRResult[0])
       res.status(200).json({ logs: formattedLogs, filterIQRResult, dailyMetric: [dailyMetric], AverageThree });
     }
 
@@ -475,6 +475,9 @@ export const updateUser = async (req, res, next) => {
     if (req.body.password) {
       req.body.password = bcryptjs.hashSync(req.body.password, 10);
     }
+
+    let user = await User.findById(req.params.id);
+
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
       {
@@ -568,6 +571,7 @@ export const getLogWithActivity = async (req, res, next) => {
 
     // Fungsi untuk mendapatkan interval waktu 15 menit
     const getTimeInterval = (time) => {
+      // console.log({log}, logs[i])
       const [hour, minute] = time.split(":").map(Number);
       const startMinute = Math.floor(minute / parseInt(gap)) * parseInt(gap);
       const endMinute = startMinute + parseInt(gap);
@@ -575,7 +579,8 @@ export const getLogWithActivity = async (req, res, next) => {
       const endHour = endMinute >= 60 ? hour + 1 : hour;
       const endTime = `${endHour.toString().padStart(2, '0')}:${(endMinute % 60).toString().padStart(2, '0')}`;
       return `${startTime}-${endTime}`;
-    };
+    }
+
 
     // Loop melalui setiap kelompok tanggal
     Object.keys(groupedData).forEach((dateKey) => {
@@ -583,7 +588,7 @@ export const getLogWithActivity = async (req, res, next) => {
 
       logsForDate.forEach((log) => {
         const logTime = new Date(log.create_at);
-        const timeInterval = getTimeInterval(log.time);
+        const timeInterval = getTimeInterval(log.time_created);
 
         const key = `${dateKey}/${timeInterval}`;
 
@@ -594,10 +599,11 @@ export const getLogWithActivity = async (req, res, next) => {
       });
     });
 
+    console.log({ result })
     res.status(200).json({ result });
 
   } catch (error) {
-    console.error('Error in /api/user/test:', error.message);
+    console.error('Error in /api/user/fgfgfgfg:', error.message);
     next(error);
   }
 };
@@ -824,10 +830,11 @@ export const logdfa = async (req, res, next) => {
       fileStartWith = "";
       folderChoose = 'hrv-results';
     } else {
-      fileStartWith = "filtered_logs_";
+      // fileStartWith = "filtered_logs_";
+      fileStartWith = "";
     }
 
-    console.log({ folderChoose, method })
+    folderChoose = "hrv-results-GroupActivity"; // always
 
     const resultsDir = path.join(__dirname, `../controllers/${folderChoose}`);
     console.log({ method, folderChoose })
@@ -852,8 +859,12 @@ export const logdfa = async (req, res, next) => {
         .filter(file => file.startsWith(fileStartWith))
         .sort((a, b) => {
           if (method != 'no-filter') {
-            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+            // const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            // const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+
+            const dateA = new Date(a.match(/(.+)\.json/));
+            const dateB = new Date(b.match(/(.+)\.json/));
+
             return dateB - dateA;
           } else {
             const dateA = new Date(a.match(/(.+)\.json/));
@@ -862,7 +873,6 @@ export const logdfa = async (req, res, next) => {
           }
         });
 
-
       filteredFiles = filteredFiles.filter(file => file.endsWith('.json'));
       let fileDate;
 
@@ -870,7 +880,10 @@ export const logdfa = async (req, res, next) => {
         if (file.endsWith('.json')) {
           // console.log({file, dateStart, dateEnd}, new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000)
           if (method != 'no-filter') {
-            fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
+            // fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
+            const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
+            fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
+
           } else {
             const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
             fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
@@ -910,16 +923,27 @@ export const logdfa = async (req, res, next) => {
         })
       }
 
+      // add timestamp
+      filteredLogs.map((val, i) => {
+        const [d, m, y] = val.date_created.split('/');
+        const date = new Date(`${y}-${m}-${d}T${val.time_created}`);
+
+        filteredLogs[i].timestamp = date.getTime() / 1000;
+      })
+
       // Kelompokkan log berdasarkan tanggal terlebih dahulu
       const logsByDate = filteredLogs.reduce((acc, log) => {
+        // console.log({acc, log})
         const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
         if (!acc[date]) acc[date] = [];
         acc[date].push(log);
         return acc;
       }, {});
-
+      
+      console.log('ok')
       let result = [];
 
+      console.log({logsByDate})
       // Proses log untuk setiap tanggal
       Object.entries(logsByDate).forEach(([date, logs]) => {
         // Urutkan log berdasarkan timestamp
@@ -929,12 +953,15 @@ export const logdfa = async (req, res, next) => {
         const chunks = sortedLogs.length <= splitCount ? [sortedLogs] : splitArrayIntoChunks(sortedLogs, splitCount);
 
         // Proses setiap chunk
-        chunks.forEach(chunk => {
+        chunks.forEach((chunk, i) => {
           const firstLog = chunk[0];
           const lastLog = chunk[chunk.length - 1];
 
+          
           result.push({
+            aktivitas: chunk[0].aktivitas,
             dfa: calculateDFA(chunk.map(log => log.HR)),
+            adfa: calculateADFA(chunk.map(log => log.HR)),
             tanggal: date,
             waktu_awal: new Date(firstLog.timestamp * 1000).toLocaleTimeString('id-ID', {
               hour: '2-digit',
@@ -963,8 +990,11 @@ export const logdfa = async (req, res, next) => {
         .filter(file => file.startsWith(fileStartWith))
         .sort((a, b) => {
           if (method != 'no-filter') {
-            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+            // const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            // const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+
+            const dateA = new Date(a.match(/(.+)\.json/));
+            const dateB = new Date(b.match(/(.+)\.json/));
             return dateB - dateA;
           } else {
             const dateA = new Date(a.match(/(.+)\.json/));
@@ -983,6 +1013,7 @@ export const logdfa = async (req, res, next) => {
       const dailyData = JSON.parse(fs.readFileSync(dailyFilePath, 'utf-8'));
 
       // Periksa apakah dailyData mengandung logs
+
       const logs = dailyData.filteredLogs || [];
       if (logs.length === 0) {
         return res.status(404).json({ message: 'Tidak ada log yang tersedia dalam data harian' });
@@ -1023,14 +1054,23 @@ export const logdfa = async (req, res, next) => {
         // console.log( splittedLog[1][0 * splitCount]['date_created']);
       }
 
+      console.log({ splittedLog }, splittedLog[0])
       let result = HRCollection.map((data, i) => {
-        const date = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
-        const timeStart = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
-        const timeEnd = new Date(splittedLog[i][splittedLog[i].length - 1]['timestamp'] * 1000);
+        // let result = splittedLog.map((data, i) => {
+        const [d, m, y] = splittedLog[i][0 * splittedLog[i].length]['date_created'].split('/');
+
+        const date = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`)
+        const timeStart = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`)
+        const timeEnd = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`)
+        // const date = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+        // const timeStart = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+        // const timeEnd = new Date(splittedLog[i][splittedLog[i].length - 1]['timestamp'] * 1000);
         console.log(splittedLog[i][0 * splittedLog[i].length]['timestamp'], { date });
 
         return {
+          aktivitas: splittedLog[i][0].aktivitas,
           dfa: calculateDFA(data),
+          adfa: calculateADFA(data),
           tanggal: date.toISOString().split('T')[0], // Format tanggal dalam "dd/mm/yyyy"
           waktu_awal: timeStart.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
           waktu_akhir: timeEnd.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -1041,7 +1081,7 @@ export const logdfa = async (req, res, next) => {
           timestamp_tanggal: date.getTime()
         }
       });
-
+      console.log('test', result[0])
       // console.log({ result, HRCollection, splittedLog });
       res.json({ result, HRCollection, splittedLog });
     }
@@ -1072,7 +1112,7 @@ export const dfaActivity = async (req, res, next) => {
     // let filter = {date_created : "27-05-2024"} // 
 
     // let filter = {};
-    let folderChoose = 'hrv-results-GroupActivity';
+    let folderChoose = 'hrv-results-km';
 
     // console.log({ method })
 
@@ -1110,9 +1150,17 @@ export const dfaActivity = async (req, res, next) => {
           //   const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
           //   return dateB - dateA;
           // } else {
-          const dateA = new Date(a.match(/(.+)\.json/));
-          const dateB = new Date(b.match(/(.+)\.json/));
-          return dateB - dateA;
+
+          // Ekstrak tanggal dari nama file
+          const [dA, mA, yA] = a.match(/(\d{2})-(\d{2})-(\d{4})\.json/).slice(1);
+          const [dB, mB, yB] = b.match(/(\d{2})-(\d{2})-(\d{4})\.json/).slice(1);
+
+          // const dateA = new Date(a.match(/(.+)\.json/));
+          const dateA = new Date(`${yA}-${mA}-${dA}`);
+          // const dateB = new Date(b.match(/(.+)\.json/));
+          const dateB = new Date(`${yB}-${mB}-${dB}`);
+
+          return dateA - dateB;
           // }
         });
 
@@ -1120,7 +1168,7 @@ export const dfaActivity = async (req, res, next) => {
       filteredFiles = filteredFiles.filter(file => file.endsWith('.json'));
       let fileDate;
 
-      console.log({filteredFiles})
+      console.log({ filteredFiles })
       let tanggals = [];
 
       filteredFiles.forEach((file, i) => {
@@ -1129,8 +1177,8 @@ export const dfaActivity = async (req, res, next) => {
           // if (method != 'no-filter') {
           //   fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
           // } else {
-            const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
-            fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
+          const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
+          fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
           // }
           console.log({ fileDate }, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEnd)
           if (fileDate >= dateStart && fileDate <= dateEnd) {
@@ -1157,16 +1205,16 @@ export const dfaActivity = async (req, res, next) => {
 
       // ubah dlu date nya
       // if (method == "no-filter") {
-        filteredLogs.map((_val, _i) => {
+      filteredLogs.map((_val, _i) => {
 
-          // Buat objek Date
-          const [day, month, year] = _val.date_created.split('/');
-          const formattedDate = `${year}-${month}-${day}T${_val.time_created}`; // Format ISO 8601
+        // Buat objek Date
+        const [day, month, year] = _val.date_created.split('/');
+        const formattedDate = `${year}-${month}-${day}T${_val.time_created}`; // Format ISO 8601
 
-          const tanggal = new Date(formattedDate);
-          filteredLogs[_i]["timestamp"] = tanggal.getTime() / 1000;
-          filteredLogs[_i]['datetime'] = formattedDate;
-        })
+        const tanggal = new Date(formattedDate);
+        filteredLogs[_i]["timestamp"] = tanggal.getTime() / 1000;
+        filteredLogs[_i]['datetime'] = formattedDate;
+      })
       // }
 
       // Kelompokkan log berdasarkan tanggal terlebih dahulu
@@ -1190,7 +1238,7 @@ export const dfaActivity = async (req, res, next) => {
               Aktivitas: activity,
               startTime: groups[0]['time_created'],
               endTime: groups[groups.length - 1]['time_created'],
-              tanggal : groups[0]['date_created'], 
+              tanggal: groups[0]['date_created'],
               details: [...groups]
             }
 
@@ -1211,7 +1259,7 @@ export const dfaActivity = async (req, res, next) => {
               Aktivitas: activity,
               startTime: groups[0]['time_created'],
               endTime: groups[groups.length - 1]['time_created'],
-              tanggal : groups[0]['date_created'], 
+              tanggal: groups[0]['date_created'],
               details: [...groups]
             }
 
@@ -1221,18 +1269,18 @@ export const dfaActivity = async (req, res, next) => {
       }
 
       let Metrics = [];
-      console.log({MetricsLogs})
-      for(let i  = 0; i < MetricsLogs.length; i++){
+      console.log({ MetricsLogs })
+      for (let i = 0; i < MetricsLogs.length; i++) {
 
         let metric = MetricsLogs[i];
-        console.log({metric})
+        console.log({ metric })
 
         let tanggal = tanggals[i].split('.')[0];
         let [day, month, year] = tanggal.split('-');
-        for (const [key, value] of Object.entries(metric)) {  
+        for (const [key, value] of Object.entries(metric)) {
           Metrics.push({
             aktivitas: key,
-            tanggal : `${day}/${month}/${year}`,
+            tanggal: `${day}-${month}-${year}`,
             metrics: value,
           })
         }
@@ -1275,7 +1323,7 @@ export const dfaActivity = async (req, res, next) => {
       // // Urutkan hasil berdasarkan timestamp_tanggal secara menurun
       // result.sort((a, b) => b.timestamp_tanggal - a.timestamp_tanggal);
 
-      res.json({ logs : filteredLogs, groupLogsByActivity, Metrics });
+      res.json({ logs: filteredLogs, groupLogsByActivity, Metrics });
     } else {
       console.log('ngga masuk filterdate')
       // Filter dan urutkan file untuk mendapatkan file data harian terbaru
@@ -1283,8 +1331,15 @@ export const dfaActivity = async (req, res, next) => {
         .filter(file => file.startsWith(fileStartWith))
         .sort((a, b) => {
 
-          const dateA = new Date(a.match(/(.+)\.json/));
-          const dateB = new Date(b.match(/(.+)\.json/));
+          // Ekstrak tanggal dari nama file
+          const [dA, mA, yA] = a.match(/(\d{2})-(\d{2})-(\d{4})\.json/).slice(1);
+          const [dB, mB, yB] = b.match(/(\d{2})-(\d{2})-(\d{4})\.json/).slice(1);
+
+          // const dateA = new Date(a.match(/(.+)\.json/));
+          const dateA = new Date(`${yA}-${mA}-${dA}`);
+          // const dateB = new Date(b.match(/(.+)\.json/));
+          const dateB = new Date(`${yB}-${mB}-${dB}`);
+
           return dateB - dateA;
 
         })[0];
@@ -1332,7 +1387,7 @@ export const dfaActivity = async (req, res, next) => {
               Aktivitas: activity,
               startTime: groups[0]['time_created'],
               endTime: groups[groups.length - 1]['time_created'],
-              tanggal : groups[0]['date_created'], 
+              tanggal: groups[0]['date_created'],
               details: [...groups]
             }
 
@@ -1353,7 +1408,7 @@ export const dfaActivity = async (req, res, next) => {
               Aktivitas: activity,
               startTime: groups[0]['time_created'],
               endTime: groups[groups.length - 1]['time_created'],
-              tanggal : groups[0]['date_created'], 
+              tanggal: groups[0]['date_created'],
               details: [...groups]
             }
 
@@ -1365,10 +1420,10 @@ export const dfaActivity = async (req, res, next) => {
       let Metrics = [];
       // console.log({MetricsActivities})
       for (const [key, value] of Object.entries(MetricsActivities)) {
-        
+
         Metrics.push({
           aktivitas: key,
-          tanggal : logs[0]["date_created"],
+          tanggal: logs[0]["date_created"],
           metrics: value,
         })
       }

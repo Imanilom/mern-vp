@@ -90,14 +90,82 @@ function InterquartileGraph({ data, label, color }) {
         // }
 
         processedData2.forEach(d => {
-            d.date = new Date(d.timestamp * 1000);
+            let date = new Date(d.timestamp * 1000);
+            d.date = date;
+            d.datetime = date.toISOString()
+            d.create_at = date
         });
 
-        let processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
+        processedData2 = processedData2.filter(d => d.RR !== null && d.HR !== null);
 
-        XCount = processedData.length;
-        // console.log({ processedData, XCount })
+        // lakukan pengelompokan data sesuai hari
+        const logsGroupDate = {};
+        let date = "";
+        let result = [];
+        console.log("interquartile", {processedData2})
+        processedData2.forEach((val) => {
+            date = val.datetime.split("T")[0];
+            // const [y,m,d] = date.split("") 
+            if (!logsGroupDate[date]) logsGroupDate[date] = [];
+            logsGroupDate[date].push(val);
+        });
+        
+        console.log({ logsGroupDate });
 
+         // Proses data per tanggal
+         Object.entries(logsGroupDate).forEach(([date, logs]) => {
+            let labelingMinute = ["00", "15", "30", "45"];
+            let labelingHour = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
+        
+            let startDataTimeHour = logs[0].date.getHours();
+            let endDataTimeHour = logs[logs.length - 1].date.getHours();
+        
+            console.log({ logs, startDataTimeHour, endDataTimeHour });
+        
+            // Menambahkan waktu awal
+            for (let hour = 0; hour < startDataTimeHour; hour++) {
+                labelingMinute.forEach((minute) => {
+                    let datetime = new Date(`${date}T${labelingHour[hour]}:${minute}:00`);
+                    result.push({
+                        HR: 0,
+                        RR: 0,
+                        create_at: datetime,
+                        date: datetime,
+                        label: "safe",
+                        timestamp: datetime.getTime(),
+                    });
+                });
+            }
+        
+            // Menambahkan data asli
+            logs.forEach((log) => result.push(log));
+            console.log({date, logs})
+        
+            // Menambahkan waktu akhir
+            for (let hour = endDataTimeHour ; hour < labelingHour.length; hour++) {
+                labelingMinute.forEach((minute) => {
+                    let datetime = new Date(`${date}T${labelingHour[hour]}:${minute}:00`);
+                    console.log("DATA WAKTU AKHIR", datetime)
+                    result.push({
+                        HR: 0,
+                        RR: 0,
+                        date: datetime,
+                        create_at: datetime,
+                        label: "safe",
+                        timestamp: datetime.getTime(),
+                    });
+                });
+            }
+        });
+        
+        // Mengurutkan data berdasarkan waktu
+        result.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
+        console.log({ result });
+        
+        // Menambahkan indeks ke data
+        result.forEach((d, i) => (d.index = i));
+        
+        XCount = processedData2.length;
         let page = scroolState[label] - 1;
         let maxTitik = 40;
 
@@ -109,8 +177,8 @@ function InterquartileGraph({ data, label, color }) {
         }
 
         // Mendapatkan data yang diproses untuk halaman saat ini
-        const paginatedData = getPaginatedData(processedData, page, maxTitik);
-        processedData = paginatedData;
+        const paginatedData = getPaginatedData(result, page, maxTitik);
+        let processedData = paginatedData;
 
         let defaultColor = "rgba(7, 172, 123, 1)";
 
@@ -172,7 +240,7 @@ function InterquartileGraph({ data, label, color }) {
                 processedData[i]['label'] = "Safe";
                 return 4; // Warna default
             }
-        })
+        });
 
         sizeCircleRR = processedData.map((item, i) => {
             if (i > 0) {
@@ -193,9 +261,7 @@ function InterquartileGraph({ data, label, color }) {
                 processedData[i]['label'] = "Safe";
                 return 4; // Warna default
             }
-        })
-
-
+        });
 
         console.log('IQR', { paginatedData, processedData, processedData2, rawData})
         // mengambil element tooltip
@@ -229,7 +295,7 @@ function InterquartileGraph({ data, label, color }) {
         }
 
         // setSlice(Math.floor(width / svgWidth) + 1);
-        setSlice(Math.floor(processedData2.length / maxTitik) + 1); // layar lebar svg
+        setSlice(Math.floor(result.length / maxTitik) + 1); // layar lebar svg
         console.log({ width, svgWidth })
 
         // Buat SVG di dalam div yang menggunakan useRef
@@ -244,6 +310,7 @@ function InterquartileGraph({ data, label, color }) {
         const x = d3.scaleBand()
             .domain(processedData.map(d => d.date)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
             .range([margin.left, width - margin.right]);
+
         // const x = d3.scaleLinear()
         //     .domain([d3.min(sampledData, d => d['create_at']), d3.max(sampledData, d => d.create_at)]) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
         //     .range([margin.left, width - margin.right]);
@@ -258,6 +325,8 @@ function InterquartileGraph({ data, label, color }) {
         const y = d3.scaleLinear()
             .domain([0, d3.max(processedData, d => Math.max(d.HR, d.RR)) + 50]) // membentuk garis dari 0 hingga data value paling tinggi (max)
             .range([height - margin.bottom, margin.top]);
+
+
         // Pada sumbu Y, kita biasanya ingin nilai 0 berada di bawah (koordinat terbesar), 
         // dan nilai terbesar berada di atas (koordinat terkecil). Oleh karena itu, range Y 
         // dibalik, dari [height, 0]. Jadi, 0 akan dipetakan ke bagian bawah grafik 
@@ -266,11 +335,14 @@ function InterquartileGraph({ data, label, color }) {
         // const line = d3.line()
         //     .x(d => x(d.date))
         //     .y(d => y(d[["avg"]]));
+
+
         const lineRR = d3.line()
-            .x(d => x(d.date))
+            .x(d => x(d.create_at))
             .y(d => y(d[["RR"]]));
+
         const lineHR = d3.line()
-            .x(d => x(d.date))
+            .x(d => x(d.create_at))
             .y(d => y(d[["HR"]]));
 
         // console.log({ line })
@@ -282,8 +354,6 @@ function InterquartileGraph({ data, label, color }) {
         //     .attr('stroke', 'rgba(75, 192, 192, 1)')
         //     .attr('stroke-width', 2)
         //     .attr('d', line);
-
-
 
         const linepathHR = svg.append('path')
             .datum(processedData)
@@ -305,7 +375,8 @@ function InterquartileGraph({ data, label, color }) {
         let firstInSlice = true;
 
         processedData.forEach((d, i) => {
-            const currentDate = d.date.toDateString();
+            console.log({d, i}, processData[i])
+            const currentDate = d.create_at.toDateString();
             if (previousDate !== currentDate || firstInSlice) {
                 // Gambar garis putus-putus di sini
                 let linePosition = x(d.date); // Posisi X berdasarkan tanggal

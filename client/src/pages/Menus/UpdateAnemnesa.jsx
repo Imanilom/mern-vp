@@ -8,32 +8,35 @@ function UpdateAnemnesa() {
 
     const [anamnesa, setAnamnesa] = useState(null);
     const navigate = useNavigate();
-    const {currentUser} = useSelector((state) => state.user);
+    const { currentUser } = useSelector((state) => state.user);
 
-    const { id } = useParams();
+    const { id } = useParams(); // get id from param url
+
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const res = await fetch(`/api/anamnesa/getOneAnamnesa/${id}`);
                 const data = await res.json();
 
-                console.log(data);
                 setAnamnesa(data.anamnesa);
             } catch (error) {
                 console.log(error);
             }
         }
 
-        fetchData();
+        fetchData(); // run function
 
-        if(currentUser.role == 'user'){
+        // Jika role user mencoba masuk
+        if (currentUser.role == 'user') {
+            // tendang ke ringksan pasien
             return window.location = '/ringkasan-pasien';
         }
     }, []);
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // mencegah halaman web di muat ulang
 
+        // prepare data untuk dikirim
         let formData = {
             pertanyaan: e.target[0].value,
             jawaban: e.target[1].value,
@@ -50,12 +53,14 @@ function UpdateAnemnesa() {
 
             const data = await res.json();
 
+            // Tampilkan popup success
             Swal.fire({
                 title: "Success",
                 text: data.message,
                 icon: "success",
                 confirmButtonColor: "#3085d6",
             }).then(() => {
+                // arahkan kembali ke riwayat medis
                 navigate('/riwayat-medis');
             });
 
@@ -73,7 +78,7 @@ function UpdateAnemnesa() {
                     <p class="mt-3">Berikan informasi  yang tepat, cepat dan akurat</p>
 
                     <form onSubmit={handleSubmit} method='post' class="mt-6">
-                       
+
 
                         <div class="grid  sm:grid-cols-1">
                             <div className=''>

@@ -20,8 +20,9 @@ function MedicalHistories() {
   const [riwayat, setRiwayat] = useState(null);
   const dispacth = useDispatch();
 
+  // Handle untuk delete anamnesa (khusus dokter)
   const handleDelete = async (id) => {
-    console.log(id)
+    // Show popup confirm
     Swal.fire({
       title: "Are you sure?",
       text: "Kamu tidak akan menemukan data ini lagi setelah dihapus.!",
@@ -32,16 +33,21 @@ function MedicalHistories() {
       confirmButtonText: "Yes, delete it!"
     }).then(async (result) => {
       if (result.isConfirmed) {
+        // Jika Yes
+
         const deleteAnamnesa = await fetch(`/api/anamnesa/deleteAnamnesa/${id}`, {
           method: 'DELETE'
         });
 
+        // Show popup delete succesfully
         Swal.fire({
           title: "Deleted!",
           text: "Anamnesa has been deleted.",
           icon: "success",
           confirmButtonColor: "#3085d6",
         }).then(async () => {
+
+          // run function to make it reactive
           await fetchData();
         })
 
@@ -49,33 +55,11 @@ function MedicalHistories() {
     });
   }
 
-  let fetchData = async () => {
-    try {
-      let url;
-      if (currentUser.role == 'user') {
-        url = `/api/anamnesa/getanamnesa/${currentUser._id}`
-      } else {
-        url = `/api/anamnesa/getanamnesa/${DocterPatient._id}`
-      }
-
-      const res = await fetch(url);
-      if (!res.ok) {
-        setAnemnesa([]);
-        setRiwayat([]);
-      }
-      const data = await res.json();
-      console.log(data)
-      setAnemnesa(data.details);
-      setRiwayat(data.riwayatmedisDoc);
-      setCatatanTambahan(data.tambahan)
-      console.log(data.riwayatmedisDoc)
-    } catch (error) {
-      console.log(error)
-    }
-  }
-
+  
+  // Function untuk reset riwayat medis
   const handleResetRiwayat = async () => {
     try {
+      // Show popup confirm
       Swal.fire({
         title: "Are you sure?",
         text: "Kamu akan kehilangan seluruh progress riwayat medismu beserta dengan catatan doktermu",
@@ -86,6 +70,8 @@ function MedicalHistories() {
         confirmButtonText: "Yes, delete it!"
       }).then(async (result) => {
         if (result.isConfirmed) {
+          // Jika, YES
+
           const deleteRiwayat = await fetch(`/api/anamnesa/deleteriwayat/${riwayat._id}`, {
             method: 'DELETE'
           });
@@ -96,23 +82,57 @@ function MedicalHistories() {
             icon: "success",
             confirmButtonColor: "#3085d6",
           }).then(async () => {
+
+            // run function to make it reactive
             await fetchData();
           });
         }
       });
+
     } catch (error) {
       console.log(error);
     }
   }
 
   useEffect(() => {
-
+    // Panggil AOS untuk aniamsi on scrool
     AOS.init({
       duration: 700
     })
-    fetchData();
+
+    fetchData(); // run function
     // console.log(currentUser);
   }, [])
+
+  const fetchData = async () => {
+    try {
+      let url;
+      if (currentUser.role == 'user') {
+        url = `/api/anamnesa/getanamnesa/${currentUser._id}`
+      } else {
+        url = `/api/anamnesa/getanamnesa/${DocterPatient._id}`
+      }
+
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        // Jika terjadi kesaslaahn
+        setAnemnesa([]);
+        setRiwayat([]);
+        return;
+      }
+      
+      const data = await res.json();
+
+      setAnemnesa(data.details); // anamnesa adalah data tambhan riwayat tambahan yg ditambhkn dokter
+      setRiwayat(data.riwayatmedisDoc);
+      setCatatanTambahan(data.tambahan)
+
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
 
   return (
     <main class="bg-[#101010] dark:bg-[#FEFCF5] flex text-white dark:text-[#073B4C]">

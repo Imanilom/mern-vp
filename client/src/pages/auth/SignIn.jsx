@@ -22,24 +22,25 @@ export default function SignIn() {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
   useEffect(() => {
-    // <script>
+    // Panggil AOS untuk animasi on scrool
     AOS.init({
       duration: 500
     });
-    // </script>
   }, [])
+
   const handleChange = (e) => {
+    // ambil data sebelumnya dan gabungkan
     setFormData({
-      ...formData,
+      ...formData, 
       [e.target.id]: e.target.value
     });
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // mencegah aplikasi di reload
     try {
-      dispatch(signInStart());
       const res = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: {
@@ -50,14 +51,18 @@ export default function SignIn() {
 
       const data = await res.json();
       if (!res.ok) {
-        dispatch(signInFailure(data));
-        // return;
+        // Jika response error, kirim message error
         throw new Error(data.message);
       }
+
+      // Simpan informasi login user ke redux statement
       dispatch(signInSuccess(data));
+
+      // navigasikan ke halaman home
       navigate('/');
+
     } catch (error) {
-      dispatch(signInFailure(error));
+      // Set variabel error dengan informasi error dan munculkan popup
       setErr(error.message);
     }
   };
@@ -99,7 +104,7 @@ export default function SignIn() {
                 SMART DEVICE
               </div>
               <div className="text-[20px] font-bold">
-                <span className='blue'>Vidya</span>Medic
+                <span className='text-[#005A8F]'>Vidya</span>Medic
               </div>
               <p className='mt-3'>
                 "Selamat Datang Kembali!  Pantau Kesehatan Anda dengan Lebih Cerdas."
@@ -108,6 +113,7 @@ export default function SignIn() {
           </div>
           <div className="bg-[#0E0E0E]/50 absolute z-[1] w-full rounded-[29px] h-full start-0 top-0"></div>
         </div>
+
         <div className="md:w-7/12 flex items-center px-8 lg:px-16">
           <div data-aos="fade-left">
             <h1 className='text-[24px] lg:text-[32px] font-semibold'>
@@ -127,7 +133,7 @@ export default function SignIn() {
                 <button type="submit" class="text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2">Sign in</button>
 
               </div>
-              <span className='text-sm'>Belum memiliki akun? <Link to={'/sign-up'} className='blue underline'>Daftar sekarang</Link></span>
+              <span className='text-sm'>Belum memiliki akun? <Link to={'/sign-up'} className='text-[#005A8F] underline'>Daftar sekarang</Link></span>
 
             </form>
 

@@ -10,19 +10,23 @@ function About() {
   }, [])
 
   return (
-    <div className=" relative bg-[#101010] md:py-16 overflow-hidden flex flex-col gap-16">
+    <div className=" relative bg-[#101010] dark:bg-[#FEFCF5] md:py-16 overflow-hidden flex flex-col gap-16">
       <div data-aos="zoom-in" data-aos-duration="500" className="w-10/12 mx-auto relative my-8">
 
-        <div className="rectangle w-[230px] h-32 absolute top-0start-1/4"></div>
-        <div className="rectangle w-[300px] h-32 absolute bottom-0 end-0"></div>
+        <div className="rectangle w-[230px] dark:hidden block h-32 absolute top-0 start-1/4"></div>
+        <div className="rectangle-white-theme dark:block hidden w-[230px] h-32 absolute top-0 z-[-1] start-1/4"></div>
 
-        <div className="rectangle"></div>
-        <div className="flex md:flex-row flex-col justify-center gap-16 text-white">
+        <div className="rectangle w-[300px] dark:hidden block h-32 absolute bottom-0 end-0"></div>
+        <div className="rectangle-white-theme dark:block hidden w-[300px] h-32 absolute bottom-0 end-0"></div>
+
+        <div className="rectangle dark:hidden block"></div>
+        <div className="rectangle-white-theme hidden dark:block"></div>
+        <div className="flex md:flex-row flex-col justify-center gap-16  text-white dark:text-[#073B4C]">
           <div className="flex lg:flex-row flex-col gap-6">
 
             <img src={Logo_PPTIk} alt="" className="lg:w-full w-[60%]" />
             <div className="max-w-[300px] flex flex-col gap-4">
-              <p className="text-[32px]">PPTIK - ITB</p>
+              <p className="text-[32px] font-semibold">PPTIK - ITB</p>
               <p>Pusat Penelitian Teknologi Informasi dan Komunikasi</p>
               <hr />
               <p>Institut Teknologi Bandung</p>
@@ -34,10 +38,11 @@ function About() {
         </div>
       </div>
 
-      <div data-aos="fade-left" className="w-10/12 mx-auto  my-8 text-white">
+      <div data-aos="fade-left" className="w-10/12 mx-auto  my-8  text-white dark:text-[#073B4C]">
         <div className="max-w-3xl relative">
 
-          <div className="rectangle w-full h-full absolute blur-[30px] bg-white/5"></div>
+          <div className="rectangle w-full h-full absolute blur-[30px] bg-white/5 block dark:hidden"></div>
+          <div className="rectangle-white-theme w-full h-full absolute blur-[20px] hidden dark:block"></div>
           <h1 className="text-[32px] font-bold">
             Our Vision
           </h1>
@@ -45,33 +50,33 @@ function About() {
         </div>
       </div>
 
-      <div className="w-11/12 md:w-10/12 mx-auto  my-8 text-white">
+      <div className="w-11/12 md:w-10/12 mx-auto  my-8  text-white dark:text-[#073B4C]">
         <div className="text-center text-[32px] font-bold mb-6">
           Our Gallery
         </div>
 
         <div className="flex md:flex-row flex-col gap-4 my-2" data-aos="zoom-in" >
-          <div className="md:w-5/12 h-[280px] lg:h-[370px] bg-[#363636]"></div>
-          <div className="md:w-7/12 h-[280px] lg:h-[370px] bg-[#363636]"></div>
+          <div className="md:w-5/12 h-[280px] lg:h-[370px] bg-[#363636] dark:bg-[#E5E5E5]"></div>
+          <div className="md:w-7/12 h-[280px] lg:h-[370px] bg-[#363636] dark:bg-[#E5E5E5]"></div>
         </div>
 
-        <div className="w-full my-4 h-[340px] lg:h-[370px] bg-[#363636]" data-aos="zoom-in" ></div>
+        <div className="w-full my-4 h-[340px] lg:h-[370px] bg-[#363636] dark:bg-[#E5E5E5]" data-aos="zoom-in" ></div>
 
         <div className="flex md:flex-row flex-col gap-4 my-2" data-aos="zoom-out-right" data-aos-duration="700" >
           <div className="md:w-5/12">
-            <div className="w-full h-[280px] lg:h-[370px] bg-[#363636]"></div>
-            <div className="font-bold text-[32px] mt-2">
+            <div className="w-full h-[280px] lg:h-[370px] bg-[#363636] dark:bg-[#E5E5E5]"></div>
+            <div className="font-bold text-[32px] mt-2 text-white dark:text-[#217170]">
               PPTIK BANDUNG
             </div>
           </div>
-          <div className="md:w-7/12 h-[380px] lg:h-[470px] bg-[#363636]"></div>
+          <div className="md:w-7/12 h-[380px] lg:h-[470px] bg-[#363636] dark:bg-[#E5E5E5]"></div>
         </div>
       </div>
 
-      <div data-aos="zoom-in" data-aos-duration="400" className="w-full md:w-10/12 mx-auto items-center md:flex-row flex-col gap-6 flex justify-between my-8 text-white">
+      <div data-aos="zoom-in" data-aos-duration="400" className="w-full md:w-10/12 mx-auto items-center md:flex-row flex-col gap-6 flex justify-between my-8  text-white dark:text-[#073B4C]">
 
         <div className="w-full text-base font-semibold px-4 md:px-0">
-          <div className="font-bold text-[32px] my-5">
+          <div className="font-bold text-[32px] my-5 text-white dark:text-[#217170]">
             OUR LOCATION
           </div>
           <h5>Jl. Tamansari No. 126, Bandung 40132, Indonesia</h5>

@@ -50,13 +50,13 @@ function DailyMetric(props) {
                 return (
                   <tr key={index} className={index % 2 == 0 ? `bg-[#2C2C2C] dark:bg-[#E7E7E7] text-white dark:text-[#073B4C]` : `bg-[#141414] dark:bg-[#CBCBCB] dark:text-[#073B4C] text-white`}>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.sdnn !== null && metric.hasOwnProperty('sdnn') ? metric.sdnn.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.rmssd !== null && metric.hasOwnProperty('rmssd') ? metric.rmssd.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.min !== null && metric.hasOwnProperty('min') ? metric.min.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.max !== null && metric.hasOwnProperty('max') ? metric.max.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.hf !== null && metric.hasOwnProperty('hf') ? metric.hf.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.lf !== null && metric.hasOwnProperty('lf') ? metric.lf.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.lfHfRatio !== null && metric.hasOwnProperty('lfHfRatio') ? metric.lfHfRatio.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.sdnn !== null && metric.hasOwnProperty('sdnn') ? metric.sdnn.toFixed(2) : 'properti kosong.'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.rmssd !== null && metric.hasOwnProperty('rmssd') ? metric.rmssd.toFixed(2) : 'properti kosong.'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.min !== null && metric.hasOwnProperty('min') ? metric.min.toFixed(2) : 'properti kosong.'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.max !== null && metric.hasOwnProperty('max') ? metric.max.toFixed(2) : 'properti kosong.'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.hf !== null && metric.hasOwnProperty('hf') ? metric.hf.toFixed(2) : 'properti kosong.'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.lf !== null && metric.hasOwnProperty('lf') ? metric.lf.toFixed(2) : 'properti kosong.'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.lfHfRatio !== null && metric.hasOwnProperty('lfHfRatio') ? metric.lfHfRatio.toFixed(2) : 'properti kosong.'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.hasOwnProperty('dfa') ? metric.dfa.toFixed(2) : 'Data tidak mencukupi'}</td>
                   </tr>
                 );

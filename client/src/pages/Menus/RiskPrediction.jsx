@@ -133,7 +133,7 @@ function RiskPrediction() {
     if (status == 'pending') return (<button disabled class="bg-orange-500 text-white active:bg-orange-600 md:w-fit w-full text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Pending..</button>)
     else if (status == 'accepted') return (<button disabled class="bg-green-500 text-white active:bg-green-600 md:w-fit w-full text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Accepted</button>
     )
-    else return (<button onClick={handleRequestAppointmentUser} class="text-[#07AC7B]  text-xs font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear space-nowrap transition-all duration-150 min-w-[150px]" type="button">{loading ? 'Loadingg..' : 'Meminta Temu Janji'}</button>)
+    else return (<button onClick={handleRequestAppointmentUser} class="text-[#07AC7B] dark:text-[#FFD166]  text-xs font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear space-nowrap transition-all duration-150 min-w-[150px]" type="button">{loading ? 'Loadingg..' : 'Meminta Temu Janji'}</button>)
   }
 
   const handleResetPrediction = async () => {

@@ -23,9 +23,9 @@ export default function Monitor() {
   const dispatch = useDispatch();
   const { currentUser, DocterPatient } = useSelector((state) => state.user);
   const navigate = useNavigate();
-  const [logs, setLogs] = useState(null);
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+  const [logs, setLogs] = useState(null); // untuk menampung data logs HR dan RR
+  const [startDate, setStartDate] = useState(null); // untuk input date range
+  const [endDate, setEndDate] = useState(null); // untuk input date range
   const [metrics, setMetrics] = useState({ rmssd: null, pnn50: null, sdnn: null, s1: null, s2: null });
   const [dailyMetrics, setDailyMetrics] = useState([]);
   const [isHRVisible, setHRIsVisible] = useState(false); // Show HR chart by default
@@ -35,23 +35,22 @@ export default function Monitor() {
   const [isPoincareVisible, setPoincareIsVisible] = useState(false); // Show Poincare chart by default
   const [device, setDevice] = useState("C0680226");
   const [metode, setMetode] = useState("OC");
-  const metodeCollection = ["OC", "IQ", "BC"];
   const [loading, setLoading] = useState(false);
   const [data3Dp, set3dpData] = useState([]);
   const [IQRData, setIQRData] = useState([]);
-  const [medianProperty, setMedianProperty] = useState({
-    sdnn: 0,
-    rmssd: 0,
-    pnn50: 0,
-    s1: 0,
-    s2: 0,
-    dfa: 0,
-    total: 0
-  });
+
   const [borderColor, setBorderColor] = useState([]);
 
   useEffect(() => {
-    if (currentUser.guid == '' || !currentUser.guid) {
+    // run this ufnction ketika user mengganti time date range
+    if (startDate && endDate) {
+      fetchLogs(device, metode);
+    }
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    // Mengecek apakah user sudah memiliki guid device yang valid
+    if (currentUser.role == "user" && (currentUser.guid == '' || !currentUser.guid)) {
       setLoading(true);
       Swal.fire({
         title: "Error!",
@@ -59,48 +58,42 @@ export default function Monitor() {
         icon: "error",
         confirmButtonColor: "#3085d6",
       }).then(() => {
+        // tendang ke profile untuk set guid device
         return navigate('/profile');
       });
     } else {
 
+      // jika guid device sudah valid 
       AOS.init({
         duration: 700
       })
-      fetchLogs(device);
+      fetchLogs(device); // run function
+       
     }
-
-    // readFileExistOnFTP('2023-07-24', '2024-08-29');
   }, []);
-
-  useEffect(() => {
-    if (startDate && endDate) {
-
-      dispatch(clearLogsWithDailytMetric());
-      fetchLogs(device, metode);
-
-    }
-  }, [startDate, endDate]);
 
   const fetchLogs = async (device, metode) => {
     try {
-      setLoading(true);
-      results = [];
+      setLoading(true); // set loading page
+     
       let url = `/api/user/test`;
       if (device) {
         url = `/api/user/test/${device}`;
       }
 
+      // jika memakai filtering range tanggal
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        if (metode) url += `&method=${metode}`;
+        if (metode) url += `&method=${metode}`; // jika metode algorithma di cantum
       } else {
-        if (metode) url += `?method=${metode}`;
+        if (metode) url += `?method=${metode}`;  // jika metode algorithma di cantum
       }
+
       const response = await fetch(url);
       const data = await response.json();
 
-      console.log({ data })
       if (!response.ok) {
+        // Jika terjadi kesahalahn
         console.log('error');
         setLogs([]);
 
@@ -114,16 +107,15 @@ export default function Monitor() {
         return
       }
 
-      // let payloadRedux = {};
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
-      const tes = groupDataByThreeAndAverage(sortedLogs);
+      const DataAverage3dp = groupDataByThreeAndAverage(sortedLogs); // run fucntion untuk menghitung average point
 
-      console.log({ sortedLogs, tes, data })
-      set3dpData(tes);
+      // console.log({ sortedLogs, DataAverage3dp, data }, "ini filterIQ RESULT", data.filterIQRResult[0])
+      set3dpData(DataAverage3dp);
       setLogs(sortedLogs);
       setIQRData(data.filterIQRResult);
 
-      // // setBorderColor
+      // // setBorderColor untuk grafik PointCare
       const borderColor = sortedLogs.map(item => {
         if (item.activity === 'Berjalan') return 'rgba(249, 39, 39, 0.8)'; // Merah untuk berjalan 
         if (item.activity === 'Tidur') return 'rgba(63, 234, 53, 0.8)'; // Hijau untuk tidur
@@ -133,16 +125,16 @@ export default function Monitor() {
       });
 
       setBorderColor(borderColor);
-      // // payloadRedux.borderColorR = borderColor;
-
 
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
+      // Stop loading
       setLoading(false);
     }
   };
 
+  // Fungsi untuk menghitung nilai average
   const groupDataByThreeAndAverage = (datalog) => {
     const groupedData = [];
 
@@ -165,34 +157,48 @@ export default function Monitor() {
 
         // Tambahkan [date, avg] ke hasil groupedData
         groupedData.push({ date, avg });
+
       }
     }
+
     return groupedData;
+    /**
+       * Result : [
+       *  {
+       *    date : date,
+       *    avg : 90 // example
+       *  },
+       *  ...
+       * ]
+       */
   };
 
 
-
+  // fungsi untuk toggle open close grafik
   const toggleVisibilityHR = () => setHRIsVisible(!isHRVisible);
   const toggleVisibilityRR = () => setRRIsVisible(!isRRVisible);
   const toggleVisibilityPoincare = () => setPoincareIsVisible(!isPoincareVisible);
   const toggleVisibility3dp = () => set3dpIsVisible(!is3dpVisible);
   const toggleVisibilityIQR = () => setIQRIsVisible(!isIQRVisible);
 
+  // function handler change device
   const handleChangeDevice = (e) => {
-    e.preventDefault();
-    setDevice(e.target.value);
-    fetchLogs(e.target.value, metode);
+    e.preventDefault(); // mencegah halaman di restart
+    setDevice(e.target.value); // set device saat ini
+    fetchLogs(e.target.value, metode); // run function
   }
 
+  // function handler change metode algoroithm
   const handleChangeMetode = (e) => {
-    e.preventDefault();
-    setMetode(e.target.value);
-    fetchLogs(device, e.target.value);
+    e.preventDefault(); // mencegah halaman di restart
+    setMetode(e.target.value); // set metode algprihtma saat ini
+    fetchLogs(device, e.target.value); // run function
   }
 
   return (
     <div>
       {loading ? (
+        // Show this when loading..
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101010] dark:bg-[#FEFCF5]">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] dark:border-[#217170] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
@@ -201,8 +207,8 @@ export default function Monitor() {
             </p>
           </div>
         </div>
-
       ) : null}
+
       <main className=''>
         <section className="bg-[#101010] dark:bg-[#FEFCF5] flex dark:text-[#073B4C] text-white">
           <Side />
@@ -210,11 +216,9 @@ export default function Monitor() {
             <div className="relative flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0 ">
                 <div className="flex flex-wrap items-center">
-                  {/* <ButtonOffCanvas index={2} /> */}
-
                   <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Grafik Monitoring</h1>
-
                 </div>
+
                 <DatePicker
                   data-aos="fade-left"
                   selectsRange
@@ -230,8 +234,6 @@ export default function Monitor() {
                   className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C]  dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
                 />
 
-                {/* {currentUser.role !== 'user' && ( */}
-                {/* <div data-aos="fade-up" className="inline-block relative"> */}
                 <select
                   name=""
                   id=""
@@ -243,8 +245,6 @@ export default function Monitor() {
                   <option value="BA903328">BA903328</option>
                 </select>
                 {loading ? <span className="ms-4 loader"></span> : null}
-                {/* </div> */}
-                {/* )} */}
 
                 <select
                   name=""
@@ -258,18 +258,17 @@ export default function Monitor() {
                   <option value="BC">BC</option>
                 </select>
 
-                {/* <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} /> */}
-
               </div>
             </div>
             {logs ? (
+              // jika data logs tersedia
               <div style={{ overflowX: 'auto', marginRight: 40 }}>
                 <div className='flex flex-col gap-3 ms-4 cursor-pointer pt-3 pb-5'>
                   <div className="flex-col flex">
                     <div onClick={toggleVisibilityHR} className={isHRVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isHRVisible ? 'Hide' : 'Show'} Graphic HR</button>
                     </div>
-                    {isHRVisible ? (
+                    {isHRVisible ? ( // jika isHRVisible show == true
                       <LineGraph data={logs} label={`HR`} keyValue={`HR`} color={borderColor} />
                     ) : null}
                   </div>
@@ -277,7 +276,7 @@ export default function Monitor() {
                     <div onClick={toggleVisibilityRR} className={isRRVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isRRVisible ? 'Hide' : 'Show'} Graphic RR</button>
                     </div>
-                    {isRRVisible ? (
+                    {isRRVisible ? ( // jika isRRVisible show == true
                       <LineGraph data={logs} label={`RR`} keyValue={`RR`} color={borderColor} />
                     ) : null}
                   </div>
@@ -285,7 +284,7 @@ export default function Monitor() {
                     <div onClick={toggleVisibility3dp} className={is3dpVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{is3dpVisible ? 'Hide' : 'Show'} Graphic 3dpfilter</button>
                     </div>
-                    {is3dpVisible ? (
+                    {is3dpVisible ? ( // jika is3dpVisible show == true
                       <Graph3d data={data3Dp} label={`Data3dp`} color={borderColor} />
                     ) : null}
                   </div>
@@ -293,7 +292,7 @@ export default function Monitor() {
                     <div onClick={toggleVisibilityIQR} className={isIQRVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isIQRVisible ? 'Hide' : 'Show'} Graphic IQR</button>
                     </div>
-                    {isIQRVisible ? (
+                    {isIQRVisible ? ( // jika isIQRVisible show == true
                       <InterquartileGraph data={IQRData} label={`InterQuartile`} color={borderColor} />
                     ) : null}
 
@@ -303,14 +302,13 @@ export default function Monitor() {
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isPoincareVisible ? 'Hide' : 'Show'} Graphic Pointcare</button>
                     </div>
 
-                    {isPoincareVisible ? (
+                    {isPoincareVisible ? ( // jika isPoincareVisible show == true
                       <ScatterGraph data={logs} label={`PointCare`} keyValue={`HR`} color={borderColor} />
                     ) : null}
                   </div>
-
-
                 </div>
               </div>
+
             ) : null}
           </div>
         </section>

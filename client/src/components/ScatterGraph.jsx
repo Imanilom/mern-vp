@@ -271,14 +271,12 @@ function ScatterGraph({ data, label, keyValue, color }) {
 
         // Membuat sumbu x dan y sebagai variabel tersendiri
         const xAxis = svg.append('g')
-
             .attr('transform', `translate(0, ${height - margin.bottom - 10})`)
             .attr('fontSize', 8)
             .call(d3.axisBottom(x)
                 .ticks(YCount)
                 .tickPadding(10)
             )
-
 
         xAxis
             .selectAll('text')

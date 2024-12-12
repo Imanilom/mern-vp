@@ -13,7 +13,7 @@ let scroolState = {
     DFA: 1
 };
 
-function DfaGraphic({ data, label, keyValue, color }) {
+function DfaGraphicADFA({ data, label, keyValue, color }) {
 
     const [scroolLevel, setScroolLevel] = useState(1);
     const chartRef = useRef();
@@ -79,35 +79,23 @@ function DfaGraphic({ data, label, keyValue, color }) {
         }
     }
 
-    // useEffect(() => {
-    //   // init for using label x date
-    //   const parseDate = d3.timeParse('%d-%m-%Y %H:%M:%S'); // function untuk merubah string to date
 
     data.forEach(d => {
-        // Format tanggal asli tanpa waktu
-        // const dateStr = new Date(formatedDate(d.tanggal)).toISOString().split('T')[0]; // Ambil bagian tanggal saja (yyyy-mm-dd)
+
         const dateStr = new Date(d.timestamp_tanggal);
-        // Gabungkan dengan waktu_awal
-        const combinedDateTime = `${dateStr}T${d.waktu_awal}`; // Format ISO: yyyy-mm-ddTHH:MM:SS
-        // console.log({ combinedDateTime, dateStr }, d);
-        // console.log(typeof d.tanggal != 'object')
-        // Buat objek Date baru berdasarkan gabungan
+
         if (typeof d.tanggal != 'object') {
-            // d.datetime = combinedDateTime; 
             d.tanggal = dateStr // Update tanggal agar mengikuti waktu_awal
         }
 
         let statusA1 = 'Safe';
         let statusA2 = 'Safe';
 
-        if (d.dfa.alpha1 > 1.2) statusA1 = 'Warning'
-        if (d.dfa.alpha1 > 1.5) statusA1 = 'Danger'
+        if (d.adfa.alphaPlus > 1.2) statusA1 = 'Warning'
+        if (d.adfa.alphaPlus > 1.5) statusA1 = 'Danger'
 
-        if (d.dfa.alpha2 > 1.2) statusA2 = 'Warning'
-        if (d.dfa.alpha2 > 1.5) statusA2 = 'Danger'
-
-
-        // Debugging, lihat hasilnya
+        if (d.adfa.alphaMinus > 1.2) statusA2 = 'Warning'
+        if (d.adfa.alphaMinus > 1.5) statusA2 = 'Danger'
 
         d.statusA1 = statusA1;
         d.statusA2 = statusA2;
@@ -125,7 +113,6 @@ function DfaGraphic({ data, label, keyValue, color }) {
         let processedData2 = rawData.filter(d => d.dfa !== null);
         processedData2.sort((a, b) => a.tanggal - b.tanggal)
         console.log(processedData2.length);
-        // filtering warna circle
 
         // lakukan pengelompokan data sesuai hari
         const logsGroupDate = {};
@@ -133,20 +120,18 @@ function DfaGraphic({ data, label, keyValue, color }) {
         let result = [];
 
         // Mengelompokkan data berdasarkan tanggal
-        console.log({ processedData2 })
+        // console.log({ processedData2 })
         processedData2.forEach((val) => {
             const dateObj = new Date(val.timestamp_tanggal);
             if (dateObj.getMonth() + 1 > 9) {
                 date = `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
             } else {
-
                 date = `${dateObj.getFullYear()}-0${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
             }
             // const [y,m,d] = date.split("") 
             if (!logsGroupDate[date]) logsGroupDate[date] = [];
             logsGroupDate[date].push(val);
         });
-
 
         console.log({ logsGroupDate });
 
@@ -246,43 +231,100 @@ function DfaGraphic({ data, label, keyValue, color }) {
         const paginatedData = getPaginatedData(result, page, maxTitik);
         let processedData = paginatedData;
 
+        processedData.map((val) => {
+            if (val.adfa.alphaPlus == null) val.adfa.alphaPlus = 0;
+            if (val.adfa.alphaMinus == null) val.adfa.alphaMinus = 0;
+        })
+
+        
         console.log({ processedData, page, maxTitik })
 
-        let colorA1 = processedData.map(item => {
-            if (item.statusA1 === 'Safe') return 'rgba(69, 252, 124, 0.9)'; // Merah untuk berjalan 
-            if (item.statusA1 === 'Warning') return 'rgba(246, 118, 37, 0.9)'; // Hijau untuk tidur
-            if (item.statusA1 === 'Danger') return 'rgba(255, 0, 0, 0.9)'; // Ungu untuk Berolahraga
-            // return 'rgba(75, 192, 192, 1)'; // Warna default
-            return 'rgba(7, 172, 123, 1)'; // Warna default
+        let defaultColor = "rgba(7, 172, 123, 1)";
+
+        const theme = localStorage.getItem('_isLightMode');
+        if (theme == "true") { // is light state
+            defaultColor = "rgba(33,113,122, 1)";
+        }
+        
+        let colorA1 = processedData.map((item, i) => {
+            if (i > 0) {
+              
+                if (processedData[i - 1].adfa.alphaPlus - processedData[i].adfa.alphaPlus >= 10) {
+              
+                    return 'rgba(249, 39, 39, 0.8)';
+                } else if (processedData[i - 1].adfa.alphaPlus - processedData[i].adfa.alphaPlus >= 5) {
+                    
+                    return 'rgba(255, 161, 0, 1)';
+                } else {
+                    return 'rgba(0, 90, 143, 1)'; // Warna default
+                }
+            } else {
+                return 'rgba(0, 90, 143, 1)'; // Warna default
+            }
         });
 
-        let colorA2 = processedData.map(item => {
-            if (item.statusA2 === 'Safe') return 'rgba(69, 252, 124, 0.9)'; // Merah untuk berjalan 
-            if (item.statusA2 === 'Warning') return 'rgba(246, 118, 37, 0.9)'; // Hijau untuk tidur
-            if (item.statusA2 === 'Danger') return 'rgba(255, 0, 0, 0.9)'; // Ungu untuk Berolahraga
-            // return 'rgba(75, 192, 192, 1)'; // Warna default
-            return 'rgba(7, 172, 123, 1)'; // Warna default
+        let colorA2 = processedData.map((item, i) => {
+            if (i > 0) {
+              
+                if (processedData[i - 1].adfa.alphaMinus - processedData[i].adfa.alphaMinus >= 10) {
+              
+                    return 'rgba(249, 39, 39, 0.8)';
+                } else if (processedData[i - 1].adfa.alphaMinus - processedData[i].adfa.alphaMinus >= 5) {
+                    
+                    return 'rgba(255, 161, 0, 1)';
+                } else {
+                    return defaultColor; // Warna default
+                }
+            } else {
+                return defaultColor; // Warna default
+            }
         });
 
         let sizeCircleA1 = processedData.map((item, i) => {
-            if (item.statusA1 === 'Safe') return 4; // Merah untuk berjalan 
-            if (item.statusA1 === 'Warning') return 6; // Hijau untuk tidur
-            if (item.statusA1 === 'Danger') return 8; // Ungu untuk Berolahraga
-            // return 'rgba(75, 192, 192, 1)'; // Warna default
-            return 4; // Warna default
+            if (i > 0) {
+               
+                if (processedData[i - 1].adfa.alphaPlus - processedData[i].adfa.alphaPlus >= 10) {
+                   
+                    processedData[i]['label'] = "Danger";
+                    return 8; // ukuran 6 untuk damger
+                } else if (processedData[i - 1].adfa.alphaPlus - processedData[i].adfa.alphaPlus >= 5) {
+                    processedData[i]['label'] = "Warning";
+                    // console.log('oke kuning')
+                    return 6;
+                } else {
+                    processedData[i]['label'] = "Safe";
+                    return 4; // Warna default
+                }
+            } else {
+                processedData[i]['label'] = "Safe";
+                return 4; // Warna default
+            }
         })
 
-        let sizeCircleA2 = processedData.map(item => {
-            if (item.statusA2 === 'Safe') return 4; // Merah untuk berjalan 
-            if (item.statusA2 === 'Warning') return 6; // Hijau untuk tidur
-            if (item.statusA2 === 'Danger') return 8; // Ungu untuk Berolahraga
-            // return 'rgba(75, 192, 192, 1)'; // Warna default
-            return 4; // Warna default
+        let sizeCircleA2 = processedData.map((item, i) => {
+            if (i > 0) {
+               
+                if (processedData[i - 1].adfa.alphaMinus - processedData[i].adfa.alphaMinus >= 10) {
+                   
+                    processedData[i]['label'] = "Danger";
+                    return 8; // ukuran 6 untuk damger
+                } else if (processedData[i - 1].adfa.alphaMinus - processedData[i].adfa.alphaMinus >= 5) {
+                    processedData[i]['label'] = "Warning";
+                    // console.log('oke kuning')
+                    return 6;
+                } else {
+                    processedData[i]['label'] = "Safe";
+                    return 4; // Warna default
+                }
+            } else {
+                processedData[i]['label'] = "Safe";
+                return 4; // Warna default
+            }
         });
 
 
         // mengambil element tooltip
-        const tooltip = d3.select(`#tooltip${label}`);
+        const tooltip = d3.select(`#tooltip${label}-adfa`);
         const lastSvg = d3.select(chartRef.current);
         lastSvg.selectAll('*').remove()
 
@@ -302,19 +344,12 @@ function DfaGraphic({ data, label, keyValue, color }) {
             svgWidth = window.innerWidth * 0.7;
         } else {
 
-            console.log('hp')
             svgWidth = window.innerWidth * 0.8;
         }
 
         setSlice(Math.floor(result.length / maxTitik) + 1);
 
-        let defaultColor = "rgba(7, 172, 123, 1)";
-
-        const theme = localStorage.getItem('_isLightMode');
-        if (theme == "true") { // is light state
-            defaultColor = "rgba(33,113,122, 1)";
-        }
-
+     
         const svg = d3.select(chartRef.current)
             .append('svg')
             .attr('height', height)
@@ -331,7 +366,7 @@ function DfaGraphic({ data, label, keyValue, color }) {
             .padding(0.05);  // Kurangi padding agar lebih banyak label ditampilkan
 
         const y = d3.scaleLinear()
-            .domain([0, d3.max(processedData, d => Math.max(d[keyValue].alpha1, d[keyValue].alpha2)) + 0.2])
+            .domain([0, d3.max(processedData, d => Math.max(d.adfa.alphaPlus, d.adfa.alphaMinus)) + 0.2])
             .range([height - margin.bottom, margin.top]);
 
         // const line = d3.line()
@@ -340,12 +375,12 @@ function DfaGraphic({ data, label, keyValue, color }) {
 
         const lineA1 = d3.line()
             .x(d => x(d.tanggal))
-            .y(d => y(d.dfa.alpha1));
+            .y(d => y(d.adfa.alphaPlus));
 
-        // const lineA2 = d3.line()
-        //     .x(d => x(d.tanggal))
-        //     // .y(d => y(d[["dfa"]?.alpha2]));
-        //     .y(d => y(d.dfa.alpha2));
+        const lineA2 = d3.line()
+            .x(d => x(d.tanggal))
+            // .y(d => y(d[["dfa"]?.alpha2]));
+            .y(d => y(d.adfa.alphaMinus));
 
         // svg.append('path')
         //     .datum(processedData)
@@ -355,11 +390,11 @@ function DfaGraphic({ data, label, keyValue, color }) {
         //     .attr('d', line);
 
         processedData.forEach(d => {
-            if (!d.tanggal || isNaN(d[keyValue]?.alpha1) || isNaN(d[keyValue]?.alpha2)) {
+            if (!d.tanggal || isNaN(d.adfa?.alphaPlus) || isNaN(d.adfa?.alphaMinus)) {
                 console.error('Invalid data:', d);
             }
 
-            console.log(d[keyValue])
+            console.log(d.adfa)
         });
 
         // console.log({ defaultColor, lineA1, lineA2 }, paginatedData[0][keyValue].alpha1)
@@ -367,11 +402,17 @@ function DfaGraphic({ data, label, keyValue, color }) {
         let linePathA1 = svg.append('path')
             .datum(processedData)
             .attr('fill', 'none')
-            .attr('stroke', 'rgba(7, 172, 123, 1)')
+            .attr('stroke', 'rgba(0, 90, 143, 1)')
             .attr('stroke-width', 2)
             .attr('d', lineA1);
 
-    
+        let linePathA2 = svg.append('path')
+            .datum(processedData)
+            .attr('fill', 'none')
+            .attr('stroke', 'rgba(75, 192, 192, 1)')
+            .attr('stroke-width', 2)
+            .attr('d', lineA2);
+
         // Deteksi perubahan tanggal
         let previousDate = null;
 
@@ -409,7 +450,7 @@ function DfaGraphic({ data, label, keyValue, color }) {
                 .enter()
                 .append('circle')
                 .attr('cx', d => x(d.tanggal))
-                .attr('cy', d => y(d[keyValue].alpha1))
+                .attr('cy', d => y(d.adfa.alphaPlus))
                 .attr('r', (d, i) => sizeCircleA1[i])
                 .attr('fill', (d, i) => colorA1[i % colorA1.length])
                 .on('mouseover', (event, d) => {
@@ -418,9 +459,9 @@ function DfaGraphic({ data, label, keyValue, color }) {
 
                     let labelsPurposion;
 
-                    if (d.dfa.alpha1 > 1.5) labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
-                    if (d.dfa.alpha1 > 1.2) labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
-                    if (d.dfa.alpha1 <= 1.2) labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                    if (d.adfa.alphaPlus > 1.5) labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                    if (d.adfa.alphaPlus > 1.2) labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                    if (d.adfa.alphaPlus <= 1.2) labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
 
                     if (scroolState[label] > 1) {
                         // x = xPos - (768 * (scroolState[label] - 1));
@@ -432,8 +473,46 @@ function DfaGraphic({ data, label, keyValue, color }) {
                             ${labelsPurposion}
                             <p>Date: ${String(d.tanggal).split('GMT')[0]}</p> 
                             <p>Waktu awal : ${d.waktu_awal}</p>
-                            <p>${keyValue}: ${d[keyValue].alpha1}</p>
+                            <p> adfa AlphaPlus: ${d.adfa.alphaPlus}</p>
                             <p>Status Dfa: ${d["statusA1"]}</p>`);
+                })
+                .on('mouseout', () => {
+                    tooltip.style('opacity', 0);
+                });
+
+
+        const circleAlpha2 =
+            svg.selectAll('circle.alpha2')
+                .data(processedData)
+                .enter()
+                .append('circle')
+                .attr('cx', d => x(d.tanggal))
+                .attr('cy', d => y(d.adfa.alphaMinus))
+                .attr('r', (d, i) => sizeCircleA2[i])
+                .attr('fill', (d, i) => colorA2[i % colorA2.length])
+                .on('mouseover', (event, d) => {
+                    // console.log('hover kok')
+                    const [xPos, yPos] = d3.pointer(event);
+                    let x = xPos + 10;
+
+                    let labelsPurposion;
+
+                    if (d.adfa.alphaMinus > 1.5) labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                    if (d.adfa.alphaMinus > 1.2) labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                    if (d.adfa.alphaMinus <= 1.2) labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+
+                    if (scroolState[label] > 1) {
+                        // x = xPos - (768 * (scroolState[label] - 1));
+                    }
+                    tooltip.style('left', `${x}px`)
+                        .style('top', `${(yPos + 10)}px`)
+                        .style('opacity', 1)
+                        .html(`
+                            ${labelsPurposion}
+                            <p>Date: ${String(d.tanggal).split('GMT')[0]}</p> 
+                            <p>Waktu awal : ${d.waktu_awal}</p>
+                            <p> adfa AlphaMinus: ${d.adfa.alphaMinus}</p>
+                            <p>Status Dfa: ${d["statusA2"]}</p>`);
                 })
                 .on('mouseout', () => {
                     tooltip.style('opacity', 0);
@@ -514,7 +593,7 @@ function DfaGraphic({ data, label, keyValue, color }) {
 
     return (
         <div className='relative p-4'>
-            <div data-aos="fade-right" style={styleTooltype} id={`tooltip${label}`}></div>
+            <div data-aos="fade-right" style={styleTooltype} id={`tooltip${label}-adfa`}></div>
             <div data-aos="fade-up" className="me-auto mb-3 flex items-center sm:justify-start justify-between">
                 {slice > 1 ? (
                     <div>
@@ -537,20 +616,16 @@ function DfaGraphic({ data, label, keyValue, color }) {
                         Slide {slider}
                     </button>
                     <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
-                        Graphic {label}
+                        Graphic ADFA
                     </button>
 
                     <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
-                       Safe
-                        <span className='ms-2 w-4 h-4 bg-[#43ff64d9] rounded-full text-xs text-transparent'>wii</span>
+                        AlphaPlus
+                        <span className='ms-2 w-4 h-4 bg-[#005A8F] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
                     <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
-                      Warning
-                        <span className='ms-2 w-4 h-4 bg-[#f67625e6] rounded-full text-xs text-transparent'>wii</span>
-                    </button>
-                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
-                     Danger
-                        <span className='ms-2 w-4 h-4 bg-[#ff0000e6] rounded-full text-xs text-transparent'>wii</span>
+                        AlphaMinus
+                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] dark:bg-[#217071] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
                 </div>
             </div>
@@ -566,4 +641,4 @@ function DfaGraphic({ data, label, keyValue, color }) {
 
 }
 
-export default DfaGraphic;
+export default DfaGraphicADFA;

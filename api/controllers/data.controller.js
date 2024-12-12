@@ -13,6 +13,7 @@ import { calculateHRVMetrics, calculateAdvancedMetrics, calculateQuartilesAndIQR
 import { runAllMethods } from './logs.controller.js';
 
 import { promisify } from 'util';
+import { timeStamp } from "console";
 
 
 
@@ -164,10 +165,12 @@ export async function filterIQ(logs, multiplier = 1.5) {
   // Mengelompokkan log berdasarkan interval waktu 10 detik
   const groupedLogs = [];
   let currentGroup = [];
-  let startTime = new Date(`${logs[0].date_created}T${logs[0].time_created}`).getTime();
+  // let startTime = new Date(`${logs[0].date_created}T${logs[0].time_created}`).getTime();
+  let startTime = logs[0].timestamp;
 
   logs.forEach(log => {
-    const logTime = new Date(`${log.date_created}T${log.time_created}`).getTime();
+    // const logTime = new Date(`${log.date_created}T${log.time_created}`).getTime();
+    const logTime = log.timestamp;
     if (logTime - startTime < 1000) {
       currentGroup.push(log);
     } else {
@@ -181,6 +184,7 @@ export async function filterIQ(logs, multiplier = 1.5) {
 
   // Proses setiap grup
   groupedLogs.forEach((group, index) => {
+    console.log("grup", {group});
     const hrValues = group.map(log => log.HR).filter(value => value !== undefined && value !== null);
     const rrValues = group.map(log => log.RR).filter(value => value !== undefined && value !== null);
 
@@ -205,15 +209,21 @@ export async function filterIQ(logs, multiplier = 1.5) {
     // Memeriksa apakah ada data setelah filtering
     if (filteredHr.length > 0 && filteredRr.length > 0) {
       for (let i = 0; i < Math.min(filteredHr.length, filteredRr.length); i++) {
+        const datetime = new Date(group[i].timestamp);
         const filteredLog = {
           _id: group[i]._id,
           HR: filteredHr[i],
           RR: filteredRr[i],
-          rrRMS: group[i].rrRMS,
-          date_created: group[i].date_created,
+          timestamp : group[i].timestamp, // 
+          rrRMS: group[i].rrRMS, // kosong
+          date_created: group[i].date_created, 
           time_created: group[i].time_created,
+          // date_created: datetime.split('T')[0],
+          // time_created: datetime.split('T')[0],
           aktivitas: group[i].aktivitas,
         };
+
+        
         filteredLogs.push(filteredLog);
       }
     }

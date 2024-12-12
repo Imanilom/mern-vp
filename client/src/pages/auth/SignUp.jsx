@@ -15,20 +15,25 @@ export default function SignUp() {
   const navigate = useNavigate();
 
   useEffect(() => {
+      // Panggil AOS untuk animasi on scrool
     AOS.init({
       duration: 500
     })
   }, [])
+
+
   const handleChange = (e) => {
+     // ambil data sebelumnya dan gabungkan
     setFormData({
       ...formData,
       [e.target.id]: e.target.value,
     });
   };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // mencegah aplikasi di reload
     try {
-      setLoading(true);
+      setLoading(true); // beri informasi bahwa proses registrasi sedang di proses
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -37,17 +42,24 @@ export default function SignUp() {
         body: JSON.stringify(formData),
       });
       const data = await res.json();
-      console.log(data);
+
       if (data.success === false) {
+
+          // Jika response error, kirim message error
         setLoading(false);
         setError(data.message);
         return;
       }
+
       setLoading(false);
       setError(null);
+
+      // Arahkan ke halaman login
       navigate('/sign-in');
     } catch (error) {
       setLoading(false);
+
+      // Set message error dan tampilkan popup error
       setError(error.message);
     }
   };
@@ -88,7 +100,7 @@ export default function SignUp() {
                 SMART DEVICE
               </div>
               <div className="text-[20px] font-bold">
-                <span className='blue'>Vidya</span>Medic
+                <span className='text-[#005A8F]'>Vidya</span>Medic
               </div>
               <p className='mt-3'>
                 "Selamat Datang Kembali!  Pantau Kesehatan Anda dengan Lebih Cerdas."
@@ -126,7 +138,7 @@ export default function SignUp() {
                 <button type="submit" class="text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2">Signup</button>
 
               </div>
-              <span className='text-sm'>Sudah memiliki akun? <Link to={'/sign-in'} className='blue underline'>Masuk sekarang</Link></span>
+              <span className='text-sm'>Sudah memiliki akun? <Link to={'/sign-in'} className='text-[#005A8F] underline'>Masuk sekarang</Link></span>
 
             </form>
 

@@ -118,7 +118,7 @@ function CreatePrediction() {
                         <ul className='text-sm list-none max-w-lg py-4 flex-col flex gap-2'>
                             {listFactor.length > 0 ? (
                                 listFactor.map((val, _i) => (
-                                    <li className='bgg-dg rounded-sm py-2 text-white px-4 w-full'>{_i + 1}. {val}</li>
+                                    <li className='bgg-dg rounded-sm py-2 text-white font-semibold dark:text-[#073B4C] px-4 w-full'>{_i + 1}. {val}</li>
                                 ))
                             ) : null}
                         </ul>

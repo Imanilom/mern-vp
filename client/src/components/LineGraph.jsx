@@ -20,7 +20,6 @@ function LineGraph({ data, label, keyValue, color }) {
     const chartRef = useRef(); // buat canvas
     const [slice, setSlice] = useState(1);
     const [slider, setSlider] = useState(1);
-    const XCount = 10;
 
     useEffect(() => {
         AOS.init({
@@ -85,50 +84,121 @@ function LineGraph({ data, label, keyValue, color }) {
         document.getElementById(`zoom_panel_${label}`).innerHTML = `Zoom level ${zoomV.toFixed(1)}`;
     }
 
+
+    // Fungsi untuk memproses data dan menghilangkan duplikat
+    const processData = (rawData) => {
+        // Urutkan data berdasarkan create_at
+        const sortedData = rawData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        // Gunakan Set untuk menyimpan nilai unik
+        const uniqueValues = new Set();
+
+        // Filter data untuk menghilangkan duplikat
+        return sortedData.filter(item => {
+            const value = item[keyValue];
+            if (!uniqueValues.has(value)) {
+                uniqueValues.add(value);
+                return true;
+            }
+            return false;
+        });
+    }
+
     const drawChart = (rawData) => {
         let sizeCircle = [];
         let processedData2 = processData(rawData);
+
+        // Membuat array waktu dengan interval 10 menit
+        processedData2 = processedData2.filter(d => d.RR !== null && d.HR !== null);
+
+        // console.log(processedData2.map(d => d.create_at instanceof Date));
+
+        // lakukan pengelompokan data sesuai hari
+        const logsGroupDate = {};
+        let date = "";
+        let result = [];
         
-         // Membuat array waktu dengan interval 10 menit
-        const startTime = new Date();
-        startTime.setHours(0, 0, 0, 0); // Mulai dari jam 00:00
-        const endTime = new Date();
-        endTime.setHours(23, 59, 59, 999); // Sampai jam 23:59
-
-        const timeIntervals = [];
-        const interval = 10 * 60 * 1000; // 10 menit dalam milidetik
-        for (let time = startTime; time <= endTime; time = new Date(time.getTime() + interval)) {
-            timeIntervals.push(new Date(time));
-        }
-
-          // Gabungkan waktu dengan data asli
-        const dataWithIntervals = timeIntervals.map(time => {
-            const existingData = processedData.find(d => d.create_at.getTime() === time.getTime());
-            return existingData || { create_at: time, [keyValue]: null }; // Isi dengan null jika data tidak ditemukan
+        // Mengelompokkan data berdasarkan tanggal
+        processedData2.forEach((val) => {
+            date = val.datetime.split("T")[0];
+            // const [y,m,d] = date.split("") 
+            if (!logsGroupDate[date]) logsGroupDate[date] = [];
+            logsGroupDate[date].push(val);
         });
+        
+        console.log({ logsGroupDate });
+        
+        // Proses data per tanggal
+        Object.entries(logsGroupDate).forEach(([date, logs]) => {
+            let labelingMinute = ["00", "15", "30", "45"];
+            let labelingHour = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
+        
+            let startDataTimeHour = logs[0].create_at.getHours();
+            let endDataTimeHour = logs[logs.length - 1].create_at.getHours();
+        
+            console.log({ logs, startDataTimeHour, endDataTimeHour });
+        
+            // Menambahkan waktu awal
+            for (let hour = 0; hour < startDataTimeHour; hour++) {
+                labelingMinute.forEach((minute) => {
+                    let datetime = new Date(`${date}T${labelingHour[hour]}:${minute}:00`);
+                    result.push({
+                        HR: 0,
+                        RR: 0,
+                        create_at: datetime,
+                        label: "safe",
+                        timestamp: datetime.getTime(),
+                    });
+                });
+            }
+        
+            // Menambahkan data asli
+            logs.forEach((log) => result.push(log));
+            console.log({date, logs})
+        
+            // Menambahkan waktu akhir
+            for (let hour = endDataTimeHour ; hour < labelingHour.length; hour++) {
+                labelingMinute.forEach((minute) => {
+                    let datetime = new Date(`${date}T${labelingHour[hour]}:${minute}:00`);
+                    console.log("DATA WAKTU AKHIR", datetime)
+                    result.push({
+                        HR: 0,
+                        RR: 0,
+                        create_at: datetime,
+                        label: "safe",
+                        timestamp: datetime.getTime(),
+                    });
+                });
+            }
 
 
-        let processedData = processedData2.filter(d => d.RR !== null && d.HR !== null);
-        // console.log({ processedData, processedData2 }, keyValue)
-        processedData.forEach((d, i) => {
-            d.index = i;
         });
-
+        
+        // Mengurutkan data berdasarkan waktu
+        result.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
+        console.log({ result });
+        
+        // Menambahkan indeks ke data
+        result.forEach((d, i) => (d.index = i));
+        
+        // Paginasi
         let page = scroolState[keyValue] - 1;
         let maxTitik = 40;
 
-        // Fungsi untuk mendapatkan data sesuai dengan halaman
+           // Fungsi untuk mendapatkan data sesuai dengan halaman
         function getPaginatedData(data, page, maxTitik) {
             const startIndex = page * maxTitik;
             const endIndex = startIndex + maxTitik;
             return data.slice(startIndex, endIndex);
         }
-
-        // Mendapatkan data yang diproses untuk halaman saat ini
-        const paginatedData = getPaginatedData(processedData, page, maxTitik);
-        processedData = paginatedData;
+        
+          // Mendapatkan data yang diproses untuk halaman saat ini
+        const paginatedData = getPaginatedData(result, page, maxTitik);
+        console.log({ paginatedData }, "INI PAGINATE");
+        let processedData = paginatedData;        
         // console.log({ paginatedData, page }, paginatedData[0]);
 
+
+        // console.log({processedData, startDataTimeHour, EndDataTimeHour})
 
         // filtering warna circle
         // color = processedData.map(item => {
@@ -171,7 +241,7 @@ function LineGraph({ data, label, keyValue, color }) {
                     processedData[i]['label'] = "Danger";
                     return 8; // ukuran 6 untuk damger
 
-                } 
+                }
                 else if (processedData[i - 1][keyValue] - processedData[i][keyValue] >= 5) {
                     processedData[i]['label'] = "Warning";
                     return 6;
@@ -184,9 +254,6 @@ function LineGraph({ data, label, keyValue, color }) {
                 return 4;
             }
         })
-
-
-     
 
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
@@ -214,7 +281,7 @@ function LineGraph({ data, label, keyValue, color }) {
         }
 
         // setSlice(Math.floor(width / svgWidth) + 1);
-        setSlice(Math.floor(processedData2.length / maxTitik) + 1);
+        setSlice(Math.floor(result.length / maxTitik) + 1);
 
         const svg = d3.select(chartRef.current) // gambar canvas 
             .append('svg')
@@ -222,31 +289,34 @@ function LineGraph({ data, label, keyValue, color }) {
             .attr('width', width)
             .attr('class', 'svgOne bg-[#101010] dark:bg-[#FEFCF5] min-w-lg')
 
-         // Atur skala waktu X
-         const x = d3.scaleTime()
-         .domain([startTime, endTime])
-         .range([margin.left, width - margin.right]);
+        // Atur skala waktu X
+        const x = d3.scaleBand()
+            .domain(processedData.map(d => d.create_at))
+            // .range([margin.left, width - margin.right]);
+            .range([margin.left, width - margin.right]);
 
-         const y = d3.scaleLinear()
-         .domain([0, d3.max(processedData, d => d[keyValue]) || 100]) // Default maksimum 100 jika data kosong
-         .range([height - margin.bottom, margin.top]);
- 
+        console.log({ x, keyValue })
 
-         const line = d3.line()
-         .x(d => x(d.create_at))
-         .y(d => d[keyValue] !== null ? y(d[keyValue]) : y(0)); // Titik kosong ke nol
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(processedData, d => d[keyValue] + 50)]) // Default maksimum 100 jika data kosong
+            .range([height - margin.bottom, margin.top]);
 
-         svg.append('path')
-         .datum(dataWithIntervals)
-         .attr('fill', 'none')
-         .attr('stroke', defaultColor)
-         .attr('stroke-width', 2)
-         .attr('d', line);
+        const line = d3.line()
+            .x(d => x(d.create_at))
+            .y(d => d[keyValue] !== null ? y(d[keyValue]) : y(0)); // Titik kosong ke nol
 
-         const xAxis = d3.axisBottom(x)
-         .ticks(d3.timeMinute.every(10)) // Interval 10 menit
-         .tickFormat(d3.timeFormat('%H:%M')); // Format HH:MM
+        // console.log({dataWithIntervals, processedData})
+        svg.append('path')
+            .datum(processedData)
+            .attr('fill', 'none')
+            .attr('stroke', defaultColor)
+            .attr('stroke-width', 2)
+            .attr('d', line);
 
+        // const xAxis = d3.axisBottom(x)
+        // .ticks(d3.timeMinute.every(10)) // Interval 10 menit
+        // .tickFormat(d3.timeFormat('%H:%M')) // Format HH:MM
+        // .tickPadding(5)
         // Deteksi perubahan tanggal
         let previousDate = null;
 
@@ -302,10 +372,11 @@ function LineGraph({ data, label, keyValue, color }) {
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
                     .html(` 
-                            ${labelsPurposion}
-                            <p>Date: ${String(d.create_at).split('GMT')[0]}</p> 
-                            <p>Aktivitas Pasien: ${d.activity === undefined ? 'Tidak ada riwayat' : d.activity}</p>
-                            <p>${keyValue}: ${d[keyValue]}</p>`);
+                                ${labelsPurposion}
+                                
+                                <p>Date: ${String(d.create_at).split('GMT')[0]}</p> 
+                                <p>Aktivitas Pasien: ${d.activity === undefined ? 'Tidak ada riwayat' : d.activity}</p>
+                                <p>${keyValue}: ${d[keyValue]}</p>`);
             })
             .on('mouseout', () => {
                 tooltip.style('opacity', 0);
@@ -314,32 +385,21 @@ function LineGraph({ data, label, keyValue, color }) {
         // Sumbu X dengan format jam menit detik saja
         const formatTime = d3.timeFormat("%H:%M:%S");
         svg.append('g')
-        .attr('transform', `translate(0, ${height - margin.bottom})`)
-        .call(xAxis);
+            .attr('transform', `translate(0, ${height - margin.bottom})`)
+            .call(d3.axisBottom(x)
+                .tickFormat(formatTime)
+                .ticks(20)
+                .tickPadding(8))
+            .selectAll('text') // Memilih semua teks label pada sumbu X
+            .style('text-anchor', 'end') // Menyetel posisi anchor teks ke ujung
+            .attr('dx', '-0.8em') // Mengatur jarak horizontal
+            .attr('dy', '0.15em') // Mengatur jarak vertikal
+            .attr('transform', 'rotate(-45)'); // Memutar teks label sebesar -45 derajat
 
         const yAxis = d3.axisLeft(y);
         svg.append('g')
             .attr('transform', `translate(${margin.left}, 0)`)
             .call(yAxis);
-    }
-
-
-    // Fungsi untuk memproses data dan menghilangkan duplikat
-    const processData = (rawData) => {
-        // Urutkan data berdasarkan create_at
-        const sortedData = rawData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        // Gunakan Set untuk menyimpan nilai unik
-        const uniqueValues = new Set();
-
-        // Filter data untuk menghilangkan duplikat
-        return sortedData.filter(item => {
-            const value = item[keyValue];
-            if (!uniqueValues.has(value)) {
-                uniqueValues.add(value);
-                return true;
-            }
-            return false;
-        });
     }
 
     // const y = d3.scaleTime()

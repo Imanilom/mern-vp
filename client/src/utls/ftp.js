@@ -1,3 +1,6 @@
+// File untuk menampung component dari package tertentu
+
+
 import fs from 'fs';
 import ftp from 'basic-ftp';
 

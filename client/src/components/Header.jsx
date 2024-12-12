@@ -44,7 +44,7 @@ export default function Header() {
         <div className="flex items-center gap-2">
           {!currentUser ? (
             <Link to={`/sign-in`}>
-              <div className="px-5 py-1.5 bgg-b hover:opacity-90 rounded-[5px] text-white font-semibold">
+              <div className="px-5 py-1.5 bg-[#017bc2] hover:opacity-90 rounded-[5px] text-white font-semibold">
                 Sign in
               </div>
             </Link>
