@@ -80,3 +80,47 @@ const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);
 });
+
+
+import Log from "./models/log.model.js"; // Model Logs
+import Activity from "./models/activity.model.js"; // Model Activity
+
+const addActivityToLogs = async () => {
+  try {
+    // Ambil semua aktivitas
+    const activities = await Activity.find();
+
+    for (const activity of activities) {
+      const { awal, akhir, aktivitas, Date: activityDate } = activity;
+
+      // Format tanggal menjadi "dd/MM/yyyy"
+      const formattedDate = new Date(activityDate)
+        .toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+
+      console.log("Formatted Date:", formattedDate);
+
+      // Ambil logs yang berada dalam rentang waktu dan tanggal yang sama
+      const logsToUpdate = await Log.find({
+        date_created: formattedDate,
+        time_created: { $gte: awal, $lte: akhir },
+      });
+
+      // Perbarui logs dengan aktivitas yang sesuai
+      for (const log of logsToUpdate) {
+        log.aktivitas = aktivitas;
+        await log.save();
+      }
+    }
+
+    console.log("Aktivitas berhasil ditambahkan ke logs.");
+  } catch (error) {
+    console.error("Terjadi kesalahan:", error);
+  }
+};
+
+
+addActivityToLogs();

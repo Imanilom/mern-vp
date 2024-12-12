@@ -379,7 +379,7 @@ const processHeartRateData = async () => {
 
     await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
 
-    const { filteredLogs, anomalies } = await filterIQ(logs);
+    const { filteredLogs, anomalies } = await kalmanFilter(logs);
     
     console.log(filteredLogs)
     if (filteredLogs.length === 0) {
@@ -418,24 +418,25 @@ const processHeartRateData = async () => {
     }
 
     // Validasi dan format tanggal
-    const [day, month, year] = firstLog.date_created.split("-");
+    const [day, month, year] = firstLog.date_created.split("/"); // Ubah delimiter menjadi '/' karena JSON contoh menggunakan format DD/MM/YYYY
     if (!day || !month || !year) {
       console.error("Invalid date format:", firstLog.date_created);
       return;
     }
-
+    
     // Format tanggal menjadi YYYY-MM-DD
     const formattedDateString = `${year}-${month}-${day}T${firstLog.time_created}`;
     const oldestTimestamp = new Date(formattedDateString);
-
+    
     if (isNaN(oldestTimestamp.getTime())) {
-      console.error("Invalid date format:", formattedDateString);
+      console.error("Invalid date after formatting:", formattedDateString);
       return;
     }
-
+    
     const formattedDate = `${String(oldestTimestamp.getDate()).padStart(2, "0")}-${String(
       oldestTimestamp.getMonth() + 1
     ).padStart(2, "0")}-${oldestTimestamp.getFullYear()}`;
+    
 
     const resultsDir = path.join(__dirname, "hrv-results");
     if (!fs.existsSync(resultsDir)) {
@@ -622,8 +623,6 @@ const processHeartRateData10 = async () => {
 };
 
 
-
-processHeartRateData();
 
 
 const boxCoxTransform = (data) => {
