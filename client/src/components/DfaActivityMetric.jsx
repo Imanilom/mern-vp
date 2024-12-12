@@ -11,7 +11,7 @@ function DfaActivityMetric(props) {
 
     // Menghitung data yang ditampilkan berdasarkan halaman
     const paginatedResults = results.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
-    console.log({ paginatedResults })
+    // console.log({ paginatedResults })
     useEffect(() => {
         AOS.init({
             duration: 700
@@ -19,8 +19,8 @@ function DfaActivityMetric(props) {
     }, []);
 
 
-    console.log({ results });
-    console.log('amann')
+    // console.log({ results });
+    // console.log('amann')
 
     const SetDetailData = (data) => {
         console.log({ data })
@@ -45,59 +45,59 @@ function DfaActivityMetric(props) {
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">dfa:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.dfa ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.dfa.alpha1 ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">adfa_alphaPlus:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.adfa.alphaPlus ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.adfa.alphaPlus ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">adfa_alphaMinus:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.adfa.alphaMinus ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.adfa.alphaMinus ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">hf:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.hf ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.hf ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">lf:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.lf ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.lf ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">lfHfRatio:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.lfHfRatio ?? "Data Kosong"} </td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.lfHfRatio ?? "Data Kosong"} </td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">max:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.max ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.max ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">mean:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.mean ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.mean ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">median3dp:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.median3dp ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.median3dp ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">min:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.min ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.min ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">rmssd:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.rmssd ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.rmssd ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">s1:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.s1 ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.s1 ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">s2:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.s2 ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.s2 ?? "Data Kosong"}</td>
             </tr>
             <tr>
                 <td class="text-sm" style="padding: 5px;">sdnn:</td>
-                <td class="text-sm " style="padding: 5px;">${data.metrics.sdnn ?? "Data Kosong"}</td>
+                <td class="text-sm " style="padding: 5px;">${data.metrics.metrics.sdnn ?? "Data Kosong"}</td>
             </tr>
             
         </table>
@@ -131,8 +131,6 @@ function DfaActivityMetric(props) {
             <h4 className="text-lg font-semibold mb-2">
                 Metrics DFA Activity <span className='sm:hidden text-sm'></span>
             </h4>
-
-
             <div style={{ overflowX: 'auto' }} className='max-w-[350px] sm:max-w-6xl rounded-md'>
                 <table className="min-w-full rounded-md">
                     <thead className="bg-[#363636]/20 dark:bg-[#217170]">
@@ -157,6 +155,8 @@ function DfaActivityMetric(props) {
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider"></th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider"></th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider"></th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider"></th>
                         </tr>
                     </thead>
                     <thead className="bg-[#2c2c2c] dark:bg-[#E7E7E7]">
@@ -164,6 +164,8 @@ function DfaActivityMetric(props) {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No.</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktivitas</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">alphaPlus</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">alphaMinus</th>
@@ -173,26 +175,27 @@ function DfaActivityMetric(props) {
                     </thead>
                     <tbody className="text-xs lg:text-sm">
                         {paginatedResults.length > 0 ? (
-                            paginatedResults.map((metric, index) => {
+                            paginatedResults.map((data, index) => {
+
                                 return (
                                     <tr key={index} className={index % 2 == 1 ? `bg-[#2C2C2C] dark:bg-[#E7E7E7]` : `bg-[#141414] dark:bg-[#CBCBCB]`}>
                                         <td className="px-6 py-4 whitespace-nowrap">{index + 1 + page * itemsPerPage}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{metric.tanggal}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{metric.aktivitas}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">{data.tanggal}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">{data.aktivitas}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">{data.metrics.timestamps.start.split(' ')[1]}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">{data.metrics.timestamps.end.split(' ')[1]}</td>
 
-                                        <td className="px-6 py-4 whitespace-nowrap">{metric.metrics.dfa !== null && metric.metrics.dfa ? metric.metrics.dfa.toFixed(2) : 'properti kosong.'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{metric.metrics.adfa.alphaPlus !== null && metric.metrics.adfa.alphaPlus ? metric.metrics.adfa.alphaPlus.toFixed(2) : 'properti kosong.'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{metric.metrics.adfa.alphaMinus !== null && metric.metrics.adfa.alphaMinus ? metric.metrics.adfa.alphaMinus.toFixed(2) : 'properti kosong.'}</td>
-                                        {/* <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_akhir ?? null}</td> */}
-                                        {/* <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha1 ? metric.dfa.alpha1.toFixed(2) : 'N/A'}</td> */}
-                                        {/* <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha2 ? metric.dfa.alpha2.toFixed(2) : 'N/A'}</td> */}
+                                        <td className="px-6 py-4 whitespace-nowrap">{data.metrics.metrics.dfa.alpha1 !== null && data.metrics.metrics.dfa.alpha1 ? data.metrics.metrics.dfa.alpha1.toFixed(2) : 'properti kosong.'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">{data.metrics.metrics.adfa.alphaPlus !== null && data.metrics.metrics.adfa.alphaPlus ? data.metrics.metrics.adfa.alphaPlus.toFixed(2) : 'properti kosong.'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">{data.metrics.metrics.adfa.alphaMinus !== null && data.metrics.metrics.adfa.alphaMinus ? data.metrics.metrics.adfa.alphaMinus.toFixed(2) : 'properti kosong.'}</td>
+
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex gap-1">
-                                                {HandleSimbol({ dfa: metric.metrics.dfa, name: "Dfa" })}
+                                                {HandleSimbol({ dfa: data.metrics.metrics.dfa.alpha1, name: "Dfa" })}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <button onClick={() => SetDetailData(metric)} className="px-4 py-2 rounded-md text-xs dark:bg-[#217170] text-white bg-[#07AC7B] font-semibold">Lihat Detail</button>
+                                            <button onClick={() => SetDetailData(data)} className="px-4 py-2 rounded-md text-xs dark:bg-[#217170] text-white bg-[#07AC7B] font-semibold">Lihat Detail</button>
                                         </td>
                                     </tr>
                                 );
@@ -218,7 +221,7 @@ function HandleSimbol(props) {
         )
     }
 
-    else if (dfa >= 1.2) {
+    else if (dfa > 1.2) {
         return (
             <span
                 className="w-fit text-xs px-3 py-1 text-[12px] rounded-md bg-orange-600 text-white font-medium">

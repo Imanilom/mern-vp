@@ -23,7 +23,7 @@ import cors from 'cors';
 // import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 // import './controllers/data.controller.js';
 
-dotenv.config();
+dotenv.config({path : '../.env'});
 mongoose
   .connect(process.env.MONGO, {
     serverSelectionTimeoutMS: 30000, // Increase server selection timeout to 30 seconds

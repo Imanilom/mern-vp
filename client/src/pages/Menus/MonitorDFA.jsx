@@ -12,6 +12,8 @@ import AOS from 'aos';
 import DfaMetrics from '../../components/DfaMetrics';
 import DfaGraphic from '../../components/DfaGraphic';
 import Swal from 'sweetalert2';
+import DfaMetricsADFA from '../../components/DfaMetricsADFA';
+import DfaGraphicADFA from '../../components/DfaGraphicADFA';
 
 let results = []
 
@@ -25,33 +27,29 @@ export default function MonitorDFA() {
   const [logs, setLogs] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [metrics, setMetrics] = useState({ rmssd: null, pnn50: null, sdnn: null, s1: null, s2: null });
   const [dailyMetrics, setDailyMetrics] = useState([]);
-  const [isDFAGraphVisible, setDfaGraphVisible] = useState(false); // Show HR chart by default
-  const [isRRVisible, setRRIsVisible] = useState(false); // Show RR chart by default
-  const [isIQRVisible, setIQRIsVisible] = useState(false); // Show RR chart by default
-  const [is3dpVisible, set3dpIsVisible] = useState(false); // Show RR chart by default
-  const [isPoincareVisible, setPoincareIsVisible] = useState(false); // Show Poincare chart by default
+  const [isDFAGraphVisible, setDfaGraphVisible] = useState(false);
+  const [isADFAGraphVisible, setADfaGraphVisible] = useState(false);
   const [device, setDevice] = useState("C0680226");
   const [metode, setMetode] = useState("OC");
   const [loading, setLoading] = useState(false);
-  const [data3Dp, set3dpData] = useState([]);
-  const [IQRData, setIQRData] = useState([]);
-  const [medianProperty, setMedianProperty] = useState({
-    sdnn: 0,
-    rmssd: 0,
-    pnn50: 0,
-    s1: 0,
-    s2: 0,
-    dfa: 0,
-    total: 0
-  });
+
+
   const [borderColor, setBorderColor] = useState([]);
   const [resultsDFA, setResults] = useState([]);
   const [resultsDFA2, setResults2] = useState([]);
   const [splittedLog, setSplittedLog] = useState([]);
 
+  // Jika input date range berubah, jalankan fungsi dibwh
   useEffect(() => {
+    // console.log({ resultsDFA2, splittedLog, resultsDFA })
+    if (startDate && endDate) {
+      fetchLogs(device);
+    }
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    // Mengecek apakah user memiliki guid yang valid
     if (currentUser.guid == '' || !currentUser.guid) {
       setLoading(true);
       Swal.fire({
@@ -60,84 +58,69 @@ export default function MonitorDFA() {
         icon: "error",
         confirmButtonColor: "#3085d6",
       }).then(() => {
+        // tendang ke profile untuk mengisi guid
         return navigate('/profile');
       });
-    }else{
-      
-          AOS.init({
-            duration: 700
-          })
-          fetchLogs(device);
+    } else {
+      // Panggil AOS untuk scrool animation
+      AOS.init({
+        duration: 700
+      })
 
+      fetchLogs(device); // run function
     }
-    // readFileExistOnFTP('2023-07-24', '2024-08-29');
   }, []);
-
-  useEffect(() => {
-    console.log({ resultsDFA2, splittedLog, resultsDFA })
-    if (startDate && endDate) {
-      fetchLogs(device);
-    }
-  }, [startDate, endDate]);
 
   const fetchLogs = async (device, metode) => {
     try {
-      setLoading(true);
+      setLoading(true); // tampilkan halaman loading
+
       results = [];
+
+      // Fetching API
       let url = `/api/user/logdfa`;
       if (device) {
-        url = `/api/user/logdfa`; 
+        url = `/api/user/logdfa`;
       }
 
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        if(metode) url += `&method=${metode}`;
-      }else{
-        if(metode) url += `?method=${metode}`;
+        if (metode) url += `&method=${metode}`;
+      } else {
+        if (metode) url += `?method=${metode}`;
       }
-      // let url = `/api/user/logdfa`;
-      // if (device) {
-      //   url = `/api/user/logdfa`;
-      // }
-
-      // if (startDate && endDate) {
-      //   url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-      // }
 
       const response = await fetch(url);
       const data = await response.json();
-      console.log({ data })
+ 
       if (!response.ok) {
-        console.log('error');
+        // Jika terjadi kesalahan, hentikan dan set semua variabel ke default
         setLogs([]);
-        setMetrics([]);
         setDailyMetrics([]);
-        set3dpData([]);
-        setIQRData([]);
         setResults([]);
         setResults2([]);
         dispatch(clearLogsWithDailytMetric());
         return
       }
+    
+      // urutkan berdasarakna date
+      let sortedResult = data.result.sort((a, b) => a.timestamp_tanggal - b.timestamp_tanggal);
 
-      let sortedResult = data.result.sort((a, b) => a.timestamp_tanggal - b.timestamp_tanggal)
-      setResults(sortedResult);
-      setResults2(sortedResult);
-      console.log({sortedResult})
-     
+      setResults(sortedResult); // menampung data untuk table
+      setResults2(sortedResult); // menampung data untuk grafik
 
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
       setLoading(false);
-
     }
   };
 
+  // Handle Change Metode
   const handleChangeMetode = (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Menghindari web dimuat ulang
     setMetode(e.target.value);
-    fetchLogs(device, e.target.value);
+    fetchLogs(device, e.target.value); // run function
   }
 
   return (
@@ -156,7 +139,7 @@ export default function MonitorDFA() {
       <main className=''>
         <section className="bg-[#101010] dark:bg-[#FEFCF5] flex text-white  dark:text-[#073B4C]">
           <Side />
-          <div className="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-5">
+          <div className="w-full xl:w-8/12 mb-12 pb-8 xl:mb-0 px-4 mx-auto mt-5">
             <div className=" flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0">
                 <div className="flex flex-wrap items-center">
@@ -183,7 +166,7 @@ export default function MonitorDFA() {
                 <select
                   name=""
                   id=""
-                   className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] md:max-w-[200px] rounded text-sm w-full  md:text-[16px] lg:min-w-[220px] px-3 py-3"
+                  className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] md:max-w-[200px] rounded text-sm w-full  md:text-[16px] lg:min-w-[220px] px-3 py-3"
                   onChange={handleChangeMetode}
                 >
                   <option value="" disabled selected>Choose metode</option>
@@ -196,14 +179,25 @@ export default function MonitorDFA() {
                 {resultsDFA ? (
                   <DfaMetrics results={resultsDFA} splittedLog={splittedLog} />
                 ) : null}
+
+                {resultsDFA ? (
+                  <DfaMetricsADFA results={resultsDFA} splittedLog={splittedLog} />
+                ) : null}
               </div>
             </div>
 
-            <div onClick={() => setDfaGraphVisible(!isDFAGraphVisible)} className={isDFAGraphVisible && resultsDFA2.length > 0 ? `border-transparent bg-[#07AC7B] rounded-md flex mx-4 cursor-pointer dark:bg-[#101010]/10` : `cursor-pointer border border-gray-400 rounded-md flex mx-4 dark:bg-[#101010]/10`}>
+            <div onClick={() => setDfaGraphVisible(!isDFAGraphVisible)} className={isDFAGraphVisible && resultsDFA2.length > 0 ? `border-transparent mb-3 bg-[#07AC7B] rounded-md flex mx-4 cursor-pointer dark:bg-[#101010]/10` : `mb-3 cursor-pointer border border-gray-400 rounded-md flex mx-4 dark:bg-[#101010]/10`}>
               <button className='text-xs py-0.5 px-1.5 m-2'>{isDFAGraphVisible ? 'Hide' : 'Show'} Graphic DFA</button>
             </div>
             {isDFAGraphVisible && resultsDFA2.length > 0 ? (
               <DfaGraphic data={resultsDFA2} label={`DFA`} keyValue={`dfa`} color={borderColor} />
+            ) : null}
+
+            <div onClick={() => setADfaGraphVisible(!isADFAGraphVisible)} className={isADFAGraphVisible && resultsDFA2.length > 0 ? `border-transparent mb-3 bg-[#07AC7B] rounded-md flex mx-4 cursor-pointer dark:bg-[#101010]/10` : `mb-3 cursor-pointer border border-gray-400 rounded-md flex mx-4 dark:bg-[#101010]/10`}>
+              <button className='text-xs py-0.5 px-1.5 m-2'>{isADFAGraphVisible ? 'Hide' : 'Show'} Graphic ADFA</button>
+            </div>
+            {isADFAGraphVisible && resultsDFA2.length > 0 ? (
+              <DfaGraphicADFA data={resultsDFA2} label={`DFA`} keyValue={`dfa`} color={borderColor} />
             ) : null}
           </div>
         </section>

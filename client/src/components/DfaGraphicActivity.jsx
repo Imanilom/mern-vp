@@ -162,11 +162,15 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
     // useEffect(() => {
     //   // init for using label x date
     //   const parseDate = d3.timeParse('%d-%m-%Y %H:%M:%S'); // function untuk merubah string to date
-
+    console.log({ data })
     data.forEach((d, i) => {
         // Format tanggal asli tanpa waktu
         // const dateStr = new Date(formatedDate(d.tanggal)).toISOString().split('T')[0]; // Ambil bagian tanggal saja (yyyy-mm-dd)
-        const dateStr = new Date(d.details[0]['timestamp'] * 1000);
+        // const dateStr = new Date(d.details[0]['timestamp'] * 1000);
+        const [day, m, y] = d.metrics.timestamps.start.replace(" ", "T").split("T")[0].split('-');
+        const [hour, minute, sec] = d.metrics.timestamps.start.replace(" ", "T").split("T")[1].split(':');
+        const dateStr = new Date(`${y}-${m}-${day}T${hour}:${minute}:${sec}`);
+        console.log(d.metrics.timestamps.start.replace(" ", "T"));
         // Gabungkan dengan waktu_awal
         const combinedDateTime = `${dateStr}T${d.waktu_awal}`; // Format ISO: yyyy-mm-ddTHH:MM:SS
         // console.log({ combinedDateTime, dateStr }, d);
@@ -192,13 +196,100 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
     const drawChart = (rawData) => {
         console.log({ rawData }, 'woy')
         // let processedData = rawData.filter(d => d.dfa !== null);
-        let processedData = rawData;
-        
-        // console.log(processedData.length);
-        // filtering warna circle
+        // let processedData = rawData;
+        let processedData2 = rawData.filter(d => d.metrics.metrics.dfa.alpha1 !== null && d.metrics.metrics.alpha2 !== null);;
 
         let page = scroolState[label] - 1;
         let maxTitik = 10;
+
+        const logsGroupDate = {};
+        let date = "";
+        let result = [];
+
+        processedData2.forEach((val) => {
+            date = val.tanggal;
+            // const [y,m,d] = date.split("") 
+            if (!logsGroupDate[date]) logsGroupDate[date] = [];
+            logsGroupDate[date].push(val);
+        });
+
+        console.log({ logsGroupDate });
+
+        // Proses data per tanggal
+        Object.entries(logsGroupDate).forEach(([date, metricsAktivitas]) => {
+            let labelingMinute = ["00", "15", "30", "45"];
+            let labelingHour = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
+
+            let startDataTimeHour = metricsAktivitas[0].tanggal_timestamp.getHours();
+            let endDataTimeHour = metricsAktivitas[metricsAktivitas.length - 1].tanggal_timestamp.getHours();
+
+            console.log({ metricsAktivitas, startDataTimeHour, endDataTimeHour });
+
+            // Menambahkan waktu awal
+            for (let hour = 0; hour < startDataTimeHour; hour++) {
+                labelingMinute.forEach((minute) => {
+                    const [d, m, y] = date.split('-'); 
+                    let datetime = new Date(`${y}-${m}-${d}T${labelingHour[hour]}:${minute}:00`);
+                    // console.log({datetime, date})
+                    result.push({
+                        aktivitas: "Uknown",
+                        metrics: {
+                            metrics: {
+                                adfa: {
+                                    alpha1: 0,
+                                    alpha2: 0
+                                },
+                                dfa: {
+                                    alphaPlus: 0,
+                                    alphaMinus: 0
+                                }
+                            }
+                        },
+                        tanggal: date,
+                        tanggal_timestamp: datetime,
+                        tanggal_waktu : datetime.toISOString(),
+                        timestamp: datetime.getTime(),
+                    });
+                });
+            }
+
+            // Menambahkan data asli
+            metricsAktivitas.forEach((metric) => result.push(metric));
+            console.log({ date, metricsAktivitas })
+
+            // Menambahkan waktu akhir
+            for (let hour = endDataTimeHour; hour < labelingHour.length; hour++) {
+                labelingMinute.forEach((minute) => {
+                    const [d, m, y] = date.split('-'); 
+                    let datetime = new Date(`${y}-${m}-${d}T${labelingHour[hour]}:${minute}:00`);
+                    // console.log({datetime, date})
+                    result.push({
+                        aktivitas: "Uknown",
+                        metrics: {
+                            metrics: {
+                                adfa: {
+                                    alpha1: 0,
+                                    alpha2: 0
+                                },
+                                dfa: {
+                                    alphaPlus: 0,
+                                    alphaMinus: 0
+                                }
+                            }
+                        },
+                        tanggal: date,
+                        tanggal_timestamp: datetime,
+                        tanggal_waktu : String(datetime),
+                        timestamp: datetime.getTime(),
+                    });
+                });
+            }
+        });
+
+           
+        // Mengurutkan data berdasarkan waktu
+        result.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
+        console.log({ result });
 
         // Fungsi untuk mendapatkan data sesuai dengan halaman
         function getPaginatedData(data, page, maxTitik) {
@@ -208,8 +299,9 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
         }
 
         // Mendapatkan data yang diproses untuk halaman saat ini
-        const paginatedData = getPaginatedData(processedData, page, maxTitik);
-        processedData = paginatedData;
+        const paginatedData = getPaginatedData(result, page, maxTitik);
+
+        let processedData = paginatedData;
 
         processedData.sort((a, b) => a.tanggal_timestamp - b.tanggal_timestamp)
 
@@ -217,31 +309,34 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
             let arrayOfDataDfa = [];
 
             processedData.map((d, i) => {
-                let HrColl = [];
-                d.details.map((val, _i) => {
-                    HrColl.push(val.HR);
-                })
+                // d.metrics.metrics.map((val, _i) => {
+                //     HrColl.push(val.HR);
+                // })
 
-                if (HrColl.length > 8) {
-                    let dfaVal = calculateDFA(HrColl);
-                    if(
-                        isNaN(dfaVal.alpha1) || // Cek jika nilai adalah NaN
-                        isNaN(dfaVal.alpha2) || // Cek jika nilai adalah NaN
-                        typeof dfaVal.alpha1 !== "number" || // Cek jika bukan angka
-                        typeof dfaVal.alpha2 !== "number"   // Cek jika bukan angka
-                    ){
-                        d.dfa = {
-                            alpha1: 0,
-                            alpha2: 0
-                        };
-                    }else{
-                        d.dfa = dfaVal;
-                    }
-                } else {
+                // if (HrColl.length > 8) {
+                //     let dfaVal = calculateDFA(HrColl);
+                //     if(
+                //         isNaN(dfaVal.alpha1) || // Cek jika nilai adalah NaN
+                //         isNaN(dfaVal.alpha2) || // Cek jika nilai adalah NaN
+                //         typeof dfaVal.alpha1 !== "number" || // Cek jika bukan angka
+                //         typeof dfaVal.alpha2 !== "number"   // Cek jika bukan angka
+                //     ){
+                //         d.dfa = {
+                //             alpha1: 0,
+                //             alpha2: 0
+                //         };
+                //     }else{
+                //         d.dfa = dfaVal;
+                //     }
+                // }else {
+                if (!d.metrics.metrics.dfa.alpha1 || isNaN(d.metrics.metrics.dfa.alpha1)) {
                     d.dfa = {
                         alpha1: 0,
                         alpha2: 0
                     };
+                }
+                else {
+                    d.dfa = d.metrics.metrics.dfa;
                 }
 
                 console.log({ i, }, d.dfa)
@@ -265,7 +360,7 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
             processedData = arrayOfDataDfa;
         }
 
-        HitungDFA();
+        HitungDFA(); // run fucntion
 
         console.log({ processedData, page, maxTitik })
 
@@ -326,7 +421,7 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
             svgWidth = window.innerWidth * 0.8;
         }
 
-        setSlice(Math.floor(rawData.length / maxTitik) + 1);
+        setSlice(Math.floor(result.length / maxTitik) + 1);
 
         let defaultColor = "rgba(7, 172, 123, 1)";
 
@@ -443,9 +538,9 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
 
                     let labelsPurposion;
 
-                    if(d.statusA1 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
-                    if(d.statusA1 == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
-                    if(d.statusA1 == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                    if (d.statusA1 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                    if (d.statusA1 == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                    if (d.statusA1 == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
 
 
 
@@ -482,9 +577,9 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
 
                     let labelsPurposion;
 
-                    if(d.statusA2 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
-                    if(d.statusA2 == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
-                    if(d.statusA2 == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                    if (d.statusA2 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                    if (d.statusA2 == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                    if (d.statusA2 == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
 
                     const [xPos, yPos] = d3.pointer(event);
                     let x = xPos + 10;
@@ -498,7 +593,7 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
                               <p>${labelsPurposion}</p>
                             <p>Date: ${String(d.tanggal_waktu).split('GMT')[0]}</p> 
                             <p> Alpha_2: ${d["dfa"].alpha2}</p>
-                            <p> Aktivitas : ${d.Aktivitas}</p>
+                            <p> Aktivitas : ${d.aktivitas}</p>
                             <p> Status Dfa Alpha2: ${d["statusA2"]}</p>`);
                 })
                 .on('mouseout', () => {
@@ -513,7 +608,7 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
                 .ticks(15));
 
         svg.append('g')
-            .attr('transform', `translate(-15,${height - margin.bottom})`)
+            .attr('transform', `translate(-30,${height - margin.bottom})`)
             .call(d3.axisBottom(x)
                 .tickFormat(formatTime)
                 .ticks(XCount)
@@ -544,13 +639,13 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
                             </button>
                         ) : null}
 
-                        <select onChange={changeSelect} name="" className="mx-2 shadow-2xl bg-slate-800 px-3 py-2 rounded-md dark:bg-[#101010]/10 text-white dark:text-[#101010]/70" id="">
+                        {/* <select onChange={changeSelect} name="" className="mx-2 shadow-2xl bg-slate-800 px-3 py-2 rounded-md dark:bg-[#101010]/10 text-white dark:text-[#101010]/70" id="">
                             {Array.from({ length: slice - 1 }).map((_d, _i) => {
                                 return (
                                     <option value={_i + 1}>Slide ke- {_i + 1}</option>
                                 )
                             })}
-                        </select>
+                        </select> */}
                     </div>
                 ) : null}
 
