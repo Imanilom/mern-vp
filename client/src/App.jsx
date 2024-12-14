@@ -61,7 +61,6 @@ import UpdateTreatment from './pages/Menus/UpdateTreatment';
 
 
 export default function App() {
-
   return (
     <>
       <BrowserRouter>

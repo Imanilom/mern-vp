@@ -22,32 +22,35 @@ function InputLabotarium() {
     const { DocterPatient, currentUser } = useSelector(state => state.user)
     const [lab, setLab] = useState(null);
     const navigate = useNavigate();
+
+    // Fungsi yang di jalankan saat inisiasi
     useEffect(() => {
+        // Panggil AOS untuk animasi on scrool
         AOS.init({
             duration: 1000
         })
 
+        // Jka role user mencoba masuk
         if (currentUser.role == 'user') {
+            // tendang ke ringkasan pasien
             return window.location = '/ringkasan-pasien';
         }
+
     }, []);
 
-    useEffect(() => {
-        console.log({ inputItem })
-    }, [inputItem])
-
-    const { id } = useParams();
+    const { id } = useParams(); // lab id
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-
+        e.preventDefault(); // mencegah halaman web di muat ulang
         try {
+            // Convert input jadi array untuk dikirim ke server
             const convertedArray = Object.entries(inputItem).map(([key, value]) => {
                 return {
                     label: key,
                     jawaban: value
                 };
             });
+
             console.log(e.target[0].value, { convertedArray, downloadUrl })
 
             const res = await fetch('/api/faktorresiko/fillDoc', {
@@ -56,9 +59,9 @@ function InputLabotarium() {
                     tanggal: e.target[0].value,
                     file: downloadUrl,
                     detail: convertedArray,
-                    patientid: DocterPatient._id,
-                    docter: currentUser._id,
-                    lab: id
+                    patientid: DocterPatient._id,   // pasient id
+                    docter: currentUser._id, // dokter id
+                    lab: id // lab id
                 }),
                 headers: {
                     "Content-Type": "application/json"
@@ -66,31 +69,26 @@ function InputLabotarium() {
             });
 
             const data = await res.json();
+
+            // Munculkan popup success 
             Swal.fire({
                 title: "Success!",
                 text: data.message,
                 icon: "success",
                 confirmButtonColor: "#3085d6",
             }).then(() => {
+                // Kembali ke halaman faktor-resiko
                 navigate('/faktor-resiko')
             });
-
         } catch (err) {
             console.log({ err })
         }
 
-
-
-        // const res = await fetch('/api')
-
     }
 
+    // Ketika ada perubahan pada input file
     useEffect(() => {
-        fetchInit();
-    }, [])
-
-    useEffect(() => {
-        handleUpload();
+        handleUpload(); // run upload function
     }, [file])
 
     // Handle drag and drop event
@@ -103,32 +101,29 @@ function InputLabotarium() {
     const handleDragOver = (e) => {
         e.preventDefault();
     };
+
+    // Jika ada input yang berubah
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+
+        // Set value untuk mnjadi object 
         setInputItem(prevState => ({
             ...prevState,
-            [name]: value
+            [name]: value // name in input | value is value Input
         }));
     };
 
-    const fetchInit = async () => {
-        try {
-            const res = await fetch(`/api/faktorresiko/docs/${id}`);
-            const data = await res.json();
-
-            setLab(data.lab__);
-        }catch(err){
-            console.log({err});
-        }
-            
-    }
-
+    // Function untuk mengirim file
     const handleUpload = () => {
+
+        // mengecek apakah ada file yang harus diunggah
         if (file) {
-            console.log({ file })
+
+            // Prepare untuk kirim ke fireabase
             const storage = getStorage(app);
-            const fileName = `${new Date().getTime()}-${file.name}`;
-            const storageRef = ref(storage, fileName); // belum terususn
+            const fileName = `${new Date().getTime()}-${file.name}`; // make it unique with timestamp
+            const storageRef = ref(storage, fileName);
+
             const uploadTask = uploadBytesResumable(storageRef, file, {
                 contentType: file.type, // Tentukan MIME type dari file
             });
@@ -136,16 +131,23 @@ function InputLabotarium() {
             uploadTask.on(
                 "state_changed",
                 (snapshot) => {
+                    // Function yang di jalankan selama upload file
                     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                     console.log(`Upload is ${progress}% done`);
                 },
                 (error) => {
+                    // FUnction di jalankan apabila terjadi kesalahan
                     console.error("Upload failed:", error);
                 },
                 () => {
-                    getDownloadURL(uploadTask.snapshot.ref).then((url) => {
+                    // Setelah berhasil di upload, selanjutnya ambil link file
+
+                    // Funtion untuk ambil url dari firebase
+                    getDownloadURL(uploadTask.snapshot.ref).then((url) => { // url is the link
                         setDownloadUrl(url);
-                        console.log("File available at", url);
+                        // console.log("File available at", url);
+
+                        // Informasikan bahwa sudah berhasil diupload dan link sudah disimpan
                         setSuccesMsg('Dokumen berhasil di upload, silahkan selesaikan form lalu save')
                         Swal.fire({
                             title: "Success!",
@@ -153,6 +155,7 @@ function InputLabotarium() {
                             icon: "success",
                             confirmButtonColor: "#3085d6",
                         });
+
                     }).catch(err => console.log({ err }));
                 }
             );

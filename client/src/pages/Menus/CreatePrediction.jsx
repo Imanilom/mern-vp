@@ -20,16 +20,22 @@ function CreatePrediction() {
     const [text, setText] = useState("");
 
     useEffect(() => {
+
+        // Jika user mencoba masuk
         if(currentUser.role == 'user'){
+
+            // tendang ke ringkasan pasien
             return window.location = '/ringkasan-pasien';
         }
     }, [])
     
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // mencegah web di muat ulang
 
+        // Jika list faktor pendukung kosong maka hentikan
         if (listFactor.length == 0 || e.target[0].value == '') return;
 
+        // Mengolah data untuk di kirim ke server
         let formData = JSON.stringify({
             result_prediction: e.target[0].value,
             supporting_risks: listFactor,
@@ -39,26 +45,28 @@ function CreatePrediction() {
         try {
             const res = await fetch(`/api/predictionfactor/sendinfo`, {
                 method: 'POST',
-                body: formData,
+                body: formData, // kirim olahan data
                 headers: {
                     'Content-Type': 'application/json'
                 }
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
+            if (!res.ok) throw new Error(data.message); // Jika terjadi kesalahan
 
+            // Tampilkan popup success
             Swal.fire({
                 title: "Success",
                 text: data.message,
                 icon: "success",
                 confirmButtonColor: "#3085d6",
             }).then(() => {
+                // lalu arahkan kembali ke prediksi faktor
                 navigate('/prediksi-faktor');
             });
 
         } catch (error) {
-            console.log({ error });
+            // Tampilkan popup 
             Swal.fire("Whoops!", error, 'error');
         }
     };

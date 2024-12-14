@@ -2,13 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import Cookies from 'js-cookie';
 import Side from '../../components/Side';
 import Swal from 'sweetalert2';
 
-
-axios.defaults.baseURL = 'http://localhost:3000';
 
 function UpdateActivity() {
     const { currentUser } = useSelector((state) => state.user);

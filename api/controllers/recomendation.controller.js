@@ -130,8 +130,10 @@ export const deleteRecommend = async (req, res) => {
         if (!recomendation) return res.status(502).json({ message: 'Resource missing. action denied' })
 
         await recomendation.deleteOne();
+        
         const rekomendation = await Recomendation.find({
-            doctor_id: req.user.id
+            doctor: req.user.id,
+            patient : req.params.pasient_id
         }).sort({ createdAt: -1 });
 
         res.json({ message: 'The activity succesfully delete', recomendations: rekomendation });

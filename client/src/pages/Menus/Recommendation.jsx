@@ -10,31 +10,30 @@ import AOS from 'aos';
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 
 function Recommendation() {
-  const { currentUser, loading, error, DocterPatient } = useSelector((state) => state.user);
+  const { currentUser, DocterPatient } = useSelector((state) => state.user);
 
   const [recomendation, setRecomendation] = useState([]);
   const [isCheckAction, setCheckAction] = useState(false);
-  const [id, setId] = useState(null);
+  // const [id, setId] = useState(null);
   const [isModal, setModal] = useState(false);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [pagination, setPagination] = useState(0);
   const [currentPagination, setCurrentPagination] = useState(1);
 
-
+  // Fungsi untuk mengisi checkbox aktivitas (untuk pasien)
   const checkboxAction = async (e, properti) => {
-
     if (isCheckAction) {
       // user gabisa langsung ceklis banyak.. harus antri
-      e.target.checked = false;
-      alert('Please wait. dont spam.');
-
+      e.target.checked = false; // set checkbox jadi false
+      alert('Please wait. dont spam.'); // kasi peringatan
     }
     else {
-      setCheckAction(true);
+      setCheckAction(true); // set ke true, agar memblokir spam
       try {
+
         const formData = JSON.stringify({
-          activity_id: properti.id,
+          activity_id: properti.id, // kirim id rekomendasi
         });
 
         let res;
@@ -46,7 +45,7 @@ function Recommendation() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: formData
+            body: formData // kirim properti
           })
 
         } else {
@@ -56,10 +55,12 @@ function Recommendation() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: formData
+            body: formData // kirim properti
           })
 
-          // Swal.fire('Success', 'Berhasil assign aktivitas', 'success');
+          const data = await res.json();
+
+          // Tampilkan popup bahwa telah berhasil
           Swal.fire({
             title: "Success",
             text: "Berhasil assign aktivitas",
@@ -68,98 +69,111 @@ function Recommendation() {
           });
         }
 
-        const data = await res.json();
-
       } catch (error) {
         console.log(error);
       } finally {
-        setCheckAction(false);
+        setCheckAction(false); // set ke false, agar pasien bisa checklist chexbox kembali
       }
     }
   }
 
-  const handleDelete = async () => {
-
+  // Fungsi untuk mendelete rekomendasi aktivitas (dokter only)
+  const handleDelete = async (id) => {
     try {
-      const res = await fetch(`/api/recomendation/delete/${id}`, {
-        method: 'Delete'
-      });
 
-      const data = await res.json();
-      console.log(data);
-      setRecomendation(data.recomendations);
-
+      // Confrim delete
       Swal.fire({
-        title: "Success",
-        text: data.message,
-        icon: "success",
+        title: "Are you sure?",
+        text: "You won't be able to revert this!",
+        icon: "warning",
+        showCancelButton: true,
         confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes, delete it!"
+      }).then(async (result) => {
+
+        // Jika di confirmasi 
+        if (result.isConfirmed) {
+          const res = await fetch(`/api/recomendation/delete/${id}/${DocterPatient._id}`, {
+            method: 'Delete'
+          });
+
+          const data = await res.json();
+          setRecomendation(data.recomendations); // timpa data informasi rekomendasi aktivitas terbaru
+
+          // Tampilkan popup success
+          Swal.fire({
+            title: "Success",
+            text: data.message,
+            icon: "success",
+            confirmButtonColor: "#3085d6",
+          });
+
+        }
       });
 
     } catch (error) {
       console.log(error);
-    } finally {
-      setModal(false)
     }
-
   }
 
+  // FUngsi ketika ada perubahan pada currentPagination
   const handleChangePagination = (num) => {
     if (num > 0 && num < pagination + 1) {
       setCurrentPagination(num);
     }
   }
 
+  useEffect(() => {
+    // Panggil AOS untuk animation on scrool
+    AOS.init({
+      duration: 700
+    })
+    fetchtdata(); // run function
+  }, [])
+
+  // Fungsi untuk mendapatkan informasi rekomendasi aktivitas
   const fetchtdata = async () => {
-    console.log('process..');
     try {
-      let res;
+
+      let url;
+
       if (currentUser.role != 'user') {
-        let url;
         url = `/api/recomendation/getAll/${DocterPatient._id}?p=${currentPagination - 1}`;
+
+        // Jika ada date time range
         if (startDate && endDate) {
           url = `/api/recomendation/getAll/${DocterPatient._id}?p=${currentPagination - 1}&startDate=${startDate}&endDate=${endDate}`;
         }
-        res = await fetch(url, {
-          method: 'GET',
-        });
-
       } else {
-        let url;
-        url = `/api/recomendation/getAll/${currentUser._id}?p=${currentPagination - 1}`;
 
+        url = `/api/recomendation/getAll/${currentUser._id}?p=${currentPagination - 1}`;
+        
+        // Jika ada date time range
         if (startDate && endDate) {
           url = `/api/recomendation/getAll/${currentUser._id}?p=${currentPagination - 1}&startDate=${startDate}&endDate=${endDate}`;
         }
-        res = await fetch(url, {
-          method: 'GET',
-
-        });
       }
 
+      const res = await fetch(url);
       const data = await res.json();
-      console.log(data)
+
+      // Simpan informasi dari response ke dalam variabel
       setRecomendation(data.recomendation);
-      setPagination(data.lengthPagination) //
+      setPagination(data.lengthPagination);
     } catch (error) {
       console.log(error);
     }
   }
 
   useEffect(() => {
-    AOS.init({
-      duration: 700
-    })
-    fetchtdata();
-  }, [])
-
-  useEffect(() => {
-    fetchtdata();
+    fetchtdata(); // run function
   }, [currentPagination]);
 
+  // Ketika ada perubahan value pada date range
   useEffect(() => {
     if (startDate && endDate) {
-      fetchtdata();
+      fetchtdata(); // run function
     }
   }, [startDate, endDate]);
 
@@ -171,8 +185,6 @@ function Recommendation() {
 
         <h1 data-aos="fade-up" class="text-lg md:text-3xl font-semibold capitalize lg:text-4xl md:mb-4">Rekomendasi aktivitas</h1>
 
-        {/* <div data-aos="fade-up" className=""> */}
-        {/* <h4 className="text-lg font-semibold mb-2">Select Date Range</h4> */}
         <DatePicker
           data-aos="fade-up"
           selectsRange
@@ -188,11 +200,6 @@ function Recommendation() {
           placeholderText='Cari berdasarkan range tanggal'
           className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm sm:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
         />
-        {/* {loading ? (
-                      <span class="ms-4 loader "></span>
-                    ) : null} */}
-
-        {/* </div> */}
 
         <div data-aos="fade-right" class="md:mt-4 mt-0 relative flex flex-col min-w-0 break-words bg-[#363636]/20 w-full mb-6 shadow-lg rounded ">
           <div class="rounded-t bg-[#363636]/20 dark:bg-[#217170] mb-0 px-4 py-3 border-0">
@@ -306,15 +313,16 @@ function Recommendation() {
                           </td>
                         ) : (
                           <td class="border-t-0 px-6 flex gap-2 items-center align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 ">
-                            {/* <Link to={`/rekomendasi/detail/${recomendation._id}`}>
-                              <span className='bg-indigo-600 text-white font-medium py-1 px-3 rounded-md active:bg-indigo-600/80'>Detail</span>
-                            </Link> */}
+
                             <Link to={`/updateRecomendation/${recomendation._id}`}>
                               <span className='text-[#07AC7B] dark:text-[#D39504] font-medium py-1 px-3 rounded-md '>Edit</span>
                             </Link>
-                            <button onClick={() => { setId(recomendation._id); setModal(true) }} data-modal-target="popup-modal" data-modal-toggle="popup-modal">
+                            <button onClick={() => handleDelete(recomendation._id)} data-modal-target="popup-modal" data-modal-toggle="popup-modal">
                               <span className='bg-red-600 font-medium py-1 px-3 rounded-md active:bg-red-600/80 text-white'>Delete</span>
                             </button>
+                            {/* <button onClick={() => { setId(recomendation._id); setModal(true) }} data-modal-target="popup-modal" data-modal-toggle="popup-modal">
+                              <span className='bg-red-600 font-medium py-1 px-3 rounded-md active:bg-red-600/80 text-white'>Delete</span>
+                            </button> */}
                           </td>
                         )}
                       </tr>
@@ -349,7 +357,7 @@ function Recommendation() {
         </nav>
       </div>
 
-      {/* modal */}
+      {/* modal
       {isModal ? (
         <div class="overflow-y-auto flex overflow-x-hidden bg-black/20 fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
           <div class="relative p-4 w-full max-w-md max-h-full">
@@ -364,7 +372,7 @@ function Recommendation() {
                 <svg class="mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
                   <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11V6m0 8h.01M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
-                <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">Are you sure you want to delete this product?</h3>
+                <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">Are you sure you want to delete this rekomendasi aktivitas?</h3>
                 <button onClick={() => handleDelete()} data-modal-hide="popup-modal" type="button" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center">
                   Yes, I'm sure
                 </button>
@@ -373,7 +381,7 @@ function Recommendation() {
             </div>
           </div>
         </div>
-      ) : null}
+      ) : null} */}
     </main>
   );
 }

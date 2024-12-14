@@ -7,34 +7,36 @@ import Side from '../../components/Side.jsx';
 
 function UpdateRecomendation() {
     const { currentUser } = useSelector((state) => state.user);
-    const { id } = useParams();
     const [detail, setDetail] = useState(null);
     const navigate = useNavigate();
+    
+    const { id } = useParams(); // id rekomendasi aktivitas
+
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch(`/api/recomendation/getOne/${id}`, {
-                    method: 'GET'
-                });
-
+                const res = await fetch(`/api/recomendation/getOne/${id}`);
                 const data = await res.json();
-                console.log(data);
                 setDetail(data.recomendation);
             } catch (error) {
                 console.log(error);
             }
         }
 
-        fetchData();
+        fetchData(); // run function
 
+        // Jika user mencoba masuk
         if(currentUser.role == 'user'){
+            // tendang ke ringkasan pasien
             return window.location = '/ringkasan-pasien';
         }
     }, []);
 
+    // Handle submit update rekomendasi aktivitas
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // mencegah halaman di muat ulang
 
+        // Mempersiapkan format data ntuk di kirim
         let formData = JSON.stringify({
             name: e.target[0].value,
             berlaku_dari: e.target[1].value,
@@ -44,7 +46,7 @@ function UpdateRecomendation() {
         try {
             const res = await fetch(`/api/recomendation/update/${id}`, {
                 method: 'POST',
-                body: formData,
+                body: formData, // kirim data
                 headers: {
                     'Content-Type': 'application/json'
                 }
@@ -52,19 +54,19 @@ function UpdateRecomendation() {
 
             const data = await res.json();
 
+            // Tampilkan popup succes
             Swal.fire({
                 title: "Success",
                 text: data.message,
                 icon: "success",
                 confirmButtonColor: "#3085d6",
             }).then(() => {
+                // Arahkan kembali ke halaman rekomendasi
                 navigate('/rekomendasi');
             });
 
-
-
         } catch (error) {
-            console.log(error);
+            console.log({error});
         }
     };
 

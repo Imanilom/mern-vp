@@ -11,67 +11,103 @@ import 'react-datepicker/dist/react-datepicker.css';
 function DetectionHistories() {
 
   const [data, setData] = useState([]);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
-  const [sort, setSort] = useState(null);
-  const [sortByKey, setSortByKey] = useState(null);
   const [isLoading, setLoading] = useState(false);
-  const { currentUser, DocterPatient } = useSelector(state => state.user);
+  // const { currentUser, DocterPatient } = useSelector(state => state.user);
   const [pagination, setPagination] = useState(0);
   const [currentPagination, setCurrentPagination] = useState(1);
-  const [state, setState] = useState('safe');
-  // const {currentUser} = useSelector(state => state.user);
+  // const [state, setState] = useState('safe');
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [metode, setMetode] = useState("OC");
   const [isShowTable, setShowTable] = useState(true);
 
-  // const sortedData = React.useMemo(() => {
-  //   let sortableItems = [...data];
-  //   if (sortConfig !== null) {
-  //     sortableItems.sort((a, b) => {
-  //       if (a[sortConfig.key] < b[sortConfig.key]) {
-  //         return sortConfig.direction === 'ascending' ? -1 : 1;
-  //       }
-  //       if (a[sortConfig.key] > b[sortConfig.key]) {
-  //         return sortConfig.direction === 'ascending' ? 1 : -1;
-  //       }
-  //       return 0;
-  //     });
-  //   }
-  //   return sortableItems;
-  // }, [data, sortConfig]);
-
-  // const requestSort = (key) => {
-  //   setSortByKey(key);
-  //   setSort('ascending')
-  //   let direction = 'ascending';
-  //   if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-  //     direction = 'descending';
-  //     setSort('descending')
-  //   }
-  //   setSortConfig({ key, direction });
-  // };
-
+ 
   useEffect(() => {
-    fectInit();
+    // Panggil AOS untuk animation on scrool
+    AOS.init({
+      duration: 700
+    })
+
+    fectInit(metode); // run function
+  }, [])
+  
+  const fectInit = async (metode) => {
+    try {
+      setLoading(true) // show loading
+
+      // Requesting API
+      let url = `/api/user/test`;
+
+      if (startDate && endDate) {
+        url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+        if (metode) url += `&method=${metode}`;
+      } else {
+        if (metode) url += `?method=${metode}`;
+      }
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      // Jika data logs kosong
+      if(!data.logs){
+
+        // Kosongkan variabel dan berhenti
+        setData([]);
+        return;
+      }
+
+      let properties = "RR"; // Ubah ini sesuai kebutuhan (HR, RR)
+      let logsData = processData(data.logs, properties); // menampung data hasil filtering
+
+      // filter lagi, memastikan HR atau RR yang null d hilangkan
+      logsData = logsData.filter(d => d.HR !== null && d.RR !== null);
+      let results = [];
+
+      // Proses filtering
+      for (let i = 0; i < logsData.length; i++) {
+        if (i > 0) {
+          if (logsData[i - 1][properties] - logsData[i][properties] >= 10) {
+
+            // Masukan data yang memprihatinkan dan perlu diwaspadai
+            results.push(logsData[i]);
+          }
+        }
+      }
+
+      setData(results); // simpan dan tampilkan di web
+
+    } catch (error) {
+      // console.log(error);
+    } finally {
+      setLoading(false)
+    }
+  }
+
+   // Jika user / dokter menekan pagination
+   useEffect(() => {
+    fectInit(); // run function
   }, [currentPagination]);
 
+  // Mendeteksi apabila ada perubahan pada input range date
   useEffect(() => {
     if (startDate && endDate) {
-      setShowTable(true);
-      fectInit(metode);
+      setShowTable(true); // tampilkan table
+      fectInit(metode); // run function 
     }
   }, [startDate, endDate]);
 
+  // Handle untuk mengelola variabel currentPagination
   const handleChangePagination = (num) => {
     if (num > 0 && num < pagination + 1) {
       setCurrentPagination(num);
     }
   }
 
+  // function filtering data yang duplikat
   const processData = (rawData, keyValue) => {
     // Urutkan data berdasarkan create_at
     const sortedData = rawData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+   
     // Gunakan Set untuk menyimpan nilai unik
     const uniqueValues = new Set();
 
@@ -86,104 +122,13 @@ function DetectionHistories() {
     });
   }
 
-  const fectInit = async (metode) => {
-    try {
-      setLoading(true)
-
-      let url = `/api/user/test`;
-
-      if (startDate && endDate) {
-        url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        if (metode) url += `&method=${metode}`;
-      } else {
-        if (metode) url += `?method=${metode}`;
-      }
-
-      const res = await fetch(url);
-      const data = await res.json();
-
-      console.log({ data });
-
-      if(!data.logs){
-        setData([]);
-        return;
-      }
-
-      let properties = "RR";
-      let logsData = processData(data.logs, properties);
-
-      logsData = logsData.filter(d => d.HR !== null && d.RR !== null);
-      let results = [];
-
-      for (let i = 0; i < logsData.length; i++) {
-        if (i > 0) {
-          if (logsData[i - 1][properties] - logsData[i][properties] >= 10) {
-            results.push(logsData[i]);
-          }
-        }
-      }
 
 
-      console.log({ results })
-
-      setData(results);
-      // setPagination(data.totalPagination);
-
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    AOS.init({
-      duration: 700
-    })
-    fectInit(metode);
-  }, [])
-
-  const handleText = (state) => {
-    if (state == 'safe') {
-      return (
-        <div className='w-[330px] flex-col flex gap-3 text-sm'>
-          <p>Hijau, warna hijau memiliki arti bahwa system kami mengenali bahwa aktivitas anda aman, tidak ada anomali.</p>
-          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#46FF59]/70 rounded'>Safe</button>
-        </div>
-      )
-    }
-    if (state == 'warning') {
-      return (
-        <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
-          <p>Orange, warna orange memiliki arti bahwa sistem kami mengenali adanya deteksi yang perlu diwaspadai. ketika anda sedang melakukan aktifitas</p>
-          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#F47500]/70 rounded'>Warning</button>
-        </div>
-      )
-    }
-    if (state == 'danger') {
-      return (
-        <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
-          <p>Merah, warna Merah memiliki arti bahwa system kami mengenali adanya deteksi yang perlu ditangani</p>
-          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#F40000]/70 rounded'>Danger</button>
-        </div>
-      )
-    }
-    if (state == 'undefined') {
-      return (
-        <div className='md:w-6/12 flex-col flex gap-3 text-sm'>
-          <p>Putih, warna Putih memiliki arti bahwa system kami tidak cukup mempunyai data untuk diproses, hal ini bisa terjadi ketika system kami kekurangan data dari anda. </p>
-          <button className='w-fit px-2 text-[#101010] font-semibold py-1 bg-[#FFFFFF]/70 rounded'>System kekurangan data</button>
-        </div>
-      )
-    }
-
-
-  }
-
+  // handle untuk mendeteksi perubahan input metode algorithma
   const handleChangeMetode = (e) => {
     e.preventDefault();
-    setMetode(e.target.value);
-    fectInit(e.target.value);
+    setMetode(e.target.value); // simpan perubahan
+    fectInit(e.target.value); // run function
   }
 
 

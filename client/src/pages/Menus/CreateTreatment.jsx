@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import Cookies from 'js-cookie';
 import Swal from 'sweetalert2';
 import Side from '../../components/Side.jsx';
 
@@ -14,53 +12,73 @@ function CreateTreatment() {
     const [isShowList, setShowList] = useState(true);
 
     useEffect(() => {
+
+        // Jika user mencoba masuk 
         if(currentUser.role == 'user'){
+
+            // Tendang ke halaman ringkasan pasien
             return window.location = '/ringkasan-pasien';
         }
+
     }, []);
 
+    // Function untuk handle submit 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // mencegah halaman di muat ulang.
+
+        // Pengecekan apakah medicine kosong? | Harus diiisi!
         if (medicine.length == 0) throw new Error('Harus mengisi obat!')
+
         try {
+            // Hit API
+
             const res = await fetch('/api/treatment/createTreatment', {
                 method: "POST",
                 headers: {
                     'Content-Type': "application/json"
                 },
                 body: JSON.stringify({
-                    patient_id: DocterPatient._id,
-                    diagnosis: e.target[0].value,
+                    patient_id: DocterPatient._id, // patient id
+                    diagnosis: e.target[0].value, 
                     followUpDate: e.target[1].value,
                     notes: e.target[2].value,
-                    medications: medicine,
+                    medications: medicine, // list array of medicine
                 })
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
-            console.log({ data });
 
-            Swal.fire("Yohoo!", data.message, 'success').then(() => navigate('/treatment'));
+            if (!res.ok) throw new Error(data.message); // Jika terjadi kesalahan
+            // console.log({ data });
+
+            // tampilkan popup success 
+            Swal.fire("Yohoo!", data.message, 'success')
+            .then(() => navigate('/treatment'));  // Arahkan kembali ke halaman treatment
         } catch (error) {
-            console.log({ error })
+
+            // tampilkan popup error
             Swal.fire("Whoops", error.message, 'error');
         }
     }
 
+    // Function untuk menambah obat ke list medicine
     const handleAddMedicine = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // mencegah aplikasi di muat ulang
+        
+        // buat format untuk disimpan ke variabel list medicine 
         let property = {
             name: e.target[0].value,
             dosage: e.target[1].value,
             frequency: e.target[2].value
         }
 
+        // Simpan medicine
         setMedicine([...medicine, property]);
+
+        // kosongkan kembali form obat
         document.getElementById("reset").click();
     }
-
-
+    
     return (
         <main class="bg-[#101010] dark:bg-[#FEFCF5] text-white flex pb-8">
             <Side />

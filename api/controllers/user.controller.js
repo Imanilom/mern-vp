@@ -1065,7 +1065,7 @@ export const logdfa = async (req, res, next) => {
         // const date = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
         // const timeStart = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
         // const timeEnd = new Date(splittedLog[i][splittedLog[i].length - 1]['timestamp'] * 1000);
-        console.log(splittedLog[i][0 * splittedLog[i].length]['timestamp'], { date });
+        // console.log(splittedLog[i][0 * splittedLog[i].length]['timestamp'], { date });
 
         return {
           aktivitas: splittedLog[i][0].aktivitas,

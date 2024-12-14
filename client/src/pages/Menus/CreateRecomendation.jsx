@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import Cookies from 'js-cookie';
 import Swal from 'sweetalert2';
 import Side from '../../components/Side.jsx';
 
@@ -11,14 +9,20 @@ function CreateRecomendation() {
     const { currentUser, DocterPatient } = useSelector((state) => state.user);
     const navigate = useNavigate();
     useEffect(() => {
+        
+        // Jika user mencoba masuk
         if(currentUser.role == 'user'){
+
+            // tedang ke ringkasan pasien
             return window.location = '/ringkasan-pasien';
         }
     }, []);
 
+    // Handle Submit create rekomendasi aktivitas
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // mencegah halaman di muat ulang
 
+        // Mempersiapkan format data untuk di kirim
         let formData = JSON.stringify({
             name: e.target[2].value,
             berlaku_dari: e.target[0].value,
@@ -29,7 +33,7 @@ function CreateRecomendation() {
         try {
             const res = await fetch(`/api/recomendation/create`, {
                 method: 'POST',
-                body: formData,
+                body: formData, // krim data
                 headers: {
                     'Content-Type': 'application/json'
                 }
@@ -37,17 +41,20 @@ function CreateRecomendation() {
 
             const data = await res.json();
 
+            // Tampilkan popup success
             Swal.fire({
                 title: "Success",
                 text: data.message,
                 icon: "success",
                 confirmButtonColor: "#3085d6",
             }).then(() => {
+
+                // arahkan kembali ke halaman rekomendasi
                 navigate('/rekomendasi');
             });
 
         } catch (error) {
-            console.log(error);
+            console.log({error});
         }
     };
 

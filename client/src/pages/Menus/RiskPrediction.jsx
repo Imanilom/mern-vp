@@ -22,28 +22,36 @@ function RiskPrediction() {
   const [showInfoDokter, setShowInfoDokter] = useState(false);
 
   useEffect(() => {
+    // Panggil Aos agar ada effect animasi on scrool
     AOS.init({
       duration: 700
     })
-    fetchInit();
-    console.log({ currentUser });
+
+    fetchInit(); // run function
   }, []);
 
+  // Function to get data
   const fetchInit = async () => {
     try {
+
       let url = '/api/predictionfactor/getinfo';
       if (currentUser.role != 'user') url += `?patient=${DocterPatient._id}`;
       const res = await fetch(url);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+
+      if (!res.ok) throw new Error(data.message); // kirim response error
 
       console.log({ data })
-      setStatusAppointment(data.status);
-      setDetailAppointment(data.appointment);
+
+      setStatusAppointment(data.status); // set status appointment saat ini
+      setDetailAppointment(data.appointment); // 
+
       if (!data.prediction) {
+        // Jika prediksi faktor belum ada, kosongkan saja
         setSupporting_risks([]);
         setDetailPrediction(null);
       } else {
+        // Jika ada simpan
         setDetailPrediction(data.prediction.result_prediction);
         setSupporting_risks(data.prediction.supporting_risks);
         setIdPrediction(data.prediction._id);
@@ -53,28 +61,39 @@ function RiskPrediction() {
     }
   }
 
+  // Handle Request appointment
   const handleRequestAppointmentUser = async () => {
     try {
+
       const res = await fetch(`/api/appointment/requestAppointment`, {
         headers: {
           'Content-Type': 'application/json',
         },
         method: "POST",
         body: JSON.stringify({
+          // Just send a POST Request
         })
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      Swal.fire('Yohoo!', data.message, 'success').then(() => window.location.reload());
+
+      if (!res.ok) throw new Error(data.message); // jika terjadi kesahalan kirim error
+
+      // Tampilkan popup yang menampilkan bahwa aksi sudah selesai di respon
+      Swal.fire('Yohoo!', data.message, 'success')
+        .then(() => window.location.reload());
+
     } catch (error) {
-      console.log({ error });
+
+      // Jika terjadi error, tampilkan popup error
       Swal.fire('Whoops!', error, 'error');
     }
   }
 
+  // Handle Accept appointment
   const SubmitAppointment = async (e) => {
-    e.preventDefault();
-    let patient = currentUser._id;
+    e.preventDefault(); // mecegah web di muat ulang
+    let patient = currentUser._id; // id pasien
     if (currentUser.role != 'user') patient = DocterPatient._id;
 
     try {
@@ -87,24 +106,31 @@ function RiskPrediction() {
           date: e.target[0].value,
           time: e.target[1].value,
           note: e.target[2].value,
-          patient
+          patient // id
         })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+
+      if (!res.ok) throw new Error(data.message); // Jika terjadi kesalahan return error
 
       console.log({ data })
-      setDetailAppointment(data.appointment);
-      Swal.fire("Yohoo!", data.message, 'success');
-      setStatusAppointment('accepted')
-      setModal(false);
+
+      setDetailAppointment(data.appointment); // menyimpan appointment
+
+      // Tampilkan popup bahwa selesai
+      Swal.fire("Yohoo!", data.message, 'success'); 
+      setStatusAppointment('accepted');
+      setModal(false); // tutup modal
+
     } catch (error) {
-      console.log({ error });
+     
+      // Tampilkan popup bahwa terjadi kesalahan disana
       Swal.fire("Whopps!", error, 'error');
     }
   }
 
+  // Handle Ended Appointment
   const handleEndedAppointment = async (e) => {
     try {
       const res = await fetch('/api/appointment/endedAppointment', {
@@ -113,33 +139,39 @@ function RiskPrediction() {
         },
         method: "POST",
         body: JSON.stringify({
-          patient: DocterPatient._id
+          patient: DocterPatient._id // bawa id pasient
         })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      if (!res.ok) throw new Error(data.message); // jika terjadi kesalahan
 
+      // Munculkan popup ketika success
       Swal.fire("Nicee!", data.message, 'success');
-      setDetailAppointment(null);
+      setDetailAppointment(null); // hapus Appointment sebelumnya yang tersimpan
+
     } catch (error) {
-      console.log({ error });
+      // Tampilkan popup error 
       Swal.fire("Whopps!", error, 'error');
     }
   }
 
+  // Copmponent
   const ButtonActionUser = (state) => {
-    const { status } = state;
+
+    const { status } = state; // status temu janji
     if (status == 'pending') return (<button disabled class="bg-orange-500 text-white active:bg-orange-600 md:w-fit w-full text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Pending..</button>)
     else if (status == 'accepted') return (<button disabled class="bg-green-500 text-white active:bg-green-600 md:w-fit w-full text-xs font-bold uppercase px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150 " type="button">Accepted</button>
     )
     else return (<button onClick={handleRequestAppointmentUser} class="text-[#07AC7B] dark:text-[#FFD166]  text-xs font-bold uppercase md:px-3 py-1 rounded outline-none focus:outline-none mr-1 mb-1 ease-linear space-nowrap transition-all duration-150 min-w-[150px]" type="button">{loading ? 'Loadingg..' : 'Meminta Temu Janji'}</button>)
   }
 
+  // Reset Prediction Function
   const handleResetPrediction = async () => {
-    let id = idPrediction;
+    let id = idPrediction; // id prediksi resiko
     try {
 
+      // Confirm action
       Swal.fire({
         title: "Are you sure?",
         text: "You will lose the prediction factor for this pasient",
@@ -149,8 +181,9 @@ function RiskPrediction() {
         cancelButtonColor: "#d33",
         confirmButtonText: "Yes, delete it!"
       }).then(async (result) => {
-        if (result.isConfirmed) {
 
+        // Jika di confirmasi 
+        if (result.isConfirmed) {
           const res = await fetch(`/api/predictionfactor/deleteinfo/${id}`, {
             headers: {
               "Content-Type": "application/json"
@@ -159,24 +192,25 @@ function RiskPrediction() {
           });
 
           const data = await res.json();
-          if (!res.ok) throw new Error(data.message);
+          if (!res.ok) throw new Error(data.message); // jika terjadi kesalahan
 
+          // Jika action success, munculkan popup
           Swal.fire({
             title: "Success",
             text: data.message,
             icon: "success",
             confirmButtonColor: "#3085d6",
           }).then(() => {
+
+            // lalu refresh halaman
             window.location.reload();
           });
 
         }
       });
 
-
-
     } catch (error) {
-      console.log({ error });
+      // Tampilkan popup error apabila terjadi kesalahan
       Swal.fire("WhoopS!", error, 'error');
     }
   }

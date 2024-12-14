@@ -2,29 +2,30 @@ import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import Cookies from 'js-cookie';
 import Swal from 'sweetalert2';
-import { IoIosCloseCircle } from "react-icons/io";
 import Side from '../../components/Side.jsx';
 
 function UpdateTreatment() {
+
     const { currentUser, DocterPatient } = useSelector((state) => state.user);
     const navigate = useNavigate();
     const [medicine, setMedicine] = useState([]);
     const [treat, setTreat] = useState(null);
     const [isShowList, setShowList] = useState(true);
 
-    const { id } = useParams();
-
+    const { id } = useParams(); // id treatment
     useEffect(() => {
-        fetchInit();
+        fetchInit(); // run function untuk dapetin data
 
+        // Jika user masuk ke halaman update
         if(currentUser.role == 'user'){
+
+            // arahkan ke halaman ringkasan pasien
             return window.location = '/ringkasan-pasien';
         }
     }, []);
 
+    // Fungsi untuk mendapatkan informasi treatment
     const fetchInit = async () => {
         try {
             let url = `/api/treatment/${id}`;
@@ -33,19 +34,15 @@ function UpdateTreatment() {
 
             setTreat(data.treat);
             setMedicine(data.treat.medications);
-            console.log({ data })
         } catch (error) {
             console.log({ error });
         }
     }
 
-    const handleRemoveMedicine = (i) => {
-        const changedArray = medicine.filter((_, index) => index !== i);
-        setMedicine(changedArray);
-    }
-
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Mencegah halaman web di muat ulang
+
+        // medicine harus ada minimal 1
         if (medicine.length == 0) throw new Error('Harus mengisi obat!')
 
         try {
@@ -54,38 +51,44 @@ function UpdateTreatment() {
                 headers: {
                     'Content-Type': "application/json"
                 },
+
                 body: JSON.stringify({
-                    _id: id,
+                    _id: id, // id treatment
                     diagnosis: e.target[0].value,
                     followUpDate: e.target[1].value,
                     notes: e.target[2].value,
-                    medications: medicine,
+                    medications: medicine, // list obat
                 })
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
-            console.log({ data });
+            
+            if (!res.ok) throw new Error(data.message); // Jika terjadi kesalahan
 
-            Swal.fire("Yohoo!", data.message, 'success').then(() => navigate('/treatment'));
+            // munculkan popup succes jika selesai
+            Swal.fire("Yohoo!", data.message, 'success')
+            .then(() => navigate('/treatment')); // lalu arahkan kembali ke halaman treatment
         } catch (error) {
-            console.log({ error })
+            
+            // munculkan popup error 
             Swal.fire("Whoops", error.message, 'error');
         }
     }
 
+    // Handler ketika dokter meambahkan obat ke list
     const handleAddMedicine = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // mencegah halaman di muat ulang
+
+        // Siapkan format untuk dimasukan ke dalam list
         let property = {
             name: e.target[0].value,
             dosage: e.target[1].value,
             frequency: e.target[2].value
         }
 
-        setMedicine([...medicine, property]);
+        setMedicine([...medicine, property]); // masukkan ke list
         document.getElementById("reset").click();
     }
-
 
     return (
         <main class="bg-[#101010] dark:bg-[#FEFCF5] text-white flex pb-8">

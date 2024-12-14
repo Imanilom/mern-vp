@@ -11,6 +11,6 @@ router.post('/create', verifyToken , createRecomendation);
 router.post('/update/:id', verifyToken , updateRecomendation);
 router.get('/getAll/:patient', verifyToken , getRecomendationByPatient);
 router.get('/getOne/:id', verifyToken , detailRecomendation);
-router.delete('/delete/:id', verifyToken , deleteRecommend);
+router.delete('/delete/:id/:pasient_id', verifyToken , deleteRecommend);
 
 export default router;

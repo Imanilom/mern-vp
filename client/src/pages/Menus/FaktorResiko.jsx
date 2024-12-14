@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import Side from '../../components/Side'
 import ButtonOffCanvas from '../../components/ButtonOffCanvas';
 import AOS from 'aos';
-import DatePicker from 'react-datepicker';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Swal from 'sweetalert2';
@@ -10,45 +9,51 @@ import Swal from 'sweetalert2';
 function FaktorResiko() {
 
     const { DocterPatient, currentUser } = useSelector(state => state.user);
-    const [labs, setLabs] = useState([]);
-    const [pagination, setPagination] = useState(1);
-    const [currentPagination, setCurrentPagination] = useState(1);
+    const [labs, setLabs] = useState([]); // untuk menampung list lab pasient
+    const [pagination, setPagination] = useState(1); // untuk menyimpan count pagination
+    const [currentPagination, setCurrentPagination] = useState(1); // untuk mengecek current pagination
 
+    // Jalankan Pertama kali saat halaman dimuat
     useEffect(() => {
+        // Panggil AOS untuk menjalankan animasi on scrool
         AOS.init({
             duration: 1000
         })
-
-        fetchInit();
+        fetchInit(); // run function
     }, [])
 
     useEffect(() => {
-        fetchInit();
+        // Jalankan function jika curentPagination berubah
+        fetchInit(); // run function
     }, [currentPagination]);
 
+    // Fungsi get labs
     const fetchInit = async () => {
         try {
-            console.log('oke')
+       
             let url = `/api/faktorresiko/labs/${currentUser._id}?p=${currentPagination - 1}`;
             if (currentUser.role != 'user') {
                 url = `/api/faktorresiko/labs/${DocterPatient._id}?p=${currentPagination - 1}`;
             }
             const res = await fetch(url);
             const data = await res.json();
-            setLabs(data.labs);
-            setPagination(data.count);
+
+            setLabs(data.labs); // simpan list lab
+            setPagination(data.count); // count = banyaknya pagination
 
         } catch (err) {
             console.log({ err })
         }
     }
 
+    // Handle click pagination
     const handleChangePagination = (num) => {
         if (num > 0 && num < pagination + 1) {
             setCurrentPagination(num);
         }
     }
 
+    // Fungsi untuk delete lab pasient
     const handleDelete = async (id) => {
         try {
             Swal.fire({
@@ -60,25 +65,26 @@ function FaktorResiko() {
                 cancelButtonColor: "#d33",
                 confirmButtonText: "Yes, delete it!"
             }).then(async (result) => {
+                // Jika confirm untuk delete
                 if (result.isConfirmed) {
-
                     const res = await fetch(`/api/faktorresiko/lab/${id}`, {
                         method: 'DELETE'
                     })
 
                     const data = await res.json();
 
+                    // Show popup success
                     Swal.fire({
                         title: "Deleted!",
                         text: "Your Lab has been deleted.",
                         icon: "success"
+                    }).then(() => {
+                        window.location.reload(); // restart halaman
                     });
-
-                    window.location.reload();
                 }
             });
         } catch (err) {
-            console.log({ err })
+            console.log({ err });
         }
     }
 
@@ -92,8 +98,6 @@ function FaktorResiko() {
                         <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Faktor Resiko</h1>
                         <p className='font-medium mt-3'>List Labotarium pasien</p>
                     </div>
-
-
                 </div>
 
                 <div class="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded ">
@@ -176,15 +180,11 @@ function FaktorResiko() {
                                                             Delete</button>
                                                     ) : null}
                                                 </td>
-
                                             </tr>
                                         )
                                     })
                                 ) : null}
-
-
                             </tbody>
-
                         </table>
                     </div>
                 </div>

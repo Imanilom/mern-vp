@@ -15,51 +15,59 @@ function Treatment() {
   const [currentPagination, setCurrentPagination] = useState(1);
 
   useEffect(() => {
-    fetchInit();
+    // Panggil AOS untuk animasi on scrool
     AOS.init({
       duration: 500
     })
+    fetchInit(); // run function
   }, [])
 
+  const fetchInit = async () => {
+
+    try {
+      let url = '/api/treatment/getTreatment';
+      if (currentUser.role == 'user') {
+        url += `/${currentUser._id}` // id pasien
+      } else {
+        url += `/${DocterPatient._id}` // id pasien
+      }
+
+      url += `?p=${currentPagination - 1}`; // pagination
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Jika terjadi kesalahan
+        throw new Error(data.message)
+      }
+
+      // Simpan respon ke variabel
+      setTreatment(data.treat); // treatment saat ini
+      setHistory(data.history); // list history
+      setPagination(data.lengthPagination); // set pagination count
+    } catch (error) {
+
+      console.log({ error });
+    }
+  }
+
   useEffect(() => {
-    fetchInit();
+    fetchInit(); // run function
   }, [currentPagination])
 
+  // Ketika user / dokter menekan pagination history treatment
   const handleChangePagination = (num) => {
     if (num > 0 && num < pagination + 1) {
       setCurrentPagination(num);
     }
   }
 
-  const fetchInit = async () => {
-    try {
-      let url = '/api/treatment/getTreatment';
-      if (currentUser.role == 'user') {
-        url += `/${currentUser._id}`
-      } else {
-        url += `/${DocterPatient._id}`
-      }
-      url += `?p=${currentPagination - 1}`;
 
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.log({ data, res })
-        throw new Error(data.message)
-      }
-
-      setTreatment(data.treat);
-      setHistory(data.history);
-      setPagination(data.lengthPagination);
-      console.log('oke')
-    } catch (error) {
-      console.log({ error });
-    }
-  }
-
+  // Handle Delete history treatment
   const handleDelete = async (id, i) => {
     try {
+      // Confrim delete
       Swal.fire({
         title: "Are you sure?",
         text: "You won't be able to revert this!",
@@ -69,6 +77,8 @@ function Treatment() {
         cancelButtonColor: "#d33",
         confirmButtonText: "Yes, delete it!"
       }).then(async (result) => {
+        
+        // Jika di confirmasi 
         if (result.isConfirmed) {
 
           const res = await fetch(`/api/treatment/${id}`, {
@@ -76,28 +86,31 @@ function Treatment() {
           });
 
           const data = await res.json();
+
+          // Jika berhasil munculkan popup success delete
           Swal.fire({
             title: "Deleted!",
             text: "Treatment succesfully deleted.",
             icon: "success"
           });
 
+          // Lakukan filtering hsitory yang baru saja di hapus
           const changedHistory = history.filter((_, index) => index != i);
-          setHistory(changedHistory);
+          setHistory(changedHistory); // timpa dengan yang baru
         }
+
       });
     } catch (err) {
       console.log({ err });
     }
-
   }
 
+  // Handler untuk dokter ketika treatment telah usai
   const handleSwitchSubmit = async () => {
     try {
-
       const res = await fetch('/api/treatment/switchTreatment', {
         body: JSON.stringify({
-          _id: treatment._id
+          _id: treatment._id // treatment id
         }),
         method: 'POST',
         headers: {
@@ -106,11 +119,14 @@ function Treatment() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
 
-      Swal.fire('Yohhoo!', data.message, 'success').then(() => window.location.reload());
+      if (!res.ok) throw new Error(data.message); // jika terjadi kesalahan
+
+      // Munculkan popup succes delete
+      Swal.fire('Yohhoo!', data.message, 'success')
+        .then(() => window.location.reload()); // muat ulang halaman
     } catch (error) {
-      console.log({ error });
+      // munculknan popup error
       Swal.fire('Whoops', error.message, 'error');
     }
   }
@@ -139,7 +155,6 @@ function Treatment() {
                     <button onClick={() => handleSwitchSubmit()} type='button' className="w-full md:w-fit px-3 py-2 md:py-1 text-[12px] font-semibold text-white md:text-[#101010] bg-[#07AC7B] dark:bg-[#FFD166] rounded-md">Tandai treatment telah usai</button>
                     <Link to={`/treatment/update/${treatment._id}`} className="w-full md:w-fit px-3 py-2 md:py-1 text-xs font-medium bg-orange-500 text-white text-center md:text-start rounded-md">Update</Link>
                   </div>
-
                 </div>
               )}
 
@@ -222,7 +237,7 @@ function Treatment() {
 
             <div data-aos="fade-up" className="rigth w-full">
               <h1 class="text-xl font-semibold capitalize lg:text-2xl mb-3">List Obat Pasien </h1>
-             
+
 
               <div className="flex flex-col my-3 gap-3">
                 {treatment.medications.length > 0 ? (

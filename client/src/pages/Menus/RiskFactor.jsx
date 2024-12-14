@@ -9,38 +9,46 @@ import { useSelector } from 'react-redux';
 
 function RiskFactor() {
 
-  const { id } = useParams();
-  const [doc, setDoc] = useState(1);
-  const [lengthDoc, setLengthDoc] = useState(0);
-  const [docValue, setDocValue] = useState([]);
+  const { id } = useParams(); // lab id
+  const [doc, setDoc] = useState(1); // untuk menampung index ke berapa yang sedang dilihat
+  const [lengthDoc, setLengthDoc] = useState(0); // untuk menampung berapa banyak dokumen yang tersedia di lab ini
+  const [docValue, setDocValue] = useState([]); // menampung data - data document
   const [modal, setModal] = useState(false);
   const [lab, setLab] = useState(null);
   const { DoctorPatient, currentUser } = useSelector(state => state.user);
+
   useEffect(() => {
+    // Panggil AOS untuk animation on scrool
     AOS.init({
       duration: 1000
     })
 
-    fetchInit();
+    fetchInit(); // run function
   }, [])
 
+  // Fungsi untuk mendapatkan data document
   const fetchInit = async () => {
     try {
       const res = await fetch(`/api/faktorresiko/docs/${id}`);
       const data = await res.json();
 
       console.log({ data })
-      setLengthDoc(data.docs.length);
-      setDocValue(data.docs);
-      setLab(data.lab__);
+
+      setLengthDoc(data.docs.length); // length document yang berhasil diambil
+      setDocValue(data.docs); // list document disimpan
+      setLab(data.lab__); 
+
     } catch (error) {
       console.log({ error })
     }
   }
 
-  const handlerDeleteDoc = async (id) => {
-    console.log({ id });
+  // Hadnler untuk hapus dokumen
+  const handlerDeleteDoc = async (id) => { // id document
     try {
+
+      // Munculkan popup confirm
+
       Swal.fire({
         title: "Are you sure?",
         text: "You won't be able to revert this!",
@@ -50,21 +58,24 @@ function RiskFactor() {
         cancelButtonColor: "#d33",
         confirmButtonText: "Yes, delete it!"
       }).then(async (result) => {
-        if (result.isConfirmed) {
 
+        // Jika dokter mengkonfrim
+        if (result.isConfirmed) {
           const res = await fetch(`/api/faktorresiko/lab/doc/${id}`, {
             method: 'DELETE'
           })
 
           const data = await res.json();
 
+          // Tampilkan popup bahwa aksi berhasil
           Swal.fire({
             title: "Deleted!",
             text: "Your Document successfully deleted.",
             icon: "success"
+          }).then(() => {
+            window.location.reload();
           });
 
-          window.location.reload();
         }
       });
     } catch (error) {
@@ -76,8 +87,6 @@ function RiskFactor() {
     <main class="bg-[#101010] dark:bg-[#FEFCF5] text-white dark:text-[#073B4C] flex">
       <Side />
       <div class="w-11/12 lg:w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-8">
-        {/* <ButtonOffCanvas /> */}
-
         {modal && docValue.length > 0 ? (
           <div className="fixed inset-0 z-50 flex flex-col  items-center justify-center bg-[#000000]/80">
 
@@ -125,11 +134,11 @@ function RiskFactor() {
               <div class="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
                 <Link to={'/faktor-resiko'} class=" text-xs font-semibold uppercase py-1 rounded outline-none focus:outline-none mb-1 ease-linear text-[#005A8F] dark:text-[#FFD166] transition-all duration-150" type="button">Kembali</Link>
                 {doc > 1 ? (
-                  <button onClick={() => setDoc(doc - 1)} class="blue text-xs font-bold uppercase ps-4 py-1 rounded outline-none focus:outline-none mb-1 ease-linear transition-all duration-150" type="button">{"<-"} Back</button>
+                  <button onClick={() => setDoc(doc - 1)} class="text-[#07AC7B] dark:text-[#FFD166] text-xs font-bold uppercase ps-4 py-1 rounded outline-none focus:outline-none mb-1 ease-linear transition-all duration-150" type="button">{"<-"} Back</button>
                 ) : null}
                 {doc + 1 > lengthDoc ? null : (
 
-                  <button onClick={() => setDoc(doc + 1)} class="blue ps-4 text-xs font-bold uppercase py-1 rounded outline-none focus:outline-none mb-1 ease-linear transition-all duration-150" type="button">Next {"->"}</button>
+                  <button onClick={() => setDoc(doc + 1)} class="text-[#07AC7B] dark:text-[#FFD166] ps-4 text-xs font-bold uppercase py-1 rounded outline-none focus:outline-none mb-1 ease-linear transition-all duration-150" type="button">Next {"->"}</button>
                 )}
 
               </div>
@@ -500,4 +509,4 @@ function RiskFactor() {
   )
 }
 
-export default RiskFactor
+export default RiskFactor;
