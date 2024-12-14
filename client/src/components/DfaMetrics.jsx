@@ -74,7 +74,7 @@ function DfaMetrics(props) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktivitas</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time start</th>
-
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time end</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA alpha1</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DFA alpha2</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -93,6 +93,7 @@ function DfaMetrics(props) {
                     )}
                     <td className="px-6 py-4 whitespace-nowrap">{metric.aktivitas}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_awal ?? null}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_akhir ?? null}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha1 ? metric.dfa.alpha1.toFixed(2) : 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha2 ? metric.dfa.alpha2.toFixed(2) : 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
