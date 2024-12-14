@@ -265,7 +265,7 @@ function LineGraph({ data, label, keyValue, color }) {
 
         const height = 500;
         // let width = 50 * processedData.length;
-        let width = 648;
+        let width = 1000;
         // if (processedData.length > 30) {
         //     width = 25 * processedData.length / 2;
         // }

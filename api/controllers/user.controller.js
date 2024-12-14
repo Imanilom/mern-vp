@@ -79,7 +79,9 @@ export const test = async (req, res, next) => {
       console.log('masuk filterdate')
       // Jika ada startDate dan endDate, lakukan filtering berdasarkan rentang tanggal tersebut
       const dateStart = new Date(startDate).getTime() / 1000; // Convert to Unix timestamp (in seconds)
-      const dateEnd = new Date(endDate).getTime() / 1000;
+      const dateEnd = new Date(endDate);
+      dateEnd.setHours(dateEnd.getHours() + 7);
+      const dateEndTimestamp = dateEnd.getTime() / 1000;
 
       // Filter semua file yang sesuai format 'filtered_logs_'
       const filteredFiles = files
@@ -96,7 +98,7 @@ export const test = async (req, res, next) => {
 
       filteredFiles.forEach(file => {
         const fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
-        if (fileDate >= dateStart && fileDate <= dateEnd) {
+        if (fileDate >= dateStart && fileDate <= dateEndTimestamp) {
           const filePath = path.join(resultsDir, file);
           const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
@@ -171,8 +173,10 @@ export const test = async (req, res, next) => {
 
       if (startDate && endDate) {
         const dateStart = new Date(startDate).getTime() / 1000;
-        const dateEnd = new Date(endDate).getTime() / 1000;
-        filteredLogs = logs.filter(log => log.timestamp >= dateStart && log.timestamp <= dateEnd);
+        const dateEnd = new Date(endDate);
+        dateEnd.setHours(dateEnd.getHours() + 7);
+        const dateEndTimestamp = dateEnd.getTime() / 1000;
+        filteredLogs = logs.filter(log => log.timestamp >= dateStart && log.timestamp <= dateEndTimestamp);
       }
 
       // Hapus log dengan nilai RR yang null
@@ -380,8 +384,10 @@ export const fetchDailyData = async (req, res, next) => {
     let filteredLogs = logs;
     if (startDate && endDate) {
       const dateStart = new Date(startDate).getTime() / 1000;
-      const dateEnd = new Date(endDate).getTime() / 1000;
-      filteredLogs = logs.filter(log => log.timestamp >= dateStart && log.timestamp <= dateEnd);
+      const dateEnd = new Date(endDate);
+      dateEnd.setHours(dateEnd.getHours() + 7);
+      const dateEndTimestamp = dateEnd.getTime() / 1000;
+      filteredLogs = logs.filter(log => log.timestamp >= dateStart && log.timestamp <= dateEndTimestamp);
     }
     // Filter out logs with null RR values
     const validLogs = filteredLogs.filter(log => log.RR !== null);
@@ -853,7 +859,9 @@ export const logdfa = async (req, res, next) => {
     if (startDate && endDate) {
       console.log('masuk filterdate');
       const dateStart = new Date(startDate).getTime() / 1000;
-      const dateEnd = new Date(endDate).getTime() / 1000;
+      const dateEnd = new Date(endDate);
+      dateEnd.setHours(dateEnd.getHours() + 7);
+      const dateEndTimestamp = dateEnd.getTime() / 1000;
 
       let filteredFiles = files
         .filter(file => file.startsWith(fileStartWith))
@@ -888,8 +896,8 @@ export const logdfa = async (req, res, next) => {
             const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
             fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
           }
-          console.log({ fileDate }, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEnd)
-          if (fileDate >= dateStart && fileDate <= dateEnd) {
+          console.log({ fileDate }, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEndTimestamp)
+          if (fileDate >= dateStart && fileDate <= dateEndTimestamp) {
             const filePath = path.join(resultsDir, file);
             const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
             // console.log('ok sip', {filePath, fileData})
@@ -1027,6 +1035,7 @@ export const logdfa = async (req, res, next) => {
 
           let date = new Date(dateWithTime);
           logs[_i]['timestamp'] = date.getTime() / 1000;
+          logs[_i]['datetime'] = dateWithTime;
         })
       }
 
@@ -1140,7 +1149,9 @@ export const dfaActivity = async (req, res, next) => {
     if (startDate && endDate) {
       console.log('masuk filterdate');
       const dateStart = new Date(startDate).getTime() / 1000;
-      const dateEnd = new Date(endDate).getTime() / 1000;
+      const dateEnd = new Date(endDate);
+      dateEnd.setHours(dateEnd.getHours() + 7);
+      const dateEndTimestamp = dateEnd.getTime() / 1000;
 
       let filteredFiles = files
         .filter(file => file.startsWith(fileStartWith))
@@ -1180,8 +1191,8 @@ export const dfaActivity = async (req, res, next) => {
           const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
           fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
           // }
-          console.log({ fileDate }, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEnd)
-          if (fileDate >= dateStart && fileDate <= dateEnd) {
+          console.log({ fileDate }, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEndTimestamp)
+          if (fileDate >= dateStart && fileDate <= dateEndTimestamp) {
             const filePath = path.join(resultsDir, file);
             const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
             // console.log('ok sip', {filePath, fileData})
