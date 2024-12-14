@@ -1,0 +1,1493 @@
+{
+  "dailyMetrics": {
+    "dfa": {
+      "alpha1": 2.1950394073381045,
+      "alpha2": 1.173833176270361
+    },
+    "adfa": {
+      "alphaPlus": 1.4383647651957288,
+      "alphaMinus": 1.5180928224534505
+    },
+    "median3dp": 731.28,
+    "mean": 726.1216666666669,
+    "max": 862.62,
+    "min": 568.1,
+    "rmssd": 35.83205882668531,
+    "sdnn": 63.06486918165768,
+    "hf": 1214.1780580160632,
+    "lf": 3857.8780379655095,
+    "lfHfRatio": 3.1773577297790956,
+    "s1": 25.33709178022447,
+    "s2": 1030.0991107588359,
+    "mseAndRmse": {
+      "mse": 0,
+      "rmse": 0
+    }
+  },
+  "activityMetrics": {
+    "duduk": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 714.24,
+        "mean": 719.7785714285712,
+        "max": 755.02,
+        "min": 705.86,
+        "rmssd": 21.49034007796681,
+        "sdnn": 16.70905485913893,
+        "hf": 16325.43028362895,
+        "lf": 7649.659727308554,
+        "lfHfRatio": 0.46857323785086324,
+        "s1": 15.195965199135369,
+        "s2": 1014.6994011323419,
+        "mseAndRmse": {
+          "mse": 0,
+          "rmse": 0
+        }
+      },
+      "timestamps": {
+        "start": "27/05/2024 08:45:09",
+        "end": "27/05/2024 09:04:16"
+      }
+    },
+    "Perjalanan": {
+      "metrics": null,
+      "timestamps": {
+        "start": "27/05/2024 09:51:04",
+        "end": "27/05/2024 09:51:04"
+      }
+    },
+    "kerja di lab": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 651.245,
+        "mean": 651.245,
+        "max": 665.3,
+        "min": 637.19,
+        "rmssd": 28.1099999999999,
+        "sdnn": 19.876771619153782,
+        "hf": 0,
+        "lf": 0,
+        "lfHfRatio": 0,
+        "s1": 19.87677161915378,
+        "s2": 920.9995114276662,
+        "mseAndRmse": {
+          "mse": 0,
+          "rmse": 0
+        }
+      },
+      "timestamps": {
+        "start": "27/05/2024 12:26:52",
+        "end": "27/05/2024 12:36:32"
+      }
+    },
+    "berjalan": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 590.18,
+        "mean": 594.6733333333333,
+        "max": 605.46,
+        "min": 588.38,
+        "rmssd": 10.879301448162986,
+        "sdnn": 9.384782007768427,
+        "hf": 21787.75992499999,
+        "lf": 0,
+        "lfHfRatio": 0,
+        "s1": 7.6928278285686735,
+        "s2": 839.4281808469382,
+        "mseAndRmse": {
+          "mse": 0,
+          "rmse": 0
+        }
+      },
+      "timestamps": {
+        "start": "27/05/2024 13:33:51",
+        "end": "27/05/2024 13:43:13"
+      }
+    },
+    "bekerja di lab": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 595.86,
+        "mean": 587.1966666666667,
+        "max": 597.63,
+        "min": 568.1,
+        "rmssd": 20.91833884418166,
+        "sdnn": 16.561860805275867,
+        "hf": 22370.764656250005,
+        "lf": 0,
+        "lfHfRatio": 0,
+        "s1": 14.791499247878816,
+        "s2": 834.1679706450013,
+        "mseAndRmse": {
+          "mse": 0,
+          "rmse": 0
+        }
+      },
+      "timestamps": {
+        "start": "27/05/2024 14:12:57",
+        "end": "27/05/2024 14:26:25"
+      }
+    },
+    "Perjalanan Pulang": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 632.465,
+        "mean": 621.62,
+        "max": 640.5,
+        "min": 581.05,
+        "rmssd": 34.60968746849166,
+        "sdnn": 27.408525437656575,
+        "hf": 191.3262125,
+        "lf": 0,
+        "lfHfRatio": 0,
+        "s1": 24.472744703717524,
+        "s2": 886.9327245625791,
+        "mseAndRmse": {
+          "mse": 0,
+          "rmse": 0
+        }
+      },
+      "timestamps": {
+        "start": "27/05/2024 15:10:24",
+        "end": "27/05/2024 15:55:39"
+      }
+    },
+    "kegiatan dengan anak": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 666.71,
+        "mean": 666.71,
+        "max": 673.27,
+        "min": 660.15,
+        "rmssd": 13.120000000000005,
+        "sdnn": 9.277240969167506,
+        "hf": 0,
+        "lf": 0,
+        "lfHfRatio": 0,
+        "s1": 9.277240969167506,
+        "s2": 942.8703241697661,
+        "mseAndRmse": {
+          "mse": 0,
+          "rmse": 0
+        }
+      },
+      "timestamps": {
+        "start": "27/05/2024 16:20:26",
+        "end": "27/05/2024 16:43:28"
+      }
+    },
+    "Istirahat": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": 1.4561349697730892
+        },
+        "adfa": {
+          "alphaPlus": 2.037497784951124,
+          "alphaMinus": 1.4041957989996323
+        },
+        "median3dp": 735.27,
+        "mean": 725.2826315789474,
+        "max": 763.78,
+        "min": 674.13,
+        "rmssd": 17.422854722078895,
+        "sdnn": 29.786846620260885,
+        "hf": 3708.254517003058,
+        "lf": 8166.789750561067,
+        "lfHfRatio": 2.2023271900876193,
+        "s1": 12.319818721610046,
+        "s2": 1027.4784015897042,
+        "mseAndRmse": {
+          "mse": 0,
+          "rmse": 0
+        }
+      },
+      "timestamps": {
+        "start": "27/05/2024 17:10:37",
+        "end": "27/05/2024 17:45:22"
+      }
+    },
+    "duduk malam": {
+      "metrics": {
+        "dfa": {
+          "alpha1": null,
+          "alpha2": null
+        },
+        "adfa": {
+          "alphaPlus": null,
+          "alphaMinus": null
+        },
+        "median3dp": 764.05,
+        "mean": 764.05,
+        "max": 839.18,
+        "min": 688.92,
+        "rmssd": 150.26,
+        "sdnn": 106.24986494109062,
+        "hf": 0,
+        "lf": 0,
+        "lfHfRatio": 0,
+        "s1": 106.24986494109062,
+        "s2": 1080.5298723311632,
+        "mseAndRmse": {
+          "mse": 0,
+          "rmse": 0
+        }
+      },
+      "timestamps": {
+        "start": "27/05/2024 18:12:02",
+        "end": "27/05/2024 19:55:22"
+      }
+    },
+    "Tidur": {
+      "metrics": {
+        "dfa": {
+          "alpha1": 2.193721974535182,
+          "alpha2": 1.3040042475096114
+        },
+        "adfa": {
+          "alphaPlus": 1.6572407567792773,
+          "alphaMinus": null
+        },
+        "median3dp": 762.71,
+        "mean": 762.9243902439023,
+        "max": 862.62,
+        "min": 690.37,
+        "rmssd": 33.1077825442901,
+        "sdnn": 40.80494988655057,
+        "hf": 2486.187161751705,
+        "lf": 7221.3676338571295,
+        "lfHfRatio": 2.904595335762709,
+        "s1": 23.410737547117137,
+        "s2": 1080.6083726760126,
+        "mseAndRmse": {
+          "mse": 0,
+          "rmse": 0
+        }
+      },
+      "timestamps": {
+        "start": "27/05/2024 20:28:52",
+        "end": "27/05/2024 23:16:41"
+      }
+    }
+  },
+  "filteredLogs": [
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:45:09",
+      "HR": 86.92,
+      "RR": 712.29,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:55:39",
+      "HR": 87.16,
+      "RR": 709.79,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:55:45",
+      "HR": 86.85,
+      "RR": 714.24,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:56:32",
+      "HR": 84.84,
+      "RR": 725.7,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:59:14",
+      "HR": 86.57,
+      "RR": 715.55,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "09:01:32",
+      "HR": 86.53,
+      "RR": 705.86,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "09:04:16",
+      "HR": 81.52,
+      "RR": 755.02,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "09:51:04",
+      "HR": 89.9,
+      "RR": 699.4,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "12:26:52",
+      "HR": 92.69,
+      "RR": 665.3,
+      "aktivitas": "kerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "12:36:32",
+      "HR": 96.72,
+      "RR": 637.19,
+      "aktivitas": "kerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "13:33:51",
+      "HR": 105.27,
+      "RR": 588.38,
+      "aktivitas": "berjalan"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "13:34:06",
+      "HR": 105.01,
+      "RR": 590.18,
+      "aktivitas": "berjalan"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "13:43:13",
+      "HR": 102.06,
+      "RR": 605.46,
+      "aktivitas": "berjalan"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "14:12:57",
+      "HR": 109.18,
+      "RR": 568.1,
+      "aktivitas": "bekerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "14:25:30",
+      "HR": 103.21,
+      "RR": 597.63,
+      "aktivitas": "bekerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "14:26:25",
+      "HR": 103.69,
+      "RR": 595.86,
+      "aktivitas": "bekerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "15:10:24",
+      "HR": 105.97,
+      "RR": 581.05,
+      "aktivitas": "Perjalanan Pulang"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "15:43:14",
+      "HR": 96.52,
+      "RR": 640.5,
+      "aktivitas": "Perjalanan Pulang"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "15:54:59",
+      "HR": 97.13,
+      "RR": 635.3,
+      "aktivitas": "Perjalanan Pulang"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "15:55:39",
+      "HR": 97.85,
+      "RR": 629.63,
+      "aktivitas": "Perjalanan Pulang"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "16:20:26",
+      "HR": 91.87,
+      "RR": 673.27,
+      "aktivitas": "kegiatan dengan anak"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "16:43:28",
+      "HR": 93.82,
+      "RR": 660.15,
+      "aktivitas": "kegiatan dengan anak"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:10:37",
+      "HR": 88.46,
+      "RR": 693.77,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:11:20",
+      "HR": 91.7,
+      "RR": 674.13,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:13:08",
+      "HR": 90.82,
+      "RR": 681.1,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:13:12",
+      "HR": 90.67,
+      "RR": 681.61,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:13:26",
+      "HR": 90.53,
+      "RR": 679.7,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:18:46",
+      "HR": 86.89,
+      "RR": 707.74,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:24:23",
+      "HR": 83.05,
+      "RR": 748.53,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:24:32",
+      "HR": 82.85,
+      "RR": 753.7,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:25:51",
+      "HR": 81.83,
+      "RR": 762.45,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:26:37",
+      "HR": 83.08,
+      "RR": 737.55,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:26:44",
+      "HR": 82.95,
+      "RR": 746.09,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:35:00",
+      "HR": 81.82,
+      "RR": 735.27,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:35:14",
+      "HR": 80.94,
+      "RR": 739.82,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:35:35",
+      "HR": 80.69,
+      "RR": 763.78,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:36:30",
+      "HR": 82.91,
+      "RR": 742.97,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:36:36",
+      "HR": 82.61,
+      "RR": 749.7,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:39:07",
+      "HR": 83.13,
+      "RR": 731.53,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:44:38",
+      "HR": 85.96,
+      "RR": 719.9,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:45:22",
+      "HR": 84.49,
+      "RR": 731.03,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "18:12:02",
+      "HR": 89.55,
+      "RR": 688.92,
+      "aktivitas": "duduk malam"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "19:55:22",
+      "HR": 74.7,
+      "RR": 839.18,
+      "aktivitas": "duduk malam"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:28:52",
+      "HR": 85.21,
+      "RR": 724.38,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:28:55",
+      "HR": 85.17,
+      "RR": 724.49,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:31:32",
+      "HR": 81.73,
+      "RR": 762.71,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:47:55",
+      "HR": 83.31,
+      "RR": 738.71,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:53:10",
+      "HR": 88.9,
+      "RR": 690.37,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:55:30",
+      "HR": 85.68,
+      "RR": 720.4,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:55:51",
+      "HR": 84.44,
+      "RR": 727.78,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:57:34",
+      "HR": 88.27,
+      "RR": 702.28,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:03:32",
+      "HR": 84.66,
+      "RR": 737.58,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:04:43",
+      "HR": 86.43,
+      "RR": 712.15,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:07:54",
+      "HR": 85.61,
+      "RR": 720.52,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:07:56",
+      "HR": 85.55,
+      "RR": 720.56,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:07:59",
+      "HR": 85.55,
+      "RR": 718.9,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:08:14",
+      "HR": 84.67,
+      "RR": 730.24,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:10:31",
+      "HR": 82.97,
+      "RR": 740.2,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:13:35",
+      "HR": 84.71,
+      "RR": 724.55,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:14:19",
+      "HR": 81.32,
+      "RR": 754.71,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:15:27",
+      "HR": 81.3,
+      "RR": 749.9,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:15:44",
+      "HR": 82.24,
+      "RR": 742.27,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:15:47",
+      "HR": 82.38,
+      "RR": 744.66,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:16:27",
+      "HR": 80.23,
+      "RR": 771.23,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:18:05",
+      "HR": 83.13,
+      "RR": 736.92,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:36:24",
+      "HR": 77.85,
+      "RR": 790.8,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:36:28",
+      "HR": 77.88,
+      "RR": 791.53,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:46:06",
+      "HR": 78.05,
+      "RR": 792.15,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:48:15",
+      "HR": 80.01,
+      "RR": 764.61,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:52:48",
+      "HR": 78.32,
+      "RR": 781.87,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:53:43",
+      "HR": 77.97,
+      "RR": 788.48,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:54:57",
+      "HR": 78.08,
+      "RR": 782.47,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:55:44",
+      "HR": 76.78,
+      "RR": 807.44,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:38:18",
+      "HR": 76.69,
+      "RR": 808.76,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:47:21",
+      "HR": 73.3,
+      "RR": 830.17,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:47:23",
+      "HR": 73.43,
+      "RR": 828.23,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:47:48",
+      "HR": 75.31,
+      "RR": 813.23,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:54:25",
+      "HR": 76.32,
+      "RR": 808.64,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:56:12",
+      "HR": 78.6,
+      "RR": 782.9,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:56:39",
+      "HR": 80.72,
+      "RR": 764.23,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "23:04:15",
+      "HR": 71.35,
+      "RR": 862.62,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "23:05:23",
+      "HR": 79.75,
+      "RR": 770.22,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "23:09:47",
+      "HR": 73.23,
+      "RR": 837.34,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "23:16:41",
+      "HR": 79.08,
+      "RR": 778.7,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:45:09",
+      "HR": 86.92,
+      "RR": 712.29,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:55:39",
+      "HR": 87.16,
+      "RR": 709.79,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:55:45",
+      "HR": 86.85,
+      "RR": 714.24,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:56:32",
+      "HR": 84.84,
+      "RR": 725.7,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "08:59:14",
+      "HR": 86.57,
+      "RR": 715.55,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "09:01:32",
+      "HR": 86.53,
+      "RR": 705.86,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "09:04:16",
+      "HR": 81.52,
+      "RR": 755.02,
+      "aktivitas": "duduk"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "09:51:04",
+      "HR": 89.9,
+      "RR": 699.4,
+      "aktivitas": "Perjalanan"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "12:26:52",
+      "HR": 92.69,
+      "RR": 665.3,
+      "aktivitas": "kerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "12:36:32",
+      "HR": 96.72,
+      "RR": 637.19,
+      "aktivitas": "kerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "13:33:51",
+      "HR": 105.27,
+      "RR": 588.38,
+      "aktivitas": "berjalan"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "13:34:06",
+      "HR": 105.01,
+      "RR": 590.18,
+      "aktivitas": "berjalan"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "13:43:13",
+      "HR": 102.06,
+      "RR": 605.46,
+      "aktivitas": "berjalan"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "14:12:57",
+      "HR": 109.18,
+      "RR": 568.1,
+      "aktivitas": "bekerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "14:25:30",
+      "HR": 103.21,
+      "RR": 597.63,
+      "aktivitas": "bekerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "14:26:25",
+      "HR": 103.69,
+      "RR": 595.86,
+      "aktivitas": "bekerja di lab"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "15:10:24",
+      "HR": 105.97,
+      "RR": 581.05,
+      "aktivitas": "Perjalanan Pulang"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "15:43:14",
+      "HR": 96.52,
+      "RR": 640.5,
+      "aktivitas": "Perjalanan Pulang"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "15:54:59",
+      "HR": 97.13,
+      "RR": 635.3,
+      "aktivitas": "Perjalanan Pulang"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "15:55:39",
+      "HR": 97.85,
+      "RR": 629.63,
+      "aktivitas": "Perjalanan Pulang"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "16:20:26",
+      "HR": 91.87,
+      "RR": 673.27,
+      "aktivitas": "kegiatan dengan anak"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "16:43:28",
+      "HR": 93.82,
+      "RR": 660.15,
+      "aktivitas": "kegiatan dengan anak"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:10:37",
+      "HR": 88.46,
+      "RR": 693.77,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:11:20",
+      "HR": 91.7,
+      "RR": 674.13,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:13:08",
+      "HR": 90.82,
+      "RR": 681.1,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:13:12",
+      "HR": 90.67,
+      "RR": 681.61,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:13:26",
+      "HR": 90.53,
+      "RR": 679.7,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:18:46",
+      "HR": 86.89,
+      "RR": 707.74,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:24:23",
+      "HR": 83.05,
+      "RR": 748.53,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:24:32",
+      "HR": 82.85,
+      "RR": 753.7,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:25:51",
+      "HR": 81.83,
+      "RR": 762.45,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:26:37",
+      "HR": 83.08,
+      "RR": 737.55,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:26:44",
+      "HR": 82.95,
+      "RR": 746.09,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:35:00",
+      "HR": 81.82,
+      "RR": 735.27,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:35:14",
+      "HR": 80.94,
+      "RR": 739.82,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:35:35",
+      "HR": 80.69,
+      "RR": 763.78,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:36:30",
+      "HR": 82.91,
+      "RR": 742.97,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:36:36",
+      "HR": 82.61,
+      "RR": 749.7,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:39:07",
+      "HR": 83.13,
+      "RR": 731.53,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:44:38",
+      "HR": 85.96,
+      "RR": 719.9,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "17:45:22",
+      "HR": 84.49,
+      "RR": 731.03,
+      "aktivitas": "Istirahat"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "18:12:02",
+      "HR": 89.55,
+      "RR": 688.92,
+      "aktivitas": "duduk malam"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "19:55:22",
+      "HR": 74.7,
+      "RR": 839.18,
+      "aktivitas": "duduk malam"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:28:52",
+      "HR": 85.21,
+      "RR": 724.38,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:28:55",
+      "HR": 85.17,
+      "RR": 724.49,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:31:32",
+      "HR": 81.73,
+      "RR": 762.71,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:47:55",
+      "HR": 83.31,
+      "RR": 738.71,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:53:10",
+      "HR": 88.9,
+      "RR": 690.37,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:55:30",
+      "HR": 85.68,
+      "RR": 720.4,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:55:51",
+      "HR": 84.44,
+      "RR": 727.78,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "20:57:34",
+      "HR": 88.27,
+      "RR": 702.28,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:03:32",
+      "HR": 84.66,
+      "RR": 737.58,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:04:43",
+      "HR": 86.43,
+      "RR": 712.15,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:07:54",
+      "HR": 85.61,
+      "RR": 720.52,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:07:56",
+      "HR": 85.55,
+      "RR": 720.56,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:07:59",
+      "HR": 85.55,
+      "RR": 718.9,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:08:14",
+      "HR": 84.67,
+      "RR": 730.24,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:10:31",
+      "HR": 82.97,
+      "RR": 740.2,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:13:35",
+      "HR": 84.71,
+      "RR": 724.55,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:14:19",
+      "HR": 81.32,
+      "RR": 754.71,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:15:27",
+      "HR": 81.3,
+      "RR": 749.9,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:15:44",
+      "HR": 82.24,
+      "RR": 742.27,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:15:47",
+      "HR": 82.38,
+      "RR": 744.66,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:16:27",
+      "HR": 80.23,
+      "RR": 771.23,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:18:05",
+      "HR": 83.13,
+      "RR": 736.92,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:36:24",
+      "HR": 77.85,
+      "RR": 790.8,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:36:28",
+      "HR": 77.88,
+      "RR": 791.53,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:46:06",
+      "HR": 78.05,
+      "RR": 792.15,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:48:15",
+      "HR": 80.01,
+      "RR": 764.61,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:52:48",
+      "HR": 78.32,
+      "RR": 781.87,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:53:43",
+      "HR": 77.97,
+      "RR": 788.48,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:54:57",
+      "HR": 78.08,
+      "RR": 782.47,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "21:55:44",
+      "HR": 76.78,
+      "RR": 807.44,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:38:18",
+      "HR": 76.69,
+      "RR": 808.76,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:47:21",
+      "HR": 73.3,
+      "RR": 830.17,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:47:23",
+      "HR": 73.43,
+      "RR": 828.23,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:47:48",
+      "HR": 75.31,
+      "RR": 813.23,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:54:25",
+      "HR": 76.32,
+      "RR": 808.64,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:56:12",
+      "HR": 78.6,
+      "RR": 782.9,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "22:56:39",
+      "HR": 80.72,
+      "RR": 764.23,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "23:04:15",
+      "HR": 71.35,
+      "RR": 862.62,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "23:05:23",
+      "HR": 79.75,
+      "RR": 770.22,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "23:09:47",
+      "HR": 73.23,
+      "RR": 837.34,
+      "aktivitas": "Tidur"
+    },
+    {
+      "date_created": "27/05/2024",
+      "time_created": "23:16:41",
+      "HR": 79.08,
+      "RR": 778.7,
+      "aktivitas": "Tidur"
+    }
+  ]
+}
