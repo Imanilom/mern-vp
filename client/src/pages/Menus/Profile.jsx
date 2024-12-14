@@ -38,46 +38,50 @@ export default function Profile() {
       duration: 700
     })
   }, [])
+
+  // Handle Upload new profle
   useEffect(() => {
     if (image) {
-      handleFileUpload(image);
+      handleFileUpload(image); // jalankan fungsi firebase
     }
   }, [image]);
-
-  useEffect(() => {
-    console.log({formData})
-  }, [formData])
   
   const handleFileUpload = async (image) => {
     const storage = getStorage(app);
-    const fileName = new Date().getTime() + image.name;
+    const fileName = new Date().getTime() + image.name; // bikin unique file
     const storageRef = ref(storage, fileName);
     const uploadTask = uploadBytesResumable(storageRef, image);
     uploadTask.on(
       'state_changed',
       (snapshot) => {
+        // Fungsi trus berjalan selama progrees uploading
         const progress =
           (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         setImagePercent(Math.round(progress));
       },
       (error) => {
+        // Tampilkan infromasi error
         setImageError(true);
       },
       () => {
+        // Setelah selesai upload, minta file url
         getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) =>
+          // Lalu simpan di formData
           setFormData({ ...formData, profilePicture: downloadURL })
         );
       }
     );
   };
+
+  // Fungsi untuk mendeteksi ketika ada perbhaan
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
 
+  // Function update profile
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // mencegah aplikasi di muat ulang
     try {
-      dispatch(updateUserStart());
       const res = await fetch(`/api/user/update/${currentUser._id}`, {
         method: 'POST',
         headers: {
@@ -87,9 +91,12 @@ export default function Profile() {
       });
       const data = await res.json();
       if (data.success === false) {
+        // Jika terjadi kesahalan
         dispatch(updateUserFailure(data));
         return;
       }
+
+      // Update informasi pasien / dokter
       dispatch(updateUserSuccess(data));
       setUpdateSuccess(true);
     } catch (error) {
@@ -97,33 +104,40 @@ export default function Profile() {
     }
   };
 
+  // Handle Delete Accont
   const handleDeleteAccount = async () => {
     try {
       dispatch(deleteUserStart());
       const res = await fetch(`/api/user/delete/${currentUser._id}`, {
         method: 'DELETE',
       });
+
       const data = await res.json();
       if (data.success === false) {
+        // Jika terjadi kesalahan, berhentikan.
         dispatch(deleteUserFailure(data));
         return;
       }
-      dispatch(deleteUserSuccess(data));
+
+      dispatch(deleteUserSuccess(data)); 
     } catch (error) {
       dispatch(deleteUserFailure(error));
     }
   };
 
+  // Handle Logout Account
   const handleSignOut = async () => {
     try {
-      dispatch(signOutUserStart());
-      dispatch(clearLogsWithDailytMetric());
+      dispatch(signOutUserStart()); // untuk menghapus state redux pasien
+      dispatch(clearLogsWithDailytMetric()); 
       const res = await fetch('/api/auth/signout');
       const data = await res.json();
       if (data.success === false) {
+        // Jika terjadi kesalahan berhenti
         dispatch(deleteUserFailure(data.message));
         return;
       }
+
       dispatch(deleteUserSuccess(data));
       dispatch(docterUnsetUser());
     } catch (error) {

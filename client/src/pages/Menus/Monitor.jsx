@@ -92,6 +92,8 @@ export default function Monitor() {
       const response = await fetch(url);
       const data = await response.json();
 
+      console.log({data})
+
       if (!response.ok) {
         // Jika terjadi kesahalahn
         console.log('error');
@@ -256,6 +258,7 @@ export default function Monitor() {
                   <option value="OC">OC</option>
                   <option value="IQ">IQ</option>
                   <option value="BC">BC</option>
+                  <option value="no-filter">No filter</option>
                 </select>
 
               </div>

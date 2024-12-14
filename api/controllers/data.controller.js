@@ -15,8 +15,6 @@ import { runAllMethods } from './logs.controller.js';
 import { promisify } from 'util';
 import { timeStamp } from "console";
 
-
-
 const mkdir = promisify(fs.mkdir);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -631,8 +629,6 @@ const processHeartRateData10 = async () => {
     console.error("Error processing heart rate data:", error);
   }
 };
-
-
 
 
 const boxCoxTransform = (data) => {

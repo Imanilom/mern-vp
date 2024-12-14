@@ -119,18 +119,18 @@ function HandleSimbol(props) {
   const { dfa, name } = props;
   if (dfa >= 1.5) {
     return (
-      <span
-        className="w-fit px-3 text-xs py-1 text-[12px] rounded-md bg-red-600 text-white font-medium">
-        Danger {name}
+      <span title={`Danger ${name}`}
+        className="w-fit cursor-help px-3 text-xs py-1 text-[10px] rounded-md bg-red-600 text-white font-medium">
+        {name}
       </span>
     )
   }
 
   else if (dfa >= 1.2) {
     return (
-      <span
-        className="w-fit text-xs px-3 py-1 text-[12px] rounded-md bg-orange-600 text-white font-medium">
-        Warning {name}
+      <span title={`Warning ${name}`}
+        className="w-fit cursor-help text-xs px-3 py-1 text-[10px] rounded-md bg-orange-600 text-white font-medium">
+        {name}
       </span>
 
     )
@@ -138,9 +138,9 @@ function HandleSimbol(props) {
 
   else if (dfa > 0) {
     return (
-      <span
-        className="w-fit text-xs px-3 py-1 text-[12px] rounded-md bg-green-500 text-white font-medium" >
-        Safe {name}
+      <span title={`Safe ${name}`}
+        className="w-fit cursor-help text-xs px-3 py-1 text-[10px] rounded-md bg-green-500 text-white font-medium" >
+        {name}
       </span>
     )
   }

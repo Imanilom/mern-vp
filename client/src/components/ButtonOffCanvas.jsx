@@ -12,6 +12,8 @@ import { FaRunning } from "react-icons/fa";
 import { FaFileMedical } from "react-icons/fa6";
 import { MdOnlinePrediction } from "react-icons/md";
 
+import IconMonitoringDfaAktivitasColor from '../assets/images/material-symbols_monitor-heart-outline (1).png';
+import IconMonitoringDfaAktivitasWhite from '../assets/images/material-symbols_monitor-heart-outline.png';
 
 function ButtonOffCanvas() {
     const { currentUser, DocterPatient } = useSelector((state) => state.user);

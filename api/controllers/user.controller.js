@@ -61,12 +61,22 @@ export const test = async (req, res, next) => {
   try {
     // Filter log berdasarkan startDate dan endDate dari parameter query
 
-    const { method } = req.query;
+    const { method } = req.query || "no-filter";
     let folderChoose = 'hrv-results-OC';
     if (method) {
       if (method == 'BC') folderChoose = 'hrv-results-BC';
       if (method == 'OC') folderChoose = 'hrv-results-OC';
       if (method == 'IQ') folderChoose = 'hrv-results-IQ';
+    }
+
+    let fileStartWith;
+
+    if (method == "no-filter") {
+      fileStartWith = "";
+      folderChoose = 'hrv-results';
+    } else {
+      fileStartWith = "filtered_logs_";
+      // fileStartWith = "";
     }
     const resultsDir = path.join(__dirname, `../controllers/${folderChoose}`);
     console.log({ method, folderChoose })
@@ -85,32 +95,96 @@ export const test = async (req, res, next) => {
 
       // Filter semua file yang sesuai format 'filtered_logs_'
       const filteredFiles = files
-        .filter(file => file.startsWith('filtered_logs_'))
+        .filter(file => file.startsWith(fileStartWith))
+        .filter(file => file.endsWith('.json'))
         .sort((a, b) => {
-          const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-          const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
-          return dateB - dateA;
+          console.log('aamamn')
+
+          if (method != 'no-filter') {
+            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+            return dateB - dateA;
+
+          } else {
+            const dateA = new Date(a.match(/(.+)\.json/));
+            const dateB = new Date(b.match(/(.+)\.json/));
+            return dateB - dateA;
+          }
         });
 
       // Proses semua file dalam rentang tanggal
       let filteredLogs = [];
       let dailyMetric = [];
+      let fileDate;
 
+      console.log({ filteredFiles })
       filteredFiles.forEach(file => {
-        const fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
-        if (fileDate >= dateStart && fileDate <= dateEndTimestamp) {
-          const filePath = path.join(resultsDir, file);
-          const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        if (file.endsWith('.json')) {
+          console.log({ file })
+          if (method != 'no-filter') {
+            fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
+            // const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
+            // fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
 
-          // Tambahkan log dari file yang sesuai dengan range date
-          filteredLogs.push(...fileData.filteredLogs);
+            if (fileDate >= dateStart && fileDate <= dateEndTimestamp) {
+              const filePath = path.join(resultsDir, file);
+              const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              console.log({ length: fileData.filteredLogs.length })
+              // Tambahkan log dari file yang sesuai dengan range date
+              filteredLogs.push(...fileData.filteredLogs);
 
-          let finalMetric = {
-            ...fileData.metrics,
-            date: file.split('filtered_logs_')[1].split('.')[0]
+              let finalMetric = {
+                ...fileData.metrics,
+                date: file.split('filtered_logs_')[1].split('.')[0]
+              }
+
+              dailyMetric.push(finalMetric);
+            }
+
+          } else {
+            // Match nama file dengan pola regex
+            if (typeof file === 'string') {
+              let matchResult = file.match(/(.+)\.json/);
+              if (matchResult) {
+                let formatFileDate = matchResult[1];
+                console.log({ file }, matchResult[1], { formatFileDate });
+
+                // Pecah tanggal menjadi day, month, year
+                try {
+                  const [day, month, year] = formatFileDate.split('-');
+
+                  const fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
+
+                  console.log(fileDate >= dateStart && fileDate <= dateEndTimestamp, { fileDate, dateEndTimestamp, dateStart })
+                  if (fileDate >= dateStart && fileDate <= dateEndTimestamp) {
+                    const filePath = path.join(resultsDir, file);
+                    const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+                    console.log({ length: fileData.filteredLogs.length })
+                    // Tambahkan log dari file yang sesuai dengan range date
+                    filteredLogs.push(...fileData.filteredLogs);
+
+                    let finalMetric = {
+                      ...fileData.metrics,
+                      date: file.split('filtered_logs_')[1].split('.')[0]
+                    }
+
+                    dailyMetric.push(finalMetric);
+                  }
+                } catch (error) {
+                  console.error("Error while splitting formatFileDate:", error);
+                }
+              } else {
+                console.error("File name format does not match the expected pattern: 'DD-MM-YYYY.json'");
+              }
+            } else {
+              console.error("Invalid file value:", file, typeof file);
+            }
+            // let formatFileDate = file.match(/(.+)\.json/)[1];
+            // console.log({ file }, file.match(/(.+)\.json/)[1], { formatFileDate })
+            // const [day, month, year] = formatFileDate.split('-');
           }
+          // fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
 
-          dailyMetric.push(finalMetric);
         }
       });
 
@@ -119,12 +193,28 @@ export const test = async (req, res, next) => {
         return res.status(404).json({ message: 'Tidak ada log yang tersedia dalam rentang tanggal yang diberikan' });
       }
 
+
       // Hapus log dengan nilai RR yang null
       const validLogs = filteredLogs.filter(log => log.RR !== null);
 
       if (validLogs.length === 0) {
         return res.status(404).json({ message: 'Tidak ada log valid yang tersedia dalam data harian' });
       }
+
+      // ubah dlu date nya
+      if (method == "no-filter") {
+        validLogs.map((_val, _i) => {
+
+          // Buat objek Date
+          const [day, month, year] = _val.date_created.split('/');
+          const formattedDate = `${year}-${month}-${day}T${_val.time_created}`; // Format ISO 8601
+
+          const tanggal = new Date(formattedDate);
+          validLogs[_i]["timestamp"] = tanggal.getTime() / 1000;
+
+        })
+      }
+      console.log('oke', { validLogs, filteredFiles, method, fileStartWith, folderChoose })
 
       // Konversi timestamp ke format tanggal dan waktu yang dapat dibaca
       const formattedLogs = validLogs.map(log => ({
@@ -136,7 +226,7 @@ export const test = async (req, res, next) => {
       const { filteredLogs: filterIQRResult, anomalies } = await filterIQ(formattedLogs);
 
       console.log({ filterIQRResult, formattedLogs }, 'ok kirim');
-      return res.status(200).json({ logs: formattedLogs, filterIQRResult, dailyMetric });
+      return res.status(200).json({ logs: formattedLogs, filterIQRResult, dailyMetric, method });
 
     } else {
 
@@ -947,11 +1037,11 @@ export const logdfa = async (req, res, next) => {
         acc[date].push(log);
         return acc;
       }, {});
-      
+
       console.log('ok')
       let result = [];
 
-      console.log({logsByDate})
+      console.log({ logsByDate })
       // Proses log untuk setiap tanggal
       Object.entries(logsByDate).forEach(([date, logs]) => {
         // Urutkan log berdasarkan timestamp
@@ -965,7 +1055,7 @@ export const logdfa = async (req, res, next) => {
           const firstLog = chunk[0];
           const lastLog = chunk[chunk.length - 1];
 
-          
+
           result.push({
             aktivitas: chunk[0].aktivitas,
             dfa: calculateDFA(chunk.map(log => log.HR)),

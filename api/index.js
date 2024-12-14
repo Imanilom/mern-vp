@@ -123,4 +123,4 @@ const addActivityToLogs = async () => {
 };
 
 
-addActivityToLogs();
+// addActivityToLogs();
