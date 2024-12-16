@@ -17,5 +17,16 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    port: 3031,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3030", // Ubah ini ke port server backend yang benar
+        changeOrigin: true,
+        // secure: false,
+        // rewrite: (path) => path.replace(/^\/api/, ''), // Opsional, jika API backend tidak memerlukan prefix '/api'
+      },
+    },
+  },
   plugins: [react()],
 });
