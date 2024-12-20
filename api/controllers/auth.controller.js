@@ -4,7 +4,7 @@ import { errorHandler } from '../utils/error.js';
 import jwt from 'jsonwebtoken';
 
 export const signup = async (req, res, next) => {
-  const { guid, name, email, password, phone_number } = req.body;
+  const { name, email, password, phone_number } = req.body;
   const hashedPassword = bcryptjs.hashSync(password, 10);
   const newUser = new User({name, email, password: hashedPassword, phone_number });
   try {
