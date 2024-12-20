@@ -92,11 +92,11 @@ function DfaMetrics(props) {
                     ) : (
                       <td className="px-6 py-4 whitespace-nowrap">{formatTanggal(metric.timestamp_tanggal)}</td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.aktivitas}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.aktivitas ?? 'Uknown aktivitas'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_awal ?? null}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{metric.waktu_akhir ?? null}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha1 ? metric.dfa.alpha1.toFixed(2) : 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha2 ? metric.dfa.alpha2.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha1 ? metric.dfa.alpha1.toFixed(2) : 'Properti kosong'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{metric.dfa !== null && metric.dfa.alpha2 ? metric.dfa.alpha2.toFixed(2) : 'Properti kosong'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex gap-1">
                         {HandleSimbol({ dfa: metric.dfa.alpha1, name: "alpha1" })} 

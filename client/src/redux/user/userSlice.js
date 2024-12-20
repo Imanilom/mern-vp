@@ -1,15 +1,16 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+// Inisialisasi awal
 const initialState = {
   isLightMode_ : true, // untuk mengatur thema
-  currentUser: null, // untuk menyimpan data pasien / dokter yang login
+  currentUser: null, // untuk menyimpan data yang login
   error: null, // untuk menampilkan error di halaman web
   loading: false, // gatau masi kepake atau ga
   DocterPatient : null, // untuk menyimpan data pasien yang sedang di monitroing dokter
 };
 
 const userSlice = createSlice({
-  name: 'user',
+  name: 'user', // nama state
   initialState,
   reducers: {
     signInStart: (state) => { // state bukan data yng dikirim melalui dispatch melainkan mengambil state saat ini untuk di update

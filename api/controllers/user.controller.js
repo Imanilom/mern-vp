@@ -233,11 +233,19 @@ export const test = async (req, res, next) => {
       console.log('ngga masuk filterdate')
       // Filter dan urutkan file untuk mendapatkan file data harian terbaru
       const latestDailyFile = files
-        .filter(file => file.startsWith('filtered_logs_'))
+        .filter(file => file.startsWith(fileStartWith))
+        .filter(file => file.endsWith('.json'))
         .sort((a, b) => {
-          const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-          const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
-          return dateB - dateA;
+          if (method != 'no-filter') {
+            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+            return dateB - dateA;
+
+          } else {
+            const dateA = new Date(a.match(/(.+)\.json/));
+            const dateB = new Date(b.match(/(.+)\.json/));
+            return dateB - dateA;
+          }
         })[0];
 
 
@@ -251,7 +259,7 @@ export const test = async (req, res, next) => {
 
       const dailyMetric = {
         ...dailyData.metrics,
-        date: latestDailyFile.split('filtered_logs_')[1].split('.')[0]
+        date: latestDailyFile.split(fileStartWith)[1].split('.')[0]
       };
       // Periksa apakah dailyData mengandung logs
       const logs = dailyData.filteredLogs || [];
@@ -278,6 +286,20 @@ export const test = async (req, res, next) => {
 
       if (validLogs.length === 0) {
         return res.status(404).json({ message: 'Tidak ada log valid yang tersedia dalam data harian' });
+      }
+
+      // ubah dlu date nya buat dapetin timestamp
+      if (method == "no-filter") {
+        validLogs.map((_val, _i) => {
+
+          // Buat objek Date
+          const [day, month, year] = _val.date_created.split('/');
+          const formattedDate = `${year}-${month}-${day}T${_val.time_created}`; // Format ISO 8601
+
+          const tanggal = new Date(formattedDate);
+          validLogs[_i]["timestamp"] = tanggal.getTime() / 1000;
+
+        })
       }
 
       // Konversi timestamp ke format tanggal dan waktu yang dapat dibaca
@@ -899,7 +921,7 @@ export const logdfa = async (req, res, next) => {
     // let ip = 0; // index page
 
     const device = req.params.device || false;
-    const method = req.query.method || 'OC';
+    const method = req.query.method || 'groupactivity';
     const { startDate, endDate } = req.query;
 
     const limit = parseInt(req.query.limit) || 10000;
@@ -922,15 +944,16 @@ export const logdfa = async (req, res, next) => {
       if (method == 'IQ') folderChoose = 'hrv-results-IQ';
     }
 
-    if (method == "no-filter") {
+    if (method == "no-filter" || method == "groupactivity") {
       fileStartWith = "";
-      folderChoose = 'hrv-results';
+      method == "no-filter" ? folderChoose = "hrv-results" : folderChoose = "hrv-results-GroupActivity";
+      // folderChoose = 'hrv-results';
     } else {
-      // fileStartWith = "filtered_logs_";
-      fileStartWith = "";
+      fileStartWith = "filtered_logs_";
+      // fileStartWith = "";
     }
 
-    folderChoose = "hrv-results-GroupActivity"; // always
+    // folderChoose = "hrv-results-GroupActivity"; // always
 
     const resultsDir = path.join(__dirname, `../controllers/${folderChoose}`);
     console.log({ method, folderChoose })
@@ -956,17 +979,18 @@ export const logdfa = async (req, res, next) => {
       let filteredFiles = files
         .filter(file => file.startsWith(fileStartWith))
         .sort((a, b) => {
-          if (method != 'no-filter') {
-            // const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-            // const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+          if (method == 'no-filter' || method == 'groupactivity') {
 
             const dateA = new Date(a.match(/(.+)\.json/));
             const dateB = new Date(b.match(/(.+)\.json/));
-
             return dateB - dateA;
           } else {
-            const dateA = new Date(a.match(/(.+)\.json/));
-            const dateB = new Date(b.match(/(.+)\.json/));
+
+            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+
+            // const dateA = new Date(a.match(/(.+)\.json/));
+            // const dateB = new Date(b.match(/(.+)\.json/));
             return dateB - dateA;
           }
         });
@@ -977,16 +1001,16 @@ export const logdfa = async (req, res, next) => {
       filteredFiles.forEach(file => {
         if (file.endsWith('.json')) {
           // console.log({file, dateStart, dateEnd}, new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000)
-          if (method != 'no-filter') {
+          if (method == 'no-filter' || method == "groupactivity") {
             // fileDate = new Date(file.match(/filtered_logs_(.+)\.json/)[1]).getTime() / 1000;
             const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
             fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
 
           } else {
-            const [day, month, year] = file.match(/(.+)\.json/)[1].split('-');
+            const [year, month, day] = file.match(/filtered_logs_(.+)\.json/)[1].split('-');
             fileDate = new Date(`${year}-${month}-${day}`).getTime() / 1000;
           }
-          console.log({ fileDate }, file.match(/(.+)\.json/)[1], fileDate >= dateStart && fileDate <= dateEndTimestamp)
+          console.log({ fileDate, file }, fileDate >= dateStart && fileDate <= dateEndTimestamp)
           if (fileDate >= dateStart && fileDate <= dateEndTimestamp) {
             const filePath = path.join(resultsDir, file);
             const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -1017,17 +1041,20 @@ export const logdfa = async (req, res, next) => {
 
           const tanggal = new Date(formattedDate);
           filteredLogs[_i]["timestamp"] = tanggal.getTime() / 1000;
+          filteredLogs[_i]["datetime"] = formattedDate;
 
         })
       }
 
       // add timestamp
-      filteredLogs.map((val, i) => {
-        const [d, m, y] = val.date_created.split('/');
-        const date = new Date(`${y}-${m}-${d}T${val.time_created}`);
-
-        filteredLogs[i].timestamp = date.getTime() / 1000;
-      })
+      if(method == "no-filter" || method == "groupactivity"){
+        filteredLogs.map((val, i) => {
+          const [d, m, y] = val.date_created.split('/');
+          const date = new Date(`${y}-${m}-${d}T${val.time_created}`);
+  
+          filteredLogs[i].timestamp = date.getTime() / 1000;
+        })
+      }
 
       // Kelompokkan log berdasarkan tanggal terlebih dahulu
       const logsByDate = filteredLogs.reduce((acc, log) => {
@@ -1086,17 +1113,20 @@ export const logdfa = async (req, res, next) => {
       // Filter dan urutkan file untuk mendapatkan file data harian terbaru
       const latestDailyFile = files
         .filter(file => file.startsWith(fileStartWith))
+        .filter(file => file.endsWith('.json'))
         .sort((a, b) => {
-          if (method != 'no-filter') {
-            // const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
-            // const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+          if (method == 'no-filter' || method == 'groupactivity') {
 
             const dateA = new Date(a.match(/(.+)\.json/));
             const dateB = new Date(b.match(/(.+)\.json/));
             return dateB - dateA;
           } else {
-            const dateA = new Date(a.match(/(.+)\.json/));
-            const dateB = new Date(b.match(/(.+)\.json/));
+
+            const dateA = new Date(a.match(/filtered_logs_(.+)\.json/)[1]);
+            const dateB = new Date(b.match(/filtered_logs_(.+)\.json/)[1]);
+
+            // const dateA = new Date(a.match(/(.+)\.json/));
+            // const dateB = new Date(b.match(/(.+)\.json/));
             return dateB - dateA;
           }
         })[0];
@@ -1153,31 +1183,77 @@ export const logdfa = async (req, res, next) => {
         // console.log( splittedLog[1][0 * splitCount]['date_created']);
       }
 
-      console.log({ splittedLog }, splittedLog[0])
+      // console.log({ splittedLog }, splittedLog[0])
       let result = HRCollection.map((data, i) => {
         // let result = splittedLog.map((data, i) => {
-        const [d, m, y] = splittedLog[i][0 * splittedLog[i].length]['date_created'].split('/');
+        console.log({ date: splittedLog[i][0 * splittedLog[i].length] })
+        if (method == "no-filter" || method == "groupactivity") {
 
-        const date = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`)
-        const timeStart = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`)
-        const timeEnd = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`)
-        // const date = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
-        // const timeStart = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
-        // const timeEnd = new Date(splittedLog[i][splittedLog[i].length - 1]['timestamp'] * 1000);
-        // console.log(splittedLog[i][0 * splittedLog[i].length]['timestamp'], { date });
+          let endOfArrayChild = splittedLog[i].length;
 
-        return {
-          aktivitas: splittedLog[i][0].aktivitas,
-          dfa: calculateDFA(data),
-          adfa: calculateADFA(data),
-          tanggal: date.toISOString().split('T')[0], // Format tanggal dalam "dd/mm/yyyy"
-          waktu_awal: timeStart.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          waktu_akhir: timeEnd.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          // tanggal: splittedLog[i][0 * splittedLog[i].length]['date_created'],
-          // waktu_awal: splittedLog[i][0 * splittedLog[i].length]['time_created'],
-          // waktu_akhir: splittedLog[i][splittedLog[i].length - 1]['time_created'],
-          count: splittedLog[i].length,
-          timestamp_tanggal: date.getTime()
+          const [d, m, y] = splittedLog[i][0 * splittedLog[i].length]['date_created'].split('/');
+
+          const date = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`);
+
+          let timeStart;
+          let timeEnd;
+
+          if(method == "no-filter"){
+            timeStart = new Date(`${y}-${m}-${d}T${splittedLog[i][endOfArrayChild - 1]['time_created']}`);
+            timeEnd = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`);
+          }
+
+          if(method == "groupactivity"){
+            timeStart = new Date(`${y}-${m}-${d}T${splittedLog[i][0 * splittedLog[i].length]['time_created']}`);
+            timeEnd = new Date(`${y}-${m}-${d}T${splittedLog[i][endOfArrayChild - 1]['time_created']}`);
+          }
+          
+          // const date = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+          // const timeStart = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+          // const timeEnd = new Date(splittedLog[i][splittedLog[i].length - 1]['timestamp'] * 1000);
+          // console.log(splittedLog[i][0 * splittedLog[i].length]['timestamp'], { date });
+
+          return {
+            aktivitas: splittedLog[i][0].aktivitas,
+            dfa: calculateDFA(data),
+            adfa: calculateADFA(data),
+            tanggal: date.toISOString().split('T')[0], // Format tanggal dalam "dd/mm/yyyy"
+            waktu_awal: timeStart.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            waktu_akhir: timeEnd.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            // tanggal: splittedLog[i][0 * splittedLog[i].length]['date_created'],
+            // waktu_awal: splittedLog[i][0 * splittedLog[i].length]['time_created'],
+            // waktu_akhir: splittedLog[i][splittedLog[i].length - 1]['time_created'],
+            count: splittedLog[i].length,
+            timestamp_tanggal: date.getTime()
+          }
+        } else {
+
+          // const [d, m, y] = splittedLog[i][0 * splittedLog[i].length]['date_created'].split('/');
+         
+          let endOfArrayChild = splittedLog[i].length;
+
+          const date = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+          const timeEnd = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+          const timeStart = new Date(splittedLog[i][endOfArrayChild - 1]['timestamp'] * 1000);
+          // console.log({date, timeStart, timeEnd})
+          // const date = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+          // const timeStart = new Date(splittedLog[i][0 * splittedLog[i].length]['timestamp'] * 1000);
+          // const timeEnd = new Date(splittedLog[i][splittedLog[i].length - 1]['timestamp'] * 1000);
+          // console.log(splittedLog[i][0 * splittedLog[i].length]['timestamp'], { date });
+
+          return {
+            aktivitas: splittedLog[i][0].aktivitas,
+            dfa: calculateDFA(data),
+            adfa: calculateADFA(data),
+            tanggal: date.toISOString().split('T')[0], // Format tanggal dalam "dd/mm/yyyy"
+            waktu_awal: timeStart.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            waktu_akhir: timeEnd.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            // tanggal: splittedLog[i][0 * splittedLog[i].length]['date_created'],
+            // waktu_awal: splittedLog[i][0 * splittedLog[i].length]['time_created'],
+            // waktu_akhir: splittedLog[i][splittedLog[i].length - 1]['time_created'],
+            count: splittedLog[i].length,
+            timestamp_tanggal: date.getTime()
+          }
         }
       });
       console.log('test', result[0])

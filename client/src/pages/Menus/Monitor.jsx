@@ -268,7 +268,7 @@ export default function Monitor() {
               <div style={{ overflowX: 'auto', marginRight: 40 }}>
                 <div className='flex flex-col gap-3 ms-4 cursor-pointer pt-3 pb-5'>
                   <div className="flex-col flex">
-                    <div onClick={toggleVisibilityHR} className={isHRVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
+                    <div onClick={toggleVisibilityHR} className={isHRVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex mb-2` : `mb-2 border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isHRVisible ? 'Hide' : 'Show'} Graphic HR</button>
                     </div>
                     {isHRVisible ? ( // jika isHRVisible show == true

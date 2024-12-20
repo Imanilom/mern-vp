@@ -6,27 +6,32 @@ import { FaAngleRight } from "react-icons/fa";
 import '../chart.css';
 import AOS from 'aos';
 
-
 let scroolState = {
-    HR: 1, // daftarkan label 
-    RR: 1,
-    InterQuartile: 1
+    InterQuartile: 1,
+    HR: 1, // slide untuk HR
+    RR: 1, // slide untuk RR
 };
 
+function InterquartileGraph({ data, label }) {
 
-function InterquartileGraph({ data, label, color }) {
-    const [scroolLevel, setScroolLevel] = useState(1);
     const chartRef = useRef();
     const [slice, setSlice] = useState(1);
     const [slider, setSlider] = useState(1);
+    const [showKey, setShowKey] = useState("DUO");
     let XCount = 10;
+
+    const [changeLeft, setChangeLeft] = useState("RR");
+
+    useEffect(() => {
+        drawChart(data, changeLeft);
+    }, [changeLeft]);
 
     useEffect(() => {
         AOS.init({
             duration: 700
         })
 
-        console.log('Interquartile log ', { data })
+        // console.log('Interquartile log ', { data })
     }, [])
 
     let styleTooltype = {
@@ -40,13 +45,17 @@ function InterquartileGraph({ data, label, color }) {
         transition: 'opacity 0.2s',
         fontSize: 12 + 'px',
         maxWidth: 300 + 'px',
-        minWidth: 200 + 'px',
+        minWidth: 250 + 'px',
         zIndex: 99
     }
 
     useEffect(() => {
         drawChart(data);
     }, [data])
+
+    useEffect(() => {
+        drawChart(data);
+    }, [showKey]);
 
     function simulateScroll(left) {
         const container = document.getElementById(`svg-container-${label}`);
@@ -67,27 +76,17 @@ function InterquartileGraph({ data, label, color }) {
         }
     }
 
-    // useEffect(() => {
-    //   // init for using label x date
-    //   const parseDate = d3.timeParse('%d-%m-%Y %H:%M:%S'); // function untuk merubah string to date
-
     const changeZoomText = (zoomV) => {
         document.getElementById(`zoom_panel_${label}`).innerHTML = `Zoom level ${zoomV.toFixed(1)}`;
     }
 
-    const drawChart = (rawData) => {
+    const drawChart = (rawData, leftLabeling = "RR") => {
         // Proses data untuk menghilangkan duplikat
-        // console.log({ rawData })
-        let sizeCircleHR = [];
-        let sizeCircleRR = [];
         let processedData2 = processData(rawData);
-        // if (rawData.length <= 30) {
-        //     // klo rawdata krang dari 30, gausa ada filter biar graphic nya bagus dikit :) 
-        //     processedData2 = rawData;
-        // } else {
-        //     // klo lebih maka di filter biar ga terlalu banyak slide
-        //     processedData2 = processData(rawData);
-        // }
+        console.log({ showKey })
+
+        let sizeCircleRR = [];
+        let sizeCircleHR = [];
 
         processedData2.forEach(d => {
             let date = new Date(d.timestamp * 1000);
@@ -102,26 +101,27 @@ function InterquartileGraph({ data, label, color }) {
         const logsGroupDate = {};
         let date = "";
         let result = [];
-        console.log("interquartile", {processedData2})
+
+        // console.log("interquartile", { processedData2 })
         processedData2.forEach((val) => {
             date = val.datetime.split("T")[0];
             // const [y,m,d] = date.split("") 
             if (!logsGroupDate[date]) logsGroupDate[date] = [];
             logsGroupDate[date].push(val);
         });
-        
+
         console.log({ logsGroupDate });
 
-         // Proses data per tanggal
-         Object.entries(logsGroupDate).forEach(([date, logs]) => {
-            let labelingMinute = ["00", "15", "30", "45"];
+        // Proses data per tanggal
+        Object.entries(logsGroupDate).forEach(([date, logs]) => {
+            let labelingMinute = ["00", "30"];
             let labelingHour = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
-        
+
             let startDataTimeHour = logs[0].date.getHours();
             let endDataTimeHour = logs[logs.length - 1].date.getHours();
-        
-            console.log({ logs, startDataTimeHour, endDataTimeHour });
-        
+
+            // console.log({ logs, startDataTimeHour, endDataTimeHour });
+
             // Menambahkan waktu awal
             for (let hour = 0; hour < startDataTimeHour; hour++) {
                 labelingMinute.forEach((minute) => {
@@ -136,16 +136,16 @@ function InterquartileGraph({ data, label, color }) {
                     });
                 });
             }
-        
+
             // Menambahkan data asli
             logs.forEach((log) => result.push(log));
-            console.log({date, logs})
-        
+            console.log({ date, logs })
+
             // Menambahkan waktu akhir
-            for (let hour = endDataTimeHour ; hour < labelingHour.length; hour++) {
+            for (let hour = endDataTimeHour; hour < labelingHour.length; hour++) {
                 labelingMinute.forEach((minute) => {
                     let datetime = new Date(`${date}T${labelingHour[hour]}:${minute}:00`);
-                    console.log("DATA WAKTU AKHIR", datetime)
+                    // console.log("DATA WAKTU AKHIR", datetime)
                     result.push({
                         HR: 0,
                         RR: 0,
@@ -157,17 +157,31 @@ function InterquartileGraph({ data, label, color }) {
                 });
             }
         });
-        
+
         // Mengurutkan data berdasarkan waktu
         result.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
         console.log({ result });
-        
+
         // Menambahkan indeks ke data
         result.forEach((d, i) => (d.index = i));
-        
-        XCount = processedData2.length;
+
+
+        // max titik label x
+        let maxTitik = 60;
+
+        // Pengecekan responsive
+        if (window.innerWidth > 980) {
+            maxTitik = 60; // 40 - 60 udh best laptop / pc
+
+        } else if (window.innerWidth > 540) {
+            maxTitik = 45; // 45 udh best buat tablet
+
+        } else {
+            maxTitik = 20; // udah best buat hp
+        }
+
+        // Pagination
         let page = scroolState[label] - 1;
-        let maxTitik = 40;
 
         // Fungsi untuk mendapatkan data sesuai dengan halaman
         function getPaginatedData(data, page, maxTitik) {
@@ -180,6 +194,20 @@ function InterquartileGraph({ data, label, color }) {
         const paginatedData = getPaginatedData(result, page, maxTitik);
         let processedData = paginatedData;
 
+        // Jika saat ini berada di pagination terakhir
+        // TUJUAN : Supaya kalo slide trakhir datanya dikit bisa pinjem sebagian data si slide sebelunya
+
+        if (scroolState[label] == Math.floor(result.length / maxTitik) + 1) {
+            processedData = [];
+            let indexStart = result.length - maxTitik;
+
+            for (let i = 0; i < result.length; i++) {
+                if (i >= indexStart) {
+                    processedData.push(result[i]);
+                }
+            }
+        }
+
         let defaultColor = "rgba(7, 172, 123, 1)";
 
         const theme = localStorage.getItem('_isLightMode');
@@ -189,12 +217,12 @@ function InterquartileGraph({ data, label, color }) {
 
         let colorHR = processedData.map((item, i) => {
             if (i > 0) {
-              
+
                 if (processedData[i - 1]["HR"] - processedData[i]["HR"] >= 10) {
-              
+
                     return 'rgba(249, 39, 39, 0.8)';
                 } else if (processedData[i - 1]["HR"] - processedData[i]["HR"] >= 5) {
-                    
+
                     return 'rgba(255, 161, 0, 1)';
                 } else {
                     return 'rgba(0, 90, 143, 1)'; // Warna default
@@ -206,12 +234,12 @@ function InterquartileGraph({ data, label, color }) {
 
         let colorRR = processedData.map((item, i) => {
             if (i > 0) {
-              
+
                 if (processedData[i - 1]["RR"] - processedData[i]["RR"] >= 10) {
-              
+
                     return 'rgba(249, 39, 39, 0.8)';
                 } else if (processedData[i - 1]["RR"] - processedData[i]["RR"] >= 5) {
-                    
+
                     return 'rgba(255, 161, 0, 1)';
                 } else {
                     return defaultColor; // Warna default
@@ -223,9 +251,9 @@ function InterquartileGraph({ data, label, color }) {
 
         sizeCircleHR = processedData.map((item, i) => {
             if (i > 0) {
-               
+
                 if (processedData[i - 1]["HR"] - processedData[i]["HR"] >= 10) {
-                   
+
                     processedData[i]['label'] = "Danger";
                     return 8; // ukuran 6 untuk damger
                 } else if (processedData[i - 1]["HR"] - processedData[i]["HR"] >= 5) {
@@ -244,9 +272,9 @@ function InterquartileGraph({ data, label, color }) {
 
         sizeCircleRR = processedData.map((item, i) => {
             if (i > 0) {
-               
+
                 if (processedData[i - 1]["RR"] - processedData[i]["RR"] >= 10) {
-                   
+
                     processedData[i]['label'] = "Danger";
                     return 8; // ukuran 6 untuk damger
                 } else if (processedData[i - 1]["RR"] - processedData[i]["RR"] >= 5) {
@@ -263,7 +291,7 @@ function InterquartileGraph({ data, label, color }) {
             }
         });
 
-        console.log('IQR', { paginatedData, processedData, processedData2, rawData})
+        console.log('IQR', { paginatedData, processedData, processedData2, rawData })
         // mengambil element tooltip
         const tooltip = d3.select(`#tooltip${label}`);
         // console.log({ label, data, tooltip })
@@ -274,29 +302,21 @@ function InterquartileGraph({ data, label, color }) {
 
         // Tentukan ukuran chart
         const height = 500;
-        // const width = 25 * processedData.length / 2;
-        const width = 648;
-        // let width = 50 * processedData.length;
-        // if(processedData.length > 30){
-        //     width = 25 * processedData.length / 2;
-        // }
-        const margin = { top: 20, right: 20, bottom: 90, left: 50 }
-        let svgWidth;
+        let width = 780;
 
+        const margin = { top: 20, right: 20, bottom: 90, left: 50 }
+
+        // Sesuaikan kembali width agar tampak responsive
         if (window.innerWidth > 980) {
-            // laptop
-            svgWidth = 768;
+            width = 780;
         } else if (window.innerWidth > 540) {
-            // tablet
-            svgWidth = window.innerWidth * 0.7;
+            width = window.innerWidth * 0.8;
         } else {
-            // hp
-            svgWidth = window.innerWidth * 0.8;
+            width = window.innerWidth * 0.9;
         }
 
         // setSlice(Math.floor(width / svgWidth) + 1);
         setSlice(Math.floor(result.length / maxTitik) + 1); // layar lebar svg
-        console.log({ width, svgWidth })
 
         // Buat SVG di dalam div yang menggunakan useRef
         const svg = d3.select(chartRef.current)
@@ -311,21 +331,36 @@ function InterquartileGraph({ data, label, color }) {
             .domain(processedData.map(d => d.date)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
             .range([margin.left, width - margin.right]);
 
-        // const x = d3.scaleLinear()
-        //     .domain([d3.min(sampledData, d => d['create_at']), d3.max(sampledData, d => d.create_at)]) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
-        //     .range([margin.left, width - margin.right]);
-        // const x = d3.scaleLinear()
-        //     .domain([d3.min(data, d => d['create_at']), d3.max(data, d => d.create_at)]) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
-        //     .range([margin.left, width - margin.right]);
-        // const x = d3.scaleTime()
-        //   .domain(d3.extent(data, d => d.datetime)) // memecah data tanggal dan memetakan dari terawal hingga ke akhir (A-Z) ASC
-        //   .range([margin.left, width - margin.right]);
+        // Dapatkan nilai maksimum dan minimum data
+        const maxValueHR = d3.max(processedData, d => d["HR"]);
+        let minValueHR = d3.min(processedData, (d) => {
+            if (d["HR"] != 0) {
+                return d["HR"]
+            }
+        });
 
+        const maxValueRR = d3.max(processedData, d => d["RR"]);
+        let minValueRR = d3.min(processedData, (d) => {
+            if (d["RR"] != 0) {
+                return d["RR"]
+            }
+        });
 
-        const y = d3.scaleLinear()
-            .domain([0, d3.max(processedData, d => Math.max(d.HR, d.RR)) + 50]) // membentuk garis dari 0 hingga data value paling tinggi (max)
+        // Jika minValue == undefined karena data saat ini 0 semua
+        if (!minValueHR) minValueHR = 0;
+        if (!minValueRR) minValueRR = 0;
+
+        console.log({ minValueHR, maxValueHR, minValueRR, maxValueRR, })
+
+        const yHR = d3.scaleLinear()
+            .domain([minValueHR, maxValueHR])
+            // .domain([0, d3.max(processedData, d => Math.max(d.HR, d.RR)) + 50]) // membentuk garis dari 0 hingga data value paling tinggi (max)
             .range([height - margin.bottom, margin.top]);
 
+        const yRR = d3.scaleLinear()
+            .domain([minValueRR, maxValueRR])
+            // .domain([0, d3.max(processedData, d => Math.max(d.HR, d.RR)) + 50]) // membentuk garis dari 0 hingga data value paling tinggi (max)
+            .range([height - margin.bottom, margin.top]);
 
         // Pada sumbu Y, kita biasanya ingin nilai 0 berada di bawah (koordinat terbesar), 
         // dan nilai terbesar berada di atas (koordinat terkecil). Oleh karena itu, range Y 
@@ -336,38 +371,47 @@ function InterquartileGraph({ data, label, color }) {
         //     .x(d => x(d.date))
         //     .y(d => y(d[["avg"]]));
 
-
         const lineRR = d3.line()
             .x(d => x(d.create_at))
-            .y(d => y(d[["RR"]]));
+            .y(d => {
+                return d["RR"] == 0 ? yRR(minValueRR) : yRR(d[["RR"]])
+            });
 
         const lineHR = d3.line()
             .x(d => x(d.create_at))
-            .y(d => y(d[["HR"]]));
+            // .y(d => y(d[["HR"]]));
+            .y(d => d["HR"] == 0 ? yHR(minValueHR) : yHR(d[["HR"]]));
 
         // console.log({ line })
+        if (showKey == "DUO") {
+            const linepathHR = svg.append('path')
+                .datum(processedData)
+                .attr('fill', 'none')
+                .attr('stroke', 'rgba(0, 90, 143, 1)')
+                .attr('stroke-width', 2)
+                .attr('d', lineHR);
 
-        // gambar line
-        // const linepath = svg.append('path')
-        //     .datum(processedData)
-        //     .attr('fill', 'none')
-        //     .attr('stroke', 'rgba(75, 192, 192, 1)')
-        //     .attr('stroke-width', 2)
-        //     .attr('d', line);
-
-        const linepathHR = svg.append('path')
-            .datum(processedData)
-            .attr('fill', 'none')
-            .attr('stroke', 'rgba(0, 90, 143, 1)')
-            .attr('stroke-width', 2)
-            .attr('d', lineHR);
-
-        const linepathRR = svg.append('path')
-            .datum(processedData)
-            .attr('fill', 'none')
-            .attr('stroke', 'rgba(75, 192, 192, 1)')
-            .attr('stroke-width', 2)
-            .attr('d', lineRR);
+            const linepathRR = svg.append('path')
+                .datum(processedData)
+                .attr('fill', 'none')
+                .attr('stroke', 'rgba(75, 192, 192, 1)')
+                .attr('stroke-width', 2)
+                .attr('d', lineRR);
+        } else if (showKey == "HR") {
+            const linepathHR = svg.append('path')
+                .datum(processedData)
+                .attr('fill', 'none')
+                .attr('stroke', 'rgba(0, 90, 143, 1)')
+                .attr('stroke-width', 2)
+                .attr('d', lineHR);
+        } else {
+            const linepathRR = svg.append('path')
+                .datum(processedData)
+                .attr('fill', 'none')
+                .attr('stroke', 'rgba(75, 192, 192, 1)')
+                .attr('stroke-width', 2)
+                .attr('d', lineRR);
+        }
 
 
         // Deteksi perubahan tanggal
@@ -375,7 +419,7 @@ function InterquartileGraph({ data, label, color }) {
         let firstInSlice = true;
 
         processedData.forEach((d, i) => {
-            console.log({d, i}, processData[i])
+            // console.log({ d, i }, processData[i])
             const currentDate = d.create_at.toDateString();
             if (previousDate !== currentDate || firstInSlice) {
                 // Gambar garis putus-putus di sini
@@ -410,77 +454,168 @@ function InterquartileGraph({ data, label, color }) {
 
 
         // memberikan titik pada ujung sumbu y
-        const circlesHR = svg.selectAll('circle.hr-circle')
-            .data(processedData)
-            .enter()
-            .append('circle')
-            .attr('cx', d => x(d.date))
-            .attr('cy', d => y(d["HR"]))
-            .attr('r', (d, i) => sizeCircleHR[i])
-            .attr('fill', (d,i) => colorHR[i % colorHR.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
-            .on('mouseover', (event, d) => {
-                let labelsPurposion;
 
-                if(d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
-                if(d.label == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
-                if(d.label == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
-                const [xPos, yPos] = d3.pointer(event); // mouse x, y
-                // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
-                // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
-                // console.log({ xPos, yPos, scrollX })
-                let x = xPos;
-                if (scroolState[label] > 1) {
-                    // x = xPos - (768 * (scroolState[label] - 1));
-                    // console.log(x, xPos, (768 * (scroolState[label] - 1)))
-                }
-                // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
-                tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
-                    .style('top', `${(yPos + 10)}px`)
-                    .style('opacity', 1)
-                    .html(`
-                         ${labelsPurposion}
-                        <p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile HR: ${d["HR"]} </p>`);
-            })
-            .on('mouseout', () => {
-                tooltip.style('opacity', 0);
-            });
+        if (showKey == "DUO") {
+            const circlesHR = svg.selectAll('circle.hr-circle')
+                .data(processedData)
+                .enter()
+                .append('circle')
+                .attr('cx', d => x(d.date))
+                .attr('cy', d => {
+                        return d["HR"] == 0 ? yHR(minValueHR) : yHR(d[["HR"]])
+                })
+                .attr('r', (d, i) => sizeCircleHR[i])
+                .attr('fill', (d, i) => colorHR[i % colorHR.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
+                .on('mouseover', (event, d) => {
+                    let labelsPurposion;
 
-        const circlesRR = svg.selectAll('circle.rr-circle')
-            .data(processedData)
-            .enter()
-            .append('circle')
-            .attr('cx', d => x(d.date))
-            .attr('cy', d => y(d["RR"]))
-            .attr('r', (d, i) => sizeCircleRR[i])
-            .attr('fill',(d, i) => colorRR[i % colorRR.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
-            .on('mouseover', (event, d) => {
-                let labelsPurposion;
+                    if (d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                    if (d.label == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                    if (d.label == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                    const [xPos, yPos] = d3.pointer(event); // mouse x, y
+                    // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
+                    // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
+                    // console.log({ xPos, yPos, scrollX })
+                    let x = xPos;
 
-                if(d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
-                if(d.label == "Warning")  labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
-                if(d.label == "Danger")   labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                    console.log({d})
+                   
+                    if (x > 600) {
+                        x = x - 250;
+                    }
+                    // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
+                    tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
+                        .style('top', `${(yPos + 10)}px`)
+                        .style('opacity', 1)
+                        .html(`
+                             ${labelsPurposion}
+                            <p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile HR: ${d["HR"]} </p>`);
+                })
+                .on('mouseout', () => {
+                    tooltip.style('opacity', 0);
+                });
 
-                const [xPos, yPos] = d3.pointer(event); // mouse x, y
-                // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
-                // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
-                // console.log({ xPos, yPos, scrollX })
-                let x = xPos;
-                if (scroolState[label] > 1) {
-                    // x = xPos - (768 * (scroolState[label] - 1));
-                    // console.log(x, xPos, (768 * (scroolState[label] - 1)), d)
-                }
-                // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
-                tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
-                    .style('top', `${(yPos + 10)}px`)
-                    .style('opacity', 1)
-                    .html(`
-                         ${labelsPurposion}
-                        <p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile RR: ${d["RR"]} </p>`);
-            })
-            .on('mouseout', () => {
-                tooltip.style('opacity', 0);
-            });
+            const circlesRR = svg.selectAll('circle.rr-circle')
+                .data(processedData)
+                .enter()
+                .append('circle')
+                .attr('cx', d => x(d.date))
+                .attr('cy', d => {
+                    return d["RR"] == 0 ? yRR(minValueRR) : yRR(d[["RR"]])
+                })
+                .attr('r', (d, i) => sizeCircleRR[i])
+                .attr('fill', (d, i) => colorRR[i % colorRR.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
+                .on('mouseover', (event, d) => {
+                    let labelsPurposion;
 
+                    if (d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                    if (d.label == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                    if (d.label == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
+                    const [xPos, yPos] = d3.pointer(event); // mouse x, y
+                    // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
+                    // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
+                    // console.log({ xPos, yPos, scrollX })
+                    let x = xPos;
+                    if (x > 600) {
+                        x = x - 250;
+                    }
+                    // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
+                    tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
+                        .style('top', `${(yPos + 10)}px`)
+                        .style('opacity', 1)
+                        .html(`
+                             ${labelsPurposion}
+                            <p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile RR: ${d["RR"]} </p>`);
+                })
+                .on('mouseout', () => {
+                    tooltip.style('opacity', 0);
+                });
+        }
+        else {
+            if (showKey == "HR") {
+
+                const circlesHR = svg.selectAll('circle.hr-circle')
+                    .data(processedData)
+                    .enter()
+                    .append('circle')
+                    .attr('cx', d => x(d.date))
+                    .attr('cy', d => {
+                        if (showKey == "HR") {
+                            return d["HR"] == 0 ? yHR(minValueHR) : yHR(d[["HR"]])
+                        }
+                    })
+                    .attr('r', (d, i) => sizeCircleHR[i])
+                    .attr('fill', (d, i) => colorHR[i % colorHR.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
+                    .on('mouseover', (event, d) => {
+                        let labelsPurposion;
+
+                        if (d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                        if (d.label == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                        if (d.label == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                        const [xPos, yPos] = d3.pointer(event); // mouse x, y
+                        // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
+                        // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
+                        // console.log({ xPos, yPos, scrollX })
+                        let x = xPos;
+                        if (x > 600) {
+                            x = x - 250;
+                        }
+                        // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
+                        tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
+                            .style('top', `${(yPos + 10)}px`)
+                            .style('opacity', 1)
+                            .html(`
+                                 ${labelsPurposion}
+                                <p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile HR: ${d["HR"]} </p>`);
+                    })
+                    .on('mouseout', () => {
+                        tooltip.style('opacity', 0);
+                    });
+            }
+
+            if (showKey == "RR") {
+
+                const circlesRR = svg.selectAll('circle.rr-circle')
+                    .data(processedData)
+                    .enter()
+                    .append('circle')
+                    .attr('cx', d => x(d.date))
+                    .attr('cy', d => {
+                        if (showKey == "RR") {
+                            return d["RR"] == 0 ? yRR(minValueRR) : yRR(d[["RR"]])
+                        }
+                    })
+                    .attr('r', (d, i) => sizeCircleRR[i])
+                    .attr('fill', (d, i) => colorRR[i % colorRR.length]) // Menggunakan modulo untuk memastikan warna selalu tersedia
+                    .on('mouseover', (event, d) => {
+                        let labelsPurposion;
+
+                        if (d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                        if (d.label == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                        if (d.label == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
+                        const [xPos, yPos] = d3.pointer(event); // mouse x, y
+                        // const scrollX = svg.node().parentElement.scrollLeft; // Ambil scroll horizontal dari container
+                        // const scrollY = svg.node().parentElement.scrollTop; // Ambil scroll vertical dari container
+                        // console.log({ xPos, yPos, scrollX })
+                        let x = xPos;
+                        if (x > 600) {
+                            x = x - 250;
+                        }
+                        // console.log({ scroolLevel, scroolState[label] }, (xPos - (scroolState[label] * 768) + 10), xPos, { x });
+                        tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
+                            .style('top', `${(yPos + 10)}px`)
+                            .style('opacity', 1)
+                            .html(`
+                                 ${labelsPurposion}
+                                <p>Date: ${String(d.date).split('GMT')[0]} </p> <p>Aktivitas Pasien : ${d.activity == undefined ? 'Tidak ada riwayat' : d.activity} </p> <p> InterQuartile RR: ${d["RR"]} </p>`);
+                    })
+                    .on('mouseout', () => {
+                        tooltip.style('opacity', 0);
+                    });
+            }
+        }
 
         // Buat format tanggal dan waktu dengan d3.timeFormat
         const formatDateTime = d3.timeFormat("%H:%M:%S");
@@ -499,53 +634,35 @@ function InterquartileGraph({ data, label, color }) {
             .style('font-size', 8)
             .style('padding-right', 2)
 
-        svg.append('g')
-            .attr('transform', `translate(${margin.left}, 0)`)
-            .call(d3.axisLeft(y)
-                .ticks(15));
+        // variabel y dpake dsini
+        if (showKey == "DUO") {
+            let appendGY = svg.append('g')
+                .attr('transform', `translate(${margin.left}, 0)`);
 
-        // fungsi untuk zoom in / zoom out
-        const chartGroup = svg.append('g');
-        const zoomed = (event) => {
-            const newX = event.transform.rescaleX(x);
-            const newY = event.transform.rescaleY(y);
+            if (leftLabeling == "HR") {
+                appendGY
+                    .call(d3.axisLeft(yHR)
+                        .ticks(15))
+            }
 
-            console.log(newX, newY, event);
-            changeZoomText(event.transform.k);
+            if (leftLabeling == "RR") {
+                appendGY
+                    .call(d3.axisLeft(yRR)
+                        .ticks(15))
+            }
 
-            x.call(d3.axisBottom(newX).ticks(XCount).tickPadding(8));
-            y.call(d3.axisLeft(newY).ticks(15));
+        } else if (showKey == "HR") {
+            svg.append('g')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(yHR)
+                    .ticks(15))
+        } else {
+            svg.append('g')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(yRR)
+                    .ticks(15));
+        }
 
-            // linepath.attr('d', d3.line()
-            //     .x(d => newX(d.date))
-            //     .y(d => newY(d[["avg"]]))
-            // );
-            linepathHR.attr('d', d3.line()
-                .x(d => newX(d.date))
-                .y(d => newY(d[["HR"]]))
-            );
-
-            linepathRR.attr('d', d3.line()
-                .x(d => newX(d.date))
-                .y(d => newY(d[["RR"]]))
-            );
-
-            // circles
-            //     .attr('cx', d => newX(d.date))
-            //     .attr('cy', d => newY(d["avg"]));
-            circlesHR
-                .attr('cx', d => newX(d.date))
-                .attr('cy', d => newY(d["HR"]));
-            circlesRR
-                .attr('cx', d => newX(d.date))
-                .attr('cy', d => newY(d["RR"]));
-        };
-
-        // Tambahkan event zoom pada SVG
-        svg.call(d3.zoom()
-            .scaleExtent([1, 200])  // Atur batas zoom in dan zoom out
-            .translateExtent([[0, 0], [width, height]])  // Batas area yang bisa di-pan
-            .on('zoom', zoomed));  // Panggil fungsi zoomed saat zoom/pan terjadi
     }
 
     // Fungsi untuk memproses data dan menghilangkan duplikat
@@ -585,27 +702,36 @@ function InterquartileGraph({ data, label, color }) {
                         ) : null}
                         {scroolState[label] < slice ? (
                             <button className='rounded-md bg-slate-800 dark:bg-[#FFD166] px-3 py-1 me-1' onClick={() => triggerSimulate('plus')}>
-                                <FaAngleRight color='white' size={16} /> 
+                                <FaAngleRight color='white' size={16} />
                             </button>
                         ) : null}
                     </div>
                 ) : null}
 
                 <div className="flex sm:flex-row overflow-x-auto">
-                    <button id={`zoom_panel_${label}`} className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
+                    <button id={`zoom_panel_${label}`} className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-xs' disabled>
                         Slide {slider}
                     </button>
-                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-xs' disabled>
                         Graphic {label}
                     </button>
-                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
+                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-xs' disabled>
                         HR Point
                         <span className='ms-2 w-4 h-4 bg-[#005A8F] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
-                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
-                        RR Point 
+                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-xs' disabled>
+                        RR Point
                         <span className='ms-2 w-4 h-4 bg-[#07AC7B] dark:bg-[#217071] rounded-full text-xs text-transparent'>lLL</span>
                     </button>
+                    <select className="rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-xs" name="" id="" onChange={(e) => setShowKey(e.target.value)}>
+                        <option value="DUO">Show All</option>
+                        <option value="RR">Show RR Only</option>
+                        <option value="HR">Show HR Only</option>
+                    </select>
+                    <select className="rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-xs" name="" id="" onChange={(e) => setChangeLeft(e.target.value)}>
+                        <option value="RR">Left Point RR </option>
+                        <option value="HR">Left Point HR </option>
+                    </select>
                 </div>
             </div>
             <div className="relative" data-aos="fade-right">

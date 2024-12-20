@@ -7,8 +7,8 @@ import webSlice from './user/webSlice.js';
 import userReducer from './user/userSlice.js';
 
 const rootReducer = combineReducers({
-  user: userReducer,
-  data : webSlice
+  user: userReducer, // masih dipake banget
+  data : webSlice // udh jarang di pake
 });
 
 const persistConfig = {

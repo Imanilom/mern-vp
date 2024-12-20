@@ -169,7 +169,8 @@ export default function MonitorDFA() {
                   className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] md:max-w-[200px] rounded text-sm w-full  md:text-[16px] lg:min-w-[220px] px-3 py-3"
                   onChange={handleChangeMetode}
                 >
-                  <option value="" disabled selected>Choose metode</option>
+                  {/* <option value="" disabled selected>Choose metode</option> */}
+                  <option value="groupactivity" selected>GroupActivity</option>
                   <option value="OC">OC</option>
                   <option value="IQ">IQ</option>
                   <option value="BC">BC</option>

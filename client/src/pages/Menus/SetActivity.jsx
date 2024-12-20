@@ -40,7 +40,8 @@ function SetActivity() {
                 /**
                  * {date: '19-10-2024', awal: '12:00', akhir: '12:30'}
                  */
-                
+                console.log({ response: JSON.parse(decryptHash(encrypt)) });
+
                 setActivityUser(JSON.parse(decryptHash(encrypt))) // simpan untuk digunakan di form
             } catch (error) {
                 console.log(error);
@@ -49,7 +50,7 @@ function SetActivity() {
 
         ParsingEncryptValue(); // run function
 
-        if(currentUser.role != 'user'){
+        if (currentUser.role != 'user') {
             // Jika dokter masuk ke page ini tendang.
             return window.location = '/ringkasan-pasien';
         }
@@ -79,9 +80,9 @@ function SetActivity() {
 
             let isValid = true;
 
-             // Memastikan apakah list aktivitas sudah diisi semua field starttime, endtime dan anama aktivitasnya
+            // Memastikan apakah list aktivitas sudah diisi semua field starttime, endtime dan anama aktivitasnya
             listActivity.map((val) => {
-                
+
                 if ((!val.hasOwnProperty('aktivitas') && val.aktivitas != '') || (!val.hasOwnProperty('timeStart') && val.timeStart != '') || (!val.hasOwnProperty('timeEnd') && val.timeEnd != '')) {
                     isValid = false;
                 }
@@ -112,13 +113,13 @@ function SetActivity() {
             });
 
             if (!isvalidtime) {
-                  // gagal operasi.
+                // gagal operasi.
                 return;
             }
 
             collectAkhirWaktu.forEach((timeEnd, i) => {
                 if (timeEnd > activityUser.akhir) {
-                      // Pengecekan list aktivitas
+                    // Pengecekan list aktivitas
                     // console.log({ timeEnd }, 'tidak valid waktu lebih besar dari yang diperkirakan')
                     isvalidtime = false;
                     setError(`Format waktu akhir beraktifitas tidak valid ${timeEnd}. waktu akhir aktifitas tidak boleh melebihi jam ${activityUser.akhir}. Periksa pada tab ${i + 1}`);
@@ -215,7 +216,7 @@ function SetActivity() {
                                     <label for="first_name" class="block mb-2 text-sm font-medium dark:text-[#101010]/60 text-white">Hingga Waktu</label>
                                     <input disabled type="time" onChange={handleChange} defaultValue={activityUser.akhir.replace('.', ':')} id="akhir" name="akhir" class="bg-[#2C2C2C]/30 text-white dark:bg-[#E7E7E7] dark:text-[#073B4C] text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 max-w-[250px]" placeholder="John" required />
                                 </div>
-                                
+
                             </div>
 
                             <div className='mt-4'>
@@ -223,7 +224,7 @@ function SetActivity() {
                                 <input onChange={(e) => { setCountAct(e.target.value); setListAct([]); setIndAct(1) }} id="akhir" name="akhir" class="bg-[#2C2C2C] dark:bg-[#F5F2E7] dark:text-[#073B4C] text-white  text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 min-w-[250px]" placeholder="" required />
                             </div>
 
-                        
+
                             <div className="flex gap-2">
                                 <button type="submit" class="mt-5 rounded-md bg-[#07AC7B] dark:bg-[#217170] px-5 py-2 text-white">Save activity</button>
                                 <p onClick={() => navigate('/activity')} class="mt-5 cursor-pointer rounded-md px-10 py-2 text-white hover:text-[#005A8F] dark:text-[#005A8F]">Cancel</p>
@@ -283,15 +284,22 @@ function SetActivity() {
 
                                 <div className='mt-3'>
                                     <label for="first_name" class="block mb-2 text-sm font-medium dark:text-[#101010]/60 text-white">Aktivitas anda</label>
-                                    {/* <input type="text" id="first_name" class="bg-[#2C2C2C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " placeholder="Masukan aktivitas anda" required /> */}
+                                    <input
+                                        value={listActivity.length > 0 && listActivity[indexActivity - 1] != undefined ? listActivity[indexActivity - 1]['aktivitas'] : ''}
+                                        type="text" 
+                                        id="aktivitas"
+                                        name='aktivitas'
+                                        onChange={() => handleChangeActivity(event, indexActivity - 1)}
+                                        class="bg-[#2C2C2C] dark:bg-[#F5F2E7] dark:text-[#073B4C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5"
+                                        placeholder="Masukan aktivitas anda" required />
 
-                                    <select
+                                    {/* <select
                                         value={listActivity.length > 0 && listActivity[indexActivity - 1] != undefined ? listActivity[indexActivity - 1]['aktivitas'] : ''}
                                         id="aktivitas"
                                         name='aktivitas'
                                         onChange={() => handleChangeActivity(event, indexActivity - 1)}
                                         class="bg-[#2C2C2C] dark:bg-[#F5F2E7] dark:text-[#073B4C] text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-3.5 px-2.5 " >
-                                        {/* <option value=""></option> */}
+                                      
                                         <option value="" disabled>
                                             Select an option
                                         </option>
@@ -300,7 +308,9 @@ function SetActivity() {
                                                 {option}
                                             </option>
                                         ))}
-                                    </select>
+                                    </select> */}
+
+
                                 </div>
 
                                 <div className="flex my-3 darkgreen justify-end gap-3">

@@ -5,14 +5,11 @@ import '../chart.css';
 import AOS from 'aos';
 
 let scroolState = {
-    HR: 1,
-    RR: 1,
     Data3dp: 1,
     iData3dp: 1
 };
 
 function Graph3d({ data, label, color }) {
-    const [scroolLevel, setScroolLevel] = useState(1);
     const chartRef = useRef();
     const [slice, setSlice] = useState(1);
     const [slider, setSlider] = useState(1);
@@ -62,8 +59,8 @@ function Graph3d({ data, label, color }) {
 
     const drawChart = (rawData) => {
         let processedData2 = processData(rawData);
-        let processedData;
         let sizeCircle = [];
+        let processedData;
 
         processedData2 = processedData2.filter(d => d.RR !== null && d.HR !== null);
 
@@ -77,7 +74,7 @@ function Graph3d({ data, label, color }) {
             d.date = date;
             d.datetime = date.toISOString()
         });
-        console.log({processedData2})
+
         // Mengelompokkan data berdasarkan tanggal
         processedData2.forEach((val) => {
             date = val.datetime.split("T")[0];
@@ -89,7 +86,7 @@ function Graph3d({ data, label, color }) {
         console.log({ logsGroupDate });
         // Proses data per tanggal
         Object.entries(logsGroupDate).forEach(([date, logs]) => {
-            let labelingMinute = ["00", "15", "30", "45"];
+            let labelingMinute = ["00", "30"];
             let labelingHour = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
 
             let startDataTimeHour = logs[0].date.getHours();
@@ -102,7 +99,7 @@ function Graph3d({ data, label, color }) {
                 labelingMinute.forEach((minute) => {
                     let datetime = new Date(`${date}T${labelingHour[hour]}:${minute}:00`);
                     result.push({
-                      avg : 0,
+                        avg: 0,
                         date: datetime,
                         label: "safe",
                         timestamp: datetime.getTime(),
@@ -131,15 +128,27 @@ function Graph3d({ data, label, color }) {
 
         // Mengurutkan data berdasarkan waktu
         result.sort((a, b) => new Date(a.date) - new Date(b.date));
-        console.log({ result } , "GRAPH 3d");
+        console.log({ result }, "GRAPH 3d");
 
         // Menambahkan indeks ke data
         result.forEach((d, i) => (d.index = i));
 
+        // max titik label x
+        let maxTitik = 60;
+
+        // Pengecekan responsive
+        if (window.innerWidth > 980) {
+            maxTitik = 60; // 40 - 60 udh best laptop / pc
+
+        } else if (window.innerWidth > 540) {
+            maxTitik = 45; // 45 udh best buat tablet
+
+        } else {
+            maxTitik = 20; // udah best buat hp
+        }
+
         // Paginasi
-        XCount = processedData2.length;
         let page = scroolState[label] - 1;
-        let maxTitik = 40;
 
         // Fungsi untuk mendapatkan data sesuai dengan halaman
         function getPaginatedData(data, page, maxTitik) {
@@ -150,7 +159,21 @@ function Graph3d({ data, label, color }) {
 
         // Mendapatkan data yang diproses untuk halaman saat ini
         const paginatedData = getPaginatedData(result, page, maxTitik);
+
         processedData = paginatedData;
+
+        // Jika saat ini berada di pagination terakhir
+        // TUJUAN : Supaya kalo slide trakhir datanya dikit bisa pinjem sebagian data si slide sebelunya
+        if (scroolState['Data3dp'] == Math.floor(result.length / maxTitik) + 1) {
+            processedData = [];
+            let indexStart = result.length - maxTitik;
+
+            for (let i = 0; i < result.length; i++) {
+                if (i >= indexStart) {
+                    processedData.push(result[i]);
+                }
+            }
+        }
 
         let defaultColor = "rgba(7, 172, 123, 1)";
 
@@ -158,7 +181,6 @@ function Graph3d({ data, label, color }) {
         if (theme == "true") { // is light state
             defaultColor = "rgba(33,113,122, 1)";
         }
-
 
         color = processedData.map((_v, i) => {
             if (i > 0) {
@@ -203,20 +225,17 @@ function Graph3d({ data, label, color }) {
         lastSvg.selectAll('*').remove();
 
         const height = 500;
-        let width = 648;
-        // let width = 50 * processedData.length;
-        // if (processedData.length > 30) {
-        //     width = 25 * processedData.length / 2;
-        // }
-        const margin = { top: 20, right: 20, bottom: 90, left: 50 };
-        let svgWidth;
+        let width = 780;
 
+        const margin = { top: 20, right: 20, bottom: 90, left: 50 };
+
+        // Sesuaikan kembali width agar tampak responsive
         if (window.innerWidth > 980) {
-            svgWidth = 768;
+            width = 780;
         } else if (window.innerWidth > 540) {
-            svgWidth = window.innerWidth * 0.7;
+            width = window.innerWidth * 0.8;
         } else {
-            svgWidth = window.innerWidth * 0.8;
+            width = window.innerWidth * 0.9;
         }
 
         setSlice(Math.floor(result.length / maxTitik) + 1);
@@ -232,13 +251,29 @@ function Graph3d({ data, label, color }) {
             .domain(processedData.map(d => d.date))
             .range([margin.left, width - margin.right]);
 
+
+        // Dapatkan nilai maksimum dan minimum data
+        const maxValue = d3.max(processedData, d => d["avg"]);
+        let minValue = d3.min(processedData, (d) => {
+            if (d["avg"] != 0) {
+                return d["avg"]
+            }
+        });
+
+         // Jika minValue == undefined karena data saat ini 0 semua
+         if (!minValue) minValue = 0;
+
+         console.log({ minValue, maxValue })
+
         const y = d3.scaleLinear()
-            .domain([0, d3.max(processedData, d => d["avg"]) + 10])
+            .domain([minValue, maxValue])
+            // .domain([0, d3.max(processedData, d => d["avg"]) + 10])
             .range([height - margin.bottom, margin.top]);
 
         const line = d3.line()
             .x(d => x(d.date))
-            .y(d => y(d["avg"]));
+            // .y(d => y(d["avg"]));
+            .y(d => d["avg"] == 0 ? y(minValue) : y(d["avg"])); // Titik kosong set aja ke minValue. agar menghindari angka 0
 
         const linepath = svg.append('path')
             .datum(processedData)
@@ -276,16 +311,16 @@ function Graph3d({ data, label, color }) {
         });
 
 
-        const circles = svg.selectAll('circle')
+        svg.selectAll('circle')
             .data(processedData)
             .enter()
             .append('circle')
             .attr('cx', d => x(d.date))
-            .attr('cy', d => y(d["avg"]))
+            // .attr('cy', d => y(d["avg"]))
+            .attr('cy', d => d["avg"] == 0 ? y(minValue) : y(d["avg"]))
             .attr('r', (d, i) => sizeCircle[i])
             .attr('fill', (d, i) => color[i % color.length])
             .on('mouseover', (event, d) => {
-
                 let labelsPurposion;
 
                 if (d.label == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
@@ -294,9 +329,11 @@ function Graph3d({ data, label, color }) {
 
                 const [xPos, yPos] = d3.pointer(event);
                 let x = xPos;
-                if (scroolState[label] > 1) {
-                    // x = xPos - (768 * (scroolState[label] - 1));
+
+                if (x > 600) {
+                    x = x - 200;
                 }
+
                 tooltip.style('left', `${x}px`)
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
@@ -312,7 +349,7 @@ function Graph3d({ data, label, color }) {
             .attr('transform', `translate(-15,${height - margin.bottom})`)
             .call(d3.axisBottom(x)
                 .tickFormat(formatDateTime)
-                .ticks(XCount)
+                // .ticks(XCount)
                 .tickPadding(8))
             .selectAll('text')
             .attr('transform', 'rotate(-45)')
@@ -323,26 +360,26 @@ function Graph3d({ data, label, color }) {
             .attr('transform', `translate(${margin.left}, 0)`)
             .call(d3.axisLeft(y).ticks(15));
 
-        const zoomed = (event) => {
-            const newX = event.transform.rescaleX(x);
-            const newY = event.transform.rescaleY(y);
-            changeZoomText(event.transform.k);
+        // const zoomed = (event) => {
+        //     const newX = event.transform.rescaleX(x);
+        //     const newY = event.transform.rescaleY(y);
+        //     changeZoomText(event.transform.k);
 
-            svg.select('.x-axis').call(d3.axisBottom(newX).ticks(XCount).tickPadding(8));
-            svg.select('.y-axis').call(d3.axisLeft(newY).ticks(15));
+        //     svg.select('.x-axis').call(d3.axisBottom(newX).ticks(XCount).tickPadding(8));
+        //     svg.select('.y-axis').call(d3.axisLeft(newY).ticks(15));
 
-            linepath.attr('d', d3.line()
-                .x(d => newX(d.date))
-                .y(d => newY(d["avg"])));
+        //     linepath.attr('d', d3.line()
+        //         .x(d => newX(d.date))
+        //         .y(d => newY(d["avg"])));
 
-            circles.attr('cx', d => newX(d.date))
-                .attr('cy', d => newY(d["avg"]));
-        };
+        //     circles.attr('cx', d => newX(d.date))
+        //         .attr('cy', d => newY(d["avg"]));
+        // };
 
-        svg.call(d3.zoom()
-            .scaleExtent([1, 200])
-            .translateExtent([[0, 0], [width, height]])
-            .on('zoom', zoomed));
+        // svg.call(d3.zoom()
+        //     .scaleExtent([1, 200])
+        //     .translateExtent([[0, 0], [width, height]])
+        //     .on('zoom', zoomed));
     };
 
     const processData = (rawData) => {

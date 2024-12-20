@@ -21,78 +21,8 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
     const [slice, setSlice] = useState(1);
     const [slider, setSlider] = useState(1);
     const XCount = 5;
-
-    const calculateDFA = (data, order = 1) => {
-        // Baseline
-        const y = data.map((val, i) =>
-            data.slice(0, i + 1).reduce(
-                (acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length),
-                0
-            )
-        );
-
-        // Segmentasi ukuran kotak
-        const boxSizes = [...new Set(
-            Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(
-                val => val <= data.length / 2
-            )
-        )];
-
-        const fluctuation = boxSizes.map(boxSize => {
-            const reshaped = Array.from(
-                { length: Math.floor(data.length / boxSize) },
-                (_, i) => y.slice(i * boxSize, (i + 1) * boxSize)
-            );
-
-            const localTrends = reshaped.map(segment => {
-                const x = Array.from({ length: segment.length }, (_, i) => i);
-                const [a, b] = [0, 1].map(deg =>
-                    segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length
-                );
-                return segment.map((val, i) => a * x[i] + b);
-            });
-
-            return Math.sqrt(
-                localTrends
-                    .flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
-                    .reduce((acc, val) => acc + val, 0) /
-                (reshaped.length * reshaped[0].length)
-            );
-        });
-
-        // Log-log transform
-        const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr =>
-            arr.map(val => Math.log10(val))
-        );
-
-        // Pembagian ukuran kotak menjadi small scales dan large scales
-        const midPoint = Math.floor(logBoxSizes.length / 2);
-
-        const calculateAlpha = (x, y) => {
-            const n = x.length;
-            const sumX = x.reduce((acc, val) => acc + val, 0);
-            const sumY = y.reduce((acc, val) => acc + val, 0);
-            const sumXY = x.reduce((acc, val, i) => acc + val * y[i], 0);
-            const sumX2 = x.reduce((acc, val) => acc + val * val, 0);
-
-            return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-        };
-
-        // Hitung Alpha1 (small scales)
-        const alpha1 = calculateAlpha(
-            logBoxSizes.slice(0, midPoint),
-            logFluctuation.slice(0, midPoint)
-        );
-
-        // Hitung Alpha2 (large scales)
-        const alpha2 = calculateAlpha(
-            logBoxSizes.slice(midPoint),
-            logFluctuation.slice(midPoint)
-        );
-
-        return { alpha1, alpha2 };
-    };
-
+    const [showKey, setShowKey] = useState("DUO");
+    const [changeLeft, setChangeLeft] = useState("alpha1");
 
     const formatedDate = (date) => {
         // console.log({ date })
@@ -109,9 +39,16 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
         AOS.init({
             duration: 700
         })
-
         // drawChart();
     }, [])
+
+    useEffect(() => {
+        drawChart(data, changeLeft);
+    }, [changeLeft]);
+
+    useEffect(() => {
+        drawChart(data);
+    }, [showKey]);
 
     let styleTooltype = {
         position: 'absolute',
@@ -193,14 +130,11 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
         document.getElementById(`zoom_panel_${label}`).innerHTML = `Zoom level ${zoomV.toFixed(1)}`;
     }
 
-    const drawChart = (rawData) => {
+    const drawChart = (rawData, leftLabeling = "alpha1") => {
         console.log({ rawData }, 'woy')
         // let processedData = rawData.filter(d => d.dfa !== null);
         // let processedData = rawData;
         let processedData2 = rawData.filter(d => d.metrics.metrics.dfa.alpha1 !== null && d.metrics.metrics.alpha2 !== null);;
-
-        let page = scroolState[label] - 1;
-        let maxTitik = 10;
 
         const logsGroupDate = {};
         let date = "";
@@ -217,7 +151,7 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
 
         // Proses data per tanggal
         Object.entries(logsGroupDate).forEach(([date, metricsAktivitas]) => {
-            let labelingMinute = ["00", "15", "30", "45"];
+            let labelingMinute = ["00", "30"];
             let labelingHour = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
 
             let startDataTimeHour = metricsAktivitas[0].tanggal_timestamp.getHours();
@@ -228,7 +162,7 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
             // Menambahkan waktu awal
             for (let hour = 0; hour < startDataTimeHour; hour++) {
                 labelingMinute.forEach((minute) => {
-                    const [d, m, y] = date.split('-'); 
+                    const [d, m, y] = date.split('-');
                     let datetime = new Date(`${y}-${m}-${d}T${labelingHour[hour]}:${minute}:00`);
                     // console.log({datetime, date})
                     result.push({
@@ -247,7 +181,7 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
                         },
                         tanggal: date,
                         tanggal_timestamp: datetime,
-                        tanggal_waktu : datetime.toISOString(),
+                        tanggal_waktu: datetime.toISOString(),
                         timestamp: datetime.getTime(),
                     });
                 });
@@ -260,7 +194,7 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
             // Menambahkan waktu akhir
             for (let hour = endDataTimeHour; hour < labelingHour.length; hour++) {
                 labelingMinute.forEach((minute) => {
-                    const [d, m, y] = date.split('-'); 
+                    const [d, m, y] = date.split('-');
                     let datetime = new Date(`${y}-${m}-${d}T${labelingHour[hour]}:${minute}:00`);
                     // console.log({datetime, date})
                     result.push({
@@ -279,17 +213,33 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
                         },
                         tanggal: date,
                         tanggal_timestamp: datetime,
-                        tanggal_waktu : String(datetime),
+                        tanggal_waktu: String(datetime),
                         timestamp: datetime.getTime(),
                     });
                 });
             }
         });
 
-           
+
         // Mengurutkan data berdasarkan waktu
         result.sort((a, b) => new Date(a.create_at) - new Date(b.create_at));
         console.log({ result });
+
+
+        // Menambahkan indeks ke data
+        result.forEach((d, i) => (d.index = i));
+
+        let maxTitik = 20;
+
+        if (window.innerWidth > 980) {
+            maxTitik = 20;
+        } else if (window.innerWidth > 540) {
+            maxTitik = 20;
+        } else {
+            maxTitik = 10
+        }
+
+        let page = scroolState[label] - 1;
 
         // Fungsi untuk mendapatkan data sesuai dengan halaman
         function getPaginatedData(data, page, maxTitik) {
@@ -303,32 +253,26 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
 
         let processedData = paginatedData;
 
+        // Jika saat ini berada di pagination terakhir
+        // TUJUAN : Supaya kalo slide trakhir datanya dikit bisa pinjem sebagian data si slide sebelunya
+
+        if (scroolState[label] == Math.floor(result.length / maxTitik) + 1) {
+            processedData = [];
+            let indexStart = result.length - maxTitik;
+
+            for (let i = 0; i < result.length; i++) {
+                if (i >= indexStart) {
+                    processedData.push(result[i]);
+                }
+            }
+        }
+
         processedData.sort((a, b) => a.tanggal_timestamp - b.tanggal_timestamp)
 
         const HitungDFA = () => {
             let arrayOfDataDfa = [];
-
             processedData.map((d, i) => {
-                // d.metrics.metrics.map((val, _i) => {
-                //     HrColl.push(val.HR);
-                // })
 
-                // if (HrColl.length > 8) {
-                //     let dfaVal = calculateDFA(HrColl);
-                //     if(
-                //         isNaN(dfaVal.alpha1) || // Cek jika nilai adalah NaN
-                //         isNaN(dfaVal.alpha2) || // Cek jika nilai adalah NaN
-                //         typeof dfaVal.alpha1 !== "number" || // Cek jika bukan angka
-                //         typeof dfaVal.alpha2 !== "number"   // Cek jika bukan angka
-                //     ){
-                //         d.dfa = {
-                //             alpha1: 0,
-                //             alpha2: 0
-                //         };
-                //     }else{
-                //         d.dfa = dfaVal;
-                //     }
-                // }else {
                 if (!d.metrics.metrics.dfa.alpha1 || isNaN(d.metrics.metrics.dfa.alpha1)) {
                     d.dfa = {
                         alpha1: 0,
@@ -403,22 +347,17 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
         lastSvg.selectAll('*').remove()
 
         const height = 500;
-        let width = 678;
-        // let width = (34 * processedData.length) + 30;
-        // let width = rawData.length * 70;
-        // if (rawData.length > 10) {
-        //     width = rawData.length * 50;
-        // }
-        const margin = { top: 20, right: 20, bottom: 90, left: 50 };
-        let svgWidth;
+        let width = 780;
 
+        const margin = { top: 20, right: 20, bottom: 90, left: 50 };
+
+        // Sesuaikan kembali width agar tampak responsive
         if (window.innerWidth > 980) {
-            svgWidth = 768;
+            width = 780;
         } else if (window.innerWidth > 540) {
-            svgWidth = window.innerWidth * 0.7;
+            width = window.innerWidth * 0.8;
         } else {
-            console.log('hp')
-            svgWidth = window.innerWidth * 0.8;
+            width = window.innerWidth * 0.9;
         }
 
         setSlice(Math.floor(result.length / maxTitik) + 1);
@@ -445,33 +384,49 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
             .range([margin.left, width - margin.right])
             .padding(0.05);  // Kurangi padding agar lebih banyak label ditampilkan
 
-        const y = d3.scaleLinear()
-            .domain([0, d3.max(processedData, d => Math.max(d.dfa.alpha1, d.dfa.alpha2)) + 0.2])
+
+        // Dapatkan nilai maksimum dan minimum data
+        const maxValueA1 = d3.max(processedData, d => d.dfa.alpha1);
+        let minValueA1 = d3.min(processedData, (d) => {
+            if (d.dfa.alpha1 != 0) {
+                return d.dfa.alpha1
+            }
+        });
+
+        const maxValueA2 = d3.max(processedData, d => d.dfa.alpha2);
+        let minValueA2 = d3.min(processedData, (d) => {
+            if (d.dfa.alpha2 != 0) {
+                return d.dfa.alpha2
+            }
+        });
+
+        if (!minValueA1) minValueA1 = 0;
+        if (!minValueA2) minValueA2 = 0;
+
+        const yA1 = d3.scaleLinear()
+            // .domain([0, d3.max(processedData, d => Math.max(d.dfa.alpha1, d.dfa.alpha2)) + 0.2])
+            .domain([minValueA1, maxValueA1])
             .range([height - margin.bottom, margin.top]);
 
-        // const line = d3.line()
-        //     .x(d => x(d.tanggal))
-        //     .y(d => y(d[[keyValue]]));
+        const yA2 = d3.scaleLinear()
+            // .domain([0, d3.max(processedData, d => Math.max(d.dfa.alpha1, d.dfa.alpha2)) + 0.2])
+            .domain([minValueA2, maxValueA2])
+            .range([height - margin.bottom, margin.top]);
 
         const lineA1 = d3.line()
             .x(d => x(d.tanggal_timestamp))
-            .y(d => y(d["dfa"].alpha1 ?? 0));
+            // .y(d => y(d["dfa"].alpha1 ?? 0));
+            .y(d => {
+                return d.dfa.alpha1 == 0 ? yA1(minValueA1) : yA1(d.dfa.alpha1)
+            });
+
 
         const lineA2 = d3.line()
             .x(d => x(d.tanggal_timestamp))
-            .y(d => y(d["dfa"].alpha2 ?? 0));
-
-        // const lineA2 = d3.line()
-        //     .x(d => x(d.tanggal))
-        //     // .y(d => y(d[["dfa"]?.alpha2]));
-        //     .y(d => y(d.dfa.alpha2));
-
-        // svg.append('path')
-        //     .datum(processedData)
-        //     .attr('fill', 'none')
-        //     .attr('stroke', color[0])
-        //     .attr('stroke-width', 2)
-        //     .attr('d', line);
+            // .y(d => y(d["dfa"].alpha2 ?? 0));
+            .y(d => {
+                return d.dfa.alpha2 == 0 ? yA2(minValueA2) : yA2(d.dfa.alpha2)
+            });
 
         processedData.forEach(d => {
             if (!d.tanggal_timestamp || isNaN(d["dfa"]?.alpha1) || isNaN(d["dfa"]?.alpha2)) {
@@ -479,20 +434,39 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
             }
         });
 
-        console.log({ defaultColor, })
-        let linePathA1 = svg.append('path')
-            .datum(processedData)
-            .attr('fill', 'none')
-            .attr('stroke', "#217170")
-            .attr('stroke-width', 2)
-            .attr('d', lineA1);
+        if (showKey == "DUO") {
 
-        let linePathA2 = svg.append('path')
-            .datum(processedData)
-            .attr('fill', 'none')
-            .attr('stroke', "#FFD166")
-            .attr('stroke-width', 2)
-            .attr('d', lineA2);
+            let linePathA1 = svg.append('path')
+                .datum(processedData)
+                .attr('fill', 'none')
+                .attr('stroke', "#217170")
+                .attr('stroke-width', 2)
+                .attr('d', lineA1);
+
+            let linePathA2 = svg.append('path')
+                .datum(processedData)
+                .attr('fill', 'none')
+                .attr('stroke', "#FFD166")
+                .attr('stroke-width', 2)
+                .attr('d', lineA2);
+
+        } else if (showKey == "alpha1") {
+
+            let linePathA1 = svg.append('path')
+                .datum(processedData)
+                .attr('fill', 'none')
+                .attr('stroke', "#217170")
+                .attr('stroke-width', 2)
+                .attr('d', lineA1);
+        } else {
+
+            let linePathA2 = svg.append('path')
+                .datum(processedData)
+                .attr('fill', 'none')
+                .attr('stroke', "#FFD166")
+                .attr('stroke-width', 2)
+                .attr('d', lineA2);
+        }
 
         // Deteksi perubahan tanggal
         let previousDate = null;
@@ -525,87 +499,214 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
         // Memberikan titik pada ujung sumbu y
         console.log({ colorA1, colorA2 })
 
-        const circleAlpha1 =
-            svg.selectAll('circle.alpha1')
-                .data(processedData)
-                .enter()
-                .append('circle')
-                .attr('cx', d => x(d.tanggal_timestamp))
-                .attr('cy', d => y(d["dfa"].alpha1 ?? 0))
-                .attr('r', (d, i) => sizeCircleA1[i])
-                .attr('fill', "#217170")
-                .on('mouseover', (event, d) => {
+        if (showKey == "DUO") {
 
-                    let labelsPurposion;
+            const circleAlpha1 =
+                svg.selectAll('circle.alpha1')
+                    .data(processedData)
+                    .enter()
+                    .append('circle')
+                    .attr('cx', d => x(d.tanggal_timestamp))
+                    // .attr('cy', d => y(d["dfa"].alpha1 ?? 0))
+                    .attr('cy', d => {
+                        return d.dfa.alpha1 == 0 ? yA1(minValueA1) : yA1(d.dfa.alpha1)
+                    })
+                    .attr('r', (d, i) => sizeCircleA1[i])
+                    .attr('fill', "#217170")
+                    .on('mouseover', (event, d) => {
 
-                    if (d.statusA1 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
-                    if (d.statusA1 == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
-                    if (d.statusA1 == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+                        let labelsPurposion;
+
+                        if (d.statusA1 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                        if (d.statusA1 == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                        if (d.statusA1 == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
+                        const [xPos, yPos] = d3.pointer(event);
+                        let x = xPos + 10;
+
+                        if (x > 600) {
+                            x = x - 250;
+                        }
+
+                        tooltip.style('left', `${x}px`)
+                            .style('top', `${(yPos + 10)}px`)
+                            .style('opacity', 1)
+                            .html(`
+                                <p>${labelsPurposion}</p>
+                                <p>Date: ${String(d.tanggal).split('GMT')[0]}</p> 
+                              <p> Alpha_1: ${d["dfa"].alpha1}</p>
+                                <p> Aktivitas : ${d.Aktivitas}</p>
+                                <p>Status Dfa Alpha1: ${d["statusA1"]}</p>`);
+                    })
+                    .on('mouseout', () => {
+                        tooltip.style('opacity', 0);
+                    });
 
 
+            const circleAlpha2 =
+                svg.selectAll('circle.alpha2')
+                    .data(processedData)
+                    .enter()
+                    .append('circle')
+                    .attr('cx', d => x(d.tanggal_timestamp))
+                    // .attr('cy', d => y(d["dfa"].alpha2 ?? 0))
+                    .attr('cy', d => {
+                        return d.dfa.alpha2 == 0 ? yA2(minValueA2) : yA2(d.dfa.alpha2)
+                    })
+                    .attr('r', (d, i) => sizeCircleA2[i])
+                    .attr('fill', '#FFD166')
+                    .on('mouseover', (event, d) => {
 
-                    const [xPos, yPos] = d3.pointer(event);
-                    let x = xPos + 10;
-                    if (scroolState[label] > 1) {
-                        // x = xPos - (768 * (scroolState[label] - 1));
-                    }
-                    tooltip.style('left', `${x}px`)
-                        .style('top', `${(yPos + 10)}px`)
-                        .style('opacity', 1)
-                        .html(`
-                            <p>${labelsPurposion}</p>
-                            <p>Date: ${String(d.tanggal).split('GMT')[0]}</p> 
-                          <p> Alpha_1: ${d["dfa"].alpha1}</p>
-                            <p> Aktivitas : ${d.Aktivitas}</p>
-                            <p>Status Dfa Alpha1: ${d["statusA1"]}</p>`);
-                })
-                .on('mouseout', () => {
-                    tooltip.style('opacity', 0);
-                });
+                        let labelsPurposion;
+
+                        if (d.statusA2 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                        if (d.statusA2 == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                        if (d.statusA2 == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
+                        const [xPos, yPos] = d3.pointer(event);
+                        let x = xPos + 10;
+
+                        if (x > 600) {
+                            x = x - 250;
+                        }
+                        tooltip.style('left', `${x}px`)
+                            .style('top', `${(yPos + 10)}px`)
+                            .style('opacity', 1)
+                            .html(`
+                                          <p>${labelsPurposion}</p>
+                                        <p>Date: ${String(d.tanggal_waktu).split('GMT')[0]}</p> 
+                                        <p> Alpha_2: ${d["dfa"].alpha2}</p>
+                                        <p> Aktivitas : ${d.aktivitas}</p>
+                                        <p> Status Dfa Alpha2: ${d["statusA2"]}</p>`);
+                    })
+                    .on('mouseout', () => {
+                        tooltip.style('opacity', 0);
+                    });
+        } else {
+            if (showKey == "alpha1") {
+                const circleAlpha1 =
+                    svg.selectAll('circle.alpha1')
+                        .data(processedData)
+                        .enter()
+                        .append('circle')
+                        .attr('cx', d => x(d.tanggal_timestamp))
+                        // .attr('cy', d => y(d["dfa"].alpha1 ?? 0))
+                        .attr('cy', d => {
+                            return d.dfa.alpha1 == 0 ? yA1(minValueA1) : yA1(d.dfa.alpha1)
+                        })
+                        .attr('r', (d, i) => sizeCircleA1[i])
+                        .attr('fill', "#217170")
+                        .on('mouseover', (event, d) => {
+
+                            let labelsPurposion;
+
+                            if (d.statusA1 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                            if (d.statusA1 == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                            if (d.statusA1 == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
+                            const [xPos, yPos] = d3.pointer(event);
+                            let x = xPos + 10;
+
+                            if (x > 600) {
+                                x = x - 250;
+                            }
+
+                            tooltip.style('left', `${x}px`)
+                                .style('top', `${(yPos + 10)}px`)
+                                .style('opacity', 1)
+                                .html(`
+                                <p>${labelsPurposion}</p>
+                                <p>Date: ${String(d.tanggal).split('GMT')[0]}</p> 
+                              <p> Alpha_1: ${d["dfa"].alpha1}</p>
+                                <p> Aktivitas : ${d.Aktivitas}</p>
+                                <p>Status Dfa Alpha1: ${d["statusA1"]}</p>`);
+                        })
+                        .on('mouseout', () => {
+                            tooltip.style('opacity', 0);
+                        });
+            } else {
+                const circleAlpha2 =
+                    svg.selectAll('circle.alpha2')
+                        .data(processedData)
+                        .enter()
+                        .append('circle')
+                        .attr('cx', d => x(d.tanggal_timestamp))
+                        // .attr('cy', d => y(d["dfa"].alpha2 ?? 0))
+                        .attr('cy', d => {
+                            return d.dfa.alpha2 == 0 ? yA2(minValueA2) : yA2(d.dfa.alpha2)
+                        })
+                        .attr('r', (d, i) => sizeCircleA2[i])
+                        .attr('fill', '#FFD166')
+                        .on('mouseover', (event, d) => {
+
+                            let labelsPurposion;
+
+                            if (d.statusA2 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
+                            if (d.statusA2 == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
+                            if (d.statusA2 == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
+
+                            const [xPos, yPos] = d3.pointer(event);
+                            let x = xPos + 10;
+
+                            if (x > 600) {
+                                x = x - 250;
+                            }
+                            tooltip.style('left', `${x}px`)
+                                .style('top', `${(yPos + 10)}px`)
+                                .style('opacity', 1)
+                                .html(`
+                                          <p>${labelsPurposion}</p>
+                                        <p>Date: ${String(d.tanggal_waktu).split('GMT')[0]}</p> 
+                                        <p> Alpha_2: ${d["dfa"].alpha2}</p>
+                                        <p> Aktivitas : ${d.aktivitas}</p>
+                                        <p> Status Dfa Alpha2: ${d["statusA2"]}</p>`);
+                        })
+                        .on('mouseout', () => {
+                            tooltip.style('opacity', 0);
+                        });
+            }
+        }
 
 
-        const circleAlpha2 =
-            svg.selectAll('circle.alpha2')
-                .data(processedData)
-                .enter()
-                .append('circle')
-                .attr('cx', d => x(d.tanggal_timestamp))
-                .attr('cy', d => y(d["dfa"].alpha2 ?? 0))
-                .attr('r', (d, i) => sizeCircleA2[i])
-                .attr('fill', '#FFD166')
-                .on('mouseover', (event, d) => {
-
-                    let labelsPurposion;
-
-                    if (d.statusA2 == "Safe") labelsPurposion = `<span class="me-2">Aman</span><span class="aman w-[16px] h-4 rounded-full bg-green-400 text-transparent">Aa</span>`;
-                    if (d.statusA2 == "Warning") labelsPurposion = `<span class="me-2">Pantau Terus</span><span class="warning w-4 h-4 rounded-full bg-orange-500 text-transparent">Aa</span>`;
-                    if (d.statusA2 == "Danger") labelsPurposion = `<span class="me-2">Perlu di tindak lanjuti</span><span class="damger w-4 h-4 rounded-full bg-red-600 text-transparent">Aa</span>`;
-
-                    const [xPos, yPos] = d3.pointer(event);
-                    let x = xPos + 10;
-                    if (scroolState[label] > 1) {
-                        // x = xPos - (768 * (scroolState[label] - 1));
-                    }
-                    tooltip.style('left', `${x}px`)
-                        .style('top', `${(yPos + 10)}px`)
-                        .style('opacity', 1)
-                        .html(`
-                              <p>${labelsPurposion}</p>
-                            <p>Date: ${String(d.tanggal_waktu).split('GMT')[0]}</p> 
-                            <p> Alpha_2: ${d["dfa"].alpha2}</p>
-                            <p> Aktivitas : ${d.aktivitas}</p>
-                            <p> Status Dfa Alpha2: ${d["statusA2"]}</p>`);
-                })
-                .on('mouseout', () => {
-                    tooltip.style('opacity', 0);
-                });
 
         // Sumbu X dengan format jam menit detik saja
         const formatTime = d3.timeFormat("%H:%M:%S");
-        svg.append('g')
-            .attr('transform', `translate(${margin.left}, -5)`)
-            .call(d3.axisLeft(y)
-                .ticks(15));
+
+        // Gunakan sumbu Y
+
+        if (showKey == "DUO") {
+            let appendGY = svg.append('g')
+                .attr('transform', `translate(${margin.left}, -5)`);
+            // .call(d3.axisLeft(y)
+            //     .ticks(15));
+
+            if (leftLabeling == "alpha1") {
+                appendGY
+                    .call(d3.axisLeft(yA1)
+                        .ticks(15))
+            }
+
+            if (leftLabeling == "alpha2") {
+                appendGY
+                    .call(d3.axisLeft(yA2)
+                        .ticks(15))
+            }
+        }
+        else {
+            if (showKey == "alpha1") {
+                svg.append('g')
+                    .attr('transform', `translate(${margin.left}, -5)`)
+                    .call(d3.axisLeft(yA1)
+                        .ticks(15));
+            }
+
+            if (showKey == "alpha2") {
+                svg.append('g')
+                    .attr('transform', `translate(${margin.left}, -5)`)
+                    .call(d3.axisLeft(yA2)
+                        .ticks(15));
+            }
+        }
 
         svg.append('g')
             .attr('transform', `translate(-30,${height - margin.bottom})`)
@@ -669,6 +770,16 @@ function DfaGraphicActivity({ data, label, keyValue, color }) {
                         Danger
                         <span className='ms-2 w-4 h-4 bg-[#ff0000e6] rounded-full text-xs text-transparent'>wii</span>
                     </button> */}
+
+                    <select className="rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-xs" name="" id="" onChange={(e) => setShowKey(e.target.value)}>
+                        <option value="DUO">Show All</option>
+                        <option value="alpha1">Show Alpha1 Only</option>
+                        <option value="alpha2">Show Alpha2 Only</option>
+                    </select>
+                    <select className="rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-xs" name="" id="" onChange={(e) => setChangeLeft(e.target.value)}>
+                        <option value="alpha1">Left Point Alpha1 </option>
+                        <option value="alpha2">Left Point Alpha2 </option>
+                    </select>
                 </div>
             </div>
             <div className="relative overflow-x-auto" data-aos="fade-right">

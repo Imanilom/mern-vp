@@ -105,19 +105,19 @@ export default function Header() {
           </Link>
 
           {DocterPatient && currentUser?.role === 'doctor' ? (
-            <Link to="/ringkasan-pasien" onClick={() => window.localStorage.setItem('active_nav', name)}>
+            <Link to="/ringkasan-pasien" onClick={() => window.localStorage.setItem('active_nav', 'ringkasan')}>
               <p className="">Dashboard</p>
             </Link>
           ) : null}
 
           {!DocterPatient && currentUser?.role === 'doctor' ? (
-            <Link to="/my-patients">
+            <Link to="/my-patients" onClick={() => window.localStorage.setItem('active_nav', 'my-patient')}>
               <p className="">My Patients</p>
             </Link>
           ) : null}
 
           {currentUser && currentUser.role !== 'doctor' ? (
-            <Link to="/ringkasan-pasien">
+            <Link to="/ringkasan-pasien" onClick={() => window.localStorage.setItem('active_nav', 'ringkasan')}>
               <p className="">Dashboard</p>
             </Link>
           ) : null}
@@ -130,9 +130,6 @@ export default function Header() {
               />
             </Link>
           ) : null}
-
-
-
         </div>
       </div>
     </header >
