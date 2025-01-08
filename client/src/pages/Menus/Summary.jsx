@@ -124,7 +124,7 @@ function Summary() {
                     <Side />
                     <div class="container px-6 py-10 mx-auto">
                         {/* <ButtonOffCanvas index={1} /> */}
-                        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl " >Heart Disease Decision Support Monitoring, Detection and Predictive System </h1>
+                        <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl " >Heart Disease Monitoring, Detection and Predictive System </h1>
                         <div class="mt-8 w-11/12 mx-auto lg:flex lg:items-start">
                             <div data-aos="fade-right" className='w-full lg:mx-6 lg:w-2/3'>
                                 <div className="relative">

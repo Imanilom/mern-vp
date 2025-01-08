@@ -13,11 +13,11 @@ export default function Header() {
 
   const changeTheme = (type) => {
     if (type == 'light') {
-      console.log('light');
+     
       localStorage.setItem('_isLightMode', true);
       window.location.reload();
     } else {
-      console.log('dark')
+    
       localStorage.setItem('_isLightMode', false)
       window.location.reload();
     }

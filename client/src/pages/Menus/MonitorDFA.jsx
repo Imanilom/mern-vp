@@ -170,11 +170,9 @@ export default function MonitorDFA() {
                   onChange={handleChangeMetode}
                 >
                   {/* <option value="" disabled selected>Choose metode</option> */}
-                  <option value="groupactivity" selected>GroupActivity</option>
-                  <option value="OC">OC</option>
+                  <option value="Raw">Raw</option>
                   <option value="IQ">IQ</option>
-                  <option value="BC">BC</option>
-                  <option value="no-filter">No filter</option>
+                  <option value="Kalman">Kalman</option>
                 </select>
 
                 {resultsDFA ? (

@@ -17,25 +17,11 @@ function DfaMetrics(props) {
   }, []);
 
 
-  console.log({ results });
-  console.log('amann')
-
-
   const formatTanggal = (tgl_timestamp) => {
     const date = new Date(tgl_timestamp);
     return date.toISOString().split('T')[0];
-    // September, 18 2024
   }
 
-  //   const handleDfaAvg = () => {
-  //     let result = 0;
-  //     let dfaValues = resultss.map(val => val.dfa);
-  //     dfaValues.forEach(val => {
-  //       result += val
-  //     });
-  //     result = result / dfaValues.length;
-  //     return result.toFixed(2);
-  //   }
 
   return (
     <div className="mt-8" data-aos="fade-right">

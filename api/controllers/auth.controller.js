@@ -25,7 +25,7 @@ export const signin = async (req, res, next) => {
 
     const token = jwt.sign({ id: validUser._id, current_device : validUser.current_device, role : validUser.role, guid : validUser.guid }, 'asnjkKkjsnklnly1xcx?23r');
     const { password: pass, ...rest } = validUser._doc;
-    console.log('woy',req.cookie)
+
     res
       .cookie('access_token', token, { httpOnly: true })
       .status(200)
@@ -38,7 +38,6 @@ export const signin = async (req, res, next) => {
 
 export const google = async (req, res, next) => {
   try {
-    console.log('udh hit api');
     const user = await User.findOne({ email: req.body.email });
     if (user) {
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
@@ -69,8 +68,6 @@ export const google = async (req, res, next) => {
       const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
       const { password: hashedPassword2, ...rest } = newUser._doc;
       const expiryDate = new Date(Date.now() + 3600000); // 1 hour
-
-      console.log('photo ',  req.body.photo)
       res
         .cookie('access_token', token, {
           httpOnly: true,

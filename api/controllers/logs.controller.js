@@ -3,7 +3,6 @@ import Log from '../models/log.model.js';
 // Metode untuk memeriksa dan mengisi log
 export const checkAndFillLogs = async () => {
     try {
-        console.log('Checking and filling logs...');
         
         // Mencari semua log yang belum diperiksa dengan batasan 100000
         const logs = await Log.find({ isChecked: false }).limit(100000);

@@ -24,9 +24,6 @@ export const generateGraph = async (guid_device) => {
     const minPoints = 4;
     const { clusters, noise } = dbscan(hrValues, epsilon, minPoints);
 
-    console.log(`Clusters for GUID Device ${guid_device}:`, clusters);
-    console.log(`Noise for GUID Device ${guid_device}:`, noise);
-
     const pairedData = hrValues.map((hr, index) => ({
       hr,
       timestamp: timestamps[index]

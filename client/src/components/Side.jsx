@@ -21,7 +21,7 @@ import IconMonitoringDfaAktivitasWhite from '../assets/images/material-symbols_m
 const Side = () => {
   const { currentUser, loading, error, DocterPatient } = useSelector((state) => state.user);
   const [page, setPage] = useState(window.localStorage.getItem('active_nav'));
-  console.log('docter : ', DocterPatient == null, DocterPatient, { page });
+
 
   const setNavbar = (name) => {
     window.localStorage.setItem('active_nav', name);

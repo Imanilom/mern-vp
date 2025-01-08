@@ -5,7 +5,6 @@ import 'react-datepicker/dist/react-datepicker.css';
 import "chart.js/auto";
 import Side from "../../components/Side";
 import { useDispatch } from 'react-redux';
-
 import '../../loading.css';
 import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
 import LineGraph from '../../components/LineGraph';
@@ -16,8 +15,6 @@ import InterquartileGraph from '../../components/InterquartileGraph';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
-let results = []
-
 export default function Monitor() {
 
   const dispatch = useDispatch();
@@ -26,8 +23,6 @@ export default function Monitor() {
   const [logs, setLogs] = useState(null); // untuk menampung data logs HR dan RR
   const [startDate, setStartDate] = useState(null); // untuk input date range
   const [endDate, setEndDate] = useState(null); // untuk input date range
-  const [metrics, setMetrics] = useState({ rmssd: null, pnn50: null, sdnn: null, s1: null, s2: null });
-  const [dailyMetrics, setDailyMetrics] = useState([]);
   const [isHRVisible, setHRIsVisible] = useState(false); // Show HR chart by default
   const [isRRVisible, setRRIsVisible] = useState(true); // Show RR chart by default
   const [isIQRVisible, setIQRIsVisible] = useState(false); // Show RR chart by default
@@ -80,7 +75,7 @@ export default function Monitor() {
       if (device) {
         url = `/api/user/test/${device}`;
       }
-
+      
       // jika memakai filtering range tanggal
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
@@ -92,15 +87,11 @@ export default function Monitor() {
       const response = await fetch(url);
       const data = await response.json();
 
-      console.log({data})
-
       if (!response.ok) {
         // Jika terjadi kesahalahn
-        console.log('error');
+    
         setLogs([]);
 
-        setMetrics([]);
-        setDailyMetrics([]);
         set3dpData([]);
         setIQRData([]);
 
@@ -112,7 +103,7 @@ export default function Monitor() {
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
       const DataAverage3dp = groupDataByThreeAndAverage(sortedLogs); // run fucntion untuk menghitung average point
 
-      // console.log({ sortedLogs, DataAverage3dp, data }, "ini filterIQ RESULT", data.filterIQRResult[0])
+
       set3dpData(DataAverage3dp);
       setLogs(sortedLogs);
       setIQRData(data.filterIQRResult);
@@ -142,7 +133,7 @@ export default function Monitor() {
 
     // Petakan data untuk mengambil nilai HR dan created_at
     const data = datalog.map(log => ({
-      HR: log.HR,
+      RR: log.RR,
       date: new Date(log.timestamp * 1000)
     }));
 
@@ -152,7 +143,7 @@ export default function Monitor() {
 
       // Jika ada 3 item dalam grup
       if (chunk.length === 3) {
-        const avg = chunk.reduce((sum, log) => sum + log.HR, 0) / 3;
+        const avg = chunk.reduce((sum, log) => sum + log.RR, 0) / 3;
 
         // Ambil tanggal dari log pertama di chunk
         const date = chunk[0].date;
@@ -164,15 +155,7 @@ export default function Monitor() {
     }
 
     return groupedData;
-    /**
-       * Result : [
-       *  {
-       *    date : date,
-       *    avg : 90 // example
-       *  },
-       *  ...
-       * ]
-       */
+ 
   };
 
 
@@ -255,10 +238,10 @@ export default function Monitor() {
                   onChange={handleChangeMetode}
                 >
                   <option value="" disabled selected>Choose metode</option>
-                  <option value="OC">OC</option>
+                  <option value="Raw">Raw</option>
                   <option value="IQ">IQ</option>
-                  <option value="BC">BC</option>
-                  <option value="no-filter">No filter</option>
+                  <option value="Kalman">Kalman</option>
+                
                 </select>
 
               </div>
@@ -283,15 +266,15 @@ export default function Monitor() {
                       <LineGraph data={logs} label={`RR`} keyValue={`RR`} color={borderColor} />
                     ) : null}
                   </div>
-                  <div className="flex-col flex gap-2">
+                  {/* <div className="flex-col flex gap-2">
                     <div onClick={toggleVisibility3dp} className={is3dpVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{is3dpVisible ? 'Hide' : 'Show'} Graphic 3dpfilter</button>
                     </div>
                     {is3dpVisible ? ( // jika is3dpVisible show == true
                       <Graph3d data={data3Dp} label={`Data3dp`} color={borderColor} />
                     ) : null}
-                  </div>
-                  <div className="flex-col flex gap-2">
+                  </div> */}
+                  {/* <div className="flex-col flex gap-2">
                     <div onClick={toggleVisibilityIQR} className={isIQRVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isIQRVisible ? 'Hide' : 'Show'} Graphic IQR</button>
                     </div>
@@ -299,7 +282,7 @@ export default function Monitor() {
                       <InterquartileGraph data={IQRData} label={`InterQuartile`} color={borderColor} />
                     ) : null}
 
-                  </div>
+                  </div> */}
                   <div className="flex-col flex gap-2">
                     <div onClick={toggleVisibilityPoincare} className={isPoincareVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isPoincareVisible ? 'Hide' : 'Show'} Graphic Pointcare</button>

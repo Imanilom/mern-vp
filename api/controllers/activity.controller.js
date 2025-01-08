@@ -45,7 +45,6 @@ export const createActivity = async (req, res, next) => {
 export const getActivity = async (req, res, next) => { // mark
   try {
 
-    console.log(req.query);
     //get activities by credential user login
     const page = req.query.p || 0;
     const itemsperpage = 5;
@@ -126,7 +125,6 @@ export const get = async (req, res, next) => {
 export const editActivity = async (req, res, next) => {
 
   const { userRef, awal, akhir, aktivitas, Date } = req.body;
-  console.log({ body: req.body })
   const Activity = await Aktivitas.findById(req.params.id);
   if (!Activity) {
     return next(errorHandler(404, 'Activity not found!'));

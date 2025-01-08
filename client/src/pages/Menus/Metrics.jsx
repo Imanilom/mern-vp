@@ -1,143 +1,65 @@
 import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import "chart.js/auto";
 import Side from "../../components/Side";
-import { useDispatch } from 'react-redux';
-
-import '../../loading.css';
-import DailyMetric from '../../components/DailyMetric';
-import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
-import AOS from 'aos';
-
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
-
-let results = []
+import AOS from 'aos';
+import '../../loading.css';
+import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
 
 export default function Metrics() {
-
   const dispatch = useDispatch();
-  const { currentUser, DocterPatient } = useSelector((state) => state.user);
+  const { currentUser } = useSelector((state) => state.user);
   const navigate = useNavigate();
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [dailyMetrics, setDailyMetrics] = useState([]);
-  const [device, setDevice] = useState("C0680226");
-  const [metode, setMetode] = useState("OC");
+  const [dailyMetrics, setDailyMetrics] = useState(null);
+  const [activityMetrics, setActivityMetrics] = useState({});
   const [loading, setLoading] = useState(false);
-
-  const [medianProperty, setMedianProperty] = useState({
-    sdnn: 0,
-    rmssd: 0,
-    pnn50: 0,
-    s1: 0,
-    s2: 0,
-    dfa: 0,
-    total: 0
-  });
+  const [device, setDevice] = useState("C0680226");
+  const [metode, setMetode] = useState("Kalman");
 
   useEffect(() => {
-    // Mengecek apakah user sudah memiliki guid device yang valid
-    if (currentUser.guid == '' || !currentUser.guid) {
-      setLoading(true); // set loading page true
-      //tampilkan popup error dan tendang user
+    if (!currentUser?.guid) {
+      setLoading(true);
       Swal.fire({
         title: "Error!",
         text: "Kamu belum memiliki guid yang valid. akses ditolak!",
         icon: "error",
         confirmButtonColor: "#3085d6",
-      }).then(() => {
-        return navigate('/profile');
-      });
-
+      }).then(() => navigate('/profile'));
     } else {
-      // jika guid device sudah valid 
-      AOS.init({
-        duration: 700
-      })
-      fetchLogs(device); // run function
+      AOS.init({ duration: 700 });
+      fetchLogs(device, metode);
     }
   }, []);
 
   const fetchLogs = async (device, metode) => {
     try {
-      setLoading(true); // set loading page
-      let url = `/api/user/test`;
-      if (device) {
-        url = `/api/user/test/${device}`;
-      }
-
-      // jika memakai filtering range tanggal
+      setLoading(true);
+      let url = `/api/user/metrics/${device || ''}`;
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        if (metode) url += `&method=${metode}`;  // jika metode algorithma di cantum
+        if (metode) url += `&method=${metode}`;
       } else {
-        if (metode) url += `?method=${metode}`;  // jika metode algorithma di cantum
+        if (metode) url += `?method=${metode}`;
       }
 
       const response = await fetch(url);
       const data = await response.json();
 
-      if (!response.ok) {
-        // Jika terjadi kesahalahn
-        setDailyMetrics([]);
-
+      if (!response.ok || !data.dailyMetrics) {
         dispatch(clearLogsWithDailytMetric());
-        setLoading(false);
-        return
+        setDailyMetrics(null);
+        setActivityMetrics({});
+      } else {
+        setDailyMetrics(data.dailyMetrics);
+        setActivityMetrics(data.activityMetrics || {});
       }
-
-      const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
-
-      if (data && sortedLogs.length > 0) {
-
-        const dailyMetrictResult = data.dailyMetric; // simpan data response
-        setDailyMetrics(dailyMetrictResult);
-
-        // inisiasi awal untuk menghitung rata2
-        let property = {
-          tSdnn: 0,
-          tRmssd: 0,
-          tMin: 0,
-          tMax: 0,
-          tHf: 0,
-          tLf: 0,
-          tRatio: 0,
-          dfa: 0
-        }
-
-        // loop dan tambahkan value berdasarkan key masing2
-        dailyMetrictResult.forEach((val) => {
-          property.tSdnn += Math.floor(val.sdnn);
-          property.tRmssd += Math.floor(val.rmssd);
-          property.tMin += Math.floor(val.min);
-          property.tMax += Math.floor(val.max);
-          property.tHf += Math.floor(val.hf);
-          property.tLf += Math.floor(val.lf);
-          property.tRatio += Math.floor(val.lfHfRatio);
-          property.dfa += Math.floor(val.dfa)
-        });
-
-        // hitung rata - rata 
-        let median = {
-          sdnn: property.tSdnn / dailyMetrictResult.length,
-          rmssd: property.tRmssd / dailyMetrictResult.length,
-          min: property.tMin / dailyMetrictResult.length,
-          max: property.tMax / dailyMetrictResult.length,
-          hf: property.tHf / dailyMetrictResult.length,
-          lf: property.tLf / dailyMetrictResult.length,
-          lfHfRatio: property.tRatio / dailyMetrictResult.length,
-          total: dailyMetrictResult.length,
-          dfa: property.dfa / dailyMetrictResult.length
-        }
-
-        setMedianProperty(median); // simpan rata - rata value
-
-      };
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
       setLoading(false);
@@ -145,93 +67,36 @@ export default function Metrics() {
   };
 
   useEffect(() => {
-    // Jalankan fungsi ini ketika input range berubah
     if (startDate && endDate) {
-      fetchLogs(device); // run function
+      fetchLogs(device, metode);
     }
   }, [startDate, endDate]);
 
-  // fungsi untuk menghitung metrics
-  const calculateMetrics = (logs) => {
-    const rrIntervals = logs.map((log) => log.RR);
-    const nnIntervals = [];
-    if (rrIntervals.length < 2) {
-      // Not enough data points to calculate metrics
-      return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null };
-    }
-    let sumSquaredDiffs = 0; // For RMSSD
-    let sumSuccessiveDiffs = 0; // For RMSSD
-    let nn50Count = 0;
-
-    for (let i = 1; i < rrIntervals.length; i++) {
-      const diff = Math.abs(rrIntervals[i] - rrIntervals[i - 1]);
-      nnIntervals.push(diff);
-
-      sumSquaredDiffs += diff * diff; // Square the difference and add to sum (for RMSSD)
-      if (diff > 50) {
-        nn50Count++;
-      }
-    }
-
-    const avgNN = nnIntervals.reduce((sum, interval) => sum + interval, 0) / nnIntervals.length;
-
-    const squaredDiffsFromMean = nnIntervals.map((interval) => Math.pow(interval - avgNN, 2));
-    const sumSquaredDiffsFromMean = squaredDiffsFromMean.reduce((sum, diff) => sum + diff, 0);
-
-    const variance = sumSquaredDiffsFromMean / (nnIntervals.length - 1);
-    const sdnn = Math.sqrt(variance);
-
-    const rmssd = Math.sqrt(sumSquaredDiffs / nnIntervals.length);
-    const pnn50 = (nn50Count / nnIntervals.length) * 100;
-
-    // Calculate S1 & S2
-    const diff1 = rrIntervals.slice(1).map((val, index) => val - rrIntervals[index]);
-    const sum1 = rrIntervals.slice(1).map((val, index) => val + rrIntervals[index]);
-
-    const s1 = Math.sqrt(diff1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / diff1.length) / Math.sqrt(2);
-    const s2 = Math.sqrt(sum1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / sum1.length) / Math.sqrt(2);
-
-    // task calculate DFA
-    return { sdnn, rmssd, pnn50, s1, s2 };
-  };
-
-  // const handleChangeDevice = (e) => {
-  //   e.preventDefault();
-  //   setDevice(e.target.value);
-  //   fetchLogs(e.target.value, metode);
-  // }
-
-  // Ketika metode algorithma di ganti
   const handleChangeMetode = (e) => {
-    e.preventDefault();
     setMetode(e.target.value);
     fetchLogs(device, e.target.value);
-  }
+  };
 
+  const formatDecimal = (value) => (value ? value.toFixed(2) : 'N/A');
   return (
     <div>
-      {loading ? ( // show this screen while loading
+      {loading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101010] dark:bg-[#FEFCF5]">
           <div className="flex flex-col items-center">
-            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] dark:border-[#217170] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
-            <p className="text-center font-semibold mt-4 text-[#07AC7B] dark:text-[#217170]">
-              Loading...
-            </p>
+            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] dark:border-[#217170] rounded-full animate-spin"></div>
+            <p className="text-center font-semibold mt-4 text-[#07AC7B] dark:text-[#217170]">Loading...</p>
           </div>
         </div>
-      ) : null}
-      <main className=''>
+      )}
+      <main>
         <section className="bg-[#101010] dark:bg-[#FEFCF5] flex text-white dark:text-[#073B4C]">
           <Side />
           <div className="w-full xl:w-8/12 mb-12 xl:mb-0 px-4 mx-auto mt-5">
             <div className="relative flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
-              <div className="rounded-t mb-0 px-4 py-3 border-0 ">
+              <div className="rounded-t mb-0 px-4 py-3 border-0">
                 <div className="flex flex-wrap items-center">
-
-                  <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Metrics Data</h1>
-
+                  <h1 className="text-3xl font-semibold capitalize lg:text-4xl" data-aos="fade-up">Metrics Data</h1>
                 </div>
-
                 <DatePicker
                   data-aos="fade-left"
                   selectsRange
@@ -243,32 +108,75 @@ export default function Metrics() {
                     setEndDate(end);
                   }}
                   isClearable
-                  placeholderText='Cari berdasarkan range tanggal'
-                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm me-3 sm:me-0 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
+                  placeholderText="Cari berdasarkan range tanggal"
+                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded mr-6 text-sm"
                 />
-
                 <select
-                  name=""
-                  id=""
-                  className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] rounded text-sm w-full md:max-w-[200px]  md:text-[16px] lg:min-w-[220px] px-3 py-3"
                   onChange={handleChangeMetode}
+                  className="lg:p-2.5 p-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] rounded text-sm"
                 >
                   <option value="" disabled selected>Choose metode</option>
-                  <option value="OC">OC</option>
                   <option value="IQ">IQ</option>
-                  <option value="BC">BC</option>
+                  <option value="Kalman">Kalman</option>
                 </select>
-
-                {/* call component to show the table */}
-                <DailyMetric dailyMetrics={dailyMetrics} medianProperty={medianProperty} />
-
               </div>
-            </div>
+              <div className="mt-6 overflow-x-auto max-w-full">
+  <h2 className="text-xl font-bold mb-4">Daily Metrics</h2>
+  {dailyMetrics && Array.isArray(dailyMetrics) && dailyMetrics.length > 0 ? (
+    <table className="min-w-full table-auto border-collapse border border-gray-200 mb-8">
+      <thead>
+        <tr>
+          <th className="border border-gray-300 px-4 py-5" style={{ width: '200px' }}>Date</th>
+          <th className="border border-gray-300 px-4 py-2">DFA Alpha 1</th>
+          <th className="border border-gray-300 px-4 py-2">DFA Alpha 2</th>
+          <th className="border border-gray-300 px-4 py-2">ADFA Alpha Plus</th>
+          <th className="border border-gray-300 px-4 py-2">ADFA Alpha Minus</th>
+          <th className="border border-gray-300 px-4 py-2">Median 3DP</th>
+          <th className="border border-gray-300 px-4 py-2">Mean</th>
+          <th className="border border-gray-300 px-4 py-2">Max</th>
+          <th className="border border-gray-300 px-4 py-2">Min</th>
+          <th className="border border-gray-300 px-4 py-2">RMSSD</th>
+          <th className="border border-gray-300 px-4 py-2">SDNN</th>
+          <th className="border border-gray-300 px-4 py-2">HF</th>
+          <th className="border border-gray-300 px-4 py-2">LF</th>
+          <th className="border border-gray-300 px-4 py-2">LF/HF Ratio</th>
+          <th className="border border-gray-300 px-4 py-2">S1</th>
+          <th className="border border-gray-300 px-4 py-2">S2</th>
+        </tr>
+      </thead>
+      <tbody>
+        {dailyMetrics.map((metric, index) => (
+          <tr key={index}>
+            <td className="border border-gray-300 px-4 py-2">{metric.date || 'N/A'}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.dfa?.alpha1)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.dfa?.alpha2)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.adfa?.alphaPlus)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.adfa?.alphaMinus)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.median3dp)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.mean)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.max)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.min)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.rmssd)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.sdnn)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.hf)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.lf)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.lfHfRatio)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.s1)}</td>
+            <td className="border border-gray-300 px-4 py-2">{formatDecimal(metric.s2)}</td>
 
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p className="text-center">No data available for the selected date range.</p>
+  )}
+</div>
+
+            </div>
           </div>
         </section>
       </main>
     </div>
   );
 }
-

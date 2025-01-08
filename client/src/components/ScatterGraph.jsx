@@ -9,7 +9,6 @@ import AOS from 'aos';
 
 let scroolState = 1;
 
-
 function ScatterGraph({ data, label, keyValue, color }) {
     useEffect(() => {
         AOS.init({
@@ -60,7 +59,6 @@ function ScatterGraph({ data, label, keyValue, color }) {
 
     useEffect(() => {
         const result2 = poincareData(data);
-        console.log({ result2 })
         const result = result2.filter(d => d[0] !== null && d[1] !== null);
         drawChart(result)
     }, [data])
@@ -69,138 +67,7 @@ function ScatterGraph({ data, label, keyValue, color }) {
         document.getElementById(`zoom_panel_${label}`).innerHTML = `Zoom level ${zoomV.toFixed(1)}`;
     }
 
-    // const drawChart = (data) => {
-    //     console.log({data}, 'Scatter')
-    //     // mengambil element tooltip
-    //     const tooltip = d3.select('#tooltip');
-    //     // reset gambar svg 
-    //     const lastSvg = d3.select(chartRef.current);
-    //     lastSvg.selectAll('*').remove();
-
-    //     // porperty canvas chart
-    //     const height = 500;
-    //     const width = 768 * slice;
-    //     const margin = { top: 20, right: 20, bottom: 30, left: 40 }
-
-    //     const svg = d3.select(chartRef.current)
-    //         .append('svg')
-    //         .attr('width', width)
-    //         .attr('height', height)
-    //         .style('background', 'white')
-    //         .attr('class', 'svgTwo bgg-bl')
-
-    //     const x = d3.scaleLinear()
-    //         .domain([d3.min(data, d => d[0]) - 50, d3.max(data, d => d[0])])
-    //         .range([margin.left, width - margin.right]);
-
-    //     const y = d3.scaleLinear()
-    //         .domain([0, d3.max(data, d => d[1]) + 100])
-    //         .range([height - margin.top, margin.bottom])
-
-    //     const line = d3.line()
-    //         .x(d => x(d[0]))
-    //         .y(d => y(d[1]))
-
-    //     const linepath = svg.append('path')
-    //         .datum(data)
-    //         .attr('fill', 'none')
-    //         .attr('stroke', 'transparent')
-    //         .attr('stroke-width', 2)
-    //         .attr('d', line);
-
-    //     const circles = svg.selectAll("circle")
-    //         .data(data)
-    //         .enter()
-    //         .append("circle")
-    //         .attr("cx", d => x(d[0]))
-    //         .attr("cy", d => y(d[1]))
-    //         .attr("r", 5)
-    //         .attr("fill", (d, i) => color[i])
-    //         .on('mouseover', (event, d) => {
-    //             const [xPos, yPos] = d3.pointer(event); // mouse x, y
-    //             let x = xPos + 10;
-    //             if (scroolState > 1) {
-    //                 // x = xPos - (768 * (scroolState - 1));
-    //                 x = xPos - 768;
-    //                 console.log(x, xPos, (768 * (scroolState - 1)))
-    //             }
-    //             console.log({ scroolState }, (xPos - (scroolState * 768) + 10), xPos, { x }, tooltip);
-
-    //             tooltip.style('left', `${x}px`) // agar tooltip bisa muncul meski di scrool overflow
-    //                 .style('top', `${(yPos + 10)}px`)
-    //                 .style('opacity', 1)
-    //                 .html(`<p>Date: ${String(d[2]).split('GMT')[0]} </p> <p>Aktivitas Pasien: ${d[3] == undefined ? `Tidak ada riwayat` : d[3]}</p> <p>Point Care: [${d[0]}, ${d[1]}]</p>`);
-
-    //         })
-
-    //         .on('mouseout', () => {
-    //             tooltip.style('opacity', 0);
-    //         });
-
-    //     //membuat label x
-    //     svg.append('g')
-    //         .attr('transform', `translate(0, ${height - margin.bottom - 10})`)
-    //         .call(d3.axisBottom(x)
-    //             .ticks(YCount)
-    //             .tickPadding(10)
-    //         )
-    //         .selectAll("line") // Memilih elemen line pada ticks
-    //         .attr("stroke", "rgba(170, 39, 245, 0.9)") // Mengubah warna tick menjadi ungu
-    //         .selectAll('text')
-    //         .attr('transform', 'rotate(-35)') // Memutar label 45 derajat
-    //         .style('text-anchor', 'end') // Menyelaraskan teks ke ujung
-
-
-    //     // membuat label y
-    //     svg.append('g')
-    //         .attr('transform', `translate(${margin.left},${-margin.top})`)
-    //         .call(d3.axisLeft(y)
-    //             .ticks(YCount)
-    //         )
-
-    //     //zoom event
-    //     const chartGroup = svg.append('g');
-    //     const zoomed = (e) => {
-    //         const newX = e.transform.rescaleX(x);
-    //         const newY = e.transform.rescaleY(y);
-
-    //         console.log('oke zoom')
-
-    //         changeZoomText(e.transform.k);
-
-    //         x.call(d3.axisBottom(newX)
-    //             .ticks(YCount)
-    //             .tickPadding(10))
-
-    //         y.call(d3.axisLeft(newY)
-    //             .ticks(YCount))
-
-    //         linepath.attr('d', d3.line()
-    //             .x(d => newX(d[0]))
-    //             .y(d => newY(d[1]))
-    //         );
-
-    //         // const linepath = svg.append('path')
-    //         // .datum(data)
-    //         // .attr('fill', 'none')
-    //         // .attr('stroke', 'transparent')
-    //         // .attr('stroke-width', 2)
-    //         // .attr('d', line);
-
-    //         circles
-    //             .attr('cx', d => newX(d[0]))
-    //             .attr('cy', d => newY(d[1]))
-    //     }
-
-    //     // zoom trigger event
-    //     svg.call(d3.zoom()
-    //         .scaleExtent([1, 120])
-    //         .translateExtent([[0, 0], [width, height]])
-    //         .on('zoom', zoomed));
-    // }
-
     const drawChart = (data) => {
-        console.log({ data }, 'Scatter')
 
         const tooltip = d3.select('#tooltip');
         const lastSvg = d3.select(chartRef.current);
