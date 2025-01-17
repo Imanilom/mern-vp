@@ -342,7 +342,7 @@ export default function MonitorDFA() {
                   {/* <option value="" disabled selected>Choose metode</option> */}
                   <option value="IQ">IQ</option>
                   <option value="Kalman">Kalman</option>
-                  <option value="BC">Box Cox</option>
+                             <option value="BC">Box Cox</option>
                   <option value="OC">One Class SVM</option>
                 </select>
 
