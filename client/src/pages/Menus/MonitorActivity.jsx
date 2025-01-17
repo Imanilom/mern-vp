@@ -37,6 +37,13 @@ export default function MonitorActivity() {
   const [splittedLog, setSplittedLog] = useState([]);
   const [isDoneCalculate, setDoneCalculate] = useState(false);
 
+    
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchLogs(device);
+    }
+  }, [startDate, endDate]);
+
   useEffect(() => {
     // Mengecek apakah guid user sudah ada dan valid
     if (currentUser.guid == '' || !currentUser.guid) {
@@ -100,12 +107,7 @@ export default function MonitorActivity() {
       setLoading(false);
     }
   };
-  
-  useEffect(() => {
-    if (startDate && endDate) {
-      fetchLogs(device);
-    }
-  }, [startDate, endDate]);
+
 
 
   

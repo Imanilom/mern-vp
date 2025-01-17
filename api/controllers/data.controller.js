@@ -8,7 +8,7 @@ import Log from "../models/log.model.js"; // Import your Log model
 import User from '../models/user.model.js';
 
 import { generateGraph, generateGraphsForAllFolders } from "./graph.controller.js";
-import { calculateHRVMetrics, calculateAdvancedMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
+import { calculateAdvancedMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
 
 import { runAllMethods } from './logs.controller.js';
 
@@ -38,27 +38,33 @@ export const groupDataByThreeAndAverage = (data) => {
   return groupedData;
 };
 
-
 // jika buat sesuatu fungsi sertakan visualisasi dan RMSE
-
+// missing value ganti menjadi nilai sebelumnya
+// buang dulu anomali, terus ganti missing value
+// pake normalisasi
 export async function kalmanFilter(logs, options = {}) {
   const {
-    initialErrorRR = 1,       // Kesalahan awal RR
-    processNoiseRR = 0.01,    // Noise proses RR (Q)
-    measurementNoiseRR = 1,   // Noise pengukuran RR (R)
-
-    initialErrorHR = 1,       // Kesalahan awal HR
-    processNoiseHR = 0.01,    // Noise proses HR (Q)
-    measurementNoiseHR = 1,   // Noise pengukuran HR (R),
-
-    debug = false,            // Aktifkan debug
+    initialErrorRR = 1,
+    processNoiseRR = 0.01,
+    measurementNoiseRR = 1,
+    initialErrorHR = 1,
+    processNoiseHR = 0.01,
+    measurementNoiseHR = 1,
+    debug = false,
   } = options;
 
   if (!Array.isArray(logs) || logs.length === 0) {
     throw new Error("Input logs must be a non-empty array.");
   }
 
-  // Validasi dan estimasi awal
+  // Sort logs by date and time created
+  logs.sort((a, b) => {
+    const dateA = new Date(`${a.date_created} ${a.time_created}`);
+    const dateB = new Date(`${b.date_created} ${b.time_created}`);
+    return dateA - dateB;
+  });
+
+  // Validasi nilai awal
   const isValidValue = (value, min, max) => value >= min && value <= max;
 
   const validRR = logs
@@ -69,13 +75,15 @@ export async function kalmanFilter(logs, options = {}) {
     .map((log) => log.HR)
     .filter((value) => isValidValue(value, 40, 180));
 
-  const initialEstimateRR = validRR.length > 0 
-    ? validRR.reduce((sum, value) => sum + value, 0) / validRR.length 
-    : 500;
+  const initialEstimateRR =
+    validRR.length > 0
+      ? validRR.reduce((sum, value) => sum + value, 0) / validRR.length
+      : 500;
 
-  const initialEstimateHR = validHR.length > 0
-    ? validHR.reduce((sum, value) => sum + value, 0) / validHR.length
-    : 70;
+  const initialEstimateHR =
+    validHR.length > 0
+      ? validHR.reduce((sum, value) => sum + value, 0) / validHR.length
+      : 70;
 
   // Variabel Kalman Filter
   let estimateRR = initialEstimateRR;
@@ -87,19 +95,23 @@ export async function kalmanFilter(logs, options = {}) {
   const filteredLogs = [];
   const anomalies = [];
 
-  // Debugging opsional
-  if (debug) {
-    console.log("Initial Estimate RR:", estimateRR);
-    console.log("Initial Estimate HR:", estimateHR);
-  }
+  // Fungsi untuk mengganti nilai anomali dengan rata-rata tetangga
+  const replaceAnomaly = (index, field) => {
+    const prev = index > 0 ? logs[index - 1][field] : logs[index][field];
+    const next =
+      index < logs.length - 1
+        ? logs[index + 1][field]
+        : logs[index][field];
+    return (prev + next) / 2;
+  };
 
-  // Proses logs dengan Kalman Filter
+  // Proses logs
   logs.forEach((log, index) => {
-    const measurementRR = log.RR;
-    const measurementHR = log.HR;
+    const { RR: measurementRR, HR: measurementHR } = log;
 
+    // Validasi nilai RR dan HR
     if (
-      !isValidValue(measurementRR, 400, 1000) || 
+      !isValidValue(measurementRR, 400, 1000) ||
       !isValidValue(measurementHR, 40, 180)
     ) {
       anomalies.push({ ...log, reason: "Invalid measurement range" });
@@ -116,16 +128,36 @@ export async function kalmanFilter(logs, options = {}) {
     estimateHR += kalmanGainHR * (measurementHR - estimateHR);
     errorHR = (1 - kalmanGainHR) * errorHR + processNoiseHR;
 
-    // Hitung deviasi dan threshold
-    const deviationRR = Math.abs(measurementRR - estimateRR);
-    const thresholdRR = 3 * Math.sqrt(errorRR);
+    // Deteksi anomali berdasarkan threshold
+    const isAnomalous = (measurement, estimate, error) => {
+      const deviation = Math.abs(measurement - estimate);
+      const threshold = 3 * Math.sqrt(error);
+      return deviation > threshold;
+    };
 
-    const deviationHR = Math.abs(measurementHR - estimateHR);
-    const thresholdHR = 3 * Math.sqrt(errorHR);
+    const anomalyRR = isAnomalous(measurementRR, estimateRR, errorRR);
+    const anomalyHR = isAnomalous(measurementHR, estimateHR, errorHR);
 
-    // Pisahkan anomali
-    if (deviationRR > thresholdRR || deviationHR > thresholdHR) {
-      anomalies.push({ ...log, reason: "Out of threshold" });
+    if (anomalyRR || anomalyHR) {
+      anomalies.push({
+        ...log,
+        reason: `Out of threshold: ${anomalyRR ? "RR" : ""} ${
+          anomalyHR ? "HR" : ""
+        }`,
+      });
+
+      // Gantikan nilai anomali dengan rata-rata tetangga
+      filteredLogs.push({
+        date_created: log.date_created,
+        time_created: log.time_created,
+        RR: anomalyRR
+          ? parseFloat(replaceAnomaly(index, "RR").toFixed(2))
+          : parseFloat(estimateRR.toFixed(2)),
+        HR: anomalyHR
+          ? parseFloat(replaceAnomaly(index, "HR").toFixed(2))
+          : parseFloat(estimateHR.toFixed(2)),
+        aktivitas: log.aktivitas || log.activity || log.acitivity || "Unknown",
+      });
     } else {
       filteredLogs.push({
         date_created: log.date_created,
@@ -151,6 +183,7 @@ export async function kalmanFilter(logs, options = {}) {
   return { filteredLogs, anomalies };
 }
 
+
 export async function filterIQ(logs, multiplier = 1.5) {
   if (!logs || logs.length === 0) {
     console.error("No logs available for processing.");
@@ -163,11 +196,9 @@ export async function filterIQ(logs, multiplier = 1.5) {
   // Mengelompokkan log berdasarkan interval waktu 10 detik
   const groupedLogs = [];
   let currentGroup = [];
-  // let startTime = new Date(`${logs[0].date_created}T${logs[0].time_created}`).getTime();
   let startTime = logs[0].timestamp;
 
   logs.forEach(log => {
-    // const logTime = new Date(`${log.date_created}T${log.time_created}`).getTime();
     const logTime = log.timestamp;
     if (logTime - startTime < 1000) {
       currentGroup.push(log);
@@ -182,7 +213,7 @@ export async function filterIQ(logs, multiplier = 1.5) {
 
   // Proses setiap grup
   groupedLogs.forEach((group, index) => {
-    console.log("grup", {group});
+    console.log("grup", { group });
     const hrValues = group.map(log => log.HR).filter(value => value !== undefined && value !== null);
     const rrValues = group.map(log => log.RR).filter(value => value !== undefined && value !== null);
 
@@ -194,81 +225,50 @@ export async function filterIQ(logs, multiplier = 1.5) {
     const hrStats = calculateQuartilesAndIQR(hrValues);
     const rrStats = calculateQuartilesAndIQR(rrValues);
 
-    const filteredHr = hrValues.filter(value =>
-      value >= hrStats.Q1 - multiplier * hrStats.IQR &&
-      value <= hrStats.Q3 + multiplier * hrStats.IQR
-    );
+    // Deteksi anomali dan ganti dengan rata-rata tetangga kiri dan kanan
+    for (let i = 0; i < group.length; i++) {
+      const hrValue = hrValues[i];
+      const rrValue = rrValues[i];
 
-    const filteredRr = rrValues.filter(value =>
-      value >= rrStats.Q1 - multiplier * rrStats.IQR &&
-      value <= rrStats.Q3 + multiplier * rrStats.IQR
-    );
+      // Deteksi anomali HR dan RR
+      const hrAnomaly = hrValue < hrStats.Q1 - multiplier * hrStats.IQR || hrValue > hrStats.Q3 + multiplier * hrStats.IQR;
+      const rrAnomaly = rrValue < rrStats.Q1 - multiplier * rrStats.IQR || rrValue > rrStats.Q3 + multiplier * rrStats.IQR;
 
-    // Memeriksa apakah ada data setelah filtering
-    if (filteredHr.length > 0 && filteredRr.length > 0) {
-      for (let i = 0; i < Math.min(filteredHr.length, filteredRr.length); i++) {
-        const datetime = new Date(group[i].timestamp);
-        const filteredLog = {
-          _id: group[i]._id,
-          HR: filteredHr[i],
-          RR: filteredRr[i],
-          timestamp : group[i].timestamp, // 
-          rrRMS: group[i].rrRMS, // kosong
-          date_created: group[i].date_created, 
-          time_created: group[i].time_created,
-          // date_created: datetime.split('T')[0],
-          // time_created: datetime.split('T')[0],
-          aktivitas: group[i].aktivitas,
-        };
+      if (hrAnomaly || rrAnomaly) {
+        anomalies.push(group[i]);
 
-        
-        filteredLogs.push(filteredLog);
+        // Mengganti dengan rata-rata tetangga kiri dan kanan jika ada anomali
+        const leftIndex = i > 0 ? i - 1 : i;  // Menentukan indeks kiri
+        const rightIndex = i < group.length - 1 ? i + 1 : i;  // Menentukan indeks kanan
+        const avgHr = (hrValues[leftIndex] + hrValues[rightIndex]) / 2;
+        const avgRr = (rrValues[leftIndex] + rrValues[rightIndex]) / 2;
+
+        // Memperbarui nilai yang terdeteksi anomali dengan rata-rata
+        group[i].HR = avgHr;
+        group[i].RR = avgRr;
       }
     }
 
-    // Deteksi anomali
-    const anomaliesInGroup = group.filter((log, i) =>
-      hrValues[i] < hrStats.Q1 - multiplier * hrStats.IQR ||
-      hrValues[i] > hrStats.Q3 + multiplier * hrStats.IQR ||
-      rrValues[i] < rrStats.Q1 - multiplier * rrStats.IQR ||
-      rrValues[i] > rrStats.Q3 + multiplier * rrStats.IQR
-    );
-    if (anomaliesInGroup.length > 0) {
-      anomalies.push(...anomaliesInGroup);
-    }
+    // Menyaring log dengan menggunakan nilai yang telah diganti jika ada anomali
+    group.forEach(log => {
+      const filteredLog = {
+        HR: log.HR,
+        RR: log.RR,
+        rrRMS: log.rrRMS,
+        date_created: log.date_created,
+        time_created: log.time_created,
+        aktivitas: log.aktivitas,
+      };
+
+      filteredLogs.push(filteredLog);
+    });
   });
 
   return { filteredLogs, anomalies };
 }
 
 
-class OneClassSVM {
-  constructor(nu = 0.1) {
-    this.nu = nu; // Parameter nu untuk One-Class SVM
-    this.supportVectors = [];
-  }
-
-  fit(data) {
-    this.supportVectors = data; // Simpan data untuk demo
-  }
-
-  predict(data) {
-    return data.map(point => {
-      const threshold = this._calculateThreshold();
-      return (point.HR > threshold.HR || point.RR < threshold.RR) ? -1 : 1; // -1 = anomali, 1 = normal
-    });
-  }
-
-  _calculateThreshold() {
-    // Hitung threshold berdasarkan support vectors
-    const avgHR = this.supportVectors.reduce((sum, log) => sum + log.HR, 0) / this.supportVectors.length;
-    const avgRR = this.supportVectors.reduce((sum, log) => sum + log.RR, 0) / this.supportVectors.length;
-
-    return { HR: avgHR + 10, RR: avgRR - 100 }; 
-  }
-}
-
-export async function filterIQBC(logs, multiplier = 1.5) {
+export async function filterIQWithBoxCox(logs, multiplier = 1.5) {
   if (!logs || logs.length === 0) {
     console.error("No logs available for processing.");
     return { filteredLogs: [], anomalies: [] };
@@ -277,13 +277,13 @@ export async function filterIQBC(logs, multiplier = 1.5) {
   const filteredLogs = [];
   const anomalies = [];
 
-  // Mengelompokkan log berdasarkan interval waktu 1 detik
+  // Mengelompokkan log berdasarkan interval waktu 10 detik
   const groupedLogs = [];
   let currentGroup = [];
-  let startTime = new Date(`${logs[0].date_created}T${logs[0].time_created}`).getTime();
+  let startTime = logs[0].timestamp;
 
-  logs.forEach((log) => {
-    const logTime = new Date(`${log.date_created}T${log.time_created}`).getTime();
+  logs.forEach(log => {
+    const logTime = log.timestamp;
     if (logTime - startTime < 1000) {
       currentGroup.push(log);
     } else {
@@ -297,174 +297,289 @@ export async function filterIQBC(logs, multiplier = 1.5) {
 
   // Proses setiap grup
   groupedLogs.forEach((group, index) => {
-    const hrValues = group.map((log) => log.HR).filter((value) => value !== undefined && value !== null);
-    const rrValues = group.map((log) => log.RR).filter((value) => value !== undefined && value !== null);
+    console.log("grup", { group });
+    const hrValues = group.map(log => log.HR).filter(value => value !== undefined && value !== null);
+    const rrValues = group.map(log => log.RR).filter(value => value !== undefined && value !== null);
 
     if (hrValues.length === 0 || rrValues.length === 0) {
       console.warn(`Group ${index} skipped due to invalid data.`);
       return;
     }
 
-    // Terapkan transformasi Box-Cox ke HR dan RR
-    const { transformedData: transformedHr, lambda: lambdaHr } = boxCoxTransform(hrValues);
-    const { transformedData: transformedRr, lambda: lambdaRr } = boxCoxTransform(rrValues);
+    // Transformasi Box-Cox untuk HR dan RR
+    const [hrTransformed, hrLambda] = boxcox(hrValues);
+    const [rrTransformed, rrLambda] = boxcox(rrValues);
 
-    // Hitung statistik setelah transformasi
-    const hrStats = calculateQuartilesAndIQR(transformedHr);
-    const rrStats = calculateQuartilesAndIQR(transformedRr);
+    // Hitung IQR pada data yang telah ditransformasi
+    const hrStats = calculateQuartilesAndIQR(hrTransformed);
+    const rrStats = calculateQuartilesAndIQR(rrTransformed);
 
-    const filteredHr = transformedHr.filter(
-      (value) => value >= hrStats.Q1 - multiplier * hrStats.IQR && value <= hrStats.Q3 + multiplier * hrStats.IQR
-    );
+    // Deteksi anomali
+    for (let i = 0; i < group.length; i++) {
+      const hrValue = hrTransformed[i];
+      const rrValue = rrTransformed[i];
 
-    const filteredRr = transformedRr.filter(
-      (value) => value >= rrStats.Q1 - multiplier * rrStats.IQR && value <= rrStats.Q3 + multiplier * rrStats.IQR
-    );
+      const hrAnomaly =
+        hrValue < hrStats.Q1 - multiplier * hrStats.IQR || hrValue > hrStats.Q3 + multiplier * hrStats.IQR;
+      const rrAnomaly =
+        rrValue < rrStats.Q1 - multiplier * rrStats.IQR || rrValue > rrStats.Q3 + multiplier * rrStats.IQR;
 
-    // Transformasi balik ke bentuk asli (invers Box-Cox)
-    const inverseTransform = (value, lambda) =>
-      lambda === 0 ? Math.exp(value) : Math.pow((value * lambda) + 1, 1 / lambda);
+      if (hrAnomaly || rrAnomaly) {
+        anomalies.push(group[i]);
 
-    const restoredHr = filteredHr.map((value) => inverseTransform(value, lambdaHr));
-    const restoredRr = filteredRr.map((value) => inverseTransform(value, lambdaRr));
+        // Ganti nilai anomali dengan rata-rata tetangga kiri dan kanan
+        const leftIndex = i > 0 ? i - 1 : i; // Tetangga kiri
+        const rightIndex = i < group.length - 1 ? i + 1 : i; // Tetangga kanan
+        const avgHr = (hrValues[leftIndex] + hrValues[rightIndex]) / 2;
+        const avgRr = (rrValues[leftIndex] + rrValues[rightIndex]) / 2;
 
-    // Memeriksa apakah ada data setelah filtering
-    if (restoredHr.length > 0 && restoredRr.length > 0) {
-      for (let i = 0; i < Math.min(restoredHr.length, restoredRr.length); i++) {
-        const filteredLog = {
-          _id: group[i]._id,
-          HR: restoredHr[i],
-          RR: restoredRr[i],
-          rrRMS: group[i].rrRMS,
-          date_created: group[i].date_created,
-          time_created: group[i].time_created,
-          aktivitas: group[i].aktivitas,
-        };
-        filteredLogs.push(filteredLog);
+        group[i].HR = avgHr;
+        group[i].RR = avgRr;
       }
     }
 
-    // Deteksi anomali
-    const anomaliesInGroup = group.filter(
-      (log, i) =>
-        transformedHr[i] < hrStats.Q1 - multiplier * hrStats.IQR ||
-        transformedHr[i] > hrStats.Q3 + multiplier * hrStats.IQR ||
-        transformedRr[i] < rrStats.Q1 - multiplier * rrStats.IQR ||
-        transformedRr[i] > rrStats.Q3 + multiplier * rrStats.IQR
-    );
-    if (anomaliesInGroup.length > 0) {
-      anomalies.push(...anomaliesInGroup);
+    // Menyaring log yang telah diperbaiki
+    group.forEach(log => {
+      const filteredLog = {
+        HR: log.HR,
+        RR: log.RR,
+        rrRMS: log.rrRMS,
+        date_created: log.date_created,
+        time_created: log.time_created,
+        aktivitas: log.aktivitas,
+      };
+
+      filteredLogs.push(filteredLog);
+    });
+  });
+
+  return { filteredLogs, anomalies };
+}
+
+export async function oneClassSVM(logs, nu = 0.1, kernelParam = 1.0) {
+  if (!logs || logs.length === 0) {
+    console.error("No logs available for processing.");
+    return { filteredLogs: [], anomalies: [] };
+  }
+
+  const n = logs.length;
+  const alphas = Array(n).fill(0); // Lagrange multipliers
+  const threshold = nu * n; // Jumlah support vectors yang diizinkan
+
+  // Ambil data RR dan HR untuk deteksi
+  const dataPoints = logs.map(log => [log.RR, log.HR]);
+
+  const kernelMatrix = calculateKernelMatrix(dataPoints, kernelParam);
+
+  // Estimasi alpha dengan Quadratic Programming
+  for (let iter = 0; iter < 100; iter++) {
+    for (let i = 0; i < n; i++) {
+      let gradient = 0;
+      for (let j = 0; j < n; j++) {
+        gradient += alphas[j] * kernelMatrix[i][j];
+      }
+      gradient -= 1;
+
+      alphas[i] = Math.min(Math.max(alphas[i] - gradient / (2 * kernelMatrix[i][i]), 0), 1 / n);
+    }
+  }
+
+  // Hitung fungsi keputusan
+  const decisionFunction = logs.map((_, index) => {
+    let decision = 0;
+    for (let j = 0; j < n; j++) {
+      if (alphas[j] > 1e-5) {
+        decision += alphas[j] * kernelMatrix[index][j];
+      }
+    }
+    return decision - threshold;
+  });
+
+  const filteredLogs = [];
+  const anomalies = [];
+
+  logs.forEach((log, i) => {
+    if (decisionFunction[i] >= 0) {
+      // Jika tidak anomali, langsung tambahkan log ke filteredLogs
+      filteredLogs.push({
+        HR: log.HR,
+        RR: log.RR,
+        rrRMS: log.rrRMS,
+        date_created: log.date_created,
+        time_created: log.time_created,
+        aktivitas: log.aktivitas,
+      });
+    } else {
+      // Jika anomali, hitung rata-rata tetangga
+      anomalies.push(log);
+
+      const leftIndex = i > 0 ? i - 1 : i;
+      const rightIndex = i < logs.length - 1 ? i + 1 : i;
+
+      const avgHr = ((logs[leftIndex]?.HR || 0) + (logs[rightIndex]?.HR || 0)) / 2;
+      const avgRr = ((logs[leftIndex]?.RR || 0) + (logs[rightIndex]?.RR || 0)) / 2;
+
+      // Ganti nilai anomali dengan rata-rata tetangga
+      log.HR = avgHr;
+      log.RR = avgRr;
+
+      filteredLogs.push({
+        HR: log.HR,
+        RR: log.RR,
+        rrRMS: log.rrRMS,
+        date_created: log.date_created,
+        time_created: log.time_created,
+        aktivitas: log.aktivitas,
+      });
     }
   });
 
   return { filteredLogs, anomalies };
 }
 
+function calculateKernelMatrix(dataPoints, kernelParam) {
+  const n = dataPoints.length;
+  const kernelMatrix = Array.from({ length: n }, () => Array(n).fill(0));
+
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      kernelMatrix[i][j] = kernelRBF(dataPoints[i], dataPoints[j], kernelParam);
+    }
+  }
+
+  return kernelMatrix;
+}
+
+function kernelRBF(x, y, kernelParam) {
+  const squaredDistance = x.reduce((sum, xi, index) => sum + (xi - y[index]) ** 2, 0);
+  return Math.exp(-squaredDistance / (2 * kernelParam ** 2));
+}
+
+
 
 
 const processHeartRateData = async () => {
   try {
-    const firstLog = await Log.findOne({ isChecked: false }).sort({ date_created: 1, time_created: 1 });
+    const firstLog = await Log.findOne({ isChecked: false }).sort({ date_created: 1, time_created: 1 }).lean();
 
     if (!firstLog) {
       console.log("No data to process.");
       return;
     }
 
+    const formatTime = (time) => {
+      const [hours, minutes, seconds] = time.split(":").map((value) => parseInt(value, 10));
+      const pad = (num) => String(num).padStart(2, "0");
+      return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    };
+
     const logs = await Log.find({
       isChecked: false,
       date_created: firstLog.date_created,
-    }).sort({ time_created: 1 });
+    }).sort({ date_created: 1, time_created: 1 });
 
-    // Tambahkan validasi pada setiap log
     logs.forEach((log) => {
+      if (log.time_created) {
+        log.time_created = formatTime(log.time_created);
+      }
       if (!log.aktivitas && log.activity) {
-        log.aktivitas = log.activity; // Salin nilai dari 'activity' jika 'aktivitas' kosong
+        log.aktivitas = log.activity;
       } else if (!log.aktivitas && !log.activity) {
-        log.aktivitas = "Unknown"; // Atur nilai default jika keduanya tidak ada
+        log.aktivitas = "Unknown";
       }
     });
 
+    const sortedLogs = logs.sort((a, b) => {
+      const dateA = new Date(`${a.date_created}T${a.time_created}`);
+      const dateB = new Date(`${b.date_created}T${b.time_created}`);
+      return dateA - dateB;
+    });
+
+    const fillMissingValues = (data) => {
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] === null || data[i] === undefined || isNaN(data[i]) || !isFinite(data[i])) {
+          const left = data[i - 1] || 0;
+          const right = data[i + 1] || 0;
+          data[i] = (left + right) / 2;
+        }
+      }
+      return data;
+    };
+
+    const { filteredLogs, anomalies } = await oneClassSVM(sortedLogs);
+
     await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
 
-    const { filteredLogs, anomalies } = await kalmanFilter(logs);
-    
-    console.log(filteredLogs)
     if (filteredLogs.length === 0) {
       console.log("No valid data after filtering.");
       return;
     }
 
-    // Kelompokkan data berdasarkan aktivitas
-    const groupedByActivity = filteredLogs.reduce((acc, log) => {
-      const activity = log.aktivitas || log.activity || log.acitivity || "Unknown"; // Gunakan "Unknown" jika tidak ada
-      acc[activity] = acc[activity] || { logs: [], timestamps: { start: null, end: null } };
+    // Kalkulasi MSE dan RMSE untuk dailyMetrics
+    const dailyErrors = calculateErrors(sortedLogs, filteredLogs);
+    const dailyMetrics = {
+      ...calculateAdvancedMetrics(fillMissingValues(filteredLogs.map((log) => log.RR))),
+      mse: dailyErrors.mse,
+      rmse: dailyErrors.rmse,
+    };
 
-      acc[activity].logs.push(log);
+    // Grupkan per aktivitas dan hitung MSE/RMSE per aktivitas
+    const groupedByActivity = [];
+    let currentGroup = { activity: null, logs: [], timestamps: { start: null, end: null } };
 
-      // Atur timestamp awal dan akhir
-      if (!acc[activity].timestamps.start) {
-        acc[activity].timestamps.start = `${log.timestamp || log.date_created + " " + log.time_created}`;
+    filteredLogs.forEach((log, index) => {
+      if (currentGroup.activity === null || currentGroup.activity !== log.aktivitas) {
+        if (currentGroup.logs.length > 0) {
+          currentGroup.timestamps.end = `${currentGroup.logs[currentGroup.logs.length - 1].date_created} ${currentGroup.logs[currentGroup.logs.length - 1].time_created}`;
+          groupedByActivity.push(currentGroup);
+        }
+        currentGroup = {
+          activity: log.aktivitas,
+          logs: [],
+          timestamps: { start: `${log.date_created} ${log.time_created}`, end: null },
+        };
       }
-      acc[activity].timestamps.end = `${log.timestamp || log.date_created + " " + log.time_created}`;
-    
-      return acc;
-    }, {});
+      currentGroup.logs.push(log);
 
-    // Hitung metrik untuk semua data (satu hari)
-    const allRRIntervals = filteredLogs.map((log) => log.RR);
-    const dailyMetrics = calculateAdvancedMetrics(allRRIntervals);
+      if (index === filteredLogs.length - 1) {
+        currentGroup.timestamps.end = `${log.date_created} ${log.time_created}`;
+        groupedByActivity.push(currentGroup);
+      }
+    });
 
-    // Hitung metrik untuk setiap aktivitas
     const activityMetrics = {};
-    for (const [activity, data] of Object.entries(groupedByActivity)) {
-      const rrIntervals = data.logs.map((log) => log.RR);
-      activityMetrics[activity] = {
-        metrics: calculateAdvancedMetrics(rrIntervals),
-        timestamps: data.timestamps, // Tambahkan timestamp awal dan akhir aktivitas
-      };
-    }
+    groupedByActivity.forEach((group) => {
+      const rawActivityLogs = sortedLogs.filter((log) => log.aktivitas === group.activity);
+      const rrIntervals = fillMissingValues(group.logs.map((log) => log.RR));
+      const activityErrors = calculateErrors(rawActivityLogs, group.logs);
 
-    // Validasi dan format tanggal
-    const [day, month, year] = firstLog.date_created.split("/"); // Ubah delimiter menjadi '/' karena JSON contoh menggunakan format DD/MM/YYYY
-    if (!day || !month || !year) {
-      console.error("Invalid date format:", firstLog.date_created);
-      return;
-    }
-    
-    // Format tanggal menjadi YYYY-MM-DD
-    const formattedDateString = `${year}-${month}-${day}T${firstLog.time_created}`;
-    const oldestTimestamp = new Date(formattedDateString);
-    
-    if (isNaN(oldestTimestamp.getTime())) {
-      console.error("Invalid date after formatting:", formattedDateString);
-      return;
-    }
-    
-    const formattedDate = `${String(oldestTimestamp.getDate()).padStart(2, "0")}-${String(
-      oldestTimestamp.getMonth() + 1
-    ).padStart(2, "0")}-${oldestTimestamp.getFullYear()}`;
-    
+      activityMetrics[group.activity] = activityMetrics[group.activity] || [];
+      activityMetrics[group.activity].push({
+        metrics: {
+          ...calculateAdvancedMetrics(rrIntervals),
+          mse: activityErrors.mse,
+          rmse: activityErrors.rmse,
+        },
+        timestamps: group.timestamps,
+      });
+    });
 
+    // Write data to JSON file
+    const [day, month, year] = firstLog.date_created.split("/");
+    const formattedDate = `${day}-${month}-${year}`;
     const resultsDir = path.join(__dirname, "hrv-results");
     if (!fs.existsSync(resultsDir)) {
       fs.mkdirSync(resultsDir, { recursive: true });
     }
-
     const filteredFileName = path.join(resultsDir, `${formattedDate}.json`);
-
-    // Baca atau buat JSON untuk hari ini
     let jsonData = { dailyMetrics: {}, activityMetrics: {}, filteredLogs: [] };
     if (fs.existsSync(filteredFileName)) {
       const existingData = fs.readFileSync(filteredFileName);
       jsonData = JSON.parse(existingData);
     }
 
-    // Tambahkan metrik harian dan per aktivitas
     jsonData.dailyMetrics = dailyMetrics;
     jsonData.activityMetrics = activityMetrics;
-
-    // Tambahkan log yang difilter
     jsonData.filteredLogs = jsonData.filteredLogs.concat(
       filteredLogs.map((log) => ({
         date_created: log.date_created,
@@ -472,230 +587,171 @@ const processHeartRateData = async () => {
         HR: log.HR,
         RR: log.RR,
         rrRMS: log.rrRMS,
-        aktivitas: log.aktivitas || log.activity || log.acitivity || "Unknown",
+        aktivitas: log.aktivitas || "Unknown",
       }))
     );
 
     fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
     console.log(`Data written to ${filteredFileName}`);
 
-    // Simpan data anomali
-    const anomalyDir = path.join(__dirname, "anomaly-results");
-    if (!fs.existsSync(anomalyDir)) {
-      fs.mkdirSync(anomalyDir, { recursive: true });
-    }
-
-    const anomalyFileName = path.join(anomalyDir, `${formattedDate}-anomalies.json`);
-    const anomalyData = anomalies.map((log) => ({
-      date_created: log.date_created,
-      time_created: log.time_created,
-      HR: log.HR,
-      RR: log.RR,
-      rrRMS: log.rrRMS,
-      aktivitas: log.aktivitas || log.activity || log.acitivity || "Unknown",
-    }));
-
-    fs.writeFileSync(anomalyFileName, JSON.stringify(anomalyData, null, 2));
-    console.log(`Anomalies written to ${anomalyFileName}`);
   } catch (error) {
     console.error("Error processing heart rate data:", error);
   }
 };
 
+function calculateErrors(actual, predicted) {
+  // Pastikan actual dan predicted adalah array
+  if (!Array.isArray(actual) || !Array.isArray(predicted)) {
+    throw new Error("Input data harus berupa array.");
+  }
 
+  // Fungsi untuk format tanggal dari DD/MM/YYYY ke format ISO (YYYY-MM-DD)
+  function formatDate(date) {
+    const [day, month, year] = date.split("/").map(Number);
+    if (!day || !month || !year) {
+      throw new Error(`Format tanggal tidak valid: ${date}`);
+    }
+    return new Date(year, month - 1, day).toISOString().split("T")[0]; // yyyy-mm-dd
+  }
 
+  // Filter `actual` agar hanya berisi data yang ada di `predicted`
+  const filteredActual = actual.filter((act) => {
+    try {
+      const formattedDate = formatDate(act.date_created);
+      return predicted.some(
+        (pred) =>
+          formatDate(pred.date_created) === formattedDate &&
+          pred.time_created === act.time_created
+      );
+    } catch (error) {
+      console.error(error.message);
+      return false;
+    }
+  });
 
-const processHeartRateData10 = async () => {
-  try {
-    const firstLog = await Log.findOne({ isChecked: false }).sort({ date_created: 1, time_created: 1 });
+  // Jika panjangnya tidak sama, potong actual agar sama panjang dengan predicted
+  if (filteredActual.length !== predicted.length) {
+    console.warn(
+      `Panjang 'actual' (${filteredActual.length}) dan 'predicted' (${predicted.length}) berbeda. Memotong data 'actual'...`
+    );
+    filteredActual.length = Math.min(filteredActual.length, predicted.length);
+  }
 
-    if (!firstLog) {
-      console.log("No data to process.");
-      return;
+  // Pastikan data tidak kosong setelah pemotongan
+  if (filteredActual.length === 0 || predicted.length === 0) {
+    throw new Error("Data 'actual' atau 'predicted' kosong setelah pemotongan.");
+  }
+
+  const n = filteredActual.length;
+  let sumSquaredErrors = 0;
+
+  // Hitung squared errors
+  filteredActual.forEach((value) => {
+    // Temukan prediksi yang cocok berdasarkan date_created dan time_created
+    const matchedPredicted = predicted.find(
+      (pred) =>
+        formatDate(pred.date_created) === formatDate(value.date_created) &&
+        pred.time_created === value.time_created
+    );
+
+    // Pastikan ada prediksi yang cocok
+    if (!matchedPredicted) {
+      throw new Error(
+        `Tidak ditemukan prediksi yang cocok untuk data actual dengan date_created: ${value.date_created} dan time_created: ${value.time_created}`
+      );
     }
 
-    const logs = await Log.find({
-      isChecked: false,
-      date_created: firstLog.date_created,
-    }).sort({ time_created: 1 });
+    // Hitung error antara actual dan predicted
+    const error = value.RR - matchedPredicted.RR;
+    const squaredError = error ** 2;
+    sumSquaredErrors += squaredError;
+  });
 
-    // Validasi aktivitas
-    logs.forEach((log) => {
-      if (!log.aktivitas && log.activity) {
-        log.aktivitas = log.activity; // Salin nilai dari 'activity' jika 'aktivitas' kosong
-      } else if (!log.aktivitas && !log.activity) {
-        log.aktivitas = "Unknown"; // Atur nilai default jika keduanya tidak ada
-      }
-    });
+  const mse = sumSquaredErrors / n;
+  const rmse = Math.sqrt(mse);
 
-    await Log.updateMany({ _id: { $in: logs.map((log) => log._id) } }, { $set: { isChecked: true } });
-
-    const { filteredLogs, anomalies } = await kalmanFilter(logs);
-
-    if (filteredLogs.length === 0) {
-      console.log("No valid data after filtering.");
-      return;
-    }
-
-   // Membagi data ke dalam segmen 10 menit
-    const segmentedLogs = [];
-    const intervalMs = 10 * 60 * 1000; // 10 menit dalam milidetik
-
-    // Fungsi untuk parsing manual
-    const parseDateTime = (date, time) => {
-      const [day, month, year] = date.split("/");
-      return new Date(`${year}-${month}-${day}T${time}`);
-    };
-
-    let segmentStart = parseDateTime(filteredLogs[0].date_created, filteredLogs[0].time_created).getTime();
-
-    let currentSegment = [];
-    filteredLogs.forEach((log) => {
-      const logTime = parseDateTime(log.date_created, log.time_created).getTime();
-
-      if (logTime - segmentStart < intervalMs) {
-        currentSegment.push(log);
-      } else {
-        segmentedLogs.push({
-          startTime: new Date(segmentStart).toISOString(),
-          logs: currentSegment,
-        });
-        currentSegment = [log];
-        segmentStart += intervalMs;
-      }
-    });
-
-    // Tambahkan segmen terakhir
-    if (currentSegment.length > 0) {
-      segmentedLogs.push({
-        startTime: new Date(segmentStart).toISOString(),
-        logs: currentSegment,
-      });
+  return { mse, rmse };
 }
 
-    // Hitung metrik per segmen
-    const metricsPerSegment = segmentedLogs.map((segment) => {
-      const rrIntervals = segment.logs.map((log) => log.RR);
-      const metrics = calculateAdvancedMetrics(rrIntervals);
 
-      return {
-        timestamp: segment.startTime,
-        metrics,
-        logCount: segment.logs.length,
-      };
+
+
+processHeartRateData()
+
+/**
+ * Melakukan transformasi Box-Cox pada array data.
+ * @param {number[]} data - Array data yang akan ditransformasi.
+ * @param {number} lambda - Parameter lambda untuk transformasi Box-Cox.
+ * @returns {[number[], number]} - Array data yang ditransformasi dan nilai lambda.
+ */
+function boxcox(data, lambda = null) {
+  if (!Array.isArray(data) || data.some(value => value <= 0)) {
+    throw new Error("Data harus berupa array angka positif.");
+  }
+
+  // Jika lambda tidak diberikan, hitung lambda optimal menggunakan log-likelihood.
+  if (lambda === null) {
+    lambda = calculateOptimalLambda(data);
+  }
+
+  const transformedData = data.map(value => {
+    if (lambda === 0) {
+      return Math.log(value); // Jika lambda = 0, gunakan logaritma.
+    } else {
+      return (Math.pow(value, lambda) - 1) / lambda;
+    }
+  });
+
+  return [transformedData, lambda];
+}
+
+/**
+ * Melakukan inversi transformasi Box-Cox.
+ * @param {number[]} transformedData - Array data hasil transformasi Box-Cox.
+ * @param {number} lambda - Parameter lambda yang digunakan untuk transformasi.
+ * @returns {number[]} - Array data asli setelah inversi transformasi.
+ */
+function boxcoxInv(transformedData, lambda) {
+  return transformedData.map(value => {
+    if (lambda === 0) {
+      return Math.exp(value); // Jika lambda = 0, gunakan eksponensial.
+    } else {
+      return Math.pow(lambda * value + 1, 1 / lambda);
+    }
+  });
+}
+
+/**
+ * Menghitung lambda optimal untuk transformasi Box-Cox menggunakan log-likelihood.
+ * @param {number[]} data - Array data yang akan dihitung.
+ * @returns {number} - Nilai lambda optimal.
+ */
+function calculateOptimalLambda(data) {
+  const logLikelihood = (lambda) => {
+    const transformed = data.map(value => {
+      return lambda === 0 ? Math.log(value) : (Math.pow(value, lambda) - 1) / lambda;
     });
-
-    // Simpan hasil ke file JSON
-    const [day, month, year] = firstLog.date_created.split("/");
-    const formattedDateString = `${year}-${month}-${day}`;
-    const resultsDir = path.join(__dirname, "hrv-results");
-    if (!fs.existsSync(resultsDir)) {
-      fs.mkdirSync(resultsDir, { recursive: true });
-    }
-
-    const filteredFileName = path.join(resultsDir, `${formattedDateString}.json`);
-
-    let jsonData = { metricsBySegment: [] };
-    if (fs.existsSync(filteredFileName)) {
-      const existingData = fs.readFileSync(filteredFileName);
-      jsonData = JSON.parse(existingData);
-    }
-
-    jsonData.metricsBySegment = jsonData.metricsBySegment.concat(metricsPerSegment);
-
-    fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
-    console.log(`Data written to ${filteredFileName}`);
-
-    // Simpan data anomali
-    const anomalyDir = path.join(__dirname, "anomaly-results");
-    if (!fs.existsSync(anomalyDir)) {
-      fs.mkdirSync(anomalyDir, { recursive: true });
-    }
-
-    const anomalyFileName = path.join(anomalyDir, `${formattedDateString}-anomalies.json`);
-    const anomalyData = anomalies.map((log) => ({
-      date_created: log.date_created,
-      time_created: log.time_created,
-      HR: log.HR,
-      RR: log.RR,
-      rrRMS: log.rrRMS,
-      aktivitas: log.aktivitas,
-    }));
-
-    fs.writeFileSync(anomalyFileName, JSON.stringify(anomalyData, null, 2));
-    console.log(`Anomalies written to ${anomalyFileName}`);
-
-  } catch (error) {
-    console.error("Error processing heart rate data:", error);
-  }
-};
-
-
-const boxCoxTransform = (data) => {
-  if (!data || data.length === 0) {
-    throw new Error("Data is empty or invalid for Box-Cox transformation.");
-  }
-
-  // Fungsi untuk menghitung log likelihood
-  const logLikelihood = (lambda, data) => {
-    const n = data.length;
-    const transformedData = data.map((x) =>
-      lambda === 0 ? Math.log(x) : (Math.pow(x, lambda) - 1) / lambda
-    );
-    const mean = transformedData.reduce((sum, x) => sum + x, 0) / n;
-    const variance = transformedData.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / n;
-
-    return -n / 2 * Math.log(variance);
+    const logSum = transformed.reduce((sum, value) => sum + Math.log(value), 0);
+    return -logSum;
   };
 
-  // Estimasi lambda menggunakan metode grid search
   let bestLambda = 0;
-  let maxLogLikelihood = -Infinity;
+  let bestLikelihood = Number.POSITIVE_INFINITY;
 
-  for (let lambda = 0; lambda <= 1; lambda += 0.01) {
-    const likelihood = logLikelihood(lambda, data);
-    if (likelihood > maxLogLikelihood) {
-      maxLogLikelihood = likelihood;
+  // Mencoba nilai lambda dalam rentang [-5, 5] dengan langkah kecil.
+  for (let lambda = -5; lambda <= 5; lambda += 0.01) {
+    const likelihood = logLikelihood(lambda);
+    if (likelihood < bestLikelihood) {
+      bestLikelihood = likelihood;
       bestLambda = lambda;
     }
   }
 
-  // Terapkan transformasi dengan lambda optimal
-  const transformedData = data.map((x) =>
-    bestLambda === 0 ? Math.log(x) : (Math.pow(x, bestLambda) - 1) / bestLambda
-  );
+  return bestLambda;
+}
 
-  return { transformedData, lambda: bestLambda };
-};
+export { boxcox, boxcoxInv };
 
-
-
-// Cron job scheduled every 10 minutes
-// cron.schedule('*/5 * * * *', () => {
-//   // console.log('Running heart rate data processing every 10 minutes...');
-//   // processHeartRateData();
-//   processHeartRateData()
-// });
-
-// Schedule Cron Job to run every 5 minutes
-// cron.schedule('*/5 * * * *', async () => {
-//   // console.log('Running cron job fillMissingRRForLogsWithHR....');
-//   fillMissingRRForLogsWithHR();
-//   // console.log('Running cron job...');
-
-//   try {
-//     await runAllMethods();
-
-//     // const uniqueGuidDevices = await Log.distinct('guid_device');
-//     // for (const guid_device of uniqueGuidDevices) {
-//     //   await generateGraph(guid_device);
-//     // }
-//     // console.log('generateGraph completed for all guid_device.');
-//   } catch (error) {
-//     console.error('Error during cron job execution:', error);
-//   }
-// });
-// generateGraphsForAllFolders();
 
 // Fungsi untuk membuat struktur direktori HRV
 const createHRVDirectory = async () => {
@@ -951,32 +1007,59 @@ export {
 };
 
 // cron job untuk createHRVDirectory
-cron.schedule('0 0 * * *', async () => {
-  console.log('Running directory creation task at midnight');
-  try {
-    await createHRVDirectory();
-    console.log('HRV Directory structure created successfully');
-  } catch (error) {
-    console.error('Error creating HRV directory:', error);
-  }
-});
+// cron.schedule('0 0 * * *', async () => {
+//   console.log('Running directory creation task at midnight');
+//   try {
+//     await createHRVDirectory();
+//     console.log('HRV Directory structure created successfully');
+//   } catch (error) {
+//     console.error('Error creating HRV directory:', error);
+//   }
+// });
 
 // cron job untuk processHRVData
-cron.schedule('*/30 * * * *', async () => {
-  console.log('Running HRV data processing task every 30 minutes');
-  try {
-    const users = await User.find({});
-    for (const user of users) {
-      const devices = await Log.distinct('guid_device', { guid: user.guid });
-      for (const device of devices) {
-        if (device) {
-          await processHRVData(user.guid, device);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error in HRV processing:', error);
-  }
-});
+// cron.schedule('*/30 * * * *', async () => {
+//   console.log('Running HRV data processing task every 30 minutes');
+//   try {
+//     const users = await User.find({});
+//     for (const user of users) {
+//       const devices = await Log.distinct('guid_device', { guid: user.guid });
+//       for (const device of devices) {
+//         if (device) {
+//           await processHRVData(user.guid, device);
+//         }
+//       }
+//     }
+//   } catch (error) {
+//     console.error('Error in HRV processing:', error);
+//   }
+// });
 // startup folder hrv-results setelah server berjalan
 // createHRVDirectory()
+
+// Cron job scheduled every 10 minutes
+// cron.schedule('*/5 * * * *', () => {
+//   // console.log('Running heart rate data processing every 10 minutes...');
+//   // processHeartRateData();
+//   processHeartRateData()
+// });
+
+// Schedule Cron Job to run every 5 minutes
+// cron.schedule('*/5 * * * *', async () => {
+//   // console.log('Running cron job fillMissingRRForLogsWithHR....');
+//   fillMissingRRForLogsWithHR();
+//   // console.log('Running cron job...');
+
+//   try {
+//     await runAllMethods();
+
+//     // const uniqueGuidDevices = await Log.distinct('guid_device');
+//     // for (const guid_device of uniqueGuidDevices) {
+//     //   await generateGraph(guid_device);
+//     // }
+//     // console.log('generateGraph completed for all guid_device.');
+//   } catch (error) {
+//     console.error('Error during cron job execution:', error);
+//   }
+// });
+// generateGraphsForAllFolders();

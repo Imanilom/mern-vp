@@ -1,4 +1,3 @@
-
 // DBSCAN Implementation
 export const dbscan = (data, epsilon, minPoints) => {
   const clusters = [];
@@ -55,128 +54,103 @@ export const dbscan = (data, epsilon, minPoints) => {
   return { clusters, noise };
 };
 
-// Other metric calculation functions
-export const calculateHRVMetrics = (allHRIntervals) => {
-  if (allHRIntervals.length < 2) {
-    // Not enough data points to calculate metrics
-    return { sdnn: null, rmssd: null, pnn50: null, s1: null, s2: null, dfa: null, minRR: null, maxRR: null, hf: null, lf: null, lfhratio: null };
+// DFA
+export const calculateDFA = (data, minWindowSize = 4, maxWindowSize = 32) => {
+  // Ensure data is valid and sufficient
+  if (data.length < minWindowSize) {
+    console.error(
+      `Insufficient data for DFA (minimum ${minWindowSize} elements required). Data length: ${data.length}`
+    );
+    return { alpha1: null, alpha2: null };
   }
 
-  const nnIntervals = [];
-  let sumSquaredDiffs = 0; // For RMSSD
-  let nn50Count = 0;
-
-  // Calculate NN intervals and differences
-  for (let i = 1; i < allHRIntervals.length; i++) {
-    const diff = Math.abs(allHRIntervals[i] - allHRIntervals[i - 1]);
-    nnIntervals.push(diff);
-
-    // For RMSSD
-    sumSquaredDiffs += Math.pow(diff, 2);
-    if (diff > 50) {
-      nn50Count++;
-    }
-  }
-
-  const avgNN = nnIntervals.reduce((sum, interval) => sum + interval, 0) / nnIntervals.length;
-  
-  // Calculate SDNN
-  const squaredDiffsFromMean = nnIntervals.map((interval) => Math.pow(interval - avgNN, 2));
-  const sumSquaredDiffsFromMean = squaredDiffsFromMean.reduce((sum, diff) => sum + diff, 0);
-  const variance = sumSquaredDiffsFromMean / (nnIntervals.length - 1);
-  const sdnn = Math.sqrt(variance);
-
-  // RMSSD calculation
-  const rmssd = Math.sqrt(sumSquaredDiffs / (nnIntervals.length - 1));
-
-  // PNN50 calculation
-  const pnn50 = (nn50Count / (nnIntervals.length - 1)) * 100; // Number of intervals above 50 ms
-
-  // Calculate S1 and S2
-  const diff1 = allHRIntervals.slice(1).map((val, index) => val - allHRIntervals[index]);
-  const sum1 = allHRIntervals.slice(1).map((val, index) => val + allHRIntervals[index]);
-
-  const s1 = Math.sqrt(diff1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / diff1.length) / Math.sqrt(2);
-  const s2 = Math.sqrt(sum1.reduce((sum, val) => sum + Math.pow(val, 2), 0) / sum1.length) / Math.sqrt(2);
-
-  const dfa = calculateDFA(allHRIntervals); // Make sure calculateDFA is defined correctly
-  const minRR = Math.min(...allHRIntervals);
-  const maxRR = Math.max(...allHRIntervals);
-  const { hf, lf, lfhratio } = calculateFrequencyDomain(allHRIntervals); // Ensure this function is implemented correctly
-
-  return { pnn50, dfa, minRR, maxRR, rmssd, sdnn, hf, lf, lfhratio, s1, s2 };
-};
-
-export const calculateDFA = (data, order = 1) => {
-  // Baseline
-  const y = data.map((val, i) =>
-    data.slice(0, i + 1).reduce(
-      (acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length),
-      0
-    )
+  // 1. Compute the cumulative sum (integration)
+  const mean = data.reduce((sum, val) => sum + val, 0) / data.length;
+  const integratedSeries = data.map((val, i) =>
+    data.slice(0, i + 1).reduce((sum, v) => sum + (v - mean), 0)
   );
 
-  // Segmentasi ukuran kotak
-  const boxSizes = [...new Set(
-    Array.from({ length: Math.log2(data.length) }, (_, i) => Math.pow(2, i + 1)).filter(
-      val => val <= data.length / 2
-    )
-  )];
+  // 2. Define window sizes
+  const windowSizes = Array.from(
+    { length: maxWindowSize - minWindowSize + 1 },
+    (_, i) => minWindowSize + i
+  );
 
-  const fluctuation = boxSizes.map(boxSize => {
-    const reshaped = Array.from(
-      { length: Math.floor(data.length / boxSize) },
-      (_, i) => y.slice(i * boxSize, (i + 1) * boxSize)
-    );
+  const calculateFluctuations = (sizes) =>
+    sizes.map((windowSize) => {
+      const nSegments = Math.floor(integratedSeries.length / windowSize);
+      let fluctuation = 0;
 
-    const localTrends = reshaped.map(segment => {
-      const x = Array.from({ length: segment.length }, (_, i) => i);
-      const [a, b] = [0, 1].map(deg =>
-        segment.reduce((acc, val, i) => acc + Math.pow(x[i], deg) * val, 0) / segment.length
-      );
-      return segment.map((val, i) => a * x[i] + b);
+      for (let i = 0; i < nSegments; i++) {
+        const start = i * windowSize;
+        const end = start + windowSize;
+        const segment = integratedSeries.slice(start, end);
+
+        // Linear regression
+        const x = Array.from({ length: segment.length }, (_, i) => i);
+        const n = segment.length;
+        const sumX = x.reduce((sum, val) => sum + val, 0);
+        const sumY = segment.reduce((sum, val) => sum + val, 0);
+        const sumXY = x.reduce((sum, val, idx) => sum + val * segment[idx], 0);
+        const sumX2 = x.reduce((sum, val) => sum + val * val, 0);
+
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+
+        // Calculate deviations
+        const deviations = segment.map(
+          (val, idx) => val - (slope * idx + intercept)
+        );
+        fluctuation += Math.sqrt(
+          deviations.reduce((sum, val) => sum + val ** 2, 0) / deviations.length
+        );
+      }
+
+      return fluctuation / nSegments;
     });
 
-    return Math.sqrt(
-      localTrends
-        .flatMap((trend, i) => trend.map((val, j) => Math.pow(val - reshaped[i][j], 2)))
-        .reduce((acc, val) => acc + val, 0) /
-        (reshaped.length * reshaped[0].length)
-    );
-  });
-
-  // Log-log transform
-  const [logBoxSizes, logFluctuation] = [boxSizes, fluctuation].map(arr =>
-    arr.map(val => Math.log10(val))
+  // 3. Calculate fluctuations for window sizes
+  const fluctuationValues1 = calculateFluctuations(
+    windowSizes.filter((size) => size <= 16)
+  );
+  const fluctuationValues2 = calculateFluctuations(
+    windowSizes.filter((size) => size >= 17)
   );
 
-  // Pembagian ukuran kotak menjadi small scales dan large scales
-  const midPoint = Math.floor(logBoxSizes.length / 2);
+  // 4. Compute alpha values (slopes of log-log plots)
+  const computeAlpha = (sizes, fluctuations) => {
+    const logSizes = sizes.map(Math.log10);
+    const logFluctuations = fluctuations.map(Math.log10);
 
-  const calculateAlpha = (x, y) => {
-    const n = x.length;
-    const sumX = x.reduce((acc, val) => acc + val, 0);
-    const sumY = y.reduce((acc, val) => acc + val, 0);
-    const sumXY = x.reduce((acc, val, i) => acc + val * y[i], 0);
-    const sumX2 = x.reduce((acc, val) => acc + val * val, 0);
+    const n = logSizes.length;
+    const sumX = logSizes.reduce((sum, val) => sum + val, 0);
+    const sumY = logFluctuations.reduce((sum, val) => sum + val, 0);
+    const sumXY = logSizes.reduce(
+      (sum, val, idx) => sum + val * logFluctuations[idx],
+      0
+    );
+    const sumX2 = logSizes.reduce((sum, val) => sum + val ** 2, 0);
 
-    return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const denominator = n * sumX2 - sumX ** 2;
+    return denominator !== 0 ? (n * sumXY - sumX * sumY) / denominator : 0;
   };
 
-  // Hitung Alpha1 (small scales)
-  const alpha1 = calculateAlpha(
-    logBoxSizes.slice(0, midPoint),
-    logFluctuation.slice(0, midPoint)
+  const alpha1 = computeAlpha(
+    windowSizes.filter((size) => size <= 16),
+    fluctuationValues1
+  );
+  const alpha2 = computeAlpha(
+    windowSizes.filter((size) => size >= 17),
+    fluctuationValues2
   );
 
-  // Hitung Alpha2 (large scales)
-  const alpha2 = calculateAlpha(
-    logBoxSizes.slice(midPoint),
-    logFluctuation.slice(midPoint)
-  );
-
-  return { alpha1, alpha2 };
+  return {
+    alpha1: parseFloat(alpha1.toFixed(4)),
+    alpha2: parseFloat(alpha2.toFixed(4)),
+  };
 };
+
+
 
 // Nilai DFA disimpan dan masuk ke array untuk di olah standar deviasi
 // data dfa / minggu untuk menentukan apakah ada anomali
@@ -239,7 +213,11 @@ export const calculateADFA = (data, order = 1) => {
   const alphaPlus = calculateAlpha(fluctuationsUp);
   const alphaMinus = calculateAlpha(fluctuationsDown);
 
-  return { alphaPlus, alphaMinus };
+
+  return { 
+    alphaPlus: parseFloat(alphaPlus.toFixed(4)), 
+    alphaMinus: parseFloat(alphaMinus.toFixed(4)) 
+  };
 };
 
 
@@ -274,23 +252,71 @@ const calculatePercentile = (values, percentile) => {
   };
 
   // MSE & RMSE
+
+  // dfa a1 merah jika a1 < 1.5 dan a2 kurang dari 1 
+  // hijau a1 > 1,5 dan a2 > 1
+  //  oranye salah satu tidak memenhi 
+
+
+  // adfa 
+  
+  // average sigma lambda, buat predicted lenght nya sama dengan actual
+  // tabel disimpan di bawah grafik 
+  // MSE  = 1/2 lambda(error)^2
   function calculateErrors(actual, predicted) {
-    if (actual.length !== predicted.length) {
-      throw new Error("Array 'actual' dan 'predicted' harus memiliki panjang yang sama.");
+    // Pastikan actual dan predicted tidak null/undefined
+    if (!Array.isArray(actual) || !Array.isArray(predicted)) {
+      throw new Error("Input data harus berupa array.");
+    }
+  
+    // Fungsi untuk format tanggal menjadi yyyy-mm-dd
+    function formatDate(date) {
+      const d = new Date(date);
+      return d.toISOString().split('T')[0]; // Mengambil bagian yyyy-mm-dd
+    }
+
+    // Filter `actual` agar hanya berisi data yang ada di `predicted`
+    const filteredActual = actual.filter((act) => {
+      const formattedDate = formatDate(act.date_created);
+      return predicted.some((pred) => formatDate(pred.date_created) === formattedDate && pred.time_created === act.time_created);
+    });
+  
+    // Pastikan panjang `actual` dan `predicted` sama setelah disaring
+    if (filteredActual.length !== predicted.length) {
+      throw new Error("Array 'actual' dan 'predicted' harus memiliki panjang yang sama setelah pencocokan.");
+    }
+  
+    // Perbarui `actual` dengan hasil filter
+    actual = filteredActual;
+  
+    // Pastikan n bukan 0 dan data tidak kosong
+    if (actual.length === 0 || predicted.length === 0) {
+      throw new Error("Data 'actual' atau 'predicted' kosong setelah pencocokan.");
     }
   
     const n = actual.length;
+    let sumSquaredErrors = 0;
   
-    // Hitung error kuadrat
+    // Hitung squared errors
     const squaredErrors = actual.map((value, index) => {
-      const error = value - predicted[index];
-      return error ** 2;
+      // Temukan prediksi yang cocok berdasarkan date_created dan time_created
+      const matchedPredicted = predicted.find((pred) => 
+        formatDate(pred.date_created) === formatDate(value.date_created) && pred.time_created === value.time_created
+      );
+  
+      // Pastikan ada prediksi yang cocok
+      if (!matchedPredicted) {
+        throw new Error(`Tidak ditemukan prediksi yang cocok untuk data actual dengan date_created: ${value.date_created} dan time_created: ${value.time_created}`);
+      }
+  
+      // Hitung error antara actual dan predicted
+      const error = value.RR - matchedPredicted.RR;
+      const squaredError = error ** 2;
+      sumSquaredErrors += squaredError;
+      return squaredError;
     });
   
-    // Hitung MSE
-    const mse = squaredErrors.reduce((sum, error) => sum + error, 0) / n;
-  
-    // Hitung RMSE
+    const mse = sumSquaredErrors / n;
     const rmse = Math.sqrt(mse);
   
     return { mse, rmse };
@@ -298,6 +324,8 @@ const calculatePercentile = (values, percentile) => {
   
   
   export function calculateAdvancedMetrics(allRRIntervals) {
+
+
     if (allRRIntervals.length < 2) {
         return null; // Not enough data for calculation
     }
@@ -319,7 +347,7 @@ const calculatePercentile = (values, percentile) => {
     const min = Math.min(...allRRIntervals);
     const dfa = calculateDFA(allRRIntervals);
     const adfa = calculateADFA(allRRIntervals);
-    const mseAndRmse = calculateErrors(allRRIntervals, allRRIntervals);
+    // const mseAndRmse = calculateErrors(logs, filteredLogs);
 
     // S1 & S2
     const diff1 = allRRIntervals.slice(1).map((val, index) => val - allRRIntervals[index]);
@@ -343,6 +371,12 @@ const calculatePercentile = (values, percentile) => {
       allRRIntervals.reduce((acc, val) => acc + Math.pow(val - avgNN, 2), 0) /
         (allRRIntervals.length - 1)
     );
+    
+    // NN50 (Number of pairs of successive NN intervals that differ by more than 50 ms)
+    const nn50 = squaredDiffs.filter((val) => val > 50 * 50).length;
+
+    // PNN50 (Proportion derived by dividing NN50 by total number of NN intervals)
+    const pnn50 = (nn50 / allRRIntervals.length) * 100;
 
     // Pad to power of two
     const paddedallRRIntervals = padToPowerOfTwo(allRRIntervals);
@@ -375,12 +409,14 @@ const calculatePercentile = (values, percentile) => {
         min,
         rmssd,
         sdnn,
+        nn50,
+        pnn50,
         hf,
         lf,
         lfHfRatio,
         s1,
         s2,
-        mseAndRmse
+        // mseAndRmse
     };
 }
 

@@ -9,17 +9,11 @@ function DfaMetricsADFA(props) {
 
   // Menghitung data yang ditampilkan berdasarkan halaman
   const paginatedResults = results.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
-  console.log({ paginatedResults })
   useEffect(() => {
     AOS.init({
       duration: 700
     })
   }, []);
-
-
-  console.log({ results });
-  console.log('amann')
-
 
   const formatTanggal = (tgl_timestamp) => {
     const date = new Date(tgl_timestamp);
@@ -84,7 +78,7 @@ function DfaMetricsADFA(props) {
           <tbody className="text-xs lg:text-sm">
             {paginatedResults.length > 0 ? (
               paginatedResults.map((metric, index) => {
-                console.log({ metric })
+               
                 return (
                   <tr key={index} className={index % 2 == 1 ? `bg-[#2C2C2C] dark:bg-[#E7E7E7]` : `bg-[#141414] dark:bg-[#CBCBCB]`}>
                     <td className="px-6 py-4 whitespace-nowrap">{index + 1 + page * itemsPerPage}</td>
@@ -104,7 +98,9 @@ function DfaMetricsADFA(props) {
                         {HandleSimbol({ dfa: metric.adfa.alphaMinus, name: "alphaMinus" })}
 
                       </div>
+                      
                     </td>
+                    
                   </tr>
                 );
               })

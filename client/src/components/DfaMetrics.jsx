@@ -9,7 +9,7 @@ function DfaMetrics(props) {
 
   // Menghitung data yang ditampilkan berdasarkan halaman
   const paginatedResults = results.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
-  console.log({ paginatedResults })
+
   useEffect(() => {
     AOS.init({
       duration: 700

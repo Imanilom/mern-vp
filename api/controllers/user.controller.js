@@ -19,6 +19,8 @@ export const test = async (req, res, next) => {
       Raw: 'hrv-results-Raw',
       Kalman: 'hrv-results-Kalman',
       IQ: 'hrv-results-IQ',
+      BC: 'hrv-results-BC',
+      OC: 'hrv-results-OC',
     };
 
     const { method = 'Raw', startDate, endDate } = req.query; // Default to "Raw"
@@ -116,6 +118,8 @@ export const Dailymetrics = async (req, res, next) => {
     const folderMap = {
       Kalman: 'hrv-results-Kalman',
       IQ: 'hrv-results-IQ',
+      BC: 'hrv-results-BC',
+      OC: 'hrv-results-OC',
     };
 
     const { method = 'Kalman', startDate, endDate } = req.query;
@@ -199,21 +203,6 @@ export const Dailymetrics = async (req, res, next) => {
   }
 };
 
-
-
-const processFile = (resultsDir, file, allFilteredLogs, allDailyMetrics) => {
-  const filePath = path.join(resultsDir, file);
-  const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-
-  allFilteredLogs.push(...fileData.filteredLogs);
-
-  const finalMetric = {
-    ...fileData.metrics,
-    date: file.split('filtered_logs_')[1].split('.')[0]
-  };
-
-  allDailyMetrics.push(finalMetric);
-};
 
 
 export const fetchDailyData = async (req, res, next) => {
@@ -472,42 +461,6 @@ export const getLogWithActivity = async (req, res, next) => {
   }
 };
 
-const groupLogsByTimeGap = (logs, gap) => {
-  const groupedLogs = [];
-  let currentGroup = [];
-  let startTime = new Date(logs[0].create_at);
-
-  logs.forEach((log, index) => {
-    const logTime = new Date(log.create_at);
-    const diffInMinutes = (logTime - startTime) / 1000 / 60; // Convert to minutes
-
-    if (diffInMinutes < gap) {
-      currentGroup.push(log);
-    } else {
-      groupedLogs.push({
-        Date: currentGroup[0].date,
-        timeStart: currentGroup[0].time_created,
-        timeEnd: currentGroup[currentGroup.length - 1].time_created,
-        logsCount: currentGroup.length,
-      });
-      startTime = logTime;
-      currentGroup = [log];
-    }
-
-    // If it's the last log, push the remaining group
-    if (index === logs.length - 1 && currentGroup.length) {
-      groupedLogs.push({
-        Date: currentGroup[0].date,
-        timeStart: currentGroup[0].time_created,
-        timeEnd: currentGroup[currentGroup.length - 1].time_created,
-        logsCount: currentGroup.length,
-      });
-    }
-  });
-
-  return groupedLogs;
-};
-
 
 export const pushActivity = async (req, res) => {
   try {
@@ -655,20 +608,19 @@ export const getFilteredAndRawData = async (req, res, next) => {
 };
 
 // Todo Now
-
 export const logdfa = async (req, res, next) => {
   try {
     const folderMap = {
-      Raw: 'hrv-results-Raw',
       Kalman: 'hrv-results-Kalman',
       IQ: 'hrv-results-IQ',
+      BC: 'hrv-results-BC',
+      OC: 'hrv-results-OC',
     };
 
-    const { method = 'Raw', startDate, endDate } = req.query; // Default to "Raw"
-    const device = req.params.device || false;
-    const folderChoose = folderMap[method] || folderMap['Raw'];
+    const { method = 'Kalman', startDate, endDate } = req.query; // Default to "Kalman"
+    const folderChoose = folderMap[method] || folderMap['Kalman'];
     const resultsDir = path.join(__dirname, `../controllers/${folderChoose}`);
-   
+
     // Filter files based on JSON format
     const files = fs.readdirSync(resultsDir).filter((file) => /^\d{2}-\d{2}-\d{4}\.json$/.test(file));
 
@@ -676,13 +628,12 @@ export const logdfa = async (req, res, next) => {
       return res.status(404).json({ message: 'No data files found in the specified directory.' });
     }
 
-    let filteredLogs = [];
     let filteredFiles = [];
 
     if (startDate && endDate) {
       const dateStart = new Date(startDate).getTime();
       const dateEndTimestamp = new Date(endDate).setHours(23, 59, 59);
-      console.log(dateEndTimestamp)
+
       filteredFiles = files.filter((file) => {
         const fileDate = new Date(file.split('.')[0].split('-').reverse().join('-')).getTime();
         return fileDate >= dateStart && fileDate <= dateEndTimestamp;
@@ -692,60 +643,44 @@ export const logdfa = async (req, res, next) => {
         return res.status(404).json({ message: 'No logs available within the given date range.' });
       }
     } else {
-      filteredFiles = [files.sort((a, b) => {
+      filteredFiles = files.sort((a, b) => {
         const dateA = new Date(a.split('.')[0].split('-').reverse().join('-'));
         const dateB = new Date(b.split('.')[0].split('-').reverse().join('-'));
         return dateB - dateA;
-      })[0]]; // Select latest file
+      });
     }
 
+    // Limit to 10 files
+    filteredFiles = filteredFiles.slice(0, 10);
+
     // Read and process files
+    const result = [];
     filteredFiles.forEach((file) => {
       const filePath = path.join(resultsDir, file);
       const fileData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
-      const logs = method === 'Raw' ? fileData : fileData.filteredLogs || [];
-      filteredLogs.push(...logs.filter((log) => log.RR !== null && log.HR !== null));
+      const { dailyMetrics, activityMetrics } = fileData;
+
+      // Ensure both dailyMetrics and activityMetrics are available
+      if (dailyMetrics) {
+        const formattedData = {
+          date: file.split('.')[0],
+          activityMetrics: activityMetrics || {},
+        };
+
+        result.push(formattedData);
+      }
     });
 
-    if (!filteredLogs.length) {
-      return res.status(404).json({ message: 'No valid logs available.' });
+    if (!result.length) {
+      return res.status(404).json({ message: 'No valid DFA or activity metrics data available.' });
     }
 
-    // Group logs by date and calculate DFA
-    const logsByDate = filteredLogs.reduce((acc, log) => {
-      const date = new Date(log.timestamp * 1000).toISOString().split('T')[0];
-      if (!acc[date]) acc[date] = [];
-      acc[date].push(log);
-      return acc;
-    }, {});
-
-    const result = Object.entries(logsByDate).map(([date, logs]) => {
-      const sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
-      const firstLog = sortedLogs[0];
-      const lastLog = sortedLogs[sortedLogs.length - 1];
-
-      return {
-        aktivitas: firstLog.aktivitas,
-        dfa: calculateDFA(sortedLogs.map((log) => log.HR)),
-        adfa: calculateADFA(sortedLogs.map((log) => log.HR)),
-        tanggal: date,
-        waktu_awal: new Date(firstLog.timestamp * 1000).toLocaleTimeString('id-ID', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        }),
-        waktu_akhir: new Date(lastLog.timestamp * 1000).toLocaleTimeString('id-ID', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        }),
-        count: sortedLogs.length,
-        timestamp_tanggal: new Date(firstLog.timestamp * 1000).getTime(),
-      };
+    result.sort((a, b) => {
+      const dateA = new Date(a.date.split('-').reverse().join('-')).getTime();
+      const dateB = new Date(b.date.split('-').reverse().join('-')).getTime();
+      return dateB - dateA;
     });
-
-    result.sort((a, b) => b.timestamp_tanggal - a.timestamp_tanggal);
 
     res.status(200).json({ result });
   } catch (error) {
@@ -775,7 +710,8 @@ export const dfaActivity = async (req, res, next) => {
     // let filter = {date_created : "27-05-2024"} // 
 
     // let filter = {};
-    let folderChoose = 'hrv-results-km';
+    let folderChoose = 'hrv-results-Kalman';
+    
 
     // console.log({ method })
 

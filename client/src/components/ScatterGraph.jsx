@@ -1,32 +1,29 @@
 import { useRef, useState, useEffect } from 'react';
-
 import * as d3 from 'd3';
-import { FaAngleLeft } from "react-icons/fa";
-import { FaAngleRight } from "react-icons/fa";
+import { FaAngleLeft, FaAngleRight } from "react-icons/fa";
 import '../chart.css';
 import AOS from 'aos';
-
 
 let scroolState = 1;
 
 function ScatterGraph({ data, label, keyValue, color }) {
     useEffect(() => {
-        AOS.init({
-            duration: 700
-        })
-    }, [])
+        AOS.init({ duration: 700 });
+    }, []);
+
     const chartRef = useRef();
     const YCount = 10;
     const slice = 1;
+
     const triggerSimulate = (opt) => {
-        if (opt == 'plus' && scroolState < slice) {
+        if (opt === 'plus' && scroolState < slice) {
             scroolState++;
-            simulateScroll(768 * (scroolState - 1))
-        } else if (opt == 'decrement' && scroolState > 1) {
+            simulateScroll(768 * (scroolState - 1));
+        } else if (opt === 'decrement' && scroolState > 1) {
             scroolState--;
-            simulateScroll((768 * (scroolState - 1)));
+            simulateScroll(768 * (scroolState - 1));
         }
-    }
+    };
 
     function simulateScroll(left) {
         const container = document.getElementById(`svg-container_${label}`);
@@ -34,48 +31,36 @@ function ScatterGraph({ data, label, keyValue, color }) {
     }
 
     const poincareData = (data) => {
-        if (!data) return;
-
+        if (!data) return [];
         const rr = data.map(item => item.RR);
-        let dataResult = rr.slice(1).map((value, index) => ([
-            rr[index], // this X
-            value, // this Y
-        ])); // array
-
-        let finaldata = [];
-
         const date = data.map(item => item.create_at);
         const activity = data.map(item => item.activity);
-        dataResult.map((v, i) => {
-            finaldata.push([...v, date[i], activity[i]])
-            //this will looks like
-            /**
-             * [89, 90, Thu Aug 29 2024 14:43:52 GMT+0700 (Indochina Time)]
-             */
-        })
 
-        return finaldata;
+        return rr.slice(1).map((value, index) => ([
+            rr[index],
+            value,
+            date[index],
+            activity[index],
+        ]));
     };
 
     useEffect(() => {
         const result2 = poincareData(data);
         const result = result2.filter(d => d[0] !== null && d[1] !== null);
-        drawChart(result)
-    }, [data])
+        drawChart(result);
+    }, [data]);
 
     const changeZoomText = (zoomV) => {
         document.getElementById(`zoom_panel_${label}`).innerHTML = `Zoom level ${zoomV.toFixed(1)}`;
-    }
+    };
 
     const drawChart = (data) => {
-
         const tooltip = d3.select('#tooltip');
         const lastSvg = d3.select(chartRef.current);
         lastSvg.selectAll('*').remove();
 
         const height = 500;
         let width = 768 * slice;
-
 
         if (window.innerWidth > 980) {
             width = 768;
@@ -85,14 +70,14 @@ function ScatterGraph({ data, label, keyValue, color }) {
             width = window.innerWidth * 0.7;
         }
 
-        const margin = { top: 20, right: 20, bottom: 30, left: 30 }
+        const margin = { top: 20, right: 20, bottom: 30, left: 30 };
 
         const svg = d3.select(chartRef.current)
             .append('svg')
             .attr('width', width)
             .attr('height', height)
-            .style('background', 'white')
-            .attr('class', 'svgTwo bg-[#101010] dark:bg-[#FEFCF5]')
+            .style('background', '#333') // Latar belakang gelap
+            .attr('class', 'svgTwo dark:bg-gray-900');
 
         const x = d3.scaleLinear()
             .domain([d3.min(data, d => d[0]) - 50, d3.max(data, d => d[0])])
@@ -100,11 +85,11 @@ function ScatterGraph({ data, label, keyValue, color }) {
 
         const y = d3.scaleLinear()
             .domain([0, d3.max(data, d => d[1]) + 100])
-            .range([height - margin.top, margin.bottom])
+            .range([height - margin.top, margin.bottom]);
 
         const line = d3.line()
             .x(d => x(d[0]))
-            .y(d => y(d[1]))
+            .y(d => y(d[1]));
 
         const linepath = svg.append('path')
             .datum(data)
@@ -130,119 +115,86 @@ function ScatterGraph({ data, label, keyValue, color }) {
                 tooltip.style('left', `${x}px`)
                     .style('top', `${(yPos + 10)}px`)
                     .style('opacity', 1)
-                    .html(`<p>Date: ${String(d[2]).split('GMT')[0]} </p> <p>Aktivitas Pasien: ${d[3] == undefined ? `Tidak ada riwayat` : d[3]}</p> <p>Point Care: [${d[0]}, ${d[1]}]</p>`);
+                    .html(`<p>Date: ${String(d[2]).split('GMT')[0]}</p>
+                           <p>Aktivitas Pasien: ${d[3] || `Tidak ada riwayat`}</p>
+                           <p>Point Care: [${d[0]}, ${d[1]}]</p>`);
             })
             .on('mouseout', () => {
                 tooltip.style('opacity', 0);
             });
 
-        // Membuat sumbu x dan y sebagai variabel tersendiri
-        const xAxis = svg.append('g')
+        svg.append('g')
             .attr('transform', `translate(0, ${height - margin.bottom - 10})`)
             .attr('fontSize', 8)
-            .call(d3.axisBottom(x)
-                .ticks(YCount)
-                .tickPadding(10)
-            )
-
-        xAxis
+            .call(d3.axisBottom(x).ticks(YCount).tickPadding(10))
             .selectAll('text')
             .attr('transform', 'rotate(-45)')
-            .style('text-anchor', 'end'); // Agar teks tetap rapi
+            .style('text-anchor', 'end');
 
-
-        const yAxis = svg.append('g')
+        svg.append('g')
             .attr('transform', `translate(${margin.left},${-margin.top})`)
-            .call(d3.axisLeft(y)
-                .ticks(YCount)
-            );
+            .call(d3.axisLeft(y).ticks(YCount));
 
-        // Fungsi zoom
         const zoomed = (e) => {
-            try {
+            const newX = e.transform.rescaleX(x);
+            const newY = e.transform.rescaleY(y);
+            changeZoomText(e.transform.k);
 
+            svg.selectAll('circle')
+                .attr('cx', d => newX(d[0]))
+                .attr('cy', d => newY(d[1]));
 
-                const newX = e.transform.rescaleX(x);
-                const newY = e.transform.rescaleY(y);
-
-                changeZoomText(e.transform.k);
-
-                // Update sumbu dengan skala yang sudah di-zoom
-                xAxis.call(d3.axisBottom(newX).ticks(YCount).tickPadding(10))  
-                .selectAll('text')
-                .attr('transform', 'rotate(-45)')
-                .style('text-anchor', 'end'); // Agar teks tetap rapi
-
-                yAxis.call(d3.axisLeft(newY).ticks(YCount));
-
-                // Update garis dan lingkaran berdasarkan skala baru
-                linepath.attr('d', d3.line()
-                    .x(d => newX(d[0]))
-                    .y(d => newY(d[1]))
-                );
-
-                circles
-                    .attr('cx', d => newX(d[0]))
-                    .attr('cy', d => newY(d[1]))
-
-            } catch (err) {
-                console.log({ err })
-            }
-        }
+            linepath.attr('d', d3.line()
+                .x(d => newX(d[0]))
+                .y(d => newY(d[1]))
+            );
+        };
 
         svg.call(d3.zoom()
             .scaleExtent([1, 120])
             .translateExtent([[0, 0], [width, height]])
             .on('zoom', zoomed));
-    }
-
-
-    let styleTooltype = {
-        position: 'absolute',
-        pointerEvents: 'none',
-        background: 'rgba(0, 0, 0, 0.7)',
-        color: '#fff',
-        padding: 5 + 'px',
-        borderRadius: 3 + 'px',
-        opacity: 0,
-        transition: 'opacity 0.2s',
-        fontSize: 12 + 'px',
-        maxWidth: 300 + 'px',
-        minWidth: 200 + 'px',
-        zIndex: 99
-    }
+    };
 
     return (
-        <div className='relative p-4'>
-            <div data-aos="fade-right" id="tooltip" style={styleTooltype}></div>
-            <div className="me-auto mb-3 flex items-center sm:justify-start justify-between">
-                {slice > 1 ? (
+        <div className='relative p-4 bg-gray-800 text-white'>
+            <div id="tooltip" className="absolute bg-gray-700 text-white p-2 rounded-md opacity-0"></div>
+            <div className="mb-3 flex items-center justify-between">
+                {slice > 1 && (
                     <div>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('decrement')}>
-                            <FaAngleLeft color='white' size={16} />
-
+                        <button
+                            className='rounded-md bg-gray-700 px-3 py-1'
+                            onClick={() => triggerSimulate('decrement')}
+                        >
+                            <FaAngleLeft size={16} />
                         </button>
-                        <button className='rounded-md bg-slate-800 px-3 py-1 border me-1' onClick={() => triggerSimulate('plus')}>
-                            <FaAngleRight color='white' size={16} />
+                        <button
+                            className='rounded-md bg-gray-700 px-3 py-1'
+                            onClick={() => triggerSimulate('plus')}
+                        >
+                            <FaAngleRight size={16} />
                         </button>
                     </div>
-                ) : null}
-                <div data-aos="fade-up" className="flex sm:flex-row flex-col md:gap-0 gap-2">
-                    <button id={`zoom_panel_${label}`} className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
+                )}
+                <div className="flex gap-2">
+                    <button
+                        id={`zoom_panel_${label}`}
+                        className='rounded-md bg-gray-700 px-3 py-1'
+                        disabled
+                    >
                         Zoom level 1
                     </button>
-                    <button id='' className='rounded-md md:mb-0 mb-2 bg-slate-800 dark:bg-[#101010]/10 px-3 py-1 me-1 text-white dark:text-[#101010]/70 font-semibold text-sm' disabled>
-                        Graphic {label} 
-                        <span className='ms-2 w-4 h-4 bg-[#07AC7B] dark:bg-[#217071] rounded-full text-xs text-transparent'>lLL</span>
-                    
+                    <button
+                        className='rounded-md bg-gray-700 px-3 py-1'
+                        disabled
+                    >
+                        Graphic {label}
                     </button>
                 </div>
             </div>
-
-            <div data-aos="fade-right" className="svg-container" id={`svg-container_${label}`} ref={chartRef}></div>
+            <div id={`svg-container_${label}`} ref={chartRef}></div>
         </div>
-    )
+    );
 }
-
 
 export default ScatterGraph;

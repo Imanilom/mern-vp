@@ -21,6 +21,8 @@ export default function Monitor() {
   const { currentUser, DocterPatient } = useSelector((state) => state.user);
   const navigate = useNavigate();
   const [logs, setLogs] = useState(null); // untuk menampung data logs HR dan RR
+  const [data, setData] = useState(null); // untuk menampung data logs HR dan RR
+  const [metrics, setMetrics] = useState(null); // untuk menampung data
   const [startDate, setStartDate] = useState(null); // untuk input date range
   const [endDate, setEndDate] = useState(null); // untuk input date range
   const [isHRVisible, setHRIsVisible] = useState(false); // Show HR chart by default
@@ -29,7 +31,7 @@ export default function Monitor() {
   const [is3dpVisible, set3dpIsVisible] = useState(false); // Show RR chart by default
   const [isPoincareVisible, setPoincareIsVisible] = useState(false); // Show Poincare chart by default
   const [device, setDevice] = useState("C0680226");
-  const [metode, setMetode] = useState("OC");
+  const [metode, setMetode] = useState("Raw");
   const [loading, setLoading] = useState(false);
   const [data3Dp, set3dpData] = useState([]);
   const [IQRData, setIQRData] = useState([]);
@@ -70,23 +72,34 @@ export default function Monitor() {
   const fetchLogs = async (device, metode) => {
     try {
       setLoading(true); // set loading page
-     
+      
       let url = `/api/user/test`;
+      let url2 = `/api/user/metrics/${device || ''}`;
       if (device) {
         url = `/api/user/test/${device}`;
+        url2 = `/api/user/metrics/${device}`;
       }
-      
+
       // jika memakai filtering range tanggal
       if (startDate && endDate) {
         url += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        if (metode) url += `&method=${metode}`; // jika metode algorithma di cantum
+        url2 += `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+        if (metode) 
+          url += `&method=${metode}`; // jika metode algorithma di cantum
+          url2 += `&method=${metode}`
       } else {
-        if (metode) url += `?method=${metode}`;  // jika metode algorithma di cantum
+        if (metode) 
+          url += `?method=${metode}`;
+          url2 += `&method=${metode}`  // jika metode algorithma di cantum
       }
 
       const response = await fetch(url);
-      const data = await response.json();
+      const DataRes = await fetch(url2);
 
+      const data = await response.json();
+      const datarmse = await DataRes.json();
+      
+    
       if (!response.ok) {
         // Jika terjadi kesahalahn
     
@@ -94,7 +107,8 @@ export default function Monitor() {
 
         set3dpData([]);
         setIQRData([]);
-
+        setData(null);
+        setMetrics(null);
         dispatch(clearLogsWithDailytMetric());
         setLoading(false);
         return
@@ -103,7 +117,9 @@ export default function Monitor() {
       const sortedLogs = data.logs.sort((a, b) => a.timestamp - b.timestamp); // Sort logs from newest to oldest
       const DataAverage3dp = groupDataByThreeAndAverage(sortedLogs); // run fucntion untuk menghitung average point
 
+      setMetrics(datarmse.dailyMetrics); // set data  ambil data rmse dan mse
 
+    
       set3dpData(DataAverage3dp);
       setLogs(sortedLogs);
       setIQRData(data.filterIQRResult);
@@ -241,7 +257,8 @@ export default function Monitor() {
                   <option value="Raw">Raw</option>
                   <option value="IQ">IQ</option>
                   <option value="Kalman">Kalman</option>
-                
+                  <option value="BC">Box Cox</option>
+                  <option value="OC">One Class SVM</option>
                 </select>
 
               </div>
@@ -283,6 +300,40 @@ export default function Monitor() {
                     ) : null}
 
                   </div> */}
+
+                   {/* Tabel MSE dan RMSE */}
+                   {/* <div className="mt-5 bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                      Metrics
+                    </h2>
+                    {metrics && metrics.mseAndRmse ? (
+                      <table className="table-auto w-full text-left border-collapse border border-gray-300 dark:border-gray-700">
+                        <thead>
+                          <tr className="bg-gray-100 dark:bg-gray-700">
+                            <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300">Tanggal</th>
+                            <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300">Metric</th>
+                            <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300">Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="bg-gray-50 dark:bg-gray-800">
+                            <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-600 dark:text-gray-400">{metrics.date || "-"}</td>
+                            <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-600 dark:text-gray-400">MSE</td>
+                            <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-600 dark:text-gray-400">{metrics.mseAndRmse.mse}</td>
+                          </tr>
+                          <tr className="bg-gray-50 dark:bg-gray-800">
+                            <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-600 dark:text-gray-400">{metrics.date || "-"}</td>
+                            <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-600 dark:text-gray-400">RMSE</td>
+                            <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-600 dark:text-gray-400">{metrics.mseAndRmse.rmse}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="text-gray-600 dark:text-gray-400">No metrics data available.</p>
+                    )}
+                  </div> */}
+
+
                   <div className="flex-col flex gap-2">
                     <div onClick={toggleVisibilityPoincare} className={isPoincareVisible ? `border-transparent text-white dark:text-white bg-[#07AC7B] dark:bg-[#217170] rounded-md flex` : `border border-gray-400 rounded-md flex dark:bg-[#101010]/10`}>
                       <button className='text-xs py-0.5 px-1.5 m-2'>{isPoincareVisible ? 'Hide' : 'Show'} Graphic Pointcare</button>
