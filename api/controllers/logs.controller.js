@@ -1,5 +1,46 @@
 import Log from '../models/log.model.js';
 
+export const createLog = async (req, res) => {
+  try {
+    const {
+      HR,
+      RR,
+      rrRMS,
+      ecgData,
+      accData,
+      gyrData,
+      date_created,
+      time_created,
+      aktivitas,
+      deviceId,
+    } = req.body;
+
+    // Validasi input
+    if (!HR || !RR || !rrRMS || !date_created || !time_created || !aktivitas || !deviceId) {
+      return res.status(400).json({ message: "All required fields must be filled" });
+    }
+
+    // Simpan data ke database
+    const newLog = new Log({
+      HR,
+      RR,
+      rrRMS,
+      ecgData,
+      accData,
+      gyrData,
+      date_created,
+      time_created,
+      aktivitas,
+      deviceId,
+    });
+
+    const savedLog = await newLog.save();
+    res.status(201).json({ message: "Log created successfully", data: savedLog });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
 // Metode untuk memeriksa dan mengisi log
 export const checkAndFillLogs = async () => {
     try {

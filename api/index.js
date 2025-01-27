@@ -14,6 +14,7 @@ import predictionFactorRoute from "./routes/prediction.factor.route.js";
 import treatmentRoute from "./routes/treatment.route.js";
 import data from "./routes/data.route.js";
 import faktorresiko from "./routes/faktorresiko.route.js";
+import logRouter from "./routes/log.route.js";
 
 import cookieParser from "cookie-parser";
 import path from "path";
@@ -57,7 +58,7 @@ app.use("/api/predictionfactor", predictionFactorRoute);
 app.use("/api/treatment", treatmentRoute);
 app.use("/api/data", data);
 app.use("/api/faktorresiko", faktorresiko);
-
+app.use("/api/log", logRouter);
 app.use(express.static(path.join(__dirname, "/client/dist")));
 
 app.get("*", (req, res) => {

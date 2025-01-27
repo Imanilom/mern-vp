@@ -13,6 +13,27 @@ const logSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  ecgData: { type: [Number], default: [] },
+  accData: {
+    type: [
+      {
+        x: Number,
+        y: Number,
+        z: Number,
+      },
+    ],
+    default: [],
+  },
+  gyrData: {
+    type: [
+      {
+        x: Number,
+        y: Number,
+        z: Number,
+      },
+    ],
+    default: [],
+  },
   date_created: {
     type: String,
     required: true,
@@ -24,6 +45,10 @@ const logSchema = new mongoose.Schema({
   aktivitas: {
     type: String,
     required: true,
+  },
+  deviceId: 
+  { type: String, 
+    required: true 
   },
   isChecked: {
     type: Boolean,
