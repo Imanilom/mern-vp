@@ -1,45 +1,60 @@
 import Log from '../models/log.model.js';
+import multer from "multer";
+import csv from "csv-parser";
+import fs from "fs";
 
+const upload = multer({ dest: "uploads/" });
+
+// endpoint untuk ngecek log di storage 
+
+// Endpoint untuk menerima CSV dari mobile apps
 export const createLog = async (req, res) => {
-  try {
-    const {
-      HR,
-      RR,
-      rrRMS,
-      ecgData,
-      accData,
-      gyrData,
-      date_created,
-      time_created,
-      aktivitas,
-      deviceId,
-    } = req.body;
-
-    // Validasi input
-    if (!HR || !RR || !rrRMS || !date_created || !time_created || !aktivitas || !deviceId) {
-      return res.status(400).json({ message: "All required fields must be filled" });
+    try {
+      // Gunakan multer untuk menangani file CSV
+      upload.single("file")(req, res, async (err) => {
+        if (err) return res.status(400).json({ message: "File upload failed", error: err.message });
+  
+        // Pastikan file ada
+        if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+  
+        const filePath = req.file.path;
+        const logs = [];
+  
+        // Membaca file CSV
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on("data", (row) => {
+            // Validasi data sebelum memasukkan ke array logs
+            if (row.HR && row.RR && row.rrRMS && row.date_created && row.time_created && row.aktivitas && row.deviceId) {
+              logs.push({
+                HR: Number(row.HR),
+                RR: Number(row.RR),
+                rrRMS: Number(row.rrRMS),
+                ecgData: row.ecgData ? JSON.parse(row.ecgData) : [],
+                accData: row.accData ? JSON.parse(row.accData) : [],
+                gyrData: row.gyrData ? JSON.parse(row.gyrData) : [],
+                date_created: row.date_created,
+                time_created: row.time_created,
+                aktivitas: row.aktivitas,
+                deviceId: row.deviceId,
+              });
+            }
+          })
+          .on("end", async () => {
+            try {
+              // Simpan data ke MongoDB
+              const savedLogs = await Log.insertMany(logs);
+              fs.unlinkSync(filePath); // Hapus file setelah diproses
+              res.status(201).json({ message: "Logs created successfully", data: savedLogs });
+            } catch (error) {
+              res.status(500).json({ message: "Error saving logs", error: error.message });
+            }
+          });
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error", error: error.message });
     }
-
-    // Simpan data ke database
-    const newLog = new Log({
-      HR,
-      RR,
-      rrRMS,
-      ecgData,
-      accData,
-      gyrData,
-      date_created,
-      time_created,
-      aktivitas,
-      deviceId,
-    });
-
-    const savedLog = await newLog.save();
-    res.status(201).json({ message: "Log created successfully", data: savedLog });
-  } catch (error) {
-    res.status(500).json({ message: "Internal server error", error: error.message });
-  }
-};
+  };
 
 // Metode untuk memeriksa dan mengisi log
 export const checkAndFillLogs = async () => {
