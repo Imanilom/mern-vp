@@ -10,6 +10,10 @@ const polarDataSchema = new mongoose.Schema({
   acc_z: { type: Number, required: true },
   ecg: { type: Number, required: true },
   device_id: { type: String, required: true },
+  isChecked: {
+    type: Boolean,
+    default: false,
+  },
   created_at: { type: Date, default: Date.now }
 });
 
