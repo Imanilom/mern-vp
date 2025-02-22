@@ -8,52 +8,63 @@ const upload = multer({ dest: "uploads/" });
 
 // Endpoint untuk menerima CSV dari mobile apps
 export const createLog = async (req, res) => {
-  try {
-    upload.single("file")(req, res, async (err) => {
-      if (err) return res.status(400).json({ message: "File upload failed", error: err.message });
-
-      // Pastikan file ada
-      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-
-      const filePath = req.file.path;
-      const logs = [];
-      const hardcodedDeviceId = "E4F82A29"
-
-      fs.createReadStream(filePath)
-        .pipe(csv())
-        .on("data", (row) => {
-          // Validasi data sebelum memasukkan ke array logs
-          if (row.HR && row.RR && row.rrRMS && row.date_created && row.time_created && row.aktivitas) {
-            logs.push({
-              timestamp: new Date(`${row.date_created}T${row.time_created}Z`), // Format waktu
-              hr: Number(row.HR),
-              rr: Number(row.RR),
-              rrms: Number(row.rrRMS),
-              acc_x: row.accData ? JSON.parse(row.accData)[0] : 0,
-              acc_y: row.accData ? JSON.parse(row.accData)[1] : 0,
-              acc_z: row.accData ? JSON.parse(row.accData)[2] : 0,
-              ecg: row.ecgData ? JSON.parse(row.ecgData)[0] : 0,
-              device_id: hardcodedDeviceId, // Hardcoded device ID
-              created_at: new Date(),
-            });
-          }
-        })
-        .on("end", async () => {
-          try {
-            // Simpan data ke MongoDB
-            const savedLogs = await dataLog.insertMany(logs);
-            fs.unlinkSync(filePath); // Hapus file setelah diproses
-            res.status(201).json({ message: "Logs created successfully", data: savedLogs });
-          } catch (error) {
-            res.status(500).json({ message: "Error saving logs", error: error.message });
-          }
-        });
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Internal server error", error: error.message });
-  }
-};
-
+    try {
+      upload.single("file")(req, res, async (err) => {
+        if (err) return res.status(400).json({ message: "File upload failed", error: err.message });
+  
+        // Pastikan file ada
+        if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+  
+        const filePath = req.file.path;
+        const logs = [];
+        const hardcodedDeviceId = "E4F82A29";
+  
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on("data", (row) => {
+            if (row.timestamp && row.HR && row.RR && row.rrRMS && row.aktivitas) {
+              // Konversi timestamp dari nanodetik ke milidetik
+              const nanoTimestamp = BigInt(row.timestamp);
+              const milliTimestamp = Number(nanoTimestamp / 1_000_000n);
+  
+              // Konversi ke objek Date
+              const dateObj = new Date(milliTimestamp);
+  
+              // Pisahkan date_created dan time_created
+              const date_created = dateObj.toISOString().split("T")[0]; // Format YYYY-MM-DD
+              const time_created = dateObj.toISOString().split("T")[1].slice(0, -1); // Format HH:mm:ss.SSS
+  
+              logs.push({
+                timestamp: milliTimestamp, // Simpan dalam milidetik
+                date_created, // YYYY-MM-DD
+                time_created, // HH:mm:ss.SSS
+                hr: Number(row.HR),
+                rr: Number(row.RR),
+                rrms: Number(row.rrRMS),
+                acc_x: row.accData ? JSON.parse(row.accData)[0] : 0,
+                acc_y: row.accData ? JSON.parse(row.accData)[1] : 0,
+                acc_z: row.accData ? JSON.parse(row.accData)[2] : 0,
+                ecg: row.ecgData ? JSON.parse(row.ecgData)[0] : 0,
+                device_id: hardcodedDeviceId,
+                created_at: new Date(),
+              });
+            }
+          })
+          .on("end", async () => {
+            try {
+              const savedLogs = await dataLog.insertMany(logs);
+              fs.unlinkSync(filePath);
+              res.status(201).json({ message: "Logs created successfully", data: savedLogs });
+            } catch (error) {
+              res.status(500).json({ message: "Error saving logs", error: error.message });
+            }
+          });
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+  };
+  
 // Metode untuk memeriksa dan mengisi log
 export const checkAndFillLogs = async () => {
     try {
