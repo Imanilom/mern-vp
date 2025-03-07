@@ -7,12 +7,12 @@ import fs from "fs";
 const upload = multer({ dest: "uploads/" });
 
 // Endpoint untuk menerima CSV dari mobile apps
+
 export const createLog = async (req, res) => {
     try {
       upload.single("file")(req, res, async (err) => {
         if (err) return res.status(400).json({ message: "File upload failed", error: err.message });
   
-        // Pastikan file ada
         if (!req.file) return res.status(400).json({ message: "No file uploaded" });
   
         const filePath = req.file.path;
@@ -22,37 +22,31 @@ export const createLog = async (req, res) => {
         fs.createReadStream(filePath)
           .pipe(csv())
           .on("data", (row) => {
-            if (row.timestamp && row.HR && row.RR && row.rrRMS && row.aktivitas) {
-              // Konversi timestamp dari nanodetik ke milidetik
+            if (row.timestamp && row.HR && row.RR && row.rrRMS) {
               const nanoTimestamp = BigInt(row.timestamp);
               const milliTimestamp = Number(nanoTimestamp / 1_000_000n);
-  
-              // Konversi ke objek Date
               const dateObj = new Date(milliTimestamp);
   
-              // Pisahkan date_created dan time_created
-              const date_created = dateObj.toISOString().split("T")[0]; // Format YYYY-MM-DD
-              const time_created = dateObj.toISOString().split("T")[1].slice(0, -1); // Format HH:mm:ss.SSS
-  
-              logs.push({
-                timestamp: milliTimestamp, // Simpan dalam milidetik
-                date_created, // YYYY-MM-DD
-                time_created, // HH:mm:ss.SSS
-                hr: Number(row.HR),
-                rr: Number(row.RR),
-                rrms: Number(row.rrRMS),
+              logs.push(new PolarData({
+                timestamp: milliTimestamp,
+                date_created: dateObj.toISOString().split("T")[0],
+                time_created: dateObj.toISOString().split("T")[1].slice(0, -1),
+                HR: Number(row.HR),
+                RR: Number(row.RR),
+                RRms: Number(row.rrRMS), // Sesuaikan field name dengan model
                 acc_x: row.accData ? JSON.parse(row.accData)[0] : 0,
                 acc_y: row.accData ? JSON.parse(row.accData)[1] : 0,
                 acc_z: row.accData ? JSON.parse(row.accData)[2] : 0,
                 ecg: row.ecgData ? JSON.parse(row.ecgData)[0] : 0,
                 device_id: hardcodedDeviceId,
+                activity: "unknown", // Tambahkan field required dari model
                 created_at: new Date(),
-              });
+              }));
             }
           })
           .on("end", async () => {
             try {
-              const savedLogs = await dataLog.insertMany(logs);
+              const savedLogs = await PolarData.insertMany(logs); // Ganti model
               fs.unlinkSync(filePath);
               res.status(201).json({ message: "Logs created successfully", data: savedLogs });
             } catch (error) {
@@ -65,74 +59,45 @@ export const createLog = async (req, res) => {
     }
   };
   
-// Metode untuk memeriksa dan mengisi log
-export const checkAndFillLogs = async () => {
+  // Metode untuk memeriksa dan mengisi log (DIUBAH)
+  export const checkAndFillLogs = async () => {
     try {
-        
-        // Mencari semua log yang belum diperiksa dengan batasan 100000
-        const logs = await Log.find({ isChecked: false }).limit(100000);
-        console.log(`Logs found: ${logs.length}`); // Log tambahan untuk debugging
-
-        // Jika tidak ada log yang ditemukan, kembalikan pesan dan status 404
-        if (!logs.length) {
-            console.log('No logs found to check and fill.');
-            return { message: 'No logs found to check and fill.', status: 404 };
-        }
-
-        console.log(`Found ${logs.length} logs to check and fill.`);
-
-        // Mencari log yang memiliki HR dan RR dengan batasan 10000
-        const logsWithHRAndRR = await Log.find({ HR: { $ne: null }, RR: { $ne: null } })
-            .sort({ create_at: 1 })
-            .limit(10000); // Reduced limit to 10,000
-        console.log(`Logs with HR and RR found: ${logsWithHRAndRR.length}`); // Log tambahan untuk debugging
-
-        // Memproses setiap log dan memperbarui flag isChecked
-        for (const log of logs) {
-            let isUpdated = false; // Flag untuk menandai apakah log diupdate
-
-            // console.log(`Processing log with ID ${log._id}, current RR: ${log.RR}, current rrRMS: ${log.rrRMS}, isChecked: ${log.isChecked}`);
-
-            if (log.RR === null || log.RR === undefined) {
-                // Mencari nilai RR terdekat dari log dengan HR dan RR
-                let nearestRRValue = null;
-                for (let i = 1; i < logsWithHRAndRR.length; i++) {
-                    const prevIndex = logsWithHRAndRR.findIndex(l => l._id.equals(log._id)) - i;
-                    console.log(`Checking index ${prevIndex} for nearest RR value`);
-                    if (prevIndex >= 0) {
-                        nearestRRValue = logsWithHRAndRR[prevIndex].RR;
-                        console.log(`Found nearest RR value: ${nearestRRValue}`);
-                        break;
-                    }
-                }
-
-                if (nearestRRValue !== null) {
-                    log.RR = nearestRRValue;
-                    isUpdated = true;
-                    console.log(`Updated log with nearest RR value: ${nearestRRValue}`);
-                }
-            } else if (log.isChecked === false && log.RR !== null && log.rrRMS !== null) {
-                // Jika log sudah memiliki nilai RR dan rrRMS, dan flag isChecked adalah false, ubah flag ke true
-                log.isChecked = true;
-                isUpdated = true;
-                // console.log(`Log with ID ${log._id} has RR and rrRMS, marking as checked.`);
+      const logs = await PolarData.find({ isChecked: false }).limit(100000); // Ganti model
+  
+      if (!logs.length) {
+        return { message: 'No logs found to check and fill.', status: 404 };
+      }
+  
+      const logsWithHRAndRR = await PolarData.find({ HR: { $ne: null }, RR: { $ne: null } }) // Ganti model
+        .sort({ created_at: 1 })
+        .limit(10000);
+  
+      for (const log of logs) {
+        let isUpdated = false;
+  
+        if (log.RR === null || log.RR === undefined) {
+          for (let i = 1; i < logsWithHRAndRR.length; i++) {
+            const prevIndex = logsWithHRAndRR.findIndex(l => l._id.equals(log._id)) - i;
+            if (prevIndex >= 0) {
+              log.RR = logsWithHRAndRR[prevIndex].RR;
+              isUpdated = true;
+              break;
             }
-
-            if (isUpdated) {
-                await log.save(); // Menyimpan perubahan pada database
-                // console.log(`Log with ID ${log._id} has been marked as checked and updated.`);
-            } else {
-                console.log(`Log with ID ${log._id} was not updated.`);
-            }
+          }
+        } else if (!log.isChecked && log.RR !== null && log.RRms !== null) { // Sesuaikan field RRms
+          log.isChecked = true;
+          isUpdated = true;
         }
-
-        // Mengembalikan pesan sukses dan log yang ditemukan
-        return { message: 'Logs checked and filled successfully.', logs, status: 200 };
+  
+        if (isUpdated) await log.save();
+      }
+  
+      return { message: 'Logs checked and filled successfully.', logs, status: 200 };
     } catch (error) {
-        console.error('Error checking and filling logs:', error);
-        return { message: 'Internal server error.', status: 500 };
+      console.error('Error checking and filling logs:', error);
+      return { message: 'Internal server error.', status: 500 };
     }
-};
+  };
 
 // Metode baru untuk menjalankan semua metode
 export const runAllMethods = async (req, res) => {
