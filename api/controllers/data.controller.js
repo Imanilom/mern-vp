@@ -54,114 +54,92 @@ export async function kalmanFilter(sortedLogs, options = {}) {
     throw new Error("Input logs must be a non-empty array.");
   }
 
-  // Sort logs by timestamp (more precise than date_created + time_created)
+  // Sort logs by timestamp
   sortedLogs.sort((a, b) => a.timestamp - b.timestamp);
 
-  // Validasi nilai awal
   const isValidValue = (value, min, max) => value >= min && value <= max;
 
-  const validRR = sortedLogs
-    .map((log) => log.rr)
-    .filter((value) => isValidValue(value, 400, 1000));
+  // Initialize estimates
+  // jangan kasih nilai max
+  const validRR = sortedLogs.map((log) => log.rr).filter((value) => isValidValue(value, 600, 900));
+  const validHR = sortedLogs.map((log) => log.hr).filter((value) => isValidValue(value, 60, 100));
 
-  const validHR = sortedLogs
-    .map((log) => log.hr)
-    .filter((value) => isValidValue(value, 40, 120));
+  let estimateRR = validRR.length > 0 ? validRR.reduce((sum, val) => sum + val, 0) / validRR.length : 400;
+  let estimateHR = validHR.length > 0 ? validHR.reduce((sum, val) => sum + val, 0) / validHR.length : 70;
 
-  const initialEstimateRR =
-    validRR.length > 0
-      ? validRR.reduce((sum, value) => sum + value, 0) / validRR.length
-      : 400;
-
-  const initialEstimateHR =
-    validHR.length > 0
-      ? validHR.reduce((sum, value) => sum + value, 0) / validHR.length
-      : 70;
-
-  // Variabel Kalman Filter
-  let estimateRR = initialEstimateRR;
   let errorRR = initialErrorRR;
-
-  let estimateHR = initialEstimateHR;
   let errorHR = initialErrorHR;
 
   const filteredLogs = [];
   const anomalies = [];
-  console.log("filteredLogs", filteredLogs);
-  // Fungsi untuk mengganti nilai anomali dengan rata-rata tetangga
+
   const replaceAnomaly = (index, field) => {
     const prev = index > 0 ? sortedLogs[index - 1][field] : sortedLogs[index][field];
     const next = index < sortedLogs.length - 1 ? sortedLogs[index + 1][field] : sortedLogs[index][field];
     return (prev + next) / 2;
   };
 
-  // Proses logs
   sortedLogs.forEach((log, index) => {
-    const { rr: measurementRR, hr: measurementHR } = log;
+    const measurementRR = log.rr;
+    const measurementHR = log.hr;
 
-    // Validasi nilai RR dan HR
-    if (!isValidValue(measurementRR, 400, 1000) || !isValidValue(measurementHR, 60, 130)) {
+    if (!isValidValue(measurementRR, 600, 900) || !isValidValue(measurementHR, 60, 100)) {
       anomalies.push({ ...log, reason: "Invalid measurement range" });
       return;
     }
 
-    // Kalman Gain dan Pembaruan untuk RR
-    const kalmanGainRR = errorRR / (errorRR + measurementNoiseRR);
-    estimateRR += kalmanGainRR * (measurementRR - estimateRR);
-    errorRR = (1 - kalmanGainRR) * errorRR + processNoiseRR;
+    // Kalman Predict Step
+    const priorEstimateRR = estimateRR;
+    const priorErrorRR = errorRR + processNoiseRR;
 
-    // Kalman Gain dan Pembaruan untuk HR
-    const kalmanGainHR = errorHR / (errorHR + measurementNoiseHR);
-    estimateHR += kalmanGainHR * (measurementHR - estimateHR);
-    errorHR = (1 - kalmanGainHR) * errorHR + processNoiseHR;
+    const priorEstimateHR = estimateHR;
+    const priorErrorHR = errorHR + processNoiseHR;
 
-    // Deteksi anomali berdasarkan threshold
-    const isAnomalous = (measurement, estimate, error) => {
-      const deviation = Math.abs(measurement - estimate);
-      const threshold = 3 * Math.sqrt(error);
-      return deviation > threshold;
+    // Anomaly detection
+    const isAnomalous = (measurement, priorEstimate, priorError) => {
+      const deviation = Math.abs(measurement - priorEstimate);
+      return deviation > 3 * Math.sqrt(priorError);
     };
 
-    const anomalyRR = isAnomalous(measurementRR, estimateRR, errorRR);
-    const anomalyHR = isAnomalous(measurementHR, estimateHR, errorHR);
+    const rrAnomaly = isAnomalous(measurementRR, priorEstimateRR, priorErrorRR);
+    const hrAnomaly = isAnomalous(measurementHR, priorEstimateHR, priorErrorHR);
 
-    if (anomalyRR || anomalyHR) {
+    if (rrAnomaly || hrAnomaly) {
       anomalies.push({
         ...log,
-        reason: `Out of threshold: ${anomalyRR ? "RR" : ""} ${anomalyHR ? "HR" : ""}`,
+        reason: `Threshold exceeded: ${rrAnomaly ? 'RR' : ''}${hrAnomaly ? ' HR' : ''}`
       });
 
-      // Gantikan nilai anomali dengan rata-rata tetangga
       filteredLogs.push({
-        date_created: log.date_created,
-        time_created: log.time_created,
-        rr: anomalyRR ? parseFloat(replaceAnomaly(index, "rr").toFixed(2)) : parseFloat(estimateRR.toFixed(2)),
-        hr: anomalyHR ? parseFloat(replaceAnomaly(index, "hr").toFixed(2)) : parseFloat(estimateHR.toFixed(2)),
-        activity: log.activity || "Unknown",
-        device_id: log.device_id,
-      });
-    } else {
-      filteredLogs.push({
-        date_created: log.date_created,
-        time_created: log.time_created,
-        rr: parseFloat(estimateRR.toFixed(2)),
-        hr: parseFloat(estimateHR.toFixed(2)),
-        rrms: log.rrms,
-        ecg: log.ecg,
+        ...log,
+        rr: parseFloat(rrAnomaly ? replaceAnomaly(index, 'rr') : priorEstimateRR.toFixed(2)),
+        hr: parseFloat(hrAnomaly ? replaceAnomaly(index, 'hr') : priorEstimateHR.toFixed(2)),
         magnitude: Math.sqrt(log.acc_x ** 2 + log.acc_y ** 2 + log.acc_z ** 2),
-        activity: log.activity || "Unknown",
-        device_id: log.device_id,
       });
+      return;
     }
 
+    // Kalman Update Step
+    const kalmanGainRR = priorErrorRR / (priorErrorRR + measurementNoiseRR);
+    estimateRR = priorEstimateRR + kalmanGainRR * (measurementRR - priorEstimateRR);
+    errorRR = (1 - kalmanGainRR) * priorErrorRR;
+
+    const kalmanGainHR = priorErrorHR / (priorErrorHR + measurementNoiseHR);
+    estimateHR = priorEstimateHR + kalmanGainHR * (measurementHR - priorEstimateHR);
+    errorHR = (1 - kalmanGainHR) * priorErrorHR;
+
+    // Simpan semua properti yang ada di log agar tidak ada yang hilang
+    filteredLogs.push({
+      ...log, // Menyimpan semua data dari log
+      rr: parseFloat(estimateRR.toFixed(2)),
+      hr: parseFloat(estimateHR.toFixed(2)),
+      magnitude: Math.sqrt(log.acc_x ** 2 + log.acc_y ** 2 + log.acc_z ** 2),
+    });
+
     if (debug) {
-      console.log(`Log ${index + 1}:`, {
-        measurementRR,
-        estimateRR,
-        errorRR,
-        measurementHR,
-        estimateHR,
-        errorHR,
+      console.log(`Processed entry ${index}:`, {
+        RR: { measurement: measurementRR, estimate: estimateRR, error: errorRR },
+        HR: { measurement: measurementHR, estimate: estimateHR, error: errorHR }
       });
     }
   });
@@ -466,130 +444,85 @@ const processHeartRateData = async () => {
       date_created: firstLog.date_created,
     }).sort({ timestamp: 1 });
 
-    // Normalisasi aktivitas & format waktu jika perlu
-    logs.forEach((log) => {
-      log.aktivitas = log.activity || "Unknown";
-    });
-
-    // Sort berdasarkan timestamp
-    const sortedLogs = logs.sort((a, b) => a.timestamp - b.timestamp);
-
-    // Fungsi untuk menangani nilai yang hilang atau tidak valid
-    const fillMissingValues = (data) => {
-      for (let i = 0; i < data.length; i++) {
-        if (!data[i] || isNaN(data[i]) || !isFinite(data[i])) {
-          const left = data[i - 1] || 0;
-          const right = data[i + 1] || 0;
-          data[i] = (left + right) / 2;
-        }
-      }
-      return data;
-    };
-
-    // Deteksi anomali menggunakan One-Class SVM
-    const { filteredLogs, anomalies } = await filterIQ(sortedLogs);
-    
-    console.log("Filtered Logs:", sortedLogs.length);
-
-    if (filteredLogs.length === 0) {
-      console.log("No valid data after filtering.");
+    if (logs.length === 0) {
+      console.log("No valid data.");
       return;
     }
 
-    // Kalkulasi MSE & RMSE untuk metrik harian
-    const dailyErrors = calculateErrors(sortedLogs, filteredLogs);
-    const dailyMetrics = {
-      ...calculateAdvancedMetrics(fillMissingValues(filteredLogs.map((log) => log.rr))),
-      mse: dailyErrors.mse,
-      rmse: dailyErrors.rmse,
-    };
-
-    // Pengelompokan berdasarkan aktivitas
-    const groupedByActivity = [];
-    let currentGroup = { activity: null, logs: [], timestamps: { start: null, end: null } };
-
-    filteredLogs.forEach((log, index) => {
-      if (currentGroup.activity === null || currentGroup.activity !== log.aktivitas) {
-        if (currentGroup.logs.length > 0) {
-          currentGroup.timestamps.end = `${currentGroup.logs[currentGroup.logs.length - 1].date_created} ${currentGroup.logs[currentGroup.logs.length - 1].time_created}`;
-          groupedByActivity.push(currentGroup);
-        }
-        currentGroup = {
-          activity: log.aktivitas,
-          logs: [],
-          timestamps: { start: `${log.date_created} ${log.time_created}`, end: null },
-        };
-      }
-      currentGroup.logs.push(log);
-
-      if (index === filteredLogs.length - 1) {
-        currentGroup.timestamps.end = `${log.date_created} ${log.time_created}`;
-        groupedByActivity.push(currentGroup);
-      }
-    });
-
-    const activityMetrics = {};
-    groupedByActivity.forEach((group) => {
-      const rawActivityLogs = sortedLogs.filter((log) => log.aktivitas === group.activity);
-      const rrIntervals = fillMissingValues(group.logs.map((log) => log.rr));
-      const activityErrors = calculateErrors(rawActivityLogs, group.logs);
-
-      activityMetrics[group.activity] = activityMetrics[group.activity] || [];
-      activityMetrics[group.activity].push({
-        metrics: {
-          ...calculateAdvancedMetrics(rrIntervals),
-          mse: activityErrors.mse,
-          rmse: activityErrors.rmse,
-        },
-        timestamps: group.timestamps,
-      });
-    });
-
-    // Simpan hasil ke JSON
+    // Path file JSON untuk penyimpanan data berkala
     const resultsDir = path.join(__dirname, "hrv-results");
     if (!fs.existsSync(resultsDir)) {
       fs.mkdirSync(resultsDir, { recursive: true });
     }
 
-    const formattedDate = firstLog.date_created.replace(/-/g, "_");
+    const formattedDate = firstLog.date_created.replace(/-/g, "-");
     const filteredFileName = path.join(resultsDir, `${formattedDate}.json`);
-    let jsonData = { dailyMetrics: {}, activityMetrics: {}, filteredLogs: [] };
 
+    // Baca data JSON jika sudah ada, atau buat struktur baru
+    let jsonData = { dailyMetrics: {}, activityMetrics: {}, filteredLogs: [] };
     if (fs.existsSync(filteredFileName)) {
       const existingData = fs.readFileSync(filteredFileName);
       jsonData = JSON.parse(existingData);
     }
 
-    jsonData.dailyMetrics = dailyMetrics;
-    jsonData.activityMetrics = activityMetrics;
-    jsonData.filteredLogs = jsonData.filteredLogs.concat(
-      filteredLogs.map((log) => ({
-        date_created: log.date_created,
-        time_created: log.time_created,
-        HR: log.hr,
-        RR: log.rr,
-        RRms: log.rrms,
-        ecg: log.ecg,
-        magnitude: log.magnitude,
+    // **PROSES DATA DALAM BATCH 10,000**
+    const batchSize = 10000;
+    for (let start = 0; start < logs.length; start += batchSize) {
+      const batch = logs.slice(start, start + batchSize);
+
+      // Normalisasi aktivitas & rounding HR, RR, RRms
+      const sortedLogs = batch.map(log => ({
+        ...log,
+        hr: Math.round(log.hr),
+        rr: Math.round(log.rr),
+        rrms: Math.round(log.rrms),
         aktivitas: log.activity || "Unknown",
-        device_id: log.device_id,
-      }))
-    );
+      }));
 
-    fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
-    console.log(`Data written to ${filteredFileName}`);
+      // Filter dengan Kalman
+      const { filteredLogs } = await kalmanFilter(sortedLogs);
 
-    // Tandai data sebagai sudah diproses
-    await PolarData.updateMany(
-      { _id: { $in: logs.map((log) => log._id) } },
-      { $set: { isChecked: false } }
-    );
+      // Perhitungan metrik
+      const dailyMetrics = {
+        ...calculateAdvancedMetrics(filteredLogs.map(log => log.rr)),
+      };
+
+      // Simpan hasil batch ke JSON
+      jsonData.dailyMetrics = dailyMetrics;
+      jsonData.filteredLogs = jsonData.filteredLogs.concat(
+        filteredLogs.map((filteredLog, index) => {
+          const originalLog = sortedLogs[index]; // Ambil data asli dari sortedLogs
+          return {
+            date_created: originalLog.date_created,  // Ambil dari sortedLogs
+            time_created: originalLog.time_created,  // Ambil dari sortedLogs
+            HR: filteredLog.hr,  // Dari hasil filter
+            RR: filteredLog.rr,  // Dari hasil filter
+            RRms: filteredLog.rrms, // Dari hasil filter
+            magnitude: Math.sqrt(originalLog.acc_x ** 2 + originalLog.acc_y ** 2 + originalLog.acc_z ** 2), // Dari sortedLogs
+            aktivitas: originalLog.aktivitas, // Dari sortedLogs
+            device_id: originalLog.device_id, // Dari sortedLogs
+            ecg: originalLog.ecg, // Tambahkan jika ingin menyertakan ECG
+          };
+        })
+      );
+
+
+      fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
+      console.log(`Batch ${start / batchSize + 1} saved to ${filteredFileName}`);
+
+      // Tandai data sebagai sudah diproses
+      await PolarData.updateMany(
+        { _id: { $in: batch.map(log => log._id) } },
+        { $set: { isChecked: true } }
+      );
+    }
+
+    console.log("Processing complete.");
 
   } catch (error) {
     console.error("Error processing heart rate data:", error);
   }
 };
-
 
 // calculate error
 function calculateErrors(actual, predicted) {
@@ -598,22 +531,14 @@ function calculateErrors(actual, predicted) {
     throw new Error("Input data harus berupa array.");
   }
 
-  // Fungsi untuk format tanggal dari DD/MM/YYYY ke format ISO (YYYY-MM-DD)
-  function formatDate(date) {
-    const [day, month, year] = date.split("/").map(Number);
-    if (!day || !month || !year) {
-      throw new Error(`Format tanggal tidak valid: ${date}`);
-    }
-    return new Date(year, month - 1, day).toISOString().split("T")[0]; // yyyy-mm-dd
-  }
 
   // Filter `actual` agar hanya berisi data yang ada di `predicted`
   const filteredActual = actual.filter((act) => {
     try {
-      const formattedDate = formatDate(act.date_created);
+      const formattedDate = act.date_created;
       return predicted.some(
         (pred) =>
-          formatDate(pred.date_created) === formattedDate &&
+          pred.date_created === formattedDate &&
           pred.time_created === act.time_created
       );
     } catch (error) {
@@ -643,7 +568,7 @@ function calculateErrors(actual, predicted) {
     // Temukan prediksi yang cocok berdasarkan date_created dan time_created
     const matchedPredicted = predicted.find(
       (pred) =>
-        formatDate(pred.date_created) === formatDate(value.date_created) &&
+        pred.date_created === value.date_created &&
         pred.time_created === value.time_created
     );
 
@@ -669,7 +594,7 @@ function calculateErrors(actual, predicted) {
 
 
 
-processHeartRateData()
+// processHeartRateData()
 
 /**
  * Melakukan transformasi Box-Cox pada array data.

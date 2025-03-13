@@ -1,32 +1,50 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-const polarDataSchema = new mongoose.Schema({
-  timestamp: { type: Number, required: true },
+const logSchema = new mongoose.Schema({
+  timestamp: {
+    type: Number,
+      },
   date_created: {
     type: String,
-    required: true,
-  },
+      },
   time_created: {
     type: String,
-    required: true,
+      },
+  hr: {
+    type: Number,
+      },
+  rr: {
+    type: Number,
+      },
+  rrms: {
+    type: Number,
+      },
+  acc_x: {
+    type: Number,
+      },
+  acc_y: {
+    type: Number,
+      },
+  acc_z: {
+    type: Number,
+      },
+  ecg: {
+    type: Number,
+      },
+  activity: {
+    type: String,
+    enum: ["Rest", "Light", "Moderate", "Intense"] // Enum untuk aktivitas
   },
-  HR: { type: Number, required: true },
-  RR: { type: Number, required: true },
-  RRms: { type: Number, required: true },
-  acc_x: { type: Number, required: true },
-  acc_y: { type: Number, required: true },
-  acc_z: { type: Number, required: true },
-  ecg: { type: Number, required: true },
-  activity: { type: String, required: true },
-  device_id: { type: String, required: true },
   isChecked: {
     type: Boolean,
-    default: false,
+    default: false
   },
-  created_at: { type: Date, default: Date.now }
-});
+  device_id: {
+    type: String,
+    default:"E4F82A29",
+  }
+}, { timestamps: true }); // timestamps akan otomatis menambahkan createdAt dan updatedAt
 
-const PolarData = mongoose.model('PolarData', polarDataSchema);
-
+const PolarData = mongoose.model("PolarData", logSchema);
 
 export default PolarData;

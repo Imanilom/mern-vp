@@ -1,63 +1,75 @@
-import Log from '../models/log.model.js';
-import dataLog from '../models/data.model.js';
+import PolarData from "../models/data.model.js";
 import multer from "multer";
 import csv from "csv-parser";
 import fs from "fs";
+import path from "path";
 
 const upload = multer({ dest: "uploads/" });
 
 // Endpoint untuk menerima CSV dari mobile apps
-
 export const createLog = async (req, res) => {
-    try {
-      upload.single("file")(req, res, async (err) => {
-        if (err) return res.status(400).json({ message: "File upload failed", error: err.message });
-  
-        if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-  
-        const filePath = req.file.path;
-        const logs = [];
-        const hardcodedDeviceId = "E4F82A29";
-  
-        fs.createReadStream(filePath)
-          .pipe(csv())
-          .on("data", (row) => {
-            if (row.timestamp && row.HR && row.RR && row.rrRMS) {
-              const nanoTimestamp = BigInt(row.timestamp);
-              const milliTimestamp = Number(nanoTimestamp / 1_000_000n);
-              const dateObj = new Date(milliTimestamp);
-  
-              logs.push(new PolarData({
-                timestamp: milliTimestamp,
-                date_created: dateObj.toISOString().split("T")[0],
-                time_created: dateObj.toISOString().split("T")[1].slice(0, -1),
-                HR: Number(row.HR),
-                RR: Number(row.RR),
-                RRms: Number(row.rrRMS), // Sesuaikan field name dengan model
-                acc_x: row.accData ? JSON.parse(row.accData)[0] : 0,
-                acc_y: row.accData ? JSON.parse(row.accData)[1] : 0,
-                acc_z: row.accData ? JSON.parse(row.accData)[2] : 0,
-                ecg: row.ecgData ? JSON.parse(row.ecgData)[0] : 0,
-                device_id: hardcodedDeviceId,
-                activity: "unknown", // Tambahkan field required dari model
-                created_at: new Date(),
-              }));
-            }
-          })
-          .on("end", async () => {
-            try {
-              const savedLogs = await PolarData.insertMany(logs); // Ganti model
-              fs.unlinkSync(filePath);
-              res.status(201).json({ message: "Logs created successfully", data: savedLogs });
-            } catch (error) {
-              res.status(500).json({ message: "Error saving logs", error: error.message });
-            }
-          });
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error", error: error.message });
+  try {
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
     }
-  };
+
+    const filePath = req.file.path;
+    console.log("Processing file:", filePath);
+
+    let logs = [];
+    const hardcodedDeviceId = "E4F82A29";
+
+    fs.createReadStream(filePath, "utf8")
+      .pipe(csv({ separator: ";" })) // ✅ Paksa baca dengan delimiter `;`
+      .on("data", (row) => {
+        console.log("Row read:", row); // Debug isi file
+
+        if (row.timestamp && row.hr && row.rr && row.rrms) {
+          logs.push({
+            timestamp: Number(row.timestamp),
+            date_created: row.date_created,
+            time_created: row.time_created,
+            hr: Number(row.hr),
+            rr: Number(row.rr),
+            rrms: Number(row.rrms),
+            acc_x: Number(row.acc_x),
+            acc_y: Number(row.acc_y),
+            acc_z: Number(row.acc_z),
+            ecg: Number(row.ecg),
+            device_id: hardcodedDeviceId,
+            activity: row.activity || "Rest",
+            created_at: new Date(),
+          });
+        }
+      })
+      .on("end", async () => {
+        console.log("All rows processed:", logs);
+
+        if (logs.length === 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({ message: "No valid data found in CSV" });
+        }
+
+        const savedLogs = await PolarData.insertMany(logs);
+        fs.unlinkSync(filePath);
+
+        res.status(201).json({
+          message: "Logs created successfully",
+          data: savedLogs,
+        });
+      })
+      .on("error", (error) => {
+        console.error("CSV Read Error:", error);
+        res.status(500).json({ message: "Error reading CSV", error: error.message });
+      });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+
   
   // Metode untuk memeriksa dan mengisi log (DIUBAH)
   export const checkAndFillLogs = async () => {
