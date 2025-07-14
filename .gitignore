@@ -27,8 +27,6 @@ graphs
 
 node_modules
 npm-debug.log
-Dockerfile
-.dockerignore
 package-lock.json
 
 
