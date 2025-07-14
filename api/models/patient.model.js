@@ -27,7 +27,7 @@ const PatientSchema = mongoose.Schema({
       current_device: {
         required: true,
         type: String,
-        default: "C0680226"
+        default: "E4F82A29"
       },
       phone_number: {
         type: String,
@@ -36,7 +36,6 @@ const PatientSchema = mongoose.Schema({
         default: "",
         type: String,
       },
-      
       role: {
         type: String,
         default: "patient",

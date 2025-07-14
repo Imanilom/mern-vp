@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+node_modules
+.dockerignore
+Dockerfile
+npm-debug.log
+.vite
+dist
+

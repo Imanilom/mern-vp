@@ -1,0 +1,20 @@
+services:
+  backend:
+    build: ./api
+    container_name: backend
+    ports:
+      - "3030:3030"
+    environment:
+      - MONGO=mongodb+srv://memerlin90:LYyX217FP02iuCqV@pak.21cks.mongodb.net/?retryWrites=true&w=majority&appName=pak
+      - JWT_SECRET=asnjkKkjsnklnly1xcx?23r
+      # tambahkan env lainnya jika perlu
+    restart: always
+
+  frontend:
+    build: ./client
+    container_name: frontend
+    ports:
+      - "3031:80"
+    depends_on:
+      - backend
+    restart: always

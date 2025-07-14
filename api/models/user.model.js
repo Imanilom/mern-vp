@@ -25,7 +25,7 @@ const UserSchema = new mongoose.Schema(
     },
     current_device: {
       type: String,
-      default: "C0680226",
+      default: "E4F82A29",
     },
     phone_number: {
       required: true,
