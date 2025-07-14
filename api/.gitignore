@@ -25,10 +25,3 @@ graphs
 *.sln
 *.sw?
 
-node_modules
-npm-debug.log
-Dockerfile
-.dockerignore
-package-lock.json
-
-
