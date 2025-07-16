@@ -15,14 +15,14 @@ import treatmentRoute from "./routes/treatment.route.js";
 import data from "./routes/data.route.js";
 import faktorresiko from "./routes/faktorresiko.route.js";
 import logRouter from "./routes/log.route.js";
-
+import cron from 'node-cron';
 import cookieParser from "cookie-parser";
 import path from "path";
 import cors from "cors";
 
 // import './controllers/cornjob.controller.js';
 // import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
-// import './controllers/data.controller.js';
+import {processHeartRateData} from  './controllers/data.controller.js';
 dotenv.config();
 
 mongoose
@@ -65,6 +65,7 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "client", "dist", "index.html"));
 });
 
+
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";
@@ -80,4 +81,10 @@ const PORT = process.env.PORT;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);
+});
+
+
+cron.schedule('*/1 * * * *', () => {
+  console.log('Running cron job...'); // debug
+  processHeartRateData().catch(console.error);
 });

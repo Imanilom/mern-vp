@@ -3,6 +3,7 @@ import Log from '../models/log.model.js';
 import Segment from '../models/segment.model.js';
 import DailyMetric from '../models/daily.model.js';
 import FFT from 'fft.js';
+import PolarData from '../models/data.model.js';
 
 export const calculateMetrics = (logs) => {
   const rrIntervals = logs.map((log) => log.RR);
@@ -160,7 +161,7 @@ function segmentDataByInterval(logs, intervalType = 'hour') {
       const now = new Date();
       const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000); // 5 menit yang lalu
   
-      const logs = await Log.find({
+      const logs = await PolarData.find({
         create_at: { $gte: fiveMinutesAgo, $lt: now },
       }).sort({ create_at: 1 });
   
