@@ -54,17 +54,28 @@ export async function kalmanFilter(sortedLogs, options = {}) {
     throw new Error("Input logs must be a non-empty array.");
   }
 
-  // Sort logs by timestamp
+  // Sort logs by timestamp to ensure chronological processing
   sortedLogs.sort((a, b) => a.timestamp - b.timestamp);
 
-  const isValidValue = (value, min, max) => value >= min && value <= max;
+  const isValidValue = (value, min, max) => 
+    value !== null && value !== undefined && value >= min && value <= max;
 
-  // Initialize estimates with reasonable defaults
-  const validRR = sortedLogs.map((log) => log.rr).filter((value) => isValidValue(value, 300, 1200));
-  const validHR = sortedLogs.map((log) => log.hr).filter((value) => isValidValue(value, 40, 200));
+  // Initialize estimates with reasonable defaults from valid data
+  const validRR = sortedLogs
+    .map(log => log.rr)
+    .filter(value => isValidValue(value, 300, 1200));
+  
+  const validHR = sortedLogs
+    .map(log => log.hr)
+    .filter(value => isValidValue(value, 40, 200));
 
-  let estimateRR = validRR.length > 0 ? validRR.reduce((sum, val) => sum + val, 0) / validRR.length : 600;
-  let estimateHR = validHR.length > 0 ? validHR.reduce((sum, val) => sum + val, 0) / validHR.length : 70;
+  let estimateRR = validRR.length > 0 
+    ? validRR.reduce((sum, val) => sum + val, 0) / validRR.length 
+    : 600; // Default RR interval
+  
+  let estimateHR = validHR.length > 0 
+    ? validHR.reduce((sum, val) => sum + val, 0) / validHR.length 
+    : 70; // Default heart rate
 
   let errorRR = initialErrorRR;
   let errorHR = initialErrorHR;
@@ -72,42 +83,48 @@ export async function kalmanFilter(sortedLogs, options = {}) {
   const filteredLogs = [];
   const anomalies = [];
 
-  const replaceAnomaly = (index, field) => {
-    // Look for nearest valid values
+  // Helper function to replace anomalous values
+  const replaceAnomaly = (index, field, logs) => {
+    const fieldRange = {
+      'rr': { min: 300, max: 1200 },
+      'hr': { min: 40, max: 200 },
+      'rrms': { min: 300, max: 1200 }
+    };
+
     let prevValue, nextValue;
     
-    // Search backward
+    // Search backward for valid value
     for (let i = index - 1; i >= 0; i--) {
-      if (isValidValue(sortedLogs[i][field], 
-                       field === 'rr' ? 300 : 40, 
-                       field === 'rr' ? 1200 : 200)) {
-        prevValue = sortedLogs[i][field];
+      const value = logs[i][field];
+      if (isValidValue(value, fieldRange[field].min, fieldRange[field].max)) {
+        prevValue = value;
         break;
       }
     }
     
-    // Search forward
-    for (let i = index + 1; i < sortedLogs.length; i++) {
-      if (isValidValue(sortedLogs[i][field], 
-                       field === 'rr' ? 300 : 40, 
-                       field === 'rr' ? 1200 : 200)) {
-        nextValue = sortedLogs[i][field];
+    // Search forward for valid value
+    for (let i = index + 1; i < logs.length; i++) {
+      const value = logs[i][field];
+      if (isValidValue(value, fieldRange[field].min, fieldRange[field].max)) {
+        nextValue = value;
         break;
       }
     }
     
-    // If only one valid neighbor found
-    if (prevValue === undefined && nextValue !== undefined) return nextValue;
-    if (nextValue === undefined && prevValue !== undefined) return prevValue;
-    
-    // If no valid neighbors, return the estimate
-    if (prevValue === undefined && nextValue === undefined) {
-      return field === 'rr' ? estimateRR : estimateHR;
+    // Determine replacement value
+    if (prevValue !== undefined && nextValue !== undefined) {
+      return (prevValue + nextValue) / 2;
+    } else if (prevValue !== undefined) {
+      return prevValue;
+    } else if (nextValue !== undefined) {
+      return nextValue;
+    } else {
+      // Fallback to current estimate
+      return field === 'rr' ? estimateRR : field === 'hr' ? estimateHR : estimateRR;
     }
-    
-    return (prevValue + nextValue) / 2;
   };
 
+  // Process each log entry
   sortedLogs.forEach((log, index) => {
     const measurementRR = log.rr;
     const measurementHR = log.hr;
@@ -116,18 +133,29 @@ export async function kalmanFilter(sortedLogs, options = {}) {
     // Validate measurements
     const validRR = isValidValue(measurementRR, 300, 1200);
     const validHR = isValidValue(measurementHR, 40, 200);
-    const validRRMS = isValidValue(measurementRRMS, 300, 1200);
+    const validRRMS = isValidValue(measurementRRMS, 0, 2000);
 
-    if (!validRR || !validHR || !validRRMS) {
-      anomalies.push({ ...log, reason: "Invalid measurement range" });
+    // Handle invalid measurements
+    if (!validRR || !validHR) {
+      const anomalyReason = [];
+      if (!validRR) anomalyReason.push("RR out of range");
+      if (!validHR) anomalyReason.push("HR out of range");
+
+      anomalies.push({
+        ...log,
+        reason: anomalyReason.join(", "),
+        originalRR: measurementRR,
+        originalHR: measurementHR
+      });
       
       // Replace invalid values
       filteredLogs.push({
         ...log,
-        rr: validRR ? measurementRR : Math.round(replaceAnomaly(index, 'rr')),
-        hr: validHR ? measurementHR : parseFloat(replaceAnomaly(index, 'hr').toFixed(1)),
-        rrms: validRRMS ? measurementRRMS : Math.round(replaceAnomaly(index, 'rrms')),
-        activity: log.activity || "Unknown"
+        rr: validRR ? measurementRR : Math.round(replaceAnomaly(index, 'rr', sortedLogs)),
+        hr: validHR ? measurementHR : parseFloat(replaceAnomaly(index, 'hr', sortedLogs).toFixed(1)),
+        rrms: validRRMS ? measurementRRMS : Math.round(replaceAnomaly(index, 'rrms', sortedLogs)),
+        activity: log.activity || "Unknown",
+        isCorrected: true
       });
       return;
     }
@@ -139,33 +167,45 @@ export async function kalmanFilter(sortedLogs, options = {}) {
     const priorEstimateHR = estimateHR;
     const priorErrorHR = errorHR + processNoiseHR;
 
-    // Anomaly detection
+    // Anomaly detection based on statistical deviation
     const isAnomalous = (measurement, priorEstimate, priorError, field) => {
       const deviation = Math.abs(measurement - priorEstimate);
-      const threshold = field === 'hr' ? 20 : 100; // Different thresholds for HR and RR
-      return deviation > threshold || deviation > 3 * Math.sqrt(priorError);
+      const threshold = field === 'hr' ? 25 : 150; // Different thresholds for HR and RR
+      const statisticalThreshold = 3 * Math.sqrt(priorError);
+      
+      return deviation > threshold || deviation > statisticalThreshold;
     };
 
     const rrAnomaly = isAnomalous(measurementRR, priorEstimateRR, priorErrorRR, 'rr');
     const hrAnomaly = isAnomalous(measurementHR, priorEstimateHR, priorErrorHR, 'hr');
 
     if (rrAnomaly || hrAnomaly) {
+      const anomalyReason = [];
+      if (rrAnomaly) anomalyReason.push("RR anomaly detected");
+      if (hrAnomaly) anomalyReason.push("HR anomaly detected");
+
       anomalies.push({
         ...log,
-        reason: `Threshold exceeded: ${rrAnomaly ? 'RR' : ''}${hrAnomaly ? ' HR' : ''}`
+        reason: anomalyReason.join(", "),
+        originalRR: measurementRR,
+        originalHR: measurementHR,
+        priorEstimateRR,
+        priorEstimateHR
       });
 
+      // Replace anomalous values
       filteredLogs.push({
         ...log,
-        rr: rrAnomaly ? Math.round(replaceAnomaly(index, 'rr')) : Math.round(estimateRR),
-        hr: hrAnomaly ? parseFloat(replaceAnomaly(index, 'hr').toFixed(1)) : parseFloat(estimateHR.toFixed(1)),
-        rrms: measurementRRMS, // Keep original rrms value
-        activity: log.activity || "Unknown"
+        rr: rrAnomaly ? Math.round(replaceAnomaly(index, 'rr', sortedLogs)) : Math.round(measurementRR),
+        hr: hrAnomaly ? parseFloat(replaceAnomaly(index, 'hr', sortedLogs).toFixed(1)) : parseFloat(measurementHR.toFixed(1)),
+        rrms: measurementRRMS,
+        activity: log.activity || "Unknown",
+        isCorrected: true
       });
       return;
     }
 
-    // Kalman Update Step
+    // Kalman Update Step for valid, non-anomalous data
     const kalmanGainRR = priorErrorRR / (priorErrorRR + measurementNoiseRR);
     estimateRR = priorEstimateRR + kalmanGainRR * (measurementRR - priorEstimateRR);
     errorRR = (1 - kalmanGainRR) * priorErrorRR;
@@ -174,16 +214,17 @@ export async function kalmanFilter(sortedLogs, options = {}) {
     estimateHR = priorEstimateHR + kalmanGainHR * (measurementHR - priorEstimateHR);
     errorHR = (1 - kalmanGainHR) * priorErrorHR;
 
-    // Save all properties with filtered values
+    // Save filtered values
     filteredLogs.push({
       ...log,
       rr: Math.round(estimateRR),
       hr: parseFloat(estimateHR.toFixed(1)),
-      rrms: measurementRRMS, // Keep original rrms value
-      activity: log.activity || "Unknown"
+      rrms: measurementRRMS,
+      activity: log.activity || "Unknown",
+      isCorrected: false
     });
 
-    if (debug) {
+    if (debug && index % 100 === 0) {
       console.log(`Processed entry ${index}:`, {
         RR: { measurement: measurementRR, estimate: estimateRR, error: errorRR },
         HR: { measurement: measurementHR, estimate: estimateHR, error: errorHR }
@@ -191,9 +232,18 @@ export async function kalmanFilter(sortedLogs, options = {}) {
     }
   });
 
-  return { filteredLogs, anomalies };
-}
+  console.log(`Kalman filtering completed: ${filteredLogs.length} filtered, ${anomalies.length} anomalies`);
 
+  return { 
+    filteredLogs, 
+    anomalies,
+    statistics: {
+      totalProcessed: sortedLogs.length,
+      anomaliesDetected: anomalies.length,
+      anomalyRate: (anomalies.length / sortedLogs.length * 100).toFixed(2)
+    }
+  };
+}
 
 export async function filterIQ(logs, multiplier = 1.5) {
   if (!logs || logs.length === 0) {
@@ -468,139 +518,305 @@ function kernelRBF(x, y, kernelParam) {
   return Math.exp(-squaredDistance / (2 * kernelParam ** 2));
 }
 
-
 export async function processHeartRateData() {
   try {
+    console.log("Starting heart rate data processing...");
+
     // Get first unprocessed log
     const firstLog = await PolarData.findOne({ isChecked: false })
       .sort({ date_created: 1, time_created: 1 })
       .lean();
 
     if (!firstLog) {
-      console.log("No data to process.");
-      return;
+      console.log("No unprocessed data found.");
+      return { success: true, message: "No data to process" };
     }
 
-    // Validate firstLog has date_created
-    if (!firstLog.date_created || typeof firstLog.date_created !== 'string') {
+    console.log(`Processing data for date: ${firstLog.date_created}`);
+
+    // Validate date_created
+    if (!firstLog.date_created || typeof firstLog.date_created !== "string") {
       console.error("Invalid date_created in first log:", firstLog);
-      await PolarData.updateOne({ _id: firstLog._id }, { $set: { isChecked: true } });
-      return;
+      await PolarData.updateOne(
+        { _id: firstLog._id },
+        { $set: { isChecked: true } }
+      );
+      return { success: false, message: "Invalid date format" };
     }
 
-    // Get all logs with the same date
+    // Get all logs with the same date that are not processed
     const logs = await PolarData.find({
       isChecked: false,
       date_created: firstLog.date_created,
-    }).sort({ timestamp: 1 });
+    })
+      .sort({ timestamp: 1 })
+      .lean();
 
     if (logs.length === 0) {
-      console.log("No valid data.");
-      return;
+      console.log("No valid data found for processing.");
+      return { success: false, message: "No valid data" };
     }
 
-    // Create directory if it doesn't exist
-    const resultsDir = path.join(__dirname, "hrv-results-OC");
+    console.log(`Found ${logs.length} logs to process`);
+
+    // Prepare directory for results
+    const resultsDir = path.join(__dirname, "hrv-results");
     if (!fs.existsSync(resultsDir)) {
       fs.mkdirSync(resultsDir, { recursive: true });
+      console.log(`Created results directory: ${resultsDir}`);
     }
 
-    // Format filename: dd-mm-yyyy.json
-    const dateParts = firstLog.date_created.split('-');
+    // Format filename: dd-mm-yyyy.json (sesuai format yang diinginkan)
+    const dateParts = firstLog.date_created.split("-");
     if (dateParts.length !== 3) {
-      console.error("Invalid date format in first log:", firstLog.date_created);
-      return;
+      console.error("Invalid date format:", firstLog.date_created);
+      return { success: false, message: "Invalid date format" };
     }
+
     const [year, month, day] = dateParts;
-    const filteredFileName = path.join(resultsDir, `${day}-${month}-${year}.json`);
+    const filteredFileName = path.join(
+      resultsDir,
+      `${day}-${month}-${year}.json` // Format: 27-05-2024.json
+    );
 
-    // Read JSON file if it exists
-    let jsonData = { dailyMetrics: {}, filteredLogs: [] };
+    // Initialize JSON structure sesuai format yang diinginkan
+    let jsonData = {
+      dailyMetrics: {},
+      activityMetrics: {},
+      filteredLogs: []
+    };
+
+    // Load existing JSON jika ada
     if (fs.existsSync(filteredFileName)) {
-      const existingData = fs.readFileSync(filteredFileName, 'utf8');
-      jsonData = JSON.parse(existingData);
+      try {
+        const existingData = fs.readFileSync(filteredFileName, "utf8");
+        jsonData = JSON.parse(existingData);
+        console.log("Loaded existing JSON file");
+      } catch (error) {
+        console.error("Error reading existing JSON file:", error);
+      }
     }
 
-    // Filter out logs with invalid dates
-    const validLogs = logs.filter(log => {
-      if (!log.date_created || typeof log.date_created !== 'string') {
-        console.warn("Skipping log with invalid date_created:", log._id);
+    // Filter dan validasi logs
+    const validLogs = logs.filter((log) => {
+      if (!log.date_created || typeof log.date_created !== "string") {
+        return false;
+      }
+      if (log.hr === undefined || log.rr === undefined) {
+        return false;
+      }
+      if (log.hr < 30 || log.hr > 220) {
+        return false;
+      }
+      if (log.rr < 200 || log.rr > 2000) {
         return false;
       }
       return true;
     });
 
-    // Batch processing
-    const batchSize = 10000;
+    console.log(`Valid logs after filtering: ${validLogs.length}`);
+
+    if (validLogs.length === 0) {
+      console.log("No valid logs to process after filtering");
+      return { success: false, message: "No valid logs after filtering" };
+    }
+
+    // Process in batches
+    const batchSize = 5000;
+    let totalProcessed = 0;
 
     for (let start = 0; start < validLogs.length; start += batchSize) {
       const batch = validLogs.slice(start, start + batchSize);
+      console.log(`Processing batch ${Math.floor(start / batchSize) + 1}, size: ${batch.length}`);
 
-      // Normalize and round values
-      const sortedLogs = batch.map(log => ({
-        ...log,
-        hr: Math.round(log.hr * 10) / 10, // One decimal place for HR
-        rr: Math.round(log.rr), // Round RR to nearest integer
-        rrms: Math.round(log.rrms || log.rr), // Use rrms if available, otherwise fallback to rr
+      // Normalize data
+      const normalizedLogs = batch.map((log) => ({
+        _id: log._id,
+        timestamp: log.timestamp,
+        date_created: log.date_created,
+        time_created: log.time_created || "00:00:00",
+        hr: Math.round(log.hr * 10) / 10,
+        rr: Math.round(log.rr),
+        rrms: Math.round(log.rrms || log.rr),
         activity: log.activity || "Unknown",
-        date_created: log.date_created, // Ensure date_created is included
-        time_created: log.time_created || "00:00:00" // Default time if missing
       }));
 
-      // Apply Kalman filter
-      const { filteredLogs } = await kalmanFilter(sortedLogs);
+      // Apply Kalman Filter
+      const { filteredLogs: kalmanFilteredLogs } = await kalmanFilter(normalizedLogs);
+      
+      console.log(`Kalman filter processed: ${kalmanFilteredLogs.length} records`);
 
-      // Calculate HRV metrics if we have valid RR values
-      const validRRValues = filteredLogs.map(log => log.rr).filter(rr => rr >= 300 && rr <= 1200);
-      if (validRRValues.length > 0) {
-        const dailyMetrics = calculateAdvancedMetrics(validRRValues);
-        jsonData.dailyMetrics = dailyMetrics;
+      // Calculate daily metrics from all valid RR values
+      const allValidRRValues = kalmanFilteredLogs
+        .map(log => log.rr)
+        .filter(rr => rr >= 300 && rr <= 1200);
+
+      if (allValidRRValues.length > 0) {
+        jsonData.dailyMetrics = calculateAdvancedMetrics(allValidRRValues);
+        console.log("Daily metrics calculated");
       }
 
-      // Format filtered logs to match desired output
-      const newFilteredLogs = filteredLogs.map((filteredLog) => {
-        // Format date as DD/MM/YYYY with validation
-        let formattedDate = "01/01/1970"; // Default date if parsing fails
+      // Process activity segments - PERBAIKAN DI SINI
+      processActivitySegments(kalmanFilteredLogs, jsonData);
+
+      // Format filtered logs untuk output - SESUAI FORMAT YANG DIINGINKAN
+      const formattedLogs = kalmanFilteredLogs.map(log => {
+        // Format date: dd/mm/yyyy (dari yyyy-mm-dd)
+        let formattedDate = "01/01/1970";
         try {
-          if (filteredLog.date_created && typeof filteredLog.date_created === 'string') {
-            const parts = filteredLog.date_created.split('-');
+          if (log.date_created && typeof log.date_created === "string") {
+            const parts = log.date_created.split("-");
             if (parts.length === 3) {
               formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
             }
           }
-        } catch (e) {
-          console.warn("Error formatting date for log:", filteredLog._id, e);
+        } catch (error) {
+          console.warn("Error formatting date for log:", log._id, error);
         }
 
         return {
           date_created: formattedDate,
-          time_created: filteredLog.time_created || "00:00:00",
-          HR: filteredLog.hr,
-          RR: filteredLog.rr,
-          rrRMS: filteredLog.rrms,
-          aktivitas: filteredLog.activity || "Unknown"
+          time_created: log.time_created,
+          HR: log.hr,
+          RR: log.rr,
+          rrRMS: log.rrms,
+          aktivitas: log.activity // menggunakan field 'aktivitas' bukan 'activity'
         };
       });
 
-      jsonData.filteredLogs.push(...newFilteredLogs);
+      // Tambahkan ke filteredLogs (jangan push array, tapi ganti seluruhnya atau merge)
+      if (start === 0) {
+        jsonData.filteredLogs = formattedLogs;
+      } else {
+        jsonData.filteredLogs.push(...formattedLogs);
+      }
 
-      // Save to file
-      fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
-      console.log(`Batch ${start / batchSize + 1} saved to ${filteredFileName}`);
+      totalProcessed += formattedLogs.length;
 
-      // Mark as processed
-      await PolarData.updateMany(
-        { _id: { $in: batch.map(log => log._id) } },
-        { $set: { isChecked: true } }
-      );
+      // Save intermediate results
+      try {
+        fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
+        console.log(`Batch ${Math.floor(start / batchSize) + 1} saved to ${filteredFileName}`);
+      } catch (error) {
+        console.error("Error saving batch:", error);
+      }
+
+      // Mark batch as processed in database
+      try {
+        const batchIds = batch.map(log => log._id);
+        await PolarData.updateMany(
+          { _id: { $in: batchIds } },
+          { $set: { isChecked: true, processedAt: new Date() } }
+        );
+        console.log(`Marked ${batchIds.length} records as processed`);
+      } catch (error) {
+        console.error("Error updating database:", error);
+      }
     }
 
-    console.log("Processing complete.");
+    console.log(`Processing complete. Total records processed: ${totalProcessed}`);
+    console.log(`Results saved to: ${filteredFileName}`);
+
+    return {
+      success: true,
+      message: "Processing completed successfully",
+      recordsProcessed: totalProcessed,
+      outputFile: filteredFileName
+    };
 
   } catch (error) {
-    console.error("Error processing heart rate data:", error.message || error);
+    console.error("Error processing heart rate data:", error.message, error.stack);
+    return {
+      success: false,
+      message: error.message,
+      error: error.stack
+    };
   }
 }
+
+// Function untuk memproses segment aktivitas
+function processActivitySegments(filteredLogs, jsonData) {
+  let currentActivity = null;
+  let segmentLogs = [];
+  let segmentStartIndex = 0;
+
+  const pushActivitySegment = (endIndex) => {
+    if (segmentLogs.length === 0) return;
+
+    const rrValues = segmentLogs
+      .map(log => log.rr)
+      .filter(rr => rr >= 300 && rr <= 1200);
+
+    // Minimum 10 samples untuk metrics yang meaningful
+    if (rrValues.length > 10) {
+      const metrics = calculateAdvancedMetrics(rrValues);
+      const activity = (currentActivity || "Unknown").toLowerCase();
+
+      if (!jsonData.activityMetrics[activity]) {
+        jsonData.activityMetrics[activity] = [];
+      }
+
+      const startLog = filteredLogs[segmentStartIndex];
+      const endLog = filteredLogs[endIndex - 1];
+
+      const segmentData = {
+        metrics: metrics,
+        timestamps: {
+          start: `${startLog.date_created.split('-').reverse().join('/')} ${startLog.time_created}`,
+          end: `${endLog.date_created.split('-').reverse().join('/')} ${endLog.time_created}`
+        }
+      };
+
+      jsonData.activityMetrics[activity].push(segmentData);
+    }
+  };
+
+  // Process semua logs untuk segmentasi aktivitas
+  for (let i = 0; i < filteredLogs.length; i++) {
+    const log = filteredLogs[i];
+    
+    if (log.activity !== currentActivity) {
+      // Push segment sebelumnya
+      pushActivitySegment(i);
+      
+      // Start new segment
+      currentActivity = log.activity;
+      segmentLogs = [log];
+      segmentStartIndex = i;
+    } else {
+      segmentLogs.push(log);
+    }
+  }
+
+  // Push segment terakhir
+  pushActivitySegment(filteredLogs.length);
+}
+
+export async function getProcessingStatus() {
+  try {
+    const totalRecords = await PolarData.countDocuments();
+    const processedRecords = await PolarData.countDocuments({ isChecked: true });
+    const unprocessedRecords = await PolarData.countDocuments({ isChecked: false });
+
+    const latestProcessed = await PolarData.findOne({ isChecked: true })
+      .sort({ processedAt: -1 })
+      .select('date_created processedAt')
+      .lean();
+
+    return {
+      totalRecords,
+      processedRecords,
+      unprocessedRecords,
+      progress: totalRecords > 0 ? (processedRecords / totalRecords * 100).toFixed(2) : 0,
+      latestProcessed: latestProcessed || null
+    };
+  } catch (error) {
+    console.error("Error getting processing status:", error);
+    return { error: error.message };
+  }
+}
+
+
 // calculate error
 function calculateErrors(actual, predicted) {
   // Pastikan actual dan predicted adalah array
@@ -743,12 +959,11 @@ function calculateOptimalLambda(data) {
 
 export { boxcox, boxcoxInv };
 
-
 // Fungsi untuk membuat struktur direktori HRV
 const createHRVDirectory = async () => {
   try {
     // 1. Buat direktori utama hrv-results-OC
-    const baseDir = path.join(__dirname, 'hrv-results-OC');
+    const baseDir = path.join(__dirname, 'hrv-results-Kalman');
     fs.mkdirSync(baseDir, { recursive: true });
 
     // 2. Dapatkan semua user
@@ -997,60 +1212,3 @@ export {
   calculateTriangularIndex,
 };
 
-// cron job untuk createHRVDirectory
-// cron.schedule('0 0 * * *', async () => {
-//   console.log('Running directory creation task at midnight');
-//   try {
-//     await createHRVDirectory();
-//     console.log('HRV Directory structure created successfully');
-//   } catch (error) {
-//     console.error('Error creating HRV directory:', error);
-//   }
-// });
-
-// cron job untuk processHRVData
-// cron.schedule('*/30 * * * *', async () => {
-//   console.log('Running HRV data processing task every 30 minutes');
-//   try {
-//     const users = await User.find({});
-//     for (const user of users) {
-//       const devices = await Log.distinct('guid_device', { guid: user.guid });
-//       for (const device of devices) {
-//         if (device) {
-//           await processHRVData(user.guid, device);
-//         }
-//       }
-//     }
-//   } catch (error) {
-//     console.error('Error in HRV processing:', error);
-//   }
-// });
-// startup folder hrv-results-OC setelah server berjalan
-// createHRVDirectory()
-
-// Cron job scheduled every 10 minutes
-cron.schedule('*/1 * * * *', () => {
-  // console.log('Running heart rate data processing every 10 minutes...');
-  // processHeartRateData();
-  processHeartRateData()
-});
-
-// Schedule Cron Job to run every 5 minutes
-// cron.schedule('*/5 * * * *', async () => {
-//   // console.log('Running cron job fillMissingRRForLogsWithHR....');
-//   fillMissingRRForLogsWithHR();
-//   // console.log('Running cron job...');
-
-//   try {
-//     await runAllMethods();
-
-//     // const uniqueGuidDevices = await Log.distinct('guid_device');
-//     // for (const guid_device of uniqueGuidDevices) {
-//     //   await generateGraph(guid_device);
-//     // }
-//     // console.log('generateGraph completed for all guid_device.');
-//   } catch (error) {
-//     console.error('Error during cron job execution:', error);
-//   }
-// });
-// generateGraphsForAllFolders();

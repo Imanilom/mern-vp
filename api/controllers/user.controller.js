@@ -207,7 +207,7 @@ export const Dailymetrics = async (req, res, next) => {
 
 export const fetchDailyData = async (req, res, next) => {
   try {
-    const resultsDir = path.join(__dirname, '../controllers/hrv-results');
+    const resultsDir = path.join(__dirname, '../controllers/hrv-results-Kalman');
     const files = fs.readdirSync(resultsDir);
     // Filter and sort files to get the latest daily data file
     const latestDailyFile = files
@@ -521,7 +521,7 @@ export const pushActivity = async (req, res) => {
 
 export const getFilteredAndRawData = async (req, res, next) => {
   try {
-    const resultsDir = path.join(__dirname, '../controllers/hrv-results');
+    const resultsDir = path.join(__dirname, '../controllers/hrv-results-Kalman');
     const files = fs.readdirSync(resultsDir);
 
     const latestFilteredFile = files

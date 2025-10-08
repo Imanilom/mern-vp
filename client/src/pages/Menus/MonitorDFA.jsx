@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -8,75 +8,96 @@ import { useDispatch } from 'react-redux';
 import '../../loading.css';
 import { clearLogsWithDailytMetric } from '../../redux/user/webSlice';
 import AOS from 'aos';
-import LineGraph from '../../components/LineGraphDFA';
-import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { Line, Bar } from 'react-chartjs-2';
+import { 
+  Chart as ChartJS, 
+  CategoryScale, 
+  LinearScale, 
+  PointElement, 
+  LineElement, 
+  BarElement,
+  Title, 
+  Tooltip, 
+  Legend,
+  Filler
+} from 'chart.js';
 
-
-let results = []
+// Register additional ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 export default function MonitorDFA() {
-
   const dispatch = useDispatch();
-  const { currentUser, DocterPatient } = useSelector((state) => state.user);
-  const [logs, setLogs] = useState(null);
+  const { currentUser } = useSelector((state) => state.user);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [dailyMetrics, setDailyMetrics] = useState([]);
-  const [isDFAGraphVisible, setDfaGraphVisible] = useState(false);
-  const [isADFAGraphVisible, setADfaGraphVisible] = useState(false);
-  const [device, setDevice] = useState("C0680226");
+  const [device] = useState("C0680226");
   const [metode, setMetode] = useState("Kalman");
   const [loading, setLoading] = useState(false);
   const [tableData, setTableData] = useState([]);
-  const [tableadfa, setTableadfa] = useState([]);
-  const [borderColor, setBorderColor] = useState([]);
-  const [resultsDFA, setResults] = useState([]);
-  const [resultsDFA2, setResults2] = useState([]);
   const [graphData, setGraphData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [current, setCurrent] = useState(1);
   const itemsPerPage = 10;
+  const [activeGraphs, setActiveGraphs] = useState({
+    alpha1: false,
+    alpha2: false,
+    combined: false,
+    statusDistribution: false
+  });
 
+  // Memoized calculations for better performance
+  const { currentData, totalPages } = useMemo(() => {
+    const total = Math.ceil(tableData.length / itemsPerPage);
+    const data = tableData.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+    return { currentData: data, totalPages: total };
+  }, [tableData, currentPage]);
 
-  // Jika input date range berubah, jalankan fungsi dibwh
+  const statusCounts = useMemo(() => {
+    return tableData.reduce((acc, item) => {
+      acc[item.status] = (acc[item.status] || 0) + 1;
+      return acc;
+    }, {});
+  }, [tableData]);
+
   useEffect(() => {
-  
     if (startDate && endDate) {
       fetchLogs(device);
     }
   }, [startDate, endDate]);
 
   useEffect(() => {
-    // Mengecek apakah user memiliki guid yang valid
-    if (currentUser.guid == '' || !currentUser.guid) {
+    if (currentUser.guid === '' || !currentUser.guid) {
       setLoading(true);
       Swal.fire({
         title: "Error!",
-        text: "Kamu belum memiliki guid yang valid. akses ditolak!",
+        text: "Kamu belum memiliki guid yang valid. Akses ditolak!",
         icon: "error",
         confirmButtonColor: "#3085d6",
       }).then(() => {
-        // tendang ke profile untuk mengisi guid
         return navigate('/profile');
       });
     } else {
-      // Panggil AOS untuk scrool animation
-      AOS.init({
-        duration: 700
-      })
-
-      fetchLogs(device); // run function
+      AOS.init({ duration: 700 });
+      fetchLogs(device);
     }
   }, []);
 
   const fetchLogs = async (device, metode) => {
     try {
-      setLoading(true); // tampilkan halaman loading
+      setLoading(true);
 
-      results = [];
-
-      // Fetching API
       let url = `/api/user/logdfa`;
       if (device) {
         url = `/api/user/logdfa`;
@@ -90,37 +111,18 @@ export default function MonitorDFA() {
       }
 
       const response = await fetch(url);
-   
       const data = await response.json();
 
       const tableData = processData(data);
-      const tableadfa = processadfa(data);
-      const graphData = graph(data);
+      const graphData = processAlpha2DailyData(data);
 
-
-      
-    
-      
-    
       setTableData(tableData);
-      setTableadfa(tableadfa);
       setGraphData(graphData);
 
       if (!response.ok) {
-        // Jika terjadi kesalahan, hentikan dan set semua variabel ke default
-        setLogs([]);
-        setDailyMetrics([]);
-        setResults([]);
-        setResults2([]);
         dispatch(clearLogsWithDailytMetric());
-        return
+        return;
       }
-    
-      // urutkan berdasarakna date
-      let sortedResult = data.result.sort((a, b) => a.timestamp_tanggal - b.timestamp_tanggal);
-      
-      setResults(sortedResult); // menampung data untuk table
-      setResults2(sortedResult); // menampung data untuk grafik
 
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -129,369 +131,496 @@ export default function MonitorDFA() {
     }
   };
 
-  const graph = (data) => {
-    const graphData = [];
+  // Hapus sorting di processData
+const processData = (data) => {
+  const tableData = [];
 
-    data.result.forEach((entry) => {
-      const { date, activityMetrics } = entry;
+  data.result.forEach((entry) => {
+    const { date, activityMetrics } = entry;
 
-      // Iterasi aktivitas
-      Object.entries(activityMetrics).forEach(([activity, metricsArray]) => {
-        metricsArray.forEach(({ metrics, timestamps }) => {
-          const { dfa } = metrics || {};
-          const { start, end } = timestamps || {};
+    Object.entries(activityMetrics).forEach(([activity, metricsArray]) => {
+      metricsArray.forEach(({ metrics, timestamps }) => {
+        const { dfa } = metrics || {};
+        const { start, end } = timestamps || {};
 
-          graphData.push({
-            activity,
-            date,
-            start,
-            end,
-            alpha1: dfa?.alpha1 || null,
-            alpha2: dfa?.alpha2 || null,
-            status: getStatus(dfa?.alpha1, dfa?.alpha2),
-          });
+        tableData.push({
+          activity,
+          date,
+          start,
+          end,
+          alpha1: dfa?.alpha1 || null,
+          alpha2: dfa?.alpha2 || null,
+          status: getStatus(dfa?.alpha1, dfa?.alpha2),
         });
       });
     });
+  });
 
-    return graphData;
-  };
+  return tableData; // Tidak perlu sorting di sini
+};
 
-  const processData = (data) => {
-    const tableData = [];
+// Hapus sorting di processAlpha2DailyData
+const processAlpha2DailyData = (data) => {
+  const dailyData = [];
 
-    data.result.forEach((entry) => {
-      const { date, activityMetrics } = entry;
+  data.result.forEach((entry) => {
+    const { date, activityMetrics } = entry;
 
-      // Iterasi aktivitas
-      Object.entries(activityMetrics).forEach(([activity, metricsArray]) => {
-        metricsArray.forEach(({ metrics, timestamps }) => {
-          const { dfa } = metrics || {};
-          const { start, end } = timestamps || {};
+    Object.entries(activityMetrics).forEach(([activity, metricsArray]) => {
+      metricsArray.forEach(({ metrics, timestamps }) => {
+        const { dfa } = metrics || {};
+        const { start, end } = timestamps || {};
 
-          tableData.push({
-            activity,
+        if (dfa?.alpha2 !== null && dfa?.alpha2 !== undefined) {
+          dailyData.push({
             date,
             start,
             end,
-            alpha1: dfa?.alpha1 || null,
-            alpha2: dfa?.alpha2 || null,
-            status: getStatus(dfa?.alpha1, dfa?.alpha2),
+            activity,
+            alpha2: dfa.alpha2,
+            status: getStatus(null, dfa.alpha2)
           });
-        });
+        }
       });
     });
+  });
 
-    return tableData;
-  };
-
+  return dailyData; // Tidak perlu sorting di sini
+};
 
   const getStatus = (alpha1, alpha2) => {
-    if (alpha1 === null || alpha2 === null) return "tidak ada";
-    if (alpha1 >= 1.5 || alpha2 >= 1.5) return "danger";
-    if (alpha1 >= 1.2 || alpha2 >= 1.2) return "warning";
+    if (alpha1 === null && alpha2 === null) return "tidak ada";
+    const value = alpha2 !== null ? alpha2 : alpha1;
+    if (value >= 1.5) return "danger";
+    if (value >= 1.2) return "warning";
     return "safe";
   };
 
-
-  const processadfa = (data) => {
-    const tableadfa = [];
-  
-    data.result.forEach((entry) => {
-      const { date, activityMetrics } = entry;
-
-      // Iterasi aktivitas
-      Object.entries(activityMetrics).forEach(([activity, metricsArray]) => {
-        metricsArray.forEach(({ metrics, timestamps }) => {
-          const { adfa } = metrics || {};
-          const { start, end } = timestamps || {};
-
-          tableData.push({
-            activity,
-            date,
-            start,
-            end,
-            alphaPlus: adfa?.alphaPlus || null,
-            alphaMinus: adfa?.alphaMinus || null,
-          });
-        });
-      });
-    });
-
-    return tableadfa;
+  const getStatusColor = (value, isAlpha2 = false) => {
+    const status = getStatus(isAlpha2 ? null : value, isAlpha2 ? value : null);
+    if (status === 'safe') return 'rgba(75, 192, 192, 0.7)';
+    if (status === 'warning') return 'rgba(255, 159, 64, 0.7)';
+    return 'rgba(255, 99, 132, 0.7)';
   };
 
-  const currentData = tableData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages = Math.ceil(tableData.length / itemsPerPage);
-
-  const currentadfa = tableadfa.slice(
-    (current - 1) * itemsPerPage,
-    current * itemsPerPage
-  );
-
-  const totalPagesadfa = Math.ceil(tableData.length / itemsPerPage);
-
-  
-  // Handle Change Metode
-  const handleChangeMetode = (e) => {
-    e.preventDefault(); // Menghindari web dimuat ulang
-    setMetode(e.target.value);
-    fetchLogs(device, e.target.value); // run function
-  }
-
-  const getStatusColor = (alpha1, alpha2) => {
-    const status = getStatus(alpha1, alpha2); // Assuming getStatus() returns 'safe', 'warning', or 'danger'
-    if (status === 'safe') {
-      return 'rgba(0, 255, 0, 1)'; // Green for safe
-    } else if (status === 'warning') {
-      return 'rgba(255, 165, 0, 1)'; // Orange for warning
-    } else {
-      return 'rgba(255, 0, 0, 1)'; // Red for danger
+const alpha1ChartData = {
+  labels: [...tableData].reverse().map(item => `${item.date} ${item.start}`), // Balikkan urutan
+  datasets: [
+    {
+      label: 'Alpha 1 per Aktivitas',
+      data: [...tableData].reverse().map(item => item.alpha1), // Balikkan urutan
+      borderColor: 'rgba(0, 0, 0, 1)',
+      backgroundColor: [...tableData].reverse().map(item => getStatusColor(item.alpha1)), // Balikkan urutan
+      borderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      tension: 0.3,
+      fill: {
+        target: 'origin',
+        above: 'rgba(75, 192, 192, 0.2)',
+        below: 'rgba(255, 99, 132, 0.2)'
+      }
     }
-  };
+  ],
+};
 
-  const chartData = {
-    labels: graphData.map(item => item.start),  // Formatting timestamps as time
+const alpha2ChartData = {
+  labels: [...graphData].reverse().map(item => `${item.date} ${item.start}`), // Balikkan urutan
+  datasets: [
+    {
+      label: 'Alpha 2 Harian',
+      data: [...graphData].reverse().map(item => item.alpha2), // Balikkan urutan
+      borderColor: 'rgba(18, 15, 15, 1)',
+      backgroundColor: [...graphData].reverse().map(item => getStatusColor(item.alpha2, true)), // Balikkan urutan
+      borderWidth: 1,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      tension: 0.3,
+      fill: true
+    }
+  ],
+};
+
+const combinedChartData = {
+  labels: [...tableData].reverse().map(item => `${item.date} ${item.start}`), // Balikkan urutan
+  datasets: [
+    {
+      label: 'Alpha 1',
+      data: [...tableData].reverse().map(item => item.alpha1), // Balikkan urutan
+      borderColor: 'rgba(75, 192, 192, 1)',
+      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      borderWidth: 2,
+      tension: 0.3,
+      yAxisID: 'y'
+    },
+    {
+      label: 'Alpha 2',
+      data: [...tableData].reverse().map(item => item.alpha2), // Balikkan urutan
+      borderColor: 'rgba(255, 99, 132, 1)',
+      backgroundColor: 'rgba(255, 99, 132, 0.2)',
+      borderWidth: 2,
+      tension: 0.3,
+      yAxisID: 'y'
+    }
+  ]
+};
+
+  const statusDistributionData = {
+    labels: ['Safe', 'Warning', 'Danger'],
     datasets: [
       {
-        label: 'Alpha 1',
-        data: graphData.map(item => item.alpha1),
-        borderColor: 'rgba(75, 192, 192, 1)', // Distinct color for alpha1
-        backgroundColor: graphData.map(item => getStatusColor(item.alpha1, item.alpha2)), // Dynamic color based on status
-        fill: false,
-      },
-      {
-        label: 'Alpha 2',
-        data: graphData.map(item => item.alpha2),
-        borderColor: 'rgba(255, 99, 132, 1)', // Distinct color for alpha2
-        backgroundColor: graphData.map(item => getStatusColor(item.alpha1, item.alpha2)), // Dynamic color based on status
-        fill: false,
-      },
-    ],
+        label: 'Status Distribution',
+        data: [
+          statusCounts.safe || 0,
+          statusCounts.warning || 0,
+          statusCounts.danger || 0
+        ],
+        backgroundColor: [
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(255, 159, 64, 0.7)',
+          'rgba(255, 99, 132, 0.7)'
+        ],
+        borderColor: [
+          'rgba(75, 192, 192, 1)',
+          'rgba(255, 159, 64, 1)',
+          'rgba(255, 99, 132, 1)'
+        ],
+        borderWidth: 1
+      }
+    ]
   };
 
-  const options = {
+  const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       tooltip: {
         callbacks: {
-          label: function(tooltipItem) {
-            const index = tooltipItem.dataIndex;
-            const activity = graphData[index].activity; // Get the activity for the hovered point
-            const value = tooltipItem.raw; // The value of alpha1 or alpha2
-            return `${activity}: ${value}`; // Display activity name and value
+          label: function(context) {
+            const index = context.dataIndex;
+            let label = context.dataset.label || '';
+            let activity, timeRange;
+            
+            if (context.dataset.label.includes('Alpha 1')) {
+              activity = tableData[index].activity;
+              timeRange = `${tableData[index].start} - ${tableData[index].end}`;
+              return [
+                `${label}: ${context.parsed.y?.toFixed(2) || 'N/A'}`,
+                `Aktivitas: ${activity}`,
+                `Waktu: ${timeRange}`
+              ];
+            } else if (context.dataset.label.includes('Alpha 2')) {
+              activity = graphData[index]?.activity || tableData[index]?.activity;
+              timeRange = graphData[index] ? 
+                `${graphData[index].start} - ${graphData[index].end}` : 
+                `${tableData[index].start} - ${tableData[index].end}`;
+              return [
+                `${label}: ${context.parsed.y?.toFixed(2) || 'N/A'}`,
+                `Aktivitas: ${activity}`,
+                `Waktu: ${timeRange}`,
+                `Tanggal: ${graphData[index]?.date || tableData[index]?.date}`
+              ];
+            } else {
+              return `${label}: ${context.parsed.y}`;
+            }
+          },
+          afterLabel: function(context) {
+            const index = context.dataIndex;
+            let status;
+            if (context.dataset.label.includes('Alpha 1')) {
+              status = tableData[index]?.status;
+            } else if (context.dataset.label.includes('Alpha 2')) {
+              status = graphData[index]?.status;
+            }
+            return status ? `Status: ${status}` : '';
           }
+        }
+      },
+      legend: {
+        position: 'top',
+        labels: {
+          font: {
+            size: 12
+          },
+          padding: 20
+        }
+      },
+      title: {
+        display: true,
+        text: 'DFA Monitoring',
+        font: {
+          size: 16
+        }
+      }
+    },
+    scales: {
+      y: {
+        min: 0,
+        max: 2,
+        ticks: {
+          stepSize: 0.2
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        }
+      },
+      x: {
+        grid: {
+          display: false
+        },
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45
+        }
+      }
+    },
+    interaction: {
+      mode: 'index',
+      intersect: false
+    }
+  };
+
+  const statusDistributionOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Status Distribution',
+        font: {
+          size: 16
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1
         }
       }
     }
   };
-  
-  
-  
-  
+
+  const handleChangeMetode = (e) => {
+    e.preventDefault();
+    setMetode(e.target.value);
+    fetchLogs(device, e.target.value);
+  };
+
+  const toggleGraph = (graphName) => {
+    setActiveGraphs(prev => ({
+      ...prev,
+      [graphName]: !prev[graphName]
+    }));
+  };
+
   return (
-    <div>
-      {loading ? (
+    <div className="min-h-screen">
+      {loading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101010] dark:bg-[#FEFCF5]">
           <div className="flex flex-col items-center">
-            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] dark:border-[#217170] rounded-full animate-spin " style={{ animationDuration: '0.5s' }}></div>
+            <div className="w-16 h-16 border-t-4 border-b-4 border-[#07AC7B] dark:border-[#217170] rounded-full animate-spin" style={{ animationDuration: '0.5s' }}></div>
             <p className="text-center font-semibold mt-4 text-[#07AC7B] dark:text-[#217170]">
               Loading...
             </p>
           </div>
         </div>
-
-      ) : null}
-      <main className=''>
-        <section className="bg-[#101010] dark:bg-[#FEFCF5] flex text-white  dark:text-[#073B4C]">
+      )}
+      
+      <main>
+        <section className="bg-[#101010] dark:bg-[#FEFCF5] flex text-white dark:text-[#073B4C]">
           <Side />
           <div className="w-full xl:w-8/12 mb-12 pb-8 xl:mb-0 px-4 mx-auto mt-5">
-            <div className=" flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
+            <div className="flex flex-col min-w-0 break-words bg-[#101010] dark:bg-[#FEFCF5] w-full">
               <div className="rounded-t mb-0 px-4 py-3 border-0">
-                <div className="flex flex-wrap items-center">
-                  {/* <ButtonOffCanvas index={2} /> */}
-
-                  <h1 data-aos="fade-up" class="text-3xl font-semibold capitalize lg:text-4xl ">Monitoring DFA</h1>
-
+                <h1 data-aos="fade-up" className="text-3xl font-semibold capitalize lg:text-4xl">Monitoring DFA</h1>
+                
+                <div className="flex flex-wrap items-center mt-3 gap-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <DatePicker
+                      selectsRange
+                      startDate={startDate}
+                      endDate={endDate}
+                      onChange={([start, end]) => {
+                        setStartDate(start);
+                        setEndDate(end);
+                      }}
+                      isClearable
+                      placeholderText='Pilih rentang tanggal'
+                      className="lg:p-2.5 p-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] rounded text-sm md:text-[16px] w-full"
+                      dateFormat="dd/MM/yyyy"
+                    />
+                  </div>
+                  
+                  <div className="flex-1 min-w-[200px]">
+                    <select
+                      value={metode}
+                      onChange={handleChangeMetode}
+                      className="lg:p-2.5 p-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] rounded text-sm md:text-[16px] w-full"
+                    >
+                      <option value="IQ">IQ</option>
+                      <option value="Kalman">Kalman</option>
+                      <option value="BC">Box Cox</option>
+                      <option value="OC">One Class SVM</option>
+                    </select>
+                  </div>
                 </div>
-                <DatePicker
-                  data-aos="fade-left"
-                  selectsRange
-                  startDate={startDate}
-                  endDate={endDate}
-                  onChange={(dates) => {
-                    const [start, end] = dates;
-                    setStartDate(start);
-                    setEndDate(end);
-                  }}
-                  isClearable
-                  placeholderText='Cari berdasarkan range tanggal'
-                  className="lg:p-2.5 p-3 md:pe-[10vw] pe-[30vw] bg-[#2C2C2C] dark:bg-[#E7E7E7] lg:mb-0 mb-4 rounded text-sm lg:me-0 me-3 mt-3 md:text-[16px] lg:min-w-[320px] md:w-fit w-full min-w-screen inline-block"
-                />
 
-                <select
-                  name=""
-                  id=""
-                  className="lg:p-2.5 p-3 sm:mt-0 pe-8 sm:ms-3 bg-[#2C2C2C] dark:bg-[#E7E7E7] md:max-w-[200px] rounded text-sm w-full  md:text-[16px] lg:min-w-[220px] px-3 py-3"
-                  onChange={handleChangeMetode}
-                >
-                  {/* <option value="" disabled selected>Choose metode</option> */}
-                  <option value="IQ">IQ</option>
-                  <option value="Kalman">Kalman</option>
-                             <option value="BC">Box Cox</option>
-                  <option value="OC">One Class SVM</option>
-                </select>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+                  <div className="bg-[#2C2C2C] dark:bg-[#E7E7E7] p-4 rounded-lg shadow">
+                    <h3 className="text-sm font-medium text-gray-400 dark:text-gray-600">Total Data</h3>
+                    <p className="text-2xl font-bold">{tableData.length}</p>
+                  </div>
+                  <div className="bg-[#2C2C2C] dark:bg-[#E7E7E7] p-4 rounded-lg shadow">
+                    <h3 className="text-sm font-medium text-gray-400 dark:text-gray-600">Safe Status</h3>
+                    <p className="text-2xl font-bold text-green-500">{statusCounts.safe || 0}</p>
+                  </div>
+                  <div className="bg-[#2C2C2C] dark:bg-[#E7E7E7] p-4 rounded-lg shadow">
+                    <h3 className="text-sm font-medium text-gray-400 dark:text-gray-600">Warning/Danger</h3>
+                    <p className="text-2xl font-bold text-orange-500">
+                      {(statusCounts.warning || 0) + (statusCounts.danger || 0)}
+                    </p>
+                  </div>
+                </div>
 
-                <table className="min-w-full mt-5 border-collapse border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                  <thead className='bg-gray-300 text-gray-700'>
-                    <tr className="bg-gray-200">
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Tanggal</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Waktu Mulai</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Waktu Selesai</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Aktivitas</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Alpha 1</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Alpha 2</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Status</th>
-                    </tr>
-                  </thead>
-                    <tbody className="bg-gray-200 divide-y divide-gray-200">
-                    {currentData.map((row, index) => (
-                        <tr key={index} className="hover:bg-gray-50 transition duration-200">
-                            <td className="px-6 py-4 text-sm text-gray-800">{row.date}</td>
-                            <td className="px-6 py-4 text-sm text-gray-800">{row.start}</td>
-                            <td className="px-6 py-4 text-sm text-gray-800">{row.end}</td>
-                            <td className="px-6 py-4 text-sm text-gray-800">{row.activity}</td>
-                            <td className="px-6 py-4 text-sm text-gray-800">
-                              {row.alpha1 !== null ? (
-                                  row.alpha1.toFixed(2)
-                              ) : (
-                                  <span className="px-3 py-1 rounded-full bg-gray-400 text-white font-medium">
-                                      properti kosong
-                                  </span>
-                              )}
+                {/* Tabel Data */}
+                <div className="mt-5 overflow-x-auto rounded-lg shadow-lg">
+                  <table className="min-w-full border-collapse">
+                    <thead className='bg-[#2C2C2C] dark:bg-[#E7E7E7]'>
+                      <tr>
+                        <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider">Tanggal</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider">Waktu</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider">Aktivitas</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider">Alpha 1</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider">Alpha 2</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-[#1A1A1A] dark:bg-[#F5F5F5] divide-y divide-[#2C2C2C] dark:divide-[#E7E7E7]">
+                      {currentData.map((row, index) => (
+                        <tr key={index} className="hover:bg-[#2C2C2C] dark:hover:bg-[#E7E7E7] transition duration-200">
+                          <td className="px-6 py-4 text-sm">{row.date}</td>
+                          <td className="px-6 py-4 text-sm">{row.start} - {row.end}</td>
+                          <td className="px-6 py-4 text-sm capitalize">{row.activity}</td>
+                          <td className="px-6 py-4 text-sm">
+                            {row.alpha1 !== null ? row.alpha1.toFixed(2) : 'N/A'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-800">
-                              {row.alpha2 !== null ? (
-                                  row.alpha2.toFixed(2)
-                              ) : (
-                                  <span className="px-3 py-1 rounded-full bg-gray-400 text-white font-medium">
-                                      properti kosong
-                                  </span>
-                              )}
+                          <td className="px-6 py-4 text-sm">
+                            {row.alpha2 !== null ? row.alpha2.toFixed(2) : 'N/A'}
                           </td>
-
-                            <td className="px-6 py-4 text-sm text-gray-800">
-                                <span
-                                    className={`px-3 py-1 rounded-full text-white font-medium ${
-                                        row.status === "safe"
-                                            ? "bg-green-500"
-                                            : row.status === "warning"
-                                            ? "bg-orange-500"
-                                            : row.status === "danger"
-                                            ? "bg-red-500"
-                                            : "bg-gray-400"
-                                    }`}
-                                >
-                                    {row.status}
-                                </span>
-                            </td>
+                          <td className="px-6 py-4 text-sm">
+                            <span className={`px-3 py-1 rounded-full text-white font-medium ${
+                              row.status === "safe" ? "bg-green-500" :
+                              row.status === "warning" ? "bg-orange-500" :
+                              row.status === "danger" ? "bg-red-500" : "bg-gray-400"
+                            }`}>
+                              {row.status}
+                            </span>
+                          </td>
                         </tr>
-                    ))}
-                </tbody>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-                </table>
-
+                {/* Pagination */}
                 <div className="flex justify-between items-center mt-4">
                   <button
-                    className="px-4 py-2 border rounded"
+                    className="px-4 py-2 border rounded bg-[#2C2C2C] dark:bg-[#E7E7E7] hover:bg-[#3C3C3C] dark:hover:bg-[#D7D7D7] disabled:opacity-50"
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(currentPage - 1)}
                   >
-                    Previous
+                    Sebelumnya
                   </button>
-                  <span>
-                    Page {currentPage} of {totalPagesadfa}
+                  <span className="text-sm">
+                    Halaman {currentPage} dari {totalPages}
                   </span>
                   <button
-                    className="px-4 py-2 border rounded"
-                    disabled={currentPage === totalPagesadfa}
+                    className="px-4 py-2 border rounded bg-[#2C2C2C] dark:bg-[#E7E7E7] hover:bg-[#3C3C3C] dark:hover:bg-[#D7D7D7] disabled:opacity-50"
+                    disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage(currentPage + 1)}
                   >
-                    Next
+                    Berikutnya
                   </button>
                 </div>
 
-                <br />
-
-                {/* <table className="min-w-full mt-5 border-collapse border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                  <thead className='bg-gray-300 text-gray-700'>
-                    <tr className="bg-gray-200">
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Tanggal</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Waktu Mulai</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Waktu Selesai</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Aktivitas</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Alpha Plus</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium uppercase tracking-wider border-b">Alpha Minus</th>
-                    </tr>
-                  </thead>
-                  <tbody className='bg-gray-200 divide-y divide-gray-200'>
-                    {currentadfa.map((row, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition duration-200">
-                        <td className="px-6 py-4 text-sm text-gray-800">{row.date}</td>
-                        <td className="px-6 py-4 text-sm text-gray-800">{row.start}</td>
-                        <td className="px-6 py-4 text-sm text-gray-800">{row.end}</td>
-                        <td className="px-6 py-4 text-sm text-gray-800">{row.activity}</td>
-                        <td className="px-6 py-4 text-sm text-gray-800">{row.alphaPlus}</td>
-                        <td className="px-6 py-4 text-sm text-gray-800">{row.alphaMinus}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table> */}
-
-                {/* <div className="flex justify-between items-center mt-4">
+                {/* Toggle Grafik */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
                   <button
-                    className="px-4 py-2 border rounded"
-                    disabled={current === 1}
-                    onClick={() => setCurrent(current - 1)}
+                    onClick={() => toggleGraph('alpha1')}
+                    className={`px-4 py-2 rounded transition ${activeGraphs.alpha1 ? 'bg-green-600 text-white' : 'bg-[#2C2C2C] dark:bg-[#E7E7E7]'}`}
                   >
-                    Previous
+                    {activeGraphs.alpha1 ? 'Hide' : 'Show'} Alpha 1
                   </button>
-                  <span>
-                    Page {current} of {totalPages}
-                  </span>
                   <button
-                    className="px-4 py-2 border rounded"
-                    disabled={current === totalPages}
-                    onClick={() => setCurrent(current + 1)}
+                    onClick={() => toggleGraph('alpha2')}
+                    className={`px-4 py-2 rounded transition ${activeGraphs.alpha2 ? 'bg-red-600 text-white' : 'bg-[#2C2C2C] dark:bg-[#E7E7E7]'}`}
                   >
-                    Next
+                    {activeGraphs.alpha2 ? 'Hide' : 'Show'} Alpha 2
                   </button>
-                </div> */}
+                  <button
+                    onClick={() => toggleGraph('combined')}
+                    className={`px-4 py-2 rounded transition ${activeGraphs.combined ? 'bg-blue-600 text-white' : 'bg-[#2C2C2C] dark:bg-[#E7E7E7]'}`}
+                  >
+                    {activeGraphs.combined ? 'Hide' : 'Show'} Combined
+                  </button>
+                  <button
+                    onClick={() => toggleGraph('statusDistribution')}
+                    className={`px-4 py-2 rounded transition ${activeGraphs.statusDistribution ? 'bg-purple-600 text-white' : 'bg-[#2C2C2C] dark:bg-[#E7E7E7]'}`}
+                  >
+                    {activeGraphs.statusDistribution ? 'Hide' : 'Show'} Status
+                  </button>
+                </div>
 
-                
+                {/* Grafik Alpha 1 */}
+                {activeGraphs.alpha1 && (
+                  <div className="mt-5 bg-[#2C2C2C] dark:bg-[#E7E7E7] p-4 rounded-lg shadow">
+                    <h3 className="text-lg font-semibold mb-2">Grafik Alpha 1 per Aktivitas</h3>
+                    <div className="h-80">
+                      <Line data={alpha1ChartData} options={chartOptions} />
+                    </div>
+                  </div>
+                )}
 
+                {/* Grafik Alpha 2 Harian */}
+                {activeGraphs.alpha2 && (
+                  <div className="mt-5 bg-[#2C2C2C] dark:bg-[#E7E7E7] p-4 rounded-lg shadow">
+                    <h3 className="text-lg font-semibold mb-2">Grafik Alpha 2 Harian</h3>
+                    <div className="h-80">
+                      <Line data={alpha2ChartData} options={chartOptions} />
+                    </div>
+                  </div>
+                )}
 
+                {/* Combined Graph */}
+                {activeGraphs.combined && (
+                  <div className="mt-5 bg-[#2C2C2C] dark:bg-[#E7E7E7] p-4 rounded-lg shadow">
+                    <h3 className="text-lg font-semibold mb-2">Grafik Combined Alpha 1 & Alpha 2</h3>
+                    <div className="h-80">
+                      <Line data={combinedChartData} options={chartOptions} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Status Distribution Graph */}
+                {activeGraphs.statusDistribution && (
+                  <div className="mt-5 bg-[#2C2C2C] dark:bg-[#E7E7E7] p-4 rounded-lg shadow">
+                    <h3 className="text-lg font-semibold mb-2">Distribusi Status</h3>
+                    <div className="h-80">
+                      <Bar data={statusDistributionData} options={statusDistributionOptions} />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-
-            
-
-            <div onClick={() => setDfaGraphVisible(!isDFAGraphVisible)} className={isDFAGraphVisible && resultsDFA2.length > 0 ? `border-transparent mb-3 bg-[#07AC7B] rounded-md flex mx-4 cursor-pointer dark:bg-[#101010]/10` : `mb-3 cursor-pointer border border-gray-400 rounded-md flex mx-4 dark:bg-[#101010]/10`}>
-              <button className='text-xs py-0.5 px-1.5 m-2'>{isDFAGraphVisible ? 'Hide' : 'Show'} Graphic DFA</button>
-            </div>
-            {isDFAGraphVisible && resultsDFA2.length > 0 ? (
-               <Line data={chartData} options={options} />
-
-
-            ) : null}
           </div>
         </section>
       </main>
     </div>
   );
 }
-
