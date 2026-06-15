@@ -1,29 +1,26 @@
-import cron from "node-cron";
 import fs from "fs";
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import 'chartjs-adapter-date-fns';  // Import date adapter
-import Log from "../models/log.model.js"; // Import your Log model
+import Log from "../models/log.model.js";
 import User from '../models/user.model.js';
 import PolarData from "../models/data.model.js";
+import Segment from "../models/segment.model.js";
 import { generateGraph, generateGraphsForAllFolders } from "./graph.controller.js";
-import { calculateAdvancedMetrics, calculateQuartilesAndIQR, fillMissingRRForLogsWithHR } from "./metrics.controller.js";
-
-import { runAllMethods } from './logs.controller.js';
-
-import { promisify } from 'util';
-import { timeStamp } from "console";
-import { magnitude } from "fft-js/src/complex.js";
-
-const mkdir = promisify(fs.mkdir);
+import { calculateAdvancedMetrics, calculateQuartilesAndIQR } from "./metrics.controller.js";
+import { calculateDFA } from "./metrics.controller.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Ukuran window segmentasi: 3 menit dalam ms
+const WINDOW_MS = 3 * 60 * 1000;
+// Minimum data point per window agar fitur dianggap valid
+const MIN_POINTS_PER_WINDOW = 10;
+
 export const formatTimestamp = (timestamp) => {
   const date = new Date(timestamp);
-  return date.toISOString().replace(/[:.]/g, '-'); // Replace ':' and '.' with '-'
+  return date.toISOString().replace(/[:.]/g, '-');
 };
 
 // Function to group data into groups of 3 and calculate the average
@@ -245,86 +242,73 @@ export async function kalmanFilter(sortedLogs, options = {}) {
   };
 }
 
-export async function filterIQ(logs, multiplier = 1.5) {
+/**
+ * filterIQ — Filter outlier HR & RR menggunakan metode IQR global per batch.
+ *
+ * Pendekatan:
+ * - Hitung Q1, Q3, IQR dari seluruh batch (bukan per-detik group)
+ * - Data yang keluar dari [Q1 - k*IQR, Q3 + k*IQR] dianggap outlier
+ * - Nilai outlier diganti dengan rata-rata tetangga kiri & kanan
+ * - Lebih efisien: O(n log n) dari sorting, tidak ada overhead grouping
+ *
+ * Field input menggunakan lowercase (hr, rr) sesuai PolarData model baru.
+ *
+ * @param {Array} logs - Array dokumen dari PolarData (.lean())
+ * @param {number} multiplier - Pengali IQR (default 1.5)
+ * @returns {{ filteredLogs: Array, anomalyCount: number }}
+ */
+export function filterIQ(logs, multiplier = 1.5) {
   if (!logs || logs.length === 0) {
-    console.error("No logs available for processing.");
-    return { filteredLogs: [], anomalies: [] };
+    return { filteredLogs: [], anomalyCount: 0 };
   }
 
-  const filteredLogs = [];
-  const anomalies = [];
+  // Ekstrak nilai HR dan RR dari seluruh batch
+  const hrValues = logs.map(l => l.hr);
+  const rrValues = logs.map(l => l.rr);
 
-  // Mengelompokkan log berdasarkan interval waktu 10 detik
-  const groupedLogs = [];
-  let currentGroup = [];
-  let startTime = logs[0].timestamp;
+  // Hitung IQR global
+  const hrStats = calculateQuartilesAndIQR([...hrValues].sort((a, b) => a - b));
+  const rrStats = calculateQuartilesAndIQR([...rrValues].sort((a, b) => a - b));
 
-  logs.forEach(log => {
-    const logTime = log.timestamp;
-    if (logTime - startTime < 1000) {
-      currentGroup.push(log);
-    } else {
-      if (currentGroup.length > 0) groupedLogs.push(currentGroup);
-      currentGroup = [log];
-      startTime = logTime;
+  const hrLow  = hrStats.Q1 - multiplier * hrStats.IQR;
+  const hrHigh = hrStats.Q3 + multiplier * hrStats.IQR;
+  const rrLow  = rrStats.Q1 - multiplier * rrStats.IQR;
+  const rrHigh = rrStats.Q3 + multiplier * rrStats.IQR;
+
+  let anomalyCount = 0;
+
+  // Buat salinan agar tidak mutasi array asli
+  const filteredLogs = logs.map((log, i) => {
+    const hrOutlier = log.hr < hrLow || log.hr > hrHigh;
+    const rrOutlier = log.rr < rrLow || log.rr > rrHigh;
+
+    if (!hrOutlier && !rrOutlier) {
+      return { ...log };
     }
+
+    anomalyCount++;
+
+    // Cari tetangga kiri & kanan yang valid
+    const leftIdx  = i > 0 ? i - 1 : i;
+    const rightIdx = i < logs.length - 1 ? i + 1 : i;
+
+    const replacedHr = hrOutlier
+      ? (hrValues[leftIdx] + hrValues[rightIdx]) / 2
+      : log.hr;
+    const replacedRr = rrOutlier
+      ? (rrValues[leftIdx] + rrValues[rightIdx]) / 2
+      : log.rr;
+
+    return {
+      ...log,
+      hr: parseFloat(replacedHr.toFixed(1)),
+      rr: Math.round(replacedRr),
+      _iqrCorrected: true,
+    };
   });
 
-  if (currentGroup.length > 0) groupedLogs.push(currentGroup);
-
-  // Proses setiap grup
-  groupedLogs.forEach((group, index) => {
-    const hrValues = group.map(log => log.HR).filter(value => value !== undefined && value !== null);
-    const rrValues = group.map(log => log.RR).filter(value => value !== undefined && value !== null);
-
-    if (hrValues.length === 0 || rrValues.length === 0) {
-      console.warn(`Group ${index} skipped due to invalid data.`);
-      return;
-    }
-
-    const hrStats = calculateQuartilesAndIQR(hrValues);
-    const rrStats = calculateQuartilesAndIQR(rrValues);
-
-    // Deteksi anomali dan ganti dengan rata-rata tetangga kiri dan kanan
-    for (let i = 0; i < group.length; i++) {
-      const hrValue = hrValues[i];
-      const rrValue = rrValues[i];
-
-      // Deteksi anomali HR dan RR
-      const hrAnomaly = hrValue < hrStats.Q1 - multiplier * hrStats.IQR || hrValue > hrStats.Q3 + multiplier * hrStats.IQR;
-      const rrAnomaly = rrValue < rrStats.Q1 - multiplier * rrStats.IQR || rrValue > rrStats.Q3 + multiplier * rrStats.IQR;
-
-      if (hrAnomaly || rrAnomaly) {
-        anomalies.push(group[i]);
-
-        // Mengganti dengan rata-rata tetangga kiri dan kanan jika ada anomali
-        const leftIndex = i > 0 ? i - 1 : i;  // Menentukan indeks kiri
-        const rightIndex = i < group.length - 1 ? i + 1 : i;  // Menentukan indeks kanan
-        const avgHr = (hrValues[leftIndex] + hrValues[rightIndex]) / 2;
-        const avgRr = (rrValues[leftIndex] + rrValues[rightIndex]) / 2;
-
-        // Memperbarui nilai yang terdeteksi anomali dengan rata-rata
-        group[i].HR = avgHr;
-        group[i].RR = avgRr;
-      }
-    }
-
-    // Menyaring log dengan menggunakan nilai yang telah diganti jika ada anomali
-    group.forEach(log => {
-      const filteredLog = {
-        HR: log.HR,
-        RR: log.RR,
-        rrRMS: log.rrRMS,
-        date_created: log.date_created,
-        time_created: log.time_created,
-        aktivitas: log.activity,
-      };
-
-      filteredLogs.push(filteredLog);
-    });
-  });
-
-  return { filteredLogs, anomalies };
+  console.log(`[filterIQ] ${anomalyCount} outlier dari ${logs.length} data diperbaiki`);
+  return { filteredLogs, anomalyCount };
 }
 
 export async function filterIQWithBoxCox(logs, multiplier = 1.5) {
@@ -518,221 +502,312 @@ function kernelRBF(x, y, kernelParam) {
   return Math.exp(-squaredDistance / (2 * kernelParam ** 2));
 }
 
+/**
+ * processHeartRateData — Layer 2 pipeline utama.
+ *
+ * Alur:
+ *  1. Ambil data yang belum diproses (isChecked: false) per batch user
+ *  2. Filter outlier dengan IQR
+ *  3. Segmentasi ke window 3 menit
+ *  4. Hitung fitur per window (HR stats, HRV, motion, DFA)
+ *  5. Simpan Segment ke MongoDB
+ *  6. Tandai raw data sebagai isChecked: true
+ *
+ * Tidak ada I/O file — semua hasil ke DB agar lebih efisien & non-blocking.
+ */
 export async function processHeartRateData() {
   try {
-    console.log("Starting heart rate data processing...");
+    console.log('[Pipeline] Memulai pemrosesan data...');
 
-    // Get first unprocessed log
-    const firstLog = await PolarData.findOne({ isChecked: false })
-      .sort({ date_created: 1, time_created: 1 })
-      .lean();
+    // Ambil daftar user yang punya data belum diproses
+    const pendingUserIds = await PolarData.distinct('user_id', { isChecked: false });
 
-    if (!firstLog) {
-      console.log("No unprocessed data found.");
-      return { success: true, message: "No data to process" };
+    if (pendingUserIds.length === 0) {
+      console.log('[Pipeline] Tidak ada data baru untuk diproses.');
+      return { success: true, message: 'Tidak ada data baru' };
     }
 
-    console.log(`Processing data for date: ${firstLog.date_created}`);
+    console.log(`[Pipeline] ${pendingUserIds.length} user memiliki data belum diproses`);
 
-    // Validate date_created
-    if (!firstLog.date_created || typeof firstLog.date_created !== "string") {
-      console.error("Invalid date_created in first log:", firstLog);
-      await PolarData.updateOne(
-        { _id: firstLog._id },
-        { $set: { isChecked: true } }
-      );
-      return { success: false, message: "Invalid date format" };
-    }
+    let totalSegmentsCreated = 0;
+    let totalRawProcessed = 0;
 
-    // Get all logs with the same date that are not processed
-    const logs = await PolarData.find({
-      isChecked: false,
-      date_created: firstLog.date_created,
-    })
-      .sort({ timestamp: 1 })
-      .lean();
-
-    if (logs.length === 0) {
-      console.log("No valid data found for processing.");
-      return { success: false, message: "No valid data" };
-    }
-
-    console.log(`Found ${logs.length} logs to process`);
-
-    // Prepare directory for results
-    const resultsDir = path.join(__dirname, "hrv-results");
-    if (!fs.existsSync(resultsDir)) {
-      fs.mkdirSync(resultsDir, { recursive: true });
-      console.log(`Created results directory: ${resultsDir}`);
-    }
-
-    // Format filename: dd-mm-yyyy.json (sesuai format yang diinginkan)
-    const dateParts = firstLog.date_created.split("-");
-    if (dateParts.length !== 3) {
-      console.error("Invalid date format:", firstLog.date_created);
-      return { success: false, message: "Invalid date format" };
-    }
-
-    const [year, month, day] = dateParts;
-    const filteredFileName = path.join(
-      resultsDir,
-      `${day}-${month}-${year}.json` // Format: 27-05-2024.json
-    );
-
-    // Initialize JSON structure sesuai format yang diinginkan
-    let jsonData = {
-      dailyMetrics: {},
-      activityMetrics: {},
-      filteredLogs: []
-    };
-
-    // Load existing JSON jika ada
-    if (fs.existsSync(filteredFileName)) {
+    // Proses per user agar data terisolasi
+    for (const userId of pendingUserIds) {
       try {
-        const existingData = fs.readFileSync(filteredFileName, "utf8");
-        jsonData = JSON.parse(existingData);
-        console.log("Loaded existing JSON file");
-      } catch (error) {
-        console.error("Error reading existing JSON file:", error);
+        const result = await processUserData(userId);
+        totalSegmentsCreated += result.segmentsCreated;
+        totalRawProcessed   += result.rawProcessed;
+      } catch (userErr) {
+        console.error(`[Pipeline] Error untuk user ${userId}:`, userErr.message);
+        // Lanjutkan ke user berikutnya meski ada error
       }
     }
 
-    // Filter dan validasi logs
-    const validLogs = logs.filter((log) => {
-      if (!log.date_created || typeof log.date_created !== "string") {
-        return false;
-      }
-      if (log.hr === undefined || log.rr === undefined) {
-        return false;
-      }
-      if (log.hr < 30 || log.hr > 220) {
-        return false;
-      }
-      if (log.rr < 200 || log.rr > 2000) {
-        return false;
-      }
-      return true;
-    });
-
-    console.log(`Valid logs after filtering: ${validLogs.length}`);
-
-    if (validLogs.length === 0) {
-      console.log("No valid logs to process after filtering");
-      return { success: false, message: "No valid logs after filtering" };
-    }
-
-    // Process in batches
-    const batchSize = 5000;
-    let totalProcessed = 0;
-
-    for (let start = 0; start < validLogs.length; start += batchSize) {
-      const batch = validLogs.slice(start, start + batchSize);
-      console.log(`Processing batch ${Math.floor(start / batchSize) + 1}, size: ${batch.length}`);
-
-      // Normalize data
-      const normalizedLogs = batch.map((log) => ({
-        _id: log._id,
-        timestamp: log.timestamp,
-        date_created: log.date_created,
-        time_created: log.time_created || "00:00:00",
-        hr: Math.round(log.hr * 10) / 10,
-        rr: Math.round(log.rr),
-        rrms: Math.round(log.rrms || log.rr),
-        activity: log.activity || "Unknown",
-      }));
-
-      // Apply Kalman Filter
-      const { filteredLogs: kalmanFilteredLogs } = await kalmanFilter(normalizedLogs);
-      
-      console.log(`Kalman filter processed: ${kalmanFilteredLogs.length} records`);
-
-      // Calculate daily metrics from all valid RR values
-      const allValidRRValues = kalmanFilteredLogs
-        .map(log => log.rr)
-        .filter(rr => rr >= 300 && rr <= 1200);
-
-      if (allValidRRValues.length > 0) {
-        jsonData.dailyMetrics = calculateAdvancedMetrics(allValidRRValues);
-        console.log("Daily metrics calculated");
-      }
-
-      // Process activity segments - PERBAIKAN DI SINI
-      processActivitySegments(kalmanFilteredLogs, jsonData);
-
-      // Format filtered logs untuk output - SESUAI FORMAT YANG DIINGINKAN
-      const formattedLogs = kalmanFilteredLogs.map(log => {
-        // Format date: dd/mm/yyyy (dari yyyy-mm-dd)
-        let formattedDate = "01/01/1970";
-        try {
-          if (log.date_created && typeof log.date_created === "string") {
-            const parts = log.date_created.split("-");
-            if (parts.length === 3) {
-              formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
-            }
-          }
-        } catch (error) {
-          console.warn("Error formatting date for log:", log._id, error);
-        }
-
-        return {
-          date_created: formattedDate,
-          time_created: log.time_created,
-          HR: log.hr,
-          RR: log.rr,
-          rrRMS: log.rrms,
-          aktivitas: log.activity // menggunakan field 'aktivitas' bukan 'activity'
-        };
-      });
-
-      // Tambahkan ke filteredLogs (jangan push array, tapi ganti seluruhnya atau merge)
-      if (start === 0) {
-        jsonData.filteredLogs = formattedLogs;
-      } else {
-        jsonData.filteredLogs.push(...formattedLogs);
-      }
-
-      totalProcessed += formattedLogs.length;
-
-      // Save intermediate results
-      try {
-        fs.writeFileSync(filteredFileName, JSON.stringify(jsonData, null, 2));
-        console.log(`Batch ${Math.floor(start / batchSize) + 1} saved to ${filteredFileName}`);
-      } catch (error) {
-        console.error("Error saving batch:", error);
-      }
-
-      // Mark batch as processed in database
-      try {
-        const batchIds = batch.map(log => log._id);
-        await PolarData.updateMany(
-          { _id: { $in: batchIds } },
-          { $set: { isChecked: true, processedAt: new Date() } }
-        );
-        console.log(`Marked ${batchIds.length} records as processed`);
-      } catch (error) {
-        console.error("Error updating database:", error);
-      }
-    }
-
-    console.log(`Processing complete. Total records processed: ${totalProcessed}`);
-    console.log(`Results saved to: ${filteredFileName}`);
-
+    console.log(`[Pipeline] Selesai. ${totalRawProcessed} raw data diproses, ${totalSegmentsCreated} segment dibuat.`);
     return {
       success: true,
-      message: "Processing completed successfully",
-      recordsProcessed: totalProcessed,
-      outputFile: filteredFileName
+      message: 'Pemrosesan selesai',
+      totalRawProcessed,
+      totalSegmentsCreated,
     };
 
   } catch (error) {
-    console.error("Error processing heart rate data:", error.message, error.stack);
-    return {
-      success: false,
-      message: error.message,
-      error: error.stack
-    };
+    console.error('[Pipeline] Error utama:', error.message);
+    return { success: false, message: error.message };
   }
 }
+
+/**
+ * Proses data untuk satu user:
+ *  - Ambil semua raw data isChecked: false
+ *  - Filter IQR
+ *  - Bagi ke window 3 menit
+ *  - Hitung fitur & simpan ke Segment
+ *  - Mark raw data sebagai processed
+ */
+async function processUserData(userId) {
+  const BATCH_SIZE = 5000;
+  let segmentsCreated = 0;
+  let rawProcessed = 0;
+
+  // Ambil data batch per batch, sorted by timestamp
+  let skip = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const rawLogs = await PolarData.find({ user_id: userId, isChecked: false })
+      .sort({ timestamp: 1 })
+      .skip(skip)
+      .limit(BATCH_SIZE)
+      .lean();
+
+    if (rawLogs.length === 0) {
+      hasMore = false;
+      break;
+    }
+
+    console.log(`[processUserData] user=${userId} | batch offset=${skip} | size=${rawLogs.length}`);
+
+    // ── Step 1: Filter IQR ─────────────────────────────────────────────────
+    const { filteredLogs } = filterIQ(rawLogs);
+
+    // ── Step 2: Segmentasi 3-menit ────────────────────────────────────────
+    const windows = segmentIntoWindows(filteredLogs);
+    console.log(`[processUserData] ${windows.length} window dibentuk dari batch ini`);
+
+    // ── Step 3: Hitung fitur & simpan Segment ────────────────────────────
+    const segmentDocs = [];
+
+    for (const win of windows) {
+      if (win.logs.length < MIN_POINTS_PER_WINDOW) {
+        // Tandai tetap diproses tapi segment tidak valid
+        segmentDocs.push(buildSegmentDoc(userId, win, false));
+        continue;
+      }
+      segmentDocs.push(buildSegmentDoc(userId, win, true));
+    }
+
+    if (segmentDocs.length > 0) {
+      // Upsert agar tidak duplikat jika cron berjalan ulang
+      const bulkOps = segmentDocs.map(doc => ({
+        updateOne: {
+          filter: {
+            user_id: doc.user_id,
+            device_id: doc.device_id,
+            window_start: doc.window_start,
+          },
+          update: { $set: doc },
+          upsert: true,
+        },
+      }));
+
+      const bulkResult = await Segment.bulkWrite(bulkOps, { ordered: false });
+      segmentsCreated += bulkResult.upsertedCount + bulkResult.modifiedCount;
+    }
+
+    // ── Step 4: Mark raw data sebagai processed ───────────────────────────
+    const processedIds = rawLogs.map(l => l._id);
+    await PolarData.updateMany(
+      { _id: { $in: processedIds } },
+      { $set: { isChecked: true } }
+    );
+    rawProcessed += processedIds.length;
+
+    // Lanjut ke batch berikutnya
+    if (rawLogs.length < BATCH_SIZE) {
+      hasMore = false;
+    } else {
+      skip += BATCH_SIZE;
+    }
+  }
+
+  return { segmentsCreated, rawProcessed };
+}
+
+/**
+ * Segmentasi logs ke window 3-menit.
+ * Setiap log dikelompokkan berdasarkan: floor(timestamp / WINDOW_MS) * WINDOW_MS
+ *
+ * @param {Array} logs - Logs yang sudah difilter IQR, sorted by timestamp
+ * @returns {Array<{ windowStart, windowEnd, deviceId, activityLabel, logs }>}
+ */
+function segmentIntoWindows(logs) {
+  if (!logs || logs.length === 0) return [];
+
+  const windowMap = new Map();
+
+  for (const log of logs) {
+    const windowKey = Math.floor(log.timestamp / WINDOW_MS) * WINDOW_MS;
+
+    if (!windowMap.has(windowKey)) {
+      windowMap.set(windowKey, {
+        windowStart:   windowKey,
+        windowEnd:     windowKey + WINDOW_MS,
+        deviceId:      log.device_id || 'UNKNOWN',
+        activityLabel: log.activity || 'Unknown',
+        logs: [],
+      });
+    }
+
+    windowMap.get(windowKey).logs.push(log);
+  }
+
+  // Tentukan label aktivitas dominan per window (modus)
+  for (const win of windowMap.values()) {
+    win.activityLabel = getDominantActivity(win.logs);
+  }
+
+  return [...windowMap.values()].sort((a, b) => a.windowStart - b.windowStart);
+}
+
+/**
+ * Hitung modus activity dari log dalam window.
+ */
+function getDominantActivity(logs) {
+  const freq = {};
+  for (const log of logs) {
+    const act = log.activity || 'Unknown';
+    freq[act] = (freq[act] || 0) + 1;
+  }
+  return Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+}
+
+/**
+ * Bangun dokumen Segment dari window data.
+ * Hitung semua fitur Layer 2.
+ *
+ * @param {string|ObjectId} userId
+ * @param {Object} win - window object dari segmentIntoWindows
+ * @param {boolean} isValid - false jika data point < minimum
+ * @returns {Object} dokumen siap upsert ke Segment
+ */
+function buildSegmentDoc(userId, win, isValid) {
+  const logs = win.logs;
+  const hrArr = logs.map(l => l.hr);
+  const rrArr = logs.map(l => l.rr);
+  const accMags = logs.map(l => {
+    const x = l.acc_x || 0;
+    const y = l.acc_y || 0;
+    const z = l.acc_z || 0;
+    return Math.sqrt(x * x + y * y + z * z);
+  });
+  const stepCounts = logs.map(l => l.step_count || 0);
+
+  // ── HR features ─────────────────────────────────────────────────────────
+  const mean_hr = avg(hrArr);
+  const std_hr  = stddev(hrArr, mean_hr);
+  const delta_hr = Math.max(...hrArr) - Math.min(...hrArr);
+  const slope_hr = linearSlope(hrArr); // slope terhadap indeks waktu
+
+  // ── RR / HRV features ────────────────────────────────────────────────────
+  const mean_rr = avg(rrArr);
+  const sdnn    = stddev(rrArr, mean_rr);
+  const rmssd   = calcRmssd(rrArr);
+  const rolling_variance = variance(hrArr, mean_hr);
+
+  // ── Motion ───────────────────────────────────────────────────────────────
+  const motion_intensity = avg(accMags);
+  const step_count = stepCounts.reduce((s, v) => s + v, 0);
+
+  // ── DFA α1 & α2 (short-range: window 4–16, long-range: window 17–32) ───────────
+  // Membutuhkan minimal 32 titik RR untuk α2 bermakna.
+  // α1 tetap dihitung dari 16 titik ke atas.
+  let dfa_alpha1 = null;
+  let dfa_alpha2 = null;
+
+  if (rrArr.length >= 16) {
+    try {
+      // Gunakan maxWindowSize=32 agar alpha2 tersedia
+      const dfaResult = calculateDFA(rrArr, 4, Math.min(32, Math.floor(rrArr.length / 2)));
+      dfa_alpha1 = dfaResult?.alpha1 ?? null;
+      // alpha2 hanya valid jika data cukup (>= 34 titik untuk window >= 17)
+      dfa_alpha2 = rrArr.length >= 34 ? (dfaResult?.alpha2 ?? null) : null;
+    } catch {
+      dfa_alpha1 = null;
+      dfa_alpha2 = null;
+    }
+  }
+
+  return {
+    user_id:        userId,
+    device_id:      win.deviceId,
+    window_start:   win.windowStart,
+    window_end:     win.windowEnd,
+    activity_label: win.activityLabel,
+    raw_count:      logs.length,
+    is_valid:       isValid,
+    features: {
+      mean_hr:          round2(mean_hr),
+      std_hr:           round2(std_hr),
+      delta_hr:         round2(delta_hr),
+      slope_hr:         round4(slope_hr),
+      mean_rr:          round2(mean_rr),
+      sdnn:             round2(sdnn),
+      rmssd:            round2(rmssd),
+      rolling_variance: round2(rolling_variance),
+      motion_intensity: round2(motion_intensity),
+      step_count,
+      dfa_alpha1: dfa_alpha1 !== null ? round4(dfa_alpha1) : null,
+      dfa_alpha2: dfa_alpha2 !== null ? round4(dfa_alpha2) : null,
+    },
+  };
+}
+
+// ── Math helpers ─────────────────────────────────────────────────────────────
+
+const avg = (arr) => arr.length === 0 ? 0 : arr.reduce((s, v) => s + v, 0) / arr.length;
+
+const variance = (arr, mean) =>
+  arr.length < 2 ? 0 : arr.reduce((s, v) => s + (v - mean) ** 2, 0) / (arr.length - 1);
+
+const stddev = (arr, mean) => Math.sqrt(variance(arr, mean));
+
+const calcRmssd = (rrArr) => {
+  if (rrArr.length < 2) return 0;
+  let sumSq = 0;
+  for (let i = 1; i < rrArr.length; i++) {
+    sumSq += (rrArr[i] - rrArr[i - 1]) ** 2;
+  }
+  return Math.sqrt(sumSq / (rrArr.length - 1));
+};
+
+/** Slope dari regresi linear sederhana (y ~ indeks waktu) */
+const linearSlope = (arr) => {
+  const n = arr.length;
+  if (n < 2) return 0;
+  const meanX = (n - 1) / 2;
+  const meanY = avg(arr);
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (i - meanX) * (arr[i] - meanY);
+    den += (i - meanX) ** 2;
+  }
+  return den === 0 ? 0 : num / den;
+};
+
+const round2 = (v) => typeof v === 'number' ? parseFloat(v.toFixed(2)) : v;
+const round4 = (v) => typeof v === 'number' ? parseFloat(v.toFixed(4)) : v;
 
 // Function untuk memproses segment aktivitas
 function processActivitySegments(filteredLogs, jsonData) {
@@ -792,26 +867,30 @@ function processActivitySegments(filteredLogs, jsonData) {
   pushActivitySegment(filteredLogs.length);
 }
 
-export async function getProcessingStatus() {
+export async function getProcessingStatus(userId = null) {
   try {
-    const totalRecords = await PolarData.countDocuments();
-    const processedRecords = await PolarData.countDocuments({ isChecked: true });
-    const unprocessedRecords = await PolarData.countDocuments({ isChecked: false });
+    const filter = userId ? { user_id: userId } : {};
+    const filterProcessed   = userId ? { user_id: userId, isChecked: true }  : { isChecked: true };
+    const filterUnprocessed = userId ? { user_id: userId, isChecked: false } : { isChecked: false };
 
-    const latestProcessed = await PolarData.findOne({ isChecked: true })
-      .sort({ processedAt: -1 })
-      .select('date_created processedAt')
-      .lean();
+    const [totalRecords, processedRecords, unprocessedRecords, totalSegments] = await Promise.all([
+      PolarData.countDocuments(filter),
+      PolarData.countDocuments(filterProcessed),
+      PolarData.countDocuments(filterUnprocessed),
+      userId
+        ? Segment.countDocuments({ user_id: userId })
+        : Segment.countDocuments(),
+    ]);
 
     return {
       totalRecords,
       processedRecords,
       unprocessedRecords,
-      progress: totalRecords > 0 ? (processedRecords / totalRecords * 100).toFixed(2) : 0,
-      latestProcessed: latestProcessed || null
+      totalSegments,
+      progress: totalRecords > 0 ? parseFloat((processedRecords / totalRecords * 100).toFixed(2)) : 0,
     };
   } catch (error) {
-    console.error("Error getting processing status:", error);
+    console.error('[getProcessingStatus] Error:', error);
     return { error: error.message };
   }
 }

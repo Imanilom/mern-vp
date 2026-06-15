@@ -1,137 +1,232 @@
-import PolarData from "../models/data.model.js";
-import multer from "multer";
-import csv from "csv-parser";
-import fs from "fs";
-import path from "path";
+import PolarData from '../models/data.model.js';
+import User from '../models/user.model.js';
+import multer from 'multer';
+import csv from 'csv-parser';
+import fs from 'fs';
+import {
+  validateLogRow,
+  isDuplicateTimestamp,
+  buildDuplicateKeySet,
+} from '../utils/validateLog.js';
 
-const upload = multer({ dest: "uploads/" });
+// Multer: simpan sementara di uploads/
+export const upload = multer({ dest: 'uploads/' });
 
-// Endpoint untuk menerima CSV dari mobile apps
+/**
+ * POST /api/log/logs
+ * Menerima CSV dari mobile app (upload file).
+ *
+ * CSV wajib punya kolom: user_id, timestamp, hr, rr
+ * Kolom opsional: rrms, acc_x, acc_y, acc_z, step_count, ecg, device_id, activity,
+ *                 date_created, time_created
+ *
+ * Validasi Layer 1:
+ *  - user_id wajib ada & harus terdaftar di DB
+ *  - timestamp wajib ada & positif
+ *  - HR: 30–220 bpm
+ *  - RR: 300–2000 ms
+ *  - Duplikasi (user_id + timestamp) → dilewati, tidak error
+ */
 export const createLog = async (req, res) => {
-  try {
+  const filePath = req.file?.path;
 
+  try {
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({ success: false, message: 'Tidak ada file yang diupload' });
     }
 
-    const filePath = req.file.path;
-    console.log("Processing file:", filePath);
+    // ── Langkah 1: Baca seluruh row dari CSV ──────────────────────────────
+    const rawRows = await readCsvFile(filePath);
 
-    let logs = [];
-    const hardcodedDeviceId = "E4F82A29";
+    if (rawRows.length === 0) {
+      cleanup(filePath);
+      return res.status(400).json({ success: false, message: 'File CSV kosong atau tidak bisa dibaca' });
+    }
 
-    fs.createReadStream(filePath, "utf8")
-      .pipe(csv({ separator: ";" })) // ✅ Paksa baca dengan delimiter `;`
-      .on("data", (row) => {
-        console.log("Row read:", row); // Debug isi file
+    // ── Langkah 2: Validasi user_id (harus satu user_id per file CSV) ──────
+    // Ambil user_id unik dari seluruh CSV
+    const userIds = [...new Set(rawRows.map(r => r.user_id).filter(Boolean))];
 
-        if (row.timestamp && row.hr && row.rr && row.rrms) {
-          logs.push({
-            timestamp: Number(row.timestamp),
-            date_created: row.date_created,
-            time_created: row.time_created,
-            hr: Number(row.hr),
-            rr: Number(row.rr),
-            rrms: Number(row.rrms),
-            acc_x: Number(row.acc_x),
-            acc_y: Number(row.acc_y),
-            acc_z: Number(row.acc_z),
-            ecg: Number(row.ecg),
-            device_id: hardcodedDeviceId,
-            activity: row.activity || "Rest",
-            created_at: new Date(),
-          });
-        }
-      })
-      .on("end", async () => {
-        console.log("All rows processed:", logs);
-
-        if (logs.length === 0) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({ message: "No valid data found in CSV" });
-        }
-
-        const savedLogs = await PolarData.insertMany(logs);
-        fs.unlinkSync(filePath);
-
-        res.status(201).json({
-          message: "Logs created successfully",
-          data: savedLogs,
-        });
-      })
-      .on("error", (error) => {
-        console.error("CSV Read Error:", error);
-        res.status(500).json({ message: "Error reading CSV", error: error.message });
+    if (userIds.length === 0) {
+      cleanup(filePath);
+      return res.status(400).json({
+        success: false,
+        message: 'Kolom user_id tidak ditemukan atau kosong di semua row CSV',
       });
+    }
+
+    // Validasi setiap user_id ke database
+    const validUserMap = new Map(); // userId string → User doc
+    const invalidUserIds = [];
+
+    await Promise.all(
+      userIds.map(async (uid) => {
+        try {
+          const user = await User.findById(uid).select('_id name').lean();
+          if (user) {
+            validUserMap.set(uid, user);
+          } else {
+            invalidUserIds.push(uid);
+          }
+        } catch {
+          invalidUserIds.push(uid); // ObjectId format salah juga masuk sini
+        }
+      })
+    );
+
+    if (validUserMap.size === 0) {
+      cleanup(filePath);
+      return res.status(400).json({
+        success: false,
+        message: 'Semua user_id di CSV tidak valid atau tidak terdaftar',
+        invalidUserIds,
+      });
+    }
+
+    // ── Langkah 3: Validasi per-row + kumpulkan data valid ─────────────────
+    const accepted = [];
+    const rejected = [];
+
+    for (const row of rawRows) {
+      const userId = row.user_id;
+
+      // Lewati row dengan user_id yang tidak valid
+      if (!validUserMap.has(userId)) {
+        rejected.push({ row, reason: `user_id '${userId}' tidak terdaftar` });
+        continue;
+      }
+
+      const { valid, errors, data } = validateLogRow(row, userId);
+
+      if (!valid) {
+        rejected.push({ row, reason: errors.join('; ') });
+      } else {
+        accepted.push(data);
+      }
+    }
+
+    if (accepted.length === 0) {
+      cleanup(filePath);
+      return res.status(400).json({
+        success: false,
+        message: 'Tidak ada data valid yang bisa disimpan',
+        rejectedCount: rejected.length,
+        reasons: rejected.slice(0, 10).map(r => r.reason), // sample 10 alasan
+      });
+    }
+
+    // ── Langkah 4: Deduplication — cek timestamp yang sudah ada di DB ──────
+    // Ambil timestamp range dari data accepted untuk query efisien
+    const timestamps = accepted.map(d => d.timestamp);
+    const minTs = Math.min(...timestamps);
+    const maxTs = Math.max(...timestamps);
+
+    // Query hanya dalam rentang timestamp yang akan diinsert
+    const userIdsInBatch = [...new Set(accepted.map(d => d.user_id.toString()))];
+    const existingDocs = await PolarData.find({
+      user_id: { $in: userIdsInBatch },
+      timestamp: { $gte: minTs, $lte: maxTs },
+    }).select('user_id timestamp').lean();
+
+    const existingKeys = buildDuplicateKeySet(existingDocs);
+
+    // Filter duplikat dari accepted
+    const deduplicated = [];
+    const duplicateCount = { count: 0 };
+
+    for (const data of accepted) {
+      if (isDuplicateTimestamp(existingKeys, data.user_id.toString(), data.timestamp)) {
+        duplicateCount.count++;
+      } else {
+        deduplicated.push(data);
+        // Tambahkan ke set agar duplikat dalam file yang sama juga terdeteksi
+        existingKeys.add(`${data.user_id}_${data.timestamp}`);
+      }
+    }
+
+    if (deduplicated.length === 0) {
+      cleanup(filePath);
+      return res.status(200).json({
+        success: true,
+        message: 'Semua data sudah ada di database (duplikat)',
+        insertedCount: 0,
+        duplicateCount: duplicateCount.count,
+        rejectedCount: rejected.length,
+      });
+    }
+
+    // ── Langkah 5: Insert ke database (ordered: false agar partial success) ─
+    const BATCH_SIZE = 1000;
+    let totalInserted = 0;
+
+    for (let i = 0; i < deduplicated.length; i += BATCH_SIZE) {
+      const batch = deduplicated.slice(i, i + BATCH_SIZE);
+      try {
+        const result = await PolarData.insertMany(batch, {
+          ordered: false,       // lanjutkan meski ada error di tengah batch
+          lean: true,
+        });
+        totalInserted += result.length;
+      } catch (bulkErr) {
+        // insertMany dengan ordered:false lempar error tapi tetap insert yang berhasil
+        if (bulkErr.insertedDocs) {
+          totalInserted += bulkErr.insertedDocs.length;
+        }
+        console.warn(`[createLog] Batch ${i}–${i + BATCH_SIZE}: beberapa insert gagal`, bulkErr.message);
+      }
+    }
+
+    cleanup(filePath);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Data berhasil diproses',
+      insertedCount: totalInserted,
+      duplicateCount: duplicateCount.count,
+      rejectedCount: rejected.length,
+      totalRowsInFile: rawRows.length,
+      ...(rejected.length > 0 && {
+        rejectedSample: rejected.slice(0, 5).map(r => ({
+          timestamp: r.row.timestamp,
+          reason: r.reason,
+        })),
+      }),
+    });
+
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    cleanup(filePath);
+    console.error('[createLog] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
   }
 };
 
+// ── Helper: baca CSV ke array of objects ───────────────────────────────────
+function readCsvFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const rows = [];
 
-  
-  // Metode untuk memeriksa dan mengisi log (DIUBAH)
-  export const checkAndFillLogs = async () => {
+    fs.createReadStream(filePath, 'utf8')
+      .pipe(csv({
+        separator: ',',
+        mapHeaders: ({ header }) => header.trim().toLowerCase(),
+      }))
+      .on('data', (row) => rows.push(row))
+      .on('end', () => resolve(rows))
+      .on('error', reject);
+  });
+}
+
+// ── Helper: hapus file upload sementara ────────────────────────────────────
+function cleanup(filePath) {
+  if (filePath && fs.existsSync(filePath)) {
     try {
-      const logs = await PolarData.find({ isChecked: false }).limit(100000); // Ganti model
-  
-      if (!logs.length) {
-        return { message: 'No logs found to check and fill.', status: 404 };
-      }
-  
-      const logsWithHRAndRR = await PolarData.find({ HR: { $ne: null }, RR: { $ne: null } }) // Ganti model
-        .sort({ created_at: 1 })
-        .limit(10000);
-  
-      for (const log of logs) {
-        let isUpdated = false;
-  
-        if (log.RR === null || log.RR === undefined) {
-          for (let i = 1; i < logsWithHRAndRR.length; i++) {
-            const prevIndex = logsWithHRAndRR.findIndex(l => l._id.equals(log._id)) - i;
-            if (prevIndex >= 0) {
-              log.RR = logsWithHRAndRR[prevIndex].RR;
-              isUpdated = true;
-              break;
-            }
-          }
-        } else if (!log.isChecked && log.RR !== null && log.RRms !== null) { // Sesuaikan field RRms
-          log.isChecked = true;
-          isUpdated = true;
-        }
-  
-        if (isUpdated) await log.save();
-      }
-  
-      return { message: 'Logs checked and filled successfully.', logs, status: 200 };
-    } catch (error) {
-      console.error('Error checking and filling logs:', error);
-      return { message: 'Internal server error.', status: 500 };
+      fs.unlinkSync(filePath);
+    } catch (e) {
+      console.warn('[createLog] Gagal hapus file temp:', e.message);
     }
-  };
-
-// Metode baru untuk menjalankan semua metode
-export const runAllMethods = async (req, res) => {
-    try {
-        console.log('Running fill and check logs...');
-
-        // Memanggil metode checkAndFillLogs
-        const checkAndFillLogsResult = await checkAndFillLogs();
-
-        // Jika res ada, kembalikan hasil sebagai respons JSON
-        if (res) {
-            return res.status(200).json({ message: 'fill and check logs successfully.', result: checkAndFillLogsResult });
-        } else {
-            console.log('fill and check logs successfully.', checkAndFillLogsResult);
-        }
-    } catch (error) {
-        console.error('Error running fill and check logs:', error);
-        // Jika res ada, kembalikan pesan kesalahan sebagai respons JSON
-        if (res) {
-            return res.status(500).json({ message: 'Internal server error.' });
-        } else {
-            throw error;
-        }
-    }
-};
+  }
+}

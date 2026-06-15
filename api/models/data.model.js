@@ -1,50 +1,81 @@
 import mongoose from 'mongoose';
 
 const logSchema = new mongoose.Schema({
+  // Relasi ke User — wajib untuk personalized baseline & segmentasi per-user
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  },
   timestamp: {
     type: Number,
-      },
+    required: true,
+  },
   date_created: {
     type: String,
-      },
+  },
   time_created: {
     type: String,
-      },
+  },
   hr: {
     type: Number,
-      },
+    required: true,
+    min: 30,
+    max: 220,
+  },
   rr: {
     type: Number,
-      },
+    required: true,
+    min: 300,
+    max: 2000,
+  },
   rrms: {
     type: Number,
-      },
+  },
   acc_x: {
     type: Number,
-      },
+    default: 0,
+  },
   acc_y: {
     type: Number,
-      },
+    default: 0,
+  },
   acc_z: {
     type: Number,
-      },
+    default: 0,
+  },
+  step_count: {
+    type: Number,
+    default: 0,
+  },
   ecg: {
     type: Number,
-      },
+    default: 0,
+  },
   activity: {
     type: String,
-    enum: ["Rest", "Light", "Moderate", "Intense"] // Enum untuk aktivitas
-  },
-  isChecked: {
-    type: Boolean,
-    default: false
+    enum: ['Rest', 'Light', 'Moderate', 'Intense'],
+    default: 'Rest',
   },
   device_id: {
     type: String,
-    default:"E4F82A29",
-  }
-}, { timestamps: true }); // timestamps akan otomatis menambahkan createdAt dan updatedAt
+    default: 'UNKNOWN',
+  },
+  isChecked: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+}, { timestamps: true });
 
-const PolarData = mongoose.model("PolarData", logSchema);
+// Compound index: query utama untuk preprocessing per user per tanggal
+logSchema.index({ user_id: 1, timestamp: 1 });
+logSchema.index({ user_id: 1, isChecked: 1 });
+
+// Unique index untuk cegah duplikasi (user + timestamp)
+logSchema.index({ user_id: 1, timestamp: 1 }, { unique: true });
+
+const PolarData = mongoose.model('PolarData', logSchema);
 
 export default PolarData;

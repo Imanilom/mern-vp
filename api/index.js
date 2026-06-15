@@ -22,7 +22,9 @@ import cors from "cors";
 
 // import './controllers/cornjob.controller.js';
 // import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
-import {processHeartRateData} from  './controllers/data.controller.js';
+import { processHeartRateData } from './controllers/data.controller.js';
+import { runAnalysisPipeline } from './controllers/analysis.controller.js';
+import analysisRouter from './routes/analysis.route.js';
 dotenv.config();
 
 mongoose
@@ -59,12 +61,12 @@ app.use("/api/treatment", treatmentRoute);
 app.use("/api/data", data);
 app.use("/api/faktorresiko", faktorresiko);
 app.use("/api/log", logRouter);
+app.use("/api/analysis", analysisRouter);
 app.use(express.static(path.join(__dirname, "../client/dist")));
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "client", "dist", "index.html"));
+app.get("/{*splat}", (req, res) => {
+  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
-
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
@@ -84,7 +86,47 @@ app.listen(PORT, () => {
 });
 
 
-cron.schedule('*/1 * * * *', () => {
-  console.log('Running cron job...'); // debug
-  processHeartRateData().catch(console.error);
+// ── Layer 2 Cron Job: Preprocessing & Segmentasi ────────────────────────────
+// Berjalan setiap 3 menit. Guard mencegah overlap.
+let isProcessing = false;
+
+cron.schedule('*/3 * * * *', () => {
+  if (isProcessing) {
+    console.log('[Cron L2] Job sebelumnya masih berjalan, skip.');
+    return;
+  }
+  isProcessing = true;
+  console.log('[Cron L2] Memulai pipeline Layer 2 (IQR + Segmentasi)...');
+
+  processHeartRateData()
+    .then((result) => {
+      if (result?.totalRawProcessed > 0) {
+        console.log(`[Cron L2] Selesai: ${result.totalRawProcessed} raw, ${result.totalSegmentsCreated} segment.`);
+      }
+    })
+    .catch((err) => console.error('[Cron L2] Error:', err.message))
+    .finally(() => { isProcessing = false; });
+});
+
+// ── Layer 3 Cron Job: Analisis, Baseline & Event Generation ──────────────
+// Berjalan setiap 5 menit (offset dari Layer 2) agar tidak bersaing resource.
+// Guard isAnalyzing mencegah overlap.
+let isAnalyzing = false;
+
+cron.schedule('2-59/5 * * * *', () => {
+  if (isAnalyzing) {
+    console.log('[Cron L3] Job sebelumnya masih berjalan, skip.');
+    return;
+  }
+  isAnalyzing = true;
+  console.log('[Cron L3] Memulai pipeline Layer 3 (Z-score, Trajectory, Events)...');
+
+  runAnalysisPipeline()
+    .then((result) => {
+      if (result?.analyzed > 0) {
+        console.log(`[Cron L3] Selesai: ${result.analyzed} segment dianalisis, ${result.eventsCreated} event.`);
+      }
+    })
+    .catch((err) => console.error('[Cron L3] Error:', err.message))
+    .finally(() => { isAnalyzing = false; });
 });
