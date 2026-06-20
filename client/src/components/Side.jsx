@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import '../loading.css';
 
 import { useSelector } from 'react-redux';
-import { FaUser } from "react-icons/fa";
+import { FaUser, FaExclamationTriangle } from "react-icons/fa";
 import { GiNotebook } from "react-icons/gi";
 import { TbHeartRateMonitor } from "react-icons/tb";
 import { FaRunning } from "react-icons/fa";
@@ -349,6 +349,34 @@ const Side = () => {
                 </div>
               </Link>
             ) : null}
+
+            {/* --- */}
+
+            {DocterPatient && currentUser.role == 'doctor' ? (
+              <Link onClick={() => setNavbar('riwayat-anomali')} className={`${page == 'riwayat-anomali' ? "dark:bg-[#217170] bg-[#005A8F] text-white" : ""} py-2 px-4 duration-100 dark:hover:bg-[#217170] dark:hover:text-white hover:bg-[#005A8F] text-sm`} to={'/riwayat-anomali'}>
+                <div>
+                  <div role="button" tabindex="0" class="flex items-center w-full p-3 rounded-lg text-start leading-tight transition-all outline-none">
+                    <div class="grid place-items-center mr-4">
+                      <FaExclamationTriangle size={20} />
+                    </div>
+                    Riwayat Anomali
+                  </div>
+                </div>
+              </Link>
+            ) : null}
+            {currentUser.role != 'doctor' ? (
+              <Link onClick={() => setNavbar('riwayat-anomali')} className={`${page == 'riwayat-anomali' ? "dark:bg-[#217170] group bg-[#005A8F] text-white" : ""} py-2 px-4 group duration-100 dark:hover:bg-[#217170] dark:hover:text-white hover:bg-[#005A8F] text-sm`} to={'/riwayat-anomali'}>
+                <div>
+                  <div role="button" tabindex="0" class="flex items-center w-full p-3 rounded-lg text-start leading-tight transition-all outline-none">
+                    <div class="grid place-items-center mr-4">
+                      <FaExclamationTriangle size={20} className={`${page == "riwayat-anomali" ? 'text-white' : 'text-white dark:text-[#217170]'} dark:group-hover:text-white group-hover:text-white `} />
+                    </div>
+                    Riwayat Anomali
+                  </div>
+                </div>
+              </Link>
+            ) : null}
+
 
             {/* --- */}
 

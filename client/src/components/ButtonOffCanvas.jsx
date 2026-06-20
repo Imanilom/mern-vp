@@ -5,7 +5,7 @@ import { Sidebar, Menu } from "react-pro-sidebar";
 import '../loading.css';
 
 import { useSelector } from 'react-redux';
-import { FaUser } from "react-icons/fa";
+import { FaUser, FaExclamationTriangle } from "react-icons/fa";
 import { GiNotebook } from "react-icons/gi";
 import { TbHeartRateMonitor } from "react-icons/tb";
 import { FaRunning } from "react-icons/fa";
@@ -354,13 +354,41 @@ function ButtonOffCanvas() {
                                             <div role="button" tabindex="0" className={`${page == "riwayat-deteksi" ? "bg-[#005A8F] text-white dark:bg-[#217170] dark:text-white" : "bg-[#101010] dark:bg-[#FEFCF5]"} flex py-3  px-8 items-center w-full text-start leading-tight transition-all hover:bg-[#005A8F] dark:text-[#217170] dark:hover:text-white dark:hover:bg-[#217170] text-sm outline-none`}>
                                                 <div className="grid place-items-center mr-4">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32" className={`${page == "riwayat-deteksi" ? 'fill-white' : 'fill-white dark:fill-[#217170]'} dark:group-hover:fill-white group-hover:fill-white `}><path className={`${page == "riwayat-deteksi" ? 'fill-white' : 'fill-white dark:fill-[#217170]'} dark:group-hover:fill-white group-hover:fill-white `} fill="" d="M2 12v6h6v2H0v-8zm18 0v8h-8v-2h6v-6zM8 0v2H2v6H0V0zm12 0v8h-2V2h-6V0z" />
-                                                        <path fill="" className={`${page == "riwayat-deteksi" ? 'fill-white' : 'fill-white dark:fill-[#217170]'} dark:group-hover:fill-white group-hover:fill-white `} d="M16 24a4 4 0 1 1 0 8a4 4 0 0 1 0-8m12 0a4 4 0 1 1 0 8a4 4 0 0 1 0-8m-12 1.75a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5m12 0a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5M28 12a4 4 0 1 1 0 8a4 4 0 0 1 0-8m0 1.75a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5M10 6a4 4 0 1 1 0 8a4 4 0 0 1 0-8m0 1.75a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5" class="ouiIcon__fillSecondary" /></svg>
+                                                         <path fill="" className={`${page == "riwayat-deteksi" ? 'fill-white' : 'fill-white dark:fill-[#217170]'} dark:group-hover:fill-white group-hover:fill-white `} d="M16 24a4 4 0 1 1 0 8a4 4 0 0 1 0-8m12 0a4 4 0 1 1 0 8a4 4 0 0 1 0-8m-12 1.75a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5m12 0a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5M28 12a4 4 0 1 1 0 8a4 4 0 0 1 0-8m0 1.75a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5M10 6a4 4 0 1 1 0 8a4 4 0 0 1 0-8m0 1.75a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5" class="ouiIcon__fillSecondary" /></svg>
                                                 </div>
                                                 Riwayat Deteksi
                                             </div>
                                         </div>
                                     </Link>
                                 ) : null}
+
+                                {/* --- */}
+
+                                {DocterPatient && currentUser.role == 'doctor' ? (
+                                    <Link to='/riwayat-anomali' className="group" onClick={() => setNavbar('riwayat-anomali')}>
+                                        <div>
+                                            <div role="button" tabindex="0" className={`${page == "riwayat-anomali" ? "bg-[#005A8F] text-white dark:bg-[#217170] dark:text-white" : "bg-[#101010] dark:bg-[#FEFCF5]"} flex py-3  px-8 items-center w-full text-start leading-tight transition-all hover:bg-[#005A8F] dark:text-[#217170] dark:hover:text-white dark:hover:bg-[#217170] text-sm outline-none`}>
+                                                <div className="grid place-items-center mr-4">
+                                                    <FaExclamationTriangle size={20} className={`${page == "riwayat-anomali" ? 'text-white' : 'text-white dark:text-[#217170]'} dark:group-hover:text-white group-hover:text-white `} />
+                                                </div>
+                                                Riwayat Anomali
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ) : null}
+                                {currentUser.role != 'doctor' ? (
+                                    <Link to='/riwayat-anomali' className="group" onClick={() => setNavbar('riwayat-anomali')}>
+                                        <div>
+                                            <div role="button" tabindex="0" className={`${page == "riwayat-anomali" ? "bg-[#005A8F] text-white dark:bg-[#217170] dark:text-white" : "bg-[#101010] dark:bg-[#FEFCF5]"} flex py-3  px-8 items-center w-full text-start leading-tight transition-all hover:bg-[#005A8F] dark:text-[#217170] dark:hover:text-white dark:hover:bg-[#217170] text-sm outline-none`}>
+                                                <div className="grid place-items-center mr-4">
+                                                    <FaExclamationTriangle size={20} className={`${page == "riwayat-anomali" ? 'text-white' : 'text-white dark:text-[#217170]'} dark:group-hover:text-white group-hover:text-white `} />
+                                                </div>
+                                                Riwayat Anomali
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ) : null}
+
 
                                 {/* --- */}
 

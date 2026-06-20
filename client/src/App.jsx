@@ -41,6 +41,7 @@ import WriteDoc from './pages/Menus/WriteDoc';
 import MonitorDFA from './pages/Menus/MonitorDFA';
 import Metrics from './pages/Menus/Metrics';
 import MonitorActivity from './pages/Menus/MonitorActivity';
+import AnomalyHistory from './pages/Menus/AnomalyHistory';
 
 
 // HALAMAN CREATE
@@ -120,6 +121,7 @@ function MainContent() {
         <Route path='/faktor-resiko/:id/add' element={<InputLabotarium />} />
         <Route path='/prediksi-faktor' element={<RiskPrediction />} />
         <Route path='/riwayat-deteksi' element={<DetectionHistories />} />
+        <Route path='/riwayat-anomali' element={<AnomalyHistory />} />
         <Route path='/treatment' element={<Treatment />} />
         <Route path='/rekomendasi' element={<Recommendation />} />
         <Route path='/add/pasient/:id' element={<AddPatient />} />
