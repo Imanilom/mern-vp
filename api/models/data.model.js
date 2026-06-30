@@ -55,8 +55,34 @@ const logSchema = new mongoose.Schema({
   },
   activity: {
     type: String,
-    enum: ['Rest', 'Light', 'Moderate', 'Intense'],
-    default: 'Rest',
+    enum: [
+      // Istirahat / Low intensity
+      'Tidur',
+      'Berbaring',
+      'Duduk',
+      'Berdiri',
+      // Mobilitas ringan
+      'Berjalan',
+      'Berjalan Cepat',
+      'Naik Tangga',
+      // Olahraga sedang
+      'Bersepeda',
+      'Berenang',
+      'Senam',
+      'Yoga',
+      // Olahraga berat
+      'Berlari',
+      'Lari Cepat',
+      'Olahraga Berat',
+      // Aktivitas harian
+      'Makan',
+      'Memasak',
+      'Berkendara',
+      'Bekerja',
+      // Fallback
+      'Lainnya',
+    ],
+    default: 'Duduk',
   },
   device_id: {
     type: String,

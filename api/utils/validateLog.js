@@ -80,30 +80,32 @@ export function validateLogRow(row, userId) {
 }
 
 /**
- * Normalisasi label aktivitas dari diary manual.
+ * Normalisasi label aktivitas dari perangkat/mobile.
+ * Menjaga nama asli aktivitas (tidak disederhanakan ke Rest/Light/Moderate/Intense).
  * @param {string} activity
  * @returns {string}
  */
 export function normalizeActivity(activity) {
-  if (!activity || typeof activity !== 'string') return 'Rest';
-  const map = {
-    rest: 'Rest',
-    tidur: 'Rest',
-    sleep: 'Rest',
-    light: 'Light',
-    ringan: 'Light',
-    jalan: 'Light',
-    walk: 'Light',
-    moderate: 'Moderate',
-    sedang: 'Moderate',
-    intense: 'Intense',
-    berat: 'Intense',
-    exercise: 'Intense',
-    olahraga: 'Intense',
-    lari: 'Intense',
-    run: 'Intense',
-  };
-  return map[activity.trim().toLowerCase()] || 'Rest';
+  if (!activity || typeof activity !== 'string') return 'Duduk';
+
+  const trimmed = activity.trim();
+
+  // Daftar aktivitas yang valid (harus sesuai dengan enum di data.model.js)
+  const validActivities = [
+    'Tidur', 'Berbaring', 'Duduk', 'Berdiri',
+    'Berjalan', 'Berjalan Cepat', 'Naik Tangga',
+    'Bersepeda', 'Berenang', 'Senam', 'Yoga',
+    'Berlari', 'Lari Cepat', 'Olahraga Berat',
+    'Makan', 'Memasak', 'Berkendara', 'Bekerja',
+    'Lainnya',
+  ];
+
+  // Cek exact match (case-insensitive)
+  const found = validActivities.find(
+    (a) => a.toLowerCase() === trimmed.toLowerCase()
+  );
+
+  return found || 'Lainnya';
 }
 
 /**
