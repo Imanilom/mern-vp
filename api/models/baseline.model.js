@@ -72,6 +72,11 @@ const BaselineSchema = new mongoose.Schema({
 
   last_updated: { type: Date, default: Date.now },
 
+  // Model management
+  is_frozen: { type: Boolean, default: false },
+  version: { type: Number, default: 1 },
+  status: { type: String, enum: ['learning', 'approved', 'rejected'], default: 'learning' },
+
 }, { timestamps: true });
 
 // Unique: satu baseline per user + activity + time_period

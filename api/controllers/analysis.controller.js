@@ -243,6 +243,8 @@ async function getOrCreateBaseline(userId, activity, timePeriod) {
  * O(1) per update — tidak perlu menyimpan data historis.
  */
 async function updateBaseline(baseline, features) {
+  if (baseline.is_frozen) return; // Jangan update jika baseline di-freeze
+
   const featureKeys = ['mean_hr', 'std_hr', 'delta_hr', 'slope_hr',
     'mean_rr', 'sdnn', 'rmssd', 'rolling_variance', 'motion_intensity', 'dfa_alpha1'];
 
@@ -578,4 +580,125 @@ export async function getAnalyzedSegments(userId, limit = 100) {
     .limit(limit)
     .select('window_start window_end activity_label anomaly_score classification z_scores features.mean_hr features.mean_rr features.dfa_alpha1 features.dfa_alpha2')
     .lean();
+}
+
+// ── Baseline Management ───────────────────────────────────────────────────────
+
+export async function freezeBaseline(baselineId, isFrozen) {
+  const baseline = await Baseline.findByIdAndUpdate(
+    baselineId,
+    { $set: { is_frozen: isFrozen } },
+    { new: true }
+  );
+  if (!baseline) throw new Error('Baseline tidak ditemukan');
+  return baseline;
+}
+
+export async function approveBaseline(baselineId) {
+  const baseline = await Baseline.findByIdAndUpdate(
+    baselineId,
+    { $set: { status: 'approved' } },
+    { new: true }
+  );
+  if (!baseline) throw new Error('Baseline tidak ditemukan');
+  return baseline;
+}
+
+export async function recalculateBaseline(baselineId) {
+  // Reset stats ke 0 dan buat versi baru
+  const emptyStats = {
+    mean_hr: {}, std_hr: {}, delta_hr: {}, slope_hr: {},
+    mean_rr: {}, sdnn: {}, rmssd: {}, rolling_variance: {},
+    motion_intensity: {}, dfa_alpha1: {}
+  };
+  
+  const baseline = await Baseline.findByIdAndUpdate(
+    baselineId,
+    { 
+      $set: { 
+        stats: emptyStats, 
+        segment_count: 0, 
+        is_mature: false,
+        status: 'learning',
+        is_frozen: false 
+      },
+      $inc: { version: 1 }
+    },
+    { new: true }
+  );
+  if (!baseline) throw new Error('Baseline tidak ditemukan');
+  return baseline;
+}
+
+// ── Trajectory Management ─────────────────────────────────────────────────────
+
+export async function annotateEvent(eventId, text, timestamp) {
+  const event = await AnomalyEvent.findByIdAndUpdate(
+    eventId,
+    { $push: { annotations: { text, timestamp, created_at: new Date() } } },
+    { new: true }
+  );
+  if (!event) throw new Error('Event tidak ditemukan');
+  return event;
+}
+
+export async function getEventSegments(eventId) {
+  const event = await AnomalyEvent.findById(eventId).lean();
+  if (!event) throw new Error('Event tidak ditemukan');
+
+  const segments = await Segment.find({ _id: { $in: event.segment_ids } })
+    .sort({ window_start: 1 }) // Urutkan secara kronologis (dari awal onset)
+    .select('window_start window_end activity_label anomaly_score classification z_scores features')
+    .lean();
+    
+  return { event, segments };
+}
+
+// ── Clinical Review Workflow ──────────────────────────────────────────────────
+
+export async function updateEventStatus(eventId, status) {
+  const event = await AnomalyEvent.findByIdAndUpdate(
+    eventId,
+    { $set: { review_status: status } },
+    { new: true }
+  );
+  if (!event) throw new Error('Event tidak ditemukan');
+  return event;
+}
+
+export async function validateEvent(eventId, label, notes) {
+  const updateData = { validation_label: label };
+  if (notes !== undefined) updateData.reviewer_notes = notes;
+  
+  // Jika diverifikasi sebagai valid/false positive, biasanya status pindah ke Validated/False Positive
+  if (label === 'False positive') updateData.review_status = 'False Positive';
+  else if (label === 'Valid anomaly') updateData.review_status = 'Validated';
+
+  const event = await AnomalyEvent.findByIdAndUpdate(
+    eventId,
+    { $set: updateData },
+    { new: true }
+  );
+  if (!event) throw new Error('Event tidak ditemukan');
+  return event;
+}
+
+export async function escalateEvent(eventId, escalated) {
+  const event = await AnomalyEvent.findByIdAndUpdate(
+    eventId,
+    { $set: { escalated: escalated } },
+    { new: true }
+  );
+  if (!event) throw new Error('Event tidak ditemukan');
+  return event;
+}
+
+export async function assignReviewer(eventId, reviewerId) {
+  const event = await AnomalyEvent.findByIdAndUpdate(
+    eventId,
+    { $set: { reviewer_id: reviewerId, review_status: 'Under Review' } },
+    { new: true }
+  );
+  if (!event) throw new Error('Event tidak ditemukan');
+  return event;
 }

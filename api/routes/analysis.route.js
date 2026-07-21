@@ -3,7 +3,17 @@ import {
   getRecentEvents,
   getUserBaselines,
   getAnalyzedSegments,
+  freezeBaseline,
+  approveBaseline,
+  recalculateBaseline,
+  annotateEvent,
+  getEventSegments,
+  updateEventStatus,
+  validateEvent,
+  escalateEvent,
+  assignReviewer,
 } from '../controllers/analysis.controller.js';
+import { generateReportData } from '../controllers/report.controller.js';
 import {
   getFullMetrics,
   computeROCandAUC,
@@ -18,6 +28,9 @@ import AnomalyEvent from '../models/anomalyevent.model.js';
 const router = express.Router();
 
 // ── Analisis Dashboard ────────────────────────────────────────────────────────
+
+/** GET /api/analysis/reports — generate complex reports */
+router.get('/reports', verifyToken, generateReportData);
 
 /** GET /api/analysis/segments/:userId — grafik HR + anomaly score */
 router.get('/segments/:userId', verifyToken, async (req, res) => {
@@ -41,10 +54,101 @@ router.get('/events/:userId', verifyToken, async (req, res) => {
   }
 });
 
+/** GET /api/analysis/events/details/:eventId — full event details + segments */
+router.get('/events/details/:eventId', verifyToken, async (req, res) => {
+  try {
+    const data = await getEventSegments(req.params.eventId);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** POST /api/analysis/events/:eventId/annotate — add annotation */
+router.post('/events/:eventId/annotate', verifyToken, async (req, res) => {
+  try {
+    const { text, timestamp } = req.body;
+    const data = await annotateEvent(req.params.eventId, text, timestamp);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Clinical Review Workflow ──────────────────────────────────────────────────
+
+router.patch('/events/:eventId/status', verifyToken, async (req, res) => {
+  try {
+    const data = await updateEventStatus(req.params.eventId, req.body.status);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.patch('/events/:eventId/validate', verifyToken, async (req, res) => {
+  try {
+    const { label, notes } = req.body;
+    const data = await validateEvent(req.params.eventId, label, notes);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.patch('/events/:eventId/escalate', verifyToken, async (req, res) => {
+  try {
+    const data = await escalateEvent(req.params.eventId, req.body.escalated);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.patch('/events/:eventId/assign', verifyToken, async (req, res) => {
+  try {
+    const data = await assignReviewer(req.params.eventId, req.user.id);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 /** GET /api/analysis/baseline/:userId — baseline personal */
 router.get('/baseline/:userId', verifyToken, async (req, res) => {
   try {
     const data = await getUserBaselines(req.params.userId);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** PATCH /api/analysis/baseline/:baselineId/freeze — freeze/unfreeze baseline */
+router.patch('/baseline/:baselineId/freeze', verifyToken, async (req, res) => {
+  try {
+    const { is_frozen } = req.body;
+    const data = await freezeBaseline(req.params.baselineId, is_frozen);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** PATCH /api/analysis/baseline/:baselineId/approve — approve baseline */
+router.patch('/baseline/:baselineId/approve', verifyToken, async (req, res) => {
+  try {
+    const data = await approveBaseline(req.params.baselineId);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** POST /api/analysis/baseline/:baselineId/recalculate — reset and recalculate baseline */
+router.post('/baseline/:baselineId/recalculate', verifyToken, async (req, res) => {
+  try {
+    const data = await recalculateBaseline(req.params.baselineId);
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

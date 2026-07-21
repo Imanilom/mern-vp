@@ -19,12 +19,13 @@ import cron from 'node-cron';
 import cookieParser from "cookie-parser";
 import path from "path";
 import cors from "cors";
+import analysisRouter from './routes/analysis.route.js';
+import pipelineRouter from './routes/pipeline.route.js';
 
 // import './controllers/cornjob.controller.js';
 // import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import { processHeartRateData } from './controllers/data.controller.js';
 import { runAnalysisPipeline } from './controllers/analysis.controller.js';
-import analysisRouter from './routes/analysis.route.js';
 dotenv.config();
 
 mongoose
@@ -62,6 +63,7 @@ app.use("/api/data", data);
 app.use("/api/faktorresiko", faktorresiko);
 app.use("/api/log", logRouter);
 app.use("/api/analysis", analysisRouter);
+app.use("/api/pipeline", pipelineRouter);
 app.use(express.static(path.join(__dirname, "../client/dist")));
 
 app.get("/{*splat}", (req, res) => {

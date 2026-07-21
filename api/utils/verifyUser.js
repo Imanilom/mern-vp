@@ -2,8 +2,11 @@ import jwt from 'jsonwebtoken';
 import { errorHandler } from './error.js';
 
 export const verifyToken = (req, res, next) => {
-  const token = req.cookies.access_token; // saya mendapatkan null
+  let token = req.cookies.access_token; // Web UI
   
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1]; // Flutter App
+  }
 
   if (!token) return next(errorHandler(401, 'Unauthorized'));
 

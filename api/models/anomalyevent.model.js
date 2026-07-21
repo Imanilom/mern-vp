@@ -75,6 +75,36 @@ const AnomalyEventSchema = new mongoose.Schema({
     default: 'open',
   },
 
+  // Anotasi manual dari dokter/user
+  annotations: [{
+    text: String,
+    timestamp: Number, // epoch ms point on the chart
+    created_at: { type: Date, default: Date.now }
+  }],
+
+  // ── Clinical Review Workflow ──────────────────────────────────────────────
+  review_status: {
+    type: String,
+    enum: ['New', 'Under Review', 'Validated', 'False Positive', 'Closed'],
+    default: 'New',
+  },
+  validation_label: {
+    type: String,
+    enum: [
+      'None', 
+      'Valid anomaly', 
+      'False positive', 
+      'Sensor artifact', 
+      'Activity mislabeled', 
+      'Insufficient data', 
+      'Clinical follow-up needed'
+    ],
+    default: 'None'
+  },
+  reviewer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  reviewer_notes: { type: String, default: '' },
+  escalated: { type: Boolean, default: false }
+
 }, { timestamps: true });
 
 // Index untuk query dashboard
