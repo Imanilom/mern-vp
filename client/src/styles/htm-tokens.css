@@ -1,0 +1,287 @@
+/* ==========================================================================
+   HTM Design Tokens — "Clinical Calm"
+   Warm, precise, trustworthy. Not a generic SaaS gradient app.
+   ========================================================================== */
+
+:root {
+  /* ── Surfaces ── */
+  --htm-canvas:   #f7f5f0;   /* warm off-white page background */
+  --htm-surface:  #ffffff;   /* card, panel, dialog surface */
+  --htm-raised:   #f2efe9;   /* slightly lifted surface (table header etc.) */
+
+  /* ── Ink & Text ── */
+  --htm-ink:      #1c1a17;   /* primary text + primary button bg */
+  --htm-sub:      #5a5650;   /* secondary text */
+  --htm-muted:    #9a9590;   /* placeholder, eyebrow, disabled */
+
+  /* ── Borders ── */
+  --htm-hairline: #e3dfd8;   /* 1px card/input border */
+  --htm-divider:  #ccc8c0;   /* stronger separator */
+
+  /* ── Brand / Accent ── */
+  --htm-primary:      #2d5a4e; /* clinical teal-green — links, active states */
+  --htm-primary-bg:   rgba(45, 90, 78, 0.08); /* tinted bg for active items */
+  --htm-primary-hover: rgba(45, 90, 78, 0.12);
+
+  /* ── Status Colors ── */
+  --htm-stable:       #2e6b4a;   /* normal, healthy */
+  --htm-stable-bg:    rgba(46, 107, 74, 0.08);
+  --htm-caution:      #b45309;   /* caution, recovering */
+  --htm-caution-bg:   rgba(180, 83, 9, 0.08);
+  --htm-alert:        #b91c1c;   /* anomaly, alert, critical */
+  --htm-alert-bg:     rgba(185, 28, 28, 0.08);
+  --htm-info:         #1e4e8c;   /* informational, monitoring */
+  --htm-info-bg:      rgba(30, 78, 140, 0.08);
+  --htm-neutral:      #6b6560;   /* inactive, no data */
+  --htm-neutral-bg:   rgba(107, 101, 96, 0.08);
+
+  /* ── Spacing Scale ── */
+  --htm-xs:  4px;
+  --htm-sm:  8px;
+  --htm-md:  16px;
+  --htm-lg:  24px;
+  --htm-xl:  32px;
+  --htm-xxl: 48px;
+
+  /* ── Radius ── */
+  --htm-r-sm:   10px;  /* button, chip, input */
+  --htm-r-md:   14px;  /* card, panel */
+  --htm-r-lg:   20px;  /* dialog, sheet */
+  --htm-r-pill: 999px; /* status chip, avatar */
+
+  /* ── Typography ── */
+  --htm-font-display: 'Fraunces', Georgia, serif;
+  --htm-font-body:    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --htm-font-mono:    'IBM Plex Mono', 'Courier New', monospace;
+}
+
+/* ==========================================================================
+   Base Reset & Body
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background-color: var(--htm-canvas);
+  color: var(--htm-ink);
+  font-family: var(--htm-font-body);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+/* Scrollbar — thin, matching palette */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--htm-hairline); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--htm-divider); }
+
+/* Selection */
+::selection { background-color: rgba(45, 90, 78, 0.15); color: var(--htm-ink); }
+
+/* ==========================================================================
+   Typography Utilities
+   ========================================================================== */
+.htm-display {
+  font-family: var(--htm-font-display);
+  font-weight: 560;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.htm-display-lg { font-size: 28px; }
+.htm-display-md { font-size: 22px; }
+
+.htm-title   { font-family: var(--htm-font-body); font-size: 16px; font-weight: 500; }
+.htm-body    { font-family: var(--htm-font-body); font-size: 15px; font-weight: 400; }
+.htm-body-sm { font-family: var(--htm-font-body); font-size: 13px; font-weight: 400; }
+
+.htm-mono    { font-family: var(--htm-font-mono); font-size: 14px; font-weight: 400; }
+.htm-mono-sm { font-family: var(--htm-font-mono); font-size: 12px; font-weight: 400; }
+
+/* Eyebrow / label text — IBM Plex Mono uppercase */
+.htm-eyebrow {
+  font-family: var(--htm-font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--htm-muted);
+}
+
+/* ==========================================================================
+   Component Primitives
+   ========================================================================== */
+
+/* ── Card ── */
+.htm-card {
+  background: var(--htm-surface);
+  border: 1px solid var(--htm-hairline);
+  border-radius: var(--htm-r-md);
+  padding: var(--htm-md);
+}
+
+/* ── Divider with center label ── */
+.htm-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--htm-sm);
+  color: var(--htm-muted);
+  font-family: var(--htm-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+.htm-divider::before,
+.htm-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--htm-hairline);
+}
+
+/* ── Status Badge / Pill ── */
+.htm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--htm-r-pill);
+  font-family: var(--htm-font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.htm-badge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.htm-badge-stable  { color: var(--htm-stable);  background: var(--htm-stable-bg);  border-color: rgba(46,107,74,0.2); }
+.htm-badge-caution { color: var(--htm-caution); background: var(--htm-caution-bg); border-color: rgba(180,83,9,0.2); }
+.htm-badge-alert   { color: var(--htm-alert);   background: var(--htm-alert-bg);   border-color: rgba(185,28,28,0.2); }
+.htm-badge-info    { color: var(--htm-info);    background: var(--htm-info-bg);    border-color: rgba(30,78,140,0.2); }
+.htm-badge-neutral { color: var(--htm-neutral); background: var(--htm-neutral-bg); border-color: rgba(107,101,96,0.2); }
+
+/* ── Button ── */
+.htm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--htm-sm);
+  height: 40px;
+  padding: 0 var(--htm-md);
+  border-radius: var(--htm-r-sm);
+  border: none;
+  font-family: var(--htm-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.htm-btn:active { transform: scale(0.98); }
+.htm-btn-primary { background: var(--htm-ink); color: var(--htm-canvas); }
+.htm-btn-primary:hover { opacity: 0.87; }
+.htm-btn-outline {
+  background: transparent;
+  border: 1px solid var(--htm-primary);
+  color: var(--htm-primary);
+}
+.htm-btn-outline:hover { background: var(--htm-primary-bg); }
+.htm-btn-ghost { background: transparent; color: var(--htm-primary); }
+.htm-btn-ghost:hover { background: var(--htm-primary-bg); }
+.htm-btn-sm { height: 32px; padding: 0 var(--htm-sm); font-size: 12px; }
+.htm-btn-lg { height: 48px; padding: 0 var(--htm-lg); font-size: 14px; font-weight: 500; }
+
+/* ── Input (underline style) ── */
+.htm-input-wrap { display: flex; flex-direction: column; gap: 6px; }
+.htm-input-label {
+  font-family: var(--htm-font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--htm-muted);
+}
+.htm-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--htm-hairline);
+  border-radius: 0;
+  padding: 8px 0;
+  font-family: var(--htm-font-body);
+  font-size: 15px;
+  color: var(--htm-ink);
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s ease;
+}
+.htm-input::placeholder { color: var(--htm-muted); }
+.htm-input:focus { border-bottom-color: var(--htm-primary); }
+.htm-input-mono { font-family: var(--htm-font-mono); }
+
+/* ── Table ── */
+.htm-table { width: 100%; border-collapse: collapse; }
+.htm-table thead tr {
+  background: var(--htm-raised);
+  border-bottom: 1px solid var(--htm-hairline);
+}
+.htm-table th {
+  font-family: var(--htm-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--htm-muted);
+  font-weight: 400;
+  padding: 10px 16px;
+  text-align: left;
+}
+.htm-table td {
+  padding: 11px 16px;
+  font-size: 13px;
+  color: var(--htm-ink);
+  border-bottom: 1px solid var(--htm-hairline);
+}
+.htm-table tbody tr:hover { background: var(--htm-raised); }
+.htm-table tbody tr:last-child td { border-bottom: none; }
+.htm-table td.mono { font-family: var(--htm-font-mono); font-size: 12px; }
+.htm-table td.muted { color: var(--htm-muted); }
+
+/* ── Skeleton Loader ── */
+.htm-skeleton {
+  background: linear-gradient(90deg, var(--htm-raised) 25%, var(--htm-hairline) 50%, var(--htm-raised) 75%);
+  background-size: 200% 100%;
+  animation: htm-shimmer 1.4s ease infinite;
+  border-radius: var(--htm-r-sm);
+}
+@keyframes htm-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Heartbeat / Pulse SVG motif ── */
+.htm-heartbeat-line { animation: htm-draw-line 1.5s ease forwards; }
+@keyframes htm-draw-line {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* ── Page transitions ── */
+.htm-page-enter {
+  animation: htm-page-in 0.22s ease-out forwards;
+}
+@keyframes htm-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

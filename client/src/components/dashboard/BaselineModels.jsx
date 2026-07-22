@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FaSync, FaCheckCircle, FaSnowflake, FaRedo, FaHistory } from 'react-icons/fa';
-import { Skeleton, SmoothLineChart, Badge, fmtDate } from './DashboardShared';
+import { Skeleton, SmoothLineChart, Badge, fmtDate, SectionHeader } from './DashboardShared';
 import { analysisApi } from '../../utls/api';
 
 export default function BaselineModels({ data, loading, sessionUser, fetchFor }) {
@@ -31,43 +31,54 @@ export default function BaselineModels({ data, loading, sessionUser, fetchFor })
   const conf = selectedBaseline ? Math.min(100, Math.round((selectedBaseline.segment_count / 20) * 100)) : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-2">
-        <h4 className="font-bold text-sm">Baseline Model Management</h4>
-        <button onClick={refreshBaselines} className="text-sys-blue text-xs flex items-center gap-1">
-          <FaSync className={loading.baseline || actionLoading ? 'animate-spin' : ''} /> Refresh Models
-        </button>
-      </div>
+    <div className="space-y-6 animate-htm-page-in">
+      <SectionHeader 
+        title="Baseline Models" 
+        subtitle="Manage and analyze generated context models."
+        action={
+          <button 
+            onClick={refreshBaselines} 
+            className="htm-btn htm-btn-outline htm-btn-sm"
+          >
+            <FaSync className={loading.baseline || actionLoading ? 'animate-spin' : ''} style={{ marginRight: 6 }} /> Refresh Models
+          </button>
+        }
+      />
 
       {loading.baseline && !baselines.length ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full" />)}</div>
       ) : baselines.length === 0 ? (
-        <div className="bg-brand-card border border-brand-border p-6 rounded-2xl text-center text-brand-muted">
+        <div className="htm-card text-center" style={{ color: 'var(--htm-muted)', padding: '48px' }}>
           No baselines generated yet. Waiting for analysis pipeline.
         </div>
       ) : (
         <div className="grid md:grid-cols-3 gap-6">
           {/* Sidebar / List */}
           <div className="md:col-span-1 space-y-4">
-            <div className="bg-brand-card border border-brand-border rounded-2xl shadow-lg overflow-hidden">
-              <div className="p-4 border-b border-brand-border bg-brand-cardLight">
-                <h5 className="font-bold text-xs uppercase text-brand-muted tracking-wider">Contextual Models</h5>
+            <div className="htm-card p-0 overflow-hidden">
+              <div className="p-4 border-b border-htm-hairline bg-htm-raised">
+                <h5 className="htm-eyebrow">Contextual Models</h5>
               </div>
-              <div className="divide-y divide-brand-border">
+              <div style={{ borderTop: '1px solid var(--htm-hairline)' }}>
                 {baselines.map((b, i) => (
                   <div
                     key={b._id}
                     onClick={() => setSelectedIndex(i)}
-                    className={`p-4 cursor-pointer transition-colors ${selectedIndex === i ? 'bg-sys-blue/10 border-l-2 border-sys-blue' : 'hover:bg-brand-cardLight border-l-2 border-transparent'}`}
+                    className="p-4 cursor-pointer transition-colors"
+                    style={{
+                      background: selectedIndex === i ? 'var(--htm-primary-bg)' : 'transparent',
+                      borderLeft: `3px solid ${selectedIndex === i ? 'var(--htm-primary)' : 'transparent'}`,
+                      borderBottom: '1px solid var(--htm-hairline)'
+                    }}
                   >
                     <div className="flex justify-between items-start">
-                      <span className="font-bold text-sm">{b.activity}</span>
-                      <Badge label={`v${b.version || 1}`} color="gray" />
+                      <span className="htm-title">{b.activity}</span>
+                      <Badge label={`v${b.version || 1}`} color="neutral" />
                     </div>
-                    <div className="text-[10px] text-brand-muted mt-1 space-x-2">
+                    <div className="htm-mono-sm" style={{ color: 'var(--htm-muted)', marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span>{b.time_period}</span>
                       <span>•</span>
-                      <span className={b.is_mature ? 'text-sys-green' : 'text-sys-orange'}>
+                      <span style={{ color: b.is_mature ? 'var(--htm-stable)' : 'var(--htm-caution)' }}>
                         {b.is_mature ? 'Mature' : 'Learning'}
                       </span>
                     </div>
@@ -77,22 +88,33 @@ export default function BaselineModels({ data, loading, sessionUser, fetchFor })
             </div>
 
             {selectedBaseline && (
-              <div className="bg-brand-card border border-brand-border p-5 rounded-2xl shadow-lg space-y-4">
-                <h5 className="font-bold text-xs uppercase text-brand-muted tracking-wider">Model Actions</h5>
+              <div className="htm-card space-y-4">
+                <h5 className="htm-eyebrow">Model Actions</h5>
                 <div className="space-y-2">
                   <button
                     disabled={actionLoading}
                     onClick={() => handleAction(analysisApi.freezeBaseline, !selectedBaseline.is_frozen)}
-                    className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50 ${selectedBaseline.is_frozen ? 'bg-brand-border text-brand-text hover:bg-brand-muted' : 'bg-sys-blue/20 text-sys-blue hover:bg-sys-blue/30'}`}
+                    className="htm-btn htm-btn-outline"
+                    style={{
+                      width: '100%',
+                      color: selectedBaseline.is_frozen ? 'var(--htm-ink)' : 'var(--htm-primary)',
+                      borderColor: selectedBaseline.is_frozen ? 'var(--htm-hairline)' : 'var(--htm-primary)'
+                    }}
                   >
-                    <FaSnowflake /> {selectedBaseline.is_frozen ? 'Unfreeze Model' : 'Freeze Model'}
+                    <FaSnowflake style={{ marginRight: 6 }} /> {selectedBaseline.is_frozen ? 'Unfreeze Model' : 'Freeze Model'}
                   </button>
                   <button
                     disabled={actionLoading || selectedBaseline.status === 'approved'}
                     onClick={() => handleAction(analysisApi.approveBaseline)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-sys-green/20 text-sys-green rounded-xl text-xs font-bold hover:bg-sys-green/30 disabled:opacity-50"
+                    className="htm-btn"
+                    style={{
+                      width: '100%',
+                      background: 'var(--htm-stable-bg)',
+                      color: 'var(--htm-stable)',
+                      opacity: (actionLoading || selectedBaseline.status === 'approved') ? 0.5 : 1
+                    }}
                   >
-                    <FaCheckCircle /> {selectedBaseline.status === 'approved' ? 'Approved' : 'Approve Baseline'}
+                    <FaCheckCircle style={{ marginRight: 6 }} /> {selectedBaseline.status === 'approved' ? 'Approved' : 'Approve Baseline'}
                   </button>
                   <button
                     disabled={actionLoading}
@@ -101,9 +123,13 @@ export default function BaselineModels({ data, loading, sessionUser, fetchFor })
                         handleAction(analysisApi.recalculateBaseline);
                       }
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-sys-orange/20 text-sys-orange rounded-xl text-xs font-bold hover:bg-sys-orange/30 disabled:opacity-50"
+                    className="htm-btn htm-btn-ghost"
+                    style={{
+                      width: '100%',
+                      color: 'var(--htm-caution)'
+                    }}
                   >
-                    <FaRedo /> Recalculate (Reset)
+                    <FaRedo style={{ marginRight: 6 }} /> Recalculate (Reset)
                   </button>
                 </div>
               </div>
@@ -113,45 +139,62 @@ export default function BaselineModels({ data, loading, sessionUser, fetchFor })
           {/* Details & Graph */}
           {selectedBaseline && (
             <div className="md:col-span-2 space-y-6">
-              <div className="bg-brand-card border border-brand-border p-6 rounded-2xl shadow-lg">
-                <div className="flex justify-between items-start border-b border-brand-border pb-4 mb-4">
+              <div className="htm-card">
+                <div className="flex justify-between items-start border-b border-htm-hairline pb-4 mb-6">
                   <div>
-                    <h4 className="font-bold text-lg text-brand-text">P0{sessionUser?.name} – {selectedBaseline.activity} ({selectedBaseline.time_period})</h4>
-                    <p className="text-[10px] text-brand-muted mt-1">Status: <Badge label={selectedBaseline.status || 'learning'} color={selectedBaseline.status === 'approved' ? 'green' : 'orange'} /> · Last Updated: {fmtDate(selectedBaseline.last_updated)}</p>
+                    <h4 className="htm-display text-2xl">P0{sessionUser?.name} – {selectedBaseline.activity} <span style={{ fontWeight: 400, color: 'var(--htm-muted)', fontSize: 18 }}>({selectedBaseline.time_period})</span></h4>
+                    <p className="htm-body-sm" style={{ marginTop: 8, color: 'var(--htm-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      Status: 
+                      <Badge label={selectedBaseline.status || 'learning'} color={selectedBaseline.status === 'approved' ? 'stable' : 'caution'} /> 
+                      <span style={{ margin: '0 4px' }}>·</span> 
+                      Last Updated: {fmtDate(selectedBaseline.last_updated)}
+                    </p>
                   </div>
-                  {selectedBaseline.is_frozen && <Badge label="FROZEN" color="blue" />}
+                  {selectedBaseline.is_frozen && <Badge label="FROZEN" color="info" />}
                 </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-brand-cardLight border border-brand-border p-3 rounded-xl">
-                    <span className="block text-[9px] uppercase text-brand-muted font-bold">HR Mean</span>
-                    <span className="text-xl font-black text-brand-text">{selectedBaseline.stats?.mean_hr?.mean?.toFixed(1) || '0.0'} <span className="text-[9px] font-normal">BPM</span></span>
+                  <div className="p-4" style={{ background: 'var(--htm-raised)', borderRadius: 'var(--htm-r-sm)' }}>
+                    <span className="htm-eyebrow block mb-2">HR Mean</span>
+                    <span className="htm-display text-2xl">{selectedBaseline.stats?.mean_hr?.mean?.toFixed(1) || '0.0'} <span className="htm-mono" style={{ fontSize: 10, color: 'var(--htm-muted)' }}>BPM</span></span>
                   </div>
-                  <div className="bg-brand-cardLight border border-brand-border p-3 rounded-xl">
-                    <span className="block text-[9px] uppercase text-brand-muted font-bold">HR Std Dev</span>
-                    <span className="text-xl font-black text-brand-text">{selectedBaseline.stats?.std_hr?.mean?.toFixed(1) || '0.0'}</span>
+                  <div className="p-4" style={{ background: 'var(--htm-raised)', borderRadius: 'var(--htm-r-sm)' }}>
+                    <span className="htm-eyebrow block mb-2">HR Std Dev</span>
+                    <span className="htm-display text-2xl">{selectedBaseline.stats?.std_hr?.mean?.toFixed(1) || '0.0'}</span>
                   </div>
-                  <div className="bg-brand-cardLight border border-brand-border p-3 rounded-xl">
-                    <span className="block text-[9px] uppercase text-brand-muted font-bold">RMSSD Mean</span>
-                    <span className="text-xl font-black text-brand-text">{selectedBaseline.stats?.rmssd?.mean?.toFixed(1) || '0.0'} <span className="text-[9px] font-normal">ms</span></span>
+                  <div className="p-4" style={{ background: 'var(--htm-raised)', borderRadius: 'var(--htm-r-sm)' }}>
+                    <span className="htm-eyebrow block mb-2">RMSSD Mean</span>
+                    <span className="htm-display text-2xl">{selectedBaseline.stats?.rmssd?.mean?.toFixed(1) || '0.0'} <span className="htm-mono" style={{ fontSize: 10, color: 'var(--htm-muted)' }}>ms</span></span>
                   </div>
-                  <div className="bg-brand-cardLight border border-brand-border p-3 rounded-xl">
-                    <span className="block text-[9px] uppercase text-brand-muted font-bold">DFA Alpha-1</span>
-                    <span className="text-xl font-black text-brand-text">{selectedBaseline.stats?.dfa_alpha1?.mean?.toFixed(2) || '0.00'}</span>
+                  <div className="p-4" style={{ background: 'var(--htm-raised)', borderRadius: 'var(--htm-r-sm)' }}>
+                    <span className="htm-eyebrow block mb-2">DFA Alpha-1</span>
+                    <span className="htm-display text-2xl">{selectedBaseline.stats?.dfa_alpha1?.mean?.toFixed(2) || '0.00'}</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="flex justify-between border-b border-brand-border pb-1"><span className="text-brand-muted">Observation</span><span className="font-bold">{selectedBaseline.segment_count} windows</span></div>
-                  <div className="flex justify-between border-b border-brand-border pb-1"><span className="text-brand-muted">Confidence</span><span className={`font-bold ${conf >= 80 ? 'text-sys-green' : conf >= 50 ? 'text-sys-orange' : 'text-sys-red'}`}>{conf}%</span></div>
-                  <div className="flex justify-between border-b border-brand-border pb-1"><span className="text-brand-muted">Min HR</span><span className="font-bold">{selectedBaseline.stats?.mean_hr?.min?.toFixed(1) || '-'}</span></div>
-                  <div className="flex justify-between border-b border-brand-border pb-1"><span className="text-brand-muted">Max HR</span><span className="font-bold">{selectedBaseline.stats?.mean_hr?.max?.toFixed(1) || '-'}</span></div>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3 htm-body-sm">
+                  <div className="flex justify-between border-b border-htm-hairline pb-2">
+                    <span style={{ color: 'var(--htm-muted)' }}>Observation</span>
+                    <span className="htm-mono font-medium">{selectedBaseline.segment_count} windows</span>
+                  </div>
+                  <div className="flex justify-between border-b border-htm-hairline pb-2">
+                    <span style={{ color: 'var(--htm-muted)' }}>Confidence</span>
+                    <span className="htm-mono font-medium" style={{ color: conf >= 80 ? 'var(--htm-stable)' : conf >= 50 ? 'var(--htm-caution)' : 'var(--htm-alert)' }}>{conf}%</span>
+                  </div>
+                  <div className="flex justify-between border-b border-htm-hairline pb-2">
+                    <span style={{ color: 'var(--htm-muted)' }}>Min HR</span>
+                    <span className="htm-mono font-medium">{selectedBaseline.stats?.mean_hr?.min?.toFixed(1) || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-htm-hairline pb-2">
+                    <span style={{ color: 'var(--htm-muted)' }}>Max HR</span>
+                    <span className="htm-mono font-medium">{selectedBaseline.stats?.mean_hr?.max?.toFixed(1) || '-'}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-brand-card border border-brand-border p-6 rounded-2xl shadow-lg space-y-4">
-                <h4 className="font-bold text-sm">Baseline HR Distribution vs Global</h4>
-                <p className="text-[10px] text-brand-muted">Comparing personalized (blue) vs global population (gray) baseline for {selectedBaseline.activity}.</p>
+              <div className="htm-card space-y-4">
+                <h4 className="htm-title">Baseline HR Distribution vs Global</h4>
+                <p className="htm-body-sm" style={{ color: 'var(--htm-muted)' }}>Comparing personalized (primary) vs global population (gray) baseline for {selectedBaseline.activity}.</p>
                 {/* Simulated gaussian-like distribution based on real mean & std */}
                 {(() => {
                   const m = selectedBaseline.stats?.mean_hr?.mean || 75;
@@ -166,7 +209,7 @@ export default function BaselineModels({ data, loading, sessionUser, fetchFor })
                   return (
                     <SmoothLineChart
                       points={pts}
-                      color="#3b82f6"
+                      color="var(--htm-primary)"
                       fillId="personal-dist"
                       height={200}
                       baselineBand={{ min: Math.max(0, 30), max: 80 }} // placeholder for global band

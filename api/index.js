@@ -21,6 +21,7 @@ import path from "path";
 import cors from "cors";
 import analysisRouter from './routes/analysis.route.js';
 import pipelineRouter from './routes/pipeline.route.js';
+import reportRouter from './routes/report.route.js';
 
 // import './controllers/cornjob.controller.js';
 // import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
@@ -64,6 +65,7 @@ app.use("/api/faktorresiko", faktorresiko);
 app.use("/api/log", logRouter);
 app.use("/api/analysis", analysisRouter);
 app.use("/api/pipeline", pipelineRouter);
+app.use("/api/reports", reportRouter);
 app.use(express.static(path.join(__dirname, "../client/dist")));
 
 app.get("/{*splat}", (req, res) => {

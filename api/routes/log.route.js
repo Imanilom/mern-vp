@@ -1,5 +1,5 @@
 import express from 'express';
-import { createLog, upload } from '../controllers/logs.controller.js';
+import { createLog, createTransportLog, upload } from '../controllers/logs.controller.js';
 
 const router = express.Router();
 
@@ -20,5 +20,6 @@ const router = express.Router();
  *   500 { success: false, message }
  */
 router.post('/logs', upload.single('file'), createLog);
+router.post('/transport', createTransportLog);
 
 export default router;

@@ -1,31 +1,58 @@
 import express from 'express';
 import {
-  getRecentEvents,
-  getUserBaselines,
+  getAnalysisSummary,
   getAnalyzedSegments,
-  freezeBaseline,
-  approveBaseline,
-  recalculateBaseline,
-  annotateEvent,
+  getRecentEvents,
   getEventSegments,
+  annotateEvent,
   updateEventStatus,
   validateEvent,
   escalateEvent,
   assignReviewer,
-} from '../controllers/analysis.controller.js';
-import { generateReportData } from '../controllers/report.controller.js';
-import {
+  getUserBaselines,
+  freezeBaseline,
+  approveBaseline,
+  recalculateBaseline,
   getFullMetrics,
   computeROCandAUC,
   computeH1aMetrics,
   computeH2aMetrics,
   computeH3aMetrics,
-} from '../controllers/evaluation.controller.js';
+  getActivityContext,
+} from '../controllers/analysis.controller.js';
+import { generateReportData } from '../controllers/report.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
 import Segment from '../models/segment.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
+import User from '../models/user.model.js';
+import Patient from '../models/patient.model.js';
+import mongoose from 'mongoose';
 
 const router = express.Router();
+
+async function resolveUserIdParam(req, res, next) {
+  try {
+    const { userId } = req.params;
+    if (!userId) return next();
+
+    let user = null;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      user = await User.findById(userId) || await Patient.findById(userId);
+    }
+    if (!user) {
+      user = await User.findOne({ $or: [{ guid: userId }, { name: userId }, { email: new RegExp('^' + userId, 'i') }] })
+          || await Patient.findOne({ $or: [{ guid: userId }, { name: userId }, { email: new RegExp('^' + userId, 'i') }] });
+    }
+
+    if (user) {
+      req.params.userId = user._id.toString();
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 
 // ── Analisis Dashboard ────────────────────────────────────────────────────────
 
@@ -33,7 +60,7 @@ const router = express.Router();
 router.get('/reports', verifyToken, generateReportData);
 
 /** GET /api/analysis/segments/:userId — grafik HR + anomaly score */
-router.get('/segments/:userId', verifyToken, async (req, res) => {
+router.get('/segments/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 100;
     const data  = await getAnalyzedSegments(req.params.userId, limit);
@@ -44,7 +71,7 @@ router.get('/segments/:userId', verifyToken, async (req, res) => {
 });
 
 /** GET /api/analysis/events/:userId — event log anomali */
-router.get('/events/:userId', verifyToken, async (req, res) => {
+router.get('/events/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const limit  = parseInt(req.query.limit) || 20;
     const events = await getRecentEvents(req.params.userId, limit);
@@ -115,7 +142,7 @@ router.patch('/events/:eventId/assign', verifyToken, async (req, res) => {
 });
 
 /** GET /api/analysis/baseline/:userId — baseline personal */
-router.get('/baseline/:userId', verifyToken, async (req, res) => {
+router.get('/baseline/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const data = await getUserBaselines(req.params.userId);
     res.json({ success: true, data });
@@ -162,7 +189,7 @@ router.post('/baseline/:baselineId/recalculate', verifyToken, async (req, res) =
  * Ringkasan lengkap: Precision, Recall, F1, FPR, Accuracy, AUC,
  * Detection Delay, TCR, MER, TCI, CFPR, TRS
  */
-router.get('/metrics/:userId', verifyToken, async (req, res) => {
+router.get('/metrics/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const data = await getFullMetrics(req.params.userId);
     res.json({ success: true, data });
@@ -172,7 +199,7 @@ router.get('/metrics/:userId', verifyToken, async (req, res) => {
 });
 
 /** GET /api/analysis/metrics/:userId/roc — ROC curve untuk visualisasi AUC */
-router.get('/metrics/:userId/roc', verifyToken, async (req, res) => {
+router.get('/metrics/:userId/roc', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const data = await computeROCandAUC(req.params.userId);
     res.json({ success: true, data });
@@ -182,7 +209,7 @@ router.get('/metrics/:userId/roc', verifyToken, async (req, res) => {
 });
 
 /** GET /api/analysis/metrics/:userId/h1a — TCR, MER, TCI (Uji H1a) */
-router.get('/metrics/:userId/h1a', verifyToken, async (req, res) => {
+router.get('/metrics/:userId/h1a', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const intervalMin = parseInt(req.query.interval) || 15;
     const data = await computeH1aMetrics(req.params.userId, intervalMin);
@@ -193,7 +220,7 @@ router.get('/metrics/:userId/h1a', verifyToken, async (req, res) => {
 });
 
 /** GET /api/analysis/metrics/:userId/h2a — CFPR (Uji H2a) */
-router.get('/metrics/:userId/h2a', verifyToken, async (req, res) => {
+router.get('/metrics/:userId/h2a', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const data = await computeH2aMetrics(req.params.userId);
     res.json({ success: true, data });
@@ -203,7 +230,7 @@ router.get('/metrics/:userId/h2a', verifyToken, async (req, res) => {
 });
 
 /** GET /api/analysis/metrics/:userId/h3a — TRS (Uji H3a) */
-router.get('/metrics/:userId/h3a', verifyToken, async (req, res) => {
+router.get('/metrics/:userId/h3a', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const data = await computeH3aMetrics(req.params.userId);
     res.json({ success: true, data });
@@ -211,6 +238,8 @@ router.get('/metrics/:userId/h3a', verifyToken, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+router.get('/activity-context/:userId', verifyToken, resolveUserIdParam, getActivityContext);
 
 // ── Annotasi Ground Truth ─────────────────────────────────────────────────────
 

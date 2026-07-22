@@ -3,6 +3,7 @@ import Segment from '../models/segment.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
 import Baseline from '../models/baseline.model.js';
 import User from '../models/user.model.js';
+import Report from '../models/report.model.js';
 
 export async function generateReportData(req, res) {
   try {
@@ -147,15 +148,40 @@ export async function generateReportData(req, res) {
         return res.status(400).json({ success: false, message: 'Invalid report type' });
     }
 
+    const newReport = new Report({
+      user_id: userId !== 'All' && userId ? userId : undefined,
+      report_type: type,
+      summary,
+      data,
+      filters: { userId, startDate, endDate, activity, status, group }
+    });
+    await newReport.save();
+
     res.json({
       success: true,
       report_type: type,
-      generated_at: Date.now(),
+      generated_at: newReport.createdAt,
       filters: { userId, startDate, endDate, activity, status, group },
       summary,
       data,
+      _id: newReport._id
     });
 
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function getReports(req, res) {
+  try {
+    const { userId } = req.params;
+    const query = {};
+    if (userId && userId !== 'All') {
+      // Find reports for this user or global reports
+      query.$or = [{ user_id: userId }, { user_id: { $exists: false } }];
+    }
+    const reports = await Report.find(query).sort({ createdAt: -1 }).lean();
+    res.json({ success: true, data: reports });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

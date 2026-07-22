@@ -54,24 +54,24 @@ export async function kalmanFilter(sortedLogs, options = {}) {
   // Sort logs by timestamp to ensure chronological processing
   sortedLogs.sort((a, b) => a.timestamp - b.timestamp);
 
-  const isValidValue = (value, min, max) => 
+  const isValidValue = (value, min, max) =>
     value !== null && value !== undefined && value >= min && value <= max;
 
   // Initialize estimates with reasonable defaults from valid data
   const validRR = sortedLogs
     .map(log => log.rr)
     .filter(value => isValidValue(value, 300, 1200));
-  
+
   const validHR = sortedLogs
     .map(log => log.hr)
     .filter(value => isValidValue(value, 40, 200));
 
-  let estimateRR = validRR.length > 0 
-    ? validRR.reduce((sum, val) => sum + val, 0) / validRR.length 
+  let estimateRR = validRR.length > 0
+    ? validRR.reduce((sum, val) => sum + val, 0) / validRR.length
     : 600; // Default RR interval
-  
-  let estimateHR = validHR.length > 0 
-    ? validHR.reduce((sum, val) => sum + val, 0) / validHR.length 
+
+  let estimateHR = validHR.length > 0
+    ? validHR.reduce((sum, val) => sum + val, 0) / validHR.length
     : 70; // Default heart rate
 
   let errorRR = initialErrorRR;
@@ -89,7 +89,7 @@ export async function kalmanFilter(sortedLogs, options = {}) {
     };
 
     let prevValue, nextValue;
-    
+
     // Search backward for valid value
     for (let i = index - 1; i >= 0; i--) {
       const value = logs[i][field];
@@ -98,7 +98,7 @@ export async function kalmanFilter(sortedLogs, options = {}) {
         break;
       }
     }
-    
+
     // Search forward for valid value
     for (let i = index + 1; i < logs.length; i++) {
       const value = logs[i][field];
@@ -107,7 +107,7 @@ export async function kalmanFilter(sortedLogs, options = {}) {
         break;
       }
     }
-    
+
     // Determine replacement value
     if (prevValue !== undefined && nextValue !== undefined) {
       return (prevValue + nextValue) / 2;
@@ -144,7 +144,7 @@ export async function kalmanFilter(sortedLogs, options = {}) {
         originalRR: measurementRR,
         originalHR: measurementHR
       });
-      
+
       // Replace invalid values
       filteredLogs.push({
         ...log,
@@ -169,7 +169,7 @@ export async function kalmanFilter(sortedLogs, options = {}) {
       const deviation = Math.abs(measurement - priorEstimate);
       const threshold = field === 'hr' ? 25 : 150; // Different thresholds for HR and RR
       const statisticalThreshold = 3 * Math.sqrt(priorError);
-      
+
       return deviation > threshold || deviation > statisticalThreshold;
     };
 
@@ -231,8 +231,8 @@ export async function kalmanFilter(sortedLogs, options = {}) {
 
   console.log(`Kalman filtering completed: ${filteredLogs.length} filtered, ${anomalies.length} anomalies`);
 
-  return { 
-    filteredLogs, 
+  return {
+    filteredLogs,
     anomalies,
     statistics: {
       totalProcessed: sortedLogs.length,
@@ -270,9 +270,9 @@ export function filterIQ(logs, multiplier = 1.5) {
   const hrStats = calculateQuartilesAndIQR([...hrValues].sort((a, b) => a - b));
   const rrStats = calculateQuartilesAndIQR([...rrValues].sort((a, b) => a - b));
 
-  const hrLow  = hrStats.Q1 - multiplier * hrStats.IQR;
+  const hrLow = hrStats.Q1 - multiplier * hrStats.IQR;
   const hrHigh = hrStats.Q3 + multiplier * hrStats.IQR;
-  const rrLow  = rrStats.Q1 - multiplier * rrStats.IQR;
+  const rrLow = rrStats.Q1 - multiplier * rrStats.IQR;
   const rrHigh = rrStats.Q3 + multiplier * rrStats.IQR;
 
   let anomalyCount = 0;
@@ -289,7 +289,7 @@ export function filterIQ(logs, multiplier = 1.5) {
     anomalyCount++;
 
     // Cari tetangga kiri & kanan yang valid
-    const leftIdx  = i > 0 ? i - 1 : i;
+    const leftIdx = i > 0 ? i - 1 : i;
     const rightIdx = i < logs.length - 1 ? i + 1 : i;
 
     const replacedHr = hrOutlier
@@ -537,7 +537,7 @@ export async function processHeartRateData() {
       try {
         const result = await processUserData(userId);
         totalSegmentsCreated += result.segmentsCreated;
-        totalRawProcessed   += result.rawProcessed;
+        totalRawProcessed += result.rawProcessed;
       } catch (userErr) {
         console.error(`[Pipeline] Error untuk user ${userId}:`, userErr.message);
         // Lanjutkan ke user berikutnya meski ada error
@@ -662,9 +662,9 @@ function segmentIntoWindows(logs) {
 
     if (!windowMap.has(windowKey)) {
       windowMap.set(windowKey, {
-        windowStart:   windowKey,
-        windowEnd:     windowKey + WINDOW_MS,
-        deviceId:      log.device_id || 'UNKNOWN',
+        windowStart: windowKey,
+        windowEnd: windowKey + WINDOW_MS,
+        deviceId: log.device_id || 'UNKNOWN',
         activityLabel: log.activity || 'Unknown',
         logs: [],
       });
@@ -716,14 +716,14 @@ function buildSegmentDoc(userId, win, isValid) {
 
   // ── HR features ─────────────────────────────────────────────────────────
   const mean_hr = avg(hrArr);
-  const std_hr  = stddev(hrArr, mean_hr);
+  const std_hr = stddev(hrArr, mean_hr);
   const delta_hr = Math.max(...hrArr) - Math.min(...hrArr);
   const slope_hr = linearSlope(hrArr); // slope terhadap indeks waktu
 
   // ── RR / HRV features ────────────────────────────────────────────────────
   const mean_rr = avg(rrArr);
-  const sdnn    = stddev(rrArr, mean_rr);
-  const rmssd   = calcRmssd(rrArr);
+  const sdnn = stddev(rrArr, mean_rr);
+  const rmssd = calcRmssd(rrArr);
   const rolling_variance = variance(hrArr, mean_hr);
 
   // ── Motion ───────────────────────────────────────────────────────────────
@@ -750,21 +750,21 @@ function buildSegmentDoc(userId, win, isValid) {
   }
 
   return {
-    user_id:        userId,
-    device_id:      win.deviceId,
-    window_start:   win.windowStart,
-    window_end:     win.windowEnd,
+    user_id: userId,
+    device_id: win.deviceId,
+    window_start: win.windowStart,
+    window_end: win.windowEnd,
     activity_label: win.activityLabel,
-    raw_count:      logs.length,
-    is_valid:       isValid,
+    raw_count: logs.length,
+    is_valid: isValid,
     features: {
-      mean_hr:          round2(mean_hr),
-      std_hr:           round2(std_hr),
-      delta_hr:         round2(delta_hr),
-      slope_hr:         round4(slope_hr),
-      mean_rr:          round2(mean_rr),
-      sdnn:             round2(sdnn),
-      rmssd:            round2(rmssd),
+      mean_hr: round2(mean_hr),
+      std_hr: round2(std_hr),
+      delta_hr: round2(delta_hr),
+      slope_hr: round4(slope_hr),
+      mean_rr: round2(mean_rr),
+      sdnn: round2(sdnn),
+      rmssd: round2(rmssd),
       rolling_variance: round2(rolling_variance),
       motion_intensity: round2(motion_intensity),
       step_count,
@@ -849,11 +849,11 @@ function processActivitySegments(filteredLogs, jsonData) {
   // Process semua logs untuk segmentasi aktivitas
   for (let i = 0; i < filteredLogs.length; i++) {
     const log = filteredLogs[i];
-    
+
     if (log.activity !== currentActivity) {
       // Push segment sebelumnya
       pushActivitySegment(i);
-      
+
       // Start new segment
       currentActivity = log.activity;
       segmentLogs = [log];
@@ -870,7 +870,7 @@ function processActivitySegments(filteredLogs, jsonData) {
 export async function getProcessingStatus(userId = null) {
   try {
     const filter = userId ? { user_id: userId } : {};
-    const filterProcessed   = userId ? { user_id: userId, isChecked: true }  : { isChecked: true };
+    const filterProcessed = userId ? { user_id: userId, isChecked: true } : { isChecked: true };
     const filterUnprocessed = userId ? { user_id: userId, isChecked: false } : { isChecked: false };
 
     const [totalRecords, processedRecords, unprocessedRecords, totalSegments] = await Promise.all([
@@ -1058,7 +1058,7 @@ const createHRVDirectory = async () => {
       // 3. Dapatkan semua device untuk user ini
       const devices = await Log.distinct('guid_device', { guid: user.guid });
       console.log(`Found ${devices.length} devices for user ${user._id}:`, devices);
-      
+
       for (const device of devices) {
         if (device) {
           // Buat folder device berdasarkan guid
@@ -1067,9 +1067,9 @@ const createHRVDirectory = async () => {
           console.log(`Created directory for device: ${device}`);
 
           // 4. Dapatkan data per hari untuk device ini
-          const logs = await Log.find({ 
+          const logs = await Log.find({
             guid: user.guid,
-            guid_device: device 
+            guid_device: device
           }).sort({ date_created: 1 });
           console.log(`Found ${logs.length} logs for device ${device}`);
 
@@ -1127,7 +1127,7 @@ const createHRVDirectory = async () => {
 const processHRVData = async (guid, device) => {
   try {
     // Get logs for this device
-    const logs = await Log.find({ 
+    const logs = await Log.find({
       guid: guid,
       guid_device: device,
       RR: { $ne: null }, // Pastikan RR tidak null
@@ -1172,7 +1172,7 @@ const calculateRMSSD = (logs) => {
     let count = 0;
 
     for (let i = 1; i < rr_intervals.length; i++) {
-      const diff = rr_intervals[i] - rr_intervals[i-1];
+      const diff = rr_intervals[i] - rr_intervals[i - 1];
       sum_squared_differences += diff * diff;
       count++;
     }
@@ -1190,7 +1190,7 @@ const calculateSDNN = (logs) => {
     const mean = rr_intervals.reduce((a, b) => a + b, 0) / rr_intervals.length;
     const squared_differences = rr_intervals.map(rr => Math.pow(rr - mean, 2));
     const variance = squared_differences.reduce((a, b) => a + b, 0) / rr_intervals.length;
-    
+
     return Math.sqrt(variance);
   } catch (error) {
     console.error('Error calculating SDNN:', error);
@@ -1224,7 +1224,7 @@ const calculatePNN50 = (logs) => {
     let nn50_count = 0;
 
     for (let i = 1; i < rr_intervals.length; i++) {
-      const diff = Math.abs(rr_intervals[i] - rr_intervals[i-1]);
+      const diff = Math.abs(rr_intervals[i] - rr_intervals[i - 1]);
       if (diff > 50) nn50_count++;
     }
 
@@ -1239,15 +1239,15 @@ const calculateSDSD = (logs) => {
   try {
     const rr_intervals = logs.map(log => log.RR);
     const differences = [];
-    
+
     for (let i = 1; i < rr_intervals.length; i++) {
-      differences.push(rr_intervals[i] - rr_intervals[i-1]);
+      differences.push(rr_intervals[i] - rr_intervals[i - 1]);
     }
 
     const mean = differences.reduce((a, b) => a + b, 0) / differences.length;
     const squared_differences = differences.map(diff => Math.pow(diff - mean, 2));
     const variance = squared_differences.reduce((a, b) => a + b, 0) / differences.length;
-    
+
     return Math.sqrt(variance);
   } catch (error) {
     console.error('Error calculating SDSD:', error);
@@ -1260,7 +1260,7 @@ const calculateTriangularIndex = (logs) => {
     const rr_intervals = logs.map(log => log.RR);
     const binWidth = 7.8125; // Standar bin width untuk HRV triangular index
     const histogram = {};
-    
+
     // Create histogram
     rr_intervals.forEach(rr => {
       const bin = Math.floor(rr / binWidth);
@@ -1269,7 +1269,7 @@ const calculateTriangularIndex = (logs) => {
 
     // Find maximum bin count
     const maxCount = Math.max(...Object.values(histogram));
-    
+
     // Calculate triangular index
     return rr_intervals.length / maxCount;
   } catch (error) {
@@ -1278,9 +1278,40 @@ const calculateTriangularIndex = (logs) => {
   }
 };
 
+
+export const getRawPolarData = async (req, res, next) => {
+  try {
+    const { userId } = req.params; // this is actually the guid, e.g. "P012"
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    // Resolve guid -> actual Mongo _id
+    const user = await User.findOne({ guid: userId }).select('_id').lean();
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Limit to 1000 to prevent crashing the browser
+    const rawData = await PolarData.find({ user_id: user._id })
+      .sort({ timestamp: -1 })
+      .limit(1000)
+      .select('timestamp hr rr rrms activity')
+      .lean();
+
+    // The data is sorted descending, reverse it so the chart goes from left to right (oldest to newest)
+    rawData.reverse();
+
+    return res.status(200).json({ success: true, data: rawData });
+  } catch (error) {
+    console.error('Error fetching raw polar data:', error);
+    return res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 // Export fungsi
-export { 
-  processHRVData, 
+export {
+  processHRVData,
   createHRVDirectory,
   calculateRMSSD,
   calculateSDNN,
@@ -1288,6 +1319,6 @@ export {
   calculateMeanRR,
   calculatePNN50,
   calculateSDSD,
-  calculateTriangularIndex,
+  calculateTriangularIndex
 };
 

@@ -17,6 +17,13 @@ import Segment from '../models/segment.model.js';
 import Baseline from '../models/baseline.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
 import User from '../models/user.model.js';
+import mongoose from 'mongoose';
+import {
+  computeROCandAUC as computeROCandAUCFromEval,
+  computeH1aMetrics as computeH1aMetricsFromEval,
+  computeH2aMetrics as computeH2aMetricsFromEval,
+  getFullMetrics as getFullMetricsFromEval,
+} from './evaluation.controller.js';
 
 // ── Konfigurasi scoring ───────────────────────────────────────────────────────
 
@@ -559,10 +566,209 @@ export async function getRecentEvents(userId, limit = 20) {
 }
 
 /**
- * Ambil baseline semua aktivitas untuk satu user (untuk dashboard).
+ * Ambil ringkasan baseline semua aktivitas untuk satu user dan hitung
+ * metrik trajectory relevance (TRS) untuk dashboard/analisis.
  */
+export async function getAnalysisSummary(userId) {
+  try {
+    const [segments, events, baselines] = await Promise.all([
+      Segment.find({ user_id: userId, is_valid: true, analyzed: true })
+        .select('anomaly_score classification activity_label')
+        .lean(),
+      AnomalyEvent.find({ user_id: userId })
+        .select('classification status review_status')
+        .lean(),
+      Baseline.find({ user_id: userId })
+        .select('activity time_period segment_count is_mature status')
+        .lean(),
+    ]);
+
+    const alertCount = segments.filter((s) => s.classification === 'Alert').length;
+    const cautionCount = segments.filter((s) => s.classification === 'Caution').length;
+    const normalCount = segments.filter((s) => s.classification === 'Normal').length;
+
+    return {
+      user_id: userId,
+      total_segments: segments.length,
+      alert_count: alertCount,
+      caution_count: cautionCount,
+      normal_count: normalCount,
+      event_count: events.length,
+      open_events: events.filter((e) => e.status === 'open').length,
+      reviewed_events: events.filter((e) => e.review_status === 'Validated' || e.review_status === 'False Positive').length,
+      baseline_count: baselines.length,
+      mature_baselines: baselines.filter((b) => b.is_mature).length,
+      latest_status: alertCount > 0 ? 'alert' : cautionCount > 0 ? 'caution' : 'stable',
+    };
+  } catch (error) {
+    return {
+      user_id: userId,
+      total_segments: 0,
+      alert_count: 0,
+      caution_count: 0,
+      normal_count: 0,
+      event_count: 0,
+      open_events: 0,
+      reviewed_events: 0,
+      baseline_count: 0,
+      mature_baselines: 0,
+      latest_status: 'stable',
+      error: error.message,
+    };
+  }
+}
+
+export async function getFullMetrics(userId) {
+  return getFullMetricsFromEval(userId);
+}
+
+export async function computeROCandAUC(userId) {
+  return computeROCandAUCFromEval(userId);
+}
+
+export async function computeH1aMetrics(userId, intermittentIntervalMin = 15) {
+  return computeH1aMetricsFromEval(userId, intermittentIntervalMin);
+}
+
+export async function computeH2aMetrics(userId, threshold = 1.5) {
+  return computeH2aMetricsFromEval(userId, threshold);
+}
+
+export async function computeH3aMetrics(userId) {
+  const WINDOW_MS = 3 * 60 * 1000;
+
+  const [segments, events, baselines] = await Promise.all([
+    Segment.find({ user_id: userId, analyzed: true, is_valid: true })
+      .select('anomaly_score classification window_start window_end')
+      .sort({ window_start: 1 })
+      .lean(),
+    AnomalyEvent.find({ user_id: userId })
+      .select('onset_time peak_score duration_ms trajectory classification')
+      .lean(),
+    Baseline.find({ user_id: userId })
+      .sort({ activity: 1, time_period: 1 })
+      .lean(),
+  ]);
+
+  const THRESHOLD_CAUTION = 1.5;
+  const pointAnomalies = segments.filter((s) => (s.anomaly_score ?? 0) >= THRESHOLD_CAUTION);
+  const trajectoryAnomalies = events.filter((e) => (e.trajectory?.persistence ?? 0) >= 2);
+
+  const zScoreAbs = segments
+    .filter((s) => s.classification === 'Caution' || s.classification === 'Alert')
+    .map((s) => s.anomaly_score ?? 0);
+  const TDM = zScoreAbs.length > 0
+    ? zScoreAbs.reduce((sum, value) => sum + value, 0) / zScoreAbs.length
+    : 0;
+
+  const maxPersistence = Math.max(...events.map((e) => e.trajectory?.persistence ?? 1), 1);
+  const avgPersistence = events.length > 0
+    ? events.reduce((sum, e) => sum + (e.trajectory?.persistence ?? 0), 0) / events.length
+    : 0;
+  const APD_norm = maxPersistence > 0 ? avgPersistence / maxPersistence : 0;
+
+  const recoveries = events
+    .map((e) => e.trajectory?.recovery_time_ms)
+    .filter((r) => r !== null && r !== undefined && r > 0);
+  const maxRecovery = Math.max(...recoveries, 1);
+  const avgRecovery = recoveries.length > 0
+    ? recoveries.reduce((sum, value) => sum + value, 0) / recoveries.length
+    : 0;
+  const Recovery_norm = maxRecovery > 0 ? avgRecovery / maxRecovery : 0;
+
+  const TRS = (0.4 * TDM) + (0.4 * APD_norm) + (0.2 * Recovery_norm);
+
+  const baselineSummary = baselines.map((baseline) => {
+    const stats = baseline.stats || {};
+    const statValue = (key) => {
+      const stat = stats[key];
+      return stat?.n > 0 ? round2(stat.mean) : null;
+    };
+
+    return {
+      activity: baseline.activity,
+      time_period: baseline.time_period,
+      segment_count: baseline.segment_count || 0,
+      is_mature: Boolean(baseline.is_mature),
+      status: baseline.status || 'learning',
+      readiness: baseline.is_mature ? 'ready' : (baseline.segment_count || 0) >= 20 ? 'maturing' : 'learning',
+      last_updated: baseline.last_updated,
+      metrics: {
+        mean_hr: statValue('mean_hr'),
+        std_hr: statValue('std_hr'),
+        mean_rr: statValue('mean_rr'),
+        rmssd: statValue('rmssd'),
+        motion_intensity: statValue('motion_intensity'),
+        dfa_alpha1: statValue('dfa_alpha1'),
+      },
+    };
+  });
+
+  const byActivity = baselineSummary.reduce((acc, item) => {
+    if (!acc[item.activity]) acc[item.activity] = [];
+    acc[item.activity].push(item);
+    return acc;
+  }, {});
+
+  return {
+    user_id: userId,
+    TRS: round4(TRS),
+    TDM: round4(TDM),
+    APD_norm: round4(APD_norm),
+    Recovery_norm: round4(Recovery_norm),
+    point_anomaly_count: pointAnomalies.length,
+    trajectory_event_count: trajectoryAnomalies.length,
+    false_alarm_reduction: pointAnomalies.length > 0
+      ? round4((pointAnomalies.length - trajectoryAnomalies.length) / pointAnomalies.length)
+      : 0,
+    avg_persistence_windows: round2(avgPersistence),
+    avg_recovery_ms: round2(avgRecovery),
+    window_ms: WINDOW_MS,
+    baseline_count: baselineSummary.length,
+    mature_baselines: baselineSummary.filter((item) => item.is_mature).length,
+    baseline_summary: baselineSummary,
+    by_activity: byActivity,
+  };
+}
+
+export async function getActivityContext(req, res) {
+  try {
+    const { userId } = req.params;
+    const objectId = new mongoose.Types.ObjectId(userId);
+    
+    // Aggregate segments by activity
+    const stats = await Segment.aggregate([
+      { $match: { user_id: objectId, is_valid: true } },
+      { $group: {
+        _id: '$activity_label',
+        windows: { $sum: 1 },
+        mean_hr: { $avg: '$features.mean_hr' },
+        sd_hr: { $stdDevPop: '$features.mean_hr' },
+        rmssd: { $avg: '$features.rmssd' },
+        dfa_alpha1: { $avg: '$features.dfa_alpha1' }
+      }}
+    ]);
+
+    const formatted = stats.map(s => ({
+      activity: s._id || 'Unknown',
+      windows: s.windows,
+      duration: `${Math.round(s.windows * 15 / 60)}h ${Math.round(s.windows * 15 % 60)}m`,
+      mean_hr: s.mean_hr ? Math.round(s.mean_hr) : 0,
+      sd_hr: s.sd_hr ? parseFloat(s.sd_hr.toFixed(1)) : 0,
+      rmssd: s.rmssd ? Math.round(s.rmssd) : 0,
+      dfa_alpha1: s.dfa_alpha1 ? parseFloat(s.dfa_alpha1.toFixed(2)) : 0,
+      readiness: s.windows > 200 ? 'Ready' : 'Learning'
+    }));
+
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
 export async function getUserBaselines(userId) {
   return Baseline.find({ user_id: userId })
+    .sort({ last_updated: -1 })
     .select('-stats.mean_hr.M2 -stats.mean_rr.M2 -stats.sdnn.M2 -stats.rmssd.M2') // Sembunyikan internal Welford state
     .lean();
 }

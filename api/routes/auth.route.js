@@ -1,10 +1,12 @@
 import express from 'express';
-import { signOut, signin, signup, google } from '../controllers/auth.controller.js';
+import { google, signOut, signin, signup, backofficeRegister } from '../controllers/auth.controller.js';
+import { verifyToken } from '../utils/verifyUser.js';
 
 const router = express.Router();
 
-router.post("/signup", signup);
-router.post("/signin", signin);
+router.post('/signup', signup);
+router.post('/backoffice-register', verifyToken, backofficeRegister);
+router.post('/signin', signin);
 router.get('/signout', signOut)
 router.post('/google', google)
 

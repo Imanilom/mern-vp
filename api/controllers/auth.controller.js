@@ -1,4 +1,5 @@
 import User from '../models/user.model.js';
+import Patient from '../models/patient.model.js';
 import bcryptjs from 'bcryptjs';
 import { errorHandler } from '../utils/error.js';
 import jwt from 'jsonwebtoken';
@@ -15,21 +16,48 @@ export const signup = async (req, res, next) => {
   }
 };
 
+export const backofficeRegister = async (req, res, next) => {
+  const { name, email, role } = req.body;
+  const password = Math.random().toString(36).slice(-8); // Generate random password
+  const hashedPassword = bcryptjs.hashSync(password, 10);
+  const newUser = new User({name, email, role, password: hashedPassword, phone_number: "0000" });
+  try {
+    await newUser.save();
+    res.status(201).json({ success: true, message: 'User created successfully', data: { name, email, role }});
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const signin = async (req, res, next) => {
   const { email, password } = req.body;
   try {
-    const validUser = await User.findOne({ email });
+    let validUser = await User.findOne({ email });
+    let isPatient = false;
+
+    if (!validUser) {
+      validUser = await Patient.findOne({ email });
+      isPatient = true;
+    }
+
     if (!validUser) return next(errorHandler(404, 'User not found!'));
     const validPassword = bcryptjs.compareSync(password, validUser.password);
     if (!validPassword) return next(errorHandler(401, 'Wrong credentials!'));
 
-    const token = jwt.sign({ id: validUser._id, current_device : validUser.current_device, role : validUser.role, guid : validUser.guid }, 'asnjkKkjsnklnly1xcx?23r');
+    const userRole = validUser.role || (isPatient ? 'patient' : 'user');
+    const token = jwt.sign({ 
+      id: validUser._id, 
+      current_device : validUser.current_device, 
+      role : userRole, 
+      guid : validUser.guid 
+    }, 'asnjkKkjsnklnly1xcx?23r');
+
     const { password: pass, ...rest } = validUser._doc;
 
     res
       .cookie('access_token', token, { httpOnly: true })
       .status(200)
-      .json({ ...rest, token });
+      .json({ ...rest, role: userRole, token });
   } catch (error) {
     next(error);
   }

@@ -6,6 +6,15 @@ import {
   getQueueMessages,
   pauseQueue,
   getRabbitMQNodes,
+  getRecentData,
+  getJobs,
+  rerunJob,
+  pauseJob,
+  cancelJob,
+  restartWorker,
+  getSettings,
+  saveSettings,
+  getMetrics,
 } from '../controllers/pipeline.controller.js';
 
 const router = express.Router();
@@ -33,5 +42,16 @@ router.post('/queue/:queueName/pause', verifyToken, requireOperator, pauseQueue)
 
 /** POST /api/pipeline/queue/:queueName/messages — peek messages */
 router.post('/queue/:queueName/messages', verifyToken, requireOperator, getQueueMessages);
+
+// Backoffice Routes
+router.get('/recent-data', verifyToken, getRecentData);
+router.get('/jobs', verifyToken, getJobs);
+router.post('/job/:jobId/rerun', verifyToken, requireOperator, rerunJob);
+router.post('/job/:jobId/pause', verifyToken, requireOperator, pauseJob);
+router.post('/job/:jobId/cancel', verifyToken, requireOperator, cancelJob);
+router.post('/worker/restart', verifyToken, requireOperator, restartWorker);
+router.get('/settings', verifyToken, getSettings);
+router.post('/settings', verifyToken, requireOperator, saveSettings);
+router.get('/metrics', verifyToken, getMetrics);
 
 export default router;

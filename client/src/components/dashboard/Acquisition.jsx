@@ -1,30 +1,44 @@
 import React from 'react';
 import { FaUpload, FaSpinner } from 'react-icons/fa';
-import { Badge, SmoothLineChart } from './DashboardShared';
+import { Badge, SmoothLineChart, SectionHeader } from './DashboardShared';
 
 export default function Acquisition({ mqRate, w1State, w2State, uploadFile, setUploadFile, uploadResult, uploading, uploadError, handleUpload }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-htm-page-in">
+      <SectionHeader 
+        title="Data Acquisition" 
+        subtitle="Ingestion Pipeline & Raw Data Upload"
+      />
+
       {/* Pipeline Visual */}
-      <div className="bg-brand-card border border-brand-border p-6 rounded-2xl overflow-x-auto shadow-lg">
-        <h4 className="font-bold text-sm mb-6">Data Acquisition Pipeline</h4>
-        <div className="min-w-[800px] flex items-center justify-between px-4 py-4">
+      <div className="htm-card overflow-x-auto p-6" style={{ padding: '24px' }}>
+        <h4 className="htm-title mb-6">Data Acquisition Pipeline</h4>
+        <div className="min-w-[800px] flex items-center justify-between px-2 py-4">
           {[
-            { label: 'Flutter App', sub: 'BLE \u2192 CSV \u2192 API', col: 'border-sys-green text-sys-green' },
-            { label: 'RabbitMQ', sub: `${mqRate} msg/s`, col: 'border-sys-blue text-sys-blue' },
-            { label: 'DB Raw', sub: 'POST /api/log/logs', col: 'border-sys-purple text-sys-purple' },
-            { label: 'Layer 2 Cron', sub: 'IQR + Segments (3min)', col: 'border-sys-purple text-sys-purple' },
-            { label: 'Layer 3 Cron', sub: 'Z-score + Events (5min)', col: 'border-sys-yellow text-sys-yellow' },
-            { label: 'Backend API', sub: '/api/analysis/*', col: 'border-sys-green text-sys-green' },
+            { label: 'Flutter App', sub: 'BLE \u2192 CSV \u2192 API', col: 'var(--htm-stable)' },
+            { label: 'RabbitMQ', sub: `${mqRate} msg/s`, col: 'var(--htm-info)' },
+            { label: 'DB Raw', sub: 'POST /api/log/logs', col: 'var(--htm-info)' },
+            { label: 'Layer 2 Cron', sub: 'IQR + Segments (3min)', col: 'var(--htm-info)' },
+            { label: 'Layer 3 Cron', sub: 'Z-score + Events (5min)', col: 'var(--htm-caution)' },
+            { label: 'Backend API', sub: '/api/analysis/*', col: 'var(--htm-stable)' },
           ].map((node, i, arr) => (
             <React.Fragment key={i}>
-              <div className={`border-2 rounded-2xl p-3 w-36 text-center bg-brand-cardLight ${node.col} shrink-0`}>
-                <span className="text-[9px] font-black uppercase tracking-wider block">{node.label}</span>
-                <span className="text-[8px] text-brand-muted block mt-1">{node.sub}</span>
+              <div 
+                className="text-center shrink-0" 
+                style={{ 
+                  border: `2px solid ${node.col}`, 
+                  borderRadius: 'var(--htm-r-md)', 
+                  padding: '12px', 
+                  width: '144px', 
+                  background: 'var(--htm-raised)' 
+                }}
+              >
+                <span className="htm-eyebrow block" style={{ color: node.col, letterSpacing: '0.05em' }}>{node.label}</span>
+                <span className="htm-mono" style={{ fontSize: 10, color: 'var(--htm-muted)', display: 'block', marginTop: 4 }}>{node.sub}</span>
               </div>
               {i < arr.length - 1 && (
-                <div className="flex-1 h-0.5 bg-brand-border mx-1 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-sys-blue animate-pulse" />
+                <div className="flex-1 h-px relative overflow-hidden" style={{ background: 'var(--htm-hairline)', margin: '0 8px' }}>
+                  <div className="absolute inset-0 animate-pulse" style={{ background: 'var(--htm-info)' }} />
                 </div>
               )}
             </React.Fragment>
@@ -34,10 +48,18 @@ export default function Acquisition({ mqRate, w1State, w2State, uploadFile, setU
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* CSV Upload */}
-        <div className="bg-brand-card border border-brand-border p-6 rounded-2xl shadow-lg space-y-4">
-          <h4 className="font-bold text-sm">Upload Raw CSV</h4>
-          <p className="text-[10px] text-brand-muted">Simulate data ingestion bypassing RabbitMQ (POST /api/log/logs)</p>
-          <div className="border-2 border-dashed border-brand-border rounded-2xl p-6 text-center hover:bg-brand-cardLight transition-colors">
+        <div className="htm-card space-y-4">
+          <h4 className="htm-title">Upload Raw CSV</h4>
+          <p className="htm-body-sm text-htm-muted">Simulate data ingestion bypassing RabbitMQ (POST /api/log/logs)</p>
+          <div 
+            className="text-center transition-colors" 
+            style={{ 
+              border: '2px dashed var(--htm-hairline)', 
+              borderRadius: 'var(--htm-r-md)', 
+              padding: '24px', 
+              background: 'var(--htm-canvas)' 
+            }}
+          >
             <input
               type="file"
               accept=".csv"
@@ -46,44 +68,49 @@ export default function Acquisition({ mqRate, w1State, w2State, uploadFile, setU
               id="csv-upload"
             />
             <label htmlFor="csv-upload" className="cursor-pointer flex flex-col items-center">
-              <FaUpload className="text-2xl text-brand-muted mb-2" />
-              <span className="text-xs font-bold text-brand-text">{uploadFile ? uploadFile.name : 'Choose CSV File'}</span>
-              <span className="text-[9px] text-brand-muted mt-1">or drag and drop</span>
+              <FaUpload className="text-2xl mb-2" style={{ color: 'var(--htm-muted)' }} />
+              <span className="htm-title">{uploadFile ? uploadFile.name : 'Choose CSV File'}</span>
+              <span className="htm-body-sm" style={{ color: 'var(--htm-muted)', marginTop: 4 }}>or drag and drop</span>
             </label>
           </div>
           <button
             onClick={handleUpload}
             disabled={!uploadFile || uploading}
-            className="w-full py-2.5 bg-sys-blue hover:bg-sys-blue/80 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+            className="htm-btn htm-btn-primary"
+            style={{ width: '100%', opacity: (!uploadFile || uploading) ? 0.5 : 1 }}
           >
             {uploading ? <FaSpinner className="animate-spin" /> : 'Upload Data'}
           </button>
           
-          {uploadError && <div className="text-xs text-sys-red bg-sys-red/10 p-3 rounded-lg border border-sys-red/20">{uploadError}</div>}
+          {uploadError && (
+            <div className="htm-body-sm" style={{ color: 'var(--htm-alert)', background: 'var(--htm-alert-bg)', padding: '12px', borderRadius: 'var(--htm-r-sm)', border: '1px solid rgba(185,28,28,0.2)' }}>
+              {uploadError}
+            </div>
+          )}
           {uploadResult && (
-            <div className="text-xs text-sys-green bg-sys-green/10 p-3 rounded-lg border border-sys-green/20">
+            <div className="htm-body-sm" style={{ color: 'var(--htm-stable)', background: 'var(--htm-stable-bg)', padding: '12px', borderRadius: 'var(--htm-r-sm)', border: '1px solid rgba(46,107,74,0.2)' }}>
               {uploadResult.message || 'Upload successful'}
             </div>
           )}
         </div>
 
         {/* Live Ingestion Metric */}
-        <div className="bg-brand-card border border-brand-border p-6 rounded-2xl shadow-lg space-y-4">
-          <h4 className="font-bold text-sm">Real-time Ingestion</h4>
+        <div className="htm-card space-y-4">
+          <h4 className="htm-title">Real-time Ingestion</h4>
           <div className="flex items-end justify-between">
             <div>
-              <span className="text-[9px] text-brand-muted font-bold uppercase tracking-wider block">Throughput</span>
-              <span className="text-3xl font-black text-sys-blue">{mqRate}</span>
-              <span className="text-xs text-brand-muted ml-1 font-mono">msg/s</span>
+              <span className="htm-eyebrow block mb-1">Throughput</span>
+              <span className="htm-display" style={{ fontSize: 32, color: 'var(--htm-info)' }}>{mqRate}</span>
+              <span className="htm-mono" style={{ fontSize: 12, color: 'var(--htm-muted)', marginLeft: 4 }}>msg/s</span>
             </div>
             <div className="text-right">
-              <span className="text-[9px] text-brand-muted font-bold uppercase tracking-wider block">Dropped</span>
-              <span className="text-xl font-black text-sys-red">0.0%</span>
+              <span className="htm-eyebrow block mb-1">Dropped</span>
+              <span className="htm-display" style={{ fontSize: 24, color: 'var(--htm-stable)' }}>0.0%</span>
             </div>
           </div>
           <SmoothLineChart
             points={[120, 150, 110, 180, 190, mqRate-30, mqRate+20, mqRate-10, mqRate]}
-            color="#3b82f6"
+            color="var(--htm-info)"
             fillId="acq-grad"
             height={100}
           />

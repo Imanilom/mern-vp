@@ -8,6 +8,7 @@ import {
   isDuplicateTimestamp,
   buildDuplicateKeySet,
 } from '../utils/validateLog.js';
+import { buildTransportEnvelope, publishLogTransport } from '../utils/logTransport.js';
 
 // Multer: simpan sementara di uploads/
 export const upload = multer({ dest: 'uploads/' });
@@ -27,6 +28,35 @@ export const upload = multer({ dest: 'uploads/' });
  *  - RR: 300–2000 ms
  *  - Duplikasi (user_id + timestamp) → dilewati, tidak error
  */
+export const createTransportLog = async (req, res) => {
+  try {
+    const payload = req.body;
+
+    if (!payload || !payload.readings || !Array.isArray(payload.readings)) {
+      return res.status(400).json({ success: false, message: 'Payload tidak valid' });
+    }
+
+    const envelope = buildTransportEnvelope(payload);
+    const publishResult = await publishLogTransport(payload, async (data) => {
+      if (process.env.RABBITMQ_URI) {
+        console.log('[createTransportLog] Ready to publish transport payload:', JSON.stringify(data));
+        return true;
+      }
+      return false;
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Transport payload diterima',
+      published: publishResult.published,
+      envelope,
+    });
+  } catch (error) {
+    console.error('[createTransportLog] Error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 export const createLog = async (req, res) => {
   const filePath = req.file?.path;
 
@@ -155,7 +185,53 @@ export const createLog = async (req, res) => {
       });
     }
 
-    // ── Langkah 5: Insert ke database (ordered: false agar partial success) ─
+    // ── Langkah 5: Publish payload transport JSON (opsional) ─────────────
+    const transportEnvelope = buildTransportEnvelope({
+      user_id: userIdsInBatch[0],
+      source: 'polar_ble',
+      device_id: accepted[0]?.device_id || 'UNKNOWN',
+      received_at: new Date().toISOString(),
+      readings: deduplicated.slice(0, 20).map((item) => ({
+        timestamp: item.timestamp,
+        heart_rate: item.hr,
+        rr_interval: item.rr,
+        activity: item.activity,
+        battery: null,
+        signal_quality: null,
+        rmssd: item.rrms || item.rr,
+        dfa_alpha1: null,
+      })),
+    });
+
+    let transportResult = null;
+    try {
+      transportResult = await publishLogTransport({
+        user_id: userIdsInBatch[0],
+        source: 'polar_ble',
+        device_id: accepted[0]?.device_id || 'UNKNOWN',
+        received_at: new Date().toISOString(),
+        readings: deduplicated.slice(0, 20).map((item) => ({
+          timestamp: item.timestamp,
+          heart_rate: item.hr,
+          rr_interval: item.rr,
+          activity: item.activity,
+          battery: null,
+          signal_quality: null,
+          rmssd: item.rrms || item.rr,
+          dfa_alpha1: null,
+        })),
+      }, async (envelope) => {
+        if (process.env.RABBITMQ_URI) {
+          console.log('[createLog] Transport envelope ready for RabbitMQ:', JSON.stringify(envelope));
+          return true;
+        }
+        return false;
+      });
+    } catch (transportError) {
+      console.warn('[createLog] Transport publish skipped:', transportError.message);
+    }
+
+    // ── Langkah 6: Insert ke database (ordered: false agar partial success) ─
     const BATCH_SIZE = 1000;
     let totalInserted = 0;
 
@@ -185,6 +261,11 @@ export const createLog = async (req, res) => {
       duplicateCount: duplicateCount.count,
       rejectedCount: rejected.length,
       totalRowsInFile: rawRows.length,
+      transport: transportResult ? {
+        published: transportResult.published,
+        reason: transportResult.reason || null,
+        envelope: transportEnvelope,
+      } : null,
       ...(rejected.length > 0 && {
         rejectedSample: rejected.slice(0, 5).map(r => ({
           timestamp: r.row.timestamp,

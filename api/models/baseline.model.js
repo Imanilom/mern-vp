@@ -33,7 +33,6 @@ const BaselineSchema = new mongoose.Schema({
    */
   activity: {
     type: String,
-    enum: ['Rest', 'Light', 'Moderate', 'Intense', 'Unknown'],
     required: true,
   },
 

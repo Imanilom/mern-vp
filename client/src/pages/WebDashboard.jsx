@@ -188,17 +188,17 @@ export default function WebDashboard() {
   ];
 
   return (
-    <div className="flex h-screen bg-brand-dark text-brand-text overflow-hidden selection:bg-sys-blue selection:text-white font-sans">
+    <div className="flex h-screen overflow-hidden selection:bg-htm-primary selection:text-htm-canvas">
       {/* ── SIDEBAR ── */}
-      <aside className={`bg-brand-cardLight border-r border-brand-border flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${menuOpen ? 'w-64' : 'w-20'}`}>
-        <div className="h-16 flex items-center justify-between px-5 border-b border-brand-border shrink-0">
+      <aside className={`bg-htm-surface border-r border-htm-hairline flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${menuOpen ? 'w-64' : 'w-20'}`}>
+        <div className="h-16 flex items-center justify-between px-5 border-b border-htm-hairline shrink-0">
           {menuOpen && (
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-sys-blue rounded flex items-center justify-center text-white font-black text-xs">V</div>
-              <span className="font-black text-sm tracking-wide">VidyaMedic</span>
+              <div className="w-6 h-6 bg-htm-primary rounded flex items-center justify-center text-htm-canvas font-black text-xs">V</div>
+              <span className="font-bold text-sm tracking-wide">VidyaMedic</span>
             </div>
           )}
-          <button onClick={() => setMenuOpen(!menuOpen)} className="text-brand-muted hover:text-brand-text p-1.5 rounded-lg hover:bg-brand-border/50 transition-colors mx-auto">
+          <button onClick={() => setMenuOpen(!menuOpen)} className="text-htm-muted hover:text-htm-ink p-1.5 rounded-lg hover:bg-htm-primary/10 transition-colors mx-auto">
             <FaBars />
           </button>
         </div>
@@ -209,18 +209,18 @@ export default function WebDashboard() {
             if (!sectionMenus.length) return null;
             return (
               <div key={section} className="space-y-1">
-                {menuOpen && <span className="px-3 text-[9px] font-black tracking-widest text-brand-muted uppercase block mb-2">{section}</span>}
+                {menuOpen && <span className="htm-eyebrow px-3 block mb-2">{section}</span>}
                 {sectionMenus.map((m) => (
                   <button
                     key={m.id}
                     onClick={() => { setActiveMenu(m.id); setSelectedPt(null); }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group text-xs font-semibold ${
                       activeMenu === m.id
-                        ? 'bg-sys-blue text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]'
-                        : 'text-brand-muted hover:bg-brand-border/40 hover:text-brand-text'
+                        ? 'bg-htm-ink text-htm-canvas'
+                        : 'text-htm-muted hover:bg-htm-primary/10 hover:text-htm-ink'
                     }`}
                   >
-                    <m.icon className={`text-base shrink-0 ${activeMenu === m.id ? 'text-white' : 'group-hover:text-sys-blue transition-colors'}`} />
+                    <m.icon className={`text-base shrink-0 ${activeMenu === m.id ? 'text-htm-canvas' : 'group-hover:text-htm-primary transition-colors'}`} />
                     {menuOpen && <span className="truncate">{m.label}</span>}
                   </button>
                 ))}
@@ -229,18 +229,18 @@ export default function WebDashboard() {
           })}
         </div>
 
-        <div className="p-4 border-t border-brand-border shrink-0">
-          <div className={`flex items-center gap-3 bg-brand-border/30 p-3 rounded-xl ${!menuOpen && 'justify-center p-2'}`}>
-            <div className="w-8 h-8 rounded-full bg-sys-purple/20 border border-sys-purple/50 flex items-center justify-center text-sys-purple font-bold shrink-0">
+        <div className="p-4 border-t border-htm-hairline shrink-0">
+          <div className={`flex items-center gap-3 bg-htm-raised p-3 rounded-xl ${!menuOpen && 'justify-center p-2'}`}>
+            <div className="w-8 h-8 rounded-full bg-htm-primary/10 border border-htm-primary/20 flex items-center justify-center text-htm-primary font-bold shrink-0">
               {sessionUser.name.charAt(0).toUpperCase()}
             </div>
             {menuOpen && (
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold truncate text-brand-text">{sessionUser.name}</p>
-                <p className="text-[10px] text-brand-muted truncate capitalize">{sessionUser.role}</p>
+                <p className="text-xs font-bold truncate text-htm-ink">{sessionUser.name}</p>
+                <p className="text-[10px] text-htm-muted truncate capitalize">{sessionUser.role}</p>
               </div>
             )}
-            <button onClick={logout} className="text-brand-muted hover:text-sys-red transition-colors" title="Logout">
+            <button onClick={logout} className="text-htm-muted hover:text-htm-alert transition-colors" title="Logout">
               <FaSignOutAlt />
             </button>
           </div>
@@ -248,17 +248,17 @@ export default function WebDashboard() {
       </aside>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden bg-brand-dark relative">
-        <header className="h-16 px-8 border-b border-brand-border flex items-center justify-between shrink-0 bg-brand-card/50 backdrop-blur-md sticky top-0 z-10">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden bg-htm-canvas relative">
+        <header className="h-16 px-8 border-b border-htm-hairline flex items-center justify-between shrink-0 bg-htm-canvas sticky top-0 z-10">
           <div>
-            <h1 className="text-lg font-black tracking-tight uppercase">{MENUS.find(m => m.id === activeMenu)?.label} Panel</h1>
+            <h1 className="htm-display text-xl uppercase">{MENUS.find(m => m.id === activeMenu)?.label} Panel</h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-sys-green animate-pulse" />
-              <span className="text-[10px] text-brand-muted font-mono tracking-wider">SYSTEM ONLINE · {new Date().toLocaleTimeString()}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-htm-stable animate-pulse" />
+              <span className="htm-eyebrow">SYSTEM ONLINE · {new Date().toLocaleTimeString()}</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/android')} className="text-xs font-bold text-sys-green px-3 py-1.5 rounded-lg border border-sys-green/20 bg-sys-green/10 hover:bg-sys-green/20 transition-colors">
+            <button onClick={() => navigate('/android')} className="htm-btn htm-btn-outline htm-btn-sm text-htm-stable border-htm-stable/50 hover:bg-htm-stable-bg">
               Android Simulator
             </button>
           </div>
