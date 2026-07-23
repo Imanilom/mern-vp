@@ -23,6 +23,7 @@ class PendingDataRecord {
 class OfflineBufferService extends ChangeNotifier {
   final Ref? _ref;
   final List<PendingDataRecord> _queue = [];
+  int _idCounter = 0;
 
   OfflineBufferService([this._ref]);
 
@@ -32,11 +33,16 @@ class OfflineBufferService extends ChangeNotifier {
 
   void addReading(SensorReading reading) {
     _queue.add(PendingDataRecord(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: "${DateTime.now().millisecondsSinceEpoch}_${_idCounter++}",
       reading: reading,
       createdAt: DateTime.now(),
     ));
     notifyListeners();
+    
+    // Auto-sync when 5 readings (5 seconds of data) are accumulated, ensuring near real-time streaming
+    if (pendingCount >= 5) {
+      syncPendingData();
+    }
   }
 
   Future<void> syncPendingData() async {

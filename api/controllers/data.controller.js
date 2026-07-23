@@ -8,7 +8,7 @@ import PolarData from "../models/data.model.js";
 import Segment from "../models/segment.model.js";
 import { generateGraph, generateGraphsForAllFolders } from "./graph.controller.js";
 import { calculateAdvancedMetrics, calculateQuartilesAndIQR } from "./metrics.controller.js";
-import { calculateDFA } from "./metrics.controller.js";
+import { calculateDFA, calculateADFA } from "./metrics.controller.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -731,12 +731,14 @@ function buildSegmentDoc(userId, win, isValid) {
   const step_count = stepCounts.reduce((s, v) => s + v, 0);
 
   // ── DFA α1 & α2 (short-range: window 4–16, long-range: window 17–32) ───────────
-  // Membutuhkan minimal 32 titik RR untuk α2 bermakna.
-  // α1 tetap dihitung dari 16 titik ke atas.
+  // Membutuhkan minimal 32 titik RR untuk α2 bermakna secara matematis, tapi kita coba dari 10 titik untuk simulasi.
+  // α1 tetap dihitung minimal 10 titik.
   let dfa_alpha1 = null;
   let dfa_alpha2 = null;
+  let adfa_plus = null;
+  let adfa_minus = null;
 
-  if (rrArr.length >= 16) {
+  if (rrArr.length >= 10) {
     try {
       // Gunakan maxWindowSize=32 agar alpha2 tersedia
       const dfaResult = calculateDFA(rrArr, 4, Math.min(32, Math.floor(rrArr.length / 2)));
@@ -746,6 +748,16 @@ function buildSegmentDoc(userId, win, isValid) {
     } catch {
       dfa_alpha1 = null;
       dfa_alpha2 = null;
+    }
+
+    try {
+      // Hitung Asymmetric DFA
+      const adfaResult = calculateADFA(rrArr);
+      adfa_plus = adfaResult?.alphaPlus ?? null;
+      adfa_minus = adfaResult?.alphaMinus ?? null;
+    } catch {
+      adfa_plus = null;
+      adfa_minus = null;
     }
   }
 
@@ -770,6 +782,8 @@ function buildSegmentDoc(userId, win, isValid) {
       step_count,
       dfa_alpha1: dfa_alpha1 !== null ? round4(dfa_alpha1) : null,
       dfa_alpha2: dfa_alpha2 !== null ? round4(dfa_alpha2) : null,
+      adfa_plus: adfa_plus !== null ? round4(adfa_plus) : null,
+      adfa_minus: adfa_minus !== null ? round4(adfa_minus) : null,
     },
   };
 }
@@ -1282,21 +1296,37 @@ const calculateTriangularIndex = (logs) => {
 export const getRawPolarData = async (req, res, next) => {
   try {
     const { userId } = req.params; // this is actually the guid, e.g. "P012"
+    const { date, startTime, endTime } = req.query;
+
     if (!userId) {
       return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
     // Resolve guid -> actual Mongo _id
-    const user = await User.findOne({ guid: userId }).select('_id').lean();
+    const user = await User.findOne({ guid: userId }).select('_id current_device').lean();
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Limit to 1000 to prevent crashing the browser
-    const rawData = await PolarData.find({ user_id: user._id })
+    const query = { user_id: user._id, device_id: user.current_device || 'POLAR_SIM' };
+    
+    if (date) {
+      query.date_created = date;
+    }
+    
+    if (startTime || endTime) {
+      query.time_created = {};
+      if (startTime) query.time_created.$gte = startTime + ':00'; // assuming HH:mm
+      if (endTime) query.time_created.$lte = endTime + ':59';
+    }
+
+    // Adjust limit based on whether filter is applied
+    const limit = (date || startTime || endTime) ? 5000 : 1000;
+
+    const rawData = await PolarData.find(query)
       .sort({ timestamp: -1 })
-      .limit(1000)
-      .select('timestamp hr rr rrms activity')
+      .limit(limit)
+      .select('timestamp hr rr rrms activity date_created time_created')
       .lean();
 
     // The data is sorted descending, reverse it so the chart goes from left to right (oldest to newest)

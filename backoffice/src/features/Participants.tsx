@@ -6,16 +6,8 @@ interface ParticipantsProps {
   onSelectParticipant: (id: string) => void;
 }
 
-const mockParticipants: Participant[] = [
-  { id: 'P012', status: 'Active', device: 'Polar H10', lastSeen: '10:42', completeness: 96, currentActivity: 'Sit working', trajectoryStatus: 'Recovering', activeAlerts: 1 },
-  { id: 'P002', status: 'Active', device: 'Polar H10', lastSeen: '10:41', completeness: 97, currentActivity: 'Walking', trajectoryStatus: 'Stable', activeAlerts: 0 },
-  { id: 'P003', status: 'Active', device: 'Polar H10', lastSeen: '10:40', completeness: 90, currentActivity: 'Driving', trajectoryStatus: 'No data', activeAlerts: 1 },
-  { id: 'P004', status: 'Inactive', device: '—', lastSeen: '1 day ago', completeness: 45, currentActivity: '—', trajectoryStatus: 'No data', activeAlerts: 0 },
-  { id: 'P005', status: 'Active', device: 'Polar H10', lastSeen: '10:39', completeness: 95, currentActivity: 'Exercise', trajectoryStatus: 'Recovering', activeAlerts: 1 },
-];
-
 export const Participants: React.FC<ParticipantsProps> = ({ onSelectParticipant }) => {
-  const [participants, setParticipants] = React.useState<Participant[]>(mockParticipants);
+  const [participants, setParticipants] = React.useState<Participant[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [filter, setFilter] = useState<'All' | 'Active' | 'Inactive' | 'Alert' | 'Incomplete'>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,10 +29,10 @@ export const Participants: React.FC<ParticipantsProps> = ({ onSelectParticipant 
               id: u.guid || u.email.split('@')[0].toUpperCase(),
               status: u.is_active ? 'Active' : 'Inactive',
               device: u.current_device || 'Polar H10',
-              lastSeen: u.created_at ? new Date(u.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '10:42',
-              completeness: 95,
-              currentActivity: 'Sit working',
-              trajectoryStatus: 'Stable',
+              lastSeen: u.created_at ? new Date(u.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'Unknown',
+              completeness: 0,
+              currentActivity: 'Unknown',
+              trajectoryStatus: 'No data',
               activeAlerts: 0
             }));
             setParticipants(mapped);

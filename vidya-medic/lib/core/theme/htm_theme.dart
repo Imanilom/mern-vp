@@ -6,7 +6,7 @@ import 'htm_typography.dart';
 class HtmTheme {
   static ThemeData get lightTheme {
     final textTheme = HtmTypography.textTheme;
-    final colors = HtmColors._light;
+    final colors = HtmColors.light;
 
     return ThemeData(
       useMaterial3: true,
@@ -177,7 +177,7 @@ class HtmTheme {
 
   static ThemeData get darkTheme {
     final textTheme = HtmTypography.textTheme;
-    final colors = HtmColors._dark;
+    final colors = HtmColors.dark;
 
     return ThemeData(
       useMaterial3: true,

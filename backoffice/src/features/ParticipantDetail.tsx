@@ -7,54 +7,61 @@ interface ParticipantDetailProps {
   onBack: () => void;
 }
 
-// Mock dataset for 24h HR trajectory
-const generateChartData = () => {
-  const data = [];
-  const baseRangeLow = 60;
-  const baseRangeHigh = 95;
-  for (let i = 0; i < 24; i++) {
-    const time = `${i.toString().padStart(2, '0')}:00`;
-    // Add anomaly spike around 10:00 - 11:00
-    let hr = 70 + Math.floor(Math.random() * 15);
-    if (i === 10) {
-      hr = 108; // Anomaly spike
-    } else if (i === 11) {
-      hr = 98;  // Slowly recovering
-    } else if (i === 12) {
-      hr = 85;  // Stabilized
-    }
-    
-    data.push({
-      time,
-      hr,
-      baselineLow: baseRangeLow + Math.sin(i / 3) * 5,
-      baselineHigh: baseRangeHigh + Math.sin(i / 3) * 5,
-      baselineAvg: (baseRangeLow + baseRangeHigh) / 2 + Math.sin(i / 3) * 5,
-    });
-  }
-  return data;
-};
 
 export const ParticipantDetail: React.FC<ParticipantDetailProps> = ({ id, onBack }) => {
   const [activeTab, setActiveTab] = useState<'Overview' | 'Live' | 'Timeline' | 'Baseline' | 'Trajectory' | 'Anomalies' | 'Reports' | 'Quality'>('Overview');
   const [liveHr, setLiveHr] = useState(78);
   const [liveHistory, setLiveHistory] = useState<number[]>(Array.from({ length: 20 }, () => 75 + Math.floor(Math.random() * 10)));
 
-  // Simulate real-time ticking for Live monitoring
-  useEffect(() => {
-    if (activeTab !== 'Live') return;
-    const interval = setInterval(() => {
-      setLiveHr(prev => {
-        const delta = Math.random() > 0.5 ? 1 : -1;
-        const next = Math.max(60, Math.min(120, prev + delta * Math.floor(Math.random() * 3)));
-        setLiveHistory(hist => [...hist.slice(1), next]);
-        return next;
-      });
-    }, 1500);
-    return () => clearInterval(interval);
-  }, [activeTab]);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const chartData = generateChartData();
+  useEffect(() => {
+    const fetchRawData = async () => {
+      setLoading(true);
+      try {
+        const token = sessionStorage.getItem('htm_token');
+        const res = await fetch(`/api/data/raw/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            // Take the last 24 hours of data roughly, or just the most recent
+            const recent = json.data.slice(-500); // adjust as needed
+            
+            // Build chart data
+            const mapped = recent.map((item: any, i: number) => ({
+              time: new Date(item.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+              hr: item.HR,
+              baselineLow: 60,
+              baselineHigh: 100,
+              baselineAvg: 80,
+            }));
+            setChartData(mapped);
+
+            if (recent.length > 0) {
+              const latestHr = recent[recent.length - 1].HR;
+              setLiveHr(latestHr);
+              setLiveHistory(recent.slice(-20).map((r: any) => r.HR));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch participant data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRawData();
+    
+    let interval: any;
+    if (activeTab === 'Live') {
+      interval = setInterval(fetchRawData, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [id, activeTab]);
 
   return (
     <section>

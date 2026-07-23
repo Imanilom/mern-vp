@@ -9,36 +9,7 @@ export interface AnalyticsProps {
   onParticipantChange: (id: string) => void;
 }
 
-export const DeviceSelector: React.FC<{
-  selectedId: string;
-  onChange: (id: string) => void;
-}> = ({ selectedId, onChange }) => {
-  const list = ['P012', 'P002', 'P003', 'P005', 'P006'];
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span className="eyebrow" style={{ color: 'var(--muted)' }}>Select Device:</span>
-      <select
-        className="select-chip font-mono cursor-pointer"
-        value={selectedId}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          outline: 'none',
-          background: 'var(--surface)',
-          color: 'var(--ink)',
-          border: '1px solid var(--hairline)',
-          fontWeight: 600,
-          padding: '5px 12px',
-        }}
-      >
-        {list.map(id => (
-          <option key={id} value={id}>
-            {id} (Polar H10)
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-};
+
 
 export const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
   React.useEffect(() => {

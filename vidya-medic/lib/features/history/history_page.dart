@@ -28,6 +28,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     final colors =
         Theme.of(context).extension<FunctionalColors>() ?? FunctionalColors.light;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final htmColors = HtmColors.of(context);
     final apiClient = ref.watch(apiClientProvider);
 
     return Scaffold(
@@ -140,136 +141,147 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
 
           // Scrollable body
           Expanded(
-            child: FutureBuilder<List<TrajectoryEvent>>(
-              future: apiClient.getHistoryEvents(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final events = snapshot.data!;
+            child: Consumer(
+              builder: (context, ref, child) {
+                final eventsAsync = ref.watch(eventsProvider);
 
-                // Filter events based on selections
-                final filteredEvents = events.where((e) {
-                  // Filter by Activity
-                  if (_selectedActivity != "Semua Aktivitas") {
-                    if (e.activity.toLowerCase() != _selectedActivity.toLowerCase()) {
-                      return false;
-                    }
-                  }
-                  // Filter by Status
-                  if (_selectedStatus != "Semua Status") {
-                    final typeMap = {
-                      "Stabil": "stable",
-                      "Perlu Perhatian": "recovering",
-                      "Anomali": "alert",
-                    };
-                    final targetType = typeMap[_selectedStatus];
-                    if (e.type != targetType &&
-                        !(e.type == 'deviation' && _selectedStatus == 'Perlu Perhatian')) {
-                      return false;
-                    }
-                  }
-                  return true;
-                }).toList();
-
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  children: [
-                    // Combined Multi-Metric Graph with Activity Context Ribbon
-                    const Text(
-                      "Grafik Analisis Trajectory Gabungan",
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15),
+                return eventsAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Text(
+                        "Gagal memuat riwayat: $err",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 13, color: Colors.red),
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    _CombinedTrajectoryChart(
-                      colors: colors,
-                      period: _selectedPeriod,
-                    ),
-                    const SizedBox(height: 24),
+                  ),
+                  data: (events) {
+                    // Filter events based on selections
+                    final filteredEvents = events.where((e) {
+                      // Filter by Activity
+                      if (_selectedActivity != "Semua Aktivitas") {
+                        if (e.activity.toLowerCase() != _selectedActivity.toLowerCase()) {
+                          return false;
+                        }
+                      }
+                      // Filter by Status
+                      if (_selectedStatus != "Semua Status") {
+                        final typeMap = {
+                          "Stabil": "stable",
+                          "Perlu Perhatian": "recovering",
+                          "Anomali": "alert",
+                        };
+                        final targetType = typeMap[_selectedStatus];
+                        if (e.type != targetType &&
+                            !(e.type == 'deviation' && _selectedStatus == 'Perlu Perhatian')) {
+                          return false;
+                        }
+                      }
+                      return true;
+                    }).toList();
 
-                    // Summary stats
-                    Row(
+                    return ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                       children: [
-                        _StatCard(
-                          label: "Sesi Monitoring",
-                          value: "4",
-                          icon: Icons.monitor_heart_rounded,
-                          color: colors.dataBlue,
+                        // Combined Multi-Metric Graph with Activity Context Ribbon
+                        const Text(
+                          "Grafik Analisis Trajectory Gabungan",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 15),
                         ),
-                        const SizedBox(width: 10),
-                        _StatCard(
-                          label: "Deviasi Terdeteksi",
-                          value: "${filteredEvents.where((e) => e.type == 'deviation' || e.type == 'alert').length}",
-                          icon: Icons.warning_amber_rounded,
-                          color: colors.deviationOrange,
+                        const SizedBox(height: 10),
+                        _CombinedTrajectoryChart(
+                          colors: colors,
+                          period: _selectedPeriod,
                         ),
-                        const SizedBox(width: 10),
-                        _StatCard(
-                          label: "Recovery Rate",
-                          value: "100%",
-                          icon: Icons.trending_up_rounded,
-                          color: colors.stableGreen,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    const Text(
-                      "Timeline Kejadian",
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15),
-                    ),
-                    const SizedBox(height: 10),
-
-                    if (filteredEvents.isEmpty)
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 24),
-                          child: Column(
-                            children: [
-                              Icon(Icons.history_toggle_off_rounded,
-                                  size: 48, color: Colors.grey[400]),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Tidak ada kejadian yang cocok",
-                                style: TextStyle(
-                                    fontSize: 13, color: Colors.grey[500]),
-                              ),
-                            ],
-                          ),
+                        // Summary stats
+                        Row(
+                          children: [
+                            _StatCard(
+                              label: "Sesi Monitoring",
+                              value: "4",
+                              icon: Icons.monitor_heart_rounded,
+                              color: colors.dataBlue,
+                            ),
+                            const SizedBox(width: 10),
+                            _StatCard(
+                              label: "Deviasi Terdeteksi",
+                              value: "${filteredEvents.where((e) => e.type == 'deviation' || e.type == 'alert').length}",
+                              icon: Icons.warning_amber_rounded,
+                              color: colors.deviationOrange,
+                            ),
+                            const SizedBox(width: 10),
+                            _StatCard(
+                              label: "Recovery Rate",
+                              value: "100%",
+                              icon: Icons.trending_up_rounded,
+                              color: colors.stableGreen,
+                            ),
+                          ],
                         ),
-                      )
-                    else
-                      ...List.generate(filteredEvents.length, (index) {
-                        return TimelineItemWidget(
-                          event: filteredEvents[index],
-                          isLast: index == filteredEvents.length - 1,
-                          onTap: () {
-                            final evt = filteredEvents[index];
-                            showDialog(
-                              context: context,
-                              builder: (dialogCtx) => AlertDialog(
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20)),
-                                title: Text(evt.title),
-                                content: Text(
-                                  "${evt.description}\n\nMagnitude: ${evt.magnitude}\nStatus Recovery: ${evt.recoveryStatus}",
-                                  style:
-                                      const TextStyle(fontSize: 13, height: 1.5),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(dialogCtx),
-                                    child: const Text("Tutup"),
+                        const SizedBox(height: 24),
+
+                        const Text(
+                          "Timeline Kejadian",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                        const SizedBox(height: 10),
+
+                        if (filteredEvents.isEmpty)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.history_toggle_off_rounded,
+                                      size: 48, color: Colors.grey[400]),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Tidak ada kejadian yang cocok",
+                                    style: TextStyle(
+                                        fontSize: 13, color: Colors.grey[500]),
                                   ),
                                 ],
                               ),
+                            ),
+                          )
+                        else
+                          ...List.generate(filteredEvents.length, (index) {
+                            return TimelineItemWidget(
+                              event: filteredEvents[index],
+                              isLast: index == filteredEvents.length - 1,
+                              onTap: () {
+                                final evt = filteredEvents[index];
+                                showDialog(
+                                  context: context,
+                                  builder: (dialogCtx) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20)),
+                                    title: Text(evt.title),
+                                    content: Text(
+                                      "${evt.description}\n\nMagnitude: ${evt.magnitude}\nStatus Recovery: ${evt.recoveryStatus}",
+                                      style:
+                                          const TextStyle(fontSize: 13, height: 1.5),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(dialogCtx),
+                                        child: const Text("Tutup"),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             );
-                          },
-                        );
-                      }),
-                  ],
+                          }),
+                      ],
+                    );
+                  },
                 );
               },
             ),

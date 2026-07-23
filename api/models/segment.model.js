@@ -56,6 +56,10 @@ const SegmentSchema = new mongoose.Schema({
     // DFA (opsional, dihitung jika RR >= 16 titik)
     dfa_alpha1: { type: Number, default: null }, // short-range (window 4–16)
     dfa_alpha2: { type: Number, default: null }, // long-range  (window 17+)
+    
+    // ADFA (Asymmetric DFA)
+    adfa_plus: { type: Number, default: null },
+    adfa_minus: { type: Number, default: null },
   },
 
   // --- Metadata kualitas ---

@@ -37,13 +37,7 @@ export const createTransportLog = async (req, res) => {
     }
 
     const envelope = buildTransportEnvelope(payload);
-    const publishResult = await publishLogTransport(payload, async (data) => {
-      if (process.env.RABBITMQ_URI) {
-        console.log('[createTransportLog] Ready to publish transport payload:', JSON.stringify(data));
-        return true;
-      }
-      return false;
-    });
+    const publishResult = await publishLogTransport(payload);
 
     return res.status(200).json({
       success: true,
@@ -220,12 +214,6 @@ export const createLog = async (req, res) => {
           rmssd: item.rrms || item.rr,
           dfa_alpha1: null,
         })),
-      }, async (envelope) => {
-        if (process.env.RABBITMQ_URI) {
-          console.log('[createLog] Transport envelope ready for RabbitMQ:', JSON.stringify(envelope));
-          return true;
-        }
-        return false;
       });
     } catch (transportError) {
       console.warn('[createLog] Transport publish skipped:', transportError.message);

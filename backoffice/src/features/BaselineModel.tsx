@@ -1,47 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  CloudArrowUp, DownloadSimple, Eye, ArrowClockwise, Sliders, Pause, X, Receipt,
-  Columns, FileText, Trash, FloppyDisk, UserPlus, Check, Lightning
-} from '@phosphor-icons/react';
+  RefreshCw, Download, Users, HeartPulse, Waves, Gauge, Sparkles, Info, X,
+} from 'lucide-react';
+import {
+  ResponsiveContainer, BarChart, Bar, Cell, ErrorBar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ScatterChart, Scatter, ZAxis, ReferenceLine, RadarChart, PolarGrid,
+  PolarAngleAxis, Radar,
+} from 'recharts';
 
-export interface AnalyticsProps {
-  selectedParticipantId: string;
-  onParticipantChange: (id: string) => void;
-}
-
-export const DeviceSelector: React.FC<{
-  selectedId: string;
-  onChange: (id: string) => void;
-  options: { id: string; name: string; device: string }[];
-}> = ({ selectedId, onChange, options }) => {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span className="eyebrow" style={{ color: 'var(--muted)' }}>Select Participant:</span>
-      <select
-        className="select-chip font-mono cursor-pointer"
-        value={selectedId}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          outline: 'none',
-          background: 'var(--surface)',
-          color: 'var(--ink)',
-          border: '1px solid var(--hairline)',
-          fontWeight: 600,
-          padding: '5px 12px',
-        }}
-      >
-        {options.map(opt => (
-          <option key={opt.id} value={opt.id}>
-            {opt.name} ({opt.device})
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-};
-
-export const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
-  React.useEffect(() => {
+// ---------------------------------------------------------------------------
+// Toast (unchanged behaviour, kept for parity with the rest of the app)
+// ---------------------------------------------------------------------------
+export const Toast = ({ message, onClose }) => {
+  useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
@@ -49,285 +20,612 @@ export const Toast: React.FC<{ message: string; onClose: () => void }> = ({ mess
   return (
     <div
       style={{
-        position: 'fixed',
-        bottom: '24px',
-        right: '24px',
-        background: 'var(--surface)',
-        border: '1px solid var(--primary)',
-        borderRadius: 'var(--r-md)',
-        padding: '12px 18px',
-        boxShadow: 'var(--shadow-lg)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        animation: 'fadeInUp 200ms var(--ease)',
+        position: 'fixed', bottom: '24px', right: '24px',
+        background: 'var(--surface, #fff)', border: '1px solid var(--primary, #3b82f6)',
+        borderRadius: 'var(--r-md, 10px)', padding: '12px 18px',
+        boxShadow: 'var(--shadow-lg, 0 10px 30px rgba(0,0,0,.15))', zIndex: 1000,
+        display: 'flex', alignItems: 'center', gap: '10px',
       }}
     >
-      <span className="status-dot"></span>
-      <span style={{ fontSize: '13px', fontWeight: 550, color: 'var(--ink)' }}>{message}</span>
+      <span className="status-dot" />
+      <span style={{ fontSize: 13, fontWeight: 550, color: 'var(--ink, #111)' }}>{message}</span>
     </div>
   );
 };
 
-export const BaselineModel: React.FC<AnalyticsProps> = ({
-  selectedParticipantId,
-  onParticipantChange
-}) => {
-  const [showCompare, setShowCompare] = useState(false);
-  const [baselineData, setBaselineData] = useState<any>(null);
-  const [prevBaseline, setPrevBaseline] = useState<any>(null);
-  const [allBaselines, setAllBaselines] = useState<any[]>([]);
-  const [selectedActivity, setSelectedActivity] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [participants, setParticipants] = useState<any[]>([]);
+// ---------------------------------------------------------------------------
+// Constants & small helpers
+// ---------------------------------------------------------------------------
+const ACTIVITY_COLORS = {
+  Rest: '#8b5cf6', Light: '#3b82f6', Moderate: '#f59e0b', Vigorous: '#ef4444',
+};
+const activityColor = (name) => ACTIVITY_COLORS[name] || '#6366f1';
 
-  React.useEffect(() => {
-    const fetchPatients = async () => {
+const USER_PALETTE = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+
+const TIME_PERIOD_LABEL = {
+  morning: 'Pagi', afternoon: 'Siang', evening: 'Sore', night: 'Malam',
+};
+
+const RADAR_METRICS = [
+  { key: 'mean_hr', label: 'Detak Jantung' },
+  { key: 'rmssd', label: 'RMSSD' },
+  { key: 'sdnn', label: 'SDNN' },
+  { key: 'dfa_alpha1', label: 'DFA α1' },
+  { key: 'motion_intensity', label: 'Gerak' },
+];
+
+const metricMean = (baseline, key) => baseline?.stats?.[key]?.mean ?? null;
+const metricStd = (baseline, key) => baseline?.stats?.[key]?.std ?? null;
+const confidenceOf = (b) => (b ? Math.min(1, b.is_mature ? 0.95 : (b.segment_count || 0) / 20) : 0);
+const fmt = (v, d = 1) => (v == null || Number.isNaN(v) ? '—' : Number(v).toFixed(d));
+
+function rmssdStatus(v) {
+  if (v == null) return { label: '—', color: 'var(--muted, #9ca3af)' };
+  if (v > 40) return { label: 'Sangat Bugar', color: 'var(--success, #10b981)' };
+  if (v > 20) return { label: 'Normal', color: 'var(--primary, #3b82f6)' };
+  return { label: 'Kurang Bugar', color: 'var(--warning, #f59e0b)' };
+}
+function dfaStatus(v) {
+  if (v == null) return { label: '—', color: 'var(--muted, #9ca3af)' };
+  if (v < 0.75) return { label: 'Lelah / Stres', color: 'var(--warning, #f59e0b)' };
+  if (v <= 1.25) return { label: 'Optimal / Fit', color: 'var(--success, #10b981)' };
+  return { label: 'Sangat Santai', color: 'var(--primary, #3b82f6)' };
+}
+
+// Demo data so the panel is meaningful even before/without a live API
+// (falls back automatically if the real endpoints aren't reachable).
+function buildDemoData() {
+  const names = ['Dewi A.', 'Rian S.', 'Putri N.', 'Bagas W.', 'Sari M.', 'Andra P.'];
+  const activityBase = {
+    Rest: { hr: 62, rmssd: 60, dfa: 1.3, sdnn: 65, motion: 0.05 },
+    Light: { hr: 85, rmssd: 45, dfa: 1.1, sdnn: 55, motion: 0.25 },
+    Moderate: { hr: 112, rmssd: 28, dfa: 0.85, sdnn: 35, motion: 0.9 },
+    Vigorous: { hr: 148, rmssd: 15, dfa: 0.6, sdnn: 18, motion: 2.2 },
+  };
+  const periods = ['morning', 'afternoon', 'evening'];
+  const jitter = (v, pct = 0.15) => v * (1 + (Math.random() * 2 - 1) * pct);
+
+  const participants = names.map((n, i) => ({ _id: `demo-${i}`, name: n, current_device: 'HTM Band v2' }));
+  const records = [];
+  participants.forEach((p) => {
+    Object.entries(activityBase).forEach(([activity, base]) => {
+      const period = periods[Math.floor(Math.random() * periods.length)];
+      const segment_count = 40 + Math.floor(Math.random() * 80);
+      records.push({
+        participant: p,
+        baseline: {
+          activity, time_period: period, segment_count,
+          is_mature: segment_count > 80,
+          version: '2.1',
+          stats: {
+            mean_hr: { mean: jitter(base.hr), std: jitter(base.hr * 0.08, 0.3) },
+            rmssd: { mean: jitter(base.rmssd), std: jitter(base.rmssd * 0.1, 0.3) },
+            sdnn: { mean: jitter(base.sdnn), std: jitter(base.sdnn * 0.1, 0.3) },
+            dfa_alpha1: { mean: jitter(base.dfa), std: jitter(0.08, 0.3) },
+            motion_intensity: { mean: jitter(base.motion, 0.4), std: jitter(base.motion * 0.2, 0.3) },
+          },
+        },
+      });
+    });
+  });
+  return { participants, records };
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+export const BaselineModel = (_props) => {
+  const [participants, setParticipants] = useState([]);
+  const [records, setRecords] = useState([]); // [{participant, baseline}] — one entry per activity baseline
+  const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [toast, setToast] = useState(null);
+
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [timePeriod, setTimePeriod] = useState('all');
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+
+  // ---- fetch participants ----
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
       try {
         const token = sessionStorage.getItem('htm_token');
-        const res = await fetch('/api/patient/all', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setParticipants(data);
-          }
+        const res = await fetch('/api/patient/all', { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error('no api');
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
+        if (!cancelled) { setParticipants(data); setIsDemo(false); }
+      } catch {
+        if (!cancelled) {
+          const demo = buildDemoData();
+          setParticipants(demo.participants);
+          setRecords(demo.records);
+          setIsDemo(true);
+          setLoading(false);
         }
-      } catch (err) {
-        console.error(err);
       }
-    };
-    fetchPatients();
-  }, []);
+    })();
+    return () => { cancelled = true; };
+  }, [refreshKey]);
 
-  React.useEffect(() => {
-    const fetchBaseline = async () => {
+  // ---- fetch every baseline (all activities) for every participant ----
+  useEffect(() => {
+    if (isDemo || participants.length === 0) return;
+    let cancelled = false;
+    (async () => {
       setLoading(true);
       try {
         const token = sessionStorage.getItem('htm_token');
-        // fallback to P012 if empty
-        const idToFetch = selectedParticipantId || 'P012';
-        const res = await fetch(`/api/analysis/baseline/${idToFetch}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
+        const perUser = await Promise.all(participants.map(async (p) => {
+          const res = await fetch(`/api/analysis/baseline/${p._id}`, { headers: { Authorization: `Bearer ${token}` } });
+          if (!res.ok) return [];
           const data = await res.json();
-          if (data.success && data.data && data.data.length > 0) {
-            setAllBaselines(data.data);
-            setSelectedActivity(data.data[0].activity);
-          } else {
-            setAllBaselines([]);
-            setSelectedActivity('');
-            setBaselineData(null);
-            setPrevBaseline(null);
-          }
-        }
+          if (!data.success || !Array.isArray(data.data)) return [];
+          return data.data.map((b) => ({ participant: p, baseline: b }));
+        }));
+        if (!cancelled) setRecords(perUser.flat());
       } catch (err) {
-        console.error('Failed to fetch baseline:', err);
+        console.error('Failed to fetch baselines:', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
-    fetchBaseline();
-  }, [selectedParticipantId]);
+    })();
+    return () => { cancelled = true; };
+  }, [participants, isDemo]);
 
-  React.useEffect(() => {
-    if (allBaselines.length > 0 && selectedActivity) {
-      const active = allBaselines.find(b => b.activity === selectedActivity) || allBaselines[0];
-      const prev = allBaselines.find(b => b.activity === selectedActivity && b._id !== active._id) || null;
-      
-      const flattenStats = (b: any) => {
-        if(!b) return null;
-        return {
-          ...b,
-          hr_mean: b.stats?.mean_hr?.mean,
-          hr_sd: b.stats?.std_hr?.mean || b.stats?.mean_hr?.std,
-          rmssd_mean: b.stats?.rmssd?.mean,
-          dfa_alpha1_mean: b.stats?.dfa_alpha1?.mean,
-          samples_count: b.segment_count,
-          confidence: b.is_mature ? 0.95 : (b.segment_count / 20)
-        };
-      };
+  // ---- derived lists ----
+  const activities = useMemo(
+    () => Array.from(new Set(records.map((r) => r.baseline.activity))).sort(),
+    [records],
+  );
 
-      setBaselineData(flattenStats(active));
-      setPrevBaseline(flattenStats(prev));
-    } else {
-      setBaselineData(null);
-      setPrevBaseline(null);
-    }
-  }, [allBaselines, selectedActivity]);
+  useEffect(() => {
+    if (!selectedActivity && activities.length) setSelectedActivity(activities[0]);
+  }, [activities, selectedActivity]);
 
-  const selectorOptions = [
-    ...(participants.length > 0
-      ? participants.map(p => ({
-          id: p.guid || p._id,
-          name: p.name || p.guid || p._id,
-          device: p.current_device || 'Polar H10'
-        }))
-      : [
-          { id: 'P012', name: 'P012', device: 'Polar H10' },
-          { id: 'P002', name: 'P002', device: 'Polar H10' },
-          { id: 'P003', name: 'P003', device: 'Polar H10' },
-          { id: 'P005', name: 'P005', device: 'Polar H10' },
-          { id: 'P006', name: 'P006', device: 'Polar H10' }
-        ])
-  ];
+  const userColor = useMemo(() => {
+    const map = new Map();
+    participants.forEach((p, i) => map.set(p._id, USER_PALETTE[i % USER_PALETTE.length]));
+    return map;
+  }, [participants]);
 
-  if (selectedParticipantId && !selectorOptions.some(opt => opt.id === selectedParticipantId)) {
-    selectorOptions.unshift({
-      id: selectedParticipantId,
-      name: selectedParticipantId,
-      device: 'Polar H10'
+  const filteredRecords = useMemo(() => records.filter((r) => (
+    (!selectedActivity || r.baseline.activity === selectedActivity)
+    && (timePeriod === 'all' || r.baseline.time_period === timePeriod)
+  )), [records, selectedActivity, timePeriod]);
+
+  // default radar selection: first 3 users present in the current activity
+  useEffect(() => {
+    if (filteredRecords.length === 0) return;
+    const ids = filteredRecords.map((r) => r.participant._id);
+    setSelectedUserIds((prev) => {
+      const stillValid = prev.filter((id) => ids.includes(id));
+      if (stillValid.length) return stillValid;
+      return ids.slice(0, 3);
     });
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedActivity, timePeriod]);
 
-  // Generate pseudo-distribution based on mean
-  const generateDistribution = (mean: number, sd: number) => {
-    const bars = [];
-    // Map mean 50-130 bpm to index 0-8
-    const peakIndex = (mean - 50) / 10;
-    const variance = Math.max(0.8, (sd || 10) / 10);
-    
-    for (let i = 0; i < 9; i++) {
-      let val = Math.exp(-Math.pow(i - peakIndex, 2) / (2 * variance * variance));
-      bars.push(Math.max(0.05, val) * 95);
-    }
-    return bars;
+  // ---- chart data: HR by user (with std error bar) ----
+  const hrChartData = useMemo(() => filteredRecords.map((r) => ({
+    id: r.participant._id,
+    name: r.participant.name || r.participant.username || '—',
+    hr: +fmt(metricMean(r.baseline, 'mean_hr'), 0),
+    hrStd: +fmt(metricStd(r.baseline, 'mean_hr'), 0) || 0,
+  })).sort((a, b) => b.hr - a.hr), [filteredRecords]);
+
+  // ---- chart data: RMSSD vs DFA quadrant scatter ----
+  const scatterData = useMemo(() => filteredRecords.map((r) => ({
+    id: r.participant._id,
+    name: r.participant.name || r.participant.username || '—',
+    x: metricMean(r.baseline, 'rmssd'),
+    y: metricMean(r.baseline, 'dfa_alpha1'),
+    z: Math.round(confidenceOf(r.baseline) * 100) + 20,
+  })).filter((d) => d.x != null && d.y != null), [filteredRecords]);
+
+  // ---- activity comparison across all users/activities ----
+  const activitySummary = useMemo(() => {
+    const map = {};
+    records.forEach((r) => {
+      const act = r.baseline.activity;
+      if (!map[act]) map[act] = { activity: act, hr: [], rmssd: [], dfa: [], users: new Set() };
+      const hr = metricMean(r.baseline, 'mean_hr');
+      const rm = metricMean(r.baseline, 'rmssd');
+      const dfa = metricMean(r.baseline, 'dfa_alpha1');
+      if (hr != null) map[act].hr.push(hr);
+      if (rm != null) map[act].rmssd.push(rm);
+      if (dfa != null) map[act].dfa.push(dfa);
+      map[act].users.add(r.participant._id);
+    });
+    const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+    return activities.map((act) => ({
+      activity: act,
+      avgHr: +fmt(avg(map[act]?.hr || []), 0),
+      avgRmssd: +fmt(avg(map[act]?.rmssd || []), 0),
+      avgDfa: +fmt(avg(map[act]?.dfa || []), 2),
+      userCount: map[act]?.users.size || 0,
+    }));
+  }, [records, activities]);
+
+  // ---- radar comparison ----
+  const radarUsers = useMemo(
+    () => filteredRecords.filter((r) => selectedUserIds.includes(r.participant._id)),
+    [filteredRecords, selectedUserIds],
+  );
+  const radarData = useMemo(() => RADAR_METRICS.map(({ key, label }) => {
+    const vals = filteredRecords.map((r) => metricMean(r.baseline, key)).filter((v) => v != null);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const row = { metric: label };
+    radarUsers.forEach((r) => {
+      const v = metricMean(r.baseline, key);
+      const name = r.participant.name || r.participant.username || '—';
+      row[name] = v == null ? 0 : Math.round(((v - min) / (max - min || 1)) * 100);
+    });
+    return row;
+  }), [filteredRecords, radarUsers]);
+
+  // ---- top-level stats ----
+  const overallStats = useMemo(() => {
+    const usersWithData = new Set(records.map((r) => r.participant._id)).size;
+    const avgConfidence = records.length
+      ? Math.round((records.reduce((s, r) => s + confidenceOf(r.baseline), 0) / records.length) * 100)
+      : 0;
+    return { usersWithData, totalBaselines: records.length, activityCount: activities.length, avgConfidence };
+  }, [records, activities]);
+
+  const toggleUser = useCallback((id) => {
+    setSelectedUserIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 5) return prev;
+      return [...prev, id];
+    });
+  }, []);
+
+  const handleRefresh = () => { setRefreshKey((k) => k + 1); };
+
+  const handleExportCsv = () => {
+    const header = ['Nama', 'Aktivitas', 'Waktu', 'HR_mean', 'RMSSD_mean', 'SDNN_mean', 'DFA_alpha1', 'Motion', 'Kepercayaan%'];
+    const rows = filteredRecords.map((r) => [
+      r.participant.name || r.participant.username || r.participant._id,
+      r.baseline.activity,
+      r.baseline.time_period,
+      fmt(metricMean(r.baseline, 'mean_hr'), 1),
+      fmt(metricMean(r.baseline, 'rmssd'), 1),
+      fmt(metricMean(r.baseline, 'sdnn'), 1),
+      fmt(metricMean(r.baseline, 'dfa_alpha1'), 2),
+      fmt(metricMean(r.baseline, 'motion_intensity'), 2),
+      Math.round(confidenceOf(r.baseline) * 100),
+    ]);
+    const csv = [header, ...rows].map((row) => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `baseline_${selectedActivity || 'semua'}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    setToast('CSV berhasil diunduh');
   };
-
-  const distBars = baselineData?.hr_mean ? generateDistribution(baselineData.hr_mean, baselineData.hr_sd) : [20, 35, 55, 95, 85, 60, 40, 22, 12];
-
-  // Generate baseline band trajectory
-  const generateBand = (mean: number, sd: number) => {
-    // Map mean 50-130 to Y center 45 to 15 (higher mean = higher up on graph = lower Y)
-    const center = Math.max(15, Math.min(45, 45 - ((mean - 50) / 80) * 30));
-    const bandWidth = Math.max(5, Math.min(25, (sd || 10) * 1.5));
-    const top = center - bandWidth;
-    const bot = center + bandWidth;
-    const polygon = `0,${top} 300,${top} 300,${bot} 0,${bot}`;
-    
-    const pts = [];
-    for (let i=0; i<=8; i++) {
-      const x = i * (300/8);
-      const y = center + (Math.sin(mean * i * 3) * (bandWidth - 2));
-      pts.push(`${Math.round(x)},${Math.round(y)}`);
-    }
-    const polyline = pts.join(' ');
-    
-    return { polygon, polyline };
-  };
-
-  const band = generateBand(baselineData?.hr_mean || 77, baselineData?.hr_sd || 6.1);
 
   return (
-    <section>
-      <div className="page-head">
-        <h1 className="page-title">Baseline model</h1>
-        <DeviceSelector selectedId={selectedParticipantId} onChange={onParticipantChange} options={selectorOptions} />
+    <section className="baseline-analytics animate-fadein">
+      <style>{`
+        .ba-grid { display: grid; gap: 16px; }
+        .ba-grid-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+        .ba-grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        @media (max-width: 900px) { .ba-grid-4, .ba-grid-2 { grid-template-columns: 1fr; } }
+        .ba-stat-card {
+          background: var(--surface, #fff); border: 1px solid var(--hairline, #e5e7eb);
+          border-radius: var(--r-md, 12px); padding: 16px;
+        }
+        .ba-tab {
+          border: 1px solid var(--hairline, #e5e7eb); background: var(--surface, #fff);
+          color: var(--ink, #111); font-size: 13px; font-weight: 600; padding: 7px 14px;
+          border-radius: 999px; cursor: pointer; transition: all .15s ease; display: inline-flex; gap: 6px; align-items: center;
+        }
+        .ba-tab.active { color: #fff; border-color: transparent; }
+        .ba-select {
+          border: 1px solid var(--hairline, #e5e7eb); background: var(--surface, #fff);
+          color: var(--ink, #111); font-size: 13px; font-weight: 550; padding: 7px 12px; border-radius: 8px;
+        }
+        .ba-chip {
+          display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
+          border: 1px solid var(--hairline, #e5e7eb); padding: 5px 10px 5px 6px; font-size: 12px;
+          font-weight: 600; cursor: pointer; background: var(--surface, #fff); color: var(--muted, #6b7280);
+        }
+        .ba-chip.on { color: var(--ink, #111); }
+        .ba-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+      `}</style>
+
+      <div className="page-head mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 className="page-title">Baseline &amp; Profil Pengguna</h1>
+          <p className="text-muted text-sm mt-1">
+            Bandingkan standar kesehatan (baseline) tiap pengguna, per jenis aktivitas, lengkap dengan grafik.
+            {isDemo && <span style={{ color: 'var(--warning, #f59e0b)', fontWeight: 600 }}> Menampilkan data contoh — API tidak terjangkau.</span>}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-outline flex items-center gap-1" onClick={handleRefresh}>
+            <RefreshCw size={14} /> Refresh Data
+          </button>
+          <button className="btn btn-ghost flex items-center gap-1" onClick={handleExportCsv}>
+            <Download size={14} /> Export CSV
+          </button>
+        </div>
       </div>
 
-      <div className="form-row mb-4">
-        <span className="select-chip font-mono">{selectedParticipantId}</span>
-        {allBaselines.length > 0 ? (
-          <select 
-            className="select-chip" 
-            value={selectedActivity} 
-            onChange={(e) => setSelectedActivity(e.target.value)}
-            style={{ outline: 'none', background: 'transparent', border: 'none', cursor: 'pointer' }}
+      {/* ---- summary cards ---- */}
+      <div className="ba-grid ba-grid-4 mb-4">
+        <div className="ba-stat-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted, #6b7280)', fontSize: 12, fontWeight: 600 }}>
+            <Users size={14} /> PENGGUNA TERPANTAU
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--ink, #111)', marginTop: 6 }}>{overallStats.usersWithData}</div>
+        </div>
+        <div className="ba-stat-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted, #6b7280)', fontSize: 12, fontWeight: 600 }}>
+            <Waves size={14} /> TOTAL BASELINE
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--ink, #111)', marginTop: 6 }}>{overallStats.totalBaselines}</div>
+        </div>
+        <div className="ba-stat-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted, #6b7280)', fontSize: 12, fontWeight: 600 }}>
+            <Gauge size={14} /> JENIS AKTIVITAS
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--ink, #111)', marginTop: 6 }}>{overallStats.activityCount}</div>
+        </div>
+        <div className="ba-stat-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted, #6b7280)', fontSize: 12, fontWeight: 600 }}>
+            <Sparkles size={14} /> RATA-RATA KEPERCAYAAN
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--ink, #111)', marginTop: 6 }}>{overallStats.avgConfidence}%</div>
+        </div>
+      </div>
+
+      {/* ---- activity comparison (why baselines differ per activity) ---- */}
+      <div className="card mb-4" style={{ padding: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink, #111)' }}>Profil Baseline per Jenis Aktivitas</h3>
+          <span className="text-xs text-muted">Rata-rata seluruh pengguna</span>
+        </div>
+        <p className="text-xs text-muted mb-2">Detak jantung naik dan variabilitas (RMSSD/DFA) turun seiring intensitas aktivitas — begitu baseline yang sehat semestinya terlihat.</p>
+        <ResponsiveContainer width="100%" height={230}>
+          <BarChart data={activitySummary} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline, #e5e7eb)" vertical={false} />
+            <XAxis dataKey="activity" tick={{ fontSize: 12 }} />
+            <YAxis yAxisId="hr" tick={{ fontSize: 11 }} label={{ value: 'BPM', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+            <YAxis yAxisId="ms" orientation="right" tick={{ fontSize: 11 }} label={{ value: 'ms', angle: 90, position: 'insideRight', fontSize: 11 }} />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Bar yAxisId="hr" dataKey="avgHr" name="Detak Jantung (bpm)" radius={[4, 4, 0, 0]}>
+              {activitySummary.map((d) => <Cell key={d.activity} fill={activityColor(d.activity)} fillOpacity={0.85} />)}
+            </Bar>
+            <Bar yAxisId="ms" dataKey="avgRmssd" name="RMSSD (ms)" fill="var(--muted, #9ca3af)" radius={[4, 4, 0, 0]} fillOpacity={0.6} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ---- filters ---- */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+        {activities.map((act) => (
+          <button
+            key={act}
+            className={`ba-tab ${selectedActivity === act ? 'active' : ''}`}
+            style={selectedActivity === act ? { background: activityColor(act) } : {}}
+            onClick={() => setSelectedActivity(act)}
           >
-            {Array.from(new Set(allBaselines.map(b => b.activity))).map(act => (
-              <option key={act as string} value={act as string}>{act as string}</option>
-            ))}
-          </select>
-        ) : (
-          <span className="select-chip">{baselineData?.activity || 'No Activity'}</span>
-        )}
-        <span className="select-chip font-mono">v{baselineData?.version || '1.0'} · {baselineData?.updated_at ? new Date(baselineData.updated_at).toLocaleDateString() : '—'}</span>
+            <span className="ba-dot" style={{ background: activityColor(act) }} /> {act}
+          </button>
+        ))}
+        <select className="ba-select" value={timePeriod} onChange={(e) => setTimePeriod(e.target.value)}>
+          <option value="all">Semua Waktu</option>
+          {Object.entries(TIME_PERIOD_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        {loading && <span className="text-xs text-muted">Memuat…</span>}
       </div>
 
-      <div className="metric-row mb-4">
-        <div className="metric"><span className="eyebrow">HR mean</span><div className="metric-value">{baselineData?.hr_mean ? Math.round(baselineData.hr_mean) : 77} bpm</div></div>
-        <div className="metric"><span className="eyebrow">HR SD</span><div className="metric-value">{baselineData?.hr_sd ? baselineData.hr_sd.toFixed(1) : 6.1}</div></div>
-        <div className="metric"><span className="eyebrow">RMSSD mean</span><div className="metric-value">{baselineData?.rmssd_mean ? Math.round(baselineData.rmssd_mean) : 31} ms</div></div>
-        <div className="metric"><span className="eyebrow">DFA Alpha-1</span><div className="metric-value">{baselineData?.dfa_alpha1_mean ? baselineData.dfa_alpha1_mean.toFixed(2) : 1.09}</div></div>
-        <div className="metric"><span className="eyebrow">Observation</span><div className="metric-value">{baselineData?.samples_count || 518} win</div></div>
-        <div className="metric"><span className="eyebrow">Confidence</span><div className="metric-value">{baselineData?.confidence ? Math.round(baselineData.confidence * 100) : 94}%</div></div>
-      </div>
-
-      <div className="two-col mb-4">
-        <div className="chart-card">
-          <p className="card-title">Distribution (HR)</p>
-          <div className="bars" style={{ height: '80px' }}>
-            {distBars.map((h, i) => (
-              <div key={i} className={`bar ${h > 75 ? 'peak' : ''}`} style={{ height: `${h}%`, transition: 'height 0.3s ease' }}></div>
-            ))}
-          </div>
-        </div>
-        <div className="chart-card flex flex-col justify-between">
-          <p className="card-title !m-0">Baseline band</p>
-          <div className="py-md">
-            <svg viewBox="0 0 300 60" width="100%" height="60" preserveAspectRatio="none" className="overflow-visible" style={{ transition: 'all 0.3s ease' }}>
-              <polygon points={band.polygon} fill="var(--hairline)" opacity="0.4" style={{ transition: 'all 0.3s ease' }} />
-              <polyline points={band.polyline} fill="none" stroke="var(--primary)" strokeWidth="2" style={{ transition: 'all 0.3s ease' }} />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      {showCompare && (
-        <div className="card mb-4 animate-fadein" style={{ borderColor: 'var(--primary)', borderWidth: '1.5px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <p className="card-title !m-0" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Columns size={16} style={{ color: 'var(--primary)' }} />
-              Model Comparison: v1.2 vs v1.1 ({selectedParticipantId})
-            </p>
-            <span className="badge badge-stable" style={{ fontSize: '11px' }}>Comparison Ready</span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            {/* Active Model */}
-            <div style={{ background: 'var(--surface-raised)', padding: '14px', borderRadius: 'var(--r-md)', border: '1px solid var(--hairline)' }}>
-              <span className="badge badge-stable mb-3" style={{ fontSize: '10.5px' }}><span className="badge-dot"></span>Active</span>
-              <div className="kv-grid font-sans text-xs">
-                <div className="kv-item"><span className="eyebrow">HR Mean</span><div className="kv-value">{baselineData?.hr_mean ? Math.round(baselineData.hr_mean) : '—'} bpm</div></div>
-                <div className="kv-item"><span className="eyebrow">HR SD</span><div className="kv-value">{baselineData?.hr_sd ? baselineData.hr_sd.toFixed(1) : '—'}</div></div>
-                <div className="kv-item"><span className="eyebrow">RMSSD</span><div className="kv-value">{baselineData?.rmssd_mean ? Math.round(baselineData.rmssd_mean) : '—'} ms</div></div>
-                <div className="kv-item"><span className="eyebrow">DFA Alpha-1</span><div className="kv-value">{baselineData?.dfa_alpha1_mean ? baselineData.dfa_alpha1_mean.toFixed(2) : '—'}</div></div>
-                <div className="kv-item"><span className="eyebrow">Confidence</span><div className="kv-value">{baselineData?.confidence ? Math.round(baselineData.confidence * 100) : 0}%</div></div>
-                <div className="kv-item"><span className="eyebrow">Windows</span><div className="kv-value">{baselineData?.samples_count || 0} win</div></div>
-              </div>
+      {filteredRecords.length === 0 && !loading ? (
+        <div className="card text-center py-8 text-muted mb-4">Belum ada data baseline untuk kombinasi filter ini.</div>
+      ) : (
+        <>
+          {/* ---- comparison charts: HR bar + RMSSD/DFA quadrant ---- */}
+          <div className="ba-grid ba-grid-2 mb-4">
+            <div className="card" style={{ padding: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink, #111)', marginBottom: 2 }}>
+                <HeartPulse size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: -2 }} />
+                Detak Jantung per Pengguna — {selectedActivity}
+              </h3>
+              <p className="text-xs text-muted mb-2">Batang menunjukkan rata-rata; garis vertikal adalah variasi (±SD).</p>
+              <ResponsiveContainer width="100%" height={Math.max(220, hrChartData.length * 34)}>
+                <BarChart data={hrChartData} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline, #e5e7eb)" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} label={{ value: 'bpm', position: 'insideBottom', offset: -2, fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={90} />
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v, key) => [key === 'hr' ? `${v} bpm` : v, key === 'hr' ? 'Rata-rata' : 'Variasi']} />
+                  <Bar dataKey="hr" radius={[0, 4, 4, 0]} barSize={16}>
+                    {hrChartData.map((d) => <Cell key={d.id} fill={userColor.get(d.id) || '#3b82f6'} />)}
+                    <ErrorBar dataKey="hrStd" width={4} strokeWidth={1.5} stroke="var(--ink, #374151)" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
 
-            {/* Previous Model */}
-            <div style={{ background: 'var(--surface-raised)', padding: '14px', borderRadius: 'var(--r-md)', border: '1px solid var(--hairline)', opacity: 0.85 }}>
-              <span className="badge badge-inactive mb-3" style={{ fontSize: '10.5px' }}><span className="badge-dot"></span>Previous</span>
-              <div className="kv-grid font-sans text-xs">
-                <div className="kv-item"><span className="eyebrow">HR Mean</span><div className="kv-value">{prevBaseline?.hr_mean ? Math.round(prevBaseline.hr_mean) : '—'} bpm</div></div>
-                <div className="kv-item"><span className="eyebrow">HR SD</span><div className="kv-value">{prevBaseline?.hr_sd ? prevBaseline.hr_sd.toFixed(1) : '—'}</div></div>
-                <div className="kv-item"><span className="eyebrow">RMSSD</span><div className="kv-value">{prevBaseline?.rmssd_mean ? Math.round(prevBaseline.rmssd_mean) : '—'} ms</div></div>
-                <div className="kv-item"><span className="eyebrow">DFA Alpha-1</span><div className="kv-value">{prevBaseline?.dfa_alpha1_mean ? prevBaseline.dfa_alpha1_mean.toFixed(2) : '—'}</div></div>
-                <div className="kv-item"><span className="eyebrow">Confidence</span><div className="kv-value">{prevBaseline?.confidence ? Math.round(prevBaseline.confidence * 100) : 0}%</div></div>
-                <div className="kv-item"><span className="eyebrow">Windows</span><div className="kv-value">{prevBaseline?.samples_count || 0} win</div></div>
+            <div className="card" style={{ padding: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink, #111)', marginBottom: 2 }}>
+                <Waves size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: -2 }} />
+                Kebugaran vs Kelelahan — {selectedActivity}
+              </h3>
+              <p className="text-xs text-muted mb-2">RMSSD tinggi + DFA α1 di zona optimal (garis putus-putus) menandakan pemulihan baik.</p>
+              <ResponsiveContainer width="100%" height={260}>
+                <ScatterChart margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline, #e5e7eb)" />
+                  <XAxis type="number" dataKey="x" name="RMSSD" unit="ms" tick={{ fontSize: 11 }} label={{ value: 'RMSSD (ms)', position: 'insideBottom', offset: -4, fontSize: 11 }} />
+                  <YAxis type="number" dataKey="y" name="DFA α1" tick={{ fontSize: 11 }} label={{ value: 'DFA α1', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+                  <ZAxis type="number" dataKey="z" range={[60, 220]} />
+                  <ReferenceLine x={20} stroke="var(--warning, #f59e0b)" strokeDasharray="4 4" />
+                  <ReferenceLine x={40} stroke="var(--success, #10b981)" strokeDasharray="4 4" />
+                  <ReferenceLine y={0.75} stroke="var(--warning, #f59e0b)" strokeDasharray="4 4" />
+                  <ReferenceLine y={1.25} stroke="var(--primary, #3b82f6)" strokeDasharray="4 4" />
+                  <Tooltip
+                    cursor={{ strokeDasharray: '3 3' }}
+                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                    formatter={(v, name) => [name === 'RMSSD' ? `${fmt(v)} ms` : fmt(v, 2), name]}
+                    labelFormatter={() => ''}
+                  />
+                  <Scatter data={scatterData} name="Pengguna">
+                    {scatterData.map((d) => <Cell key={d.id} fill={userColor.get(d.id) || '#3b82f6'} fillOpacity={0.85} />)}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {scatterData.map((d) => (
+                  <span key={d.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--muted, #6b7280)' }}>
+                    <span className="ba-dot" style={{ background: userColor.get(d.id) }} /> {d.name}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
-        </div>
+
+          {/* ---- radar comparison ---- */}
+          <div className="card mb-4" style={{ padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink, #111)' }}>
+                <Gauge size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: -2 }} />
+                Profil Metrik — Bandingkan Pengguna ({selectedActivity})
+              </h3>
+              <span className="text-xs text-muted flex items-center gap-1"><Info size={12} /> Nilai dinormalisasi 0–100 relatif terhadap grup ini</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 0' }}>
+              {filteredRecords.map((r) => {
+                const on = selectedUserIds.includes(r.participant._id);
+                const name = r.participant.name || r.participant.username || '—';
+                return (
+                  <button key={r.participant._id} className={`ba-chip ${on ? 'on' : ''}`} onClick={() => toggleUser(r.participant._id)}
+                    style={on ? { borderColor: userColor.get(r.participant._id) } : {}}>
+                    <span className="ba-dot" style={{ background: on ? userColor.get(r.participant._id) : 'var(--muted, #d1d5db)' }} />
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <RadarChart data={radarData} outerRadius="75%">
+                <PolarGrid stroke="var(--hairline, #e5e7eb)" />
+                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 12 }} />
+                {radarUsers.map((r) => {
+                  const name = r.participant.name || r.participant.username || '—';
+                  return (
+                    <Radar key={r.participant._id} name={name} dataKey={name}
+                      stroke={userColor.get(r.participant._id)} fill={userColor.get(r.participant._id)}
+                      fillOpacity={0.15} strokeWidth={2} />
+                  );
+                })}
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* ---- detail table ---- */}
+          <div className="card !p-0 overflow-hidden mb-4">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--hairline, #e5e7eb)', backgroundColor: 'var(--surface-raised, #f9fafb)' }}>
+                  <th className="pl-lg py-sm font-semibold text-xs text-muted uppercase tracking-wider">Profil Pengguna</th>
+                  <th className="py-sm font-semibold text-xs text-muted uppercase tracking-wider">Waktu</th>
+                  <th className="py-sm font-semibold text-xs text-muted uppercase tracking-wider">Detak Jantung</th>
+                  <th className="py-sm font-semibold text-xs text-muted uppercase tracking-wider">Kebugaran (RMSSD)</th>
+                  <th className="py-sm font-semibold text-xs text-muted uppercase tracking-wider">(DFA)</th>
+                  <th className="py-sm font-semibold text-xs text-muted uppercase tracking-wider">Akurasi Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRecords.map((item, idx) => {
+                  const p = item.participant;
+                  const b = item.baseline;
+                  const hr = metricMean(b, 'mean_hr');
+                  const hrSd = metricStd(b, 'mean_hr');
+                  const rmssd = metricMean(b, 'rmssd');
+                  const dfa = metricMean(b, 'dfa_alpha1');
+                  const rmStat = rmssdStatus(rmssd);
+                  const dfaStat = dfaStatus(dfa);
+                  const conf = Math.round(confidenceOf(b) * 100);
+                  const confColor = conf > 80 ? 'var(--success, #10b981)' : conf > 50 ? 'var(--primary, #3b82f6)' : 'var(--warning, #f59e0b)';
+                  const initial = (p.name || p.username || '?').charAt(0).toUpperCase();
+
+                  return (
+                    <tr key={idx} className="border-t border-hairline hover-bg" style={{ transition: 'background 0.2s' }}>
+                      <td className="pl-lg py-md">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-raised, #f3f4f6)', border: '1px solid var(--hairline, #e5e7eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: userColor.get(p._id) }}>
+                            {initial}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-ink" style={{ fontSize: 14 }}>{p.name || p.username || p._id}</div>
+                            <div className="text-xs text-muted mt-1">{p.current_device || 'Tidak ada perangkat'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-md">
+                        <span className="text-xs" style={{ color: 'var(--muted, #6b7280)', fontWeight: 500 }}>
+                          {TIME_PERIOD_LABEL[b.time_period] || b.time_period || '—'}
+                        </span>
+                      </td>
+                      <td className="py-md">
+                        {hr != null ? (
+                          <div>
+                            <div className="font-semibold text-ink" style={{ fontSize: 15 }}>{fmt(hr, 0)} <span className="text-xs text-muted font-normal">bpm</span></div>
+                            <div className="text-xs text-muted mt-1">±{fmt(hrSd, 1)} variasi</div>
+                          </div>
+                        ) : <span className="text-muted">—</span>}
+                      </td>
+                      <td className="py-md">
+                        {rmssd != null ? (
+                          <div>
+                            <div className="font-semibold text-ink" style={{ fontSize: 15 }}>{fmt(rmssd, 0)} <span className="text-xs text-muted font-normal">ms</span></div>
+                            <div style={{ fontSize: 11, color: rmStat.color, marginTop: 4, fontWeight: 600 }}>{rmStat.label}</div>
+                          </div>
+                        ) : <span className="text-muted">—</span>}
+                      </td>
+                      <td className="py-md">
+                        {dfa != null ? (
+                          <div>
+                            <div className="font-semibold text-ink" style={{ fontSize: 15 }}>{fmt(dfa, 2)}</div>
+                            <div style={{ fontSize: 11, color: dfaStat.color, marginTop: 4, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: dfaStat.color }} />
+                              {dfaStat.label}
+                            </div>
+                          </div>
+                        ) : <span className="text-muted">—</span>}
+                      </td>
+                      <td className="pr-lg py-md">
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                            <span className="text-muted">Tingkat Kepercayaan</span>
+                            <span className="font-semibold text-ink">{conf}%</span>
+                          </div>
+                          <div style={{ width: '100%', height: 6, background: 'var(--surface-raised, #f3f4f6)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ width: `${Math.min(100, conf)}%`, height: '100%', background: confColor, transition: 'width 1s ease' }} />
+                          </div>
+                          <div className="text-xs text-muted mt-2">Segmen: <span className="font-mono">{b.segment_count}</span></div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
-      <div className="action-bar">
-        <button
-          className={`btn ${showCompare ? 'btn-outline' : 'btn-primary'} flex items-center gap-1`}
-          onClick={() => setShowCompare(!showCompare)}
-        >
-          <Columns size={14} /> Compare models
-        </button>
-        <button className="btn btn-outline flex items-center gap-1"><Check size={14} /> Freeze model</button>
-        <div className="action-bar-divider"></div>
-        <button className="btn btn-ghost flex items-center gap-1"><ArrowClockwise size={14} /> Rollback</button>
-        <button className="btn btn-ghost flex items-center gap-1"><DownloadSimple size={14} /> Export</button>
-      </div>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </section>
   );
 };
+
+export default BaselineModel;

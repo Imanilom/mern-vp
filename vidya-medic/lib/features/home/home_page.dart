@@ -16,10 +16,32 @@ import '../../shared/widgets/mini_trajectory_chart.dart';
 import '../activity/symptom_bottom_sheet.dart';
 import '../../core/providers/activity_provider.dart';
 
-// Provider: health status saat ini (bisa diubah dari backend nanti)
-final healthStatusProvider = StateProvider<HealthStatusType>(
-  (ref) => HealthStatusType.stable,
-);
+// Provider: health status saat ini (dihubungkan dengan data events backend)
+final healthStatusProvider = Provider<HealthStatusType>((ref) {
+  final profileAsync = ref.watch(profileProvider);
+  if (profileAsync.value == null) return HealthStatusType.stable;
+
+  final eventsAsync = ref.watch(eventsProvider);
+  return eventsAsync.when(
+    data: (events) {
+      if (events.isEmpty) return HealthStatusType.stable;
+      final latestEvent = events.first;
+      switch (latestEvent.type) {
+        case 'alert':
+          return HealthStatusType.alert;
+        case 'deviation':
+          return HealthStatusType.deviation;
+        case 'recovering':
+          return HealthStatusType.attention;
+        case 'stable':
+        default:
+          return HealthStatusType.stable;
+      }
+    },
+    loading: () => HealthStatusType.stable,
+    error: (_, __) => HealthStatusType.stable,
+  );
+});
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -111,12 +133,14 @@ class HomePage extends ConsumerWidget {
         ),
         actions: [
           _appBarAction(
+            context,
             icon: Icons.notifications_none_rounded,
             onTap: () => context.push('/alerts'),
             color: htmColors.surface,
           ),
           const SizedBox(width: 8),
           _appBarAction(
+            context,
             icon: Icons.person_outline_rounded,
             onTap: () => context.go('/profile'),
             color: htmColors.surface,
@@ -125,8 +149,12 @@ class HomePage extends ConsumerWidget {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async =>
-            await Future.delayed(const Duration(milliseconds: 800)),
+        onRefresh: () async {
+          ref.invalidate(profileProvider);
+          ref.invalidate(eventsProvider);
+          await ref.read(profileProvider.future).catchError((_) => null);
+          await ref.read(eventsProvider.future).catchError((_) => null);
+        },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
@@ -135,14 +163,14 @@ class HomePage extends ConsumerWidget {
                   const SizedBox(height: 16),
 
                   // Section label
-                  _sectionLabel("Parameter Real-time"),
+                  _sectionLabel(context, "Parameter Real-time"),
                   const SizedBox(height: 10),
 
                   // Metric grid — isolated widget, hanya bagian ini yang rebuild tiap sensor tick
                   _LiveMetricGrid(colors: colors),
 
                   const SizedBox(height: 20),
-                  _sectionLabel("Trajectory 6 Jam Terakhir"),
+                  _sectionLabel(context, "Trajectory 6 Jam Terakhir"),
                   const SizedBox(height: 10),
 
                   const MiniTrajectoryChart(
@@ -158,7 +186,7 @@ class HomePage extends ConsumerWidget {
                   ),
 
                   const SizedBox(height: 20),
-                  _sectionLabel("Aksi Cepat"),
+                  _sectionLabel(context, "Aksi Cepat"),
                   const SizedBox(height: 10),
 
                   // Action buttons
@@ -199,7 +227,7 @@ class HomePage extends ConsumerWidget {
     );
   }
 
-  Widget _appBarAction({required IconData icon, required VoidCallback onTap, required Color color}) {
+  Widget _appBarAction(BuildContext context, {required IconData icon, required VoidCallback onTap, required Color color}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -215,7 +243,7 @@ class HomePage extends ConsumerWidget {
     );
   }
 
-  Widget _sectionLabel(String label) {
+  Widget _sectionLabel(BuildContext context, String label) {
     return Text(
       label,
       style: HtmTypography.titleMedium?.copyWith(color: HtmColors.of(context).ink),

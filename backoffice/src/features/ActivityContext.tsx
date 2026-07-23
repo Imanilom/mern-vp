@@ -9,36 +9,7 @@ export interface AnalyticsProps {
   onParticipantChange: (id: string) => void;
 }
 
-export const DeviceSelector: React.FC<{
-  selectedId: string;
-  onChange: (id: string) => void;
-  options: { id: string; name: string; device: string }[];
-}> = ({ selectedId, onChange, options }) => {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span className="eyebrow" style={{ color: 'var(--muted)' }}>Select Participant:</span>
-      <select
-        className="select-chip font-mono cursor-pointer"
-        value={selectedId}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          outline: 'none',
-          background: 'var(--surface)',
-          color: 'var(--ink)',
-          border: '1px solid var(--hairline)',
-          fontWeight: 600,
-          padding: '5px 12px',
-        }}
-      >
-        {options.map(opt => (
-          <option key={opt.id} value={opt.id}>
-            {opt.name} ({opt.device})
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-};
+import { DeviceSelector } from '../shared/components/ParticipantSelector';
 
 export const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
   React.useEffect(() => {
@@ -78,6 +49,7 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
   const [recalculating, setRecalculating] = useState(false);
   const [activities, setActivities] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [selectedDay, setSelectedDay] = useState<string>(new Date().toISOString().split('T')[0]); // Default to today
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -103,8 +75,8 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
     const fetchActivities = async () => {
       try {
         const token = sessionStorage.getItem('htm_token');
-        const idToFetch = selectedParticipantId || 'P012';
-        const res = await fetch(`/api/analysis/activity-context/${idToFetch}`, {
+        const idToFetch = selectedParticipantId;
+        const res = await fetch(`/api/analysis/activity-context/${idToFetch}?date=${selectedDay}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -118,7 +90,7 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
       }
     };
     fetchActivities();
-  }, [selectedParticipantId]);
+  }, [selectedParticipantId, selectedDay]);
 
   const handleRecalculate = () => {
     setRecalculating(true);
@@ -130,35 +102,33 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
     }, 2000);
   };
 
-  const selectorOptions = [
-    ...(participants.length > 0
-      ? participants.map(p => ({
-        id: p.guid || p._id,
-        name: p.name || p.guid || p._id,
-        device: p.current_device || 'Polar H10'
-      }))
-      : [
-        { id: 'P012', name: 'P012', device: 'Polar H10' },
-        { id: 'P002', name: 'P002', device: 'Polar H10' },
-        { id: 'P003', name: 'P003', device: 'Polar H10' },
-        { id: 'P005', name: 'P005', device: 'Polar H10' },
-        { id: 'P006', name: 'P006', device: 'Polar H10' }
-      ])
-  ];
-
-  if (selectedParticipantId && !selectorOptions.some(opt => opt.id === selectedParticipantId)) {
-    selectorOptions.unshift({
-      id: selectedParticipantId,
-      name: selectedParticipantId,
-      device: 'Polar H10'
-    });
-  }
-
   return (
     <section>
-      <div className="page-head">
+      <div className="page-head mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="page-title">Activity context</h1>
-        <DeviceSelector selectedId={selectedParticipantId} onChange={onParticipantChange} options={selectorOptions} />
+        <DeviceSelector selectedId={selectedParticipantId} onChange={onParticipantChange} />
+      </div>
+
+      <div className="card mb-4" style={{ padding: '12px 16px', display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div>
+          <span className="eyebrow" style={{ display: 'block', marginBottom: 4 }}>Pilih Tanggal</span>
+          <input 
+            type="date" 
+            value={selectedDay} 
+            onChange={(e) => setSelectedDay(e.target.value)} 
+            className="select-chip font-mono"
+            style={{ padding: '4px 8px', border: '1px solid var(--hairline)', borderRadius: 4, background: 'var(--surface)', color: 'var(--ink)' }}
+          />
+        </div>
+        <div style={{ marginTop: 18 }}>
+          <button 
+            onClick={() => setSelectedDay(new Date().toISOString().split('T')[0])}
+            className="select-chip"
+            style={{ cursor: 'pointer', padding: '6px 12px' }}
+          >
+            Reset Tanggal
+          </button>
+        </div>
       </div>
 
       <div className="card !p-0 overflow-hidden mb-4">

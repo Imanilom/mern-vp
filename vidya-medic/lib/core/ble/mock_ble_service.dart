@@ -12,6 +12,7 @@ class BleService extends ChangeNotifier {
   StreamSubscription<List<int>>? _hrSubscription;
   StreamSubscription<BluetoothConnectionState>? _connSubscription;
   BluetoothDevice? _connectedDevice;
+  bool _isDisposed = false;
   
   bool isConnected = false;
   String deviceName = "Tidak Ada Perangkat";
@@ -21,7 +22,7 @@ class BleService extends ChangeNotifier {
 
   void updateMotionState(String state) {
     motionState = state;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
   }
 
   // List of last 30 RR intervals to calculate RMSSD
@@ -96,7 +97,7 @@ class BleService extends ChangeNotifier {
         deviceName = device.platformName.isNotEmpty ? device.platformName : "Polar H10";
         batteryLevel = 92; 
         signalQuality = 98;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
 
         // Enable notifications/indications on characteristic
         await hrChar.setNotifyValue(true);
@@ -199,11 +200,12 @@ class BleService extends ChangeNotifier {
     deviceName = "Tidak Ada Perangkat";
     batteryLevel = 0;
     signalQuality = 0;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     disconnect();
     _readingController.close();
     super.dispose();
@@ -211,9 +213,7 @@ class BleService extends ChangeNotifier {
 }
 
 final bleServiceProvider = ChangeNotifierProvider<BleService>((ref) {
-  final service = BleService();
-  ref.onDispose(() => service.dispose());
-  return service;
+  return BleService();
 });
 
 final currentSensorReadingProvider = StreamProvider<SensorReading>((ref) {

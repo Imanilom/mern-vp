@@ -734,11 +734,20 @@ export async function computeH3aMetrics(userId) {
 export async function getActivityContext(req, res) {
   try {
     const { userId } = req.params;
+    const { date } = req.query;
     const objectId = new mongoose.Types.ObjectId(userId);
     
+    const matchStage = { user_id: objectId, is_valid: true };
+    if (date) {
+      // Create a Date object in local time assuming date is YYYY-MM-DD
+      const startOfDay = new Date(date).setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date).setHours(23, 59, 59, 999);
+      matchStage.window_start = { $gte: startOfDay, $lte: endOfDay };
+    }
+
     // Aggregate segments by activity
     const stats = await Segment.aggregate([
-      { $match: { user_id: objectId, is_valid: true } },
+      { $match: matchStage },
       { $group: {
         _id: '$activity_label',
         windows: { $sum: 1 },

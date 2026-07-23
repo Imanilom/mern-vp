@@ -5,36 +5,7 @@ export interface AnalyticsProps {
   onParticipantChange: (id: string) => void;
 }
 
-export const DeviceSelector: React.FC<{
-  selectedId: string;
-  onChange: (id: string) => void;
-  options: { id: string; name: string; device: string }[];
-}> = ({ selectedId, onChange, options }) => {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span className="eyebrow" style={{ color: 'var(--muted)' }}>Select Participant:</span>
-      <select
-        className="select-chip font-mono cursor-pointer"
-        value={selectedId}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          outline: 'none',
-          background: 'var(--surface)',
-          color: 'var(--ink)',
-          border: '1px solid var(--hairline)',
-          fontWeight: 600,
-          padding: '5px 12px',
-        }}
-      >
-        {options.map(opt => (
-          <option key={opt.id} value={opt.id}>
-            {opt.name} ({opt.device})
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-};
+import { DeviceSelector } from '../shared/components/ParticipantSelector';
 
 export const Toast: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
   React.useEffect(() => {
@@ -113,7 +84,7 @@ export const AnomalyDetection: React.FC<AnalyticsProps> = ({
       setLoading(true);
       try {
         const token = sessionStorage.getItem('htm_token');
-        const idToFetch = selectedParticipantId || 'P012';
+        const idToFetch = selectedParticipantId;
         const res = await fetch(`/api/analysis/events/${idToFetch}?limit=20`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -233,35 +204,11 @@ export const AnomalyDetection: React.FC<AnalyticsProps> = ({
     setToast(`FCM notification sent to participant ${activeEvent.participantId} for event ${activeEvent.eventId}.`);
   };
 
-  const selectorOptions = [
-    ...(participants.length > 0
-      ? participants.map(p => ({
-          id: p.guid || p._id,
-          name: p.name || p.guid || p._id,
-          device: p.current_device || 'Polar H10'
-        }))
-      : [
-          { id: 'P012', name: 'P012', device: 'Polar H10' },
-          { id: 'P002', name: 'P002', device: 'Polar H10' },
-          { id: 'P003', name: 'P003', device: 'Polar H10' },
-          { id: 'P005', name: 'P005', device: 'Polar H10' },
-          { id: 'P006', name: 'P006', device: 'Polar H10' }
-        ])
-  ];
-
-  if (selectedParticipantId && !selectorOptions.some(opt => opt.id === selectedParticipantId)) {
-    selectorOptions.unshift({
-      id: selectedParticipantId,
-      name: selectedParticipantId,
-      device: 'Polar H10'
-    });
-  }
-
   return (
     <section>
       <div className="page-head">
         <h1 className="page-title">Anomaly detection</h1>
-        <DeviceSelector selectedId={selectedParticipantId} onChange={onParticipantChange} options={selectorOptions} />
+        <DeviceSelector selectedId={selectedParticipantId} onChange={onParticipantChange} />
       </div>
 
       <div className="filter-bar mb-4">

@@ -44,10 +44,10 @@ class HtmColors {
 
   static HtmColors of(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? _dark : _light;
+    return isDark ? dark : light;
   }
 
-  static const _light = HtmColors._(
+  static const light = HtmColors._(
     canvas: canvasLight,
     surface: surfaceLight,
     primary: primaryLight,
@@ -56,7 +56,7 @@ class HtmColors {
     hairline: hairlineLight,
   );
 
-  static const _dark = HtmColors._(
+  static const dark = HtmColors._(
     canvas: canvasDark,
     surface: surfaceDark,
     primary: primaryDark,

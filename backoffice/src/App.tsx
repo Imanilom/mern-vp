@@ -70,7 +70,7 @@ const navSections = [
 function App() {
   const [view, setView] = useState<ViewType>('view-overview');
   const [selectedParticipantId, setSelectedParticipantId] = useState<string>('P012');
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [contentKey, setContentKey] = useState(0);
 

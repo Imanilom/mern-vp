@@ -298,3 +298,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 final profileProvider = FutureProvider<Participant>((ref) async {
   return ref.watch(apiClientProvider).getParticipantProfile();
 });
+
+final eventsProvider = FutureProvider<List<TrajectoryEvent>>((ref) async {
+  return ref.watch(apiClientProvider).getHistoryEvents();
+});

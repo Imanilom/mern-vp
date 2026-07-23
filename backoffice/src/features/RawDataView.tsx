@@ -3,7 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceArea, ReferenceLine
 } from 'recharts';
-import { DeviceSelector } from './AnomalyDetection';
+import { DeviceSelector } from '../shared/components/ParticipantSelector';
 
 const HR_NORMAL_MIN = 60;
 const HR_NORMAL_MAX = 100;
@@ -13,7 +13,9 @@ export const RawDataView: React.FC = () => {
   const [participants, setParticipants] = useState<any[]>([]);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string>('');
+  const [selectedDay, setSelectedDay] = useState<string>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
+  const [startTime, setStartTime] = useState<string>('');
+  const [endTime, setEndTime] = useState<string>('');
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -38,7 +40,12 @@ export const RawDataView: React.FC = () => {
       setLoading(true);
       try {
         const token = sessionStorage.getItem('htm_token');
-        const res = await fetch(`/api/data/raw/${selectedParticipantId}`, {
+        let url = `/api/data/raw/${selectedParticipantId}?`;
+        if (selectedDay) url += `date=${selectedDay}&`;
+        if (startTime) url += `startTime=${startTime}&`;
+        if (endTime) url += `endTime=${endTime}&`;
+        
+        const res = await fetch(url, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -46,9 +53,11 @@ export const RawDataView: React.FC = () => {
           if (json.success) {
             const formatted = json.data.map((d: any) => {
               const dt = new Date(d.timestamp);
+              const h = dt.getHours().toString().padStart(2, '0');
+              const m = dt.getMinutes().toString().padStart(2, '0');
               return {
                 ...d,
-                timeLabel: dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                timeLabel: `${h}:${m}`,
                 dayKey: dt.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }),
                 dayLabel: dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' }),
                 sortTs: d.timestamp,
@@ -56,11 +65,6 @@ export const RawDataView: React.FC = () => {
             });
             setData(formatted);
 
-            // Default ke hari terbaru
-            if (formatted.length > 0) {
-              const lastDay = formatted[formatted.length - 1].dayKey;
-              setSelectedDay(lastDay);
-            }
           }
         }
       } catch (err) {
@@ -72,22 +76,12 @@ export const RawDataView: React.FC = () => {
     if (selectedParticipantId) {
       fetchRawData();
     }
-  }, [selectedParticipantId]);
+  }, [selectedParticipantId, selectedDay, startTime, endTime]);
 
-  // Daftar hari unik yang tersedia, urut dari terbaru
-  const availableDays = useMemo(() => {
-    const map = new Map<string, string>(); // dayKey -> dayLabel
-    data.forEach(d => map.set(d.dayKey, d.dayLabel));
-    return Array.from(map.entries())
-      .map(([key, label]) => ({ key, label }))
-      .sort((a, b) => (a.key < b.key ? 1 : -1)); // terbaru dulu
+  // Data yang ditampilkan dari hasil fetch API
+  const dayData = useMemo(() => {
+    return data;
   }, [data]);
-
-  // Data yang ditampilkan hanya untuk hari terpilih
-  const dayData = useMemo(
-    () => data.filter(d => d.dayKey === selectedDay),
-    [data, selectedDay]
-  );
 
   // Ringkasan statistik sederhana untuk hari itu
   const summary = useMemo(() => {
@@ -104,30 +98,9 @@ export const RawDataView: React.FC = () => {
     };
   }, [dayData]);
 
-  const selectorOptions = [
-    ...(participants.length > 0
-      ? participants.map(p => ({
-        id: p.guid || p._id,
-        name: p.name || p.guid || p._id,
-        device: p.current_device || 'Polar H10'
-      }))
-      : [
-        { id: 'P012', name: 'P012', device: 'Polar H10' },
-        { id: 'P002', name: 'P002', device: 'Polar H10' }
-      ])
-  ];
-
-  if (selectedParticipantId && !selectorOptions.some(opt => opt.id === selectedParticipantId)) {
-    selectorOptions.unshift({
-      id: selectedParticipantId,
-      name: selectedParticipantId,
-      device: 'Polar H10'
-    });
-  }
-
-  // Tooltip sederhana, bahasa awam
   const SimpleTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload || !payload.length) return null;
+    const dataPoint = payload[0].payload;
     return (
       <div style={{
         backgroundColor: 'var(--surface)',
@@ -137,6 +110,9 @@ export const RawDataView: React.FC = () => {
         fontSize: 12,
       }}>
         <div style={{ fontWeight: 600, marginBottom: 4 }}>Jam {label}</div>
+        <div style={{ color: 'var(--muted)', fontSize: 11, marginBottom: 4 }}>
+          Aktivitas: {dataPoint.activity || 'Tidak diketahui'}
+        </div>
         {payload.map((p: any, i: number) => (
           <div key={i} style={{ color: p.color }}>
             {p.name}: <strong>{p.value}</strong> {p.dataKey === 'hr' ? 'bpm' : 'ms'}
@@ -150,32 +126,56 @@ export const RawDataView: React.FC = () => {
     <section className="animate-fadein">
       <div className="page-head mb-6" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="page-title">Riwayat Detak Jantung</h1>
-        <DeviceSelector selectedId={selectedParticipantId} onChange={setSelectedParticipantId} options={selectorOptions} />
+        <DeviceSelector selectedId={selectedParticipantId} onChange={setSelectedParticipantId} />
       </div>
 
-      {/* Pemilih Hari */}
-      {availableDays.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          {availableDays.map(day => (
-            <button
-              key={day.key}
-              onClick={() => setSelectedDay(day.key)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 20,
-                border: '1px solid var(--hairline)',
-                fontSize: 13,
-                cursor: 'pointer',
-                backgroundColor: selectedDay === day.key ? 'var(--primary)' : 'var(--surface)',
-                color: selectedDay === day.key ? '#fff' : 'var(--ink)',
-                transition: 'all 0.15s',
-              }}
+      {/* Filter Waktu dan Tanggal */}
+      <div className="card mb-4">
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div>
+            <span className="eyebrow" style={{ display: 'block', marginBottom: 4 }}>Pilih Tanggal</span>
+            <input 
+              type="date" 
+              value={selectedDay} 
+              onChange={(e) => setSelectedDay(e.target.value)} 
+              className="select-chip font-mono"
+              style={{ padding: '4px 8px', border: '1px solid var(--hairline)', borderRadius: 4, background: 'var(--surface)', color: 'var(--ink)' }}
+            />
+          </div>
+          
+          <div>
+            <span className="eyebrow" style={{ display: 'block', marginBottom: 4 }}>Waktu Mulai</span>
+            <input 
+              type="time" 
+              value={startTime} 
+              onChange={(e) => setStartTime(e.target.value)} 
+              className="select-chip font-mono"
+              style={{ padding: '4px 8px', border: '1px solid var(--hairline)', borderRadius: 4, background: 'var(--surface)', color: 'var(--ink)' }}
+            />
+          </div>
+          
+          <div>
+            <span className="eyebrow" style={{ display: 'block', marginBottom: 4 }}>Waktu Selesai</span>
+            <input 
+              type="time" 
+              value={endTime} 
+              onChange={(e) => setEndTime(e.target.value)} 
+              className="select-chip font-mono"
+              style={{ padding: '4px 8px', border: '1px solid var(--hairline)', borderRadius: 4, background: 'var(--surface)', color: 'var(--ink)' }}
+            />
+          </div>
+          
+          <div style={{ marginTop: 18 }}>
+            <button 
+              onClick={() => { setStartTime(''); setEndTime(''); setSelectedDay(new Date().toISOString().split('T')[0]); }}
+              className="select-chip"
+              style={{ cursor: 'pointer', padding: '6px 12px' }}
             >
-              {day.label}
+              Reset Filter
             </button>
-          ))}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Kartu Ringkasan */}
       {summary && (
