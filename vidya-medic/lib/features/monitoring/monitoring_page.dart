@@ -12,6 +12,8 @@ import '../../shared/widgets/device_status_indicator.dart';
 import '../activity/symptom_bottom_sheet.dart';
 import '../../core/providers/activity_provider.dart';
 
+import '../../core/network/api_client.dart';
+
 class MonitoringPage extends ConsumerStatefulWidget {
   const MonitoringPage({super.key});
 
@@ -62,8 +64,6 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
     _dfaSpots.add(FlSpot(_xValue, reading.dfaAlpha1));
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final colors =
@@ -72,6 +72,21 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bufferService = ref.watch(offlineBufferProvider);
     final bleService = ref.watch(bleServiceProvider);
+
+    // Pre-fill from backend raw data if initial spots are empty
+    final initialDataAsync = ref.watch(filteredRawDataProvider);
+    initialDataAsync.whenData((dataList) {
+      if (_hrSpots.isEmpty && dataList.isNotEmpty) {
+        for (int i = 0; i < dataList.length && i < 20; i++) {
+          final item = dataList[i];
+          _xValue = i.toDouble();
+          _hrSpots.add(FlSpot(_xValue, (item['hr'] ?? item['heart_rate'] ?? 75).toDouble()));
+          _rrSpots.add(FlSpot(_xValue, (item['rr'] ?? item['rr_interval'] ?? 800).toDouble()));
+          _rmssdSpots.add(FlSpot(_xValue, (item['rmssd'] ?? 35).toDouble()));
+          _dfaSpots.add(FlSpot(_xValue, (item['dfa_alpha1'] ?? item['dfa'] ?? 1.0).toDouble()));
+        }
+      }
+    });
 
     // ref.listen: jalankan side-effect tanpa rebuild seluruh widget tree
     ref.listen<AsyncValue<SensorReading>>(currentSensorReadingProvider,
@@ -141,6 +156,38 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
           ],
         ),
         actions: [
+          Container(
+            width: 36,
+            height: 36,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: htmColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: htmColors.hairline, width: 1),
+            ),
+            child: IconButton(
+              onPressed: () async {
+                final result = await ref.read(apiClientProvider).sendTransportSimulation();
+                if (context.mounted) {
+                  final bool published = result['published'] == true;
+                  final String msg = published
+                      ? "✓ Data simulasi berhasil dipublish ke RabbitMQ Queue!"
+                      : "⚠ Payload diterima backend (Published status: $published)";
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(msg),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: published ? colors.stableGreen : colors.attentionYellow,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }
+              },
+              icon: Icon(Icons.cloud_upload_outlined, color: htmColors.ink, size: 18),
+              padding: EdgeInsets.zero,
+              tooltip: "Simulasi Kirim RabbitMQ",
+            ),
+          ),
           Container(
             width: 36,
             height: 36,

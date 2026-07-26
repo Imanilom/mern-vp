@@ -36,6 +36,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       // Extract token & user info from response
       const token = data.token || data.accessToken || data.access_token || '';
       const user = {
+        id: data.user?._id || data._id,
         email: data.user?.email || data.email || email,
         name: data.user?.name || data.name || 'Administrator',
         role: data.user?.role || data.role || 'Administrator',
@@ -75,22 +76,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        <div className="login-stats">
-          <div className="login-stat">
-            <div className="login-stat-value">28</div>
-            <div className="login-stat-label">Active participants</div>
-          </div>
-          <div className="login-stat-divider"></div>
-          <div className="login-stat">
-            <div className="login-stat-value">1.2M</div>
-            <div className="login-stat-label">Data points today</div>
-          </div>
-          <div className="login-stat-divider"></div>
-          <div className="login-stat">
-            <div className="login-stat-value">94.8%</div>
-            <div className="login-stat-label">Avg completeness</div>
-          </div>
-        </div>
       </div>
 
       {/* Right panel — login form */}

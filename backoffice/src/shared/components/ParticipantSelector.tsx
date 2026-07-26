@@ -13,6 +13,11 @@ export const DeviceSelector: React.FC<{
   const [list, setList] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Retrieve authenticated user info from session storage
+  const storedUser = sessionStorage.getItem('htm_user');
+  const authUser = storedUser ? JSON.parse(storedUser) : null;
+  const isDoctor = authUser?.role === 'doctor';
+
   useEffect(() => {
     let isMounted = true;
     const fetchParticipants = async () => {
@@ -25,17 +30,24 @@ export const DeviceSelector: React.FC<{
           const data = await res.json();
           if (Array.isArray(data)) {
             const mapped = data.map((u: any) => ({
-              id: u.guid || u.email?.split('@')[0].toUpperCase() || 'UNKNOWN',
-              name: u.name || 'Unknown',
-              device: u.current_device || 'Polar H10'
+              id: u.guid || u._id || 'UNKNOWN',
+              name: u.name || u.username || 'Patient',
+              device: u.current_device || 'POLAR_SIM'
             }));
             if (isMounted) {
               setList(mapped);
-              if (!selectedId && mapped.length > 0) {
-                onChange(mapped[0].id);
-              } else if (selectedId && !mapped.some(m => m.id === selectedId) && mapped.length > 0) {
-                if (selectedId === 'P012') {
-                    onChange(mapped[0].id);
+
+              // Role check: If regular user, enforce viewing only their own data
+              if (!isDoctor && authUser?.guid) {
+                if (selectedId !== authUser.guid) {
+                  onChange(authUser.guid);
+                }
+              } else {
+                // If doctor and nothing selected or invalid selected ID, default to first patient
+                if (!selectedId && mapped.length > 0) {
+                  onChange(mapped[0].id);
+                } else if (selectedId && !mapped.some(m => m.id === selectedId) && mapped.length > 0) {
+                  onChange(mapped[0].id);
                 }
               }
             }
@@ -49,20 +61,46 @@ export const DeviceSelector: React.FC<{
     };
     fetchParticipants();
     return () => { isMounted = false; };
-  }, [selectedId, onChange]);
+  }, [selectedId, onChange, isDoctor, authUser?.guid]);
 
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span className="eyebrow" style={{ color: 'var(--muted)' }}>Select Device:</span>
+        <span className="eyebrow" style={{ color: 'var(--muted)' }}>Monitoring User:</span>
         <span className="select-chip font-mono" style={{ padding: '5px 12px', background: 'var(--surface)', color: 'var(--muted)' }}>Loading...</span>
       </div>
     );
   }
 
+  // If regular user, render locked single user chip
+  if (!isDoctor) {
+    const selfName = authUser?.name || 'My Patient Account';
+    const selfId = authUser?.guid || selectedId || 'dftgdrtger';
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span className="eyebrow" style={{ color: 'var(--muted)' }}>Your Data:</span>
+        <span
+          className="select-chip font-mono"
+          style={{
+            padding: '5px 14px',
+            background: 'var(--surface)',
+            color: 'var(--primary)',
+            border: '1px solid var(--primary)',
+            borderRadius: 'var(--r-md)',
+            fontWeight: 600,
+            fontSize: '12px',
+          }}
+        >
+          🔒 {selfName} ({selfId})
+        </span>
+      </div>
+    );
+  }
+
+  // Doctor view: Full patient selector dropdown
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span className="eyebrow" style={{ color: 'var(--muted)' }}>Select Device:</span>
+      <span className="eyebrow" style={{ color: 'var(--muted)' }}>👨‍⚕️ Select Patient:</span>
       <select
         className="select-chip font-mono cursor-pointer"
         value={selectedId}
@@ -77,11 +115,11 @@ export const DeviceSelector: React.FC<{
         }}
       >
         {list.length === 0 ? (
-          <option value={selectedId || ''}>{selectedId || 'No Devices'}</option>
+          <option value={selectedId || ''}>{selectedId || 'No Patients'}</option>
         ) : (
           list.map(p => (
             <option key={p.id} value={p.id}>
-              {p.id} ({p.device})
+              {p.name} — [{p.id}] ({p.device})
             </option>
           ))
         )}

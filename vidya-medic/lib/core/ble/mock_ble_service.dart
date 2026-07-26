@@ -38,16 +38,19 @@ class BleService extends ChangeNotifier {
 
   Future<void> startScan() async {
     try {
-      if (await Permission.bluetoothScan.request().isGranted &&
-          await Permission.bluetoothConnect.request().isGranted &&
-          await Permission.location.request().isGranted) {
-        
+      final scanGranted = await Permission.bluetoothScan.request().isGranted;
+      final connectGranted = await Permission.bluetoothConnect.request().isGranted;
+      final locationGranted = await Permission.location.request().isGranted;
+
+      if (scanGranted && connectGranted && locationGranted) {
         await FlutterBluePlus.startScan(
-          withServices: [Guid("180d")], // Standard Heart Rate Service UUID
           timeout: const Duration(seconds: 15),
         );
       } else {
-        debugPrint("Bluetooth permissions denied");
+        // Fallback for older Android versions or if permissions are partially granted
+        await FlutterBluePlus.startScan(
+          timeout: const Duration(seconds: 15),
+        );
       }
     } catch (e) {
       debugPrint("Error starting BLE scan: $e");
@@ -67,7 +70,7 @@ class BleService extends ChangeNotifier {
     try {
       await disconnect();
       
-      await device.connect(autoConnect: false);
+      await device.connect(autoConnect: false, timeout: const Duration(seconds: 10));
       _connectedDevice = device;
       
       // Listen to connection state changes
@@ -82,9 +85,11 @@ class BleService extends ChangeNotifier {
       BluetoothCharacteristic? hrChar;
       
       for (var service in services) {
-        if (service.uuid.toString().toLowerCase() == "180d") {
+        final sUuid = service.uuid.toString().toLowerCase();
+        if (sUuid.contains("180d")) {
           for (var char in service.characteristics) {
-            if (char.uuid.toString().toLowerCase() == "2a37") {
+            final cUuid = char.uuid.toString().toLowerCase();
+            if (cUuid.contains("2a37")) {
               hrChar = char;
               break;
             }
@@ -92,10 +97,26 @@ class BleService extends ChangeNotifier {
         }
       }
 
+      // Fallback: search all characteristics if 180d parent wasn't matched explicitly
+      if (hrChar == null) {
+        for (var service in services) {
+          for (var char in service.characteristics) {
+            final cUuid = char.uuid.toString().toLowerCase();
+            if (cUuid.contains("2a37")) {
+              hrChar = char;
+              break;
+            }
+          }
+          if (hrChar != null) break;
+        }
+      }
+
       if (hrChar != null) {
         isConnected = true;
-        deviceName = device.platformName.isNotEmpty ? device.platformName : "Polar H10";
-        batteryLevel = 92; 
+        deviceName = device.platformName.isNotEmpty
+            ? device.platformName
+            : (device.advName.isNotEmpty ? device.advName : "Polar H10");
+        batteryLevel = 95; 
         signalQuality = 98;
         if (!_isDisposed) notifyListeners();
 

@@ -294,6 +294,7 @@ class _ActivityPageState extends ConsumerState<ActivityPage> {
                           ref.read(activeActivityProvider.notifier).state = item;
                           ref.read(activityStartTimeProvider.notifier).state = DateTime.now();
                           ref.read(bleServiceProvider).updateMotionState(item.name);
+                          await ref.read(apiClientProvider).pushActivity(activityName: item.name);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(

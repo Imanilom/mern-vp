@@ -5,8 +5,6 @@ import {
   MagnifyingGlass, ArrowsClockwise, SignOut, ActivityIcon
 } from '@phosphor-icons/react';
 import { Overview } from './features/Overview';
-import { Participants } from './features/Participants';
-import { ParticipantDetail } from './features/ParticipantDetail';
 import {
   DataAcquisition, Preprocessing, ActivityContext, BaselineModel,
   TrajectoryAnalysis, AnomalyDetection, Reports, PipelineMonitor,
@@ -14,6 +12,7 @@ import {
 } from './features/RemainingViews';
 import { Login } from './features/Login';
 import { RawDataView } from './features/RawDataView';
+import { Profile } from './features/Profile';
 
 type ViewType =
   | 'view-overview'
@@ -29,61 +28,110 @@ type ViewType =
   | 'view-reports'
   | 'view-pipeline'
   | 'view-users'
-  | 'view-settings';
+  | 'view-settings'
+  | 'view-profile';
 
-const navSections = [
-  {
-    label: 'Workspace',
-    items: [
-      { id: 'view-overview' as ViewType, label: 'Overview', icon: House },
-      { id: 'view-participants' as ViewType, label: 'Participants', icon: Users },
-    ],
-  },
-  {
-    label: 'Data Pipeline',
-    items: [
-      { id: 'view-data-acquisition' as ViewType, label: 'Data acquisition', icon: UploadSimple },
-      { id: 'view-raw-data' as ViewType, label: 'Raw data viewer', icon: ActivityIcon },
-      { id: 'view-preprocessing' as ViewType, label: 'Preprocessing', icon: Sliders },
-    ],
-  },
-  {
-    label: 'Analytics',
-    items: [
-      { id: 'view-activity-context' as ViewType, label: 'Activity context', icon: Footprints },
-      { id: 'view-baseline' as ViewType, label: 'Baseline model', icon: ChartBar },
-      { id: 'view-trajectory' as ViewType, label: 'Trajectory analysis', icon: ChartLine },
-      { id: 'view-anomaly' as ViewType, label: 'Anomaly detection', icon: Warning },
-      { id: 'view-reports' as ViewType, label: 'Reports', icon: FileText },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      { id: 'view-pipeline' as ViewType, label: 'Pipeline monitor', icon: Cpu },
-      { id: 'view-users' as ViewType, label: 'User management', icon: UserGear },
-      { id: 'view-settings' as ViewType, label: 'Settings', icon: Gear },
-    ],
-  },
-];
+const getNavSections = (role: string | undefined, selectedParticipantId: string | null) => {
+  const isDoctor = role === 'doctor';
+  
+  if (isDoctor) {
+    if (selectedParticipantId) {
+      // Doctor viewing a specific patient
+      return [
+        {
+          label: 'Kembali',
+          items: [
+            { id: 'view-overview' as ViewType, label: 'Daftar Pasien', icon: House },
+          ],
+        },
+        {
+          label: 'Patient Dashboard',
+          items: [
+            { id: 'view-raw-data' as ViewType, label: 'Live Monitoring', icon: ActivityIcon },
+            { id: 'view-activity-context' as ViewType, label: 'Activity Context', icon: Footprints },
+            { id: 'view-baseline' as ViewType, label: 'Baseline Model', icon: ChartBar },
+            { id: 'view-trajectory' as ViewType, label: 'Trajectory Analysis', icon: ChartLine },
+            { id: 'view-anomaly' as ViewType, label: 'Anomaly Detection', icon: Warning },
+            { id: 'view-reports' as ViewType, label: 'Reports', icon: FileText },
+          ],
+        },
+        {
+          label: 'System & Admin',
+          items: [
+            { id: 'view-pipeline' as ViewType, label: 'Pipeline Monitor', icon: Cpu },
+            { id: 'view-users' as ViewType, label: 'User Management', icon: UserGear },
+            { id: 'view-profile' as ViewType, label: 'My Profile', icon: UserGear },
+            { id: 'view-settings' as ViewType, label: 'Settings', icon: Gear },
+          ],
+        }
+      ];
+    } else {
+      // Doctor overview (no specific patient selected yet)
+      return [
+        {
+          label: 'Workspace',
+          items: [
+            { id: 'view-overview' as ViewType, label: 'Daftar Pasien', icon: House },
+          ],
+        },
+        {
+          label: 'System & Admin',
+          items: [
+            { id: 'view-pipeline' as ViewType, label: 'Pipeline Monitor', icon: Cpu },
+            { id: 'view-users' as ViewType, label: 'User Management', icon: UserGear },
+            { id: 'view-profile' as ViewType, label: 'My Profile', icon: UserGear },
+            { id: 'view-settings' as ViewType, label: 'Settings', icon: Gear },
+          ],
+        }
+      ];
+    }
+  } else {
+    // Regular User
+    return [
+      {
+        label: 'My Dashboard',
+        items: [
+          { id: 'view-raw-data' as ViewType, label: 'Live Monitoring', icon: ActivityIcon },
+          { id: 'view-activity-context' as ViewType, label: 'Activity Context', icon: Footprints },
+          { id: 'view-baseline' as ViewType, label: 'Baseline Model', icon: ChartBar },
+          { id: 'view-trajectory' as ViewType, label: 'Trajectory Analysis', icon: ChartLine },
+          { id: 'view-anomaly' as ViewType, label: 'Anomaly Detection', icon: Warning },
+          { id: 'view-reports' as ViewType, label: 'Reports', icon: FileText },
+          { id: 'view-profile' as ViewType, label: 'My Profile', icon: UserGear },
+          { id: 'view-settings' as ViewType, label: 'Settings', icon: Gear },
+        ],
+      }
+    ];
+  }
+};
 
 function App() {
   const [view, setView] = useState<ViewType>('view-overview');
-  const [selectedParticipantId, setSelectedParticipantId] = useState<string>('P012');
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string>(() => {
+    const stored = sessionStorage.getItem('htm_user');
+    if (stored) {
+      const user = JSON.parse(stored);
+      return user.role === 'user' ? (user._id || user.guid || '') : '';
+    }
+    return '';
+  });
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [contentKey, setContentKey] = useState(0);
 
   // ── Auth state — initialized from sessionStorage ──
   const [token, setToken] = useState<string>(() => sessionStorage.getItem('htm_token') || '');
-  const [authUser, setAuthUser] = useState<{ email: string; name: string; role: string } | null>(() => {
+  const [authUser, setAuthUser] = useState<{ email: string; name: string; role: string; guid?: string } | null>(() => {
     const stored = sessionStorage.getItem('htm_user');
     return stored ? JSON.parse(stored) : null;
   });
 
-  const handleLoginSuccess = (newToken: string, user: { email: string; name: string; role: string }) => {
+  const handleLoginSuccess = (newToken: string, user: { email: string; name: string; role: string; guid?: string }) => {
     setToken(newToken);
     setAuthUser(user);
+    if (user.role === 'user' && user.guid) {
+      setSelectedParticipantId(user.guid);
+    }
   };
 
   const handleSignOut = async () => {
@@ -113,7 +161,7 @@ function App() {
 
   const navigateToParticipant = (id: string) => {
     setSelectedParticipantId(id);
-    navigateTo('view-participant-detail');
+    navigateTo('view-raw-data');
   };
 
   const currentView = view === 'view-participant-detail' ? 'view-participants' : view;
@@ -145,7 +193,7 @@ function App() {
           </div>
 
           {/* Navigation sections */}
-          {navSections.map((section) => (
+          {getNavSections(authUser.role, (view === 'view-overview' && authUser.role === 'doctor') ? null : selectedParticipantId).map((section) => (
             <div key={section.label}>
               <div className="nav-section">{section.label}</div>
               <nav className="nav">
@@ -267,20 +315,14 @@ function App() {
 
         {/* CONTENT */}
         <main key={contentKey} className="content">
-          {view === 'view-overview' && (
-            <Overview onViewParticipant={navigateToParticipant} />
-          )}
-          {view === 'view-participants' && (
-            <Participants onSelectParticipant={navigateToParticipant} />
-          )}
-          {view === 'view-participant-detail' && (
-            <ParticipantDetail
-              id={selectedParticipantId}
-              onBack={() => navigateTo('view-participants')}
+          {view === 'view-overview' && <Overview onViewParticipant={navigateToParticipant} />}
+          {view === 'view-data-acquisition' && <DataAcquisition />}
+          {view === 'view-raw-data' && (
+            <RawDataView
+              selectedParticipantId={selectedParticipantId}
+              onParticipantChange={setSelectedParticipantId}
             />
           )}
-          {view === 'view-data-acquisition' && <DataAcquisition />}
-          {view === 'view-raw-data' && <RawDataView />}
           {view === 'view-preprocessing' && <Preprocessing />}
           {view === 'view-activity-context' && (
             <ActivityContext
@@ -313,8 +355,9 @@ function App() {
             />
           )}
           {view === 'view-pipeline' && <PipelineMonitor />}
-          {view === 'view-users' && <UserManagement />}
-          {view === 'view-settings' && <Settings />}
+          { view === 'view-users' && <UserManagement /> }
+          { view === 'view-settings' && <Settings /> }
+          { view === 'view-profile' && <Profile /> }
         </main>
       </div>
     </div>

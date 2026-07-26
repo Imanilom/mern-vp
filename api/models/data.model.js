@@ -95,11 +95,8 @@ const logSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-// Compound index: query utama untuk preprocessing per user per tanggal
-logSchema.index({ user_id: 1, timestamp: 1 });
+// Compound index: query utama & pencegahan duplikasi (user + timestamp)
 logSchema.index({ user_id: 1, isChecked: 1 });
-
-// Unique index untuk cegah duplikasi (user + timestamp)
 logSchema.index({ user_id: 1, timestamp: 1 }, { unique: true });
 
 const PolarData = mongoose.model('PolarData', logSchema);

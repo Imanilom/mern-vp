@@ -322,33 +322,48 @@ export const getRiwayatDeteksiWithDfa = async (req, res) => {
 }
 
 export const updateUser = async (req, res, next) => {
-  if (req.user.id !== req.params.id)
+  const isDoctor = req.user.role === 'doctor';
+  const isOwner = req.user.id === req.params.id;
+
+  if (!isDoctor && !isOwner) {
     return next(errorHandler(401, 'You can only update your own account!'));
+  }
+
   try {
     if (req.body.password) {
       req.body.password = bcryptjs.hashSync(req.body.password, 10);
     }
 
-    let user = await User.findById(req.params.id);
+    const updateFields = {};
+
+    // Biodata: Users can update their own biodata, doctors can update anyone's biodata
+    if (req.body.name !== undefined) updateFields.name = req.body.name;
+    if (req.body.email !== undefined) updateFields.email = req.body.email;
+    if (req.body.password !== undefined) updateFields.password = req.body.password;
+    if (req.body.phone_number !== undefined) updateFields.phone_number = req.body.phone_number;
+    if (req.body.address !== undefined) updateFields.address = req.body.address;
+    if (req.body.profilePicture !== undefined) updateFields.profilePicture = req.body.profilePicture;
+    if (req.body.age !== undefined) updateFields.age = req.body.age;
+    if (req.body.gender !== undefined) updateFields.gender = req.body.gender;
+    if (req.body.weight !== undefined) updateFields.weight = req.body.weight;
+    if (req.body.height !== undefined) updateFields.height = req.body.height;
+
+    // Advanced fields: Only doctors can update these for patients
+    if (isDoctor) {
+      if (req.body.guid !== undefined) updateFields.guid = req.body.guid;
+      if (req.body.current_device !== undefined) updateFields.current_device = req.body.current_device;
+      if (req.body.otp !== undefined) updateFields.otp = req.body.otp;
+      if (req.body.role !== undefined) updateFields.role = req.body.role;
+      if (req.body.is_active !== undefined) updateFields.is_active = req.body.is_active;
+    }
 
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
-      {
-        $set: {
-          guid: req.body.guid,
-          name: req.body.name,
-          email: req.body.email,
-          password: req.body.password,
-          current_device: req.body.current_device,
-          phone_number: req.body.phone_number,
-          address: req.body.address,
-          otp: req.body.otp,
-          profilePicture: req.body.profilePicture,
-        },
-      },
+      { $set: updateFields },
       { new: true }
     );
 
+    if (!updatedUser) return next(errorHandler(404, 'User not found'));
 
     const { password, ...rest } = updatedUser._doc;
 

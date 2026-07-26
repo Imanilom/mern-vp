@@ -111,21 +111,7 @@ export async function getPipelineStatus(req, res) {
       hourlyData.push({ hour: hourStr, messages: count });
     }
 
-    const mockHourlyData = [
-      { hour: '00:00', messages: 120 },
-      { hour: '02:00', messages: 95 },
-      { hour: '04:00', messages: 140 },
-      { hour: '06:00', messages: 210 },
-      { hour: '08:00', messages: 450 },
-      { hour: '10:00', messages: 850 },
-      { hour: '12:00', messages: 620 },
-      { hour: '14:00', messages: 510 },
-      { hour: '16:00', messages: 580 },
-      { hour: '18:00', messages: 690 },
-      { hour: '20:00', messages: 400 },
-      { hour: '22:00', messages: 280 },
-    ];
-    const finalHourlyData = totalHourlyCount > 0 ? hourlyData : mockHourlyData;
+    const finalHourlyData = hourlyData;
 
     // Anomalies By Activity
     const anomaliesByActivity = await AnomalyEvent.aggregate([
@@ -155,15 +141,6 @@ export async function getPipelineStatus(req, res) {
         ...d,
         value: Math.round((d.value / totalAnomaliesCount) * 100)
       }));
-    } else {
-      finalDonutData = [
-        { name: 'Sit working', value: 30, color: 'var(--cat1)' },
-        { name: 'Walking', value: 20, color: 'var(--cat2)' },
-        { name: 'Driving', value: 15, color: 'var(--cat3)' },
-        { name: 'Eating', value: 10, color: 'var(--cat4)' },
-        { name: 'Exercise', value: 15, color: 'var(--cat5)' },
-        { name: 'Other', value: 10, color: 'var(--cat6)' },
-      ];
     }
 
     const recentEventsRaw = await AnomalyEvent.find()

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme/functional_colors.dart';
 import '../../core/theme/htm_colors.dart';
-import '../../core/theme/htm_spacing.dart';
-import '../../core/theme/htm_typography.dart';
 
 class MiniTrajectoryChart extends StatelessWidget {
   final List<FlSpot> spots;
@@ -97,89 +95,119 @@ class MiniTrajectoryChart extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 110,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(
-                    show: true,
-                    horizontalInterval: 20,
-                    getDrawingHorizontalLine: (value) => FlLine(
-                      color: Colors.grey.withValues(alpha: 0.1),
-                      strokeWidth: 1,
-                    ),
-                    drawVerticalLine: false,
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 30,
-                        interval: 20,
-                        getTitlesWidget: (val, meta) => Text(
-                          val.toInt().toString(),
-                          style: TextStyle(
-                              fontSize: 9, color: Colors.grey[500]),
+              height: 160,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: effectiveSpots.length > 10 ? (effectiveSpots.length * 28.0) : MediaQuery.of(context).size.width - 64,
+                  child: LineChart(
+                    LineChartData(
+                      lineTouchData: LineTouchData(
+                        enabled: true,
+                        handleBuiltInTouches: true,
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (spot) => isDark ? const Color(0xFF1E2631) : Colors.white,
+                          tooltipBorder: BorderSide(
+                            color: isDark ? const Color(0xFF3E4651) : const Color(0xFFE4DFD3),
+                            width: 1,
+                          ),
+                          getTooltipItems: (touchedSpots) {
+                            return touchedSpots.map((barSpot) {
+                              if (barSpot.barIndex == 0) return null;
+                              return LineTooltipItem(
+                                "${barSpot.y.toStringAsFixed(1)} BPM",
+                                TextStyle(
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              );
+                            }).toList();
+                          },
                         ),
                       ),
-                    ),
-                    bottomTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  minY: 50,
-                  maxY: 120,
-                  lineBarsData: [
-                    // Baseline reference line
-                    LineChartBarData(
-                      spots: [
-                        FlSpot(effectiveSpots.first.x, 75),
-                        FlSpot(effectiveSpots.last.x, 75),
-                      ],
-                      isCurved: false,
-                      color: colors.stableGreen.withValues(alpha: 0.3),
-                      barWidth: 1,
-                      dotData: const FlDotData(show: false),
-                      dashArray: [4, 4],
-                    ),
-                    // Main trajectory
-                    LineChartBarData(
-                      spots: effectiveSpots,
-                      isCurved: true,
-                      curveSmoothness: 0.35,
-                      color: colors.dataBlue,
-                      barWidth: 2.5,
-                      isStrokeCapRound: true,
-                      dotData: FlDotData(
+                      gridData: FlGridData(
                         show: true,
-                        getDotPainter: (spot, percent, bar, index) {
-                          final isAnomaly = spot.y > 85;
-                          return FlDotCirclePainter(
-                            radius: isAnomaly ? 4 : 2.5,
-                            color: isAnomaly
-                                ? colors.deviationOrange
-                                : colors.dataBlue,
-                            strokeWidth: 1.5,
-                            strokeColor: Colors.white,
-                          );
-                        },
+                        horizontalInterval: 20,
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          strokeWidth: 1,
+                        ),
+                        drawVerticalLine: false,
                       ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            colors.dataBlue.withValues(alpha: 0.2),
-                            colors.dataBlue.withValues(alpha: 0.0),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 30,
+                            interval: 20,
+                            getTitlesWidget: (val, meta) => Text(
+                              val.toInt().toString(),
+                              style: TextStyle(
+                                  fontSize: 9, color: Colors.grey[500]),
+                            ),
+                          ),
+                        ),
+                        bottomTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      minY: 50,
+                      maxY: 120,
+                      lineBarsData: [
+                        // Baseline reference line
+                        LineChartBarData(
+                          spots: [
+                            FlSpot(effectiveSpots.first.x, 75),
+                            FlSpot(effectiveSpots.last.x, 75),
                           ],
+                          isCurved: false,
+                          color: colors.stableGreen.withValues(alpha: 0.3),
+                          barWidth: 1,
+                          dotData: const FlDotData(show: false),
+                          dashArray: [4, 4],
                         ),
-                      ),
+                        // Main trajectory
+                        LineChartBarData(
+                          spots: effectiveSpots,
+                          isCurved: true,
+                          curveSmoothness: 0.35,
+                          color: colors.dataBlue,
+                          barWidth: 2.5,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(
+                            show: effectiveSpots.length <= 15,
+                            getDotPainter: (spot, percent, bar, index) {
+                              final isAnomaly = spot.y > 85;
+                              return FlDotCirclePainter(
+                                radius: isAnomaly ? 4 : 2.5,
+                                color: isAnomaly
+                                    ? colors.deviationOrange
+                                    : colors.dataBlue,
+                                strokeWidth: 1.5,
+                                strokeColor: Colors.white,
+                              );
+                            },
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                colors.dataBlue.withValues(alpha: 0.15),
+                                colors.dataBlue.withValues(alpha: 0.0),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

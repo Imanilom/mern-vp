@@ -1,19 +1,35 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceArea, ReferenceLine
+  ResponsiveContainer, ReferenceArea, ReferenceLine,
+  ScatterChart, Scatter, ZAxis
 } from 'recharts';
 import { DeviceSelector } from '../shared/components/ParticipantSelector';
 
 const HR_NORMAL_MIN = 60;
 const HR_NORMAL_MAX = 100;
 
-export const RawDataView: React.FC = () => {
-  const [selectedParticipantId, setSelectedParticipantId] = useState<string>('P012');
+export interface RawDataProps {
+  selectedParticipantId?: string;
+  onParticipantChange?: (id: string) => void;
+}
+
+export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: propParticipantId, onParticipantChange }) => {
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string>(propParticipantId || '');
+
+  useEffect(() => {
+    if (propParticipantId) setSelectedParticipantId(propParticipantId);
+  }, [propParticipantId]);
+
+  const handleSelectParticipant = (id: string) => {
+    setSelectedParticipantId(id);
+    if (onParticipantChange) onParticipantChange(id);
+  };
+
   const [participants, setParticipants] = useState<any[]>([]);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
+  const [selectedDay, setSelectedDay] = useState<string>(''); // Default to empty to fetch latest data
   const [startTime, setStartTime] = useState<string>('');
   const [endTime, setEndTime] = useState<string>('');
 
@@ -39,6 +55,10 @@ export const RawDataView: React.FC = () => {
     const fetchRawData = async () => {
       setLoading(true);
       try {
+        if (!selectedParticipantId) {
+          setLoading(false);
+          return;
+        }
         const token = sessionStorage.getItem('htm_token');
         let url = `/api/data/raw/${selectedParticipantId}?`;
         if (selectedDay) url += `date=${selectedDay}&`;
@@ -65,6 +85,11 @@ export const RawDataView: React.FC = () => {
             });
             setData(formatted);
 
+            if (!selectedDay && formatted.length > 0) {
+              const latestItem = formatted[formatted.length - 1]; // data is in chronological order, so last item is latest
+              const latestDate = new Date(latestItem.sortTs).toISOString().split('T')[0];
+              setSelectedDay(latestDate);
+            }
           }
         }
       } catch (err) {
@@ -98,6 +123,51 @@ export const RawDataView: React.FC = () => {
     };
   }, [dayData]);
 
+  // Poincaré Plot (Scatter Plot) Data with accurate SD1 & SD2
+  const poincareData = useMemo(() => {
+    const rrIntervals = dayData.map(d => d.rr).filter(v => typeof v === 'number' && v > 0);
+    if (rrIntervals.length < 2) return { points: [], sd1: 0, sd2: 0, ratio: 0 };
+
+    const points = [];
+    let sumDiff = 0, sumAdd = 0;
+    const n = rrIntervals.length - 1;
+
+    // Calculate means
+    for (let i = 0; i < n; i++) {
+      const rr_n = rrIntervals[i];
+      const rr_n1 = rrIntervals[i+1];
+      points.push({ x: rr_n, y: rr_n1 });
+      sumDiff += (rr_n - rr_n1);
+      sumAdd += (rr_n + rr_n1);
+    }
+    const meanDiff = sumDiff / n;
+    const meanAdd = sumAdd / n;
+
+    // Calculate sum of squared differences from the mean
+    let sumSqDiff = 0;
+    let sumSqAdd = 0;
+    for (let i = 0; i < n; i++) {
+      const rr_n = rrIntervals[i];
+      const rr_n1 = rrIntervals[i+1];
+      sumSqDiff += Math.pow((rr_n - rr_n1) - meanDiff, 2);
+      sumSqAdd += Math.pow((rr_n + rr_n1) - meanAdd, 2);
+    }
+
+    // Sample variance (divided by n - 1)
+    const varDiff = sumSqDiff / (n - 1 || 1);
+    const varAdd = sumSqAdd / (n - 1 || 1);
+
+    const sd1 = Math.sqrt(0.5 * varDiff);
+    const sd2 = Math.sqrt(0.5 * varAdd);
+
+    return { 
+      points, 
+      sd1: Math.round(sd1 * 100) / 100, 
+      sd2: Math.round(sd2 * 100) / 100,
+      ratio: sd2 !== 0 ? Math.round((sd1 / sd2) * 100) / 100 : 0
+    };
+  }, [dayData]);
+
   const SimpleTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload || !payload.length) return null;
     const dataPoint = payload[0].payload;
@@ -126,7 +196,7 @@ export const RawDataView: React.FC = () => {
     <section className="animate-fadein">
       <div className="page-head mb-6" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="page-title">Riwayat Detak Jantung</h1>
-        <DeviceSelector selectedId={selectedParticipantId} onChange={setSelectedParticipantId} />
+        <DeviceSelector selectedId={selectedParticipantId} onChange={handleSelectParticipant} />
       </div>
 
       {/* Filter Waktu dan Tanggal */}
@@ -167,7 +237,7 @@ export const RawDataView: React.FC = () => {
           
           <div style={{ marginTop: 18 }}>
             <button 
-              onClick={() => { setStartTime(''); setEndTime(''); setSelectedDay(new Date().toISOString().split('T')[0]); }}
+              onClick={() => { setStartTime(''); setEndTime(''); setSelectedDay(''); }}
               className="select-chip"
               style={{ cursor: 'pointer', padding: '6px 12px' }}
             >
@@ -216,7 +286,7 @@ export const RawDataView: React.FC = () => {
       </div>
 
       {/* Grafik Jarak Antar Detak (RR) */}
-      <div className="card">
+      <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 8 }}>
           <h2 className="card-title">Jarak Antar Detak (RR Interval)</h2>
           <p className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
@@ -233,6 +303,44 @@ export const RawDataView: React.FC = () => {
                 <Tooltip content={<SimpleTooltip />} />
                 <Line type="monotone" dataKey="rr" name="Jarak Antar Detak" stroke="var(--alert-text)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
               </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState />
+          )}
+        </div>
+      </div>
+
+      {/* Scatter Plot Poincaré (RR vs RR+1) */}
+      <div className="card">
+        <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 className="card-title">Scatter Plot HRV (Poincaré Plot)</h2>
+            <p className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+              Distribusi interval detak jantung ($RR_n$ vs $RR_{"{n+1}"}$) untuk analisis variabilitas (Non-linear HRV).
+            </p>
+          </div>
+          <div style={{ textAlign: 'right', display: 'flex', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>SD1 (Short-term)</span>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--primary)' }}>{poincareData.sd1} ms</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>SD2 (Long-term)</span>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--alert-text)' }}>{poincareData.sd2} ms</span>
+            </div>
+          </div>
+        </div>
+        <div style={{ height: 350, width: '100%' }}>
+          {poincareData.points.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline)" />
+                <XAxis type="number" dataKey="x" name="RRn" unit="ms" domain={['dataMin - 50', 'dataMax + 50']} stroke="var(--muted)" fontSize={11} label={{ value: 'RR_n (ms)', position: 'insideBottom', offset: -10, fill: 'var(--muted)' }} />
+                <YAxis type="number" dataKey="y" name="RRn+1" unit="ms" domain={['dataMin - 50', 'dataMax + 50']} stroke="var(--muted)" fontSize={11} label={{ value: 'RR_{n+1} (ms)', angle: -90, position: 'insideLeft', fill: 'var(--muted)' }} />
+                <ZAxis range={[30, 30]} />
+                <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'var(--surface)', borderRadius: 8, fontSize: 12 }} />
+                <Scatter name="RR Intervals" data={poincareData.points} fill="var(--primary)" opacity={0.6} />
+              </ScatterChart>
             </ResponsiveContainer>
           ) : (
             <EmptyState />

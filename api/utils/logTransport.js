@@ -37,6 +37,12 @@ async function getChannel() {
   let rabbitmqUri = process.env.RABBITMQ_URI;
   if (!rabbitmqUri) return null;
 
+  // Ensure URI starts with protocol scheme
+  if (!rabbitmqUri.startsWith('amqp://') && !rabbitmqUri.startsWith('amqps://')) {
+    const isSsl = rabbitmqUri.includes(':5671') || rabbitmqUri.includes(':8883') || rabbitmqUri.includes(':15671');
+    rabbitmqUri = (isSsl ? 'amqps://' : 'amqp://') + rabbitmqUri;
+  }
+
   // Correct typical config typo where HTTP port is placed in amqp URI
   if (rabbitmqUri.includes(':15672')) {
     console.warn('[RabbitMQ] Port 15672 detected in RABBITMQ_URI. Mapping to standard AMQP port 5672.');
@@ -50,7 +56,7 @@ async function getChannel() {
   try {
     console.log('[RabbitMQ] Connecting to:', rabbitmqUri);
     connection = await amqp.connect(rabbitmqUri);
-    
+
     connection.on('error', (err) => {
       console.error('[RabbitMQ] Connection error:', err.message);
       connection = null;
@@ -129,4 +135,70 @@ export async function publishLogTransport(payload, publishFn) {
     published: false,
     reason: 'No broker configured or connection failed',
   };
+}
+
+export async function startLogTransportConsumer() {
+  const ch = await getChannel();
+  if (!ch) {
+    console.warn('[RabbitMQ Consumer] Broker connection not available.');
+    return;
+  }
+
+  const queueName = process.env.QUEUE_NAME || 'Sensor';
+  console.log(`[RabbitMQ Consumer] Listening for messages on queue: ${queueName}...`);
+
+  ch.consume(queueName, async (msg) => {
+    if (!msg) return;
+
+    try {
+      const contentStr = msg.content.toString();
+      const envelope = JSON.parse(contentStr);
+      console.log(`[RabbitMQ Consumer] Received transport envelope for user: ${envelope.user_id}`);
+
+      let targetUserId = envelope.user_id;
+
+      // Import User dynamically or check fallback
+      const User = (await import('../models/user.model.js')).default;
+      const PolarData = (await import('../models/data.model.js')).default;
+
+      if (!targetUserId || targetUserId === 'DEMO_USER_001' || targetUserId === 'UNKNOWN_USER' || targetUserId === 'UNKNOWN') {
+        const defaultUser = await User.findOne({});
+        if (defaultUser) {
+          targetUserId = defaultUser._id;
+        }
+      }
+
+      if (targetUserId && Array.isArray(envelope.readings) && envelope.readings.length > 0) {
+        const docs = envelope.readings.map((r) => {
+          const now = new Date(r.timestamp ? r.timestamp * 1000 : Date.now());
+          const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+          const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+          return {
+            user_id: targetUserId,
+            timestamp: r.timestamp || Math.floor(Date.now() / 1000),
+            date_created: dateStr,
+            time_created: timeStr,
+            hr: r.heart_rate || 75,
+            rr: r.rr_interval || 800,
+            rrms: r.rmssd || null,
+            activity: r.activity || 'Duduk',
+            device_id: envelope.device_id || 'POLAR_H10',
+            isChecked: false,
+          };
+        });
+
+        const result = await PolarData.insertMany(docs, { ordered: false }).catch((err) => {
+          if (err.insertedDocs) return err.insertedDocs;
+          return [];
+        });
+        console.log(`[RabbitMQ -> MongoDB] Successfully stored ${result.length || docs.length} readings into MongoDB for user ${targetUserId}`);
+      }
+
+      ch.ack(msg);
+    } catch (err) {
+      console.error('[RabbitMQ Consumer] Error processing queue message:', err.message);
+      ch.ack(msg);
+    }
+  });
 }

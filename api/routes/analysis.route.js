@@ -19,6 +19,8 @@ import {
   computeH2aMetrics,
   computeH3aMetrics,
   getActivityContext,
+  validateSegmentByDoctor,
+  getKalmanTrajectory,
 } from '../controllers/analysis.controller.js';
 import { generateReportData } from '../controllers/report.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
@@ -288,5 +290,11 @@ router.patch('/events/:eventId/label', verifyToken, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// Doctor validation route for segment
+router.patch('/segments/:segmentId/doctor-validate', verifyToken, validateSegmentByDoctor);
+
+// Kalman trajectory prediction route per user (Pagi, Siang, Sore)
+router.get('/kalman-trajectory/:userId', verifyToken, resolveUserIdParam, getKalmanTrajectory);
 
 export default router;

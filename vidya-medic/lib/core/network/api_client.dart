@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/models/models.dart';
+
+const String BASE_URL = 'https://5955-2001-448a-a010-3a86-2897-20e-392a-fa4c.ngrok-free.app/api';
 
 class ApiClient {
   late final Dio _dio;
@@ -25,19 +25,16 @@ class ApiClient {
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+        // Skip ngrok warning
+        options.headers['ngrok-skip-browser-warning'] = 'true';
         return handler.next(options);
       },
     ));
   }
 
   String get _baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3030/api';
-    } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3030/api';
-    } else {
-      return 'http://localhost:3030/api';
-    }
+    // Change the URL in the BASE_URL constant above
+    return BASE_URL;
   }
 
   // Check if user is logged in
@@ -147,7 +144,34 @@ class ApiClient {
   }
 
   Future<List<ActivityItem>> getActivities() async {
-    // Keeps current UI layout for activities selection
+    try {
+      final response = await _dio.get('/activity/getActivity');
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        List? list;
+        if (data is List) {
+          list = data;
+        } else if (data is Map && data['Activity'] is List) {
+          list = data['Activity'] as List;
+        } else if (data is Map && data['data'] is List) {
+          list = data['data'] as List;
+        }
+
+        if (list != null && list.isNotEmpty) {
+          return list.map((item) {
+            return ActivityItem(
+              id: item['_id']?.toString() ?? item['id']?.toString() ?? UniqueKey().toString(),
+              name: item['name'] ?? item['aktivitas'] ?? item['activity'] ?? 'Aktivitas',
+              icon: Icons.directions_walk,
+            );
+          }).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("getActivities API call error: $e");
+    }
+
+    // Default activity list fallback
     return const [
       ActivityItem(id: "1", name: "Tidur", icon: Icons.bedtime),
       ActivityItem(id: "2", name: "Bangun tidur", icon: Icons.wb_sunny),
@@ -163,6 +187,102 @@ class ApiClient {
       ActivityItem(id: "12", name: "Aktivitas mendadak", icon: Icons.warning_amber),
       ActivityItem(id: "13", name: "Aktivitas lainnya", icon: Icons.more_horiz),
     ];
+  }
+
+  Future<bool> pushActivity({required String activityName, String? notes}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      final now = DateTime.now();
+      final nowStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+
+      final response = await _dio.post('/activity/create', data: {
+        'userRef': userId,
+        'tanggal': nowStr,
+        'awal': timeStr,
+        'akhir': timeStr,
+        'aktivitas': activityName,
+      });
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint("pushActivity error: $e");
+      return false;
+    }
+  }
+
+  Future<bool> reportSymptom({
+    required List<String> symptoms,
+    required double intensity,
+    String? notes,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      final now = DateTime.now();
+      final nowStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+
+      final symptomListStr = symptoms.join(", ");
+      final notesStr = (notes != null && notes.isNotEmpty) ? ". Catatan: $notes" : "";
+      final fullDesc = "Gejala: $symptomListStr (Intensitas ${intensity.toInt()}/10)$notesStr";
+
+      final response = await _dio.post('/activity/create', data: {
+        'userRef': userId,
+        'tanggal': nowStr,
+        'awal': timeStr,
+        'akhir': timeStr,
+        'aktivitas': fullDesc,
+      });
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint("reportSymptom error: $e");
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAnalysisSegments() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id');
+      if (userId == null) return [];
+
+      final response = await _dio.get('/analysis/segments/$userId');
+      if (response.statusCode == 200 && response.data != null) {
+        final success = response.data['success'];
+        final data = response.data['data'] as List?;
+        if (success == true && data != null) {
+          return data.cast<Map<String, dynamic>>();
+        }
+      }
+    } catch (e) {
+      debugPrint("getAnalysisSegments error: $e");
+    }
+    return [];
+  }
+
+  Future<bool> updateEventStatus(String eventId, String status) async {
+    try {
+      final response = await _dio.patch('/analysis/events/$eventId/status', data: {
+        'status': status,
+      });
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("updateEventStatus error: $e");
+      return false;
+    }
+  }
+
+  Future<bool> validateEvent(String eventId, bool isValid) async {
+    try {
+      final response = await _dio.patch('/analysis/events/$eventId/validate', data: {
+        'isValid': isValid,
+      });
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("validateEvent error: $e");
+      return false;
+    }
   }
 
   Future<List<TrajectoryEvent>> getHistoryEvents() async {
@@ -289,6 +409,72 @@ class ApiClient {
       return false;
     }
   }
+  Future<Map<String, dynamic>> sendTransportSimulation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id') ?? 'DEMO_USER_001';
+      final now = DateTime.now();
+
+      final payload = {
+        'user_id': userId,
+        'source': 'polar_ble_simulation',
+        'device_id': 'POLAR_H10_SIM',
+        'received_at': now.toIso8601String(),
+        'readings': [
+          {
+            'timestamp': now.millisecondsSinceEpoch ~/ 1000,
+            'heart_rate': 78,
+            'rr_interval': 815,
+            'activity': 'Duduk bekerja',
+            'battery': 95,
+            'signal_quality': 100,
+            'rmssd': 42.5,
+            'dfa_alpha1': 1.05,
+          },
+          {
+            'timestamp': (now.millisecondsSinceEpoch ~/ 1000) + 1,
+            'heart_rate': 82,
+            'rr_interval': 790,
+            'activity': 'Duduk bekerja',
+            'battery': 95,
+            'signal_quality': 100,
+            'rmssd': 39.1,
+            'dfa_alpha1': 1.02,
+          }
+        ],
+      };
+
+      final response = await _dio.post('/log/transport', data: payload);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'published': response.data?['published'] ?? false,
+          'data': response.data,
+        };
+      }
+      return {'success': false, 'message': 'HTTP ${response.statusCode}'};
+    } catch (e) {
+      debugPrint("sendTransportSimulation error: $e");
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getFilteredRawData() async {
+    try {
+      final response = await _dio.get('/data/filtered-raw');
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data is List) {
+          return data.cast<Map<String, dynamic>>();
+        } else if (data['data'] is List) {
+          return (data['data'] as List).cast<Map<String, dynamic>>();
+        }
+      }
+    } catch (e) {
+      debugPrint("getFilteredRawData error: $e");
+    }
+    return [];
+  }
 }
 
 final apiClientProvider = Provider<ApiClient>((ref) {
@@ -301,4 +487,12 @@ final profileProvider = FutureProvider<Participant>((ref) async {
 
 final eventsProvider = FutureProvider<List<TrajectoryEvent>>((ref) async {
   return ref.watch(apiClientProvider).getHistoryEvents();
+});
+
+final trajectorySegmentsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(apiClientProvider).getAnalysisSegments();
+});
+
+final filteredRawDataProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(apiClientProvider).getFilteredRawData();
 });

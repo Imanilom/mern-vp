@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme/functional_colors.dart';
 import '../../core/theme/htm_colors.dart';
-import '../../core/theme/htm_spacing.dart';
 import '../../core/theme/htm_typography.dart';
 import '../../core/storage/offline_buffer_service.dart';
 import '../../core/ble/mock_ble_service.dart';
@@ -152,8 +151,10 @@ class HomePage extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(profileProvider);
           ref.invalidate(eventsProvider);
-          await ref.read(profileProvider.future).catchError((_) => null);
-          await ref.read(eventsProvider.future).catchError((_) => null);
+          try {
+            await ref.read(profileProvider.future);
+            await ref.read(eventsProvider.future);
+          } catch (_) {}
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -173,16 +174,27 @@ class HomePage extends ConsumerWidget {
                   _sectionLabel(context, "Trajectory 6 Jam Terakhir"),
                   const SizedBox(height: 10),
 
-                  const MiniTrajectoryChart(
-                    spots: [
-                      FlSpot(0, 72),
-                      FlSpot(1, 74),
-                      FlSpot(2, 70),
-                      FlSpot(3, 94),
-                      FlSpot(4, 88),
-                      FlSpot(5, 75),
-                      FlSpot(6, 73),
-                    ],
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final segmentsAsync = ref.watch(trajectorySegmentsProvider);
+                      final spots = segmentsAsync.when(
+                        data: (segments) {
+                          if (segments.isEmpty) {
+                            return const [
+                              FlSpot(0, 72), FlSpot(1, 74), FlSpot(2, 70),
+                              FlSpot(3, 75), FlSpot(4, 73), FlSpot(5, 76),
+                            ];
+                          }
+                          return List.generate(segments.length, (i) {
+                            final hr = (segments[i]['mean_hr'] ?? segments[i]['hr'] ?? 72).toDouble();
+                            return FlSpot(i.toDouble(), hr);
+                          });
+                        },
+                        loading: () => const [FlSpot(0, 70), FlSpot(1, 72)],
+                        error: (_, __) => const [FlSpot(0, 70), FlSpot(1, 72)],
+                      );
+                      return MiniTrajectoryChart(spots: spots);
+                    },
                   ),
 
                   const SizedBox(height: 20),
@@ -251,14 +263,21 @@ class HomePage extends ConsumerWidget {
   }
 }
 
-class _HealthStatusCard extends StatelessWidget {
+class _HealthStatusCard extends ConsumerWidget {
   final FunctionalColors colors;
   final HealthStatusType status;
 
   const _HealthStatusCard({required this.colors, required this.status});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventsAsync = ref.watch(eventsProvider);
+    final unresolvedCount = eventsAsync.when(
+      data: (events) => events.where((e) => e.recoveryStatus != 'Tercapai').length,
+      loading: () => 0,
+      error: (_, __) => 0,
+    );
+
     // Mapping dinamis per status
     final config = switch (status) {
       HealthStatusType.stable => (
@@ -269,7 +288,7 @@ class _HealthStatusCard extends StatelessWidget {
           title: "Kondisi Stabil",
           subtitle: "Tidak ada deviasi terdeteksi",
           description:
-              "Tidak ditemukan deviasi atau perubahan yang memerlukan perhatian medis saat ini. Sesuai baseline aktivitas duduk bekerja.",
+              "Tidak ditemukan deviasi atau perubahan yang memerlukan perhatian medis saat ini. Sesuai baseline aktivitas Anda.",
         ),
       HealthStatusType.attention => (
           borderColor: colors.attentionYellow,
@@ -410,22 +429,24 @@ class _HealthStatusCard extends StatelessWidget {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: colors.deviationOrange,
+                      color: unresolvedCount > 0 ? colors.deviationOrange : colors.stableGreen,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    "1 deviasi lama belum ditindaklanjuti",
+                    unresolvedCount > 0
+                        ? "$unresolvedCount deviasi belum ditindaklanjuti"
+                        : "Semua deviasi sudah ditindaklanjuti",
                     style: TextStyle(
                       fontSize: 12,
-                      color: colors.deviationOrange,
+                      color: unresolvedCount > 0 ? colors.deviationOrange : colors.stableGreen,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(width: 4),
                   Icon(Icons.arrow_forward_ios_rounded,
-                      size: 11, color: colors.deviationOrange),
+                      size: 11, color: unresolvedCount > 0 ? colors.deviationOrange : colors.stableGreen),
                 ],
               ),
             ),

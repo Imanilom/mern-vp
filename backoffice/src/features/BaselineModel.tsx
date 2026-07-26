@@ -43,8 +43,11 @@ const activityColor = (name) => ACTIVITY_COLORS[name] || '#6366f1';
 
 const USER_PALETTE = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
-const TIME_PERIOD_LABEL = {
+const TIME_PERIOD_LABEL: Record<string, string> = {
   morning: 'Pagi', afternoon: 'Siang', evening: 'Sore', night: 'Malam',
+};
+const TIME_PERIOD_COLORS: Record<string, string> = {
+  morning: '#f59e0b', afternoon: '#0ea5e9', evening: '#8b5cf6', night: '#4f46e5',
 };
 
 const RADAR_METRICS = [
@@ -73,59 +76,22 @@ function dfaStatus(v) {
   return { label: 'Sangat Santai', color: 'var(--primary, #3b82f6)' };
 }
 
-// Demo data so the panel is meaningful even before/without a live API
-// (falls back automatically if the real endpoints aren't reachable).
-function buildDemoData() {
-  const names = ['Dewi A.', 'Rian S.', 'Putri N.', 'Bagas W.', 'Sari M.', 'Andra P.'];
-  const activityBase = {
-    Rest: { hr: 62, rmssd: 60, dfa: 1.3, sdnn: 65, motion: 0.05 },
-    Light: { hr: 85, rmssd: 45, dfa: 1.1, sdnn: 55, motion: 0.25 },
-    Moderate: { hr: 112, rmssd: 28, dfa: 0.85, sdnn: 35, motion: 0.9 },
-    Vigorous: { hr: 148, rmssd: 15, dfa: 0.6, sdnn: 18, motion: 2.2 },
-  };
-  const periods = ['morning', 'afternoon', 'evening'];
-  const jitter = (v, pct = 0.15) => v * (1 + (Math.random() * 2 - 1) * pct);
-
-  const participants = names.map((n, i) => ({ _id: `demo-${i}`, name: n, current_device: 'HTM Band v2' }));
-  const records = [];
-  participants.forEach((p) => {
-    Object.entries(activityBase).forEach(([activity, base]) => {
-      const period = periods[Math.floor(Math.random() * periods.length)];
-      const segment_count = 40 + Math.floor(Math.random() * 80);
-      records.push({
-        participant: p,
-        baseline: {
-          activity, time_period: period, segment_count,
-          is_mature: segment_count > 80,
-          version: '2.1',
-          stats: {
-            mean_hr: { mean: jitter(base.hr), std: jitter(base.hr * 0.08, 0.3) },
-            rmssd: { mean: jitter(base.rmssd), std: jitter(base.rmssd * 0.1, 0.3) },
-            sdnn: { mean: jitter(base.sdnn), std: jitter(base.sdnn * 0.1, 0.3) },
-            dfa_alpha1: { mean: jitter(base.dfa), std: jitter(0.08, 0.3) },
-            motion_intensity: { mean: jitter(base.motion, 0.4), std: jitter(base.motion * 0.2, 0.3) },
-          },
-        },
-      });
-    });
-  });
-  return { participants, records };
-}
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
+// Real baseline data fetched directly from MongoDB via /api/analysis/baseline/:userId
 export const BaselineModel = (_props) => {
   const [participants, setParticipants] = useState([]);
-  const [records, setRecords] = useState([]); // [{participant, baseline}] — one entry per activity baseline
+  const [records, setRecords] = useState([]); // [{participant, baseline}] — real MongoDB baselines
   const [loading, setLoading] = useState(true);
-  const [isDemo, setIsDemo] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [toast, setToast] = useState(null);
 
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [timePeriod, setTimePeriod] = useState('all');
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+
+  // Retrieve authUser to check role
+  const storedUser = sessionStorage.getItem('htm_user');
+  const authUser = storedUser ? JSON.parse(storedUser) : null;
+  const isDoctor = authUser?.role === 'doctor';
 
   // ---- fetch participants ----
   useEffect(() => {
@@ -134,26 +100,29 @@ export const BaselineModel = (_props) => {
       try {
         const token = sessionStorage.getItem('htm_token');
         const res = await fetch('/api/patient/all', { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error('no api');
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
-        if (!cancelled) { setParticipants(data); setIsDemo(false); }
-      } catch {
-        if (!cancelled) {
-          const demo = buildDemoData();
-          setParticipants(demo.participants);
-          setRecords(demo.records);
-          setIsDemo(true);
-          setLoading(false);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && !cancelled) {
+            if (isDoctor) {
+              setParticipants(data);
+            } else if (authUser?.guid) {
+              const selfOnly = data.filter((u: any) => u.guid === authUser.guid || u._id === authUser.id);
+              setParticipants(selfOnly.length > 0 ? selfOnly : data.slice(0, 1));
+            } else {
+              setParticipants(data.slice(0, 1));
+            }
+          }
         }
+      } catch (err) {
+        console.error('Failed to fetch patients:', err);
       }
     })();
     return () => { cancelled = true; };
-  }, [refreshKey]);
+  }, [refreshKey, isDoctor, authUser?.guid, authUser?.id]);
 
   // ---- fetch every baseline (all activities) for every participant ----
   useEffect(() => {
-    if (isDemo || participants.length === 0) return;
+    if (participants.length === 0) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -174,7 +143,7 @@ export const BaselineModel = (_props) => {
       }
     })();
     return () => { cancelled = true; };
-  }, [participants, isDemo]);
+  }, [participants]);
 
   // ---- derived lists ----
   const activities = useMemo(
@@ -211,20 +180,24 @@ export const BaselineModel = (_props) => {
 
   // ---- chart data: HR by user (with std error bar) ----
   const hrChartData = useMemo(() => filteredRecords.map((r) => ({
-    id: r.participant._id,
-    name: r.participant.name || r.participant.username || '—',
+    id: r.participant._id + '_' + r.baseline.time_period,
+    originalId: r.participant._id,
+    timePeriod: r.baseline.time_period,
+    name: (r.participant.name || r.participant.username || '—') + (timePeriod === 'all' ? ` (${TIME_PERIOD_LABEL[r.baseline.time_period] || r.baseline.time_period})` : ''),
     hr: +fmt(metricMean(r.baseline, 'mean_hr'), 0),
     hrStd: +fmt(metricStd(r.baseline, 'mean_hr'), 0) || 0,
-  })).sort((a, b) => b.hr - a.hr), [filteredRecords]);
+  })).sort((a, b) => b.hr - a.hr), [filteredRecords, timePeriod]);
 
   // ---- chart data: RMSSD vs DFA quadrant scatter ----
   const scatterData = useMemo(() => filteredRecords.map((r) => ({
-    id: r.participant._id,
-    name: r.participant.name || r.participant.username || '—',
+    id: r.participant._id + '_' + r.baseline.time_period,
+    originalId: r.participant._id,
+    timePeriod: r.baseline.time_period,
+    name: (r.participant.name || r.participant.username || '—') + (timePeriod === 'all' ? ` (${TIME_PERIOD_LABEL[r.baseline.time_period] || r.baseline.time_period})` : ''),
     x: metricMean(r.baseline, 'rmssd'),
     y: metricMean(r.baseline, 'dfa_alpha1'),
     z: Math.round(confidenceOf(r.baseline) * 100) + 20,
-  })).filter((d) => d.x != null && d.y != null), [filteredRecords]);
+  })).filter((d) => d.x != null && d.y != null), [filteredRecords, timePeriod]);
 
   // ---- activity comparison across all users/activities ----
   const activitySummary = useMemo(() => {
@@ -259,14 +232,14 @@ export const BaselineModel = (_props) => {
     const vals = filteredRecords.map((r) => metricMean(r.baseline, key)).filter((v) => v != null);
     const min = Math.min(...vals);
     const max = Math.max(...vals);
-    const row = { metric: label };
+    const row: any = { metric: label };
     radarUsers.forEach((r) => {
       const v = metricMean(r.baseline, key);
-      const name = r.participant.name || r.participant.username || '—';
+      const name = (r.participant.name || r.participant.username || '—') + (timePeriod === 'all' ? ` (${TIME_PERIOD_LABEL[r.baseline.time_period] || r.baseline.time_period})` : '');
       row[name] = v == null ? 0 : Math.round(((v - min) / (max - min || 1)) * 100);
     });
     return row;
-  }), [filteredRecords, radarUsers]);
+  }), [filteredRecords, radarUsers, timePeriod]);
 
   // ---- top-level stats ----
   const overallStats = useMemo(() => {
@@ -341,10 +314,11 @@ export const BaselineModel = (_props) => {
 
       <div className="page-head mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 className="page-title">Baseline &amp; Profil Pengguna</h1>
+          <h1 className="page-title">{isDoctor ? '👨‍⚕️ Baseline Model & Perbandingan Pasien' : '🔒 Profil Baseline Kesehatan Pribadi'}</h1>
           <p className="text-muted text-sm mt-1">
-            Bandingkan standar kesehatan (baseline) tiap pengguna, per jenis aktivitas, lengkap dengan grafik.
-            {isDemo && <span style={{ color: 'var(--warning, #f59e0b)', fontWeight: 600 }}> Menampilkan data contoh — API tidak terjangkau.</span>}
+            {isDoctor
+              ? 'Mode Dokter: Tampilkan dan bandingkan standar baseline kesehatan (HR, HRV, DFA) pasien yang dipantau.'
+              : 'Profil standar baseline kesehatan pribadi Anda berdasarkan riwayat aktivitas terukur.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -446,7 +420,7 @@ export const BaselineModel = (_props) => {
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={90} />
                   <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v, key) => [key === 'hr' ? `${v} bpm` : v, key === 'hr' ? 'Rata-rata' : 'Variasi']} />
                   <Bar dataKey="hr" radius={[0, 4, 4, 0]} barSize={16}>
-                    {hrChartData.map((d) => <Cell key={d.id} fill={userColor.get(d.id) || '#3b82f6'} />)}
+                    {hrChartData.map((d) => <Cell key={d.id} fill={timePeriod === 'all' ? (TIME_PERIOD_COLORS[d.timePeriod] || '#3b82f6') : (userColor.get(d.originalId) || '#3b82f6')} />)}
                     <ErrorBar dataKey="hrStd" width={4} strokeWidth={1.5} stroke="var(--ink, #374151)" />
                   </Bar>
                 </BarChart>
@@ -476,14 +450,14 @@ export const BaselineModel = (_props) => {
                     labelFormatter={() => ''}
                   />
                   <Scatter data={scatterData} name="Pengguna">
-                    {scatterData.map((d) => <Cell key={d.id} fill={userColor.get(d.id) || '#3b82f6'} fillOpacity={0.85} />)}
+                    {scatterData.map((d) => <Cell key={d.id} fill={timePeriod === 'all' ? (TIME_PERIOD_COLORS[d.timePeriod] || '#3b82f6') : (userColor.get(d.originalId) || '#3b82f6')} fillOpacity={0.85} />)}
                   </Scatter>
                 </ScatterChart>
               </ResponsiveContainer>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                 {scatterData.map((d) => (
                   <span key={d.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--muted, #6b7280)' }}>
-                    <span className="ba-dot" style={{ background: userColor.get(d.id) }} /> {d.name}
+                    <span className="ba-dot" style={{ background: timePeriod === 'all' ? (TIME_PERIOD_COLORS[d.timePeriod] || '#3b82f6') : (userColor.get(d.originalId) || '#3b82f6') }} /> {d.name}
                   </span>
                 ))}
               </div>
@@ -571,7 +545,7 @@ export const BaselineModel = (_props) => {
                         </div>
                       </td>
                       <td className="py-md">
-                        <span className="text-xs" style={{ color: 'var(--muted, #6b7280)', fontWeight: 500 }}>
+                        <span className="text-xs" style={{ color: TIME_PERIOD_COLORS[b.time_period] || 'var(--muted, #6b7280)', fontWeight: 600, padding: '2px 6px', background: `${TIME_PERIOD_COLORS[b.time_period] || '#9ca3af'}20`, borderRadius: 4 }}>
                           {TIME_PERIOD_LABEL[b.time_period] || b.time_period || '—'}
                         </span>
                       </td>

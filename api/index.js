@@ -22,11 +22,13 @@ import cors from "cors";
 import analysisRouter from './routes/analysis.route.js';
 import pipelineRouter from './routes/pipeline.route.js';
 import reportRouter from './routes/report.route.js';
+import mlRouter from './routes/ml.route.js';
 
 // import './controllers/cornjob.controller.js';
 // import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import { processHeartRateData } from './controllers/data.controller.js';
 import { runAnalysisPipeline } from './controllers/analysis.controller.js';
+import { startLogTransportConsumer } from './utils/logTransport.js';
 dotenv.config();
 
 mongoose
@@ -36,6 +38,8 @@ mongoose
   })
   .then(() => {
     console.log("Connected to MongoDB!");
+    // Start RabbitMQ queue consumer to automatically persist Android sensor messages to MongoDB
+    startLogTransportConsumer().catch((err) => console.error("[RabbitMQ Consumer] Launch error:", err.message));
   })
   .catch((err) => {
     console.log(err);
@@ -48,6 +52,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
+
+import doctorRouter from './routes/doctor.route.js';
+import userpatientRouter from './routes/userpatient.route.js';
+import aipipelineRouter from './routes/aipipeline.route.js';
+import { verifyToken } from './utils/verifyUser.js';
 
 app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
@@ -66,11 +75,26 @@ app.use("/api/log", logRouter);
 app.use("/api/analysis", analysisRouter);
 app.use("/api/pipeline", pipelineRouter);
 app.use("/api/reports", reportRouter);
-app.use(express.static(path.join(__dirname, "../client/dist")));
+app.use("/api/doctor", doctorRouter);
+app.use("/api/patient-user", userpatientRouter);
+app.use("/api/ai", aipipelineRouter);
+app.use("/api/ml", mlRouter);
 
-app.get("/{*splat}", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+// Role & Auth endpoints
+app.get("/api/me", verifyToken, (req, res) => {
+  res.json({ success: true, user: req.user });
 });
+
+app.get("/api/dashboard", verifyToken, (req, res) => {
+  res.json({
+    success: true,
+    role: req.user?.role,
+    dashboard_type: req.user?.role === 'doctor' ? 'Doctor Patient Selection Dashboard' : 'Personal Patient Monitoring Dashboard'
+  });
+});
+// API runs purely as JSON server now
+// Frontend is served separately by Nginx
+
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;

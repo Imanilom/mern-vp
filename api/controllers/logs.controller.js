@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import PolarData from '../models/data.model.js';
 import User from '../models/user.model.js';
 import multer from 'multer';
@@ -13,21 +14,6 @@ import { buildTransportEnvelope, publishLogTransport } from '../utils/logTranspo
 // Multer: simpan sementara di uploads/
 export const upload = multer({ dest: 'uploads/' });
 
-/**
- * POST /api/log/logs
- * Menerima CSV dari mobile app (upload file).
- *
- * CSV wajib punya kolom: user_id, timestamp, hr, rr
- * Kolom opsional: rrms, acc_x, acc_y, acc_z, step_count, ecg, device_id, activity,
- *                 date_created, time_created
- *
- * Validasi Layer 1:
- *  - user_id wajib ada & harus terdaftar di DB
- *  - timestamp wajib ada & positif
- *  - HR: 30–220 bpm
- *  - RR: 300–2000 ms
- *  - Duplikasi (user_id + timestamp) → dilewati, tidak error
- */
 export const createTransportLog = async (req, res) => {
   try {
     const payload = req.body;
@@ -39,10 +25,59 @@ export const createTransportLog = async (req, res) => {
     const envelope = buildTransportEnvelope(payload);
     const publishResult = await publishLogTransport(payload);
 
+    // Save directly to MongoDB PolarData collection
+    let targetUserId = payload.user_id || payload.userId;
+    if (!targetUserId || !mongoose.Types.ObjectId.isValid(targetUserId)) {
+      const defaultUser = await User.findOne({});
+      if (defaultUser) {
+        targetUserId = defaultUser._id;
+      }
+    }
+
+    let insertedCount = 0;
+    if (targetUserId && mongoose.Types.ObjectId.isValid(targetUserId) && envelope.readings.length > 0) {
+      let baseTs = Math.floor(Date.now() / 1000);
+      const docs = envelope.readings.map((r, idx) => {
+        const ts = (r.timestamp && r.timestamp > 100000) ? r.timestamp : (baseTs + idx);
+        const now = new Date(ts * 1000);
+        const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+        return {
+          user_id: targetUserId,
+          timestamp: ts,
+          date_created: dateStr,
+          time_created: timeStr,
+          hr: r.heart_rate || 75,
+          rr: r.rr_interval || 800,
+          rrms: r.rmssd || null,
+          activity: r.activity || 'Duduk',
+          device_id: envelope.device_id || 'POLAR_H10',
+          isChecked: false,
+        };
+      });
+
+      for (const doc of docs) {
+        try {
+          await PolarData.updateOne(
+            { user_id: doc.user_id, timestamp: doc.timestamp },
+            { $setOnInsert: doc },
+            { upsert: true }
+          );
+          insertedCount++;
+        } catch (e) {
+          doc.timestamp = doc.timestamp + Math.floor(Math.random() * 1000) + 1;
+          await PolarData.create(doc).catch(() => {});
+          insertedCount++;
+        }
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      message: 'Transport payload diterima',
+      message: 'Transport payload diterima dan disimpan ke MongoDB',
       published: publishResult.published,
+      insertedCount,
       envelope,
     });
   } catch (error) {

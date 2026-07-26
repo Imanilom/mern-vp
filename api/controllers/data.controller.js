@@ -9,12 +9,13 @@ import Segment from "../models/segment.model.js";
 import { generateGraph, generateGraphsForAllFolders } from "./graph.controller.js";
 import { calculateAdvancedMetrics, calculateQuartilesAndIQR } from "./metrics.controller.js";
 import { calculateDFA, calculateADFA } from "./metrics.controller.js";
+import { predictSegment } from "./ml.controller.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Ukuran window segmentasi: 3 menit dalam ms
-const WINDOW_MS = 3 * 60 * 1000;
+// Ukuran window segmentasi: 5 menit dalam ms
+const WINDOW_MS = 5 * 60 * 1000;
 // Minimum data point per window agar fitur dianggap valid
 const MIN_POINTS_PER_WINDOW = 10;
 
@@ -562,39 +563,32 @@ export async function processHeartRateData() {
  * Proses data untuk satu user:
  *  - Ambil semua raw data isChecked: false
  *  - Filter IQR
- *  - Bagi ke window 3 menit
+ *  - Bagi ke window 5 menit
  *  - Hitung fitur & simpan ke Segment
  *  - Mark raw data sebagai processed
  */
 async function processUserData(userId) {
-  const BATCH_SIZE = 5000;
   let segmentsCreated = 0;
   let rawProcessed = 0;
 
-  // Ambil data batch per batch, sorted by timestamp
-  let skip = 0;
-  let hasMore = true;
+  const rawLogs = await PolarData.find({ user_id: userId, isChecked: false })
+    .sort({ timestamp: 1 })
+    .lean();
 
-  while (hasMore) {
-    const rawLogs = await PolarData.find({ user_id: userId, isChecked: false })
-      .sort({ timestamp: 1 })
-      .skip(skip)
-      .limit(BATCH_SIZE)
-      .lean();
+  if (rawLogs.length === 0) {
+    return { segmentsCreated, rawProcessed };
+  }
 
-    if (rawLogs.length === 0) {
-      hasMore = false;
-      break;
-    }
+  console.log(`[processUserData] user=${userId} | total unprocessed logs=${rawLogs.length}`);
 
-    console.log(`[processUserData] user=${userId} | batch offset=${skip} | size=${rawLogs.length}`);
+  const user = await User.findById(userId).lean();
 
-    // ── Step 1: Filter IQR ─────────────────────────────────────────────────
-    const { filteredLogs } = filterIQ(rawLogs);
+  // ── Step 1: Filter IQR ─────────────────────────────────────────────────
+  const { filteredLogs } = filterIQ(rawLogs);
 
-    // ── Step 2: Segmentasi 3-menit ────────────────────────────────────────
-    const windows = segmentIntoWindows(filteredLogs);
-    console.log(`[processUserData] ${windows.length} window dibentuk dari batch ini`);
+  // ── Step 2: Segmentasi 5-menit ────────────────────────────────────────
+  const windows = segmentIntoWindows(filteredLogs);
+  console.log(`[processUserData] ${windows.length} window dibentuk dari data ini`);
 
     // ── Step 3: Hitung fitur & simpan Segment ────────────────────────────
     const segmentDocs = [];
@@ -602,10 +596,10 @@ async function processUserData(userId) {
     for (const win of windows) {
       if (win.logs.length < MIN_POINTS_PER_WINDOW) {
         // Tandai tetap diproses tapi segment tidak valid
-        segmentDocs.push(buildSegmentDoc(userId, win, false));
+        segmentDocs.push(buildSegmentDoc(userId, win, false, user));
         continue;
       }
-      segmentDocs.push(buildSegmentDoc(userId, win, true));
+      segmentDocs.push(buildSegmentDoc(userId, win, true, user));
     }
 
     if (segmentDocs.length > 0) {
@@ -626,27 +620,19 @@ async function processUserData(userId) {
       segmentsCreated += bulkResult.upsertedCount + bulkResult.modifiedCount;
     }
 
-    // ── Step 4: Mark raw data sebagai processed ───────────────────────────
-    const processedIds = rawLogs.map(l => l._id);
-    await PolarData.updateMany(
-      { _id: { $in: processedIds } },
-      { $set: { isChecked: true } }
-    );
-    rawProcessed += processedIds.length;
-
-    // Lanjut ke batch berikutnya
-    if (rawLogs.length < BATCH_SIZE) {
-      hasMore = false;
-    } else {
-      skip += BATCH_SIZE;
-    }
-  }
+  // ── Step 4: Mark raw data sebagai processed ───────────────────────────
+  const processedIds = rawLogs.map(l => l._id);
+  await PolarData.updateMany(
+    { _id: { $in: processedIds } },
+    { $set: { isChecked: true } }
+  );
+  rawProcessed += processedIds.length;
 
   return { segmentsCreated, rawProcessed };
 }
 
 /**
- * Segmentasi logs ke window 3-menit.
+ * Segmentasi logs ke window 5-menit.
  * Setiap log dikelompokkan berdasarkan: floor(timestamp / WINDOW_MS) * WINDOW_MS
  *
  * @param {Array} logs - Logs yang sudah difilter IQR, sorted by timestamp
@@ -700,9 +686,10 @@ function getDominantActivity(logs) {
  * @param {string|ObjectId} userId
  * @param {Object} win - window object dari segmentIntoWindows
  * @param {boolean} isValid - false jika data point < minimum
+ * @param {Object} user - User object containing biometrics
  * @returns {Object} dokumen siap upsert ke Segment
  */
-function buildSegmentDoc(userId, win, isValid) {
+function buildSegmentDoc(userId, win, isValid, user) {
   const logs = win.logs;
   const hrArr = logs.map(l => l.hr);
   const rrArr = logs.map(l => l.rr);
@@ -761,7 +748,33 @@ function buildSegmentDoc(userId, win, isValid) {
     }
   }
 
-  return {
+  // ── PNN50 / NN50 features ───────────────────────────────────────────────────
+  let nn50 = 0;
+  for (let i = 1; i < rrArr.length; i++) {
+    if (Math.abs(rrArr[i] - rrArr[i - 1]) > 50) {
+      nn50++;
+    }
+  }
+  const pnn50 = rrArr.length > 1 ? (nn50 / (rrArr.length - 1)) * 100 : 0;
+
+  // ── Frequency Domain (LF, HF) ───────────────────────────────────────────────
+  let lf = null;
+  let hf = null;
+  let lfhfratio = null;
+  try {
+    if (rrArr.length >= 10) {
+      const advMetrics = calculateAdvancedMetrics(rrArr);
+      if (advMetrics) {
+        lf = advMetrics.lf;
+        hf = advMetrics.hf;
+        lfhfratio = advMetrics.lfhratio;
+      }
+    }
+  } catch (err) {
+    // Ignore FFT errors
+  }
+
+  const doc = {
     user_id: userId,
     device_id: win.deviceId,
     window_start: win.windowStart,
@@ -784,8 +797,21 @@ function buildSegmentDoc(userId, win, isValid) {
       dfa_alpha2: dfa_alpha2 !== null ? round4(dfa_alpha2) : null,
       adfa_plus: adfa_plus !== null ? round4(adfa_plus) : null,
       adfa_minus: adfa_minus !== null ? round4(adfa_minus) : null,
+      nn50,
+      pnn50: round2(pnn50),
+      lf: lf !== null ? round4(lf) : null,
+      hf: hf !== null ? round4(hf) : null,
+      lfhfratio: lfhfratio !== null ? round4(lfhfratio) : null,
     },
   };
+
+  const dt_pred = predictSegment(doc.features, user);
+  doc.dt_prediction = {
+    predicted_activity: dt_pred.activity,
+    confidence: dt_pred.anomalyScore,
+  };
+
+  return doc;
 }
 
 // ── Math helpers ─────────────────────────────────────────────────────────────

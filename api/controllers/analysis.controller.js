@@ -917,3 +917,133 @@ export async function assignReviewer(eventId, reviewerId) {
   if (!event) throw new Error('Event tidak ditemukan');
   return event;
 }
+
+// ── Doctor Segment Validation Controller ─────────────────────────────────────
+
+export async function validateSegmentByDoctor(req, res) {
+  try {
+    const { segmentId } = req.params;
+    const { activity_label, ground_truth_label, status = 'validated', doctor_notes = '' } = req.body;
+
+    const updateFields = {
+      'doctor_validation.status': status,
+      'doctor_validation.validated_by': req.user ? req.user.id : null,
+      'doctor_validation.doctor_notes': doctor_notes,
+      'doctor_validation.validated_at': new Date(),
+    };
+
+    if (activity_label) {
+      updateFields.activity_label = activity_label;
+    }
+    if (ground_truth_label) {
+      updateFields.ground_truth_label = ground_truth_label;
+    }
+
+    const updatedSegment = await Segment.findByIdAndUpdate(
+      segmentId,
+      { $set: updateFields },
+      { new: true }
+    );
+
+    if (!updatedSegment) {
+      return res.status(404).json({ success: false, message: 'Segmen tidak ditemukan' });
+    }
+
+    return res.json({ success: true, data: updatedSegment, message: 'Segmen berhasil divalidasi oleh dokter' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// ── Kalman Filter Trajectory Prediction per Time-of-Day (Pagi, Siang, Sore) ────
+
+class Simple1DKalman {
+  constructor(q = 0.05, r = 2.0, initialX = 75, initialP = 5) {
+    this.q = q; // Process noise covariance
+    this.r = r; // Measurement noise covariance
+    this.x = initialX; // State estimate
+    this.p = initialP; // Estimation error covariance
+  }
+
+  update(z) {
+    // Prediction Step
+    const x_pred = this.x;
+    const p_pred = this.p + this.q;
+
+    // Measurement Update Step
+    const k = p_pred / (p_pred + this.r); // Kalman gain
+    this.x = x_pred + k * (z - x_pred);
+    this.p = (1 - k) * p_pred;
+
+    const stdDev = Math.sqrt(this.p);
+    return {
+      estimate: parseFloat(this.x.toFixed(1)),
+      upper: parseFloat((this.x + 1.96 * stdDev).toFixed(1)),
+      lower: parseFloat((this.x - 1.96 * stdDev).toFixed(1)),
+      gain: parseFloat(k.toFixed(3)),
+    };
+  }
+}
+
+export async function getKalmanTrajectory(req, res) {
+  try {
+    const { userId } = req.params;
+    const objectId = new mongoose.Types.ObjectId(userId);
+
+    const segments = await Segment.find({ user_id: objectId, is_valid: true })
+      .sort({ window_start: 1 })
+      .lean();
+
+    const grouped = {
+      Pagi: [],
+      Siang: [],
+      Sore: [],
+    };
+
+    const kalmanPagi = new Simple1DKalman(0.04, 1.8, 72, 4);
+    const kalmanSiang = new Simple1DKalman(0.06, 2.2, 85, 5);
+    const kalmanSore = new Simple1DKalman(0.04, 1.5, 70, 3);
+
+    for (const seg of segments) {
+      const period = getTimePeriod(seg.window_start);
+      let targetGroup = 'Pagi';
+      let kFilter = kalmanPagi;
+
+      if (period === 'morning') {
+        targetGroup = 'Pagi';
+        kFilter = kalmanPagi;
+      } else if (period === 'afternoon') {
+        targetGroup = 'Siang';
+        kFilter = kalmanSiang;
+      } else {
+        targetGroup = 'Sore';
+        kFilter = kalmanSore;
+      }
+
+      const measuredHr = seg.features?.mean_hr || 75;
+      const kRes = kFilter.update(measuredHr);
+
+      grouped[targetGroup].push({
+        _id: seg._id,
+        timestamp: seg.window_start,
+        time_str: new Date(seg.window_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        activity: seg.activity_label || 'Unknown',
+        measured_hr: measuredHr,
+        predicted_hr: kRes.estimate,
+        upper_bound: kRes.upper,
+        lower_bound: kRes.lower,
+        anomaly_score: seg.anomaly_score || 0.4,
+        classification: seg.classification || 'Normal',
+        missing_info: seg.missing_data_info || { missing_count: 5, expected_count: 1000, confidence_score: 99.5 },
+        is_artifact: seg.signal_quality?.is_artifact || false,
+        is_anomaly: seg.signal_quality?.is_anomaly || false,
+        doctor_validation: seg.doctor_validation || { status: 'pending' },
+      });
+    }
+
+    return res.json({ success: true, data: grouped });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+

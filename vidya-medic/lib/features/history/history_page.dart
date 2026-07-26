@@ -6,7 +6,6 @@ import '../../core/theme/functional_colors.dart';
 import '../../core/theme/htm_colors.dart';
 import '../../core/theme/htm_typography.dart';
 import '../../core/network/api_client.dart';
-import '../../shared/models/models.dart';
 import '../../shared/widgets/timeline_item.dart';
 
 import '../../core/notifications/notification_service.dart';
@@ -29,7 +28,6 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         Theme.of(context).extension<FunctionalColors>() ?? FunctionalColors.light;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final htmColors = HtmColors.of(context);
-    final apiClient = ref.watch(apiClientProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -203,7 +201,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                           children: [
                             _StatCard(
                               label: "Sesi Monitoring",
-                              value: "4",
+                              value: "${events.isEmpty ? 1 : events.map((e) => e.activity).toSet().length}",
                               icon: Icons.monitor_heart_rounded,
                               color: colors.dataBlue,
                             ),
@@ -217,7 +215,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                             const SizedBox(width: 10),
                             _StatCard(
                               label: "Recovery Rate",
-                              value: "100%",
+                              value: events.isEmpty ? "100%" : "${(events.where((e) => e.recoveryStatus == 'Tercapai').length * 100 ~/ events.length)}%",
                               icon: Icons.trending_up_rounded,
                               color: colors.stableGreen,
                             ),
@@ -452,7 +450,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   }
 }
 
-class _CombinedTrajectoryChart extends StatefulWidget {
+class _CombinedTrajectoryChart extends ConsumerStatefulWidget {
   final FunctionalColors colors;
   final String period;
 
@@ -462,15 +460,16 @@ class _CombinedTrajectoryChart extends StatefulWidget {
   });
 
   @override
-  State<_CombinedTrajectoryChart> createState() => _CombinedTrajectoryChartState();
+  ConsumerState<_CombinedTrajectoryChart> createState() => _CombinedTrajectoryChartState();
 }
 
-class _CombinedTrajectoryChartState extends State<_CombinedTrajectoryChart> {
+class _CombinedTrajectoryChartState extends ConsumerState<_CombinedTrajectoryChart> {
   int _activeMetricIndex = 0; // 0: HR & Baseline, 1: HRV (RMSSD), 2: DFA Alpha-1, 3: Anomaly Score
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final segmentsAsync = ref.watch(trajectorySegmentsProvider);
 
     final (title, unit, color) = switch (_activeMetricIndex) {
       0 => ("Heart Rate & Baseline", "BPM", widget.colors.dataBlue),
@@ -480,53 +479,36 @@ class _CombinedTrajectoryChartState extends State<_CombinedTrajectoryChart> {
       _ => ("Heart Rate & Baseline", "BPM", widget.colors.dataBlue),
     };
 
-    final spots = switch (_activeMetricIndex) {
-      0 => [
-          const FlSpot(0, 72),
-          const FlSpot(1, 75),
-          const FlSpot(2, 70),
-          const FlSpot(3, 90),
-          const FlSpot(4, 85),
-          const FlSpot(5, 74),
-          const FlSpot(6, 72),
-          const FlSpot(7, 75),
-          const FlSpot(8, 73),
-        ],
-      1 => [
-          const FlSpot(0, 34),
-          const FlSpot(1, 38),
-          const FlSpot(2, 35),
-          const FlSpot(3, 20),
-          const FlSpot(4, 25),
-          const FlSpot(5, 36),
-          const FlSpot(6, 35),
-          const FlSpot(7, 34),
-          const FlSpot(8, 38),
-        ],
-      2 => [
-          const FlSpot(0, 1.05),
-          const FlSpot(1, 1.08),
-          const FlSpot(2, 1.02),
-          const FlSpot(3, 0.85),
-          const FlSpot(4, 0.90),
-          const FlSpot(5, 1.04),
-          const FlSpot(6, 1.06),
-          const FlSpot(7, 1.05),
-          const FlSpot(8, 1.08),
-        ],
-      3 => [
-          const FlSpot(0, 5),
-          const FlSpot(1, 4),
-          const FlSpot(2, 6),
-          const FlSpot(3, 45),
-          const FlSpot(4, 30),
-          const FlSpot(5, 8),
-          const FlSpot(6, 4),
-          const FlSpot(7, 5),
-          const FlSpot(8, 4),
-        ],
-      _ => <FlSpot>[],
-    };
+    final spots = segmentsAsync.when(
+      data: (segments) {
+        if (segments.isNotEmpty) {
+          final list = <FlSpot>[];
+          for (int i = 0; i < segments.length; i++) {
+            final seg = segments[i];
+            double val = 0;
+            switch (_activeMetricIndex) {
+              case 0:
+                val = (seg['mean_hr'] ?? seg['hr'] ?? 75).toDouble();
+                break;
+              case 1:
+                val = (seg['rmssd'] ?? 35).toDouble();
+                break;
+              case 2:
+                val = (seg['dfa_alpha1'] ?? seg['dfa'] ?? 1.0).toDouble();
+                break;
+              case 3:
+                val = (seg['peak_score'] ?? seg['anomaly_score'] ?? 0).toDouble();
+                break;
+            }
+            list.add(FlSpot(i.toDouble(), val));
+          }
+          return list;
+        }
+        return _fallbackSpots(_activeMetricIndex);
+      },
+      loading: () => _fallbackSpots(_activeMetricIndex),
+      error: (_, __) => _fallbackSpots(_activeMetricIndex),
+    );
 
     final minY = switch (_activeMetricIndex) {
       0 => 50.0,
@@ -597,112 +579,118 @@ class _CombinedTrajectoryChartState extends State<_CombinedTrajectoryChart> {
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 120,
-              child: LineChart(
-                LineChartData(
-                  lineTouchData: LineTouchData(
-                    enabled: true,
-                    handleBuiltInTouches: true,
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (touchedSpot) => isDark ? const Color(0xFF1E2631) : Colors.white,
-                      tooltipBorder: BorderSide(
-                        color: isDark ? const Color(0xFF3E4651) : const Color(0xFFE4DFD3),
-                        width: 1,
+              height: 200,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: spots.length > 10 ? (spots.length * 28.0) : MediaQuery.of(context).size.width - 64,
+                  child: LineChart(
+                    LineChartData(
+                      lineTouchData: LineTouchData(
+                        enabled: true,
+                        handleBuiltInTouches: true,
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (touchedSpot) => isDark ? const Color(0xFF1E2631) : Colors.white,
+                          tooltipBorder: BorderSide(
+                            color: isDark ? const Color(0xFF3E4651) : const Color(0xFFE4DFD3),
+                            width: 1,
+                          ),
+                          getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                            return touchedSpots.map((barSpot) {
+                              if (_activeMetricIndex == 0 && barSpot.barIndex == 0) return null;
+                              return LineTooltipItem(
+                                "${barSpot.y.toStringAsFixed(_activeMetricIndex == 2 ? 2 : 1)} $unit",
+                                GoogleFonts.ibmPlexMono(
+                                  color: isDark ? Colors.white : HtmColors.inkLight,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                              );
+                            }).toList();
+                          },
+                        ),
                       ),
-                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                        return touchedSpots.map((barSpot) {
-                          if (_activeMetricIndex == 0 && barSpot.barIndex == 0) return null;
-                          return LineTooltipItem(
-                            "${barSpot.y.toStringAsFixed(_activeMetricIndex == 2 ? 2 : 1)} $unit",
-                            GoogleFonts.ibmPlexMono(
-                              color: isDark ? Colors.white : HtmColors.inkLight,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12,
+                      gridData: FlGridData(
+                        show: true,
+                        horizontalInterval: interval,
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          strokeWidth: 1,
+                        ),
+                        drawVerticalLine: false,
+                      ),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 34,
+                            interval: interval,
+                            getTitlesWidget: (val, meta) => Text(
+                              _activeMetricIndex == 2 ? val.toStringAsFixed(1) : val.toInt().toString(),
+                              style: TextStyle(
+                                  fontSize: 9, color: Colors.grey[500]),
                             ),
-                          );
-                        }).toList();
-                      },
-                    ),
-                  ),
-                  gridData: FlGridData(
-                    show: true,
-                    horizontalInterval: interval,
-                    getDrawingHorizontalLine: (value) => FlLine(
-                      color: Colors.grey.withValues(alpha: 0.1),
-                      strokeWidth: 1,
-                    ),
-                    drawVerticalLine: false,
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 34,
-                        interval: interval,
-                        getTitlesWidget: (val, meta) => Text(
-                          _activeMetricIndex == 2 ? val.toStringAsFixed(1) : val.toInt().toString(),
-                          style: TextStyle(
-                              fontSize: 9, color: Colors.grey[500]),
+                          ),
                         ),
+                        bottomTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
                       ),
-                    ),
-                    bottomTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  minY: minY,
-                  maxY: maxY,
-                  lineBarsData: [
-                    if (_activeMetricIndex == 0) ...[
-                      // Baseline dotted reference line
-                      LineChartBarData(
-                        spots: [
-                          FlSpot(spots.first.x, 75),
-                          FlSpot(spots.last.x, 75),
+                      borderData: FlBorderData(show: false),
+                      minY: minY,
+                      maxY: maxY,
+                      lineBarsData: [
+                        if (_activeMetricIndex == 0) ...[
+                          // Baseline dotted reference line
+                          LineChartBarData(
+                            spots: [
+                              FlSpot(spots.first.x, 75),
+                              FlSpot(spots.last.x, 75),
+                            ],
+                            isCurved: false,
+                            color: widget.colors.stableGreen.withValues(alpha: 0.35),
+                            barWidth: 1.5,
+                            dotData: const FlDotData(show: false),
+                            dashArray: [4, 4],
+                          ),
                         ],
-                        isCurved: false,
-                        color: widget.colors.stableGreen.withValues(alpha: 0.35),
-                        barWidth: 1.5,
-                        dotData: const FlDotData(show: false),
-                        dashArray: [4, 4],
-                      ),
-                    ],
-                    // Main line
-                    LineChartBarData(
-                      spots: spots,
-                      isCurved: true,
-                      curveSmoothness: 0.35,
-                      color: color,
-                      barWidth: 2.5,
-                      isStrokeCapRound: true,
-                      dotData: FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, bar, index) {
-                          return FlDotCirclePainter(
-                            radius: 3,
-                            color: color,
-                            strokeWidth: 1.5,
-                            strokeColor: Colors.white,
-                          );
-                        },
-                      ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            color.withValues(alpha: 0.2),
-                            color.withValues(alpha: 0.0),
-                          ],
+                        // Main line
+                        LineChartBarData(
+                          spots: spots,
+                          isCurved: true,
+                          curveSmoothness: 0.35,
+                          color: color,
+                          barWidth: 2.5,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(
+                            show: spots.length <= 15,
+                            getDotPainter: (spot, percent, bar, index) {
+                              return FlDotCirclePainter(
+                                radius: 3,
+                                color: color,
+                                strokeWidth: 1.5,
+                                strokeColor: Colors.white,
+                              );
+                            },
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                color.withValues(alpha: 0.2),
+                                color.withValues(alpha: 0.0),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -797,7 +785,6 @@ class _CombinedTrajectoryChartState extends State<_CombinedTrajectoryChart> {
       child: Container(
         height: 18,
         color: color,
-        alignment: Alignment.center,
         child: Text(
           label,
           style: const TextStyle(
@@ -809,6 +796,37 @@ class _CombinedTrajectoryChartState extends State<_CombinedTrajectoryChart> {
         ),
       ),
     );
+  }
+
+  List<FlSpot> _fallbackSpots(int metricIndex) {
+    switch (metricIndex) {
+      case 0:
+        return const [
+          FlSpot(0, 72), FlSpot(1, 75), FlSpot(2, 70),
+          FlSpot(3, 90), FlSpot(4, 85), FlSpot(5, 74),
+          FlSpot(6, 72), FlSpot(7, 75), FlSpot(8, 73),
+        ];
+      case 1:
+        return const [
+          FlSpot(0, 34), FlSpot(1, 38), FlSpot(2, 35),
+          FlSpot(3, 20), FlSpot(4, 25), FlSpot(5, 36),
+          FlSpot(6, 35), FlSpot(7, 34), FlSpot(8, 38),
+        ];
+      case 2:
+        return const [
+          FlSpot(0, 1.05), FlSpot(1, 1.08), FlSpot(2, 1.02),
+          FlSpot(3, 0.85), FlSpot(4, 0.90), FlSpot(5, 1.04),
+          FlSpot(6, 1.06), FlSpot(7, 1.05), FlSpot(8, 1.08),
+        ];
+      case 3:
+        return const [
+          FlSpot(0, 5), FlSpot(1, 4), FlSpot(2, 6),
+          FlSpot(3, 45), FlSpot(4, 30), FlSpot(5, 8),
+          FlSpot(6, 4), FlSpot(7, 5), FlSpot(8, 4),
+        ];
+      default:
+        return const <FlSpot>[];
+    }
   }
 }
 

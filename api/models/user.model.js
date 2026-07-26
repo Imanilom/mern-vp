@@ -54,6 +54,25 @@ const UserSchema = new mongoose.Schema(
       default:
         'https://img.freepik.com/premium-vector/man-avatar-profile-picture-vector-illustration_268834-538.jpg',
     },
+    // ---- Profil Biometrik untuk ML ----
+    age: {
+      type: Number,
+      default: null,
+    },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other'],
+      default: 'male',
+    },
+    weight: {
+      type: Number, // kg
+      default: null,
+    },
+    height: {
+      type: Number, // cm
+      default: null,
+    },
+    // ------------------------------------
     docter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User', // Corrected reference to the model name

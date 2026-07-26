@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/functional_colors.dart';
+import '../../core/network/api_client.dart';
 
-class SymptomBottomSheet extends StatefulWidget {
+class SymptomBottomSheet extends ConsumerStatefulWidget {
   const SymptomBottomSheet({super.key});
 
   @override
-  State<SymptomBottomSheet> createState() => _SymptomBottomSheetState();
+  ConsumerState<SymptomBottomSheet> createState() => _SymptomBottomSheetState();
 }
 
-class _SymptomBottomSheetState extends State<SymptomBottomSheet> {
+class _SymptomBottomSheetState extends ConsumerState<SymptomBottomSheet> {
   final Map<String, bool> _symptoms = {
     "Nyeri dada": false,
     "Pusing": false,
@@ -40,16 +42,30 @@ class _SymptomBottomSheetState extends State<SymptomBottomSheet> {
     });
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    final selectedSymptoms = _symptoms.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("Laporan gejala berhasil disimpan"),
-        behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+
+    await ref.read(apiClientProvider).reportSymptom(
+          symptoms: selectedSymptoms,
+          intensity: _intensity,
+          notes: _notesController.text,
+        );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Laporan gejala berhasil disimpan ke server"),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
 
   @override

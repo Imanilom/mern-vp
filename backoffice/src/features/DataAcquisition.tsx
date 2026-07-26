@@ -146,7 +146,7 @@ export const DataAcquisition: React.FC = () => {
         <div className="kpi"><span className="eyebrow">Incoming messages</span><div className="kpi-value">{messagesCount}<span className="text-xs text-muted"> /s</span></div></div>
         <div className="kpi"><span className="eyebrow">Queue depth</span><div className="kpi-value">{queueDepth}</div></div>
         <div className="kpi warn"><span className="eyebrow">Failed messages</span><div className="kpi-value">{failedCount}</div></div>
-        <div className="kpi"><span className="eyebrow">Invalid records</span><div className="kpi-value">5<span className="text-xs text-muted"> (0.01%)</span></div></div>
+        <div className="kpi"><span className="eyebrow">Invalid records</span><div className="kpi-value">{recentData.filter(d => !d.is_valid).length}</div></div>
       </div>
 
       <div className="card !p-0 overflow-hidden mb-4">
@@ -171,7 +171,7 @@ export const DataAcquisition: React.FC = () => {
                 <td className="mono">{row.features?.mean_hr ? Math.round(row.features.mean_hr) : '—'}</td>
                 <td className="mono">{row.features?.mean_rr ? Math.round(row.features.mean_rr) : '—'}</td>
                 <td>{row.activity_label || 'Unknown'}</td>
-                <td className="mono">{row.is_valid ? '98%' : '30%'}</td>
+                <td className="mono">{row.is_valid ? 'Valid Data' : 'Noise/Artifact'}</td>
                 <td className="pr-lg text-right">
                   <span className={`badge ${row.is_valid ? 'badge-stable' : 'badge-caution'}`}>
                     <span className="badge-dot"></span>{row.is_valid ? 'Valid' : 'Invalid'}

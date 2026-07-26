@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/functional_colors.dart';
 import '../../core/theme/htm_colors.dart';
 import '../../core/theme/htm_spacing.dart';
-import '../../core/theme/htm_typography.dart';
 import '../../core/network/api_client.dart';
 
 class SplashPage extends ConsumerStatefulWidget {

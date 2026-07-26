@@ -12,6 +12,34 @@ export const Overview: React.FC<OverviewProps> = ({ onViewParticipant }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Retrieve authUser to check role
+  const storedUser = sessionStorage.getItem('htm_user');
+  const authUser = storedUser ? JSON.parse(storedUser) : null;
+  const isDoctor = authUser?.role === 'doctor';
+
+  const [patients, setPatients] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isDoctor) return;
+    const fetchDoctorPatients = async () => {
+      try {
+        const token = sessionStorage.getItem('htm_token');
+        const res = await fetch('/api/patient/all', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setPatients(data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch doctor patients:', err);
+      }
+    };
+    fetchDoctorPatients();
+  }, [isDoctor]);
+
   useEffect(() => {
     const fetchStatus = async () => {
       try {
@@ -73,18 +101,82 @@ export const Overview: React.FC<OverviewProps> = ({ onViewParticipant }) => {
     preprocessingQueue = 0,
     activeAlerts = 0,
     criticalAlerts = 0,
-    avgCompleteness = 94.8,
-    avgSignalQuality = 91.2,
+    avgCompleteness = '—',
+    avgSignalQuality = '—',
     hourlyData = [],
     donutData = []
   } = stats || {};
 
   return (
     <section>
-      <div className="page-head">
-        <h1 className="page-title">Overview</h1>
+      <div className="page-head mb-4">
+        <div>
+          <h1 className="page-title">{isDoctor ? '👨‍⚕️ Dashboard Dokter & Pemilihan Pasien' : 'Overview'}</h1>
+          {isDoctor && (
+            <p className="text-xs text-muted" style={{ marginTop: 2 }}>
+              Pilih pasien di bawah ini untuk masuk langsung ke dashboard pemantauan pasien tersebut.
+            </p>
+          )}
+        </div>
         <span className="page-meta">{new Date().toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
       </div>
+
+      {/* DOCTOR PATIENT SELECTION CARDS */}
+      {isDoctor && (
+        <div className="mb-6">
+          <div className="card-title mb-3" style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Users size={18} color="var(--primary)" /> Pasien Terdaftar untuk Dipantau (Dokter: {authUser?.name || ''})
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+            {patients.length > 0 ? patients.map((p) => {
+              const guid = p.guid || p._id;
+              return (
+                <div
+                  key={p._id || p.guid}
+                  className="card clickable"
+                  onClick={() => onViewParticipant(guid)}
+                  style={{
+                    padding: '18px 20px',
+                    border: '1px solid var(--primary)',
+                    borderRadius: 12,
+                    background: 'var(--surface)',
+                    boxShadow: 'var(--shadow-sm)',
+                    transition: 'all 200ms ease',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>
+                      {p.name || p.username}
+                    </div>
+                    <span className={`badge ${p.is_active !== false ? 'badge-stable' : 'badge-caution'}`} style={{ fontSize: 11 }}>
+                      <span className="badge-dot" /> {p.is_active !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="mono text-xs text-muted" style={{ marginBottom: 6 }}>
+                    GUID: <strong style={{ color: 'var(--ink)' }}>{guid}</strong>
+                  </div>
+                  <div className="text-xs text-muted" style={{ marginBottom: 14 }}>
+                    Perangkat: <strong style={{ color: 'var(--primary)' }}>{p.current_device || 'Tidak ada perangkat'}</strong>
+                  </div>
+                  <button
+                    className="btn btn-primary w-full"
+                    style={{ padding: '8px 12px', fontSize: 12, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewParticipant(guid);
+                    }}
+                  >
+                    Masuk ke Dashboard Pasien Ini →
+                  </button>
+                </div>
+              );
+            }) : (
+              <div className="text-muted text-sm py-4">Memuat data pasien dokter...</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* KPI GRID */}
       <div className="kpi-grid">

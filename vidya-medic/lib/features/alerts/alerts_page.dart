@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/functional_colors.dart';
 import '../../core/theme/htm_colors.dart';
 import '../../core/theme/htm_typography.dart';
+import '../../core/network/api_client.dart';
 import '../activity/symptom_bottom_sheet.dart';
 
-class AlertsPage extends StatelessWidget {
+class AlertsPage extends ConsumerWidget {
   const AlertsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors =
         Theme.of(context).extension<FunctionalColors>() ?? FunctionalColors.light;
     final htmColors = HtmColors.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final eventsAsync = ref.watch(eventsProvider);
+    final profileAsync = ref.watch(profileProvider);
+
+    final latestEvent = eventsAsync.value?.firstOrNull;
+    final eventTitle = latestEvent?.title ?? "Trajectory Deviation";
+    final eventActivity = latestEvent?.activity ?? "Aktivitas Umum";
+    final magnitudeStr = latestEvent != null ? "${latestEvent.magnitude.toStringAsFixed(1)} SD" : "2.4 SD";
+    final durationStr = latestEvent != null ? "${latestEvent.durationMinutes} mnt" : "11 mnt";
+    final recoveryStr = latestEvent?.recoveryStatus ?? "Belum";
 
     return Scaffold(
       appBar: AppBar(
@@ -63,11 +74,11 @@ class AlertsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Trajectory Deviation",
+                  eventTitle,
                   style: HtmTypography.titleMedium?.copyWith(color: htmColors.ink),
                 ),
                 Text(
-                  "10:21 AM • Duduk Bekerja",
+                  "Status Real-time • $eventActivity",
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.white.withValues(alpha: 0.75),
@@ -99,7 +110,8 @@ class AlertsPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Terjadi peningkatan heart rate yang signifikan di atas rentang baseline aktivitas duduk Anda selama beberapa menit terakhir. Sistem mendeteksi perubahan pola ini dari analisis trajectory jangka pendek.",
+                        latestEvent?.description ??
+                            "Terjadi peningkatan heart rate yang signifikan di atas rentang baseline aktivitas Anda. Sistem mendeteksi perubahan pola ini dari analisis trajectory jangka pendek.",
                         style: TextStyle(
                           fontSize: 13,
                           color: isDark ? Colors.grey[400] : Colors.grey[700],
@@ -117,19 +129,19 @@ class AlertsPage extends StatelessWidget {
                   children: [
                     _DetailBadge(
                         label: "Magnitude",
-                        value: "2.4 SD",
+                        value: magnitudeStr,
                         icon: Icons.straighten_rounded,
                         color: colors.deviationOrange),
                     const SizedBox(width: 10),
                     _DetailBadge(
                         label: "Durasi",
-                        value: "11 mnt",
+                        value: durationStr,
                         icon: Icons.timer_outlined,
                         color: colors.attentionYellow),
                     const SizedBox(width: 10),
                     _DetailBadge(
                         label: "Recovery",
-                        value: "Belum",
+                        value: recoveryStr,
                         icon: Icons.sync_problem_rounded,
                         color: colors.alertRed),
                   ],
@@ -149,7 +161,15 @@ class AlertsPage extends StatelessWidget {
                   icon: Icons.sentiment_satisfied_alt_rounded,
                   color: colors.stableGreen,
                   primary: true,
-                  onTap: () => _respond(context, "Tanggapan berhasil dikirim"),
+                  onTap: () async {
+                    if (latestEvent != null) {
+                      await ref.read(apiClientProvider).updateEventStatus(latestEvent.id, 'Closed');
+                      ref.invalidate(eventsProvider);
+                    }
+                    if (context.mounted) {
+                      _respond(context, "Tanggapan berhasil dikirim ke server");
+                    }
+                  },
                 ),
                 const SizedBox(height: 10),
                 _ResponseButton(
@@ -179,16 +199,18 @@ class AlertsPage extends StatelessWidget {
                   icon: Icons.phone_outlined,
                   color: colors.alertRed,
                   primary: false,
-                  onTap: () => _respond(context, "Menghubungi petugas..."),
+                  onTap: () {
+                    final staffContact = profileAsync.value?.staffContact ?? "+62 812-3456-7890";
+                    _respond(context, "Menghubungi petugas: $staffContact...");
+                  },
                 ),
                 const SizedBox(height: 10),
-                // Gap #4: Tombol ke-5 — Tandai False Alarm
                 _ResponseButton(
                   label: "Tandai sebagai False Alarm",
                   icon: Icons.flag_outlined,
                   color: colors.inactiveGrey,
                   primary: false,
-                  onTap: () => _confirmFalseAlarm(context),
+                  onTap: () => _confirmFalseAlarm(context, ref, latestEvent?.id),
                 ),
 
                 const SizedBox(height: 28),
@@ -237,7 +259,7 @@ class AlertsPage extends StatelessWidget {
     );
   }
 
-  void _confirmFalseAlarm(BuildContext context) {
+  void _confirmFalseAlarm(BuildContext context, WidgetRef ref, String? eventId) {
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
@@ -260,10 +282,18 @@ class AlertsPage extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
-            onPressed: () {
+            onPressed: () async {
               HapticFeedback.lightImpact();
               Navigator.pop(ctx);
-              _respond(context, "✓ Ditandai sebagai false alarm. Tim penelitian akan meninjau.");
+              if (eventId != null && eventId.isNotEmpty) {
+                final client = ref.read(apiClientProvider);
+                await client.validateEvent(eventId, false);
+                await client.updateEventStatus(eventId, 'Closed');
+                ref.invalidate(eventsProvider);
+              }
+              if (context.mounted) {
+                _respond(context, "✓ Ditandai sebagai false alarm di server.");
+              }
             },
             child: const Text("Ya, Tandai"),
           ),

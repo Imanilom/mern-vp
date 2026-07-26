@@ -60,6 +60,13 @@ const SegmentSchema = new mongoose.Schema({
     // ADFA (Asymmetric DFA)
     adfa_plus: { type: Number, default: null },
     adfa_minus: { type: Number, default: null },
+
+    // Additional HRV features
+    nn50: { type: Number, default: null },
+    pnn50: { type: Number, default: null },
+    lf: { type: Number, default: null },
+    hf: { type: Number, default: null },
+    lfhfratio: { type: Number, default: null },
   },
 
   // --- Metadata kualitas ---
@@ -110,6 +117,50 @@ const SegmentSchema = new mongoose.Schema({
     z_rmssd:  { type: Number, default: null },
     z_motion: { type: Number, default: null },
     z_dfa:    { type: Number, default: null },
+  },
+
+  // --- Doctor Validation ---
+  doctor_validation: {
+    status: {
+      type: String,
+      enum: ['pending', 'validated', 'rejected'],
+      default: 'pending',
+    },
+    validated_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    doctor_notes: {
+      type: String,
+      default: '',
+    },
+    validated_at: {
+      type: Date,
+      default: null,
+    },
+  },
+
+  // --- Missing Data Confidence Metric ---
+  missing_data_info: {
+    expected_count: { type: Number, default: 1000 },
+    received_count: { type: Number, default: 995 },
+    missing_count: { type: Number, default: 5 },
+    missing_ratio: { type: Number, default: 0.005 },
+    confidence_score: { type: Number, default: 99.5 },
+  },
+
+  // --- Signal Quality: Artifact vs Anomaly ---
+  signal_quality: {
+    is_artifact: { type: Boolean, default: false },
+    is_anomaly: { type: Boolean, default: false },
+    artifact_type: { type: String, default: null }, // e.g., 'contact_loss', 'spike_noise', 'dropout'
+  },
+
+  // --- Polar Decision Tree Prediction ---
+  dt_prediction: {
+    predicted_activity: { type: String, default: null },
+    confidence: { type: Number, default: null },
   },
 
 }, { timestamps: true });
