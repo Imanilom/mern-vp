@@ -43,10 +43,10 @@ const processingJobSchema = new mongoose.Schema({
   error: { type: String, default: null },
   retry_count: { type: Number, default: 0 },
 
-  // Trigger: apakah dijalankan manual atau oleh cron?
+  // Trigger: apakah dijalankan manual, oleh cron, event, atau systemd timer?
   triggered_by: {
     type: String,
-    enum: ['CRON', 'MANUAL', 'EVENT'],
+    enum: ['CRON', 'MANUAL', 'EVENT', 'SYSTEMD'],
     default: 'CRON',
   },
 }, { timestamps: true });
