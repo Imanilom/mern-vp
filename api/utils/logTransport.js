@@ -39,14 +39,14 @@ async function getChannel() {
 
   // Ensure URI starts with protocol scheme
   if (!rabbitmqUri.startsWith('amqp://') && !rabbitmqUri.startsWith('amqps://')) {
-    const isSsl = rabbitmqUri.includes(':5671') || rabbitmqUri.includes(':8883') || rabbitmqUri.includes(':15671');
+    const isSsl = rabbitmqUri.includes(':5672') || rabbitmqUri.includes(':8883') || rabbitmqUri.includes(':15671');
     rabbitmqUri = (isSsl ? 'amqps://' : 'amqp://') + rabbitmqUri;
   }
 
   // Correct typical config typo where HTTP port is placed in amqp URI
-  if (rabbitmqUri.includes(':15672')) {
+  if (rabbitmqUri.includes(':5672')) {
     console.warn('[RabbitMQ] Port 15672 detected in RABBITMQ_URI. Mapping to standard AMQP port 5672.');
-    rabbitmqUri = rabbitmqUri.replace(':15672', ':5672');
+    rabbitmqUri = rabbitmqUri.replace(':5672', ':5672');
   }
 
   if (connection && channel) {
@@ -146,6 +146,7 @@ export async function startLogTransportConsumer() {
 
   const queueName = process.env.QUEUE_NAME || 'Sensor';
   console.log(`[RabbitMQ Consumer] Listening for messages on queue: ${queueName}...`);
+  await ch.prefetch(100);
 
   ch.consume(queueName, async (msg) => {
     if (!msg) return;
