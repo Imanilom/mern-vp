@@ -55,7 +55,10 @@ class OfflineBufferService extends ChangeNotifier {
     final ref = _ref;
     if (ref != null) {
       // Call the actual ApiClient upload method!
-      success = await ref.read(apiClientProvider).uploadSensorLogs(readings);
+      // Ambil nama device BLE dari BleService agar device_id di MongoDB akurat
+      final bleService = ref.read(bleServiceProvider);
+      final deviceName = bleService.isConnected ? bleService.deviceName : null;
+      success = await ref.read(apiClientProvider).uploadSensorLogs(readings, deviceName: deviceName);
     } else {
       // Simulation fallback for tests
       await Future.delayed(const Duration(milliseconds: 100));

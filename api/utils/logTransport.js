@@ -43,10 +43,10 @@ async function getChannel() {
     rabbitmqUri = (isSsl ? 'amqps://' : 'amqp://') + rabbitmqUri;
   }
 
-  // Correct typical config typo where HTTP port is placed in amqp URI
-  if (rabbitmqUri.includes(':5672')) {
+  // Correct typical config typo where HTTP port 15672 is placed in amqp URI
+  if (rabbitmqUri.includes(':15672')) {
     console.warn('[RabbitMQ] Port 15672 detected in RABBITMQ_URI. Mapping to standard AMQP port 5672.');
-    rabbitmqUri = rabbitmqUri.replace(':5672', ':5672');
+    rabbitmqUri = rabbitmqUri.replace(':15672', ':5672');
   }
 
   if (connection && channel) {
@@ -81,7 +81,19 @@ async function getChannel() {
     });
 
     const queueName = process.env.QUEUE_NAME || 'Sensor';
-    await channel.assertQueue(queueName, { durable: true });
+    const dlqName = `${queueName}_DLQ`;
+
+    // Assert DLQ terlebih dahulu agar bisa menjadi target dead letter
+    await channel.assertQueue(dlqName, { durable: true });
+
+    // Assert queue utama dengan dead letter routing ke DLQ
+    await channel.assertQueue(queueName, {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': '',          // default exchange
+        'x-dead-letter-routing-key': dlqName, // rute ke DLQ
+      },
+    });
     return channel;
   } catch (error) {
     console.error('[RabbitMQ] Failed to connect/create channel:', error.message);
@@ -145,11 +157,15 @@ export async function startLogTransportConsumer() {
   }
 
   const queueName = process.env.QUEUE_NAME || 'Sensor';
+  const MAX_RETRIES = 3;
   console.log(`[RabbitMQ Consumer] Listening for messages on queue: ${queueName}...`);
   await ch.prefetch(100);
 
   ch.consume(queueName, async (msg) => {
     if (!msg) return;
+
+    // Lacak jumlah retry dari header message
+    const retryCount = (msg.properties?.headers?.['x-retry-count'] ?? 0);
 
     try {
       const contentStr = msg.content.toString();
@@ -186,6 +202,7 @@ export async function startLogTransportConsumer() {
             activity: r.activity || 'Duduk',
             device_id: envelope.device_id || 'POLAR_H10',
             isChecked: false,
+            processStatus: 'PENDING',
           };
         });
 
@@ -193,13 +210,22 @@ export async function startLogTransportConsumer() {
           if (err.insertedDocs) return err.insertedDocs;
           return [];
         });
-        console.log(`[RabbitMQ -> MongoDB] Successfully stored ${result.length || docs.length} readings into MongoDB for user ${targetUserId}`);
+        console.log(`[RabbitMQ -> MongoDB] Successfully stored ${result.length || docs.length} readings for user ${targetUserId}`);
       }
 
       ch.ack(msg);
     } catch (err) {
       console.error('[RabbitMQ Consumer] Error processing queue message:', err.message);
-      ch.ack(msg);
+
+      if (retryCount < MAX_RETRIES) {
+        // Nack tanpa requeue — biarkan DLQ atau retry manual yang menangani
+        console.warn(`[RabbitMQ Consumer] Retry ${retryCount + 1}/${MAX_RETRIES} untuk pesan ini...`);
+        ch.nack(msg, false, false); // false = jangan requeue ke queue asli (biar ke DLQ)
+      } else {
+        // Sudah max retry — acknowledge saja agar tidak memblok queue
+        console.error(`[RabbitMQ Consumer] Pesan gagal setelah ${MAX_RETRIES}x retry. Discarding.`);
+        ch.ack(msg);
+      }
     }
   });
 }

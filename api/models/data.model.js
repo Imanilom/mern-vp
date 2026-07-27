@@ -88,6 +88,14 @@ const logSchema = new mongoose.Schema({
     type: String,
     default: 'UNKNOWN',
   },
+  // Status pemrosesan pipeline (enum, menggantikan isChecked yang hanya boolean)
+  processStatus: {
+    type: String,
+    enum: ['PENDING', 'PROCESSING', 'DONE', 'FAILED'],
+    default: 'PENDING',
+    index: true,
+  },
+  // isChecked dipertahankan sebagai alias untuk backward compatibility
   isChecked: {
     type: Boolean,
     default: false,

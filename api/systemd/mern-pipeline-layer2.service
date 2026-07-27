@@ -1,0 +1,29 @@
+[Unit]
+Description=MERN VP - Pipeline Layer 2 (Preprocessing & Segmentasi)
+Documentation=https://github.com/smardevice/mern-vp
+# Hanya jalan jika network tersedia
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Panggil endpoint internal backend Docker yang berjalan di port 3030 (dipetakan ke 3030)
+# Ganti INTERNAL_KEY sesuai nilai di .env / docker-compose.yml
+ExecStart=/usr/bin/curl \
+  --silent \
+  --max-time 30 \
+  --fail \
+  --request POST \
+  --header "Content-Type: application/json" \
+  --header "X-Internal-Key: mern-vp-internal-systemd-2026" \
+  --data '{"layer":"2"}' \
+  http://localhost:3030/api/internal/run-pipeline
+
+# Coba ulang jika gagal (misal container restart)
+Restart=on-failure
+RestartSec=30s
+
+# Catat output ke systemd journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mern-pipeline-l2

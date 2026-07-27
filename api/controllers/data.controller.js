@@ -10,6 +10,7 @@ import { generateGraph, generateGraphsForAllFolders } from "./graph.controller.j
 import { calculateAdvancedMetrics, calculateQuartilesAndIQR } from "./metrics.controller.js";
 import { calculateDFA, calculateADFA } from "./metrics.controller.js";
 import { predictSegment } from "./ml.controller.js";
+import ProcessingJob from "../models/processingjob.model.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -516,19 +517,37 @@ function kernelRBF(x, y, kernelParam) {
  *
  * Tidak ada I/O file — semua hasil ke DB agar lebih efisien & non-blocking.
  */
-export async function processHeartRateData() {
-  try {
-    console.log('[Pipeline] Memulai pemrosesan data...');
+export async function processHeartRateData(triggeredBy = 'CRON') {
+  // ── Buat Job Record ───────────────────────────────────────────────────────
+  const job = await ProcessingJob.create({
+    type: 'LAYER2',
+    status: 'RUNNING',
+    triggered_by: triggeredBy,
+    start_time: new Date(),
+  });
 
-    // Ambil daftar user yang punya data belum diproses
-    const pendingUserIds = await PolarData.distinct('user_id', { isChecked: false });
+  try {
+    console.log('[Pipeline L2] Memulai pemrosesan data...');
+
+    // Ambil daftar user yang punya data belum diproses (support enum baru & boolean lama)
+    const pendingUserIds = await PolarData.distinct('user_id', {
+      $or: [{ processStatus: 'PENDING' }, { isChecked: false }]
+    });
 
     if (pendingUserIds.length === 0) {
-      console.log('[Pipeline] Tidak ada data baru untuk diproses.');
+      console.log('[Pipeline L2] Tidak ada data baru untuk diproses.');
+      await ProcessingJob.findByIdAndUpdate(job._id, {
+        status: 'DONE',
+        end_time: new Date(),
+        duration_ms: Date.now() - job.start_time.getTime(),
+        processed_count: 0,
+        segments_created: 0,
+      });
       return { success: true, message: 'Tidak ada data baru' };
     }
 
-    console.log(`[Pipeline] ${pendingUserIds.length} user memiliki data belum diproses`);
+    console.log(`[Pipeline L2] ${pendingUserIds.length} user memiliki data belum diproses`);
+    await ProcessingJob.findByIdAndUpdate(job._id, { user_ids: pendingUserIds });
 
     let totalSegmentsCreated = 0;
     let totalRawProcessed = 0;
@@ -540,12 +559,22 @@ export async function processHeartRateData() {
         totalSegmentsCreated += result.segmentsCreated;
         totalRawProcessed += result.rawProcessed;
       } catch (userErr) {
-        console.error(`[Pipeline] Error untuk user ${userId}:`, userErr.message);
+        console.error(`[Pipeline L2] Error untuk user ${userId}:`, userErr.message);
         // Lanjutkan ke user berikutnya meski ada error
       }
     }
 
-    console.log(`[Pipeline] Selesai. ${totalRawProcessed} raw data diproses, ${totalSegmentsCreated} segment dibuat.`);
+    const endTime = new Date();
+    console.log(`[Pipeline L2] Selesai. ${totalRawProcessed} raw data diproses, ${totalSegmentsCreated} segment dibuat.`);
+
+    await ProcessingJob.findByIdAndUpdate(job._id, {
+      status: 'DONE',
+      end_time: endTime,
+      duration_ms: endTime.getTime() - job.start_time.getTime(),
+      processed_count: totalRawProcessed,
+      segments_created: totalSegmentsCreated,
+    });
+
     return {
       success: true,
       message: 'Pemrosesan selesai',
@@ -554,7 +583,13 @@ export async function processHeartRateData() {
     };
 
   } catch (error) {
-    console.error('[Pipeline] Error utama:', error.message);
+    console.error('[Pipeline L2] Error utama:', error.message);
+    await ProcessingJob.findByIdAndUpdate(job._id, {
+      status: 'FAILED',
+      end_time: new Date(),
+      duration_ms: Date.now() - job.start_time.getTime(),
+      error: error.message,
+    }).catch(() => {});
     return { success: false, message: error.message };
   }
 }
@@ -624,7 +659,7 @@ async function processUserData(userId) {
   const processedIds = rawLogs.map(l => l._id);
   await PolarData.updateMany(
     { _id: { $in: processedIds } },
-    { $set: { isChecked: true } }
+    { $set: { isChecked: true, processStatus: 'DONE' } }
   );
   rawProcessed += processedIds.length;
 

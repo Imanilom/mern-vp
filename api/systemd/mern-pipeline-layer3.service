@@ -1,0 +1,24 @@
+[Unit]
+Description=MERN VP - Pipeline Layer 3 (Analisis Z-score, Trajectory & Events)
+Documentation=https://github.com/smardevice/mern-vp
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl \
+  --silent \
+  --max-time 60 \
+  --fail \
+  --request POST \
+  --header "Content-Type: application/json" \
+  --header "X-Internal-Key: mern-vp-internal-systemd-2026" \
+  --data '{"layer":"3"}' \
+  http://localhost:3030/api/internal/run-pipeline
+
+Restart=on-failure
+RestartSec=30s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mern-pipeline-l3

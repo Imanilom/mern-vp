@@ -1,0 +1,16 @@
+[Unit]
+Description=MERN VP - Pipeline Layer 3 Timer (setiap 5 menit, offset 2 menit dari L2)
+Documentation=https://github.com/smardevice/mern-vp
+
+[Timer]
+# Mulai 5 menit setelah boot (offset dari Layer 2 yang mulai di 2 menit)
+OnBootSec=5min
+
+# Ulangi setiap 5 menit
+OnUnitActiveSec=5min
+
+Persistent=false
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

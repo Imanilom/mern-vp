@@ -18,6 +18,7 @@ services:
       - MONGO=mongodb://mongodb:27017/healthdevice
       - JWT_SECRET=asnjkKkjsnklnly1xcx?23r
       - PORT=3030
+      - INTERNAL_KEY=mern-vp-internal-systemd-2026
       # Tambahkan env lainnya jika perlu. Pastikan MONGO mengarah ke mongodb service.
     depends_on:
       - mongodb

@@ -15,7 +15,6 @@ import treatmentRoute from "./routes/treatment.route.js";
 import data from "./routes/data.route.js";
 import faktorresiko from "./routes/faktorresiko.route.js";
 import logRouter from "./routes/log.route.js";
-import cron from 'node-cron';
 import cookieParser from "cookie-parser";
 import path from "path";
 import cors from "cors";
@@ -26,8 +25,6 @@ import mlRouter from './routes/ml.route.js';
 
 // import './controllers/cornjob.controller.js';
 // import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
-import { processHeartRateData } from './controllers/data.controller.js';
-import { runAnalysisPipeline } from './controllers/analysis.controller.js';
 import { startLogTransportConsumer } from './utils/logTransport.js';
 dotenv.config();
 
@@ -113,48 +110,33 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);
 });
 
+// ── Internal Pipeline Trigger Endpoint ───────────────────────────────────────
+// Dipanggil oleh systemd timer dari host VPS melalui curl.
+// Diamankan dengan INTERNAL_KEY dari environment variable.
+// Tidak memerlukan JWT, hanya API key di header X-Internal-Key.
+app.post('/api/internal/run-pipeline', async (req, res) => {
+  const key = req.headers['x-internal-key'];
+  const expectedKey = process.env.INTERNAL_KEY;
 
-// ── Layer 2 Cron Job: Preprocessing & Segmentasi ────────────────────────────
-// Berjalan setiap 3 menit. Guard mencegah overlap.
-let isProcessing = false;
-
-cron.schedule('*/3 * * * *', () => {
-  if (isProcessing) {
-    console.log('[Cron L2] Job sebelumnya masih berjalan, skip.');
-    return;
+  if (!expectedKey || key !== expectedKey) {
+    return res.status(401).json({ success: false, message: 'Unauthorized: invalid internal key.' });
   }
-  isProcessing = true;
-  console.log('[Cron L2] Memulai pipeline Layer 2 (IQR + Segmentasi)...');
 
-  processHeartRateData()
-    .then((result) => {
-      if (result?.totalRawProcessed > 0) {
-        console.log(`[Cron L2] Selesai: ${result.totalRawProcessed} raw, ${result.totalSegmentsCreated} segment.`);
-      }
-    })
-    .catch((err) => console.error('[Cron L2] Error:', err.message))
-    .finally(() => { isProcessing = false; });
+  const layer = req.body?.layer || req.query?.layer || '2';
+
+  // Jalankan async agar HTTP response segera dikembalikan
+  if (String(layer) === '3') {
+    const { runAnalysisPipeline } = await import('./controllers/analysis.controller.js');
+    runAnalysisPipeline('SYSTEMD').catch(err =>
+      console.error('[SystemD L3] Error:', err.message)
+    );
+    return res.json({ success: true, message: 'Layer 3 pipeline triggered by systemd timer.' });
+  } else {
+    const { processHeartRateData } = await import('./controllers/data.controller.js');
+    processHeartRateData('SYSTEMD').catch(err =>
+      console.error('[SystemD L2] Error:', err.message)
+    );
+    return res.json({ success: true, message: 'Layer 2 pipeline triggered by systemd timer.' });
+  }
 });
 
-// ── Layer 3 Cron Job: Analisis, Baseline & Event Generation ──────────────
-// Berjalan setiap 5 menit (offset dari Layer 2) agar tidak bersaing resource.
-// Guard isAnalyzing mencegah overlap.
-let isAnalyzing = false;
-
-cron.schedule('2-59/5 * * * *', () => {
-  if (isAnalyzing) {
-    console.log('[Cron L3] Job sebelumnya masih berjalan, skip.');
-    return;
-  }
-  isAnalyzing = true;
-  console.log('[Cron L3] Memulai pipeline Layer 3 (Z-score, Trajectory, Events)...');
-
-  runAnalysisPipeline()
-    .then((result) => {
-      if (result?.analyzed > 0) {
-        console.log(`[Cron L3] Selesai: ${result.analyzed} segment dianalisis, ${result.eventsCreated} event.`);
-      }
-    })
-    .catch((err) => console.error('[Cron L3] Error:', err.message))
-    .finally(() => { isAnalyzing = false; });
-});

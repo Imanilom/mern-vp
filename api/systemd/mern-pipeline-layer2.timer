@@ -1,0 +1,20 @@
+[Unit]
+Description=MERN VP - Pipeline Layer 2 Timer (setiap 3 menit)
+Documentation=https://github.com/smardevice/mern-vp
+
+[Timer]
+# Jalankan 2 menit setelah sistem boot
+OnBootSec=2min
+
+# Kemudian ulangi setiap 3 menit
+OnUnitActiveSec=3min
+
+# Jika timer terlewat (misal server mati), jangan kejar semua yang terlewat
+# — jalankan sesegera mungkin setelah aktif kembali
+Persistent=false
+
+# Gunakan timer yang akurat (tidak ada randomized delay)
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

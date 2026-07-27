@@ -4,6 +4,7 @@ import Segment from '../models/segment.model.js';
 import User from '../models/user.model.js';
 import Patient from '../models/patient.model.js';
 import Data from '../models/data.model.js';
+import ProcessingJob from '../models/processingjob.model.js';
 
 
 // RabbitMQ Management API credentials
@@ -285,16 +286,72 @@ export async function getRecentData(req, res) {
   }
 }
 
+// Ambil riwayat job dari MongoDB (bukan mock)
 export async function getJobs(req, res) {
-  res.json({ success: true, data: [
-    { id: 'PRE-1023', participant: 'P012', batch: 5000, progress: 86, status: 'Running' },
-    { id: 'PRE-1024', participant: 'P006', batch: 5000, progress: 52, status: 'Running' },
-    { id: 'PRE-1025', participant: 'P009', batch: 5000, progress: 100, status: 'Completed' }
-  ]});
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const page  = parseInt(req.query.page)  || 1;
+    const skip  = (page - 1) * limit;
+    const typeFilter = req.query.type ? { type: req.query.type } : {};
+
+    const [jobs, total] = await Promise.all([
+      ProcessingJob.find(typeFilter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('user_ids', 'name email')
+        .lean(),
+      ProcessingJob.countDocuments(typeFilter),
+    ]);
+
+    const formatted = jobs.map(j => ({
+      id: j._id,
+      type: j.type,
+      status: j.status,
+      triggered_by: j.triggered_by,
+      start_time: j.start_time,
+      end_time: j.end_time,
+      duration_ms: j.duration_ms,
+      processed_count: j.processed_count,
+      segments_created: j.segments_created,
+      events_created: j.events_created,
+      error: j.error,
+      retry_count: j.retry_count,
+      participants: j.user_ids?.map(u => u.name || u.email) || [],
+      createdAt: j.createdAt,
+    }));
+
+    res.json({ success: true, data: formatted, total, page, limit });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 }
 
+// Trigger ulang Layer 2 pipeline secara manual
 export async function rerunJob(req, res) {
-  res.json({ success: true, message: `Job ${req.params.jobId} rerun initiated.` });
+  try {
+    const { processHeartRateData } = await import('./data.controller.js');
+    // Jalankan async, jangan await agar tidak timeout HTTP
+    processHeartRateData('MANUAL').catch(err =>
+      console.error('[Manual Trigger L2] Error:', err.message)
+    );
+    res.json({ success: true, message: 'Layer 2 pipeline triggered manually. Check job history for progress.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// Trigger Layer 3 secara manual
+export async function triggerLayer3(req, res) {
+  try {
+    const { runAnalysisPipeline } = await import('./analysis.controller.js');
+    runAnalysisPipeline('MANUAL').catch(err =>
+      console.error('[Manual Trigger L3] Error:', err.message)
+    );
+    res.json({ success: true, message: 'Layer 3 pipeline triggered manually. Check job history for progress.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 }
 
 export async function pauseJob(req, res) {

@@ -9,6 +9,7 @@ import {
   getRecentData,
   getJobs,
   rerunJob,
+  triggerLayer3,
   pauseJob,
   cancelJob,
   restartWorker,
@@ -53,5 +54,11 @@ router.post('/worker/restart', verifyToken, requireOperator, restartWorker);
 router.get('/settings', verifyToken, getSettings);
 router.post('/settings', verifyToken, requireOperator, saveSettings);
 router.get('/metrics', verifyToken, getMetrics);
+
+/** POST /api/pipeline/trigger-layer2 — manual trigger Layer 2 */
+router.post('/trigger-layer2', verifyToken, requireOperator, rerunJob);
+
+/** POST /api/pipeline/trigger-layer3 — manual trigger Layer 3 */
+router.post('/trigger-layer3', verifyToken, requireOperator, triggerLayer3);
 
 export default router;

@@ -18,6 +18,7 @@ import Baseline from '../models/baseline.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
 import User from '../models/user.model.js';
 import mongoose from 'mongoose';
+import ProcessingJob from '../models/processingjob.model.js';
 import {
   computeROCandAUC as computeROCandAUCFromEval,
   computeH1aMetrics as computeH1aMetricsFromEval,
@@ -78,7 +79,15 @@ const DFA_NORM_FACTOR    = 0.5; // normalisasi deviasi DFA
  * Jalankan Layer 3 untuk semua user yang punya segment belum dianalisis.
  * Dipanggil dari cron job di index.js.
  */
-export async function runAnalysisPipeline() {
+export async function runAnalysisPipeline(triggeredBy = 'CRON') {
+  // ── Buat Job Record ───────────────────────────────────────────────────────
+  const job = await ProcessingJob.create({
+    type: 'LAYER3',
+    status: 'RUNNING',
+    triggered_by: triggeredBy,
+    start_time: new Date(),
+  });
+
   try {
     console.log('[Layer3] Memulai analisis...');
 
@@ -90,8 +99,17 @@ export async function runAnalysisPipeline() {
 
     if (pendingUserIds.length === 0) {
       console.log('[Layer3] Tidak ada segment baru untuk dianalisis.');
+      await ProcessingJob.findByIdAndUpdate(job._id, {
+        status: 'DONE',
+        end_time: new Date(),
+        duration_ms: Date.now() - job.start_time.getTime(),
+        processed_count: 0,
+        events_created: 0,
+      });
       return { success: true, analyzed: 0, eventsCreated: 0 };
     }
+
+    await ProcessingJob.findByIdAndUpdate(job._id, { user_ids: pendingUserIds });
 
     let totalAnalyzed = 0;
     let totalEvents = 0;
@@ -106,11 +124,27 @@ export async function runAnalysisPipeline() {
       }
     }
 
+    const endTime = new Date();
     console.log(`[Layer3] Selesai: ${totalAnalyzed} segment dianalisis, ${totalEvents} event dibuat/diperbarui.`);
+
+    await ProcessingJob.findByIdAndUpdate(job._id, {
+      status: 'DONE',
+      end_time: endTime,
+      duration_ms: endTime.getTime() - job.start_time.getTime(),
+      processed_count: totalAnalyzed,
+      events_created: totalEvents,
+    });
+
     return { success: true, analyzed: totalAnalyzed, eventsCreated: totalEvents };
 
   } catch (err) {
     console.error('[Layer3] Error utama:', err.message);
+    await ProcessingJob.findByIdAndUpdate(job._id, {
+      status: 'FAILED',
+      end_time: new Date(),
+      duration_ms: Date.now() - job.start_time.getTime(),
+      error: err.message,
+    }).catch(() => {});
     return { success: false, error: err.message };
   }
 }

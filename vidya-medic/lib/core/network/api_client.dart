@@ -5,6 +5,9 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/models/models.dart';
 
+// Ganti URL berikut sesuai environment:
+// Development: URL ngrok atau localhost
+// Production VPS: 'http://YOUR_VPS_IP:3031/api' atau domain Anda 'https://domainanda.com/api'
 const String BASE_URL = 'https://5955-2001-448a-a010-3a86-2897-20e-392a-fa4c.ngrok-free.app/api';
 
 class ApiClient {
@@ -341,7 +344,9 @@ class ApiClient {
     return [];
   }
 
-  Future<bool> uploadSensorLogs(List<SensorReading> readings) async {
+  // deviceName: nama perangkat BLE yang terhubung (misal: 'Polar H10 C7F2')
+  // Jika null, akan menggunakan fallback 'POLAR_BLE'
+  Future<bool> uploadSensorLogs(List<SensorReading> readings, {String? deviceName}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('user_id');
@@ -352,7 +357,8 @@ class ApiClient {
       final payload = {
         'user_id': userId,
         'source': 'polar_ble',
-        'device_id': 'mobile-app',
+        // Gunakan nama perangkat BLE asli, bukan hardcoded
+        'device_id': deviceName?.isNotEmpty == true ? deviceName! : 'POLAR_BLE',
         'received_at': DateTime.now().toUtc().toIso8601String(),
         'readings': readings.map((r) => {
           'timestamp': r.timestamp.millisecondsSinceEpoch ~/ 1000,
