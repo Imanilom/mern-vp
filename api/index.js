@@ -57,7 +57,7 @@ app.use(helmet());
 
 // ── CORS — Whitelist dari environment variable ALLOWED_ORIGINS ──────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  ? process.env.ALLOWED_ORIGINS.replace(/['"]/g, '').split(',').map(o => o.trim())
   : ['http://localhost:3031'];
 
 app.use(cors({

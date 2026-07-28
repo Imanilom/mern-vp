@@ -50,7 +50,7 @@ export const signin = async (req, res, next) => {
       current_device : validUser.current_device, 
       role : userRole, 
       guid : validUser.guid 
-    }, 'asnjkKkjsnklnly1xcx?23r');
+    }, process.env.JWT_SECRET);
 
     const { password: pass, ...rest } = validUser._doc;
 
