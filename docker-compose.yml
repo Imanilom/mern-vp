@@ -1,6 +1,6 @@
 services:
   mongodb:
-    image: mongo:8.0-noble
+    image: mongo:latest
     container_name: mongodb
     # Port MongoDB TIDAK di-expose ke host/internet
     # Hanya bisa diakses oleh container lain dalam network 'app-network'
