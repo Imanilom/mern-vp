@@ -1,6 +1,8 @@
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 import userRouter from "./routes/user.route.js";
 import authRouter from "./routes/auth.route.js";
 import garminRouter from "./routes/garmin.route.js";
@@ -26,6 +28,10 @@ import mlRouter from './routes/ml.route.js';
 // import './controllers/cornjob.controller.js';
 // import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
 import { startLogTransportConsumer } from './utils/logTransport.js';
+import doctorRouter from './routes/doctor.route.js';
+import userpatientRouter from './routes/userpatient.route.js';
+import aipipelineRouter from './routes/aipipeline.route.js';
+import { verifyToken } from './utils/verifyUser.js';
 dotenv.config();
 
 mongoose
@@ -46,17 +52,71 @@ const __dirname = path.resolve();
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// ── Security Headers (Helmet) ────────────────────────────────────────────────
+app.use(helmet());
+
+// ── CORS — Whitelist dari environment variable ALLOWED_ORIGINS ──────────────
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:3031'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Izinkan request tanpa origin (server-to-server / curl / Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS: Origin '${origin}' tidak diizinkan.`));
+  },
+  credentials: true, // Izinkan cookie di-kirim bersama request
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Key'],
+}));
+
+// ── Body Parser dengan batas ukuran ─────────────────────────────────────────
+app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
-import doctorRouter from './routes/doctor.route.js';
-import userpatientRouter from './routes/userpatient.route.js';
-import aipipelineRouter from './routes/aipipeline.route.js';
-import { verifyToken } from './utils/verifyUser.js';
+// ── Rate Limiter untuk endpoint Auth (proteksi brute force) ─────────────────
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 20,                   // Maks 20 request per IP per window
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { success: false, message: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' },
+});
+
+// ── Rate Limiter global (untuk semua endpoint) ───────────────────────────────
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 menit
+  max: 500,            // Maks 500 request per key per menit
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  // Gunakan user ID dari JWT sebagai key, bukan IP
+  // Ini mencegah seluruh user di jaringan yang sama (1 IP) terkena limit bersama
+  keyGenerator: (req) => {
+    // Coba ambil user id dari JWT payload jika sudah diparse sebelumnya
+    // (verifyToken di-apply per-route, jadi di sini kita parse manual tanpa verify)
+    try {
+      const authHeader = req.headers['authorization'];
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        // Decode payload tanpa verify (aman untuk rate-limit key saja)
+        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+        if (payload?.id) return `user:${payload.id}`;
+      }
+    } catch (_) { /* fall through ke IP */ }
+    return req.ip;
+  },
+  skip: (req) => req.path === '/api/health', // Jangan rate-limit health check
+  message: { success: false, message: 'Terlalu banyak request. Silakan tunggu sebentar.' },
+});
+
+app.use(globalLimiter);
 
 app.use("/api/user", userRouter);
-app.use("/api/auth", authRouter);
+app.use("/api/auth", authLimiter, authRouter); // Rate limited
 app.use("/api/garmin", garminRouter);
 app.use("/api/activity", activityRouter);
 app.use("/api/recomendation", recomendationRouter);
@@ -93,13 +153,21 @@ app.get("/api/dashboard", verifyToken, (req, res) => {
 // Frontend is served separately by Nginx
 
 
+// ── Health Check (untuk Docker HEALTHCHECK) ──────────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ success: true, status: 'OK', timestamp: new Date().toISOString() });
+});
+
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";
+  // Jangan expose stack trace di production
+  const isProduction = process.env.NODE_ENV === 'production';
   return res.status(statusCode).json({
     success: false,
     statusCode,
     message,
+    ...(isProduction ? {} : { stack: err.stack }),
   });
 });
 

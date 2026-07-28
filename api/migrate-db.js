@@ -3,9 +3,19 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Default values, can be overridden by environment variables
-const SOURCE_URI = process.env.SOURCE_MONGO_URI || "mongodb+srv://memerlin90:LYyX217FP02iuCqV@pak.21cks.mongodb.net/?retryWrites=true&w=majority&appName=pak";
-const TARGET_URI = process.env.TARGET_MONGO_URI || "mongodb://localhost:27017/healthdevice";
+// URI wajib diisi via environment variable — TIDAK ada fallback ke credentials hardcoded
+const SOURCE_URI = process.env.SOURCE_MONGO_URI;
+const TARGET_URI = process.env.TARGET_MONGO_URI || process.env.MONGO;
+
+if (!SOURCE_URI) {
+  console.error('[migrate-db] ERROR: SOURCE_MONGO_URI tidak ada di .env. Isi dulu sebelum migrasi!');
+  process.exit(1);
+}
+
+if (!TARGET_URI) {
+  console.error('[migrate-db] ERROR: TARGET_MONGO_URI (atau MONGO) tidak ada di .env.');
+  process.exit(1);
+}
 
 async function migrate() {
   console.log('Connecting to Source DB (Atlas)...');

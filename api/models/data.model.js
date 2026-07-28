@@ -105,7 +105,8 @@ const logSchema = new mongoose.Schema({
 
 // Compound index: query utama & pencegahan duplikasi (user + timestamp)
 logSchema.index({ user_id: 1, isChecked: 1 });
-logSchema.index({ user_id: 1, timestamp: 1 }, { unique: true });
+logSchema.index({ user_id: 1, timestamp: 1 }, { unique: true }); // Juga dipakai untuk sort ASC live monitoring
+logSchema.index({ user_id: 1, timestamp: -1 });                  // Dipakai untuk query DESC (data terbaru)
 
 const PolarData = mongoose.model('PolarData', logSchema);
 

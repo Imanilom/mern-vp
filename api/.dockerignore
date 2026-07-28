@@ -1,3 +1,35 @@
+# Dependencies (akan di-install ulang di dalam container)
 node_modules
 npm-debug.log
 package-lock.json
+
+# Environment & Secrets (JANGAN masuk ke Docker image)
+.env
+.env.*
+
+# Data & Output Files
+dump/
+uploads/
+graphs/
+data/
+public/graphs/
+*.csv
+*.json.bak
+
+# Dev & Test files (tidak dibutuhkan di production)
+tests/
+seed.js
+seed_dump.js
+migrate-db.js
+nodemon.json
+
+# Documentation
+*.md
+README*
+
+# OS & Editor files
+.DS_Store
+.git
+.gitignore
+.vscode
+.idea

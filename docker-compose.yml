@@ -1,38 +1,63 @@
 services:
   mongodb:
-    image: mongo:latest
+    image: mongo:8.0-noble
     container_name: mongodb
-    ports:
-      - "27017:27017"
+    # Port MongoDB TIDAK di-expose ke host/internet
+    # Hanya bisa diakses oleh container lain dalam network 'app-network'
+    expose:
+      - "27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - mongo_data:/data/db
-    restart: always
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   backend:
-    build: 
+    build:
       context: ./api
+      args:
+        NODE_ENV: production
     container_name: backend
+    # Hanya listen ke localhost (127.0.0.1) — hanya Nginx yang bisa akses
     ports:
-      - "3030:3030"
-    environment:
-      - MONGO=mongodb://mongodb:27017/healthdevice
-      - JWT_SECRET=asnjkKkjsnklnly1xcx?23r
-      - PORT=3030
-      - INTERNAL_KEY=mern-vp-internal-systemd-2026
-      # Tambahkan env lainnya jika perlu. Pastikan MONGO mengarah ke mongodb service.
+      - "127.0.0.1:3030:3030"
+    env_file:
+      - .env.production
     depends_on:
-      - mongodb
-    restart: always
+      mongodb:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    # Batasi resource agar satu container tidak memakan semua memori server
+    mem_limit: 512m
+    cpus: "1.0"
 
   frontend:
-    build: 
+    build:
       context: ./backoffice
     container_name: frontend
     ports:
-      - "3031:80"
+      - "127.0.0.1:3031:80"
     depends_on:
       - backend
-    restart: always
+    networks:
+      - app-network
+    restart: unless-stopped
+    mem_limit: 128m
 
 volumes:
   mongo_data:
+
+networks:
+  app-network:
+    driver: bridge

@@ -1357,7 +1357,7 @@ const calculateTriangularIndex = (logs) => {
 export const getRawPolarData = async (req, res, next) => {
   try {
     const { userId } = req.params; // this is actually the guid, e.g. "P012"
-    const { date, startTime, endTime } = req.query;
+    const { date, startTime, endTime, since } = req.query;
 
     if (!userId) {
       return res.status(400).json({ success: false, message: 'User ID is required' });
@@ -1369,31 +1369,46 @@ export const getRawPolarData = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const query = { user_id: user._id, device_id: user.current_device || 'POLAR_SIM' };
-    
+    const query = { user_id: user._id };
+
+    // ── Gunakan timestamp (Number) untuk filter tanggal agar memanfaatkan index ──
     if (date) {
-      query.date_created = date;
-    }
-    
-    if (startTime || endTime) {
-      query.time_created = {};
-      if (startTime) query.time_created.$gte = startTime + ':00'; // assuming HH:mm
-      if (endTime) query.time_created.$lte = endTime + ':59';
+      // date format: YYYY-MM-DD
+      const dayStart = new Date(date + 'T00:00:00.000Z').getTime();
+      const dayEnd   = new Date(date + 'T23:59:59.999Z').getTime();
+      query.timestamp = { $gte: dayStart, $lte: dayEnd };
+    } else if (since) {
+      // ── Mode live polling: hanya ambil data setelah timestamp terakhir ──
+      // Gunakan ?since=<timestamp_ms> agar tidak mengirim ulang data lama
+      query.timestamp = { $gt: parseInt(since, 10) };
     }
 
-    // Adjust limit based on whether filter is applied
-    const limit = (date || startTime || endTime) ? 5000 : 1000;
+    if (startTime && query.timestamp) {
+      // startTime & endTime hanya berlaku jika date juga dikirim
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = (endTime || '23:59').split(':').map(Number);
+      const baseDay = new Date(date + 'T00:00:00.000Z');
+      const tsStart = baseDay.getTime() + (sh * 3600 + sm * 60) * 1000;
+      const tsEnd   = baseDay.getTime() + (eh * 3600 + em * 60 + 59) * 1000;
+      query.timestamp = { $gte: tsStart, $lte: tsEnd };
+    }
 
+    // Limit lebih besar jika ada filter tanggal (bisa seharian penuh ~8640 titik per menit)
+    const limit = (date || since) ? 5000 : 1000;
+
+    // Sort ASC langsung (tidak perlu reverse)
     const rawData = await PolarData.find(query)
-      .sort({ timestamp: -1 })
+      .sort({ timestamp: 1 })
       .limit(limit)
       .select('timestamp hr rr rrms activity date_created time_created')
       .lean();
 
-    // The data is sorted descending, reverse it so the chart goes from left to right (oldest to newest)
-    rawData.reverse();
-
-    return res.status(200).json({ success: true, data: rawData });
+    return res.status(200).json({
+      success: true,
+      data: rawData,
+      // Kembalikan timestamp data terakhir agar client bisa pakai ?since= berikutnya
+      lastTimestamp: rawData.length > 0 ? rawData[rawData.length - 1].timestamp : null,
+    });
   } catch (error) {
     console.error('Error fetching raw polar data:', error);
     return res.status(500).json({ success: false, message: 'Server Error' });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceArea, ReferenceLine,
@@ -8,6 +8,15 @@ import { DeviceSelector } from '../shared/components/ParticipantSelector';
 
 const HR_NORMAL_MIN = 60;
 const HR_NORMAL_MAX = 100;
+
+// Helper: today in YYYY-MM-DD (lokal, bukan UTC)
+const todayLocal = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 
 export interface RawDataProps {
   selectedParticipantId?: string;
@@ -29,9 +38,12 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
   const [participants, setParticipants] = useState<any[]>([]);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string>(''); // Default to empty to fetch latest data
+  // Default ke hari ini langsung — tidak mengandalkan data pertama yang muncul
+  const [selectedDay, setSelectedDay] = useState<string>(todayLocal());
   const [startTime, setStartTime] = useState<string>('');
   const [endTime, setEndTime] = useState<string>('');
+  // Simpan timestamp terakhir untuk live polling incremental (?since=)
+  const lastTimestampRef = useRef<number | null>(null);
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -51,56 +63,77 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
     fetchPatients();
   }, []);
 
-  useEffect(() => {
-    const fetchRawData = async () => {
-      setLoading(true);
-      try {
-        if (!selectedParticipantId) {
-          setLoading(false);
-          return;
-        }
-        const token = sessionStorage.getItem('htm_token');
-        let url = `/api/data/raw/${selectedParticipantId}?`;
-        if (selectedDay) url += `date=${selectedDay}&`;
-        if (startTime) url += `startTime=${startTime}&`;
-        if (endTime) url += `endTime=${endTime}&`;
-        
-        const res = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success) {
-            const formatted = json.data.map((d: any) => {
-              const dt = new Date(d.timestamp);
-              const h = dt.getHours().toString().padStart(2, '0');
-              const m = dt.getMinutes().toString().padStart(2, '0');
-              return {
-                ...d,
-                timeLabel: `${h}:${m}`,
-                dayKey: dt.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-                dayLabel: dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' }),
-                sortTs: d.timestamp,
-              };
-            });
-            setData(formatted);
+  // Fungsi fetch data — bisa full atau incremental (?since=)
+  const fetchRawData = async (incremental = false) => {
+    if (!selectedParticipantId) return;
+    if (!incremental) setLoading(true);
+    try {
+      const token = sessionStorage.getItem('htm_token');
+      let url = `/api/data/raw/${selectedParticipantId}?`;
 
-            if (!selectedDay && formatted.length > 0) {
-              const latestItem = formatted[formatted.length - 1]; // data is in chronological order, so last item is latest
-              const latestDate = new Date(latestItem.sortTs).toISOString().split('T')[0];
-              setSelectedDay(latestDate);
-            }
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+      if (incremental && lastTimestampRef.current) {
+        // Hanya ambil data baru setelah timestamp terakhir
+        url += `since=${lastTimestampRef.current}&`;
+      } else {
+        // Full fetch: filter tanggal dan waktu
+        if (selectedDay)  url += `date=${selectedDay}&`;
+        if (startTime)    url += `startTime=${startTime}&`;
+        if (endTime)      url += `endTime=${endTime}&`;
       }
-    };
-    if (selectedParticipantId) {
-      fetchRawData();
+
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+
+      const json = await res.json();
+      if (!json.success) return;
+
+      // Format data
+      const formatted = json.data.map((d: any) => {
+        const dt = new Date(d.timestamp);
+        const h = dt.getHours().toString().padStart(2, '0');
+        const m = dt.getMinutes().toString().padStart(2, '0');
+        const s = dt.getSeconds().toString().padStart(2, '0');
+        return {
+          ...d,
+          timeLabel: `${h}:${m}:${s}`,
+          sortTs: d.timestamp,
+        };
+      });
+
+      // Update lastTimestamp untuk live polling berikutnya
+      if (json.lastTimestamp) {
+        lastTimestampRef.current = json.lastTimestamp;
+      }
+
+      if (incremental && formatted.length > 0) {
+        // Tambahkan ke data yang sudah ada, pertahankan 2000 titik terakhir
+        setData(prev => [...prev, ...formatted].slice(-2000));
+      } else {
+        setData(formatted);
+        lastTimestampRef.current = json.lastTimestamp ?? null;
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      if (!incremental) setLoading(false);
     }
+  };
+
+  // Fetch penuh saat participant / filter berubah
+  useEffect(() => {
+    if (selectedParticipantId) {
+      lastTimestampRef.current = null; // Reset live pointer
+      fetchRawData(false);
+    }
+  }, [selectedParticipantId, selectedDay, startTime, endTime]);
+
+  // Live polling setiap 10 detik — hanya fetch data baru via ?since=
+  useEffect(() => {
+    if (!selectedParticipantId) return;
+    const intervalId = setInterval(() => fetchRawData(true), 10000);
+    return () => clearInterval(intervalId);
   }, [selectedParticipantId, selectedDay, startTime, endTime]);
 
   // Data yang ditampilkan dari hasil fetch API

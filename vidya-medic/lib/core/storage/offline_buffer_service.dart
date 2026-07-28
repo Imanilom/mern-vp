@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/models/models.dart';
 import '../network/api_client.dart';
+import '../network/mqtt_service.dart';
 
 import '../ble/mock_ble_service.dart';
 import '../providers/activity_provider.dart';
@@ -51,17 +52,34 @@ class OfflineBufferService extends ChangeNotifier {
 
     final readings = pendingRecords.map((r) => r.reading).toList();
     
-    bool success = true;
+    bool success = false;
     final ref = _ref;
     if (ref != null) {
-      // Call the actual ApiClient upload method!
-      // Ambil nama device BLE dari BleService agar device_id di MongoDB akurat
       final bleService = ref.read(bleServiceProvider);
-      final deviceName = bleService.isConnected ? bleService.deviceName : null;
-      success = await ref.read(apiClientProvider).uploadSensorLogs(readings, deviceName: deviceName);
+      final deviceName = bleService.isConnected ? bleService.deviceName : 'POLAR_H10';
+      final userId = await ref.read(apiClientProvider).getStoredUserId() ?? 'DEMO_USER_001';
+
+      // ── Step 1: Coba kirim langsung via MQTT (Direct to RabbitMQ Port 1883/8883) ──
+      try {
+        final mqttService = ref.read(mqttServiceProvider);
+        success = await mqttService.publishSensorReadings(
+          userId: userId,
+          deviceId: deviceName,
+          readings: readings,
+        );
+      } catch (e) {
+        debugPrint('[OfflineBuffer] Direct MQTT publish failed, falling back to HTTP REST: $e');
+        success = false;
+      }
+
+      // ── Step 2: Fallback ke HTTP REST API jika MQTT tidak tersedia / terblokir ──
+      if (!success) {
+        success = await ref.read(apiClientProvider).uploadSensorLogs(readings, deviceName: deviceName);
+      }
     } else {
       // Simulation fallback for tests
       await Future.delayed(const Duration(milliseconds: 100));
+      success = true;
     }
 
     if (success) {
