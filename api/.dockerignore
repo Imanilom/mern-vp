@@ -1,7 +1,6 @@
 # Dependencies (akan di-install ulang di dalam container)
 node_modules
 npm-debug.log
-package-lock.json
 
 # Environment & Secrets (JANGAN masuk ke Docker image)
 .env
