@@ -10,11 +10,10 @@ export const verifyToken = (req, res, next) => {
 
   if (!token) return next(errorHandler(401, 'Unauthorized'));
 
-  jwt.verify(token, "asnjkKkjsnklnly1xcx?23r", (err, user) => {
-    // if (err) return next(errorHandler(403, 'Forbidden'));
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
-      console.log({err, token});
-      return;
+      console.log('JWT Verify Error:', err.message);
+      return next(errorHandler(401, 'Token tidak valid atau sudah kedaluwarsa.'));
     }
     
     req.user = user;
