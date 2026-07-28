@@ -39,22 +39,49 @@ async function migrate() {
     const sourceCollection = dbSource.collection(colName);
     const targetCollection = dbTarget.collection(colName);
 
-    const docs = await sourceCollection.find({}).toArray();
-    
-    if (docs.length > 0) {
-      try {
-        // Uncomment the line below to clear the target collection before importing
-        // await targetCollection.deleteMany({});
-        
-        await targetCollection.insertMany(docs, { ordered: false });
-        console.log(`  -> Successfully inserted ${docs.length} documents into ${colName}`);
-      } catch (err) {
-        // If ordered: false, it will continue even if some docs have duplicate keys
-        console.error(`  -> Error inserting into ${colName} (some documents might already exist):`, err.message);
-      }
-    } else {
+    // Hitung total dokumen
+    const totalDocs = await sourceCollection.countDocuments({});
+    if (totalDocs === 0) {
       console.log(`  -> Collection ${colName} is empty. Skipping.`);
+      continue;
     }
+
+    console.log(`  -> Found ${totalDocs} documents. Starting batch transfer...`);
+    
+    // Gunakan cursor untuk iterasi agar tidak OOM
+    const cursor = sourceCollection.find({});
+    const BATCH_SIZE = 5000;
+    let batch = [];
+    let insertedCount = 0;
+
+    while (await cursor.hasNext()) {
+      const doc = await cursor.next();
+      batch.push(doc);
+
+      if (batch.length === BATCH_SIZE) {
+        try {
+          await targetCollection.insertMany(batch, { ordered: false });
+          insertedCount += batch.length;
+          console.log(`     Progress: ${insertedCount} / ${totalDocs}`);
+        } catch (err) {
+          // ordered: false mengizinkan lanjut meski ada duplicate key
+          insertedCount += batch.length;
+        }
+        batch = []; // kosongkan memory
+      }
+    }
+
+    // Insert sisa dokumen yang kurang dari BATCH_SIZE
+    if (batch.length > 0) {
+      try {
+        await targetCollection.insertMany(batch, { ordered: false });
+        insertedCount += batch.length;
+      } catch (err) {
+        insertedCount += batch.length;
+      }
+    }
+    
+    console.log(`  -> Successfully migrated ${insertedCount} documents for ${colName}`);
   }
 
   console.log('\nMigration complete!');
