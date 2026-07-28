@@ -6,9 +6,10 @@ services:
     # Hanya bisa diakses oleh container lain dalam network 'app-network'
     expose:
       - "27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    # Baca credentials dari .env.production (sama seperti service backend)
+    # Sehingga tidak perlu file .env terpisah untuk variable interpolation
+    env_file:
+      - .env.production
     volumes:
       - mongo_data:/data/db
     networks:
