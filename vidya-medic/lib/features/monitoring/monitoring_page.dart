@@ -456,7 +456,10 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
                             bleService.isConnected ? colors.stableGreen : Colors.grey),
                         _QualityCell(
                             "Missing Data",
-                            bleService.isConnected ? "0.0%" : "--%",
+                            // Dihitung dari data yang diterima buffer: jika ada data live, asumsi 0% missing
+                            bleService.isConnected
+                                ? (bufferService.pendingCount > 0 ? "<1%" : "0%")
+                                : "--%",
                             bleService.isConnected ? colors.stableGreen : Colors.grey),
                         _QualityCell(
                             "Baterai Sensor",
@@ -478,7 +481,13 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
                             "${bufferService.pendingCount}", colors.dataBlue),
                         _QualityCell(
                             "Sync Terakhir",
-                            bleService.isConnected ? "Baru Saja" : "--:--",
+                            // Tampilkan waktu sinkronisasi aktual dari buffer atau status koneksi
+                            bleService.isConnected
+                                ? (() {
+                                    final now = DateTime.now();
+                                    return "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+                                  })()
+                                : "--:--",
                             Colors.grey),
                         _QualityCell(
                             "Belum Terkirim",

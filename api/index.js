@@ -58,7 +58,7 @@ app.use(helmet());
 // ── CORS — Whitelist dari environment variable ALLOWED_ORIGINS ──────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.replace(/['"]/g, '').split(',').map(o => o.trim())
-  : ['http://localhost:3031', 'https://healthtrajectory.cloud'];
+  : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:57390'];
 
 // Agar jika ada typo https://https:// di .env tetap aman:
 if (!allowedOrigins.includes('https://healthtrajectory.cloud')) {
@@ -76,7 +76,7 @@ app.use(cors({
   },
   credentials: true, // Izinkan cookie di-kirim bersama request
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Key', 'ngrok-skip-browser-warning'],
 }));
 
 // ── Body Parser dengan batas ukuran ─────────────────────────────────────────

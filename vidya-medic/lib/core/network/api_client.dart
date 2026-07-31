@@ -8,11 +8,12 @@ import '../../shared/models/models.dart';
 // Ganti URL berikut sesuai environment:
 // Development: URL ngrok atau localhost
 // Production VPS: 'http://YOUR_VPS_IP:3031/api' atau domain Anda 'https://domainanda.com/api'
-const String BASE_URL = 'https://healthtrajectory.cloud/api';
+// const String BASE_URL = 'https://healthtrajectory.cloud/api';
+const String BASE_URL = 'http://localhost:3030/api';
 
 class ApiClient {
   late final Dio _dio;
-  
+
   ApiClient() {
     _dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
@@ -109,26 +110,48 @@ class ApiClient {
       final response = await _dio.get('/user/$userId');
       if (response.statusCode == 200) {
         final data = response.data;
+
+        // Simpan nama & email ke local cache untuk digunakan saat offline
+        final name = data['name'] as String? ?? 'Peserta HTM';
+        final email = data['email'] as String? ?? '';
+        await prefs.setString('user_name', name);
+        if (email.isNotEmpty) await prefs.setString('user_email', email);
+
+        // Baca field opsional yang mungkin ada di profil backend
+        // birth_year, gender, height_cm, weight_kg adalah field opsional
+        final birthYear = (data['birth_year'] as num?)?.toInt()
+            ?? (data['birthYear'] as num?)?.toInt()
+            ?? 0; // 0 = tidak diketahui / belum diisi
+        final gender = data['gender'] as String?
+            ?? data['sex'] as String?
+            ?? '';
+        final heightCm = (data['height_cm'] as num?)?.toDouble()
+            ?? (data['height'] as num?)?.toDouble()
+            ?? 0.0;
+        final weightKg = (data['weight_kg'] as num?)?.toDouble()
+            ?? (data['weight'] as num?)?.toDouble()
+            ?? 0.0;
+
         return Participant(
           id: data['_id'] ?? userId,
-          name: data['name'] ?? 'Peserta HTM',
-          studyCode: data['current_device'] ?? 'HTM-2026',
+          name: name,
+          studyCode: data['current_device'] ?? data['study_code'] ?? 'HTM-2026',
           pin: '******',
-          birthYear: 1988,
-          gender: 'Laki-laki',
-          heightCm: 172.0,
-          weightKg: 68.5,
-          relevantCondition: data['address'] != null && data['address'].isNotEmpty 
-              ? data['address'] 
-              : 'Pemantauan Trajectory Pasca-Aktivitas',
-          staffContact: data['phone_number'] ?? '+62 812-3456-7890 (Dr. Aris)',
+          birthYear: birthYear,
+          gender: gender,
+          heightCm: heightCm,
+          weightKg: weightKg,
+          relevantCondition: data['address'] != null && (data['address'] as String).isNotEmpty
+              ? data['address'] as String
+              : data['condition'] as String? ?? 'Pemantauan Trajectory Pasca-Aktivitas',
+          staffContact: data['phone_number'] as String? ?? '',
         );
       }
     } catch (e) {
       debugPrint("getParticipantProfile error: $e");
     }
 
-    // Return fallback profile using local session values if request fails, so UI doesn't crash
+    // Fallback: gunakan data session lokal, tanpa data dummy palsu
     final prefs = await SharedPreferences.getInstance();
     final cachedId = prefs.getString('user_id') ?? "Offline";
     final cachedName = prefs.getString('user_name') ?? "Peserta (Offline)";
@@ -137,12 +160,12 @@ class ApiClient {
       name: cachedName,
       studyCode: "HTM-2026",
       pin: "******",
-      birthYear: 1990,
-      gender: "Laki-laki",
-      heightCm: 170.0,
-      weightKg: 65.0,
+      birthYear: 0,   // 0 = tidak diketahui
+      gender: "",
+      heightCm: 0.0,
+      weightKg: 0.0,
       relevantCondition: "Pemantauan Trajectory Riset HTM",
-      staffContact: "+62 812-3456-7890 (Staf Riset)",
+      staffContact: "",
     );
   }
 

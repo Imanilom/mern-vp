@@ -507,19 +507,16 @@ class _CurrentActivityCard extends StatelessWidget {
 }
 
 // ─── Koreksi Aktivitas Sebelumnya ────────────────────────────────────────────
-class _CorrectionCard extends StatelessWidget {
+// Menggunakan ConsumerWidget agar dapat membaca eventsProvider dari backend
+class _CorrectionCard extends ConsumerWidget {
   final FunctionalColors colors;
   final bool isDark;
   const _CorrectionCard({required this.colors, required this.isDark});
 
-  static const _recentActivities = [
-    ("09:30 – 10:45", "Duduk Bekerja"),
-    ("08:00 – 09:30", "Berjalan"),
-    ("07:00 – 08:00", "Bangun Tidur"),
-  ];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventsAsync = ref.watch(eventsProvider);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -564,48 +561,105 @@ class _CorrectionCard extends StatelessWidget {
             style: TextStyle(fontSize: 11, color: Colors.grey[500]),
           ),
           const SizedBox(height: 8),
-          ..._recentActivities.map((entry) {
-            final (time, name) = entry;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: InkWell(
-                onTap: () => _showCorrectionDialog(context, time, name),
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.grey.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(10),
+          // Data koreksi diambil dari events backend (3 event terbaru)
+          eventsAsync.when(
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+            error: (_, __) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                "Gagal memuat riwayat aktivitas",
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              ),
+            ),
+            data: (events) {
+              if (events.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(Icons.history_toggle_off_rounded,
+                            size: 32, color: Colors.grey[400]),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Belum ada riwayat aktivitas",
+                          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.access_time_rounded,
-                          size: 14, color: Colors.grey[500]),
-                      const SizedBox(width: 8),
-                      Text(
-                        time,
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey[500]),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          name,
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w600),
+                );
+              }
+
+              // Ambil 3 event terbaru sebagai kandidat koreksi
+              final recentEvents = events.take(3).toList();
+
+              return Column(
+                children: recentEvents.map((event) {
+                  // Format timestamp
+                  final ts = event.timestamp;
+                  final timeStr =
+                      "${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}";
+                  final dateStr =
+                      "${ts.day}/${ts.month}/${ts.year}";
+                  final durationLabel = event.durationMinutes > 0
+                      ? " • ${event.durationMinutes}m"
+                      : "";
+                  final displayTime = "$dateStr $timeStr$durationLabel";
+                  final activityName = event.activity.isNotEmpty
+                      ? event.activity
+                      : event.title;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: InkWell(
+                      onTap: () =>
+                          _showCorrectionDialog(context, displayTime, activityName),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.grey.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.access_time_rounded,
+                                size: 14, color: Colors.grey[500]),
+                            const SizedBox(width: 8),
+                            Text(
+                              displayTime,
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.grey[500]),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                activityName,
+                                style: const TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Icon(Icons.edit_rounded,
+                                size: 14, color: colors.modelPurple),
+                          ],
                         ),
                       ),
-                      Icon(Icons.edit_rounded,
-                          size: 14, color: colors.modelPurple),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -674,3 +728,4 @@ class _CorrectionCard extends StatelessWidget {
     );
   }
 }
+

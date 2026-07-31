@@ -177,23 +177,22 @@ class HomePage extends ConsumerWidget {
                   Consumer(
                     builder: (context, ref, child) {
                       final segmentsAsync = ref.watch(trajectorySegmentsProvider);
-                      final spots = segmentsAsync.when(
+
+                      return segmentsAsync.when(
                         data: (segments) {
                           if (segments.isEmpty) {
-                            return const [
-                              FlSpot(0, 72), FlSpot(1, 74), FlSpot(2, 70),
-                              FlSpot(3, 75), FlSpot(4, 73), FlSpot(5, 76),
-                            ];
+                            // Tidak ada data dari API → tampilkan placeholder informatif
+                            return _TrajectoryEmptyPlaceholder();
                           }
-                          return List.generate(segments.length, (i) {
-                            final hr = (segments[i]['mean_hr'] ?? segments[i]['hr'] ?? 72).toDouble();
+                          final spots = List.generate(segments.length, (i) {
+                            final hr = (segments[i]['mean_hr'] ?? segments[i]['hr'] ?? 0).toDouble();
                             return FlSpot(i.toDouble(), hr);
                           });
+                          return MiniTrajectoryChart(spots: spots);
                         },
-                        loading: () => const [FlSpot(0, 70), FlSpot(1, 72)],
-                        error: (_, __) => const [FlSpot(0, 70), FlSpot(1, 72)],
+                        loading: () => _TrajectoryLoadingPlaceholder(),
+                        error: (_, __) => _TrajectoryEmptyPlaceholder(),
                       );
-                      return MiniTrajectoryChart(spots: spots);
                     },
                   ),
 
@@ -482,6 +481,84 @@ class _MetricGridSkeleton extends StatelessWidget {
   }
 }
 
+// Placeholder saat data trajectory sedang dimuat dari server
+class _TrajectoryLoadingPlaceholder extends StatelessWidget {
+  const _TrajectoryLoadingPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final htmColors = HtmColors.of(context);
+    return Container(
+      height: 120,
+      decoration: BoxDecoration(
+        color: htmColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: htmColors.hairline, width: 1),
+      ),
+      child: Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: htmColors.muted,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              "Memuat data trajectory...",
+              style: TextStyle(fontSize: 12, color: htmColors.muted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Placeholder saat tidak ada data trajectory dari server
+class _TrajectoryEmptyPlaceholder extends StatelessWidget {
+  const _TrajectoryEmptyPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final htmColors = HtmColors.of(context);
+    return Container(
+      height: 120,
+      decoration: BoxDecoration(
+        color: htmColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: htmColors.hairline, width: 1),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.show_chart_rounded, size: 32, color: htmColors.muted),
+            const SizedBox(height: 8),
+            Text(
+              "Belum ada data trajectory",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: htmColors.muted,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Data akan muncul setelah sesi monitoring pertama",
+              style: TextStyle(fontSize: 10, color: htmColors.muted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _QuickActions extends ConsumerWidget {
   final FunctionalColors colors;
   final bool isMonitoring;
@@ -744,7 +821,13 @@ class _LiveMetricGrid extends ConsumerWidget {
             unit: "BPM",
             icon: Icons.favorite_rounded,
             color: colors.dataBlue,
-            trend: "+2",
+            // Trend HR: evaluasi berdasarkan zona klinis (≤60 rendah, 60-100 normal, >100 tinggi)
+            trend: reading.heartRate > 100
+                ? "Tinggi"
+                : reading.heartRate < 60
+                    ? "Rendah"
+                    : null,
+            trendPositive: reading.heartRate >= 60 && reading.heartRate <= 100,
           ),
           MetricCard(
             title: "RR Interval",
@@ -758,16 +841,19 @@ class _LiveMetricGrid extends ConsumerWidget {
             value: "${reading.rmssd}",
             unit: "ms",
             icon: Icons.timeline_rounded,
-            color: colors.stableGreen,
-            trend: "Normal",
-            trendPositive: true,
+            // Warna indikator HRV: ≥20ms = sehat (hijau), <20ms = rendah (oranye)
+            color: reading.rmssd >= 20 ? colors.stableGreen : colors.deviationOrange,
+            // Trend RMSSD berdasarkan threshold klinis (>20ms = Normal)
+            trend: reading.rmssd >= 20 ? "Normal" : "Rendah",
+            trendPositive: reading.rmssd >= 20,
           ),
           MetricCard(
             title: "DFA Alpha-1",
             value: "${reading.dfaAlpha1}",
             unit: "",
             icon: Icons.show_chart_rounded,
-            color: colors.stableGreen,
+            // DFA α1: 0.75–1.0 = zona aerobik optimal, <0.75 = intensitas tinggi
+            color: reading.dfaAlpha1 >= 0.75 ? colors.stableGreen : colors.deviationOrange,
           ),
           MetricCard(
             title: "Aktivitas",
@@ -781,8 +867,10 @@ class _LiveMetricGrid extends ConsumerWidget {
             value: "${reading.signalQuality}",
             unit: "%",
             icon: Icons.wifi_tethering_rounded,
-            color: colors.stableGreen,
-            trendPositive: true,
+            // Kualitas sinyal ≥75% = baik (hijau), <75% = kurang (oranye)
+            color: reading.signalQuality >= 75 ? colors.stableGreen : colors.deviationOrange,
+            trend: reading.signalQuality >= 75 ? "Baik" : "Lemah",
+            trendPositive: reading.signalQuality >= 75,
           ),
         ],
       ),

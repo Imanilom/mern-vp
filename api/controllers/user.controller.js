@@ -536,7 +536,10 @@ export const pushActivity = async (req, res) => {
 
 export const getFilteredAndRawData = async (req, res, next) => {
   try {
-    const resultsDir = path.join(__dirname, '../controllers/hrv-results-Kalman');
+    const resultsDir = path.join(__dirname, '../dump/hrv-results-Kalman');
+    if (!fs.existsSync(resultsDir)) {
+      return res.status(200).json({ data: [] });
+    }
     const files = fs.readdirSync(resultsDir);
 
     const latestFilteredFile = files

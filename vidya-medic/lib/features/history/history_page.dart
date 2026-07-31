@@ -21,6 +21,37 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   String _selectedPeriod = "Hari Ini";
   String _selectedActivity = "Semua Aktivitas";
   String _selectedStatus = "Semua Status";
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  Future<void> _selectDateRange(BuildContext context) async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        final colors = Theme.of(context).extension<FunctionalColors>() ?? FunctionalColors.light;
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: colors.dataBlue,
+              onPrimary: Colors.white,
+              surface: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        // Set to end of the day
+        _endDate = picked.end.add(const Duration(hours: 23, minutes: 59, seconds: 59));
+        _selectedPeriod = "Rentang Tanggal";
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +126,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                       const SizedBox(width: 8),
                       _filterChip("30 Hari", colors),
                       const SizedBox(width: 8),
-                      _filterChip("Rentang Tanggal", colors),
+                      _filterChip("Rentang Tanggal", colors, onTap: () => _selectDateRange(context)),
                     ],
                   ),
                 ),
@@ -158,6 +189,20 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                   data: (events) {
                     // Filter events based on selections
                     final filteredEvents = events.where((e) {
+                      // Filter by Date
+                      final now = DateTime.now();
+                      if (_selectedPeriod == "Hari Ini") {
+                        if (e.timestamp.year != now.year || e.timestamp.month != now.month || e.timestamp.day != now.day) {
+                          return false;
+                        }
+                      } else if (_selectedPeriod == "7 Hari") {
+                        if (now.difference(e.timestamp).inDays > 7) return false;
+                      } else if (_selectedPeriod == "30 Hari") {
+                        if (now.difference(e.timestamp).inDays > 30) return false;
+                      } else if (_selectedPeriod == "Rentang Tanggal" && _startDate != null && _endDate != null) {
+                        if (e.timestamp.isBefore(_startDate!) || e.timestamp.isAfter(_endDate!)) return false;
+                      }
+
                       // Filter by Activity
                       if (_selectedActivity != "Semua Aktivitas") {
                         if (e.activity.toLowerCase() != _selectedActivity.toLowerCase()) {
@@ -289,10 +334,24 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     );
   }
 
-  Widget _filterChip(String label, FunctionalColors colors) {
+  Widget _filterChip(String label, FunctionalColors colors, {VoidCallback? onTap}) {
     final isSelected = _selectedPeriod == label;
+    
+    String displayLabel = label;
+    if (label == "Rentang Tanggal" && isSelected && _startDate != null && _endDate != null) {
+      displayLabel = "${_startDate!.day}/${_startDate!.month} - ${_endDate!.day}/${_endDate!.month}";
+    }
+
     return GestureDetector(
-      onTap: () => setState(() => _selectedPeriod = label),
+      onTap: onTap ?? () {
+        setState(() {
+          _selectedPeriod = label;
+          if (label != "Rentang Tanggal") {
+            _startDate = null;
+            _endDate = null;
+          }
+        });
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -307,7 +366,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           ),
         ),
         child: Text(
-          label,
+          displayLabel,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -370,6 +429,63 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     final String studyCode = participant?.studyCode ?? "HTM-2026";
     final String pdfName = "Laporan_Kesehatan_$participantId.pdf";
 
+    // Ambil data nyata dari provider
+    final segmentsAsync = ref.read(trajectorySegmentsProvider);
+    final eventsAsync = ref.read(eventsProvider);
+
+    final segments = segmentsAsync.value ?? [];
+    final events = eventsAsync.value ?? [];
+
+    // Hitung rata-rata metrik dari data segmen API
+    final double avgHr = segments.isEmpty
+        ? 0
+        : segments
+                .map((s) => (s['mean_hr'] ?? s['hr'] ?? 0).toDouble())
+                .reduce((a, b) => a + b) /
+            segments.length;
+
+    final double avgRmssd = segments.isEmpty
+        ? 0
+        : segments
+                .map((s) => (s['rmssd'] ?? 0).toDouble())
+                .reduce((a, b) => a + b) /
+            segments.length;
+
+    final double avgDfa = segments.isEmpty
+        ? 0
+        : segments
+                .map((s) => (s['dfa_alpha1'] ?? s['dfa'] ?? 0).toDouble())
+                .reduce((a, b) => a + b) /
+            segments.length;
+
+    final int totalAnomalies =
+        events.where((e) => e.type == 'alert' || e.type == 'deviation').length;
+
+    // Format tanggal hari ini
+    final now = DateTime.now();
+    final months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    final String todayStr = "${now.day} ${months[now.month - 1]} ${now.year}";
+
+    // Label klinis berdasarkan nilai rata-rata
+    String hrLabel = avgHr == 0
+        ? 'Belum ada data'
+        : avgHr > 100
+            ? '${avgHr.toStringAsFixed(0)} BPM (Tinggi)'
+            : avgHr < 60
+                ? '${avgHr.toStringAsFixed(0)} BPM (Rendah)'
+                : '${avgHr.toStringAsFixed(0)} BPM (Normal)';
+
+    String rmssdLabel = avgRmssd == 0
+        ? 'Belum ada data'
+        : '${avgRmssd.toStringAsFixed(1)} ms (${avgRmssd >= 20 ? 'Stabil' : 'Rendah'})';
+
+    String dfaLabel = avgDfa == 0
+        ? 'Belum ada data'
+        : '${avgDfa.toStringAsFixed(2)} (${avgDfa >= 0.75 && avgDfa <= 1.0 ? 'Keseimbangan Otonom Baik' : avgDfa < 0.75 ? 'Intensitas Tinggi' : 'Di atas Normal'})';
+
     showDialog(
       context: context,
       builder: (ctx) {
@@ -400,17 +516,27 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                       const Text("HEALTH TRAJECTORY RESEARCH REPORT", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.blue)),
                       const SizedBox(height: 4),
                       Text("ID Peserta: $participantId | Kode Studi: $studyCode", style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                      const Text("Tanggal: 21 Juli 2026", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      // Tanggal diambil dari DateTime.now(), bukan hardcoded
+                      Text("Tanggal: $todayStr", style: const TextStyle(fontSize: 10, color: Colors.grey)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
                 const Text("Ringkasan Metrik Klinis:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 const SizedBox(height: 6),
-                const Text("• Rata-rata Heart Rate: 74 BPM (Normal)", style: TextStyle(fontSize: 11)),
-                const Text("• Rata-rata HRV (RMSSD): 35 ms (Stabil)", style: TextStyle(fontSize: 11)),
-                const Text("• DFA Alpha-1: 1.05 (Keseimbangan Otonom Baik)", style: TextStyle(fontSize: 11)),
-                const Text("• Total Insiden Anomali: 0 Terdeteksi", style: TextStyle(fontSize: 11)),
+                // Semua nilai dihitung dari data API, bukan hardcoded
+                Text("• Rata-rata Heart Rate: $hrLabel", style: const TextStyle(fontSize: 11)),
+                Text("• Rata-rata HRV (RMSSD): $rmssdLabel", style: const TextStyle(fontSize: 11)),
+                Text("• DFA Alpha-1: $dfaLabel", style: const TextStyle(fontSize: 11)),
+                Text("• Total Insiden Anomali: $totalAnomalies Terdeteksi", style: const TextStyle(fontSize: 11)),
+                if (segments.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      "⚠ Belum ada data monitoring. Lakukan sesi monitoring untuk mendapatkan laporan.",
+                      style: TextStyle(fontSize: 10, color: Colors.orange[700], height: 1.4),
+                    ),
+                  ),
                 const SizedBox(height: 14),
                 const Text("Format dokumen akan diekspor sebagai file PDF resmi berenkripsi standar riset kesehatan.", style: TextStyle(fontSize: 10, color: Colors.grey, height: 1.4)),
               ],
@@ -570,7 +696,10 @@ class _CombinedTrajectoryChartState extends ConsumerState<_CombinedTrajectoryCha
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      "Rata-rata: ${(spots.map((s) => s.y).reduce((a, b) => a + b) / spots.length).toStringAsFixed(1)} $unit",
+                      // Guard: hanya hitung rata-rata jika spots tidak kosong
+                      spots.isEmpty
+                          ? "Belum ada data"
+                          : "Rata-rata: ${(spots.map((s) => s.y).reduce((a, b) => a + b) / spots.length).toStringAsFixed(1)} $unit",
                       style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                     ),
                   ],
@@ -578,7 +707,35 @@ class _CombinedTrajectoryChartState extends ConsumerState<_CombinedTrajectoryCha
               ],
             ),
             const SizedBox(height: 16),
-            SizedBox(
+            // Tampilkan empty state jika tidak ada data dari API
+            if (spots.isEmpty)
+              Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bar_chart_rounded, size: 40, color: Colors.grey[400]),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Belum ada data $title",
+                      style: TextStyle(fontSize: 13, color: Colors.grey[500], fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Data akan muncul setelah sesi monitoring dikirim ke server",
+                      style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
+            else
+              SizedBox(
               height: 200,
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -643,8 +800,8 @@ class _CombinedTrajectoryChartState extends ConsumerState<_CombinedTrajectoryCha
                       minY: minY,
                       maxY: maxY,
                       lineBarsData: [
+                        // Baseline reference line hanya ditampilkan jika ada data
                         if (_activeMetricIndex == 0) ...[
-                          // Baseline dotted reference line
                           LineChartBarData(
                             spots: [
                               FlSpot(spots.first.x, 75),
@@ -719,16 +876,84 @@ class _CombinedTrajectoryChartState extends ConsumerState<_CombinedTrajectoryCha
               ),
             ),
             const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Row(
-                children: [
-                  _activityRibbonSegment(3, "Tidur", widget.colors.modelPurple),
-                  _activityRibbonSegment(2, "Berjalan", widget.colors.stableGreen),
-                  _activityRibbonSegment(4, "Duduk Bekerja", widget.colors.dataBlue),
-                  _activityRibbonSegment(1, "Olahraga", widget.colors.deviationOrange),
-                ],
-              ),
+            // Activity Ribbon: dihitung dari distribusi aktivitas nyata dari events API
+            Consumer(
+              builder: (context, ref, _) {
+                final eventsAsync = ref.watch(eventsProvider);
+                return eventsAsync.when(
+                  loading: () => ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      height: 18,
+                      color: Colors.grey.withValues(alpha: 0.2),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 10,
+                          height: 10,
+                          child: CircularProgressIndicator(strokeWidth: 1.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                  error: (_, __) => _staticActivityRibbon(),
+                  data: (events) {
+                    if (events.isEmpty) {
+                      // Tidak ada events → tampilkan placeholder ribbon
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          height: 18,
+                          color: Colors.grey.withValues(alpha: 0.15),
+                          child: const Center(
+                            child: Text(
+                              "Belum ada data aktivitas",
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Hitung distribusi aktivitas dari events nyata
+                    final Map<String, int> activityCount = {};
+                    for (final e in events) {
+                      final act = e.activity.isNotEmpty ? e.activity : 'Lainnya';
+                      activityCount[act] = (activityCount[act] ?? 0) + 1;
+                    }
+
+                    // Ambil top 5 aktivitas terbanyak
+                    final sorted = activityCount.entries.toList()
+                      ..sort((a, b) => b.value.compareTo(a.value));
+                    final top = sorted.take(5).toList();
+
+                    // Warna berbeda per aktivitas
+                    final colors = [
+                      widget.colors.modelPurple,
+                      widget.colors.stableGreen,
+                      widget.colors.dataBlue,
+                      widget.colors.deviationOrange,
+                      widget.colors.attentionYellow,
+                    ];
+
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        children: List.generate(top.length, (i) {
+                          return _activityRibbonSegment(
+                            top[i].value,
+                            top[i].key,
+                            colors[i % colors.length],
+                          );
+                        }),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ],
         ),
@@ -798,35 +1023,31 @@ class _CombinedTrajectoryChartState extends ConsumerState<_CombinedTrajectoryCha
     );
   }
 
+  // Mengembalikan list kosong agar chart menampilkan state 'Belum ada data'
+  // daripada data dummy yang menyesatkan
   List<FlSpot> _fallbackSpots(int metricIndex) {
-    switch (metricIndex) {
-      case 0:
-        return const [
-          FlSpot(0, 72), FlSpot(1, 75), FlSpot(2, 70),
-          FlSpot(3, 90), FlSpot(4, 85), FlSpot(5, 74),
-          FlSpot(6, 72), FlSpot(7, 75), FlSpot(8, 73),
-        ];
-      case 1:
-        return const [
-          FlSpot(0, 34), FlSpot(1, 38), FlSpot(2, 35),
-          FlSpot(3, 20), FlSpot(4, 25), FlSpot(5, 36),
-          FlSpot(6, 35), FlSpot(7, 34), FlSpot(8, 38),
-        ];
-      case 2:
-        return const [
-          FlSpot(0, 1.05), FlSpot(1, 1.08), FlSpot(2, 1.02),
-          FlSpot(3, 0.85), FlSpot(4, 0.90), FlSpot(5, 1.04),
-          FlSpot(6, 1.06), FlSpot(7, 1.05), FlSpot(8, 1.08),
-        ];
-      case 3:
-        return const [
-          FlSpot(0, 5), FlSpot(1, 4), FlSpot(2, 6),
-          FlSpot(3, 45), FlSpot(4, 30), FlSpot(5, 8),
-          FlSpot(6, 4), FlSpot(7, 5), FlSpot(8, 4),
-        ];
-      default:
-        return const <FlSpot>[];
-    }
+    return const <FlSpot>[];
+  }
+
+  // Ribbon statis digunakan saat terjadi error (fallback terakhir)
+  Widget _staticActivityRibbon() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 18,
+        color: Colors.grey.withValues(alpha: 0.15),
+        child: const Center(
+          child: Text(
+            "Data tidak dapat dimuat",
+            style: TextStyle(
+              fontSize: 8,
+              color: Colors.grey,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

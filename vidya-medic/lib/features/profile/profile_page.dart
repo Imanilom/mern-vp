@@ -80,10 +80,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           color: Colors.white.withValues(alpha: 0.3),
                           width: 2.0),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
-                        "P1",
-                        style: TextStyle(
+                        // Inisial diambil dari nama nyata pengguna, bukan hardcoded 'P1'
+                        p.name.isNotEmpty
+                            ? p.name
+                                .trim()
+                                .split(RegExp(r'\s+'))
+                                .take(2)
+                                .map((w) => w[0].toUpperCase())
+                                .join()
+                            : "P",
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
@@ -129,13 +137,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 _InfoCard(isDark: isDark, children: [
                   _InfoRow(
                       "Tahun Lahir & Gender",
-                      "${p.birthYear} • ${p.gender}"),
+                      // Tampilkan 'Belum diisi' jika data tidak tersedia dari backend
+                      (p.birthYear > 0 || p.gender.isNotEmpty)
+                          ? "${p.birthYear > 0 ? p.birthYear.toString() : '-'} • ${p.gender.isNotEmpty ? p.gender : '-'}"
+                          : "Belum diisi"),
                   _InfoRow(
                       "Tinggi & Berat Badan",
-                      "${p.heightCm} cm • ${p.weightKg} kg"),
-                  _InfoRow("Kondisi Relevan", p.relevantCondition),
-                  _InfoRow("Kontak Petugas", p.staffContact,
-                      color: colors.dataBlue),
+                      (p.heightCm > 0 || p.weightKg > 0)
+                          ? "${p.heightCm > 0 ? '${p.heightCm.toStringAsFixed(0)} cm' : '-'} • ${p.weightKg > 0 ? '${p.weightKg.toStringAsFixed(1)} kg' : '-'}"
+                          : "Belum diisi"),
+                  _InfoRow("Kondisi Relevan", p.relevantCondition.isNotEmpty ? p.relevantCondition : "Belum diisi"),
+                  _InfoRow(
+                      "Kontak Petugas",
+                      p.staffContact.isNotEmpty ? p.staffContact : "Belum tersedia",
+                      color: p.staffContact.isNotEmpty ? colors.dataBlue : null),
                 ]),
 
                 const SizedBox(height: 24),
@@ -604,11 +619,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ],
             ),
             const SizedBox(height: 8),
-            const Row(
+            Row(
               children: [
-                Icon(Icons.email_outlined, size: 16, color: Colors.blue),
-                SizedBox(width: 8),
-                Text("support-study@htm.org", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const Icon(Icons.email_outlined, size: 16, color: Colors.blue),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    "support@healthtrajectory.cloud",
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ],
             ),
           ],

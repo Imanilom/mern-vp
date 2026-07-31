@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, type FC } from 'react';
 import {
-  RefreshCw, Download, Users, HeartPulse, Waves, Gauge, Sparkles, Info, X,
+  RefreshCw, Download, Users, HeartPulse, Waves, Gauge, Sparkles, Info,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, ErrorBar, XAxis, YAxis, CartesianGrid,
@@ -8,10 +8,38 @@ import {
   PolarAngleAxis, Radar,
 } from 'recharts';
 
+type Participant = {
+  _id: string;
+  name?: string;
+  username?: string;
+  guid?: string;
+  current_device?: string;
+};
+
+type BaselineStats = Record<string, { mean?: number; std?: number }>;
+
+type BaselineRecord = {
+  activity?: string;
+  time_period?: string;
+  stats?: BaselineStats;
+  is_mature?: boolean;
+  segment_count?: number;
+};
+
+type BaselineEntry = {
+  participant: Participant;
+  baseline: BaselineRecord;
+};
+
+type ToastProps = {
+  message: string;
+  onClose: () => void;
+};
+
 // ---------------------------------------------------------------------------
 // Toast (unchanged behaviour, kept for parity with the rest of the app)
 // ---------------------------------------------------------------------------
-export const Toast = ({ message, onClose }) => {
+export const Toast: FC<ToastProps> = ({ message, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
@@ -39,7 +67,7 @@ export const Toast = ({ message, onClose }) => {
 const ACTIVITY_COLORS = {
   Rest: '#8b5cf6', Light: '#3b82f6', Moderate: '#f59e0b', Vigorous: '#ef4444',
 };
-const activityColor = (name) => ACTIVITY_COLORS[name] || '#6366f1';
+const activityColor = (name: string) => ACTIVITY_COLORS[name as keyof typeof ACTIVITY_COLORS] || '#6366f1';
 
 const USER_PALETTE = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
@@ -58,18 +86,18 @@ const RADAR_METRICS = [
   { key: 'motion_intensity', label: 'Gerak' },
 ];
 
-const metricMean = (baseline, key) => baseline?.stats?.[key]?.mean ?? null;
-const metricStd = (baseline, key) => baseline?.stats?.[key]?.std ?? null;
-const confidenceOf = (b) => (b ? Math.min(1, b.is_mature ? 0.95 : (b.segment_count || 0) / 20) : 0);
-const fmt = (v, d = 1) => (v == null || Number.isNaN(v) ? '—' : Number(v).toFixed(d));
+const metricMean = (baseline: BaselineRecord, key: string): number | null => baseline?.stats?.[key]?.mean ?? null;
+const metricStd = (baseline: BaselineRecord, key: string): number | null => baseline?.stats?.[key]?.std ?? null;
+const confidenceOf = (b: BaselineRecord | null | undefined): number => (b ? Math.min(1, b.is_mature ? 0.95 : (b.segment_count || 0) / 20) : 0);
+const fmt = (v: number | null | undefined, d = 1): string => (v == null || Number.isNaN(v) ? '—' : Number(v).toFixed(d));
 
-function rmssdStatus(v) {
+function rmssdStatus(v: number | null | undefined) {
   if (v == null) return { label: '—', color: 'var(--muted, #9ca3af)' };
   if (v > 40) return { label: 'Sangat Bugar', color: 'var(--success, #10b981)' };
   if (v > 20) return { label: 'Normal', color: 'var(--primary, #3b82f6)' };
   return { label: 'Kurang Bugar', color: 'var(--warning, #f59e0b)' };
 }
-function dfaStatus(v) {
+function dfaStatus(v: number | null | undefined) {
   if (v == null) return { label: '—', color: 'var(--muted, #9ca3af)' };
   if (v < 0.75) return { label: 'Lelah / Stres', color: 'var(--warning, #f59e0b)' };
   if (v <= 1.25) return { label: 'Optimal / Fit', color: 'var(--success, #10b981)' };
@@ -77,16 +105,16 @@ function dfaStatus(v) {
 }
 
 // Real baseline data fetched directly from MongoDB via /api/analysis/baseline/:userId
-export const BaselineModel = (_props) => {
-  const [participants, setParticipants] = useState([]);
-  const [records, setRecords] = useState([]); // [{participant, baseline}] — real MongoDB baselines
+export const BaselineModel: FC = () => {
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [records, setRecords] = useState<BaselineEntry[]>([]); // [{participant, baseline}] — real MongoDB baselines
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [selectedActivity, setSelectedActivity] = useState('all');
   const [timePeriod, setTimePeriod] = useState('all');
-  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
   // Retrieve authUser to check role
   const storedUser = sessionStorage.getItem('htm_user');
@@ -103,13 +131,14 @@ export const BaselineModel = (_props) => {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && !cancelled) {
+            const patients = data as Participant[];
             if (isDoctor) {
-              setParticipants(data);
+              setParticipants(patients);
             } else if (authUser?.guid) {
-              const selfOnly = data.filter((u: any) => u.guid === authUser.guid || u._id === authUser.id);
-              setParticipants(selfOnly.length > 0 ? selfOnly : data.slice(0, 1));
+              const selfOnly = patients.filter((u) => u.guid === authUser.guid || u._id === authUser.id);
+              setParticipants(selfOnly.length > 0 ? selfOnly : patients.slice(0, 1));
             } else {
-              setParticipants(data.slice(0, 1));
+              setParticipants(patients.slice(0, 1));
             }
           }
         }
@@ -130,12 +159,12 @@ export const BaselineModel = (_props) => {
         const token = sessionStorage.getItem('htm_token');
         const perUser = await Promise.all(participants.map(async (p) => {
           const res = await fetch(`/api/analysis/baseline/${p._id}`, { headers: { Authorization: `Bearer ${token}` } });
-          if (!res.ok) return [];
+          if (!res.ok) return [] as BaselineEntry[];
           const data = await res.json();
-          if (!data.success || !Array.isArray(data.data)) return [];
-          return data.data.map((b) => ({ participant: p, baseline: b }));
+          if (!data.success || !Array.isArray(data.data)) return [] as BaselineEntry[];
+          return (data.data as BaselineRecord[]).map((b) => ({ participant: p, baseline: b }));
         }));
-        if (!cancelled) setRecords(perUser.flat());
+        if (!cancelled) setRecords(perUser.flat() as BaselineEntry[]);
       } catch (err) {
         console.error('Failed to fetch baselines:', err);
       } finally {
@@ -147,63 +176,59 @@ export const BaselineModel = (_props) => {
 
   // ---- derived lists ----
   const activities = useMemo(
-    () => Array.from(new Set(records.map((r) => r.baseline.activity))).sort(),
+    () => Array.from(new Set(records.map((r) => r.baseline.activity).filter(Boolean) as string[])).sort(),
     [records],
   );
 
-  useEffect(() => {
-    if (!selectedActivity && activities.length) setSelectedActivity(activities[0]);
-  }, [activities, selectedActivity]);
+  const activityOptions = useMemo(() => ['all', ...activities], [activities]);
 
   const userColor = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, string>();
     participants.forEach((p, i) => map.set(p._id, USER_PALETTE[i % USER_PALETTE.length]));
     return map;
   }, [participants]);
 
   const filteredRecords = useMemo(() => records.filter((r) => (
-    (!selectedActivity || r.baseline.activity === selectedActivity)
+    (selectedActivity === 'all' || r.baseline.activity === selectedActivity)
     && (timePeriod === 'all' || r.baseline.time_period === timePeriod)
   )), [records, selectedActivity, timePeriod]);
 
   // default radar selection: first 3 users present in the current activity
   useEffect(() => {
-    if (filteredRecords.length === 0) return;
     const ids = filteredRecords.map((r) => r.participant._id);
     setSelectedUserIds((prev) => {
       const stillValid = prev.filter((id) => ids.includes(id));
       if (stillValid.length) return stillValid;
       return ids.slice(0, 3);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedActivity, timePeriod]);
+  }, [filteredRecords]);
 
   // ---- chart data: HR by user (with std error bar) ----
   const hrChartData = useMemo(() => filteredRecords.map((r) => ({
-    id: r.participant._id + '_' + r.baseline.time_period,
+    id: `${r.participant._id}_${r.baseline.time_period ?? 'unknown'}`,
     originalId: r.participant._id,
-    timePeriod: r.baseline.time_period,
-    name: (r.participant.name || r.participant.username || '—') + (timePeriod === 'all' ? ` (${TIME_PERIOD_LABEL[r.baseline.time_period] || r.baseline.time_period})` : ''),
-    hr: +fmt(metricMean(r.baseline, 'mean_hr'), 0),
-    hrStd: +fmt(metricStd(r.baseline, 'mean_hr'), 0) || 0,
+    timePeriod: r.baseline.time_period ?? 'all',
+    name: `${r.participant.name || r.participant.username || '—'}${timePeriod === 'all' ? ` (${TIME_PERIOD_LABEL[r.baseline.time_period ?? ''] || r.baseline.time_period || '—'})` : ''}`,
+    hr: metricMean(r.baseline, 'mean_hr') ?? 0,
+    hrStd: metricStd(r.baseline, 'mean_hr') ?? 0,
   })).sort((a, b) => b.hr - a.hr), [filteredRecords, timePeriod]);
 
   // ---- chart data: RMSSD vs DFA quadrant scatter ----
   const scatterData = useMemo(() => filteredRecords.map((r) => ({
-    id: r.participant._id + '_' + r.baseline.time_period,
+    id: `${r.participant._id}_${r.baseline.time_period ?? 'unknown'}`,
     originalId: r.participant._id,
-    timePeriod: r.baseline.time_period,
-    name: (r.participant.name || r.participant.username || '—') + (timePeriod === 'all' ? ` (${TIME_PERIOD_LABEL[r.baseline.time_period] || r.baseline.time_period})` : ''),
+    timePeriod: r.baseline.time_period ?? 'all',
+    name: `${r.participant.name || r.participant.username || '—'}${timePeriod === 'all' ? ` (${TIME_PERIOD_LABEL[r.baseline.time_period ?? ''] || r.baseline.time_period || '—'})` : ''}`,
     x: metricMean(r.baseline, 'rmssd'),
     y: metricMean(r.baseline, 'dfa_alpha1'),
     z: Math.round(confidenceOf(r.baseline) * 100) + 20,
-  })).filter((d) => d.x != null && d.y != null), [filteredRecords, timePeriod]);
+  })).filter((d): d is { id: string; originalId: string; timePeriod: string; name: string; x: number; y: number; z: number } => d.x != null && d.y != null), [filteredRecords, timePeriod]);
 
   // ---- activity comparison across all users/activities ----
   const activitySummary = useMemo(() => {
-    const map = {};
+    const map: Record<string, { activity: string; hr: number[]; rmssd: number[]; dfa: number[]; users: Set<string> }> = {};
     records.forEach((r) => {
-      const act = r.baseline.activity;
+      const act = r.baseline.activity ?? 'Unknown';
       if (!map[act]) map[act] = { activity: act, hr: [], rmssd: [], dfa: [], users: new Set() };
       const hr = metricMean(r.baseline, 'mean_hr');
       const rm = metricMean(r.baseline, 'rmssd');
@@ -213,12 +238,12 @@ export const BaselineModel = (_props) => {
       if (dfa != null) map[act].dfa.push(dfa);
       map[act].users.add(r.participant._id);
     });
-    const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+    const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
     return activities.map((act) => ({
       activity: act,
-      avgHr: +fmt(avg(map[act]?.hr || []), 0),
-      avgRmssd: +fmt(avg(map[act]?.rmssd || []), 0),
-      avgDfa: +fmt(avg(map[act]?.dfa || []), 2),
+      avgHr: Math.round(avg(map[act]?.hr || [])),
+      avgRmssd: Math.round(avg(map[act]?.rmssd || [])),
+      avgDfa: Number(avg(map[act]?.dfa || []).toFixed(2)),
       userCount: map[act]?.users.size || 0,
     }));
   }, [records, activities]);
@@ -229,13 +254,13 @@ export const BaselineModel = (_props) => {
     [filteredRecords, selectedUserIds],
   );
   const radarData = useMemo(() => RADAR_METRICS.map(({ key, label }) => {
-    const vals = filteredRecords.map((r) => metricMean(r.baseline, key)).filter((v) => v != null);
-    const min = Math.min(...vals);
-    const max = Math.max(...vals);
-    const row: any = { metric: label };
+    const vals = filteredRecords.map((r) => metricMean(r.baseline, key)).filter((v): v is number => v != null);
+    const min = vals.length ? Math.min(...vals) : 0;
+    const max = vals.length ? Math.max(...vals) : 1;
+    const row: Record<string, number | string> = { metric: label };
     radarUsers.forEach((r) => {
       const v = metricMean(r.baseline, key);
-      const name = (r.participant.name || r.participant.username || '—') + (timePeriod === 'all' ? ` (${TIME_PERIOD_LABEL[r.baseline.time_period] || r.baseline.time_period})` : '');
+      const name = `${r.participant.name || r.participant.username || '—'}${timePeriod === 'all' ? ` (${TIME_PERIOD_LABEL[r.baseline.time_period ?? ''] || r.baseline.time_period || '—'})` : ''}`;
       row[name] = v == null ? 0 : Math.round(((v - min) / (max - min || 1)) * 100);
     });
     return row;
@@ -250,7 +275,7 @@ export const BaselineModel = (_props) => {
     return { usersWithData, totalBaselines: records.length, activityCount: activities.length, avgConfidence };
   }, [records, activities]);
 
-  const toggleUser = useCallback((id) => {
+  const toggleUser = useCallback((id: string) => {
     setSelectedUserIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= 5) return prev;
@@ -264,8 +289,8 @@ export const BaselineModel = (_props) => {
     const header = ['Nama', 'Aktivitas', 'Waktu', 'HR_mean', 'RMSSD_mean', 'SDNN_mean', 'DFA_alpha1', 'Motion', 'Kepercayaan%'];
     const rows = filteredRecords.map((r) => [
       r.participant.name || r.participant.username || r.participant._id,
-      r.baseline.activity,
-      r.baseline.time_period,
+      r.baseline.activity ?? '—',
+      r.baseline.time_period ?? '—',
       fmt(metricMean(r.baseline, 'mean_hr'), 1),
       fmt(metricMean(r.baseline, 'rmssd'), 1),
       fmt(metricMean(r.baseline, 'sdnn'), 1),
@@ -384,14 +409,15 @@ export const BaselineModel = (_props) => {
 
       {/* ---- filters ---- */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        {activities.map((act) => (
+        {activityOptions.map((act) => (
           <button
             key={act}
             className={`ba-tab ${selectedActivity === act ? 'active' : ''}`}
-            style={selectedActivity === act ? { background: activityColor(act) } : {}}
+            style={selectedActivity === act ? { background: act === 'all' ? 'var(--primary)' : activityColor(act) } : {}}
             onClick={() => setSelectedActivity(act)}
           >
-            <span className="ba-dot" style={{ background: activityColor(act) }} /> {act}
+            <span className="ba-dot" style={{ background: act === 'all' ? 'var(--primary)' : activityColor(act) }} />
+            {act === 'all' ? 'Semua Aktivitas' : act}
           </button>
         ))}
         <select className="ba-select" value={timePeriod} onChange={(e) => setTimePeriod(e.target.value)}>
@@ -410,7 +436,7 @@ export const BaselineModel = (_props) => {
             <div className="card" style={{ padding: 16 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink, #111)', marginBottom: 2 }}>
                 <HeartPulse size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: -2 }} />
-                Detak Jantung per Pengguna — {selectedActivity}
+                Detak Jantung per Pengguna — {selectedActivity === 'all' ? 'Semua Aktivitas' : selectedActivity}
               </h3>
               <p className="text-xs text-muted mb-2">Batang menunjukkan rata-rata; garis vertikal adalah variasi (±SD).</p>
               <ResponsiveContainer width="100%" height={Math.max(220, hrChartData.length * 34)}>
@@ -446,7 +472,10 @@ export const BaselineModel = (_props) => {
                   <Tooltip
                     cursor={{ strokeDasharray: '3 3' }}
                     contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                    formatter={(v, name) => [name === 'RMSSD' ? `${fmt(v)} ms` : fmt(v, 2), name]}
+                    formatter={(v, name) => {
+                      const numericValue = typeof v === 'number' ? v : (v == null ? undefined : Number(v));
+                      return [name === 'RMSSD' ? `${fmt(numericValue)} ms` : fmt(numericValue, 2), name];
+                    }}
                     labelFormatter={() => ''}
                   />
                   <Scatter data={scatterData} name="Pengguna">
@@ -545,9 +574,14 @@ export const BaselineModel = (_props) => {
                         </div>
                       </td>
                       <td className="py-md">
-                        <span className="text-xs" style={{ color: TIME_PERIOD_COLORS[b.time_period] || 'var(--muted, #6b7280)', fontWeight: 600, padding: '2px 6px', background: `${TIME_PERIOD_COLORS[b.time_period] || '#9ca3af'}20`, borderRadius: 4 }}>
-                          {TIME_PERIOD_LABEL[b.time_period] || b.time_period || '—'}
-                        </span>
+                        {(() => {
+                        const period = b.time_period ?? 'all';
+                        return (
+                          <span className="text-xs" style={{ color: TIME_PERIOD_COLORS[period] || 'var(--muted, #6b7280)', fontWeight: 600, padding: '2px 6px', background: `${TIME_PERIOD_COLORS[period] || '#9ca3af'}20`, borderRadius: 4 }}>
+                            {TIME_PERIOD_LABEL[period] || b.time_period || '—'}
+                          </span>
+                        );
+                      })()}
                       </td>
                       <td className="py-md">
                         {hr != null ? (

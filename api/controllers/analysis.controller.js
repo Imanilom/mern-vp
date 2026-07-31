@@ -33,12 +33,12 @@ import {
  * Total = 1.0
  */
 const WEIGHTS = {
-  z_hr:     0.30,
-  z_rr:     0.20,
-  z_sdnn:   0.15,
-  z_rmssd:  0.15,
+  z_hr: 0.30,
+  z_rr: 0.20,
+  z_sdnn: 0.15,
+  z_rmssd: 0.15,
   z_motion: 0.10,
-  z_dfa:    0.10,
+  z_dfa: 0.10,
 };
 
 /**
@@ -47,7 +47,7 @@ const WEIGHTS = {
  */
 const THRESHOLD = {
   CAUTION: 1.5,   // ≥ 1.5 → Caution
-  ALERT:   3.0,   // ≥ 3.0 → Alert
+  ALERT: 3.0,   // ≥ 3.0 → Alert
 };
 
 /**
@@ -56,7 +56,7 @@ const THRESHOLD = {
  */
 const PERSISTENCE_MIN = {
   CAUTION: 2,   // 2 × 3 menit = 6 menit
-  ALERT:   3,   // 3 × 3 menit = 9 menit
+  ALERT: 3,   // 3 × 3 menit = 9 menit
 };
 
 /**
@@ -71,7 +71,7 @@ const BASELINE_MATURITY = 20;
  * α1 ~ 1.0 = normal long-range correlations
  */
 const DFA_HEALTHY_ALPHA1 = 1.0;
-const DFA_NORM_FACTOR    = 0.5; // normalisasi deviasi DFA
+const DFA_NORM_FACTOR = 0.5; // normalisasi deviasi DFA
 
 // ── Entry point Layer 3 ───────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ export async function runAnalysisPipeline(triggeredBy = 'CRON') {
       try {
         const result = await analyzeUser(userId);
         totalAnalyzed += result.analyzed;
-        totalEvents   += result.events;
+        totalEvents += result.events;
       } catch (err) {
         console.error(`[Layer3] Error user ${userId}:`, err.message);
       }
@@ -144,7 +144,7 @@ export async function runAnalysisPipeline(triggeredBy = 'CRON') {
       end_time: new Date(),
       duration_ms: Date.now() - job.start_time.getTime(),
       error: err.message,
-    }).catch(() => {});
+    }).catch(() => { });
     return { success: false, error: err.message };
   }
 }
@@ -185,7 +185,7 @@ async function analyzeUser(userId) {
     const bulkOps = [];
 
     for (const seg of segments) {
-      const activity   = seg.activity_label || 'Unknown';
+      const activity = seg.activity_label || 'Unknown';
       const timePeriod = getTimePeriod(seg.window_start);
 
       // ── Langkah 1: Ambil baseline ──────────────────────────────────────────
@@ -217,7 +217,9 @@ async function analyzeUser(userId) {
       if (eventCreated) totalEvents++;
 
       // ── Langkah 7: Update baseline (Welford) ──────────────────────────────
-      await updateBaseline(baseline, seg.features);
+      if (classification === 'Normal') {
+        await updateBaseline(baseline, seg.features);
+      }
 
       // ── Langkah 8: Kumpulkan bulk update untuk segment ────────────────────
       bulkOps.push({
@@ -229,12 +231,12 @@ async function analyzeUser(userId) {
               anomaly_score: round2(score),
               classification,
               z_scores: {
-                z_hr:     round2(zScores.z_hr),
-                z_rr:     round2(zScores.z_rr),
-                z_sdnn:   round2(zScores.z_sdnn),
-                z_rmssd:  round2(zScores.z_rmssd),
+                z_hr: round2(zScores.z_hr),
+                z_rr: round2(zScores.z_rr),
+                z_sdnn: round2(zScores.z_sdnn),
+                z_rmssd: round2(zScores.z_rmssd),
                 z_motion: round2(zScores.z_motion),
-                z_dfa:    round2(zScores.z_dfa),
+                z_dfa: round2(zScores.z_dfa),
               },
             },
           },
@@ -299,19 +301,19 @@ async function updateBaseline(baseline, features) {
 
     // Welford update
     stat.n += 1;
-    const delta  = value - stat.mean;
-    stat.mean   += delta / stat.n;
+    const delta = value - stat.mean;
+    stat.mean += delta / stat.n;
     const delta2 = value - stat.mean;
-    stat.M2     += delta * delta2;
-    stat.std     = stat.n > 1 ? Math.sqrt(stat.M2 / (stat.n - 1)) : 0;
-    stat.min     = stat.min === null ? value : Math.min(stat.min, value);
-    stat.max     = stat.max === null ? value : Math.max(stat.max, value);
+    stat.M2 += delta * delta2;
+    stat.std = stat.n > 1 ? Math.sqrt(stat.M2 / (stat.n - 1)) : 0;
+    stat.min = stat.min === null ? value : Math.min(stat.min, value);
+    stat.max = stat.max === null ? value : Math.max(stat.max, value);
 
     updateFields[`stats.${key}`] = stat;
   }
 
-  const newCount   = baseline.segment_count + 1;
-  const isMature   = newCount >= BASELINE_MATURITY;
+  const newCount = baseline.segment_count + 1;
+  const isMature = newCount >= BASELINE_MATURITY;
 
   await Baseline.updateOne(
     { _id: baseline._id },
@@ -327,7 +329,7 @@ async function updateBaseline(baseline, features) {
 
   // Refresh in-memory untuk session saat ini
   baseline.segment_count = newCount;
-  baseline.is_mature     = isMature;
+  baseline.is_mature = isMature;
   for (const [k, v] of Object.entries(updateFields)) {
     const shortKey = k.replace('stats.', '');
     if (baseline.stats) baseline.stats[shortKey] = v;
@@ -344,28 +346,26 @@ async function updateBaseline(baseline, features) {
  * tapi diberi penalty factor 0.5 agar tidak terlalu agresif.
  */
 function computeZScores(features, baseline, seg) {
-  const maturityFactor = baseline.is_mature ? 1.0 : 0.5;
-
   const zScore = (value, key) => {
     if (value === null || value === undefined || isNaN(value)) return 0;
     const stat = baseline.stats?.[key];
     if (!stat || stat.n < 2 || stat.std < 0.001) return 0;
-    return ((value - stat.mean) / stat.std) * maturityFactor;
+    return ((value - stat.mean) / stat.std);
   };
 
   // DFA α1: deviasi dari referensi sehat (1.0), tidak pakai baseline personal
   const dfaVal = features?.dfa_alpha1;
-  const zDfa   = dfaVal !== null && dfaVal !== undefined && !isNaN(dfaVal)
-    ? Math.min(Math.abs(dfaVal - DFA_HEALTHY_ALPHA1) / DFA_NORM_FACTOR, 4) * maturityFactor
+  const zDfa = dfaVal !== null && dfaVal !== undefined && !isNaN(dfaVal)
+    ? Math.min(Math.abs(dfaVal - DFA_HEALTHY_ALPHA1) / DFA_NORM_FACTOR, 4)
     : 0;
 
   return {
-    z_hr:     zScore(features?.mean_hr,          'mean_hr'),
-    z_rr:     zScore(features?.mean_rr,           'mean_rr'),
-    z_sdnn:   zScore(features?.sdnn,              'sdnn'),
-    z_rmssd:  zScore(features?.rmssd,             'rmssd'),
-    z_motion: zScore(features?.motion_intensity,  'motion_intensity'),
-    z_dfa:    zDfa,
+    z_hr: zScore(features?.mean_hr, 'mean_hr'),
+    z_rr: zScore(features?.mean_rr, 'mean_rr'),
+    z_sdnn: zScore(features?.sdnn, 'sdnn'),
+    z_rmssd: zScore(features?.rmssd, 'rmssd'),
+    z_motion: zScore(features?.motion_intensity, 'motion_intensity'),
+    z_dfa: zDfa,
   };
 }
 
@@ -379,20 +379,27 @@ function computeZScores(features, baseline, seg) {
  * Score ≥ THRESHOLD.ALERT   → Alert
  */
 function computeCompositeScore(zScores) {
+  const d_hr = Math.max(0, zScores.z_hr);
+  const d_rr = Math.max(0, -zScores.z_rr);
+  const d_sdnn = Math.max(0, -zScores.z_sdnn);
+  const d_rmssd = Math.max(0, -zScores.z_rmssd);
+  const d_motion = Math.max(0, zScores.z_motion);
+  const d_dfa = Math.max(0, zScores.z_dfa);
+
   return (
-    WEIGHTS.z_hr     * Math.abs(zScores.z_hr)     +
-    WEIGHTS.z_rr     * Math.abs(zScores.z_rr)     +
-    WEIGHTS.z_sdnn   * Math.abs(zScores.z_sdnn)   +
-    WEIGHTS.z_rmssd  * Math.abs(zScores.z_rmssd)  +
-    WEIGHTS.z_motion * Math.abs(zScores.z_motion) +
-    WEIGHTS.z_dfa    * Math.abs(zScores.z_dfa)
+    WEIGHTS.z_hr * d_hr +
+    WEIGHTS.z_rr * d_rr +
+    WEIGHTS.z_sdnn * d_sdnn +
+    WEIGHTS.z_rmssd * d_rmssd +
+    WEIGHTS.z_motion * d_motion +
+    WEIGHTS.z_dfa * d_dfa
   );
 }
 
 // ── Klasifikasi ───────────────────────────────────────────────────────────────
 
 function classify(score) {
-  if (score >= THRESHOLD.ALERT)   return 'Alert';
+  if (score >= THRESHOLD.ALERT) return 'Alert';
   if (score >= THRESHOLD.CAUTION) return 'Caution';
   return 'Normal';
 }
@@ -416,11 +423,11 @@ function computeTrajectory(seg, prevSeg, persistenceState, activity) {
   const state = persistenceState[activity];
 
   return {
-    delta_hr:         round2(deltaHr),
-    slope_hr:         round4(seg.features?.slope_hr ?? 0),
-    persistence:      state?.count ?? 0,
-    dfa_alpha1:       seg.features?.dfa_alpha1 ?? null,
-    dfa_alpha2:       seg.features?.dfa_alpha2 ?? null, // long-range correlation
+    delta_hr: round2(deltaHr),
+    slope_hr: round4(seg.features?.slope_hr ?? 0),
+    persistence: state?.count ?? 0,
+    dfa_alpha1: seg.features?.dfa_alpha1 ?? null,
+    dfa_alpha2: seg.features?.dfa_alpha2 ?? null, // long-range correlation
     recovery_time_ms: null, // diisi saat event di-close
   };
 }
@@ -443,6 +450,7 @@ async function updatePersistence(
   if (!persistenceState[activity]) {
     persistenceState[activity] = {
       count: 0,
+      recoveryCount: 0,
       segIds: [],
       scores: [],
       peakScore: 0,
@@ -456,6 +464,7 @@ async function updatePersistence(
   let eventCreated = false;
 
   if (classification !== 'Normal') {
+    state.recoveryCount = 0;
     // Akumulasi window anomali
     state.count++;
     state.segIds.push(seg._id);
@@ -463,7 +472,7 @@ async function updatePersistence(
 
     if (score > state.peakScore) {
       state.peakScore = score;
-      state.peakSeg   = seg;
+      state.peakSeg = seg;
     }
     if (!state.startSeg) {
       state.startSeg = seg;
@@ -477,21 +486,22 @@ async function updatePersistence(
     if (state.count >= minRequired && !state.openEventId) {
       // Buat event baru
       const event = await AnomalyEvent.create({
-        user_id:        userId,
-        device_id:      seg.device_id,
-        activity:       activity,
-        onset_time:     state.startSeg.window_start,
-        onset_score:    state.scores[0],
-        peak_time:      state.peakSeg.window_start,
-        peak_score:     state.peakScore,
+        user_id: userId,
+        device_id: seg.device_id,
+        activity: activity,
+        onset_time: state.startSeg.window_start,
+        onset_score: state.scores[0],
+        peak_time: state.peakSeg.window_start,
+        peak_score: state.peakScore,
         classification: classify(state.peakScore),
         z_scores_at_peak: zScores,
         trajectory: {
-          delta_hr:    trajectory.delta_hr,
-          slope_hr:    trajectory.slope_hr,
+          sequence_of_scores: state.scores,
+          delta_hr: trajectory.delta_hr,
+          slope_hr: trajectory.slope_hr,
           persistence: state.count,
-          dfa_alpha1:  state.peakSeg.features?.dfa_alpha1 ?? null,
-          dfa_alpha2:  state.peakSeg.features?.dfa_alpha2 ?? null,
+          dfa_alpha1: state.peakSeg.features?.dfa_alpha1 ?? null,
+          dfa_alpha2: state.peakSeg.features?.dfa_alpha2 ?? null,
           recovery_time_ms: null,
         },
         segment_ids: state.segIds,
@@ -508,12 +518,13 @@ async function updatePersistence(
         { _id: state.openEventId },
         {
           $set: {
-            peak_time:      state.peakSeg.window_start,
-            peak_score:     state.peakScore,
+            peak_time: state.peakSeg.window_start,
+            peak_score: state.peakScore,
             classification: classify(state.peakScore),
+            'trajectory.sequence_of_scores': state.scores,
             'trajectory.persistence': state.count,
-            'trajectory.dfa_alpha1':  state.peakSeg.features?.dfa_alpha1 ?? null,
-            'z_scores_at_peak':       zScores,
+            'trajectory.dfa_alpha1': state.peakSeg.features?.dfa_alpha1 ?? null,
+            'z_scores_at_peak': zScores,
           },
           $push: { segment_ids: seg._id },
         }
@@ -521,8 +532,11 @@ async function updatePersistence(
     }
 
   } else {
-    // Score kembali Normal — reset state
-    if (state.openEventId && state.count > 0) {
+    // Score kembali Normal
+    state.recoveryCount++;
+    const RECOVERY_MIN = 2; // Butuh 2 window Normal berturut-turut untuk menutup event
+
+    if (state.openEventId && state.recoveryCount >= RECOVERY_MIN) {
       // Hitung recovery time: dari peak sampai window Normal ini
       const recoveryMs = seg.window_end - (state.peakSeg?.window_start ?? seg.window_start);
 
@@ -530,25 +544,35 @@ async function updatePersistence(
         { _id: state.openEventId },
         {
           $set: {
-            resolved_time:              seg.window_start,
-            duration_ms:                seg.window_start - (state.startSeg?.window_start ?? seg.window_start),
-            status:                     'closed',
+            resolved_time: seg.window_start,
+            duration_ms: seg.window_start - (state.startSeg?.window_start ?? seg.window_start),
+            status: 'closed',
             'trajectory.recovery_time_ms': Math.max(recoveryMs, 0),
           },
         }
       );
 
       console.log(`[Layer3] Event closed untuk user=${userId} aktivitas=${activity}, recovery=${recoveryMs}ms`);
-    }
 
-    // Reset state
-    state.count      = 0;
-    state.segIds     = [];
-    state.scores     = [];
-    state.peakScore  = 0;
-    state.peakSeg    = null;
-    state.startSeg   = null;
-    state.openEventId = null;
+      // Reset state karena event sudah ditutup
+      state.count = 0;
+      state.recoveryCount = 0;
+      state.segIds = [];
+      state.scores = [];
+      state.peakScore = 0;
+      state.peakSeg = null;
+      state.startSeg = null;
+      state.openEventId = null;
+    } else if (!state.openEventId) {
+      // Jika tidak ada event open dan menerima Normal, reset saja akumulasi Caution/Alert sebelumnya
+      state.count = 0;
+      state.recoveryCount = 0;
+      state.segIds = [];
+      state.scores = [];
+      state.peakScore = 0;
+      state.peakSeg = null;
+      state.startSeg = null;
+    }
   }
 
   return eventCreated;
@@ -577,8 +601,8 @@ async function closeResolvedEvents(userId, persistenceState) {
  */
 export function getTimePeriod(timestampMs) {
   const hour = new Date(timestampMs).getUTCHours() + 7; // WIB offset
-  const h    = hour % 24;
-  if (h >= 6  && h < 12) return 'morning';
+  const h = hour % 24;
+  if (h >= 6 && h < 12) return 'morning';
   if (h >= 12 && h < 18) return 'afternoon';
   if (h >= 18 && h < 24) return 'evening';
   return 'night';
@@ -770,7 +794,7 @@ export async function getActivityContext(req, res) {
     const { userId } = req.params;
     const { date } = req.query;
     const objectId = new mongoose.Types.ObjectId(userId);
-    
+
     const matchStage = { user_id: objectId, is_valid: true };
     if (date) {
       // Create a Date object in local time assuming date is YYYY-MM-DD
@@ -782,14 +806,16 @@ export async function getActivityContext(req, res) {
     // Aggregate segments by activity
     const stats = await Segment.aggregate([
       { $match: matchStage },
-      { $group: {
-        _id: '$activity_label',
-        windows: { $sum: 1 },
-        mean_hr: { $avg: '$features.mean_hr' },
-        sd_hr: { $stdDevPop: '$features.mean_hr' },
-        rmssd: { $avg: '$features.rmssd' },
-        dfa_alpha1: { $avg: '$features.dfa_alpha1' }
-      }}
+      {
+        $group: {
+          _id: '$activity_label',
+          windows: { $sum: 1 },
+          mean_hr: { $avg: '$features.mean_hr' },
+          sd_hr: { $stdDevPop: '$features.mean_hr' },
+          rmssd: { $avg: '$features.rmssd' },
+          dfa_alpha1: { $avg: '$features.dfa_alpha1' }
+        }
+      }
     ]);
 
     const formatted = stats.map(s => ({
@@ -827,7 +853,7 @@ export async function getAnalyzedSegments(userId, limit = 100) {
   })
     .sort({ window_start: -1 })
     .limit(limit)
-    .select('window_start window_end activity_label anomaly_score classification z_scores features.mean_hr features.mean_rr features.dfa_alpha1 features.dfa_alpha2')
+    .select('window_start window_end activity_label anomaly_score classification z_scores features.mean_hr features.mean_rr features.dfa_alpha1 features.dfa_alpha2 features.slope_hr features.delta_hr')
     .lean();
 }
 
@@ -860,16 +886,16 @@ export async function recalculateBaseline(baselineId) {
     mean_rr: {}, sdnn: {}, rmssd: {}, rolling_variance: {},
     motion_intensity: {}, dfa_alpha1: {}
   };
-  
+
   const baseline = await Baseline.findByIdAndUpdate(
     baselineId,
-    { 
-      $set: { 
-        stats: emptyStats, 
-        segment_count: 0, 
+    {
+      $set: {
+        stats: emptyStats,
+        segment_count: 0,
         is_mature: false,
         status: 'learning',
-        is_frozen: false 
+        is_frozen: false
       },
       $inc: { version: 1 }
     },
@@ -899,7 +925,7 @@ export async function getEventSegments(eventId) {
     .sort({ window_start: 1 }) // Urutkan secara kronologis (dari awal onset)
     .select('window_start window_end activity_label anomaly_score classification z_scores features')
     .lean();
-    
+
   return { event, segments };
 }
 
@@ -918,7 +944,7 @@ export async function updateEventStatus(eventId, status) {
 export async function validateEvent(eventId, label, notes) {
   const updateData = { validation_label: label };
   if (notes !== undefined) updateData.reviewer_notes = notes;
-  
+
   // Jika diverifikasi sebagai valid/false positive, biasanya status pindah ke Validated/False Positive
   if (label === 'False positive') updateData.review_status = 'False Positive';
   else if (label === 'Valid anomaly') updateData.review_status = 'Validated';

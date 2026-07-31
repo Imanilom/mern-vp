@@ -32,11 +32,14 @@ export const backofficeRegister = async (req, res, next) => {
 export const signin = async (req, res, next) => {
   const { email, password } = req.body;
   try {
-    let validUser = await User.findOne({ email });
+    const escapedEmail = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const emailRegex = new RegExp(`^${escapedEmail}$`, 'i');
+
+    let validUser = await User.findOne({ email: emailRegex });
     let isPatient = false;
 
     if (!validUser) {
-      validUser = await Patient.findOne({ email });
+      validUser = await Patient.findOne({ email: emailRegex });
       isPatient = true;
     }
 

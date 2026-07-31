@@ -38,8 +38,9 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
   const [participants, setParticipants] = useState<any[]>([]);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  // Default ke hari ini langsung — tidak mengandalkan data pertama yang muncul
-  const [selectedDay, setSelectedDay] = useState<string>(todayLocal());
+  // Default ke string kosong agar bisa melihat data apa pun (tidak terkunci di hari ini)
+  const [selectedDay, setSelectedDay] = useState<string>('');
+  const [selectedDayHasData, setSelectedDayHasData] = useState<boolean | null>(null);
   const [startTime, setStartTime] = useState<string>('');
   const [endTime, setEndTime] = useState<string>('');
   // Simpan timestamp terakhir untuk live polling incremental (?since=)
@@ -66,7 +67,10 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
   // Fungsi fetch data — bisa full atau incremental (?since=)
   const fetchRawData = async (incremental = false) => {
     if (!selectedParticipantId) return;
-    if (!incremental) setLoading(true);
+    if (!incremental) {
+      setLoading(true);
+      setSelectedDayHasData(null);
+    }
     try {
       const token = sessionStorage.getItem('htm_token');
       let url = `/api/data/raw/${selectedParticipantId}?`;
@@ -110,9 +114,11 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
       if (incremental && formatted.length > 0) {
         // Tambahkan ke data yang sudah ada, pertahankan 2000 titik terakhir
         setData(prev => [...prev, ...formatted].slice(-2000));
+        setSelectedDayHasData(true);
       } else {
         setData(formatted);
         lastTimestampRef.current = json.lastTimestamp ?? null;
+        setSelectedDayHasData(formatted.length > 0);
       }
     } catch (err) {
       console.error(err);
@@ -237,13 +243,20 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           <div>
             <span className="eyebrow" style={{ display: 'block', marginBottom: 4 }}>Pilih Tanggal</span>
-            <input 
-              type="date" 
-              value={selectedDay} 
-              onChange={(e) => setSelectedDay(e.target.value)} 
-              className="select-chip font-mono"
-              style={{ padding: '4px 8px', border: '1px solid var(--hairline)', borderRadius: 4, background: 'var(--surface)', color: 'var(--ink)' }}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input 
+                type="date" 
+                value={selectedDay} 
+                onChange={(e) => { setSelectedDay(e.target.value); setSelectedDayHasData(null); }} 
+                className="select-chip font-mono"
+                style={{ padding: '4px 8px', border: '1px solid var(--hairline)', borderRadius: 4, background: 'var(--surface)', color: 'var(--ink)' }}
+              />
+              <span className={`badge ${selectedDay ? (selectedDayHasData === null ? 'badge-monitoring' : selectedDayHasData ? 'badge-stable' : 'badge-caution') : 'badge-monitoring'}`} style={{ fontSize: 11, padding: '5px 10px' }}>
+                {selectedDay
+                  ? (selectedDayHasData === null ? 'Mengecek...' : selectedDayHasData ? 'Ada data' : 'Belum ada data')
+                  : 'Semua tanggal'}
+              </span>
+            </div>
           </div>
           
           <div>
@@ -270,7 +283,7 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
           
           <div style={{ marginTop: 18 }}>
             <button 
-              onClick={() => { setStartTime(''); setEndTime(''); setSelectedDay(''); }}
+              onClick={() => { setStartTime(''); setEndTime(''); setSelectedDay(''); setSelectedDayHasData(null); }}
               className="select-chip"
               style={{ cursor: 'pointer', padding: '6px 12px' }}
             >

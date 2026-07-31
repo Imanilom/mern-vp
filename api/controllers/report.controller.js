@@ -62,12 +62,24 @@ export async function generateReportData(req, res) {
         if (activity && activity !== 'All') qEvent.activity = activity;
         if (status && status !== 'All') qEvent.review_status = status;
 
-        data = await AnomalyEvent.find(qEvent)
+        const rawEvents = await AnomalyEvent.find(qEvent)
           .sort({ onset_time: -1 })
-          .populate('user_id', 'email')
-          .select('onset_time peak_score activity duration_ms review_status validation_label trajectory')
+          .populate('user_id', 'guid')
           .lean();
-          
+
+        data = rawEvents.map(e => ({
+          user_id: e.user_id?.guid || e.user_id,
+          start_time: new Date(e.onset_time).toISOString().replace('T', ' ').substring(0, 19),
+          end_time: e.resolved_time ? new Date(e.resolved_time).toISOString().replace('T', ' ').substring(0, 19) : null,
+          activity: e.activity,
+          status: e.classification,
+          HR_mean: e.trajectory?.delta_hr, // simplified representation, typically peak_HR could be used here
+          baseline_HR: null, // this could be pulled if populated
+          z_score: e.peak_score,
+          persistence_duration_sec: e.duration_ms ? Math.floor(e.duration_ms / 1000) : null,
+          recovery_time_sec: e.trajectory?.recovery_time_ms ? Math.floor(e.trajectory.recovery_time_ms / 1000) : null,
+          trajectory_status: e.trajectory?.persistence >= 2 ? "Trajectory Anomaly" : "Point Anomaly"
+        }));
         summary = {
           total_events: data.length,
           avg_magnitude: data.length ? data.reduce((a, b) => a + (b.peak_score || 0), 0) / data.length : 0,

@@ -16,8 +16,8 @@ ExecStart=/usr/bin/curl \
   --data '{"layer":"3"}' \
   http://localhost:3030/api/internal/run-pipeline
 
-Restart=on-failure
-RestartSec=30s
+# Restart=on-failure
+# RestartSec=30s
 
 StandardOutput=journal
 StandardError=journal

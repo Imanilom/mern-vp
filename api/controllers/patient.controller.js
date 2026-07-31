@@ -3,11 +3,14 @@ import User from '../models/user.model.js';
 
 export const getAllPatients = async (req, res) => {
     try {
-        const { role, id } = req.user; // doctor
+        const { role, id } = req.user;
 
-        const patients = await User.find({
-            docter: id
-        });
+        let patients;
+        if (role === 'doctor') {
+            patients = await User.find({ docter: id });
+        } else {
+            patients = await User.find({ _id: id });
+        }
 
         res.status(200).json(patients);
     } catch (error) {

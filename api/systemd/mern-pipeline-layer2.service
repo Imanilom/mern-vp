@@ -20,8 +20,8 @@ ExecStart=/usr/bin/curl \
   http://localhost:3030/api/internal/run-pipeline
 
 # Coba ulang jika gagal (misal container restart)
-Restart=on-failure
-RestartSec=30s
+# Restart=on-failure
+# RestartSec=30s
 
 # Catat output ke systemd journal
 StandardOutput=journal

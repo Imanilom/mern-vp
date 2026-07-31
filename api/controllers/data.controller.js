@@ -667,8 +667,10 @@ async function processUserData(userId) {
 }
 
 /**
- * Segmentasi logs ke window 5-menit.
- * Setiap log dikelompokkan berdasarkan: floor(timestamp / WINDOW_MS) * WINDOW_MS
+/**
+ * Segmentasi logs ke window 5-menit dengan memperhatikan perubahan aktivitas.
+ * Aktivitas disegmentasi terlebih dahulu (Episode).
+ * Jika dalam suatu rentang ada aktivitas yang sama, kita kelompokkan, lalu potong menjadi window 5-menit.
  *
  * @param {Array} logs - Logs yang sudah difilter IQR, sorted by timestamp
  * @returns {Array<{ windowStart, windowEnd, deviceId, activityLabel, logs }>}
@@ -676,42 +678,58 @@ async function processUserData(userId) {
 function segmentIntoWindows(logs) {
   if (!logs || logs.length === 0) return [];
 
-  const windowMap = new Map();
+  const windows = [];
+  let currentEpisode = [];
+  let currentActivity = logs[0].activity || 'Unknown';
 
-  for (const log of logs) {
-    const windowKey = Math.floor(log.timestamp / WINDOW_MS) * WINDOW_MS;
-
-    if (!windowMap.has(windowKey)) {
-      windowMap.set(windowKey, {
-        windowStart: windowKey,
-        windowEnd: windowKey + WINDOW_MS,
-        deviceId: log.device_id || 'UNKNOWN',
-        activityLabel: log.activity || 'Unknown',
-        logs: [],
+  // Helper untuk memotong episode menjadi window 5 menit
+  const processEpisode = (episodeLogs, activity) => {
+    if (episodeLogs.length === 0) return;
+    
+    // Mulai window dari awal episode
+    let windowStart = Math.floor(episodeLogs[0].timestamp / WINDOW_MS) * WINDOW_MS;
+    let currentWindowLogs = [];
+    
+    for (const log of episodeLogs) {
+      if (log.timestamp >= windowStart + WINDOW_MS) {
+        if (currentWindowLogs.length > 0) {
+          windows.push({
+            windowStart,
+            windowEnd: windowStart + WINDOW_MS,
+            deviceId: currentWindowLogs[0].device_id || 'UNKNOWN',
+            activityLabel: activity,
+            logs: currentWindowLogs,
+          });
+        }
+        windowStart = Math.floor(log.timestamp / WINDOW_MS) * WINDOW_MS;
+        currentWindowLogs = [];
+      }
+      currentWindowLogs.push(log);
+    }
+    
+    if (currentWindowLogs.length > 0) {
+      windows.push({
+        windowStart,
+        windowEnd: windowStart + WINDOW_MS,
+        deviceId: currentWindowLogs[0].device_id || 'UNKNOWN',
+        activityLabel: activity,
+        logs: currentWindowLogs,
       });
     }
+  };
 
-    windowMap.get(windowKey).logs.push(log);
-  }
-
-  // Tentukan label aktivitas dominan per window (modus)
-  for (const win of windowMap.values()) {
-    win.activityLabel = getDominantActivity(win.logs);
-  }
-
-  return [...windowMap.values()].sort((a, b) => a.windowStart - b.windowStart);
-}
-
-/**
- * Hitung modus activity dari log dalam window.
- */
-function getDominantActivity(logs) {
-  const freq = {};
   for (const log of logs) {
     const act = log.activity || 'Unknown';
-    freq[act] = (freq[act] || 0) + 1;
+    if (act !== currentActivity) {
+      processEpisode(currentEpisode, currentActivity);
+      currentActivity = act;
+      currentEpisode = [];
+    }
+    currentEpisode.push(log);
   }
-  return Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+  processEpisode(currentEpisode, currentActivity);
+
+  return windows.sort((a, b) => a.windowStart - b.windowStart);
 }
 
 /**
@@ -1262,9 +1280,11 @@ const calculateRMSSD = (logs) => {
 const calculateSDNN = (logs) => {
   try {
     const rr_intervals = logs.map(log => log.RR);
-    const mean = rr_intervals.reduce((a, b) => a + b, 0) / rr_intervals.length;
+    const len = rr_intervals.length;
+    if (len <= 1) return 0;
+    const mean = rr_intervals.reduce((a, b) => a + b, 0) / len;
     const squared_differences = rr_intervals.map(rr => Math.pow(rr - mean, 2));
-    const variance = squared_differences.reduce((a, b) => a + b, 0) / rr_intervals.length;
+    const variance = squared_differences.reduce((a, b) => a + b, 0) / (len - 1);
 
     return Math.sqrt(variance);
   } catch (error) {

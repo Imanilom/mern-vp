@@ -24,6 +24,7 @@ const ZScoreSchema = new mongoose.Schema({
 
 // Analisis trajectory saat event berlangsung
 const TrajectorySchema = new mongoose.Schema({
+  sequence_of_scores: [{ type: Number }], // S = {s1, s2, s3, ..., sn} (anomaly scores pada setiap window)
   delta_hr:    { type: Number }, // selisih mean_hr onset vs peak
   slope_hr:    { type: Number }, // rata-rata slope_hr dalam event
   persistence: { type: Number }, // jumlah window berturut-turut di atas threshold

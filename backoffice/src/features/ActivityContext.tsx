@@ -50,6 +50,7 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
   const [segments, setSegments] = useState<any[]>([]);
   const [activityContexts, setActivityContexts] = useState<any[]>([]);
   const [selectedDay, setSelectedDay] = useState<string>('');
+  const [selectedDayHasData, setSelectedDayHasData] = useState<'unknown' | 'hasData' | 'noData'>('unknown');
 
   // Doctor validation modal state
   const [selectedSegmentForVal, setSelectedSegmentForVal] = useState<any | null>(null);
@@ -78,6 +79,11 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
           const data = await resAct.json();
           if (data.success) {
             setActivities(data.data);
+            if (selectedDay) {
+              setSelectedDayHasData(Array.isArray(data.data) && data.data.length > 0 ? 'hasData' : 'noData');
+            } else {
+              setSelectedDayHasData('unknown');
+            }
           }
         }
 
@@ -201,17 +207,24 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <div>
             <span className="eyebrow" style={{ display: 'block', marginBottom: 4 }}>Pilih Tanggal</span>
-            <input
-              type="date"
-              value={selectedDay}
-              onChange={(e) => setSelectedDay(e.target.value)}
-              className="select-chip font-mono"
-              style={{ padding: '4px 8px', border: '1px solid var(--hairline)', borderRadius: 4, background: 'var(--surface)', color: 'var(--ink)' }}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={(e) => { setSelectedDay(e.target.value); setSelectedDayHasData('unknown'); }}
+                className="select-chip font-mono"
+                style={{ padding: '4px 8px', border: '1px solid var(--hairline)', borderRadius: 4, background: 'var(--surface)', color: 'var(--ink)' }}
+              />
+              <span className={`badge ${selectedDay ? (selectedDayHasData === 'unknown' ? 'badge-monitoring' : selectedDayHasData === 'hasData' ? 'badge-stable' : 'badge-caution') : 'badge-monitoring'}`} style={{ fontSize: 11, padding: '5px 10px' }}>
+                {selectedDay
+                  ? (selectedDayHasData === 'unknown' ? 'Mengecek...' : selectedDayHasData === 'hasData' ? 'Ada data' : 'Belum ada data')
+                  : 'Semua tanggal'}
+              </span>
+            </div>
           </div>
           <div style={{ marginTop: 18 }}>
             <button
-              onClick={() => setSelectedDay('')}
+              onClick={() => { setSelectedDay(''); setSelectedDayHasData('unknown'); }}
               className="select-chip"
               style={{ cursor: 'pointer', padding: '6px 12px' }}
             >

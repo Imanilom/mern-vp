@@ -115,7 +115,6 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
   const [localId, setLocalId] = useState(selectedParticipantId || '');
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isDemo, setIsDemo] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [eventDetails, setEventDetails] = useState(null);
@@ -124,26 +123,6 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
   const handleSelectParticipant = useCallback((id) => { setLocalId(id); onParticipantChange(id); }, [onParticipantChange]);
   useEffect(() => { if (selectedParticipantId) setLocalId(selectedParticipantId); }, [selectedParticipantId]);
 
-  // ---- demo fallback ----
-  const buildDemoEvents = useCallback(() => {
-    const now = Date.now();
-    const acts = ['Tidur', 'Istirahat', 'Berjalan'];
-    return Array.from({ length: 6 }).map((_, i) => {
-      const onset = now - (i + 1) * 55 * 60000;
-      const timeToPeak = (2 + Math.random() * 3) * 60000;
-      const peak = onset + timeToPeak;
-      const resolved = i === 0 ? null : peak + (3 + Math.random() * 6) * 60000;
-      const peakScore = +(2.2 + Math.random() * 2).toFixed(2);
-      return {
-        _id: `demo-evt-${i}`, user_id: effectiveId, device_id: 'DEMO_DEVICE', activity: acts[i % acts.length],
-        onset_time: onset, peak_time: peak, resolved_time: resolved,
-        duration_ms: resolved ? resolved - onset : null,
-        onset_score: +(peakScore * 0.5).toFixed(2), peak_score: peakScore,
-        classification: peakScore > 3 ? 'Alert' : 'Warning',
-        status: resolved ? 'closed' : 'open', review_status: resolved ? 'Validated' : 'New', validation_label: 'None',
-      };
-    });
-  }, [effectiveId]);
 
   // ---- fetch participants ----
   useEffect(() => {
@@ -152,19 +131,18 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
       try {
         const token = sessionStorage.getItem('htm_token');
         const res = await fetch('/api/patient/all', { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error('no api');
+        if (!res.ok) throw new Error('Failed to fetch pasien');
         const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
+        if (!Array.isArray(data)) throw new Error('Response bukan array pasien');
         if (!cancelled) {
           setParticipants(data);
-          if (!effectiveId) handleSelectParticipant(data[0]._id);
+          if (!effectiveId && data.length > 0) handleSelectParticipant(data[0]._id);
         }
-      } catch {
+      } catch (err) {
+        console.error('Failed to fetch participants:', err);
         if (!cancelled) {
-          const demoParticipants = ['Dewi A.', 'Rian S.', 'Putri N.'].map((name, i) => ({ _id: `demo-user-${i}`, name }));
-          setParticipants(demoParticipants);
-          setIsDemo(true);
-          if (!effectiveId) handleSelectParticipant(demoParticipants[0]._id);
+          setParticipants([]);
+          setToast('Gagal memuat daftar pasien. Periksa koneksi API.');
         }
       }
     })();
@@ -177,27 +155,25 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
     let cancelled = false;
     (async () => {
       setLoading(true);
-      if (isDemo) {
-        setEvents(buildDemoEvents());
-        setLoading(false);
-        return;
-      }
       try {
         const token = sessionStorage.getItem('htm_token');
         const res = await fetch(`/api/analysis/events/${effectiveId}?limit=20`, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error('bad response');
+        if (!res.ok) throw new Error('Bad response from events API');
         const data = await res.json();
-        if (!data.success || !Array.isArray(data.data)) throw new Error('bad shape');
+        if (!data.success || !Array.isArray(data.data)) throw new Error('Invalid event payload');
         if (!cancelled) setEvents(data.data);
       } catch (err) {
         console.error('Failed to fetch events:', err);
-        if (!cancelled) setEvents(buildDemoEvents());
+        if (!cancelled) {
+          setEvents([]);
+          setToast('Gagal memuat event anomaly. Pastikan API backoffice tersedia.');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [effectiveId, isDemo, buildDemoEvents]);
+  }, [effectiveId]);
 
   // ---- derive display fields per event ----
   const displayEvents = useMemo(() => events.map((e) => {
@@ -234,7 +210,7 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
   // ---- fetch fine-grained segments for the active event (real API only) ----
   useEffect(() => {
     setEventDetails(null);
-    if (!activeEvent || isDemo || String(activeEvent.eventId).startsWith('demo-')) return;
+    if (!activeEvent) return;
     let cancelled = false;
     (async () => {
       try {
@@ -246,7 +222,7 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
       } catch (err) { console.error(err); }
     })();
     return () => { cancelled = true; };
-  }, [activeEvent, isDemo]);
+  }, [activeEvent]);
 
   const curve = useMemo(() => {
     if (!activeEvent) return { points: [], synthesized: true };
@@ -261,12 +237,6 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
   const handleCloseEvent = async () => {
     if (!activeEvent) return;
     const actionLabel = options[selectedRadio];
-    if (isDemo) {
-      setEvents((prev) => prev.map((e) => (e._id === activeEvent.eventId
-        ? { ...e, status: 'closed', review_status: 'Validated', validation_label: actionLabel } : e)));
-      setToast(`Event ${String(activeEvent.eventId).slice(-6)} divalidasi sebagai "${actionLabel}" dan ditutup.`);
-      return;
-    }
     try {
       const token = sessionStorage.getItem('htm_token');
       const res = await fetch(`/api/analysis/events/${activeEvent.eventId}/validate`, {
@@ -367,7 +337,6 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
       <div className="page-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h1 className="page-title">Anomaly detection</h1>
-          {isDemo && <p className="text-xs" style={{ color: 'var(--warning, #f59e0b)', fontWeight: 600, marginTop: 2 }}>Menampilkan data contoh — API tidak terjangkau.</p>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <DeviceSelector selectedId={effectiveId} onChange={handleSelectParticipant} />

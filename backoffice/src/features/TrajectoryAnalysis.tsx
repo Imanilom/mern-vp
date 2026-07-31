@@ -3,7 +3,7 @@ import {
   Activity, RefreshCw, Sun, Sunset, MoonStar
 } from 'lucide-react';
 import {
-  ResponsiveContainer, AreaChart, Area, Line, ComposedChart,
+  ResponsiveContainer, AreaChart, Area, Line, LineChart, BarChart, Bar, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
 import { DeviceSelector } from '../shared/components/ParticipantSelector';
@@ -152,6 +152,81 @@ export const TrajectoryAnalysis: React.FC<AnalyticsProps> = ({
   const magnitudeData = useMemo(() => sorted.map((s) => ({
     time: fmtTime(s.window_start), ts: s.window_start, score: +fmt(s.anomaly_score, 2),
     classification: s.classification, activity: s.activity_label,
+  })), [sorted]);
+
+  const anomalyRuns = useMemo(() => {
+    const runs: Array<any> = [];
+    let current: any = null;
+
+    for (const seg of sorted) {
+      const isAnomaly = seg.classification && seg.classification !== 'Normal';
+      if (isAnomaly) {
+        const score = Number(seg.anomaly_score ?? 0);
+        if (!current) {
+          current = {
+            startSeg: seg,
+            endSeg: seg,
+            peakSeg: seg,
+            count: 1,
+            maxScore: score,
+            activity: seg.activity_label || 'Unknown',
+          };
+        } else {
+          current.endSeg = seg;
+          current.count += 1;
+          if (score > current.maxScore) {
+            current.maxScore = score;
+            current.peakSeg = seg;
+          }
+        }
+      } else if (current) {
+        current.recoveredAt = seg.window_start;
+        current.recoveryMs = seg.window_start - current.peakSeg.window_start;
+        runs.push(current);
+        current = null;
+      }
+    }
+
+    if (current) {
+      runs.push(current);
+    }
+
+    return runs.map((run) => ({
+      label: fmtTime(run.startSeg.window_start),
+      startTs: run.startSeg.window_start,
+      durationMin: Math.max(1, Math.round((run.endSeg.window_end - run.startSeg.window_start) / 60000)),
+      count: run.count,
+      activity: run.activity,
+      maxScore: run.maxScore,
+      recoveryMin: run.recoveryMs != null ? Math.round(run.recoveryMs / 60000) : null,
+      ongoing: run.recoveryMs == null,
+    }));
+  }, [sorted]);
+
+  const persistenceData = useMemo(() => {
+    const map = new Map<string, { activity: string; longest: number; total: number; runs: number }>();
+    anomalyRuns.forEach((run) => {
+      const item = map.get(run.activity) ?? { activity: run.activity, longest: 0, total: 0, runs: 0 };
+      item.longest = Math.max(item.longest, run.count);
+      item.total += run.count;
+      item.runs += 1;
+      map.set(run.activity, item);
+    });
+    return Array.from(map.values());
+  }, [anomalyRuns]);
+
+  const recoveryData = useMemo(() => anomalyRuns.map((run) => ({
+    label: run.label,
+    recoveryMin: run.recoveryMin ?? 0,
+    ongoing: run.ongoing,
+    anomalyDuration: run.durationMin,
+    maxScore: run.maxScore,
+  })), [anomalyRuns]);
+
+  const slopeData = useMemo(() => sorted.map((s) => ({
+    time: fmtTime(s.window_start),
+    slope: Number(feat(s, 'slope_hr') ?? 0),
+    activity: s.activity_label || 'Unknown',
   })), [sorted]);
 
   const handleRefresh = () => setRefreshKey((k) => k + 1);
@@ -335,27 +410,82 @@ export const TrajectoryAnalysis: React.FC<AnalyticsProps> = ({
           )}
 
           {activeTab === 'Duration' && (
-            <div className="text-sm py-4">
-              Visualisasi durasi deviasi per segmen waktu pengguna ({selectedTimePeriod}).
-            </div>
+            <>
+              <p className="text-xs text-muted mb-3">Durasi episode anomali berdasarkan run segment berurutan.</p>
+              {anomalyRuns.length > 0 ? (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={anomalyRuns} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} label={{ value: 'Menit', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+                    <Tooltip formatter={(value) => [`${value} min`, 'Durasi']} />
+                    <Bar dataKey="durationMin" name="Durasi" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-sm py-4 text-muted">Tidak ada episode anomali terdeteksi untuk periode ini.</div>
+              )}
+            </>
           )}
 
           {activeTab === 'Persistence' && (
-            <div className="text-sm py-4">
-              Analisis persitensi deviasi berturut-turut pada periode {selectedTimePeriod}.
-            </div>
+            <>
+              <p className="text-xs text-muted mb-3">Persistence menunjukkan panjang run anomali per aktivitas.</p>
+              {persistenceData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={persistenceData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="activity" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} label={{ value: 'Segment', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+                    <Tooltip formatter={(value) => [`${value} segmen`, 'Persistence']} />
+                    <Bar dataKey="longest" name="Longest run" fill="var(--warning)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-sm py-4 text-muted">Tidak ada data persistence anomali untuk periode ini.</div>
+              )}
+            </>
           )}
 
           {activeTab === 'Recovery' && (
-            <div className="text-sm py-4">
-              Kecepatan pemulihan HR dan HRV kembali ke baseline personal.
-            </div>
+            <>
+              <p className="text-xs text-muted mb-3">Recovery menunjukkan waktu kembali normal setelah peak anomali.</p>
+              {recoveryData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={recoveryData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} label={{ value: 'Menit', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+                    <Tooltip formatter={(value, name) => [`${value} min`, name]} />
+                    <Bar dataKey="recoveryMin" name="Recovery" fill="var(--stable-text)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-sm py-4 text-muted">Belum ada episode anomali yang pulih sepenuhnya.</div>
+              )}
+              {recoveryData.some((run) => run.ongoing) && (
+                <div className="text-xs text-muted mt-3">* Beberapa episode masih dalam status ongoing dan belum pulih sepenuhnya.</div>
+              )}
+            </>
           )}
 
           {activeTab === 'Slope' && (
-            <div className="text-sm py-4">
-              Slope regresi linear HR terhadap waktu.
-            </div>
+            <>
+              <p className="text-xs text-muted mb-3">Slope HR per window untuk menunjukan trend naik / turun dalam tiap segmen.</p>
+              {slopeData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={slopeData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} label={{ value: 'Slope', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+                    <Tooltip formatter={(value) => [value, 'Slope HR']} />
+                    <Line type="monotone" dataKey="slope" stroke="var(--alert-text)" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-sm py-4 text-muted">Tidak ada nilai slope HR yang tersedia untuk periode ini.</div>
+              )}
+            </>
           )}
 
         </div>
