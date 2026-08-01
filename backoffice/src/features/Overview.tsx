@@ -274,52 +274,77 @@ export const Overview: React.FC<OverviewProps> = ({ onViewParticipant }) => {
       </div>
 
       {/* LATEST EVENTS TABLE */}
-      <div className="card">
-        <p className="card-title">Event terbaru</p>
-        <table className="w-full">
-          <thead>
-            <tr>
-              <th className="pb-sm">Waktu</th>
-              <th className="pb-sm">Peserta</th>
-              <th className="pb-sm">Aktivitas</th>
-              <th className="pb-sm">Event</th>
-              <th className="pb-sm text-right">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentEvents.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="text-center py-sm text-muted">Tidak ada event terbaru</td>
+      <div className="card" style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <p className="card-title !m-0">Daftar Anomali & Event Terbaru</p>
+          <span className="badge badge-monitoring">{recentEvents.length} Event Terakhir</span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="w-full" style={{ minWidth: 800 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--hairline)' }}>
+                <th className="pb-sm text-left text-xs font-semibold text-muted uppercase tracking-wider">Waktu Kejadian</th>
+                <th className="pb-sm text-left text-xs font-semibold text-muted uppercase tracking-wider">Peserta (GUID)</th>
+                <th className="pb-sm text-left text-xs font-semibold text-muted uppercase tracking-wider">Aktivitas</th>
+                <th className="pb-sm text-left text-xs font-semibold text-muted uppercase tracking-wider">Magnitude (SD)</th>
+                <th className="pb-sm text-left text-xs font-semibold text-muted uppercase tracking-wider">Durasi</th>
+                <th className="pb-sm text-left text-xs font-semibold text-muted uppercase tracking-wider">Recovery</th>
+                <th className="pb-sm text-right text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
               </tr>
-            ) : (
-              recentEvents.map((event) => {
-                let badgeClass = 'badge-monitoring';
-                if (event.status === 'Under Review' || event.status === 'Under review') badgeClass = 'badge-caution';
-                if (event.status === 'Validated') badgeClass = 'badge-stable';
-                if (event.status === 'Closed') badgeClass = 'badge-inactive';
+            </thead>
+            <tbody>
+              {recentEvents.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-4 text-muted">Tidak ada event terbaru</td>
+                </tr>
+              ) : (
+                recentEvents.map((event) => {
+                  let badgeClass = 'badge-monitoring';
+                  if (event.status === 'Under Review' || event.status === 'Under review') badgeClass = 'badge-caution';
+                  if (event.status === 'Validated') badgeClass = 'badge-stable';
+                  if (event.status === 'Closed') badgeClass = 'badge-inactive';
 
-                return (
-                  <tr 
-                    key={event.eventId} 
-                    className="clickable" 
-                    onClick={() => onViewParticipant(event.participantId)}
-                  >
-                    <td className="mono py-sm flex items-center gap-1 text-mutedColor"><Clock size={12} /> {event.startTime}</td>
-                    <td className="mono py-sm">{event.participantId}</td>
-                    <td className="py-sm">{event.activity}</td>
-                    <td className="py-sm">{event.eventId.slice(-6)}: {event.magnitude} SD deviation</td>
-                    <td className="py-sm text-right">
-                      <span className={`badge ${badgeClass}`}>
-                        <span className="badge-dot"></span>
-                        {event.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                  return (
+                    <tr 
+                      key={event.eventId} 
+                      className="clickable"
+                      onClick={() => onViewParticipant(event.participantId)}
+                      style={{ borderBottom: '1px solid var(--hairline)' }}
+                    >
+                      <td className="mono py-3 flex items-center gap-2 text-mutedColor" style={{ fontSize: 13 }}>
+                        <Clock size={14} color="var(--primary)" /> {event.startTime}
+                      </td>
+                      <td className="mono py-3" style={{ fontSize: 13, fontWeight: 600 }}>{event.participantId}</td>
+                      <td className="py-3" style={{ fontSize: 13 }}>
+                        <span style={{ padding: '2px 8px', background: 'var(--surface-sunken)', borderRadius: 4, display: 'inline-block' }}>
+                          {event.activity}
+                        </span>
+                      </td>
+                      <td className="py-3 font-mono" style={{ fontSize: 13, color: 'var(--alert-text)', fontWeight: 600 }}>
+                        {event.magnitude} SD
+                      </td>
+                      <td className="py-3 font-mono" style={{ fontSize: 13 }}>{event.duration}</td>
+                      <td className="py-3" style={{ fontSize: 13 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 60, height: 6, background: 'var(--hairline)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ width: `${event.recoveryPercentage}%`, height: '100%', background: event.recoveryPercentage > 70 ? 'var(--stable-text)' : 'var(--caution-text)' }} />
+                          </div>
+                          <span className="font-mono text-muted">{event.recoveryPercentage}%</span>
+                        </div>
+                      </td>
+                      <td className="py-3 text-right">
+                        <span className={`badge ${badgeClass}`}>
+                          <span className="badge-dot"></span>
+                          {event.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );

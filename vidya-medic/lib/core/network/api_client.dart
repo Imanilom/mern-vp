@@ -9,7 +9,7 @@ import '../../shared/models/models.dart';
 // Development: URL ngrok atau localhost
 // Production VPS: 'http://YOUR_VPS_IP:3031/api' atau domain Anda 'https://domainanda.com/api'
 // const String BASE_URL = 'https://healthtrajectory.cloud/api';
-const String BASE_URL = 'http://localhost:3030/api';
+const String BASE_URL = 'https://1f35-45-198-151-177.ngrok-free.app';
 
 class ApiClient {
   late final Dio _dio;

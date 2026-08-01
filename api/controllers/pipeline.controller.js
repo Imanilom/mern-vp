@@ -146,7 +146,7 @@ export async function getPipelineStatus(req, res) {
 
     const recentEventsRaw = await AnomalyEvent.find()
       .sort({ onset_time: -1 })
-      .limit(5)
+      .limit(10)
       .populate('user_id', 'name email guid')
       .lean()
       .catch(() => []);
@@ -162,7 +162,7 @@ export async function getPipelineStatus(req, res) {
         eventId: e._id || `EVT-${Math.floor(Math.random() * 1000)}`,
         participantId: e.user_id?.guid || e.user_id?.name || 'P012',
         activity: e.activity || 'Unknown',
-        startTime: e.onset_time ? new Date(e.onset_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00',
+        startTime: e.onset_time ? new Date(e.onset_time).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-',
         magnitude: e.peak_score ? parseFloat(e.peak_score).toFixed(1) : '0.0',
         duration: e.duration_ms ? `${Math.round(e.duration_ms / 60000)} min` : 'Ongoing',
         recoveryPercentage,

@@ -58,7 +58,7 @@ app.use(helmet());
 // ── CORS — Whitelist dari environment variable ALLOWED_ORIGINS ──────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.replace(/['"]/g, '').split(',').map(o => o.trim())
-  : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:57390'];
+  : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:49667'];
 
 // Agar jika ada typo https://https:// di .env tetap aman:
 if (!allowedOrigins.includes('https://healthtrajectory.cloud')) {

@@ -8,7 +8,8 @@
     "dev": "nodemon --max-old-space-size=4096 index.js",
     "start": "node --max-old-space-size=4096 index.js",
     "migrate-db": "node migrate-db.js",
-    "build": "npm install && npm install --prefix client && npm run build --prefix client"
+    "build": "npm install && npm install --prefix client && npm run build --prefix client",
+    "timers": "node local-timers.js"
   },
   "keywords": [],
   "author": "Smartdevice",
