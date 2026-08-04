@@ -21,6 +21,9 @@ services:
       - ALLOWED_ORIGINS=https://healthtrajectory.cloud,https://api.healthtrajectory.cloud
     depends_on:
       - rabbitmq
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   backoffice:
     build: ./backoffice
