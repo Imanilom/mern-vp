@@ -22,8 +22,8 @@ services:
     depends_on:
       - rabbitmq
     dns:
-      - 8.8.8.8
-      - 8.8.4.4
+      - 103.253.213.134
+      - 203.175.8.227
 
   backoffice:
     build: ./backoffice
