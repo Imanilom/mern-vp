@@ -21,6 +21,7 @@ import {
   getActivityContext,
   validateSegmentByDoctor,
   getKalmanTrajectory,
+  runRRAnalysisPipeline,
 } from '../controllers/analysis.controller.js';
 import { generateReportData } from '../controllers/report.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
@@ -296,5 +297,59 @@ router.patch('/segments/:segmentId/doctor-validate', verifyToken, validateSegmen
 
 // Kalman trajectory prediction route per user (Pagi, Siang, Sore)
 router.get('/kalman-trajectory/:userId', verifyToken, resolveUserIdParam, getKalmanTrajectory);
+
+// ── RR 1-menit Pipeline (context-aware) ──────────────────────────────────────
+
+/**
+ * POST /api/analysis/rr/trigger
+ * Trigger Layer 3 RR pipeline secara manual (untuk testing / backfill).
+ */
+router.post('/rr/trigger', verifyToken, async (req, res) => {
+  try {
+    runRRAnalysisPipeline('MANUAL').catch(err =>
+      console.error('[Manual Trigger L3-RR] Error:', err.message)
+    );
+    res.json({ success: true, message: 'RR Analysis pipeline triggered. Cek job history untuk progress.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * GET /api/analysis/rr/segments/:userId
+ * Ambil segmen 1-menit dengan rr_status untuk user tertentu.
+ */
+router.get('/rr/segments/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
+  try {
+    const limit  = parseInt(req.query.limit) || 100;
+    const status = req.query.status;
+    const filter = { user_id: req.params.userId, window_type: '1min' };
+    if (status) filter.rr_status = status;
+    const data = await Segment.find(filter)
+      .sort({ window_start: -1 })
+      .limit(limit)
+      .select('window_start window_end activity_label rr_status anomaly_score classification z_scores signal_quality_detail features analyzed')
+      .lean();
+    res.json({ success: true, data, count: data.length });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * GET /api/analysis/rr/baseline/:userId
+ * Ambil baseline user lengkap dengan maturity_detail.
+ */
+router.get('/rr/baseline/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
+  try {
+    const Baseline = (await import('../models/baseline.model.js')).default;
+    const data = await Baseline.find({ user_id: req.params.userId })
+      .select('activity time_period segment_count is_mature maturity_detail stats.mean_hr stats.sdnn stats.rmssd last_updated')
+      .lean();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 export default router;

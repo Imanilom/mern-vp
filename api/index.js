@@ -58,7 +58,7 @@ app.use(helmet());
 // ── CORS — Whitelist dari environment variable ALLOWED_ORIGINS ──────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.replace(/['"]/g, '').split(',').map(o => o.trim())
-  : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:49667'];
+  : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:59674'];
 
 // Agar jika ada typo https://https:// di .env tetap aman:
 if (!allowedOrigins.includes('https://healthtrajectory.cloud')) {
@@ -203,6 +203,18 @@ app.post('/api/internal/run-pipeline', async (req, res) => {
       console.error('[SystemD L3] Error:', err.message)
     );
     return res.json({ success: true, message: 'Layer 3 pipeline triggered by systemd timer.' });
+  } else if (String(layer) === '3rr') {
+    const { runRRAnalysisPipeline } = await import('./controllers/analysis.controller.js');
+    runRRAnalysisPipeline('SYSTEMD').catch(err =>
+      console.error('[SystemD L3-RR] Error:', err.message)
+    );
+    return res.json({ success: true, message: 'Layer 3-RR pipeline triggered.' });
+  } else if (String(layer) === '2rr') {
+    const { processOneMinuteRRSegments } = await import('./controllers/data.controller.js');
+    processOneMinuteRRSegments('SYSTEMD').catch(err =>
+      console.error('[SystemD L2-RR] Error:', err.message)
+    );
+    return res.json({ success: true, message: 'Layer 2-RR (1-min) pipeline triggered.' });
   } else {
     const { processHeartRateData } = await import('./controllers/data.controller.js');
     processHeartRateData('SYSTEMD').catch(err =>
@@ -211,4 +223,3 @@ app.post('/api/internal/run-pipeline', async (req, res) => {
     return res.json({ success: true, message: 'Layer 2 pipeline triggered by systemd timer.' });
   }
 });
-

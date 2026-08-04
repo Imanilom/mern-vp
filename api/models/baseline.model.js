@@ -76,6 +76,48 @@ const BaselineSchema = new mongoose.Schema({
   version: { type: Number, default: 1 },
   status: { type: String, enum: ['learning', 'approved', 'rejected'], default: 'learning' },
 
+  /**
+   * Detail maturity granular (diisi oleh RR pipeline 1-menit).
+   * Port dari maturity_report() Python.
+   */
+  maturity_detail: {
+    // n / (1 + 2*sum_autocorr) — jumlah window independen efektif
+    n_effective: { type: Number, default: 0 },
+    // Jumlah hari unik yang punya >= min_windows_per_day window
+    distinct_days: { type: Number, default: 0 },
+    // Proporsi window yang berasal dari satu hari terbanyak
+    max_single_day_frac: { type: Number, default: 1 },
+    // Quality components (rata-rata dari window yang masuk baseline)
+    q_signal:   { type: Number, default: 0 },
+    q_complete: { type: Number, default: 0 },
+    q_context:  { type: Number, default: 0 },
+    // Seberapa stabil mean harian (0=tidak stabil, 1=sangat stabil)
+    q_stability: { type: Number, default: 0 },
+    // Composite Baseline Quality: 0.35*q_signal + 0.25*q_complete + 0.20*q_context + 0.20*q_stability
+    bq: { type: Number, default: 0 },
+    // Label tingkat kematangan baseline
+    level: {
+      type: String,
+      enum: ['cold_start', 'provisional', 'maturing', 'mature'],
+      default: 'cold_start',
+    },
+    // Gate yang gagal (array string), kosong jika mature
+    failed_gates: { type: [String], default: [] },
+    last_computed: { type: Date, default: null },
+  },
+
+  /**
+   * History arrays untuk komputasi maturity (diisi oleh RR pipeline).
+   * Disimpan agar bisa menghitung rata-rata quality dan stability tanpa menyimpan
+   * semua data historis penuh.
+   */
+  // Array timestamp window (epoch ms) — untuk distinct days & day dominance
+  window_timestamps: { type: [Number], default: [] },
+  // Quality scores per window
+  q_signal_history:   { type: [Number], default: [] },
+  q_complete_history: { type: [Number], default: [] },
+  q_context_history:  { type: [Number], default: [] },
+
 }, { timestamps: true });
 
 // Unique: satu baseline per user + activity + time_period

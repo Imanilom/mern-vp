@@ -25,6 +25,17 @@ import {
   computeH2aMetrics as computeH2aMetricsFromEval,
   getFullMetrics as getFullMetricsFromEval,
 } from './evaluation.controller.js';
+import {
+  assessRRQuality,
+  extractRRFeatures,
+  computeBaselineMaturity,
+  computeRRZScores,
+  computeRRCompositeScore,
+  classifyRR,
+  updateTemporalState,
+  createTemporalState,
+  buildBaselineUpdateFields,
+} from '../utils/rrBaselinePipeline.js';
 
 // ── Konfigurasi scoring ───────────────────────────────────────────────────────
 
@@ -1107,3 +1118,350 @@ export async function getKalmanTrajectory(req, res) {
   }
 }
 
+
+// ── Layer 3 RR Pipeline (1-menit, context-aware) ─────────────────────────────
+
+/**
+ * Entry point Layer 3 untuk segmen 1-menit (RR-only pipeline).
+ *
+ * Alur per user:
+ *  1. Ambil baseline personal (per activity + time_period)
+ *  2. Hitung maturity level → dynamic threshold
+ *  3. assessRRQuality()  → filter artefak RR
+ *  4. extractRRFeatures() → hr_mean, sdnn, rmssd
+ *  5. computeRRZScores() → Z-score dengan penalty maturity
+ *  6. computeRRCompositeScore() → skor tunggal
+ *  7. updateTemporalState() → rr_status 9-state
+ *  8. Update segmen + baseline (Welford)
+ *  9. Buat/update AnomalyEvent jika PERSISTENT_DEVIATION
+ */
+export async function runRRAnalysisPipeline(triggeredBy = 'CRON') {
+  const job = await ProcessingJob.create({
+    type: 'LAYER3',
+    status: 'RUNNING',
+    triggered_by: triggeredBy,
+    start_time: new Date(),
+  });
+
+  try {
+    console.log('[Layer3-RR] Memulai analisis RR 1-menit...');
+
+    const pendingUserIds = await Segment.distinct('user_id', {
+      window_type: '1min',
+      analyzed: false,
+      is_valid: true,
+    });
+
+    if (pendingUserIds.length === 0) {
+      await ProcessingJob.findByIdAndUpdate(job._id, {
+        status: 'DONE', end_time: new Date(),
+        duration_ms: Date.now() - job.start_time.getTime(),
+        processed_count: 0, events_created: 0,
+      });
+      return { success: true, analyzed: 0, eventsCreated: 0 };
+    }
+
+    await ProcessingJob.findByIdAndUpdate(job._id, { user_ids: pendingUserIds });
+
+    let totalAnalyzed = 0;
+    let totalEvents = 0;
+
+    for (const userId of pendingUserIds) {
+      try {
+        const { analyzed, events } = await analyzeOneMinuteUser(userId);
+        totalAnalyzed += analyzed;
+        totalEvents += events;
+      } catch (err) {
+        console.error(`[Layer3-RR] Error user ${userId}:`, err.message);
+      }
+    }
+
+    const endTime = new Date();
+    console.log(`[Layer3-RR] Selesai: ${totalAnalyzed} segmen, ${totalEvents} event.`);
+    await ProcessingJob.findByIdAndUpdate(job._id, {
+      status: 'DONE', end_time: endTime,
+      duration_ms: endTime.getTime() - job.start_time.getTime(),
+      processed_count: totalAnalyzed, events_created: totalEvents,
+    });
+    return { success: true, analyzed: totalAnalyzed, eventsCreated: totalEvents };
+
+  } catch (err) {
+    console.error('[Layer3-RR] Error utama:', err.message);
+    await ProcessingJob.findByIdAndUpdate(job._id, {
+      status: 'FAILED', end_time: new Date(),
+      duration_ms: Date.now() - job.start_time.getTime(), error: err.message,
+    }).catch(() => {});
+    return { success: false, error: err.message };
+  }
+}
+
+async function analyzeOneMinuteUser(userId) {
+  const BATCH = 200;
+  let skip = 0;
+  let totalAnalyzed = 0;
+  let totalEvents = 0;
+
+  const temporalStates = {};
+  const persistenceState = {};
+
+  while (true) {
+    const segments = await Segment.find({
+      user_id: userId,
+      window_type: '1min',
+      analyzed: false,
+      is_valid: true,
+    })
+      .sort({ window_start: 1 })
+      .skip(skip)
+      .limit(BATCH)
+      .lean();
+
+    if (segments.length === 0) break;
+
+    const bulkOps = [];
+
+    for (const seg of segments) {
+      const activity   = seg.activity_label || 'Unknown';
+      const timePeriod = getTimePeriod(seg.window_start);
+      const rrArr      = seg.rr_raw || [];
+
+      // 1. Baseline
+      const baseline = await getOrCreateBaseline(userId, activity, timePeriod);
+
+      // 2. Maturity
+      const maturity = computeBaselineMaturity(baseline, []);
+      const maturityLevel = maturity.level;
+
+      // 3. Quality assessment
+      const quality = assessRRQuality(rrArr, 0.85, seg.raw_count);
+      const qualityDetail = {
+        artifact_fraction: round2(quality.artifact_fraction),
+        missing_fraction:  round2(quality.missing_fraction),
+        q_signal:          round2(quality.q_signal),
+        q_complete:        round2(quality.q_complete),
+        q_context:         round2(quality.q_context),
+        reasons:           quality.reasons,
+      };
+
+      if (!quality.accepted) {
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: seg._id },
+            update: { $set: {
+              analyzed: true, rr_status: 'QUALITY_WARNING',
+              signal_quality_detail: qualityDetail,
+              'maturity_detail.level': maturityLevel,
+            }},
+          },
+        });
+        totalAnalyzed++;
+        continue;
+      }
+
+      // 4. Feature extraction
+      const features = extractRRFeatures(quality.rr_clean);
+
+      // 5. Baseline belum cukup?
+      const hasBaseline = (baseline.stats?.rmssd?.n || 0) >= 2
+        && (baseline.stats?.sdnn?.n || 0) >= 2;
+
+      if (!hasBaseline) {
+        const updateFields = buildBaselineUpdateFields(
+          baseline, features, quality, seg.window_start, true
+        );
+        if (updateFields) {
+          await Baseline.updateOne({ _id: baseline._id }, {
+            $set: updateFields,
+            $push: {
+              window_timestamps: seg.window_start,
+              q_signal_history:  quality.q_signal,
+              q_complete_history: quality.q_complete,
+              q_context_history: quality.q_context,
+            },
+          });
+        }
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: seg._id },
+            update: { $set: {
+              analyzed: true, rr_status: 'INSUFFICIENT_BASELINE',
+              signal_quality_detail: qualityDetail,
+              'maturity_detail.level': maturityLevel,
+              'features.hr_mean': features.hr_mean,
+              'features.sdnn':    features.sdnn,
+              'features.rmssd':   features.rmssd,
+            }},
+          },
+        });
+        totalAnalyzed++;
+        continue;
+      }
+
+      // 6. Z-scores & score
+      const zScores = computeRRZScores(features, baseline, maturityLevel);
+      const score   = computeRRCompositeScore(zScores);
+      const classification = classifyRR(score, maturityLevel);
+
+      // 7. Temporal state machine
+      if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
+      const { rr_status, safe_to_update } = updateTemporalState(
+        temporalStates[activity], score, maturityLevel
+      );
+
+      // 8. Update baseline
+      if (safe_to_update && classification === 'Normal') {
+        const updateFields = buildBaselineUpdateFields(
+          baseline, features, quality, seg.window_start, maturityLevel === 'cold_start'
+        );
+        if (updateFields) {
+          await Baseline.updateOne({ _id: baseline._id }, {
+            $set: updateFields,
+            $push: {
+              window_timestamps: seg.window_start,
+              q_signal_history:  quality.q_signal,
+              q_complete_history: quality.q_complete,
+              q_context_history: quality.q_context,
+            },
+          });
+          // Refresh maturity detail setiap 10 update
+          if ((updateFields.segment_count % 10) === 0) {
+            const freshBaseline = await Baseline.findById(baseline._id).lean();
+            const updatedMaturity = computeBaselineMaturity(freshBaseline, []);
+            await Baseline.updateOne({ _id: baseline._id }, {
+              $set: { maturity_detail: { ...updatedMaturity, last_computed: new Date() } },
+            });
+          }
+        }
+      }
+
+      // 9. Persistence → AnomalyEvent
+      const eventCreated = await updateRRPersistence(
+        userId, seg, score, classification, zScores, rr_status,
+        persistenceState, activity
+      );
+      if (eventCreated) totalEvents++;
+
+      // Bulk update segmen
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: seg._id },
+          update: {
+            $set: {
+              analyzed: true,
+              anomaly_score:    round2(score),
+              classification,
+              rr_status,
+              signal_quality_detail: qualityDetail,
+              'maturity_detail.level': maturityLevel,
+              'features.hr_mean': features.hr_mean,
+              'features.sdnn':    features.sdnn,
+              'features.rmssd':   features.rmssd,
+              z_scores: {
+                z_hr:    round2(zScores.z_hr),
+                z_sdnn:  round2(zScores.z_sdnn),
+                z_rmssd: round2(zScores.z_rmssd),
+                z_motion: null, z_rr: null, z_dfa: null,
+              },
+            },
+          },
+        },
+      });
+
+      totalAnalyzed++;
+    }
+
+    if (bulkOps.length > 0) {
+      await Segment.bulkWrite(bulkOps, { ordered: false });
+    }
+
+    if (segments.length < BATCH) break;
+    skip += BATCH;
+  }
+
+  return { analyzed: totalAnalyzed, events: totalEvents };
+}
+
+async function updateRRPersistence(
+  userId, seg, score, classification, zScores, rr_status,
+  persistenceState, activity
+) {
+  if (!persistenceState[activity]) {
+    persistenceState[activity] = {
+      count: 0, recoveryCount: 0, segIds: [], scores: [],
+      peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
+    };
+  }
+
+  const state = persistenceState[activity];
+  let eventCreated = false;
+
+  if (rr_status === 'PERSISTENT_DEVIATION' || rr_status === 'DEVIATION_CANDIDATE') {
+    state.recoveryCount = 0;
+    state.count++;
+    state.segIds.push(seg._id);
+    state.scores.push(score);
+    if (score > state.peakScore) { state.peakScore = score; state.peakSeg = seg; }
+    if (!state.startSeg) state.startSeg = seg;
+
+    if (rr_status === 'PERSISTENT_DEVIATION' && !state.openEventId) {
+      const event = await AnomalyEvent.create({
+        user_id: userId,
+        device_id: seg.device_id,
+        activity,
+        onset_time: state.startSeg.window_start,
+        onset_score: state.scores[0],
+        peak_time: state.peakSeg.window_start,
+        peak_score: state.peakScore,
+        classification,
+        z_scores_at_peak: zScores,
+        trajectory: {
+          sequence_of_scores: state.scores,
+          delta_hr: null, persistence: state.count,
+          dfa_alpha1: null, dfa_alpha2: null, recovery_time_ms: null,
+        },
+        segment_ids: state.segIds,
+        status: 'open',
+      });
+      state.openEventId = event._id;
+      eventCreated = true;
+      console.log(`[Layer3-RR] Event ${classification} dibuat user=${userId} act=${activity}`);
+    } else if (state.openEventId) {
+      await AnomalyEvent.updateOne({ _id: state.openEventId }, {
+        $set: {
+          peak_score: state.peakScore, classification,
+          'trajectory.sequence_of_scores': state.scores,
+          'trajectory.persistence': state.count,
+          z_scores_at_peak: zScores,
+        },
+        $push: { segment_ids: seg._id },
+      });
+    }
+  } else if (rr_status === 'RECOVERED') {
+    if (state.openEventId) {
+      const recoveryMs = seg.window_end - (state.peakSeg?.window_start ?? seg.window_start);
+      await AnomalyEvent.updateOne({ _id: state.openEventId }, {
+        $set: {
+          resolved_time: seg.window_start,
+          duration_ms: seg.window_start - (state.startSeg?.window_start ?? seg.window_start),
+          status: 'closed',
+          'trajectory.recovery_time_ms': Math.max(recoveryMs, 0),
+        },
+      });
+      console.log(`[Layer3-RR] Event closed user=${userId} act=${activity}`);
+    }
+    persistenceState[activity] = {
+      count: 0, recoveryCount: 0, segIds: [], scores: [],
+      peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
+    };
+  } else {
+    if (!state.openEventId) {
+      state.count = 0; state.recoveryCount = 0;
+      state.segIds = []; state.scores = [];
+      state.peakScore = 0; state.peakSeg = null; state.startSeg = null;
+    } else {
+      state.recoveryCount++;
+    }
+  }
+
+  return eventCreated;
+}

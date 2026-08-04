@@ -1,8 +1,12 @@
 import mongoose from 'mongoose';
 
 /**
- * Window Segment — hasil segmentasi 3-menit dari data raw.
- * Satu document = satu window 3 menit untuk satu user + device.
+ * Window Segment — hasil segmentasi dari data raw.
+ * Satu document = satu window untuk satu user + device.
+ *
+ * window_type '5min' = pipeline lama (multi-feature, 5-menit)
+ * window_type '1min' = pipeline RR-only context-aware (1-menit, paralel)
+ *
  * Digunakan sebagai input Layer 3 (anomaly detection & baseline).
  */
 const SegmentSchema = new mongoose.Schema({
@@ -16,6 +20,18 @@ const SegmentSchema = new mongoose.Schema({
   device_id: {
     type: String,
     required: true,
+  },
+
+  /**
+   * Tipe pipeline:
+   * '5min' = pipeline lama (default)
+   * '1min' = pipeline RR-only context-aware (paralel)
+   */
+  window_type: {
+    type: String,
+    enum: ['5min', '1min'],
+    default: '5min',
+    index: true,
   },
 
   // --- Rentang waktu window (epoch ms) ---
@@ -67,6 +83,15 @@ const SegmentSchema = new mongoose.Schema({
     lf: { type: Number, default: null },
     hf: { type: Number, default: null },
     lfhfratio: { type: Number, default: null },
+  },
+
+  /**
+   * Data RR mentah per window (hanya diisi pada window_type '1min').
+   * Digunakan oleh RR pipeline untuk quality assessment & re-analysis.
+   */
+  rr_raw: {
+    type: [Number],
+    default: undefined,
   },
 
   // --- Metadata kualitas ---
@@ -157,6 +182,41 @@ const SegmentSchema = new mongoose.Schema({
     artifact_type: { type: String, default: null }, // e.g., 'contact_loss', 'spike_noise', 'dropout'
   },
 
+  /**
+   * Detail kualitas sinyal RR (diisi oleh RR pipeline 1-menit).
+   * Port dari assess_and_correct_rr() Python.
+   */
+  signal_quality_detail: {
+    artifact_fraction: { type: Number, default: null },
+    missing_fraction:  { type: Number, default: null },
+    q_signal:          { type: Number, default: null }, // 1 - artifact_fraction
+    q_complete:        { type: Number, default: null }, // 1 - missing_fraction
+    q_context:         { type: Number, default: null }, // activity_confidence
+    reasons:           { type: [String], default: undefined },
+  },
+
+  /**
+   * Status temporal 9-state dari pipeline RR context-aware (diisi oleh Layer 3 RR).
+   * Port dari OutputStatus Python.
+   * Hanya terisi jika window_type === '1min'.
+   */
+  rr_status: {
+    type: String,
+    enum: [
+      'QUALITY_WARNING',
+      'INSUFFICIENT_BASELINE',
+      'PROVISIONAL_NORMAL',
+      'PROVISIONAL_DEVIATION',
+      'NORMAL',
+      'DEVIATION_CANDIDATE',
+      'PERSISTENT_DEVIATION',
+      'RECOVERING',
+      'RECOVERED',
+      null,
+    ],
+    default: null,
+  },
+
   // --- Polar Decision Tree Prediction ---
   dt_prediction: {
     predicted_activity: { type: String, default: null },
@@ -169,8 +229,12 @@ const SegmentSchema = new mongoose.Schema({
 SegmentSchema.index({ user_id: 1, window_start: 1 });
 SegmentSchema.index({ user_id: 1, activity_label: 1, window_start: -1 });
 
-// Unique: satu window per user+device
-SegmentSchema.index({ user_id: 1, device_id: 1, window_start: 1 }, { unique: true });
+// Index untuk RR pipeline (query berdasarkan window_type)
+SegmentSchema.index({ user_id: 1, window_type: 1, analyzed: 1, window_start: 1 });
+
+// Unique: satu window per user+device+type
+// window_type dimasukkan agar 5-min dan 1-min window pada timestamp yang sama tidak konflik
+SegmentSchema.index({ user_id: 1, device_id: 1, window_type: 1, window_start: 1 }, { unique: true });
 
 const Segment = mongoose.model('Segment', SegmentSchema);
 

@@ -867,7 +867,162 @@ function buildSegmentDoc(userId, win, isValid, user) {
   return doc;
 }
 
+// ── Pipeline 1-menit RR (paralel) ────────────────────────────────────────────
+
+/**
+ * Pipeline Layer 2 paralel: segmentasi 1-menit hanya menggunakan RR interval.
+ *
+ * Berjalan paralel dengan pipeline 5-menit yang sudah ada.
+ * Menyimpan segmen dengan window_type: '1min' dan rr_raw array.
+ * Data yang disimpan adalah snapshot dari raw data yang SUDAH diproses oleh
+ * pipeline utama (isChecked: true), sehingga tidak mengganggu alur utama.
+ *
+ * Layer 3 RR akan mengambil segmen ini dan menjalankan context-aware detection.
+ *
+ * @param {string} [triggeredBy='CRON']
+ */
+export async function processOneMinuteRRSegments(triggeredBy = 'CRON') {
+  const WINDOW_1MIN_MS = 60 * 1000;
+  const MIN_RR_PER_1MIN = 10; // min RR per window (lebih rendah saat cold-start)
+
+  const job = await ProcessingJob.create({
+    type: 'LAYER2',
+    status: 'RUNNING',
+    triggered_by: triggeredBy,
+    start_time: new Date(),
+  });
+
+  try {
+    console.log('[Pipeline L2-RR] Memulai segmentasi 1-menit...');
+
+    // Ambil user yang punya data raw yang sudah diproses pipeline 5-menit
+    // tetapi belum punya segmen 1-menit terbaru (cek via window_type: '1min')
+    const userIds = await PolarData.distinct('user_id', { isChecked: true });
+    if (userIds.length === 0) {
+      await ProcessingJob.findByIdAndUpdate(job._id, { status: 'DONE', end_time: new Date(), duration_ms: 0, segments_created: 0 });
+      return { success: true, message: 'Tidak ada data untuk diproses.', segmentsCreated: 0 };
+    }
+
+    await ProcessingJob.findByIdAndUpdate(job._id, { user_ids: userIds });
+
+    let totalSegments = 0;
+
+    for (const userId of userIds) {
+      try {
+        // Cari timestamp segmen 1-menit terakhir yang sudah dibuat untuk user ini
+        const lastSeg = await Segment.findOne(
+          { user_id: userId, window_type: '1min' },
+          { window_end: 1 },
+          { sort: { window_end: -1 }, lean: true }
+        );
+        const fromTimestamp = lastSeg ? lastSeg.window_end : 0;
+
+        // Ambil data raw yang sudah diproses setelah segmen 1-menit terakhir
+        const rawLogs = await PolarData.find({
+          user_id: userId,
+          isChecked: true,
+          timestamp: { $gt: fromTimestamp },
+        }).sort({ timestamp: 1 }).lean();
+
+        if (rawLogs.length < MIN_RR_PER_1MIN) continue;
+
+        // Segmentasi sederhana ke window 1 menit berdasarkan timestamp
+        const windows = [];
+        let winStart = Math.floor(rawLogs[0].timestamp / WINDOW_1MIN_MS) * WINDOW_1MIN_MS;
+        let winLogs = [];
+
+        for (const log of rawLogs) {
+          if (log.timestamp >= winStart + WINDOW_1MIN_MS) {
+            if (winLogs.length >= MIN_RR_PER_1MIN) {
+              windows.push({ winStart, winLogs: winLogs.slice() });
+            }
+            winStart = Math.floor(log.timestamp / WINDOW_1MIN_MS) * WINDOW_1MIN_MS;
+            winLogs = [];
+          }
+          winLogs.push(log);
+        }
+        if (winLogs.length >= MIN_RR_PER_1MIN) {
+          windows.push({ winStart, winLogs });
+        }
+
+        if (windows.length === 0) continue;
+
+        // Build segment docs
+        const bulkOps = windows.map(({ winStart, winLogs: wl }) => {
+          const rrArr = wl.map(l => l.rr).filter(v => v > 0);
+          // Ambil activity dari modus log dalam window
+          const activityMap = {};
+          for (const l of wl) {
+            const act = l.activity || 'Unknown';
+            activityMap[act] = (activityMap[act] || 0) + 1;
+          }
+          const activity = Object.entries(activityMap).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+          const deviceId = wl[0].device_id || 'UNKNOWN';
+
+          return {
+            updateOne: {
+              filter: {
+                user_id: userId,
+                device_id: deviceId,
+                window_type: '1min',
+                window_start: winStart,
+              },
+              update: {
+                $set: {
+                  user_id: userId,
+                  device_id: deviceId,
+                  window_type: '1min',
+                  window_start: winStart,
+                  window_end: winStart + WINDOW_1MIN_MS,
+                  activity_label: activity,
+                  raw_count: wl.length,
+                  rr_raw: rrArr,
+                  is_valid: rrArr.length >= MIN_RR_PER_1MIN,
+                  analyzed: false,
+                  features: {
+                    mean_rr: rrArr.length > 0
+                      ? parseFloat((rrArr.reduce((s, v) => s + v, 0) / rrArr.length).toFixed(2))
+                      : null,
+                  },
+                },
+              },
+              upsert: true,
+            },
+          };
+        });
+
+        if (bulkOps.length > 0) {
+          const res = await Segment.bulkWrite(bulkOps, { ordered: false });
+          totalSegments += res.upsertedCount + res.modifiedCount;
+        }
+      } catch (userErr) {
+        console.error(`[Pipeline L2-RR] Error user ${userId}:`, userErr.message);
+      }
+    }
+
+    const endTime = new Date();
+    console.log(`[Pipeline L2-RR] Selesai. ${totalSegments} segmen 1-menit dibuat.`);
+    await ProcessingJob.findByIdAndUpdate(job._id, {
+      status: 'DONE',
+      end_time: endTime,
+      duration_ms: endTime.getTime() - job.start_time.getTime(),
+      segments_created: totalSegments,
+    });
+    return { success: true, segmentsCreated: totalSegments };
+
+  } catch (err) {
+    console.error('[Pipeline L2-RR] Error utama:', err.message);
+    await ProcessingJob.findByIdAndUpdate(job._id, {
+      status: 'FAILED', end_time: new Date(),
+      duration_ms: Date.now() - job.start_time.getTime(),
+      error: err.message,
+    }).catch(() => {});
+    return { success: false, error: err.message };
+  }
+}
+
 // ── Math helpers ─────────────────────────────────────────────────────────────
+
 
 const avg = (arr) => arr.length === 0 ? 0 : arr.reduce((s, v) => s + v, 0) / arr.length;
 
