@@ -189,31 +189,47 @@ export async function startLogTransportConsumer() {
       }
 
       if (targetUserId && Array.isArray(envelope.readings) && envelope.readings.length > 0) {
-        const docs = envelope.readings.map((r) => {
+        const validActivities = [
+          'Tidur', 'Berbaring', 'Duduk', 'Berdiri', 'Berjalan', 'Berjalan Cepat', 
+          'Naik Tangga', 'Bersepeda', 'Berenang', 'Senam', 'Yoga', 'Berlari', 
+          'Lari Cepat', 'Olahraga Berat', 'Makan', 'Memasak', 'Berkendara', 'Bekerja', 'Lainnya'
+        ];
+
+        let docs = envelope.readings.map((r) => {
           const now = new Date(r.timestamp ? r.timestamp * 1000 : Date.now());
           const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
           const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+          
+          let act = r.activity || 'Lainnya';
+          if (!validActivities.includes(act)) act = 'Lainnya';
 
           return {
             user_id: targetUserId,
             timestamp: r.timestamp || Math.floor(Date.now() / 1000),
             date_created: dateStr,
             time_created: timeStr,
-            hr: r.heart_rate || 75,
-            rr: r.rr_interval || 800,
+            hr: r.heart_rate || 0,
+            rr: r.rr_interval || 0,
             rrms: r.rmssd || null,
-            activity: r.activity || 'Duduk',
+            activity: act,
             device_id: envelope.device_id || 'POLAR_H10',
             isChecked: false,
             processStatus: 'PENDING',
           };
-        });
+        }).filter(d => d.hr >= 30 && d.hr <= 220 && d.rr >= 300 && d.rr <= 2000);
+
+        if (docs.length === 0) {
+          console.warn(`[RabbitMQ -> MongoDB] All ${envelope.readings.length} readings for user ${targetUserId} were filtered out (invalid HR/RR)`);
+          return; // Skip insert if all readings are invalid
+        }
 
         const result = await PolarData.insertMany(docs, { ordered: false }).catch((err) => {
+          console.error(`[RabbitMQ -> MongoDB] InsertMany Error: ${err.message}`);
           if (err.insertedDocs) return err.insertedDocs;
           return [];
         });
-        console.log(`[RabbitMQ -> MongoDB] Successfully stored ${result.length || docs.length} readings for user ${targetUserId}`);
+        const insertedCount = result ? result.length : 0;
+        console.log(`[RabbitMQ -> MongoDB] Successfully stored ${insertedCount} readings for user ${targetUserId}`);
 
         // --- ASYNC QUALITY & ANNOTATION GATE ---
         setImmediate(async () => {
