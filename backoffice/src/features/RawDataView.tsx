@@ -43,8 +43,9 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
   const [selectedDayHasData, setSelectedDayHasData] = useState<boolean | null>(null);
   const [startTime, setStartTime] = useState<string>('');
   const [endTime, setEndTime] = useState<string>('');
-  // Simpan timestamp terakhir untuk live polling incremental (?since=)
-  const lastTimestampRef = useRef<number | null>(null);
+  
+  // Quality audit terbaru
+  const [latestQualityAudit, setLatestQualityAudit] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -64,26 +65,55 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
     fetchPatients();
   }, []);
 
-  // Fungsi fetch data — bisa full atau incremental (?since=)
-  const fetchRawData = async (incremental = false) => {
+  // Fungsi fetch data — bisa full
+  const fetchRawData = async () => {
     if (!selectedParticipantId) return;
-    if (!incremental) {
-      setLoading(true);
-      setSelectedDayHasData(null);
-    }
+    setLoading(true);
+    setSelectedDayHasData(null);
+    setLatestQualityAudit(null);
+    
     try {
       const token = sessionStorage.getItem('htm_token');
-      let url = `/api/data/raw/${selectedParticipantId}?`;
-
-      if (incremental && lastTimestampRef.current) {
-        // Hanya ambil data baru setelah timestamp terakhir
-        url += `since=${lastTimestampRef.current}&`;
+      
+      let targetDate = selectedDay;
+      
+      // Jika tanggal tidak dipilih, cari tanggal terbaru dari segments
+      if (!targetDate) {
+        const resSeg = await fetch(`/api/analysis/segments/${selectedParticipantId}?limit=1`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (resSeg.ok) {
+          const dataSeg = await resSeg.json();
+          if (dataSeg.success && Array.isArray(dataSeg.data) && dataSeg.data.length > 0) {
+            const latestSeg = dataSeg.data[0];
+            targetDate = new Date(latestSeg.window_start).toISOString().split('T')[0];
+            setSelectedDay(targetDate);
+            if (latestSeg.quality_audit) {
+              setLatestQualityAudit(latestSeg.quality_audit);
+            }
+          } else {
+             setLoading(false);
+             setSelectedDayHasData(false);
+             return; // no data for user at all
+          }
+        }
       } else {
-        // Full fetch: filter tanggal dan waktu
-        if (selectedDay)  url += `date=${selectedDay}&`;
-        if (startTime)    url += `startTime=${startTime}&`;
-        if (endTime)      url += `endTime=${endTime}&`;
+        // Ambil quality audit untuk hari yang dipilih
+        const resSeg = await fetch(`/api/analysis/segments/${selectedParticipantId}?limit=1`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (resSeg.ok) {
+           const dataSeg = await resSeg.json();
+           if (dataSeg.success && Array.isArray(dataSeg.data) && dataSeg.data.length > 0) {
+             setLatestQualityAudit(dataSeg.data[0].quality_audit);
+           }
+        }
       }
+
+      let url = `/api/data/raw/${selectedParticipantId}?`;
+      if (targetDate)  url += `date=${targetDate}&`;
+      if (startTime)    url += `startTime=${startTime}&`;
+      if (endTime)      url += `endTime=${endTime}&`;
 
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -102,44 +132,24 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
         return {
           ...d,
           timeLabel: `${h}:${m}:${s}`,
-          sortTs: d.timestamp,
+          datetime: dt,
         };
       });
 
-      // Update lastTimestamp untuk live polling berikutnya
-      if (json.lastTimestamp) {
-        lastTimestampRef.current = json.lastTimestamp;
-      }
-
-      if (incremental && formatted.length > 0) {
-        // Tambahkan ke data yang sudah ada, pertahankan 2000 titik terakhir
-        setData(prev => [...prev, ...formatted].slice(-2000));
-        setSelectedDayHasData(true);
-      } else {
-        setData(formatted);
-        lastTimestampRef.current = json.lastTimestamp ?? null;
-        setSelectedDayHasData(formatted.length > 0);
-      }
+      setData(formatted);
+      setSelectedDayHasData(formatted.length > 0);
     } catch (err) {
       console.error(err);
     } finally {
-      if (!incremental) setLoading(false);
+      setLoading(false);
     }
   };
 
   // Fetch penuh saat participant / filter berubah
   useEffect(() => {
     if (selectedParticipantId) {
-      lastTimestampRef.current = null; // Reset live pointer
-      fetchRawData(false);
+      fetchRawData();
     }
-  }, [selectedParticipantId, selectedDay, startTime, endTime]);
-
-  // Live polling setiap 10 detik — hanya fetch data baru via ?since=
-  useEffect(() => {
-    if (!selectedParticipantId) return;
-    const intervalId = setInterval(() => fetchRawData(true), 10000);
-    return () => clearInterval(intervalId);
   }, [selectedParticipantId, selectedDay, startTime, endTime]);
 
   // Data yang ditampilkan dari hasil fetch API
@@ -300,6 +310,12 @@ export const RawDataView: React.FC<RawDataProps> = ({ selectedParticipantId: pro
           <SummaryCard label="Tertinggi" value={`${summary.hrMax}`} unit="bpm" color="var(--alert-text)" />
           <SummaryCard label="Terendah" value={`${summary.hrMin}`} unit="bpm" color="var(--muted)" />
           <SummaryCard label="Jumlah Data" value={`${summary.count}`} unit="titik" color="var(--muted)" />
+          {latestQualityAudit && (
+             <>
+               <SummaryCard label="Artefak Terkoreksi" value={`${(latestQualityAudit.artifact_fraction * 100).toFixed(1)}`} unit="%" color="var(--warning)" />
+               <SummaryCard label="Data Hilang" value={`${(latestQualityAudit.missing_fraction * 100).toFixed(1)}`} unit="%" color="var(--alert-text)" />
+             </>
+          )}
         </div>
       )}
 

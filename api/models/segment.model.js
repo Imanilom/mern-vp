@@ -182,6 +182,21 @@ const SegmentSchema = new mongoose.Schema({
     artifact_type: { type: String, default: null }, // e.g., 'contact_loss', 'spike_noise', 'dropout'
   },
 
+  // --- Quality Audit (Transparansi gate Ingestion) ---
+  quality_audit: {
+    rr_total_received: { type: Number, default: 0 },
+    rr_artifact_count: { type: Number, default: 0 },
+    rr_corrected_count: { type: Number, default: 0 },
+    rr_normalized_count: { type: Number, default: 0 },
+    rr_missing_count: { type: Number, default: 0 },
+    rr_artifact_fraction: { type: Number, default: 0 },
+    rr_missing_fraction: { type: Number, default: 0 },
+    annotation_present: { type: Boolean, default: false },
+    annotation_confidence: { type: Number, default: 0 },
+    gate_passed: { type: Boolean, default: false },
+    gate_reasons: { type: [String], default: [] },
+  },
+
   /**
    * Detail kualitas sinyal RR (diisi oleh RR pipeline 1-menit).
    * Port dari assess_and_correct_rr() Python.

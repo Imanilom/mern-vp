@@ -149,24 +149,10 @@ class ApiClient {
       }
     } catch (e) {
       debugPrint("getParticipantProfile error: $e");
+      throw Exception("Gagal memuat profil peserta dari server: $e");
     }
-
-    // Fallback: gunakan data session lokal, tanpa data dummy palsu
-    final prefs = await SharedPreferences.getInstance();
-    final cachedId = prefs.getString('user_id') ?? "Offline";
-    final cachedName = prefs.getString('user_name') ?? "Peserta (Offline)";
-    return Participant(
-      id: cachedId,
-      name: cachedName,
-      studyCode: "HTM-2026",
-      pin: "******",
-      birthYear: 0,   // 0 = tidak diketahui
-      gender: "",
-      heightCm: 0.0,
-      weightKg: 0.0,
-      relevantCondition: "Pemantauan Trajectory Riset HTM",
-      staffContact: "",
-    );
+    
+    throw Exception("Gagal memuat profil peserta (kode status bukan 200)");
   }
 
   Future<List<ActivityItem>> getActivities() async {
@@ -195,24 +181,10 @@ class ApiClient {
       }
     } catch (e) {
       debugPrint("getActivities API call error: $e");
+      throw Exception("Gagal memuat daftar aktivitas dari server: $e");
     }
 
-    // Default activity list fallback
-    return const [
-      ActivityItem(id: "1", name: "Tidur", icon: Icons.bedtime),
-      ActivityItem(id: "2", name: "Bangun tidur", icon: Icons.wb_sunny),
-      ActivityItem(id: "3", name: "Duduk", icon: Icons.chair),
-      ActivityItem(id: "4", name: "Duduk bekerja", icon: Icons.laptop_chromebook),
-      ActivityItem(id: "5", name: "Berdiri", icon: Icons.accessibility_new),
-      ActivityItem(id: "6", name: "Berjalan", icon: Icons.directions_walk),
-      ActivityItem(id: "7", name: "Berkendara", icon: Icons.directions_car),
-      ActivityItem(id: "8", name: "Makan", icon: Icons.restaurant),
-      ActivityItem(id: "9", name: "Olahraga", icon: Icons.fitness_center),
-      ActivityItem(id: "10", name: "Istirahat olahraga", icon: Icons.airline_seat_recline_extra),
-      ActivityItem(id: "11", name: "Bekerja", icon: Icons.work),
-      ActivityItem(id: "12", name: "Aktivitas mendadak", icon: Icons.warning_amber),
-      ActivityItem(id: "13", name: "Aktivitas lainnya", icon: Icons.more_horiz),
-    ];
+    return [];
   }
 
   Future<bool> pushActivity({required String activityName, String? notes}) async {

@@ -31,6 +31,8 @@ import {
   computeBaselineMaturity,
   computeRRZScores,
   computeRRCompositeScore,
+  computePersonalizedScore,
+  computeProvisionalScore,
   classifyRR,
   updateTemporalState,
   createTemporalState,
@@ -1228,9 +1230,12 @@ async function analyzeOneMinuteUser(userId) {
       // 1. Baseline
       const baseline = await getOrCreateBaseline(userId, activity, timePeriod);
 
-      // 2. Maturity
-      const maturity = computeBaselineMaturity(baseline, []);
-      const maturityLevel = maturity.level;
+      // 2. Maturity level
+      //    Gunakan maturity_detail yang sudah tersimpan di baseline (direfresh setiap 10 update)
+      //    agar tidak perlu melewatkan array kosong ke computeBaselineMaturity setiap window.
+      const maturityLevel = baseline.maturity_detail?.level ||
+        (baseline.segment_count >= 30 ? 'maturing' :
+         baseline.segment_count >= 10 ? 'provisional' : 'cold_start');
 
       // 3. Quality assessment
       const quality = assessRRQuality(rrArr, 0.85, seg.raw_count);
@@ -1259,57 +1264,92 @@ async function analyzeOneMinuteUser(userId) {
       }
 
       // 4. Feature extraction
+      //    9 fitur: hr_mean, sdnn, rmssd, hr_delta, hr_slope, pnn50,
+      //             dfa_alpha1, dfa_alpha2, motion_index
+      //    DFA hanya dihitung jika rr_clean.length >= 64 (default minRrForDfa)
       const features = extractRRFeatures(quality.rr_clean);
 
-      // 5. Baseline belum cukup?
-      const hasBaseline = (baseline.stats?.rmssd?.n || 0) >= 2
-        && (baseline.stats?.sdnn?.n || 0) >= 2;
+      // 5. Hitung skor deviasi personal (TANPA maturity penalty)
+      //    Otomatis return { score: null } jika used_weight < 0.50
+      //    (baseline belum punya cukup data untuk fitur-fitur kunci)
+      let { score, z_scores: rrZScores } = computePersonalizedScore(features, baseline);
+      let isProvisional = false;
 
-      if (!hasBaseline) {
-        const updateFields = buildBaselineUpdateFields(
-          baseline, features, quality, seg.window_start, true
-        );
-        if (updateFields) {
-          await Baseline.updateOne({ _id: baseline._id }, {
-            $set: updateFields,
-            $push: {
-              window_timestamps: seg.window_start,
-              q_signal_history:  quality.q_signal,
-              q_complete_history: quality.q_complete,
-              q_context_history: quality.q_context,
+      // Jika skor null → baseline belum cukup
+      if (score === null) {
+        // Coba PROVISIONAL branch jika data > 5 segments
+        if (baseline.segment_count >= 5) {
+          const prov = computeProvisionalScore(features, baseline, activity);
+          if (prov.score !== null) {
+            score = prov.score;
+            rrZScores = prov.z_scores;
+            isProvisional = true;
+          }
+        }
+
+        if (score === null) {
+          // Tetap tidak bisa dinilai → INSUFFICIENT_BASELINE
+          const updateFields = buildBaselineUpdateFields(
+            baseline, features, quality, seg.window_start, true
+          );
+          if (updateFields) {
+            await Baseline.updateOne({ _id: baseline._id }, {
+              $set: updateFields,
+              $push: {
+                window_timestamps:  seg.window_start,
+                q_signal_history:   quality.q_signal,
+                q_complete_history: quality.q_complete,
+                q_context_history:  quality.q_context,
+              },
+            });
+          }
+          bulkOps.push({
+            updateOne: {
+              filter: { _id: seg._id },
+              update: { $set: {
+                analyzed: true, rr_status: 'INSUFFICIENT_BASELINE',
+                signal_quality_detail: qualityDetail,
+                'maturity_detail.level': maturityLevel,
+                'features.hr_mean':    features.hr_mean,
+                'features.sdnn':       features.sdnn,
+                'features.rmssd':      features.rmssd,
+                'features.dfa_alpha1': features.dfa_alpha1,
+                'features.pnn50':      features.pnn50,
+              }},
             },
           });
+          totalAnalyzed++;
+          continue;
         }
-        bulkOps.push({
-          updateOne: {
-            filter: { _id: seg._id },
-            update: { $set: {
-              analyzed: true, rr_status: 'INSUFFICIENT_BASELINE',
-              signal_quality_detail: qualityDetail,
-              'maturity_detail.level': maturityLevel,
-              'features.hr_mean': features.hr_mean,
-              'features.sdnn':    features.sdnn,
-              'features.rmssd':   features.rmssd,
-            }},
-          },
-        });
-        totalAnalyzed++;
-        continue;
       }
 
-      // 6. Z-scores & score
-      const zScores = computeRRZScores(features, baseline, maturityLevel);
-      const score   = computeRRCompositeScore(zScores);
+      // 6. Klasifikasi menggunakan dynamic threshold (per maturity level)
+      //    Untuk provisional, gunakan threshold yang sesuai (misal 2.5)
       const classification = classifyRR(score, maturityLevel);
 
-      // 7. Temporal state machine
+      // 7. Temporal state machine (9-state)
       if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
-      const { rr_status, safe_to_update } = updateTemporalState(
+      
+      let { rr_status, safe_to_update } = updateTemporalState(
         temporalStates[activity], score, maturityLevel
       );
 
-      // 8. Update baseline
-      if (safe_to_update && classification === 'Normal') {
+      // Override state status jika perhitungan berasal dari PROVISIONAL
+      if (isProvisional) {
+        // PROVISIONAL kandidat deviasi / warning
+        if (rr_status === 'NORMAL') {
+          rr_status = 'PROVISIONAL_NORMAL';
+        } else {
+          // Segala jenis alert (DEVIATION_CANDIDATE, ALERT, dll)
+          rr_status = 'PROVISIONAL_DEVIATION';
+        }
+        // Pastikan update aman untuk provisional unless cold-start override
+        safe_to_update = true; 
+      }
+
+      // 8. Update baseline jika temporal tracker menyatakan aman
+      //    (safe_to_update sudah mempertimbangkan Normal/Caution/Alert)
+      if (safe_to_update) {
         const updateFields = buildBaselineUpdateFields(
           baseline, features, quality, seg.window_start, maturityLevel === 'cold_start'
         );
@@ -1317,13 +1357,13 @@ async function analyzeOneMinuteUser(userId) {
           await Baseline.updateOne({ _id: baseline._id }, {
             $set: updateFields,
             $push: {
-              window_timestamps: seg.window_start,
-              q_signal_history:  quality.q_signal,
+              window_timestamps:  seg.window_start,
+              q_signal_history:   quality.q_signal,
               q_complete_history: quality.q_complete,
-              q_context_history: quality.q_context,
+              q_context_history:  quality.q_context,
             },
           });
-          // Refresh maturity detail setiap 10 update
+          // Refresh maturity_detail setiap 10 window agar tersimpan untuk sesi berikutnya
           if ((updateFields.segment_count % 10) === 0) {
             const freshBaseline = await Baseline.findById(baseline._id).lean();
             const updatedMaturity = computeBaselineMaturity(freshBaseline, []);
@@ -1336,12 +1376,12 @@ async function analyzeOneMinuteUser(userId) {
 
       // 9. Persistence → AnomalyEvent
       const eventCreated = await updateRRPersistence(
-        userId, seg, score, classification, zScores, rr_status,
+        userId, seg, score, classification, rrZScores, rr_status,
         persistenceState, activity
       );
       if (eventCreated) totalEvents++;
 
-      // Bulk update segmen
+      // Bulk update segmen — simpan fitur baru + z_scores
       bulkOps.push({
         updateOne: {
           filter: { _id: seg._id },
@@ -1353,14 +1393,20 @@ async function analyzeOneMinuteUser(userId) {
               rr_status,
               signal_quality_detail: qualityDetail,
               'maturity_detail.level': maturityLevel,
-              'features.hr_mean': features.hr_mean,
-              'features.sdnn':    features.sdnn,
-              'features.rmssd':   features.rmssd,
+              // Fitur yang tersimpan di segment
+              'features.hr_mean':    features.hr_mean,
+              'features.sdnn':       features.sdnn,
+              'features.rmssd':      features.rmssd,
+              'features.dfa_alpha1': features.dfa_alpha1,
+              'features.pnn50':      features.pnn50,
+              // Z-scores — map dari feature key ke nama field segment
               z_scores: {
-                z_hr:    round2(zScores.z_hr),
-                z_sdnn:  round2(zScores.z_sdnn),
-                z_rmssd: round2(zScores.z_rmssd),
-                z_motion: null, z_rr: null, z_dfa: null,
+                z_hr:    round2(rrZScores?.hr_mean     ?? null),
+                z_sdnn:  round2(rrZScores?.sdnn        ?? null),
+                z_rmssd: round2(rrZScores?.rmssd       ?? null),
+                z_dfa:   round2(rrZScores?.dfa_alpha1  ?? null),
+                z_motion: round2(rrZScores?.motion_index ?? null),
+                z_rr:    null,
               },
             },
           },

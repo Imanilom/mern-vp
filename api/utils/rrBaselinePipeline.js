@@ -3,13 +3,15 @@
  *
  * Port dari Python: context_aware_autonomic_pipeline.py
  *
- * Fitur yang digunakan: hr_mean, sdnn, rmssd (hanya dari RR interval)
+ * Fitur: hr_mean, hr_delta, hr_slope, sdnn, rmssd, pnn50,
+ *        dfa_alpha1, dfa_alpha2, motion_index
  * Window: 1 menit
  * Threshold: dinamis berdasarkan maturity baseline
  *
  * Modul ini TIDAK membuat keputusan klinis. Threshold harus dikalibrasi
  * sesuai populasi dan perangkat yang digunakan.
  */
+import { calculateDFA } from '../controllers/metrics.controller.js';
 
 // ── Konfigurasi ───────────────────────────────────────────────────────────────
 
@@ -52,14 +54,36 @@ export const MATURITY_CONFIG = {
 };
 
 /**
- * Bobot fitur untuk composite anomaly score (hanya RR-based).
- * Total = 1.0
+ * Bobot fitur untuk composite anomaly score (hanya RR-based, 3 fitur).
+ * Dipertahankan untuk kompatibilitas mundur.
+ * @deprecated Gunakan FEATURE_WEIGHTS untuk pipeline baru.
  */
 export const RR_WEIGHTS = {
   z_rmssd: 0.50,
   z_sdnn:  0.30,
   z_hr:    0.20,
 };
+
+/**
+ * Bobot fitur 7-komponen per spesifikasi algoritma v1.0 (Agustus 2026).
+ * Digunakan oleh computePersonalizedScore() tanpa maturity penalty.
+ * Total = 1.0
+ */
+export const FEATURE_WEIGHTS = {
+  hr_mean:      0.20,
+  hr_delta:     0.10,
+  hr_slope:     0.10,
+  sdnn:         0.15,
+  rmssd:        0.20,
+  dfa_alpha1:   0.20,
+  motion_index: 0.05,
+};
+
+/** Fitur wajib — skor tidak dihitung jika baseline salah satunya belum ada. */
+export const MANDATORY_FEATURES = ['hr_mean', 'rmssd', 'dfa_alpha1'];
+
+/** Minimum total bobot fitur tersedia agar skor dianggap valid. */
+export const MIN_SCORED_WEIGHT = 0.50;
 
 /**
  * Threshold anomaly score berdasarkan level maturity baseline.
@@ -84,6 +108,17 @@ export const PERSISTENCE_CONFIG = {
   recovery_threshold_frac: 0.5,
 };
 
+/** 
+ * Population Priors untuk HRV dari literatur (estimasi kasar untuk Polar H10). 
+ * Digunakan untuk Empirical Bayes Shrinkage selama masa PROVISIONAL.
+ */
+export const POPULATION_PRIORS = {
+  Rest:     { hr_mean: { mean: 65, sd: 10 }, sdnn: { mean: 50, sd: 15 }, rmssd: { mean: 42, sd: 18 }, dfa_alpha1: { mean: 1.10, sd: 0.20 } },
+  Light:    { hr_mean: { mean: 80, sd: 12 }, sdnn: { mean: 40, sd: 12 }, rmssd: { mean: 30, sd: 14 }, dfa_alpha1: { mean: 1.00, sd: 0.20 } },
+  Moderate: { hr_mean: { mean: 95, sd: 15 }, sdnn: { mean: 30, sd: 10 }, rmssd: { mean: 20, sd: 10 }, dfa_alpha1: { mean: 0.90, sd: 0.20 } },
+  Intense:  { hr_mean: { mean: 130, sd: 20 }, sdnn: { mean: 20, sd: 8  }, rmssd: { mean: 12, sd: 6  }, dfa_alpha1: { mean: 0.80, sd: 0.15 } },
+  Unknown:  { hr_mean: { mean: 75, sd: 15 }, sdnn: { mean: 45, sd: 15 }, rmssd: { mean: 35, sd: 15 }, dfa_alpha1: { mean: 1.00, sd: 0.20 } },
+};
 
 // ── Quality Assessment ─────────────────────────────────────────────────────────
 
@@ -215,42 +250,109 @@ export function assessRRQuality(rrArr, activityConfidence, expectedCount) {
 }
 
 
-// ── Feature Extraction (RR-only) ──────────────────────────────────────────────
+// ── Feature Extraction (RR + optional Accel) ─────────────────────────────────
 
 /**
- * Ekstrak fitur HRV dari RR interval yang sudah dibersihkan.
+ * Ekstrak fitur HRV dan gerak dari RR interval yang sudah dibersihkan.
  *
- * Fitur:
- *  hr_mean = 60000 / mean(RR)
- *  sdnn    = std(RR, ddof=1)
- *  rmssd   = sqrt(mean(successive_differences^2))
+ * Fitur yang dihitung (9 total):
+ *  hr_mean      = 60000 / mean(RR)
+ *  sdnn         = std(RR, ddof=1)
+ *  rmssd        = sqrt(mean(successive_differences²))
+ *  pnn50        = proporsi |ΔRR| > 50 ms (0–1)
+ *  hr_delta     = mean(HR paruh kedua) − mean(HR paruh pertama)
+ *  hr_slope     = slope regresi HR terhadap waktu (bpm/menit)
+ *  dfa_alpha1   = DFA α1 (skala 4–16 beat) — butuh n ≥ minRrForDfa
+ *  dfa_alpha2   = DFA α2 (skala 17–64 beat)
+ *  motion_index = ENMO akselerometer (opsional)
  *
- * @param {number[]} rr_clean - RR interval bersih (ms)
- * @returns {{ hr_mean, sdnn, rmssd }}
+ * DFA menggunakan calculateDFA() dari metrics.controller yang sudah ada.
+ *
+ * @param {number[]} rr_clean     - RR interval bersih (ms), wajib
+ * @param {number[]} [accelX=[]] - Akselerasi sumbu X (g), opsional
+ * @param {number[]} [accelY=[]] - Akselerasi sumbu Y (g), opsional
+ * @param {number[]} [accelZ=[]] - Akselerasi sumbu Z (g), opsional
+ * @param {number}   [minRrForDfa=64] - Minimum beat agar DFA dihitung
+ * @returns {{ hr_mean, sdnn, rmssd, pnn50, hr_delta, hr_slope, dfa_alpha1, dfa_alpha2, motion_index }}
  */
-export function extractRRFeatures(rr_clean) {
-  if (!rr_clean || rr_clean.length < 2) {
-    return { hr_mean: null, sdnn: null, rmssd: null };
-  }
+export function extractRRFeatures(rr_clean, accelX = [], accelY = [], accelZ = [], minRrForDfa = 64) {
+  const nullResult = {
+    hr_mean: null, sdnn: null, rmssd: null,
+    hr_delta: null, hr_slope: null, pnn50: null,
+    dfa_alpha1: null, dfa_alpha2: null, motion_index: null,
+  };
+  if (!rr_clean || rr_clean.length < 2) return nullResult;
 
-  const n = rr_clean.length;
+  const n      = rr_clean.length;
   const meanRR = rr_clean.reduce((s, v) => s + v, 0) / n;
+  const hr     = rr_clean.map(r => 60000 / r);
+
+  // ─── Time-domain ──────────────────────────────────────────────────────────
   const hr_mean = 60000 / meanRR;
 
-  // SDNN (sample std dev, ddof=1)
-  const sdnn = Math.sqrt(
-    rr_clean.reduce((s, v) => s + (v - meanRR) ** 2, 0) / (n - 1)
-  );
+  const sdnn = n > 1
+    ? Math.sqrt(rr_clean.reduce((s, v) => s + (v - meanRR) ** 2, 0) / (n - 1))
+    : 0;
 
-  // RMSSD (root mean square of successive differences)
   const diffs = [];
   for (let i = 1; i < n; i++) diffs.push(rr_clean[i] - rr_clean[i - 1]);
-  const rmssd = Math.sqrt(diffs.reduce((s, d) => s + d * d, 0) / diffs.length);
+  const rmssd = diffs.length > 0
+    ? Math.sqrt(diffs.reduce((s, d) => s + d * d, 0) / diffs.length)
+    : 0;
+
+  // pNN50: proporsi pasangan RR yang selisihnya > 50 ms (0–1)
+  const pnn50 = diffs.length > 0
+    ? diffs.filter(d => Math.abs(d) > 50).length / diffs.length
+    : 0;
+
+  // hr_delta: perubahan rata-rata HR antara paruh pertama dan kedua window
+  const mid     = Math.max(1, Math.floor(n / 2));
+  const hrFirst = hr.slice(0, mid);
+  const hrSecond = hr.slice(mid);
+  const hr_delta = (hrSecond.reduce((s, v) => s + v, 0) / hrSecond.length)
+                 - (hrFirst.reduce((s, v) => s + v, 0) / hrFirst.length);
+
+  // hr_slope: bpm per menit via regresi OLS
+  let hr_slope = null;
+  if (n >= 3) {
+    const elapsed = [];
+    let t = 0;
+    for (const r of rr_clean) { t += r / 1000; elapsed.push(t); }
+    if (elapsed[elapsed.length - 1] > elapsed[0]) {
+      const [slopeSec] = _polyfit1(elapsed, hr);
+      if (isFinite(slopeSec)) hr_slope = slopeSec * 60; // bpm / menit
+    }
+  }
+
+  // ─── DFA (reuse calculateDFA dari metrics.controller.js) ──────────────────
+  let dfa_alpha1 = null, dfa_alpha2 = null;
+  if (n >= minRrForDfa) {
+    const dfa = calculateDFA(rr_clean, 4, 64);
+    dfa_alpha1 = dfa.alpha1 !== null && isFinite(dfa.alpha1) ? dfa.alpha1 : null;
+    dfa_alpha2 = dfa.alpha2 !== null && isFinite(dfa.alpha2) ? dfa.alpha2 : null;
+  }
+
+  // ─── Motion index (ENMO dari akselerometer, opsional) ────────────────────
+  let motion_index = null;
+  if (accelX.length > 0
+    && accelX.length === accelY.length
+    && accelX.length === accelZ.length) {
+    const enmo = accelX.map((ax, i) =>
+      Math.max(Math.sqrt(ax ** 2 + accelY[i] ** 2 + accelZ[i] ** 2) - 1.0, 0)
+    );
+    motion_index = enmo.reduce((s, v) => s + v, 0) / enmo.length;
+  }
 
   return {
-    hr_mean:  isFinite(hr_mean) ? r2(hr_mean) : null,
-    sdnn:     isFinite(sdnn)    ? r2(sdnn)    : null,
-    rmssd:    isFinite(rmssd)   ? r2(rmssd)   : null,
+    hr_mean:      isFinite(hr_mean)            ? r2(hr_mean)    : null,
+    sdnn:         isFinite(sdnn)               ? r2(sdnn)       : null,
+    rmssd:        isFinite(rmssd)              ? r2(rmssd)      : null,
+    hr_delta:     isFinite(hr_delta)           ? r2(hr_delta)   : null,
+    hr_slope:     hr_slope !== null            ? r2(hr_slope)   : null,
+    pnn50:        isFinite(pnn50)              ? r4(pnn50)      : null,
+    dfa_alpha1:   dfa_alpha1 !== null          ? r4(dfa_alpha1) : null,
+    dfa_alpha2:   dfa_alpha2 !== null          ? r4(dfa_alpha2) : null,
+    motion_index: motion_index !== null && isFinite(motion_index) ? r4(motion_index) : null,
   };
 }
 
@@ -488,6 +590,150 @@ export function classifyRR(score, maturityLevel) {
 }
 
 
+// ── Personalized Score (tanpa maturity penalty) ───────────────────────────────
+
+/**
+ * Hitung skor deviasi personal TANPA maturity penalty.
+ *
+ * Perbedaan dari computeRRZScores:
+ *  - Tidak ada PENALTY factor (mature: 1.0, cold_start: 0.5, dll.)
+ *  - Skor dinormalisasi oleh bobot yang tersedia
+ *  - Kembalikan { score: null } jika bobot tersedia < MIN_SCORED_WEIGHT
+ *
+ * Caller bertanggung jawab memastikan baseline sudah mature sebelum
+ * memanggil fungsi ini. Jika belum mature → kembalikan INSUFFICIENT_BASELINE.
+ *
+ * z   = clip((x − μ) / (σ + ε), −8, +8)
+ * score = Σ(w_f × |z_f|) / Σ(w_f tersedia)
+ *
+ * @param {{ hr_mean, hr_delta, hr_slope, sdnn, rmssd, dfa_alpha1, motion_index }} features
+ * @param {object} baseline - Mongoose Baseline document
+ * @returns {{ score: number|null, z_scores: object, used_weight: number }}
+ */
+export function computePersonalizedScore(features, baseline) {
+  // Mapping: feature key → stats key di baseline.stats
+  const statKeyMap = {
+    hr_mean:      'mean_hr',
+    hr_delta:     'delta_hr',
+    hr_slope:     'slope_hr',
+    sdnn:         'sdnn',
+    rmssd:        'rmssd',
+    dfa_alpha1:   'dfa_alpha1',
+    motion_index: 'motion_intensity',
+  };
+
+  const eps = 1e-8;
+  const z_scores = {};
+  let weightedSum = 0;
+  let usedWeight  = 0;
+
+  for (const [feature, weight] of Object.entries(FEATURE_WEIGHTS)) {
+    if (weight <= 0) continue;
+    const value = features[feature];
+    if (value === null || value === undefined || !isFinite(value)) continue;
+
+    const statKey = statKeyMap[feature];
+    const stat    = baseline.stats?.[statKey];
+    if (!stat || stat.n < 2 || stat.std < 0.001) continue;
+
+    const z = clip((value - stat.mean) / (stat.std + eps), -MAX_ABS_Z, MAX_ABS_Z);
+    z_scores[feature] = z;
+    weightedSum += weight * Math.abs(z);
+    usedWeight  += weight;
+  }
+
+  if (usedWeight < MIN_SCORED_WEIGHT) {
+    return { score: null, z_scores, used_weight: usedWeight };
+  }
+
+  return {
+    score:       weightedSum / usedWeight,
+    z_scores,
+    used_weight: usedWeight,
+  };
+}
+
+
+// ── Provisional Score (Shrinkage) ─────────────────────────────────────────────
+
+/**
+ * Hitung skor deviasi sementara menggunakan Empirical Bayes Shrinkage.
+ * 
+ * lam = n_eff / (n_eff + kappa)
+ * shrunk_mean = lam * personal_mean + (1 - lam) * pop_mean
+ * shrunk_var = lam * personal_var + (1 - lam) * pop_var + lam*(1-lam)*(personal_mean - pop_mean)^2
+ * 
+ * @param {object} features
+ * @param {object} baseline
+ * @param {string} activityLabel
+ * @returns {{ score: number|null, z_scores: object, used_weight: number }}
+ */
+export function computeProvisionalScore(features, baseline, activityLabel) {
+  const statKeyMap = {
+    hr_mean:      'mean_hr',
+    sdnn:         'sdnn',
+    rmssd:        'rmssd',
+    dfa_alpha1:   'dfa_alpha1',
+  };
+
+  const eps = 1e-8;
+  const kappa = 30; // Shrinkage weight parameter
+  const z_scores = {};
+  let weightedSum = 0;
+  let usedWeight  = 0;
+
+  // Coba ambil priors berdasarkan aktivitas; jika tidak ada, gunakan 'Unknown'
+  const priors = POPULATION_PRIORS[activityLabel] || POPULATION_PRIORS['Unknown'];
+  // n_effective dari baseline, jika tidak tersedia, dekati dengan count / 2
+  const n_eff = baseline.maturity_detail?.n_effective || ((baseline.segment_count || 0) / 2);
+  const lam = n_eff / (n_eff + kappa);
+
+  for (const [feature, weight] of Object.entries(FEATURE_WEIGHTS)) {
+    if (weight <= 0) continue;
+    const value = features[feature];
+    if (value === null || value === undefined || !isFinite(value)) continue;
+
+    // Untuk fitur tanpa population prior, fallback ke perhitungan personal biasa jika ada data
+    const prior = priors[feature];
+    const statKey = statKeyMap[feature] || feature;
+    const stat = baseline.stats?.[statKey];
+
+    let shrunk_mean, shrunk_sd;
+
+    if (prior) {
+      const prior_mean = prior.mean;
+      const prior_var = prior.sd * prior.sd;
+      
+      const personal_mean = (stat && stat.n >= 1) ? stat.mean : prior_mean;
+      const personal_var = (stat && stat.n >= 2) ? (stat.std * stat.std) : prior_var;
+
+      shrunk_mean = lam * personal_mean + (1 - lam) * prior_mean;
+      const shrunk_var = lam * personal_var + (1 - lam) * prior_var + lam * (1 - lam) * Math.pow(personal_mean - prior_mean, 2);
+      shrunk_sd = Math.sqrt(Math.max(shrunk_var, eps));
+    } else {
+      // Tidak ada population prior untuk fitur ini (misal hr_delta, motion_index)
+      if (!stat || stat.n < 2 || stat.std < 0.001) continue;
+      shrunk_mean = stat.mean;
+      shrunk_sd = stat.std;
+    }
+
+    const z = clip((value - shrunk_mean) / (shrunk_sd + eps), -MAX_ABS_Z, MAX_ABS_Z);
+    z_scores[feature] = z;
+    weightedSum += weight * Math.abs(z);
+    usedWeight  += weight;
+  }
+
+  if (usedWeight < MIN_SCORED_WEIGHT) {
+    return { score: null, z_scores, used_weight: usedWeight };
+  }
+
+  return {
+    score:       weightedSum / usedWeight,
+    z_scores,
+    used_weight: usedWeight,
+  };
+}
+
 // ── Temporal Status Machine ───────────────────────────────────────────────────
 
 /**
@@ -568,7 +814,16 @@ export function createTemporalState() {
 export function buildBaselineUpdateFields(baseline, features, quality, windowTimestamp, provisional) {
   if (baseline.is_frozen) return null;
 
-  const featureMap = { hr_mean: 'mean_hr', sdnn: 'sdnn', rmssd: 'rmssd' };
+  // Mapping fitur → stats key di baseline (extended untuk 7-fitur pipeline)
+  const featureMap = {
+    hr_mean:      'mean_hr',
+    hr_delta:     'delta_hr',
+    hr_slope:     'slope_hr',
+    sdnn:         'sdnn',
+    rmssd:        'rmssd',
+    dfa_alpha1:   'dfa_alpha1',
+    motion_index: 'motion_intensity',
+  };
   const updateFields = {};
   let anyUpdated = false;
 
@@ -615,6 +870,24 @@ export function buildBaselineUpdateFields(baseline, features, quality, windowTim
 // ── Math Helpers ──────────────────────────────────────────────────────────────
 
 function clip(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
+
+/**
+ * Regresi linear OLS: kembalikan [slope, intercept].
+ * Digunakan untuk hr_slope.
+ */
+function _polyfit1(x, y) {
+  const n    = x.length;
+  if (n < 2) return [0, y[0] || 0];
+  const sumX  = x.reduce((s, v) => s + v, 0);
+  const sumY  = y.reduce((s, v) => s + v, 0);
+  const sumXY = x.reduce((s, v, i) => s + v * y[i], 0);
+  const sumX2 = x.reduce((s, v) => s + v * v, 0);
+  const denom = n * sumX2 - sumX * sumX;
+  if (Math.abs(denom) < 1e-12) return [0, sumY / n];
+  const a = (n * sumXY - sumX * sumY) / denom;
+  const b = (sumY - a * sumX) / n;
+  return [a, b];
+}
 function r2(v) { return isFinite(v) ? parseFloat(v.toFixed(2)) : null; }
 function r4(v) { return isFinite(v) ? parseFloat(v.toFixed(4)) : null; }
 

@@ -123,9 +123,26 @@ class _ActivityPageState extends ConsumerState<ActivityPage> {
                 FutureBuilder<List<ActivityItem>>(
                   future: apiClient.getActivities(),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(
-                          child: CircularProgressIndicator());
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          "Gagal memuat aktivitas. Silakan periksa koneksi internet Anda.",
+                          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return Center(
+                        child: Text(
+                          "Belum ada data aktivitas yang tersedia dari server.",
+                          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
                     }
                     return ActivitySelectorGrid(
                       activities: snapshot.data!,

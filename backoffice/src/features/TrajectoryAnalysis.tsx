@@ -108,27 +108,23 @@ export const TrajectoryAnalysis: React.FC<AnalyticsProps> = ({
 
   // Active Kalman dataset for selected time period (Pagi / Siang / Sore)
   const activeKalmanSeries = useMemo(() => {
-    const apiSeries = kalmanData[selectedTimePeriod] || [];
-    if (apiSeries.length > 0) return apiSeries;
-
-    // Fallback: Compute local Kalman Filter prediction series if API returned empty
     const filter = new KalmanFilter1D(0.05, 2.0, selectedTimePeriod === 'Pagi' ? 72 : selectedTimePeriod === 'Siang' ? 86 : 70);
-    return sorted.map((s, i) => {
+    return sorted.map((s) => {
       const measured = feat(s, 'mean_hr') || 75;
       const kRes = filter.step(measured);
       return {
         time_str: fmtTime(s.window_start),
         measured_hr: measured,
         predicted_hr: kRes.estimate,
-        upper_bound: kRes.upperBound,
-        lower_bound: kRes.lowerBound,
         activity: s.activity_label || 'Rest',
         classification: s.classification || 'Normal',
+        state: s.state || 'NORMAL', // 9-State Temporal Machine
+        is_episode: (s.state || '').includes('DEVIATION') || (s.classification || '') !== 'Normal',
         missing_count: s.missing_data_info?.missing_count || 5,
         confidence_score: s.missing_data_info?.confidence_score || 99.5,
       };
     });
-  }, [kalmanData, selectedTimePeriod, sorted]);
+  }, [selectedTimePeriod, sorted]);
 
   // ---- Top status metrics ----
   const trajStats = useMemo(() => {
@@ -330,37 +326,49 @@ export const TrajectoryAnalysis: React.FC<AnalyticsProps> = ({
               {/* Kalman Filter Chart */}
               {(() => {
                 const getLineColor = () => {
-                  if (selectedTimePeriod === 'Pagi') return '#f59e0b'; // Amber/Morning
-                  if (selectedTimePeriod === 'Siang') return '#0ea5e9'; // Blue/Daylight
-                  if (selectedTimePeriod === 'Sore') return '#8b5cf6'; // Purple/Evening
+                  if (selectedTimePeriod === 'Pagi') return '#f59e0b';
+                  if (selectedTimePeriod === 'Siang') return '#0ea5e9';
+                  if (selectedTimePeriod === 'Sore') return '#8b5cf6';
                   return 'var(--primary)';
                 };
                 const lineColor = getLineColor();
+                
+                // Custom tooltip to show 9-State machine
+                const TrajectoryTooltip = ({ active, payload, label }: any) => {
+                  if (!active || !payload || !payload.length) return null;
+                  const data = payload[0].payload;
+                  return (
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--hairline)', padding: 10, borderRadius: 8, fontSize: 12 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Waktu: {label}</div>
+                      <div>Aktivitas: {data.activity}</div>
+                      <div style={{ color: 'var(--primary)', fontWeight: 600, marginTop: 4 }}>
+                        Status State: {data.state}
+                      </div>
+                      <div style={{ marginTop: 4 }}>
+                        HR Terukur: {data.measured_hr} bpm<br/>
+                        HR Prediksi (Kalman): {Math.round(data.predicted_hr)} bpm
+                      </div>
+                    </div>
+                  );
+                };
+
                 return (
                   <ResponsiveContainer width="100%" height={280}>
                 <ComposedChart data={activeKalmanSeries} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline)" vertical={false} />
                   <XAxis dataKey="time_str" tick={{ fontSize: 11 }} />
                   <YAxis domain={['dataMin - 5', 'dataMax + 10']} tick={{ fontSize: 11 }} label={{ value: 'BPM', angle: -90, position: 'insideLeft', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  <Tooltip content={<TrajectoryTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
 
-                  {/* Confidence Interval Upper/Lower Bound Area */}
-                  <Area
-                    type="monotone"
-                    dataKey="upper_bound"
-                    name="Kalman Upper Bound (95% CI)"
-                    stroke="none"
-                    fill={lineColor}
-                    fillOpacity={0.1}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="lower_bound"
-                    name="Kalman Lower Bound"
-                    stroke="none"
-                    fill="var(--surface)"
-                    fillOpacity={1.0}
+                  {/* Episodes Bar Band */}
+                  <Bar
+                    dataKey={(d) => d.is_episode ? 200 : 0}
+                    name="Episode Area"
+                    fill="var(--alert-text)"
+                    fillOpacity={0.15}
+                    isAnimationActive={false}
+                    barSize={20}
                   />
 
                   {/* Measured Raw HR Points */}

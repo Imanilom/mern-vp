@@ -194,13 +194,10 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
 
   const filteredEvents = useMemo(
     () => displayEvents.filter((e) => filter === 'All' || e.reviewStatus === filter),
-    [displayEvents, filter],
+    [displayEvents, filter]
   );
 
   useEffect(() => {
-    if (filteredEvents.length && !filteredEvents.find((e) => e.eventId === selectedEventId)) {
-      setSelectedEventId(filteredEvents[0].eventId);
-    }
     if (filteredEvents.length === 0) setSelectedEventId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredEvents]);
@@ -371,8 +368,8 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
         ))}
       </div>
 
-      <div className="split">
-        <div className="card !p-0 overflow-hidden" style={{ boxShadow: 'var(--shadow-md)', alignSelf: 'start' }}>
+      <div className="split" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+        <div className="card !p-0 overflow-hidden" style={{ boxShadow: 'var(--shadow-md)', flex: activeEvent ? '0 0 45%' : '1 1 100%', transition: 'all 0.3s ease' }}>
           <table className="w-full anom-table">
             <thead>
               <tr>
@@ -411,7 +408,8 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
           </table>
         </div>
 
-        <div>
+        {activeEvent && (
+        <div style={{ flex: '1 1 55%' }}>
           {activeEvent ? (
             <div className="animate-fadein">
               <div className="side-card" style={{ padding: '20px 24px' }}>
@@ -507,13 +505,9 @@ export const AnomalyDetection = ({ selectedParticipantId = '', onParticipantChan
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="placeholder">
-              <span className="msym">info</span>
-              <span>Silakan pilih event untuk melakukan validasi klinis</span>
-            </div>
-          )}
+          ) : null}
         </div>
+        )}
       </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}

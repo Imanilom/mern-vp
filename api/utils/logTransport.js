@@ -1,4 +1,6 @@
 import amqp from 'amqplib';
+import { analyzeAndCorrectRR, checkQualityGate } from './dataQualityGate.js';
+import { sendMobileNotification } from './notificationService.js';
 
 function normalizeTransportReading(reading) {
   const timestamp = reading.timestamp ?? reading.ts ?? reading.time ?? null;
@@ -211,6 +213,50 @@ export async function startLogTransportConsumer() {
           return [];
         });
         console.log(`[RabbitMQ -> MongoDB] Successfully stored ${result.length || docs.length} readings for user ${targetUserId}`);
+
+        // --- ASYNC QUALITY & ANNOTATION GATE ---
+        setImmediate(async () => {
+          try {
+            // Check for missing annotations using the most common activity
+            const activities = envelope.readings.map(r => r.activity || r.motion_state || 'Unknown');
+            const validActivities = activities.filter(a => a && a !== 'Unknown' && a.trim() !== '');
+            const activityLabel = validActivities.length > 0 ? validActivities[0] : 'Unknown';
+            const activityConfidence = 0.90; // Default proxy, assuming if provided it's reasonably confident
+            
+            // Notification logic
+            if (activityLabel === 'Unknown') {
+              await sendMobileNotification(
+                targetUserId,
+                envelope.device_id || 'UNKNOWN',
+                'ANNOTATION_REQUIRED',
+                'Anotasi aktivitas tidak tersedia. Harap isi keterangan aktivitas.',
+                envelope.timestamp || Date.now()
+              );
+            }
+
+            // Quality audit logic
+            const rrArray = envelope.readings.map(r => r.rr_interval || r.rr).filter(val => val !== undefined && val !== null);
+            const expectedCount = envelope.readings.length;
+            const audit = analyzeAndCorrectRR(rrArray, expectedCount);
+            const gate = checkQualityGate(audit, activityLabel, activityConfidence);
+
+            if (!gate.gate_passed) {
+              await sendMobileNotification(
+                targetUserId,
+                envelope.device_id || 'UNKNOWN',
+                'QUALITY_WARNING',
+                `Kualitas sinyal menurun: ${gate.gate_reasons.join(', ')}`,
+                envelope.timestamp || Date.now()
+              );
+            }
+            
+            // Optionally we could save this early audit somewhere or attach to the raw data, 
+            // but the Layer 3 pipeline will compute the final audit during windowing.
+          } catch (auditErr) {
+            console.error('[RabbitMQ -> Async Audit] Error:', auditErr.message);
+          }
+        });
+        // ---------------------------------------
       }
 
       ch.ack(msg);

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowClockwise, Sliders, FileText, CheckCircle, Warning, ShieldCheck, X
+  ArrowClockwise, FileText, CheckCircle, Warning, ShieldCheck, X, ChartBar
 } from '@phosphor-icons/react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { DeviceSelector } from '../shared/components/ParticipantSelector';
-import { PolarDecisionTree } from '../shared/utils/PolarDecisionTree';
 
 export interface AnalyticsProps {
   selectedParticipantId: string;
@@ -19,18 +19,9 @@ export const Toast: React.FC<{ message: string; onClose: () => void }> = ({ mess
   return (
     <div
       style={{
-        position: 'fixed',
-        bottom: '24px',
-        right: '24px',
-        background: 'var(--surface)',
-        border: '1px solid var(--primary)',
-        borderRadius: 'var(--r-md)',
-        padding: '12px 18px',
-        boxShadow: 'var(--shadow-lg)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
+        position: 'fixed', bottom: '24px', right: '24px', background: 'var(--surface)',
+        border: '1px solid var(--primary)', borderRadius: 'var(--r-md)', padding: '12px 18px',
+        boxShadow: 'var(--shadow-lg)', zIndex: 1000, display: 'flex', alignItems: 'center', gap: '10px',
         animation: 'fadeInUp 200ms var(--ease)',
       }}
     >
@@ -45,19 +36,9 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
   onParticipantChange
 }) => {
   const [toast, setToast] = useState<string | null>(null);
-  const [recalculating, setRecalculating] = useState(false);
   const [activities, setActivities] = useState<any[]>([]);
-  const [segments, setSegments] = useState<any[]>([]);
-  const [activityContexts, setActivityContexts] = useState<any[]>([]);
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [selectedDayHasData, setSelectedDayHasData] = useState<'unknown' | 'hasData' | 'noData'>('unknown');
-
-  // Doctor validation modal state
-  const [selectedSegmentForVal, setSelectedSegmentForVal] = useState<any | null>(null);
-  const [valLabel, setValLabel] = useState<'Rest' | 'Light' | 'Moderate' | 'Intense'>('Rest');
-  const [valGroundTruth, setValGroundTruth] = useState<'normal' | 'anomaly'>('normal');
-  const [valNotes, setValNotes] = useState<string>('');
-  const [submittingVal, setSubmittingVal] = useState(false);
 
   // Retrieve user role from session
   const storedUser = sessionStorage.getItem('htm_user');
@@ -69,10 +50,13 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
       try {
         const token = sessionStorage.getItem('htm_token');
         const idToFetch = selectedParticipantId;
-        if (!idToFetch) return; // Prevent fetching with empty ID
+        if (!idToFetch) return;
 
         // Fetch activity context summary
-        const resAct = await fetch(`/api/analysis/activity-context/${idToFetch}?date=${selectedDay}`, {
+        let url = `/api/analysis/activity-context/${idToFetch}`;
+        if (selectedDay) url += `?date=${selectedDay}`;
+        
+        const resAct = await fetch(url, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (resAct.ok) {
@@ -86,33 +70,6 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
             }
           }
         }
-
-        // Fetch activity_context collection from AI pipeline
-        const resCtx = await fetch(`/api/ai/activity-context/${idToFetch}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (resCtx.ok) {
-          const dataCtx = await resCtx.json();
-          if (dataCtx.success && Array.isArray(dataCtx.data)) {
-            setActivityContexts(dataCtx.data);
-          }
-        }
-
-        // Fetch segment list for DT predictions and doctor validation
-        const resSeg = await fetch(`/api/analysis/segments/${idToFetch}?limit=25`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (resSeg.ok) {
-          const dataSeg = await resSeg.json();
-          if (dataSeg.success && Array.isArray(dataSeg.data)) {
-            setSegments(dataSeg.data);
-            
-            if (!selectedDay && dataSeg.data.length > 0) {
-              const latestDate = new Date(dataSeg.data[0].window_start).toISOString().split('T')[0];
-              setSelectedDay(latestDate);
-            }
-          }
-        }
       } catch (err) {
         console.error(err);
       }
@@ -120,89 +77,19 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
     fetchActivitiesAndSegments();
   }, [selectedParticipantId, selectedDay]);
 
-  const handleRecalculate = async () => {
-    setRecalculating(true);
-    setToast(`Initializing Machine Learning Decision Tree training for system...`);
-
-    try {
-      const token = sessionStorage.getItem('htm_token');
-      const res = await fetch('/api/ml/train', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setToast(`Decision Tree trained successfully with ${data.samples_used || 0} samples.`);
-      } else {
-        setToast('Failed to train Decision Tree model.');
-      }
-    } catch (err) {
-      console.error(err);
-      setToast('Network error during model training.');
-    } finally {
-      setRecalculating(false);
-    }
-  };
-
-  const handleOpenValidateModal = (seg: any) => {
-    setSelectedSegmentForVal(seg);
-    setValLabel(seg.activity_label || 'Rest');
-    setValGroundTruth(seg.ground_truth_label || 'normal');
-    setValNotes(seg.doctor_validation?.doctor_notes || '');
-  };
-
-  const handleSubmitValidation = async () => {
-    if (!selectedSegmentForVal) return;
-    setSubmittingVal(true);
-    try {
-      const token = sessionStorage.getItem('htm_token');
-      const res = await fetch(`/api/analysis/segments/${selectedSegmentForVal._id}/doctor-validate`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          activity_label: valLabel,
-          ground_truth_label: valGroundTruth,
-          status: 'validated',
-          doctor_notes: valNotes
-        })
-      });
-      if (res.ok) {
-        setToast(`Segment divalidasi oleh Dokter (${valLabel} - ${valGroundTruth})`);
-        // Update local state
-        setSegments(prev => prev.map(s => s._id === selectedSegmentForVal._id ? {
-          ...s,
-          activity_label: valLabel,
-          ground_truth_label: valGroundTruth,
-          doctor_validation: { status: 'validated', doctor_notes: valNotes, validated_at: new Date() }
-        } : s));
-        setSelectedSegmentForVal(null);
-      } else {
-        setToast('Gagal memvalidasi segmen.');
-      }
-    } catch (err) {
-      console.error(err);
-      setToast('Error koneksi saat validasi.');
-    } finally {
-      setSubmittingVal(false);
-    }
-  };
-
   return (
     <section>
       <div className="page-head mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 className="page-title">Activity context & Polar DT Model</h1>
+          <h1 className="page-title">Activity Context & Metrik Baseline</h1>
           <p className="text-xs text-muted" style={{ marginTop: 2 }}>
-            Model Decision Tree (Polar Pretrained) • Dynamic Missing Data Confidence • Role: <strong style={{ color: isDoctor ? 'var(--primary)' : 'var(--ink)' }}>{isDoctor ? 'Doctor (Full Access)' : 'Regular User (Self Only)'}</strong>
+            Role: <strong style={{ color: isDoctor ? 'var(--primary)' : 'var(--ink)' }}>{isDoctor ? 'Doctor (Full Access)' : 'Regular User (Self Only)'}</strong>
           </p>
         </div>
         <DeviceSelector selectedId={selectedParticipantId} onChange={onParticipantChange} />
       </div>
 
-      {/* Date selector & missing data KPI card */}
+      {/* Date selector */}
       <div className="card mb-4" style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <div>
@@ -232,57 +119,92 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Missing data confidence metric summary */}
-        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-          <div>
-            <span className="eyebrow" style={{ color: 'var(--muted)' }}>Missing Data Ratio</span>
-            <div className="font-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>
-              5 / 1000 <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)' }}>(0.5% missing)</span>
-            </div>
-          </div>
-          <div style={{ borderLeft: '1px solid var(--hairline)', paddingLeft: 20 }}>
-            <span className="eyebrow" style={{ color: 'var(--muted)' }}>Tingkat Kepercayaan</span>
-            <div className="font-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--stable-text)' }}>
-              99.5% Confidence
-            </div>
-          </div>
+      {/* Table 1: Parameter Baseline Quality */}
+      <div className="card !p-0 overflow-hidden mb-6">
+        <div style={{ padding: '12px 16px', background: 'var(--surface-overlay)', borderBottom: '1px solid var(--hairline)', fontWeight: 600, fontSize: 13 }}>
+          ⚙️ Parameter Baseline Quality (Quality Audit)
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ background: 'var(--surface-overlay)' }}>
+                <th className="pl-lg py-sm text-left font-semibold">Parameter</th>
+                <th className="text-left font-semibold">Nilai Default</th>
+                <th className="text-left font-semibold">Fungsi</th>
+                <th className="pr-lg text-left font-semibold">Status Evidensi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">Durasi window</td><td>300 s</td><td>Komparabilitas HRV jangka pendek; dapat diuji 60/120/180/300 s.</td><td className="pr-lg">Berbasis praktik HRV; tetap diuji</td></tr>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">RR minimum</td><td>60 beat</td><td>Mencegah fitur dihitung dari seri terlalu pendek.</td><td className="pr-lg">Operasional</td></tr>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">RR untuk DFA</td><td>64 beat</td><td>Memungkinkan beberapa segmen pada skala pendek/panjang.</td><td className="pr-lg">Operasional</td></tr>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">Artefak maks.</td><td>5%</td><td>Di atas batas ini window diberi peringatan kualitas.</td><td className="pr-lg">Didukung panduan Kubios</td></tr>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">Missing maks.</td><td>10%</td><td>Menjaga kelengkapan window.</td><td className="pr-lg">Usulan; kalibrasi</td></tr>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">Confidence aktivitas</td><td>0.80</td><td>Mengurangi pemilihan baseline konteks yang salah.</td><td className="pr-lg">Usulan model</td></tr>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">n_eff minimum</td><td>30</td><td>Presisi baseline; memperhitungkan autokorelasi.</td><td className="pr-lg">Usulan berbasis presisi</td></tr>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">Hari minimum</td><td>3 hari</td><td>Memasukkan variasi antarhari awal.</td><td className="pr-lg">Usulan; target 5-7 hari</td></tr>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">Window per hari</td><td>5</td><td>Mencegah hari hanya diwakili satu pengamatan.</td><td className="pr-lg">Usulan</td></tr>
+              <tr className="border-t border-hairline"><td className="pl-lg py-sm font-semibold">Threshold deviasi (τ)</td><td>2.50</td><td>Kandidat deviasi.</td><td className="pr-lg">Dikalibrasi</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Table 1: Activity Context Aggregated Summary */}
+      {/* Chart: RMSSD per aktivitas */}
+      <div className="card mb-6" style={{ padding: '20px' }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <ChartBar size={18} color="var(--primary)" /> Grafik Rata-rata RMSSD per Aktivitas
+        </h3>
+        {activities.length > 0 ? (
+          <div style={{ height: 300, width: '100%' }}>
+            <ResponsiveContainer>
+              <BarChart data={activities} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--hairline)" />
+                <XAxis dataKey="activity" stroke="var(--muted)" fontSize={12} />
+                <YAxis stroke="var(--muted)" fontSize={12} unit=" ms" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'var(--surface)', borderRadius: 8, border: '1px solid var(--hairline)' }}
+                  formatter={(value: any) => [`${value} ms`, 'RMSSD']}
+                />
+                <Legend />
+                <Bar dataKey="rmssd" name="Rata-rata RMSSD" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)' }}>
+            Belum ada data aktivitas untuk ditampilkan.
+          </div>
+        )}
+      </div>
+
+      {/* Table 2: Activity Context Aggregated Summary */}
       <div className="card !p-0 overflow-hidden mb-4">
         <div style={{ padding: '12px 16px', background: 'var(--surface-overlay)', borderBottom: '1px solid var(--hairline)', fontWeight: 600, fontSize: 13 }}>
-          📊 Activity Summary (Aggregated Window Stats)
+          📊 Metrik Aktivitas (Aggregated Window Stats)
         </div>
-        <table className="w-full">
-          <thead>
-            <tr>
-              <th className="pl-lg py-sm">Activity</th>
-              <th>Windows</th>
-              <th>Duration</th>
-              <th>HR mean</th>
-              <th>HR SD</th>
-              <th>RMSSD</th>
-              <th>DFA α1</th>
-              <th>Missing Ratio</th>
-              <th className="pr-lg text-right">Readiness</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activities.length > 0 ? activities.map((act, i) => {
-              const dtRes = PolarDecisionTree.predict({
-                mean_hr: act.mean_hr,
-                rmssd: act.rmssd,
-                dfa_alpha1: act.dfa_alpha1
-              });
-              return (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ background: 'var(--surface-overlay)' }}>
+                <th className="pl-lg py-sm text-left font-semibold">Activity</th>
+                <th className="text-left font-semibold">Windows</th>
+                <th className="text-left font-semibold">Duration</th>
+                <th className="text-left font-semibold">HR mean</th>
+                <th className="text-left font-semibold">HR SD</th>
+                <th className="text-left font-semibold">RMSSD</th>
+                <th className="text-left font-semibold">DFA α1</th>
+                <th className="text-left font-semibold">Missing Ratio</th>
+                <th className="pr-lg text-right font-semibold">Readiness</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activities.length > 0 ? activities.map((act, i) => (
                 <tr key={i} className="border-t border-hairline">
                   <td className="pl-lg py-sm font-semibold">
                     {act.activity}
-                    <span className="text-xs text-muted" style={{ display: 'block', fontWeight: 400 }}>
-                      DT Predict: {dtRes.predictedActivity} ({Math.round(dtRes.confidence * 100)}%)
-                    </span>
                   </td>
                   <td className="mono">{act.windows}</td>
                   <td className="mono">{act.duration}</td>
@@ -297,252 +219,13 @@ export const ActivityContext: React.FC<AnalyticsProps> = ({
                     </span>
                   </td>
                 </tr>
-              );
-            }) : (
-              <tr><td colSpan={9} className="text-center py-4 text-muted">Belum ada rangkuman aktivitas.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Table 1.5: Activity Context Collection (activity_context) */}
-      <div className="card !p-0 overflow-hidden mb-4">
-        <div style={{ padding: '12px 16px', background: 'var(--surface-overlay)', borderBottom: '1px solid var(--hairline)', fontWeight: 600, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>🏷️ Feature Context Layer (Collection: <code>activity_context</code>)</span>
-          <span className="text-xs text-muted">Feature Input AI Model</span>
+              )) : (
+                <tr><td colSpan={9} className="text-center py-4 text-muted">Belum ada rangkuman aktivitas.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
-        <table className="w-full text-xs">
-          <thead>
-            <tr>
-              <th className="pl-lg py-sm">Periode Waktu</th>
-              <th>Posture</th>
-              <th>Movement</th>
-              <th>Location</th>
-              <th>Time of Day</th>
-              <th className="pr-lg text-right">Stress Level</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activityContexts.length > 0 ? activityContexts.map((ctx, i) => (
-              <tr key={ctx._id || i} className="border-t border-hairline">
-                <td className="pl-lg py-sm mono">
-                  {new Date(ctx.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(ctx.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </td>
-                <td className="font-semibold">{ctx.activity?.posture || '—'}</td>
-                <td className="mono">{ctx.activity?.movement || '—'}</td>
-                <td>{ctx.activity?.location || '—'}</td>
-                <td>
-                  <span className="badge badge-stable" style={{ fontSize: 11 }}>
-                    {ctx.activity?.time_of_day || '—'}
-                  </span>
-                </td>
-                <td className="pr-lg text-right mono">{ctx.activity?.stress_level || '—'}</td>
-              </tr>
-            )) : (
-              <tr><td colSpan={6} className="text-center py-3 text-muted">Belum ada activity_context data.</td></tr>
-            )}
-          </tbody>
-        </table>
       </div>
-
-      {/* Table 2: Detailed Raw Window Segments + Polar DT Predictions + Doctor Validation */}
-      <div className="card !p-0 overflow-hidden mb-4">
-        <div style={{ padding: '12px 16px', background: 'var(--surface-overlay)', borderBottom: '1px solid var(--hairline)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600, fontSize: 13 }}>
-            🌲 Polar Decision Tree Predictive Windows & Doctor Validation
-          </span>
-          {isDoctor && (
-            <span className="badge badge-stable" style={{ fontSize: 11 }}>
-              <ShieldCheck size={14} style={{ marginRight: 4 }} /> Doctor Validation Enabled
-            </span>
-          )}
-        </div>
-        <table className="w-full" style={{ fontSize: 12 }}>
-          <thead>
-            <tr>
-              <th className="pl-lg py-sm">Waktu</th>
-              <th>Aktivitas</th>
-              <th>Polar DT Output</th>
-              <th>Signal Quality</th>
-              <th>Missing Data</th>
-              <th>Status Validasi</th>
-              <th className="pr-lg text-right">Aksi Doket</th>
-            </tr>
-          </thead>
-          <tbody>
-            {segments.length > 0 ? segments.slice(0, 10).map((seg, i) => {
-              const predActivity = seg.dt_prediction?.predicted_activity || 'Unknown';
-              const predConfidence = seg.dt_prediction?.confidence || 0;
-
-              const isArtifact = seg.signal_quality?.is_artifact;
-              const isAnomaly = seg.signal_quality?.is_anomaly || predConfidence > 50; // Treat high anomalyScore as anomaly
-              const valStatus = seg.doctor_validation?.status || 'pending';
-
-              return (
-                <tr key={seg._id || i} className="border-t border-hairline">
-                  <td className="pl-lg py-sm mono">
-                    {new Date(seg.window_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="font-semibold">{seg.activity_label || 'Unknown'}</td>
-                  <td>
-                    <span className="mono" style={{ fontWeight: 600, color: 'var(--ink)' }}>
-                      {predActivity}
-                    </span>
-                    <span className="text-xs text-muted" style={{ marginLeft: 6 }}>
-                      (Anomaly: {predConfidence})
-                    </span>
-                  </td>
-                  <td>
-                    {isArtifact ? (
-                      <span className="badge" style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.3)' }}>
-                        ⚠️ Artifact (Drop/Noise)
-                      </span>
-                    ) : isAnomaly ? (
-                      <span className="badge badge-caution">
-                        <Warning size={12} style={{ marginRight: 2 }} /> Anomaly (Physiological)
-                      </span>
-                    ) : (
-                      <span className="badge badge-stable">
-                        <CheckCircle size={12} style={{ marginRight: 2 }} /> Normal
-                      </span>
-                    )}
-                  </td>
-                  <td className="mono" style={{ fontSize: 11 }}>
-                    {seg.missing_data_info?.missing_count !== undefined 
-                      ? `${seg.missing_data_info.missing_count}/1000 (${seg.missing_data_info.confidence_score ?? 100}%)`
-                      : '—'}
-                  </td>
-                  <td>
-                    {valStatus === 'validated' ? (
-                      <span style={{ color: 'var(--stable-text)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <ShieldCheck size={14} /> Ter-validasi
-                      </span>
-                    ) : (
-                      <span style={{ color: 'var(--muted)', fontStyle: 'italic' }}>Pending</span>
-                    )}
-                  </td>
-                  <td className="pr-lg text-right">
-                    {isDoctor ? (
-                      <button
-                        className="btn btn-outline"
-                        style={{ padding: '3px 10px', fontSize: 11 }}
-                        onClick={() => handleOpenValidateModal(seg)}
-                      >
-                        Validasi Segmen
-                      </button>
-                    ) : (
-                      <span className="text-xs text-muted">Hanya Dokter</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            }) : (
-              <tr><td colSpan={7} className="text-center py-4 text-muted">Belum ada segmen raw data</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="action-bar">
-        <button
-          className="btn btn-primary flex items-center gap-1"
-          onClick={handleRecalculate}
-          disabled={recalculating}
-        >
-          <ArrowClockwise size={14} className={recalculating ? 'animate-spin' : ''} />
-          {recalculating ? 'Training Model...' : 'Train Decision Tree Model'}
-        </button>
-        <div className="action-bar-divider"></div>
-        <button className="btn btn-outline flex items-center gap-1" onClick={() => setToast('Merging Activity: Sleep & Laying down... Merged!')}>
-          <Sliders size={14} /> Merge activities
-        </button>
-        <button className="btn btn-ghost flex items-center gap-1" onClick={() => setToast('Label editor modal opened.')}>
-          <FileText size={14} /> Edit labels
-        </button>
-      </div>
-
-      {/* Doctor Validation Modal */}
-      {selectedSegmentForVal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.5)', zIndex: 2000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          animation: 'fadeIn 200ms ease'
-        }}>
-          <div className="card" style={{ width: 440, maxWidth: '90%', padding: 24, borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ShieldCheck size={20} color="var(--primary)" /> Validasi Dokter pada Segmen
-              </h3>
-              <button className="icon-btn" onClick={() => setSelectedSegmentForVal(null)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ fontSize: 13, marginBottom: 16 }}>
-              <div><strong>Waktu Window:</strong> {new Date(selectedSegmentForVal.window_start).toLocaleTimeString()}</div>
-              <div><strong>HR Rata-rata:</strong> {selectedSegmentForVal.features?.mean_hr || 0} bpm</div>
-              <div><strong>Missing Data:</strong> {selectedSegmentForVal.missing_data_info?.missing_count !== undefined ? `${selectedSegmentForVal.missing_data_info.missing_count}/1000` : '—'}</div>
-            </div>
-
-            <div className="mb-3">
-              <label className="eyebrow" style={{ display: 'block', marginBottom: 6 }}>Koreksi Label Aktivitas</label>
-              <select
-                className="select-chip w-full"
-                value={valLabel}
-                onChange={(e) => setValLabel(e.target.value as any)}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--hairline)' }}
-              >
-                <option value="Rest">Rest (Istirahat)</option>
-                <option value="Light">Light (Ringan)</option>
-                <option value="Moderate">Moderate (Sedang)</option>
-                <option value="Intense">Intense (Berat)</option>
-              </select>
-            </div>
-
-            <div className="mb-3">
-              <label className="eyebrow" style={{ display: 'block', marginBottom: 6 }}>Diagnosis Fisiologis Ground Truth</label>
-              <select
-                className="select-chip w-full"
-                value={valGroundTruth}
-                onChange={(e) => setValGroundTruth(e.target.value as any)}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--hairline)' }}
-              >
-                <option value="normal">Normal / Fisiologis Sehat</option>
-                <option value="anomaly">Anomali / Deviasi Fisiologis</option>
-              </select>
-            </div>
-
-            <div className="mb-4">
-              <label className="eyebrow" style={{ display: 'block', marginBottom: 6 }}>Catatan Dokter (Clinical Notes)</label>
-              <textarea
-                value={valNotes}
-                onChange={(e) => setValNotes(e.target.value)}
-                placeholder="Masukkan catatan klinis dokter untuk segmen ini..."
-                rows={3}
-                style={{
-                  width: '100%', padding: '8px 12px', borderRadius: 6,
-                  border: '1px solid var(--hairline)', background: 'var(--surface)',
-                  color: 'var(--ink)', fontSize: 13, resize: 'vertical'
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button className="btn btn-ghost" onClick={() => setSelectedSegmentForVal(null)}>
-                Batal
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSubmitValidation}
-                disabled={submittingVal}
-              >
-                {submittingVal ? 'Menyimpan...' : 'Simpan Validasi'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </section>
