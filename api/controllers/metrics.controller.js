@@ -66,9 +66,12 @@ export const calculateDFA = (data, minWindowSize = 4, maxWindowSize = 32) => {
 
   // 1. Compute the cumulative sum (integration)
   const mean = data.reduce((sum, val) => sum + val, 0) / data.length;
-  const integratedSeries = data.map((val, i) =>
-    data.slice(0, i + 1).reduce((sum, v) => sum + (v - mean), 0)
-  );
+  const integratedSeries = new Array(data.length);
+  let currentSum = 0;
+  for (let i = 0; i < data.length; i++) {
+    currentSum += (data[i] - mean);
+    integratedSeries[i] = currentSum;
+  }
 
   // 2. Define window sizes
   const windowSizes = Array.from(
@@ -157,10 +160,13 @@ export const calculateDFA = (data, minWindowSize = 4, maxWindowSize = 32) => {
 // Fungsi ADFA
 export const calculateADFA = (data, order = 1) => {
   // Calculate cumulative profile  baseline
-  const y = data.map((val, i) => 
-      data.slice(0, i + 1)
-          .reduce((acc, v) => acc + (v - data.reduce((acc, val) => acc + val, 0) / data.length), 0)
-  );
+  const mean = data.reduce((acc, val) => acc + val, 0) / data.length;
+  const y = new Array(data.length);
+  let currentSum = 0;
+  for (let i = 0; i < data.length; i++) {
+    currentSum += (data[i] - mean);
+    y[i] = currentSum;
+  }
 
   // Define box sizes
   const boxSizes = [...new Set(
