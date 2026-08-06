@@ -152,10 +152,11 @@ export async function publishLogTransport(payload, publishFn) {
 }
 
 export async function startLogTransportConsumer() {
-  const ch = await getChannel();
-  if (!ch) {
-    console.warn('[RabbitMQ Consumer] Broker connection not available.');
-    return;
+  let ch = await getChannel();
+  while (!ch) {
+    console.warn('[RabbitMQ Consumer] Broker connection not available. Retrying in 5 seconds...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    ch = await getChannel();
   }
 
   const queueName = process.env.QUEUE_NAME || 'Sensor';

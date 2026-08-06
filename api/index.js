@@ -84,6 +84,9 @@ app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
 // ── Rate Limiter untuk endpoint Auth (proteksi brute force) ─────────────────
+// Trust proxy if running behind Nginx/load balancer
+app.set('trust proxy', 1);
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 menit
   max: 20,                   // Maks 20 request per IP per window
