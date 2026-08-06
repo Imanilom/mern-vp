@@ -128,6 +128,8 @@ export async function runAnalysisPipeline(triggeredBy = 'CRON') {
     let totalEvents = 0;
 
     for (const userId of pendingUserIds) {
+      // YIELD TO EVENT LOOP TO PREVENT BLOCKING
+      await new Promise(resolve => setImmediate(resolve));
       try {
         const result = await analyzeUser(userId);
         totalAnalyzed += result.analyzed;
@@ -198,6 +200,8 @@ async function analyzeUser(userId) {
     const bulkOps = [];
 
     for (const seg of segments) {
+      // YIELD TO EVENT LOOP TO PREVENT BLOCKING
+      await new Promise(resolve => setImmediate(resolve));
       const activity = seg.activity_label || 'Unknown';
       const timePeriod = getTimePeriod(seg.window_start);
 
@@ -1169,6 +1173,8 @@ export async function runRRAnalysisPipeline(triggeredBy = 'CRON') {
     let totalEvents = 0;
 
     for (const userId of pendingUserIds) {
+      // YIELD TO EVENT LOOP TO PREVENT BLOCKING
+      await new Promise(resolve => setImmediate(resolve));
       try {
         const { analyzed, events } = await analyzeOneMinuteUser(userId);
         totalAnalyzed += analyzed;
@@ -1223,6 +1229,8 @@ async function analyzeOneMinuteUser(userId) {
     const bulkOps = [];
 
     for (const seg of segments) {
+      // YIELD TO EVENT LOOP TO PREVENT BLOCKING
+      await new Promise(resolve => setImmediate(resolve));
       const activity   = seg.activity_label || 'Unknown';
       const timePeriod = getTimePeriod(seg.window_start);
       const rrArr      = seg.rr_raw || [];

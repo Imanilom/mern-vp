@@ -554,6 +554,8 @@ export async function processHeartRateData(triggeredBy = 'CRON') {
 
     // Proses per user agar data terisolasi
     for (const userId of pendingUserIds) {
+      // YIELD TO EVENT LOOP TO PREVENT BLOCKING
+      await new Promise(resolve => setImmediate(resolve));
       try {
         const result = await processUserData(userId);
         totalSegmentsCreated += result.segmentsCreated;
@@ -629,6 +631,8 @@ async function processUserData(userId) {
     const segmentDocs = [];
 
     for (const win of windows) {
+      // YIELD TO EVENT LOOP TO PREVENT BLOCKING
+      await new Promise(resolve => setImmediate(resolve));
       if (win.logs.length < MIN_POINTS_PER_WINDOW) {
         // Tandai tetap diproses tapi segment tidak valid
         segmentDocs.push(buildSegmentDoc(userId, win, false, user));
@@ -908,6 +912,8 @@ export async function processOneMinuteRRSegments(triggeredBy = 'CRON') {
     let totalSegments = 0;
 
     for (const userId of userIds) {
+      // YIELD TO EVENT LOOP TO PREVENT BLOCKING
+      await new Promise(resolve => setImmediate(resolve));
       try {
         // Cari timestamp segmen 1-menit terakhir yang sudah dibuat untuk user ini
         const lastSeg = await Segment.findOne(
