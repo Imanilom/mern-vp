@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import '../../shared/models/models.dart';
+import '../notifications/notification_service.dart';
 
 /**
  * MqttService — Layanan koneksi langsung MQTT ke RabbitMQ Broker.
@@ -22,8 +23,11 @@ class MqttService extends ChangeNotifier {
   static const String mqttPass = 'anomali123';
   static const String topicName = 'Sensor';
 
-  Future<bool> connect() async {
+  Future<bool> connect([String? userId]) async {
     if (isConnected && _client != null && _client!.connectionStatus?.state == MqttConnectionState.connected) {
+      if (userId != null) {
+        _subscribeToNotifications(userId);
+      }
       return true;
     }
 
@@ -53,6 +57,11 @@ class MqttService extends ChangeNotifier {
       debugPrint('[MQTT] Connected successfully to RabbitMQ Broker!');
       isConnected = true;
       notifyListeners();
+      
+      if (userId != null) {
+        _subscribeToNotifications(userId);
+      }
+      
       return true;
     } else {
       debugPrint('[MQTT] Connection failed with status: ${_client?.connectionStatus?.state}');
@@ -67,7 +76,7 @@ class MqttService extends ChangeNotifier {
     required List<SensorReading> readings,
   }) async {
     if (!isConnected) {
-      final ok = await connect();
+      final ok = await connect(userId);
       if (!ok) return false;
     }
 
@@ -100,6 +109,36 @@ class MqttService extends ChangeNotifier {
       debugPrint('[MQTT] Error publishing sensor readings: $e');
       return false;
     }
+  }
+
+  void _subscribeToNotifications(String userId) {
+    if (_client == null) return;
+    
+    final topic = 'notification/$userId';
+    
+    // Subscribe to topic
+    _client!.subscribe(topic, MqttQos.atLeastOnce);
+    debugPrint('[MQTT] Subscribed to topic: $topic');
+
+    // Listen for incoming updates
+    _client!.updates!.listen((List<MqttReceivedMessage<MqttMessage>> c) {
+      final recMess = c[0].payload as MqttPublishMessage;
+      final pt = MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+      
+      if (c[0].topic == topic) {
+        debugPrint('[MQTT] Notification received on $topic: $pt');
+        try {
+          final json = jsonDecode(pt);
+          final type = json['type'] ?? 'INFO';
+          final message = json['message'] ?? 'Ada pemberitahuan baru.';
+          
+          // Trigger local notification
+          NotificationService().showAlertNotification(type, message);
+        } catch (e) {
+          debugPrint('[MQTT] Error parsing notification: $e');
+        }
+      }
+    });
   }
 
   void _onConnected() {

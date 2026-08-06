@@ -68,7 +68,15 @@ export async function sendMobileNotification(userId, deviceId, type, message, ti
   };
 
   try {
-    ch.sendToQueue(queueName, Buffer.from(JSON.stringify(payload)), { persistent: true });
+    const payloadBuffer = Buffer.from(JSON.stringify(payload));
+    
+    // 1. MQTT compatible routing (amq.topic exchange)
+    // The MQTT plugin translates topic 'notification/USER_ID' to routing key 'notification.USER_ID'
+    const routingKey = `notification.${userId}`;
+    ch.publish('amq.topic', routingKey, payloadBuffer, { persistent: true });
+
+    // 2. Original direct queue
+    ch.sendToQueue(queueName, payloadBuffer, { persistent: true });
     // console.log(`[NotificationService] Sent ${type} for user ${userId} to ${queueName}`);
     return true;
   } catch (err) {
