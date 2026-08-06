@@ -89,16 +89,22 @@ async function getChannel() {
     await channel.assertQueue(dlqName, { durable: true });
 
     // Assert queue utama dengan dead letter routing ke DLQ
-    await channel.assertQueue(queueName, {
-      durable: true,
-      arguments: {
-        'x-dead-letter-exchange': '',          // default exchange
-        'x-dead-letter-routing-key': dlqName, // rute ke DLQ
-      },
-    });
+    try {
+      await channel.assertQueue(queueName, {
+        durable: true,
+        arguments: {
+          'x-dead-letter-exchange': '',          // default exchange
+          'x-dead-letter-routing-key': dlqName, // rute ke DLQ
+        },
+      });
+    } catch (err) {
+      console.warn(`[RabbitMQ] assertQueue failed for ${queueName} (${err.message}). It might be a stream queue. Recreating channel...`);
+      channel = await connection.createChannel();
+      // We assume the queue already exists (e.g. created as stream externally)
+    }
     return channel;
   } catch (error) {
-    console.error('[RabbitMQ] Failed to connect/create channel:', error.message);
+    console.error(`[RabbitMQ] Failed to connect/create channel: ${error.message}`);
     connection = null;
     channel = null;
     return null;
@@ -121,21 +127,22 @@ export async function publishLogTransport(payload, publishFn) {
   }
 
   // Fallback to internal RabbitMQ publisher
-  const ch = await getChannel();
-  if (ch) {
+  const channel = await getChannel();
+  if (channel) {
+    const queueName = process.env.QUEUE_NAME || 'Sensor';
     try {
-      const queueName = process.env.QUEUE_NAME || 'Sensor';
-      ch.sendToQueue(queueName, Buffer.from(JSON.stringify(envelope)), { persistent: true });
-      console.log(`[RabbitMQ] Published transport payload to queue: ${queueName}`);
-      return {
-        success: true,
-        envelope,
-        published: true,
-      };
+      const buffer = Buffer.from(JSON.stringify(envelope));
+      const sent = channel.sendToQueue(queueName, buffer, { persistent: true });
+      if (sent) {
+        return {
+          success: true,
+          envelope,
+          published: true,
+        };
+      }
     } catch (error) {
-      console.warn('[publishLogTransport] RabbitMQ publish failed:', error.message);
       return {
-        success: true,
+        success: false,
         envelope,
         published: false,
         reason: error.message,
@@ -164,6 +171,8 @@ export async function startLogTransportConsumer() {
   console.log(`[RabbitMQ Consumer] Listening for messages on queue: ${queueName}...`);
   await ch.prefetch(100);
 
+  // Use x-stream-offset: first so that if it's a stream queue, it will consume the backlog.
+  // MongoDB unique index will handle any duplicates.
   ch.consume(queueName, async (msg) => {
     if (!msg) return;
 
@@ -290,5 +299,5 @@ export async function startLogTransportConsumer() {
         ch.ack(msg);
       }
     }
-  });
+  }, { noAck: false, arguments: { 'x-stream-offset': 'first' } });
 }

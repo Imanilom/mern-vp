@@ -12,12 +12,10 @@ services:
     restart: always
     ports:
       - "3030:3030"
+    env_file:
+      - ./api/.env
     environment:
       - PORT=3030
-      - MONGO=mongodb+srv://memerlin90:LYyX217FP02iuCqV@pak.21cks.mongodb.net/?retryWrites=true&w=majority&appName=pak
-      - RABBITMQ_URI=amqp://rabbitmq:5672
-      - JWT_SECRET=ganti_dengan_rahasia_jwt_yang_kuat
-      - INTERNAL_KEY=mern-vp-internal-systemd-2026
       - ALLOWED_ORIGINS=https://healthtrajectory.cloud,https://api.healthtrajectory.cloud
     depends_on:
       - rabbitmq
