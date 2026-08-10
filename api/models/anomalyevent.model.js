@@ -69,12 +69,17 @@ const AnomalyEventSchema = new mongoose.Schema({
   // ID segment yang terlibat dalam event ini
   segment_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Segment' }],
 
-  // Status lifecycle
+  // Status lifecycle (CAPAR extended)
   status: {
     type: String,
-    enum: ['open', 'closed'],
+    enum: ['open', 'closed', 'transient', 'unresolved'],
     default: 'open',
   },
+
+  // CAPAR Episode Metrics (Section 9)
+  auc_score: { type: Number, default: null },      // ∫ S(t) dt trapezoidal integration
+  window_count: { type: Number, default: 0 },      // jumlah windows dalam episode
+  unresolved_reason: { type: String, default: null }, // alasan UNRESOLVED (e.g. 'duration_exceeded_T_max')
 
   // Anotasi manual dari dokter/user
   annotations: [{

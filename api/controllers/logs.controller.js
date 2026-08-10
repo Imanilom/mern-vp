@@ -54,6 +54,11 @@ export const createTransportLog = async (req, res) => {
           activity: r.activity || 'Duduk',
           device_id: envelope.device_id || 'POLAR_H10',
           isChecked: false,
+          acc_x: r.acc_x ?? 0,
+          acc_y: r.acc_y ?? 0,
+          acc_z: r.acc_z ?? 0,
+          ecg: r.ecg ?? 0,
+          step_count: r.step_count ?? 0,
         };
       });
 

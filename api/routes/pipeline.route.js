@@ -1,5 +1,6 @@
 import express from 'express';
 import { verifyToken } from '../utils/verifyUser.js';
+import { requireRoles } from '../utils/verifyRole.js';
 import {
   getPipelineStatus,
   purgeQueue,
@@ -21,13 +22,7 @@ import {
 const router = express.Router();
 
 // Role-guard middleware — only operator / administrator
-function requireOperator(req, res, next) {
-  const role = req.user?.role;
-  if (!['operator', 'administrator', 'admin', 'Doctor'].includes(role)) {
-    return res.status(403).json({ success: false, message: 'Operator or Administrator role required.' });
-  }
-  next();
-}
+const requireOperator = requireRoles(['admin', 'researcher']);
 
 /** GET /api/pipeline/status — full pipeline status incl. RabbitMQ live stats */
 router.get('/status', verifyToken, getPipelineStatus);

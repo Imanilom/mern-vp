@@ -1,6 +1,7 @@
 import amqp from 'amqplib';
 import { analyzeAndCorrectRR, checkQualityGate } from './dataQualityGate.js';
 import { sendMobileNotification } from './notificationService.js';
+import { io } from '../index.js';
 
 function normalizeTransportReading(reading) {
   const timestamp = reading.timestamp ?? reading.ts ?? reading.time ?? null;
@@ -17,6 +18,11 @@ function normalizeTransportReading(reading) {
     signal_quality: reading.signal_quality ?? null,
     rmssd: reading.rmssd ?? null,
     dfa_alpha1: reading.dfa_alpha1 ?? null,
+    acc_x: reading.acc_x ?? reading.accX ?? 0,
+    acc_y: reading.acc_y ?? reading.accY ?? 0,
+    acc_z: reading.acc_z ?? reading.accZ ?? 0,
+    ecg: reading.ecg ?? 0,
+    step_count: reading.step_count ?? reading.stepCount ?? 0,
   };
 }
 
@@ -224,6 +230,11 @@ export async function startLogTransportConsumer() {
             device_id: envelope.device_id || 'POLAR_H10',
             isChecked: false,
             processStatus: 'PENDING',
+            acc_x: r.acc_x ?? 0,
+            acc_y: r.acc_y ?? 0,
+            acc_z: r.acc_z ?? 0,
+            ecg: r.ecg ?? 0,
+            step_count: r.step_count ?? 0,
           };
         }).filter(d => d.hr >= 30 && d.hr <= 220 && d.rr >= 300 && d.rr <= 2000);
 
@@ -239,6 +250,14 @@ export async function startLogTransportConsumer() {
         });
         const insertedCount = result ? result.length : 0;
         console.log(`[RabbitMQ -> MongoDB] Successfully stored ${insertedCount} readings for user ${targetUserId}`);
+
+        if (io) {
+          io.emit('new_sensor_data', {
+            user_id: targetUserId,
+            device_id: envelope.device_id,
+            readings: docs
+          });
+        }
 
         // --- ASYNC QUALITY & ANNOTATION GATE ---
         setImmediate(async () => {

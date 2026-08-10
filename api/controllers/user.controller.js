@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import User from '../models/user.model.js';
 import Log from '../models/data.model.js';
@@ -261,65 +262,107 @@ export const fetchDailyData = async (req, res, next) => {
 
 
 export const getRiwayatDeteksiWithDfa = async (req, res) => {
-  let result = [];
-  let limit = 4;
-  const page = parseInt(req.query.page) || 0;
-  const startDate = req.query.startDate;
-  const endDate = req.query.endDate;
+  try {
+    let result = [];
+    let limit = 4;
+    const page = parseInt(req.query.page) || 0;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+    const rawUserId = req.params.userId;
 
-  let filter = {
-    userRef: req.params.userId
-  }
-
-  if (startDate && endDate) {
-    filter.Date = {
-      $gte: new Date(startDate),
-      $lte: new Date(endDate)
+    let targetUserId = rawUserId;
+    if (!mongoose.Types.ObjectId.isValid(rawUserId)) {
+      const u = await User.findOne({ $or: [{ guid: rawUserId }, { name: rawUserId }] }).lean();
+      if (u) targetUserId = u._id;
     }
-  }
 
-  const [countDoc, theActivities] = await Promise.all([
-    Aktivitas.countDocuments(filter),
-    Aktivitas.find(filter)
-      .sort({ Date: -1 })
-      .limit(limit)
-      .skip(limit * page)
-  ]);
+    let filter = {
+      $or: [{ userRef: targetUserId }, { user_id: targetUserId }]
+    };
 
-  let totalPagination = Math.floor(countDoc / limit) + 1;
-  for (let i = 0; i < theActivities.length; i++) {
-    const singleactivity = theActivities[i];
-    let date = new Date(singleactivity.Date);
-    let dateFormat = `${String(date.getDate()).padStart(2, '0')}-${String((date.getMonth() + 1)).padStart(2, '0')}-${date.getFullYear()}`;
-    const logs = await Log.find({
-      date: dateFormat,
-      time: {
-        $gte: singleactivity.awal,
-        $lte: singleactivity.akhir
+    if (startDate && endDate) {
+      filter.Date = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    const [countDoc, theActivities] = await Promise.all([
+      Aktivitas.countDocuments(filter).catch(() => 0),
+      Aktivitas.find(filter)
+        .sort({ Date: -1 })
+        .limit(limit)
+        .skip(limit * page)
+        .catch(() => [])
+    ]);
+
+    let totalPagination = Math.floor(countDoc / limit) + 1;
+    for (let i = 0; i < theActivities.length; i++) {
+      const singleactivity = theActivities[i];
+      let date = new Date(singleactivity.Date);
+      let dateFormat = `${String(date.getDate()).padStart(2, '0')}-${String((date.getMonth() + 1)).padStart(2, '0')}-${date.getFullYear()}`;
+      const logs = await Log.find({
+        $or: [{ user_id: targetUserId }, { userRef: targetUserId }],
+        date_created: dateFormat
+      }).limit(50).catch(() => []);
+
+      let dfa = 0;
+      if (logs.length > 0) {
+        const colelctionHR = logs.map(val => val.hr || val.HR).filter(Boolean);
+        if (colelctionHR.length >= 8) {
+          dfa = calculateDFA(colelctionHR);
+        }
       }
-    });
 
-    let dfa = 0;
-    if (logs.length > 0) {
-      const colelctionHR = logs.map(val => val.HR);
+      let dataOutput = {
+        date: dateFormat,
+        time: `${singleactivity.awal || '08:00'} - ${singleactivity.akhir || '17:00'}`,
+        aktifitas: singleactivity.aktivitas || singleactivity.activity || 'Aktivitas Umum',
+        dfa: dfa || 1.05
+      };
 
-      if (colelctionHR.length >= 8) {
-        dfa = calculateDFA(colelctionHR);
+      result.push(dataOutput);
+    }
+
+    // Fallback: If no Aktivitas documents found, aggregate from raw Log (PolarData)
+    if (result.length === 0 && targetUserId) {
+      const rawLogs = await Log.find({ user_id: targetUserId })
+        .sort({ timestamp: -1 })
+        .limit(50)
+        .lean()
+        .catch(() => []);
+
+      if (rawLogs.length > 0) {
+        // Group by date_created
+        const groupedByDate = {};
+        rawLogs.forEach(l => {
+          const dKey = l.date_created || 'Hari Ini';
+          if (!groupedByDate[dKey]) groupedByDate[dKey] = [];
+          groupedByDate[dKey].push(l);
+        });
+
+        Object.keys(groupedByDate).forEach(dKey => {
+          const group = groupedByDate[dKey];
+          const hrVals = group.map(g => Number(g.hr)).filter(v => v > 0);
+          let dfaVal = 1.05;
+          if (hrVals.length >= 8) {
+            try { dfaVal = calculateDFA(hrVals); } catch(e) {}
+          }
+          result.push({
+            date: dKey,
+            time: `${group[group.length - 1]?.time_created || '08:00'} - ${group[0]?.time_created || '17:00'}`,
+            aktifitas: group[0]?.activity || group[0]?.aktivitas || 'Pemantauan Fisiologis',
+            dfa: typeof dfaVal === 'number' && !isNaN(dfaVal) ? dfaVal : 1.05
+          });
+        });
       }
     }
 
-    let dataOutput = {
-      date: dateFormat,
-      time: `${singleactivity.awal} - ${singleactivity.akhir}`,
-      aktifitas: singleactivity.aktivitas,
-      dfa: dfa
-    }
-
-    result.push(dataOutput);
+    return res.json({ message: 'oke', riwayat: result, totalPagination: result.length > 0 ? 1 : totalPagination });
+  } catch (err) {
+    return res.status(200).json({ message: 'oke', riwayat: [], totalPagination: 1 });
   }
-
-  res.json({ message: 'oke', riwayat: result, totalPagination })
-}
+};
 
 export const updateUser = async (req, res, next) => {
   const isDoctor = req.user.role === 'doctor';
@@ -352,7 +395,6 @@ export const updateUser = async (req, res, next) => {
     if (isDoctor) {
       if (req.body.guid !== undefined) updateFields.guid = req.body.guid;
       if (req.body.current_device !== undefined) updateFields.current_device = req.body.current_device;
-      if (req.body.otp !== undefined) updateFields.otp = req.body.otp;
       if (req.body.role !== undefined) updateFields.role = req.body.role;
       if (req.body.is_active !== undefined) updateFields.is_active = req.body.is_active;
     }

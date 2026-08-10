@@ -40,10 +40,6 @@ const PatientSchema = mongoose.Schema({
         type: String,
         default: "patient",
       },
-      otp: {
-        default: 0,
-        type: Number,
-      },
       is_active: {
         type: Boolean,
         default: true,

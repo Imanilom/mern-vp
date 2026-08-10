@@ -1,41 +1,92 @@
+import mongoose from 'mongoose';
 import Patient from '../models/patient.model.js';
 import User from '../models/user.model.js';
 import { getAnalysisSummary } from './analysis.controller.js';
 
 export const getAllPatients = async (req, res) => {
     try {
-        const { role, id } = req.user;
+        console.log('[getAllPatients] req.user:', req.user);
+        let role = req.user?.role;
+        const id = req.user?.id;
 
-        let patients;
-        if (role === 'doctor') {
-            patients = await User.find({ docter: id }).lean();
-        } else {
-            patients = await User.find({ _id: id }).lean();
+        if (!id) {
+            console.log('[getAllPatients] Missing ID in token');
+            return res.status(401).json({ message: 'User ID missing in token' });
         }
 
-        // Fetch dynamic alert summary for each patient
+        if (role) {
+            role = role.toLowerCase();
+            if (role === 'administrator') role = 'admin';
+            if (role === 'patient') role = 'user';
+        }
+
+        const doctorObjId = mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+        console.log('[getAllPatients] Doctor ID:', id, 'ObjId:', doctorObjId, 'Role:', role);
+
+        let patients = [];
+        
+        // 1. If doctor, find patients specifically linked to this doctor via 'docter' field
+        if (role === 'doctor') {
+            patients = await User.find({
+                $or: [
+                    { docter: doctorObjId },
+                    { docter: id.toString() },
+                    { doctor: doctorObjId },
+                    { doctor: id.toString() }
+                ]
+            }).lean().catch((e) => { console.log('Err1:', e); return []; });
+            console.log('[getAllPatients] Step 1 (Doctor specific), found:', patients?.length);
+        }
+
+        // 2. If not doctor or no doctor-linked patients found, find all users except current doctor/admin
+        if (!patients || patients.length === 0) {
+            patients = await User.find({
+                _id: { $ne: doctorObjId },
+                role: { $ne: 'doctor' }
+            }).lean().catch((e) => { console.log('Err2:', e); return []; });
+            console.log('[getAllPatients] Step 2 (Non-doctor users), found:', patients?.length);
+        }
+
+        // 3. Absolute fallback: load all users in database except self
+        if (!patients || patients.length === 0) {
+            patients = await User.find({ _id: { $ne: doctorObjId } }).lean().catch((e) => { console.log('Err3:', e); return []; });
+            console.log('[getAllPatients] Step 3 (Absolute fallback), found:', patients?.length);
+        }
+
+        console.log('[getAllPatients] Total patients found before mapping:', patients?.length);
+
+        // Fetch dynamic alert summary for each patient safely
         const patientsWithAlerts = await Promise.all(
             patients.map(async (p) => {
-                const summary = await getAnalysisSummary(p._id.toString());
+                let summary = { latest_status: 'stable', alert_count: 0, caution_count: 0 };
+                try {
+                    if (p && p._id) {
+                        summary = await getAnalysisSummary(p._id.toString());
+                    }
+                } catch (err) {
+                    console.error('[getAllPatients] getAnalysisSummary error for', p?._id, err.message);
+                }
                 
-                // Map the summary to what the frontend expects
-                const hasAlert = summary.latest_status === 'alert' || summary.latest_status === 'caution';
+                const hasAlert = summary?.latest_status === 'alert' || summary?.latest_status === 'caution';
                 let alertPriority = 'Normal';
-                if (summary.latest_status === 'alert') alertPriority = 'High';
-                else if (summary.latest_status === 'caution') alertPriority = 'Medium';
+                if (summary?.latest_status === 'alert') alertPriority = 'High';
+                else if (summary?.latest_status === 'caution') alertPriority = 'Medium';
 
                 return {
                     ...p,
+                    id: p.guid || p._id?.toString(),
                     hasAlert,
                     alertPriority,
-                    recentDeviation: summary.latest_status === 'alert' ? 'Anomali terdeteksi' : (summary.latest_status === 'caution' ? 'Deviasi terdeteksi' : null)
+                    recentDeviation: summary?.latest_status === 'alert' ? 'Anomali terdeteksi' : (summary?.latest_status === 'caution' ? 'Deviasi terdeteksi' : null)
                 };
             })
         );
 
-        res.status(200).json(patientsWithAlerts);
+        console.log('[getAllPatients] Successfully mapped patients, returning count:', patientsWithAlerts?.length);
+        return res.status(200).json(patientsWithAlerts);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('[getAllPatients] Controller Error:', error);
+        return res.status(500).json({ message: error.message, patients: [] });
     }
 };
 

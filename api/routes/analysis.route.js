@@ -23,7 +23,9 @@ import {
   getKalmanTrajectory,
   runRRAnalysisPipeline,
 } from '../controllers/analysis.controller.js';
+import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions } from '../controllers/capar.prediction.controller.js';
 import { generateReportData } from '../controllers/report.controller.js';
+import { computePersonalThresholds } from '../utils/capar.thresholds.js';
 import { verifyToken } from '../utils/verifyUser.js';
 import Segment from '../models/segment.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
@@ -43,12 +45,17 @@ async function resolveUserIdParam(req, res, next) {
       user = await User.findById(userId) || await Patient.findById(userId);
     }
     if (!user) {
-      user = await User.findOne({ $or: [{ guid: userId }, { name: userId }, { email: new RegExp('^' + userId, 'i') }] })
-          || await Patient.findOne({ $or: [{ guid: userId }, { name: userId }, { email: new RegExp('^' + userId, 'i') }] });
+      user = await User.findOne({ $or: [{ guid: userId }, { name: userId }, { current_device: userId }] })
+          || await Patient.findOne({ $or: [{ guid: userId }, { name: userId }] });
     }
 
     if (user) {
       req.params.userId = user._id.toString();
+    } else if (!mongoose.Types.ObjectId.isValid(userId)) {
+      // If user is not found and userId is not a 24-hex ObjectId (e.g. "P-014"),
+      // assign a dummy valid ObjectId so queries like Baseline.find({ user_id: req.params.userId })
+      // return [] with 200 OK instead of throwing a 500 CastError.
+      req.params.userId = '000000000000000000000000';
     }
     next();
   } catch (err) {
@@ -61,6 +68,23 @@ async function resolveUserIdParam(req, res, next) {
 
 /** GET /api/analysis/reports — generate complex reports */
 router.get('/reports', verifyToken, generateReportData);
+
+/**
+ * GET /api/analysis/thresholds/:userId
+ * Hitung tau_in, tau_out, tau_normal personal (CAPAR Section 7.1)
+ * dari StableScore memory (anomaly scores dari window BC→BC).
+ */
+router.get('/thresholds/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
+  try {
+    const config = {};
+    // Override min_stable_scores jika disuplai via query param
+    if (req.query.min_stable_scores) config.min_stable_scores = parseInt(req.query.min_stable_scores);
+    const data = await computePersonalThresholds(req.params.userId, config);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 /** GET /api/analysis/segments/:userId — grafik HR + anomaly score */
 router.get('/segments/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
@@ -351,5 +375,16 @@ router.get('/rr/baseline/:userId', verifyToken, resolveUserIdParam, async (req, 
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// ── CAPAR Future-State Prediction (Section 10) ────────────────────────────────
+
+/** GET /api/analysis/forecast/:userId — next-state & multi-step prediction */
+router.get('/forecast/:userId', verifyToken, resolveUserIdParam, getNextStateForecast);
+
+/** GET /api/analysis/recovery-estimate/:userId — personal recovery distribution */
+router.get('/recovery-estimate/:userId', verifyToken, resolveUserIdParam, getRecoveryEstimate);
+
+/** GET /api/analysis/transitions/:userId — personal transition matrix */
+router.get('/transitions/:userId', verifyToken, resolveUserIdParam, getPersonalTransitions);
 
 export default router;

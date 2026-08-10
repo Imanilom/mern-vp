@@ -24,6 +24,8 @@ import analysisRouter from './routes/analysis.route.js';
 import pipelineRouter from './routes/pipeline.route.js';
 import reportRouter from './routes/report.route.js';
 import mlRouter from './routes/ml.route.js';
+import http from "http";
+import { Server as SocketIOServer } from "socket.io";
 
 // import './controllers/cornjob.controller.js';
 // import './controllers/health.controller.js'; // Import file cronJobs untuk menjalankan cron job saat startup
@@ -34,23 +36,58 @@ import aipipelineRouter from './routes/aipipeline.route.js';
 import { verifyToken } from './utils/verifyUser.js';
 dotenv.config();
 
-mongoose
-  .connect(process.env.MONGO, {
-    serverSelectionTimeoutMS: 30000, // Increase server selection timeout to 30 seconds
-    socketTimeoutMS: 45000, // Increase socket timeout to 45 seconds
-  })
-  .then(() => {
-    console.log("Connected to MongoDB!");
-    // Start RabbitMQ queue consumer to automatically persist Android sensor messages to MongoDB
+const mongoUri = process.env.MONGO;
+const localMongoUri = "mongodb://127.0.0.1:27017/healthdevice";
+
+async function connectMongoDB() {
+  const options = {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  };
+
+  try {
+    await mongoose.connect(mongoUri, options);
+    console.log(`Connected to MongoDB (${mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost') ? 'Local' : 'Cloud Atlas'})!`);
     startLogTransportConsumer().catch((err) => console.error("[RabbitMQ Consumer] Launch error:", err.message));
-  })
-  .catch((err) => {
-    console.log(err);
-  });
+  } catch (err) {
+    console.error(`[MongoDB] Primary connection error (${mongoUri}):`, err.message);
+    if (!mongoUri.includes('127.0.0.1') && !mongoUri.includes('localhost')) {
+      console.log(`[MongoDB] Attempting fallback connection to local MongoDB (${localMongoUri})...`);
+      try {
+        await mongoose.connect(localMongoUri, options);
+        console.log("Connected to Local MongoDB fallback!");
+        startLogTransportConsumer().catch((e) => console.error("[RabbitMQ Consumer] Launch error:", e.message));
+      } catch (localErr) {
+        console.error("[MongoDB] Local fallback connection also failed:", localErr.message);
+      }
+    }
+  }
+}
+
+connectMongoDB();
 
 const __dirname = path.resolve();
 
 const app = express();
+const httpServer = http.createServer(app);
+
+// Initialize Socket.io
+export const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.replace(/['"]/g, '').split(',').map(o => o.trim())
+      : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:59674'],
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on("connection", (socket) => {
+  console.log(`[Socket.io] Client connected: ${socket.id}`);
+  socket.on("disconnect", () => {
+    console.log(`[Socket.io] Client disconnected: ${socket.id}`);
+  });
+});
+
 
 // ── Security Headers (Helmet) ────────────────────────────────────────────────
 app.use(helmet());
@@ -181,7 +218,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3030;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}!`);
 });
 

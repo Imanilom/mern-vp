@@ -113,10 +113,19 @@ export const google = async (req, res, next) => {
 };
 
 
-export const signOut = async (req, res, next) => {
+export const signOut = (req, res) => {
+  res.clearCookie('access_token').status(200).json('Signout success!');
+};
+
+export const getMe = async (req, res, next) => {
   try {
-    res.clearCookie('access_token');
-    res.status(200).json('User has been logged out!');
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      const patient = await Patient.findById(req.user.id).select('-password');
+      if (!patient) return next(errorHandler(404, 'User not found'));
+      return res.status(200).json({ success: true, user: { ...patient._doc, role: 'patient' } });
+    }
+    res.status(200).json({ success: true, user: user });
   } catch (error) {
     next(error);
   }

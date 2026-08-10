@@ -20,6 +20,10 @@ import User from '../models/user.model.js';
 import mongoose from 'mongoose';
 import ProcessingJob from '../models/processingjob.model.js';
 import {
+  computeTauFromStableScores, persistTauToBaseline, appendStableScore,
+} from '../utils/capar.thresholds.js';
+import { recordStateTransition } from '../utils/capar.transitions.js';
+import {
   computeROCandAUC as computeROCandAUCFromEval,
   computeH1aMetrics as computeH1aMetricsFromEval,
   computeH2aMetrics as computeH2aMetricsFromEval,
@@ -647,20 +651,23 @@ export async function getRecentEvents(userId, limit = 20) {
 export async function getAnalysisSummary(userId) {
   try {
     const [segments, events, baselines] = await Promise.all([
-      Segment.find({ user_id: userId, is_valid: true, analyzed: true })
-        .select('anomaly_score classification activity_label')
-        .lean(),
+      Segment.find({ user_id: userId })
+        .select('anomaly_score classification activity_label features is_valid analyzed')
+        .lean()
+        .catch(() => []),
       AnomalyEvent.find({ user_id: userId })
         .select('classification status review_status')
-        .lean(),
+        .lean()
+        .catch(() => []),
       Baseline.find({ user_id: userId })
-        .select('activity time_period segment_count is_mature status')
-        .lean(),
+        .select('activity time_period segment_count is_mature status stats')
+        .lean()
+        .catch(() => []),
     ]);
 
-    const alertCount = segments.filter((s) => s.classification === 'Alert').length;
-    const cautionCount = segments.filter((s) => s.classification === 'Caution').length;
-    const normalCount = segments.filter((s) => s.classification === 'Normal').length;
+    const alertCount = segments.filter((s) => s.classification === 'Alert' || s.features?.classification === 'Alert').length;
+    const cautionCount = segments.filter((s) => s.classification === 'Caution' || s.features?.classification === 'Caution').length;
+    const normalCount = segments.filter((s) => s.classification === 'Normal' || s.features?.classification === 'Normal').length;
 
     return {
       user_id: userId,
@@ -670,9 +677,9 @@ export async function getAnalysisSummary(userId) {
       normal_count: normalCount,
       event_count: events.length,
       open_events: events.filter((e) => e.status === 'open').length,
-      reviewed_events: events.filter((e) => e.review_status === 'Validated' || e.review_status === 'False Positive').length,
+      reviewed_events: events.filter((e) => e.review_status === 'Validated' || e.review_status === 'False Positive' || e.review_status === 'Confirmed').length,
       baseline_count: baselines.length,
-      mature_baselines: baselines.filter((b) => b.is_mature).length,
+      mature_baselines: baselines.filter((b) => b.is_mature || b.stats?.is_mature).length,
       latest_status: alertCount > 0 ? 'alert' : cautionCount > 0 ? 'caution' : 'stable',
     };
   } catch (error) {
@@ -1239,11 +1246,15 @@ async function analyzeOneMinuteUser(userId) {
       const baseline = await getOrCreateBaseline(userId, activity, timePeriod);
 
       // 2. Maturity level
-      //    Gunakan maturity_detail yang sudah tersimpan di baseline (direfresh setiap 10 update)
-      //    agar tidak perlu melewatkan array kosong ke computeBaselineMaturity setiap window.
       const maturityLevel = baseline.maturity_detail?.level ||
         (baseline.segment_count >= 30 ? 'maturing' :
          baseline.segment_count >= 10 ? 'provisional' : 'cold_start');
+
+      // Load learned tau (CAPAR Section 7.1) — gunakan jika tersedia
+      const learnedTau = (baseline.learned_tau?.source === 'learned' &&
+                          baseline.learned_tau?.tau_in)
+        ? baseline.learned_tau
+        : null;
 
       // 3. Quality assessment
       const quality = assessRRQuality(rrArr, 0.85, seg.raw_count);
@@ -1335,12 +1346,16 @@ async function analyzeOneMinuteUser(userId) {
       //    Untuk provisional, gunakan threshold yang sesuai (misal 2.5)
       const classification = classifyRR(score, maturityLevel);
 
-      // 7. Temporal state machine (9-state)
+      // 7. Temporal state machine (9-state) — dengan tau personal (CAPAR Section 8)
       if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
       
       let { rr_status, safe_to_update } = updateTemporalState(
-        temporalStates[activity], score, maturityLevel
+        temporalStates[activity], score, maturityLevel, learnedTau
       );
+
+      // Track previous status untuk transition learning
+      const prevRrStatus = temporalStates[activity]._prev_status || 'INSUFFICIENT_BASELINE';
+      temporalStates[activity]._prev_status = rr_status;
 
       // Override state status jika perhitungan berasal dari PROVISIONAL
       if (isProvisional) {
@@ -1371,6 +1386,13 @@ async function analyzeOneMinuteUser(userId) {
               q_context_history:  quality.q_context,
             },
           });
+
+          // 8a. Append stable score untuk tau learning (CAPAR Section 7.1)
+          // Hanya saat BC→BC (safe_to_update = true = NORMAL state)
+          if (score !== null && isFinite(score)) {
+            await appendStableScore(baseline._id, score);
+          }
+
           // Refresh maturity_detail setiap 10 window agar tersimpan untuk sesi berikutnya
           if ((updateFields.segment_count % 10) === 0) {
             const freshBaseline = await Baseline.findById(baseline._id).lean();
@@ -1378,9 +1400,17 @@ async function analyzeOneMinuteUser(userId) {
             await Baseline.updateOne({ _id: baseline._id }, {
               $set: { maturity_detail: { ...updatedMaturity, last_computed: new Date() } },
             });
+
+            // 8b. Refresh tau learned setiap 10 window (CAPAR Section 7.1)
+            const stableScores = freshBaseline.stable_score_history || [];
+            const newTau = computeTauFromStableScores(stableScores, { min_stable_scores: 30 });
+            await persistTauToBaseline(baseline._id, newTau);
           }
         }
       }
+
+      // 8c. Record state transition untuk Markov learning (CAPAR Section 7.2)
+      await recordStateTransition(userId, activity, prevRrStatus, rr_status);
 
       // 9. Persistence → AnomalyEvent
       const eventCreated = await updateRRPersistence(
@@ -1449,6 +1479,33 @@ async function updateRRPersistence(
   const state = persistenceState[activity];
   let eventCreated = false;
 
+  // T_max: episode dianggap UNRESOLVED setelah 2 jam (7200 detik) — CAPAR Section 8
+  const T_MAX_MS = 2 * 60 * 60 * 1000;
+
+  // Cek UNRESOLVED pada event yang sudah terlalu lama open
+  if (state.openEventId && state.startSeg) {
+    const elapsed = seg.window_start - state.startSeg.window_start;
+    if (elapsed > T_MAX_MS && rr_status !== 'RECOVERED') {
+      await AnomalyEvent.updateOne(
+        { _id: state.openEventId, status: 'open' },
+        {
+          $set: {
+            status: 'unresolved',
+            unresolved_reason: `duration_exceeded_T_max (${Math.round(elapsed / 60000)} menit)`,
+            window_count: state.segIds.length,
+          },
+        }
+      );
+      console.log(`[Layer3-RR] Event UNRESOLVED user=${userId} act=${activity} elapsed=${Math.round(elapsed / 60000)}m`);
+      // Reset state setelah unresolved
+      persistenceState[activity] = {
+        count: 0, recoveryCount: 0, segIds: [], scores: [],
+        peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
+      };
+      return eventCreated;
+    }
+  }
+
   if (rr_status === 'PERSISTENT_DEVIATION' || rr_status === 'DEVIATION_CANDIDATE') {
     state.recoveryCount = 0;
     state.count++;
@@ -1474,6 +1531,7 @@ async function updateRRPersistence(
           dfa_alpha1: null, dfa_alpha2: null, recovery_time_ms: null,
         },
         segment_ids: state.segIds,
+        window_count: state.count,
         status: 'open',
       });
       state.openEventId = event._id;
@@ -1485,6 +1543,7 @@ async function updateRRPersistence(
           peak_score: state.peakScore, classification,
           'trajectory.sequence_of_scores': state.scores,
           'trajectory.persistence': state.count,
+          window_count: state.count,
           z_scores_at_peak: zScores,
         },
         $push: { segment_ids: seg._id },
@@ -1493,15 +1552,28 @@ async function updateRRPersistence(
   } else if (rr_status === 'RECOVERED') {
     if (state.openEventId) {
       const recoveryMs = seg.window_end - (state.peakSeg?.window_start ?? seg.window_start);
+
+      // Hitung AUC score — trapezoidal integration (CAPAR Section 9)
+      // AUC = Σ_i 0.5*(S_i + S_{i+1}) * Δt   (Δt = window_duration_ms = 60000 ms for 1-min)
+      const WINDOW_MS = 60000;
+      let auc_score = 0;
+      const scores = state.scores;
+      for (let i = 1; i < scores.length; i++) {
+        auc_score += 0.5 * (scores[i - 1] + scores[i]) * WINDOW_MS;
+      }
+      auc_score = parseFloat(auc_score.toFixed(2));
+
       await AnomalyEvent.updateOne({ _id: state.openEventId }, {
         $set: {
           resolved_time: seg.window_start,
           duration_ms: seg.window_start - (state.startSeg?.window_start ?? seg.window_start),
           status: 'closed',
+          auc_score,
+          window_count: state.segIds.length,
           'trajectory.recovery_time_ms': Math.max(recoveryMs, 0),
         },
       });
-      console.log(`[Layer3-RR] Event closed user=${userId} act=${activity}`);
+      console.log(`[Layer3-RR] Event closed user=${userId} act=${activity} AUC=${auc_score}`);
     }
     persistenceState[activity] = {
       count: 0, recoveryCount: 0, segIds: [], scores: [],

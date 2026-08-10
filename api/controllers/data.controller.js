@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import fs from "fs";
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -1544,8 +1545,11 @@ export const getRawPolarData = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
-    // Resolve guid -> actual Mongo _id
-    const user = await User.findOne({ guid: userId }).select('_id current_device').lean();
+    // Resolve guid or Mongo _id -> actual Mongo _id
+    const userQuery = mongoose.Types.ObjectId.isValid(userId)
+      ? { $or: [{ _id: userId }, { guid: userId }] }
+      : { guid: userId };
+    const user = await User.findOne(userQuery).select('_id current_device').lean();
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }

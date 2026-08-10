@@ -118,6 +118,23 @@ const BaselineSchema = new mongoose.Schema({
   q_complete_history: { type: [Number], default: [] },
   q_context_history:  { type: [Number], default: [] },
 
+  // Adaptive threshold learned dari Stable Score Memory (CAPAR Section 7.1)
+  // Disimpan setelah threshold dipelajari dari cukup BC→BC windows
+  learned_tau: {
+    tau_in:             { type: Number, default: null }, // Q_0.99 dari StableScore
+    tau_out:            { type: Number, default: null }, // Q_0.95 dari StableScore
+    tau_normal:         { type: Number, default: null }, // Q_0.90 dari StableScore
+    source:             { type: String, enum: ['learned', 'configured'], default: 'configured' },
+    stable_score_count: { type: Number, default: 0 },   // jumlah stable scores yang dipakai
+    computed_at:        { type: Date, default: null },
+  },
+
+  /**
+   * History stable scores (BC→BC) untuk komputasi tau.
+   * Hanya scores dari window yang aman (tidak dalam deviation/recovery).
+   */
+  stable_score_history: { type: [Number], default: [] },
+
 }, { timestamps: true });
 
 // Unique: satu baseline per user + activity + time_period

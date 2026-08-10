@@ -35,11 +35,8 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
+      enum: ['user', 'doctor', 'researcher', 'admin'],
       default: "user",
-    },
-    otp: {
-      type: Number,
-      default: 0,
     },
     is_active: {
       type: Boolean,

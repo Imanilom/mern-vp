@@ -740,18 +740,35 @@ export function computeProvisionalScore(features, baseline, activityLabel) {
  * Update state temporal dan kembalikan rr_status 9-state.
  *
  * Port dari TemporalTracker.update() Python.
+ * CAPAR Section 8 — Physiological Episode State Machine with Hysteresis.
  *
  * @param {object} state - Mutable: { high_count, low_count, episode_active, cooldown }
  * @param {number} score
  * @param {string} maturityLevel
+ * @param {object|null} tau - Learned thresholds: { tau_in, tau_out, tau_normal } atau null
  * @returns {{ rr_status, safe_to_update }}
  */
-export function updateTemporalState(state, score, maturityLevel) {
+export function updateTemporalState(state, score, maturityLevel, tau = null) {
   const cfg = PERSISTENCE_CONFIG;
-  const thr = getDynamicThreshold(maturityLevel);
-  const recoveryThr = thr.CAUTION * cfg.recovery_threshold_frac;
+  const staticThr = getDynamicThreshold(maturityLevel);
 
-  if (score > thr.CAUTION) {
+  // Gunakan tau personal jika tersedia dan valid (Section 7.1 + 8.1 Hysteresis)
+  // tau_normal <= tau_out < tau_in
+  let tau_in, tau_out, tau_normal;
+  if (tau && tau.tau_in && tau.tau_out && tau.tau_normal &&
+      tau.tau_normal <= tau.tau_out && tau.tau_out < tau.tau_in) {
+    tau_in     = tau.tau_in;
+    tau_out    = tau.tau_out;
+    tau_normal = tau.tau_normal;
+  } else {
+    // Fallback ke static threshold (maturity-based)
+    tau_in     = staticThr.CAUTION;  // entry threshold
+    tau_out    = staticThr.CAUTION * cfg.recovery_threshold_frac;
+    tau_normal = tau_out * 0.7;
+  }
+
+  // Transisi BC → DEVIATION_CANDIDATE
+  if (score >= tau_in) {
     state.high_count++;
     state.low_count = 0;
     if (state.high_count >= cfg.persistence_windows) {
@@ -763,8 +780,20 @@ export function updateTemporalState(state, score, maturityLevel) {
   }
 
   state.high_count = 0;
+
   if (state.episode_active) {
-    if (score <= recoveryThr) {
+    // Dalam episode — cek recovery (score <= tau_out) dan recovered (score <= tau_normal)
+    if (score <= tau_normal) {
+      // Fast track: langsung cek recovered jika score sangat rendah
+      state.low_count++;
+      if (state.low_count >= cfg.recovery_windows) {
+        state.episode_active = false;
+        state.low_count = 0;
+        state.cooldown = cfg.cooldown_windows;
+        return { rr_status: 'RECOVERED', safe_to_update: false };
+      }
+    } else if (score <= tau_out) {
+      // Dalam hysteresis band tau_normal < score <= tau_out — RECOVERING
       state.low_count++;
       if (state.low_count >= cfg.recovery_windows) {
         state.episode_active = false;
@@ -773,6 +802,7 @@ export function updateTemporalState(state, score, maturityLevel) {
         return { rr_status: 'RECOVERED', safe_to_update: false };
       }
     } else {
+      // score > tau_out tapi < tau_in — masih dalam hysteresis band, tahan state
       state.low_count = 0;
     }
     return { rr_status: 'RECOVERING', safe_to_update: false };

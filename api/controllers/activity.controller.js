@@ -58,11 +58,15 @@ export const getActivity = async (req, res, next) => { // mark
     let filter;
 
    
-    if (req.user.role == 'user') {
+    let role = req.user.role;
+    if (role) {
+      role = role.toLowerCase();
+      if (role === 'administrator') role = 'admin';
+      if (role === 'patient') role = 'user';
+    }
 
-      filter = {
-        userRef: req.user.id 
-      }
+    if (role === 'user') {
+      filter = { userRef: req.user.id };
       
       if(startDate && endDate){
         filter.Date = {
@@ -70,19 +74,19 @@ export const getActivity = async (req, res, next) => { // mark
           $lte : new Date(endDate),
         }
       }
-      // state role user
-      // Activity = await Aktivitas.find({ userRef: req.user.id }).sort({ create_at: -1 });
+
       [Activity, countDoc] = await Promise.all([
         Aktivitas.find(filter).skip(page * itemsperpage).limit(itemsperpage).sort({ create_at: -1 }),
         Aktivitas.countDocuments(filter)
-      ])
+      ]);
 
       totalPagination = Math.floor(countDoc / itemsperpage) + 1;
     } else {
-
-      filter = {
-        userRef: req.params.patient
+      if (!req.params.patient) {
+        return next(errorHandler(400, 'Patient ID is required for this role.'));
       }
+
+      filter = { userRef: req.params.patient };
 
       if(startDate && endDate){
         filter.Date = {
@@ -91,12 +95,10 @@ export const getActivity = async (req, res, next) => { // mark
         }
       }
 
-      // state role docter
-      // Activity = await Aktivitas.find({ userRef: req.params.patient }).sort({ create_at: -1 }); // harusnya dia bawa id user. bukan req.user.id docter
       [Activity, countDoc] = await Promise.all([
         Aktivitas.find(filter).sort({ create_at: -1 }).skip(page * itemsperpage).limit(itemsperpage),
         Aktivitas.countDocuments(filter)
-      ])
+      ]);
 
       totalPagination = Math.floor(countDoc / itemsperpage) + 1;
     }
