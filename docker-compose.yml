@@ -28,7 +28,7 @@ services:
     container_name: mern-vp-capar-web
     restart: always
     ports:
-      - "8080:80"
+      - "8081:80"
     environment:
       - NODE_ENV=production
 
