@@ -6,6 +6,19 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  mongodb:
+    image: mongo:6.0
+    container_name: mern-vp-mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: capar_admin
+      MONGO_INITDB_ROOT_PASSWORD: SecurePassword123! # Ganti dengan password yang lebih kuat
+    ports:
+      # HANYA ekspos ke localhost VPS (127.0.0.1) agar tidak bisa diakses dari internet publik
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
   api:
     build: ./api
     container_name: mern-vp-api
@@ -34,3 +47,4 @@ services:
 
 volumes:
   rabbitmq_data:
+  mongodb_data:
