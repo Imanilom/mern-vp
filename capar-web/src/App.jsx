@@ -26,6 +26,10 @@ export function App() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedCohort, setSelectedCohort] = useState('pilot-01');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  
+  const [globalParticipantFilter, setGlobalParticipantFilter] = useState('ALL');
+  const [globalDateFilter, setGlobalDateFilter] = useState('');
+  const [availableDates, setAvailableDates] = useState([]);
 
   // Domain state
   const [userRole, setUserRole] = useState(null);
@@ -55,6 +59,44 @@ export function App() {
     }
     loadAuth();
   }, []);
+
+  const targetPatientId = globalParticipantFilter !== 'ALL' ? globalParticipantFilter : selectedParticipantId;
+
+  useEffect(() => {
+    if (!targetPatientId) {
+      setAvailableDates([]);
+      setGlobalDateFilter('');
+      return;
+    }
+
+    api.getAnalyzedSegments(targetPatientId, 500).then(data => {
+      const dates = new Set();
+      const segments = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      segments.forEach(seg => {
+        const val = seg.window_start || seg.timestamp || seg.createdAt;
+        if (val) {
+          const ts = new Date(val).getTime();
+          if (!isNaN(ts)) {
+            const dt = new Date(ts);
+            const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+            dates.add(dateStr);
+          }
+        }
+      });
+      const datesArr = Array.from(dates).sort();
+      setAvailableDates(datesArr);
+      
+      if (datesArr.length > 0) {
+        setGlobalDateFilter(datesArr[datesArr.length - 1]);
+      } else {
+        setGlobalDateFilter('');
+      }
+    }).catch(err => {
+      console.error('[App] Error fetching available dates:', err);
+      setAvailableDates([]);
+      setGlobalDateFilter('');
+    });
+  }, [targetPatientId]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -148,6 +190,13 @@ export function App() {
           cohorts={cohorts}
           selectedCohort={selectedCohort}
           setSelectedCohort={setSelectedCohort}
+          participants={participants}
+          activeParticipantId={targetPatientId}
+          globalParticipantFilter={globalParticipantFilter}
+          setGlobalParticipantFilter={setGlobalParticipantFilter}
+          globalDateFilter={globalDateFilter}
+          setGlobalDateFilter={setGlobalDateFilter}
+          availableDates={availableDates}
           user={userRole}
           onLogout={() => setIsAuthenticated(false)}
           onOpenNotifications={() => setShowNotifications(true)}
@@ -161,6 +210,7 @@ export function App() {
               participants={participants}
               onSelectParticipant={handleSelectParticipant}
               onNavigate={(tab) => setActiveTab(tab)}
+              globalParticipantFilter={globalParticipantFilter}
             />
           )}
 
@@ -169,27 +219,47 @@ export function App() {
               participants={participants} 
               initialSelectedId={selectedParticipantId}
               onClearSelection={() => setSelectedParticipantId(null)}
+              globalParticipantFilter={globalParticipantFilter}
+              globalDateFilter={globalDateFilter}
             />
           )}
 
           {(activeTab === 'activity-context' || activeTab === 'w3b') && (
-            <StateTimelineView participantId={selectedParticipantId || 'P-014'} />
+            <StateTimelineView 
+              participantId={globalParticipantFilter !== 'ALL' ? globalParticipantFilter : (selectedParticipantId || 'P-014')} 
+              globalDateFilter={globalDateFilter}
+            />
           )}
 
           {(activeTab === 'baseline-maturity' || activeTab === 'w2e') && (
-            <BaselineMaturityView participantId={selectedParticipantId || 'P-014'} />
+            <BaselineMaturityView 
+              participantId={globalParticipantFilter !== 'ALL' ? globalParticipantFilter : (selectedParticipantId || 'P-014')} 
+              globalDateFilter={globalDateFilter}
+            />
           )}
 
           {(activeTab === 'state-timeline') && (
-            <ExperienceView experienceModels={experienceModels} />
+            <ExperienceView 
+              experienceModels={experienceModels}
+              globalParticipantFilter={globalParticipantFilter}
+              globalDateFilter={globalDateFilter}
+            />
           )}
 
           {(activeTab === 'episode' || activeTab === 'w3') && (
-            <EpisodeView episodes={episodes} />
+            <EpisodeView 
+              episodes={episodes}
+              globalParticipantFilter={globalParticipantFilter}
+              globalDateFilter={globalDateFilter}
+            />
           )}
 
           {(activeTab === 'reports' || activeTab === 'w7') && (
-            <AuditView auditTrail={auditTrail} />
+            <AuditView 
+              auditTrail={auditTrail}
+              globalParticipantFilter={globalParticipantFilter}
+              globalDateFilter={globalDateFilter}
+            />
           )}
 
           {(activeTab === 'pipeline-monitor' || activeTab === 'w5') && (

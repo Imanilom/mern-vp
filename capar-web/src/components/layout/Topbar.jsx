@@ -4,6 +4,13 @@ export const Topbar = ({
   cohorts,
   selectedCohort,
   setSelectedCohort,
+  participants = [],
+  activeParticipantId,
+  globalParticipantFilter,
+  setGlobalParticipantFilter,
+  globalDateFilter,
+  setGlobalDateFilter,
+  availableDates = [],
   user,
   onLogout,
   onOpenNotifications,
@@ -78,23 +85,85 @@ export const Topbar = ({
           <i className="fa-solid fa-chevron-down flex-shrink-0" style={{ fontSize: 9, color: 'var(--gray)', marginLeft: -10, pointerEvents: 'none' }}></i>
         </div>
 
-        {/* Global Date Range Pill (Hidden on Mobile) */}
-        <div className="d-none d-md-inline-flex" style={{
+        {/* Participant Selector Pill */}
+        <div style={{
+          display: 'inline-flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 6,
           background: 'var(--gray-soft)',
           border: '1px solid var(--line)',
           borderRadius: 8,
-          padding: '5px 12px',
+          padding: '5px 10px',
           height: 36,
-          fontSize: 12,
-          fontWeight: 600,
-          color: 'var(--navy)',
-          whiteSpace: 'nowrap'
+          maxWidth: 220,
+          minWidth: 0
         }}>
-          <i className="fa-regular fa-calendar" style={{ color: 'var(--teal)', fontSize: 13 }}></i>
-          <span>27–30 May 2024</span>
+          <i className="fa-solid fa-user flex-shrink-0" style={{ color: 'var(--teal)', fontSize: 12 }}></i>
+          <select
+            value={globalParticipantFilter}
+            onChange={(e) => setGlobalParticipantFilter(e.target.value)}
+            style={{
+              appearance: 'none',
+              background: 'transparent',
+              border: 'none',
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'var(--navy)',
+              outline: 'none',
+              cursor: 'pointer',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              maxWidth: 160,
+              paddingRight: 12
+            }}
+          >
+            <option value="ALL">Semua Pasien</option>
+            {participants.map((p) => (
+              <option key={p.id || p._id} value={p.id || p._id}>
+                {p.id || p._id}
+              </option>
+            ))}
+          </select>
+          <i className="fa-solid fa-chevron-down flex-shrink-0" style={{ fontSize: 9, color: 'var(--gray)', marginLeft: -10, pointerEvents: 'none' }}></i>
         </div>
+
+        {/* Dynamic Patient Date Dropdown */}
+        {activeParticipantId && availableDates.length > 0 && (
+          <div className="d-flex" style={{
+            alignItems: 'center',
+            background: 'var(--surface)',
+            border: '1px solid var(--line)',
+            borderRadius: 8,
+            padding: '4px 8px',
+            position: 'relative'
+          }}>
+            <i className="fa-regular fa-calendar" style={{ fontSize: 12, color: 'var(--teal)', marginRight: 6 }}></i>
+            <select
+              value={globalDateFilter || ''}
+              onChange={(e) => setGlobalDateFilter(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--ink)',
+                fontSize: 12,
+                fontWeight: 500,
+                outline: 'none',
+                cursor: 'pointer',
+                appearance: 'none',
+                paddingRight: 16
+              }}
+            >
+              <option value="" disabled>Pilih Tanggal</option>
+              {availableDates.map(dateStr => (
+                <option key={dateStr} value={dateStr}>
+                  {dateStr}
+                </option>
+              ))}
+            </select>
+            <i className="fa-solid fa-chevron-down flex-shrink-0" style={{ fontSize: 9, color: 'var(--gray)', position: 'absolute', right: 8, pointerEvents: 'none' }}></i>
+          </div>
+        )}
 
         {/* Search Input (Hidden on Small Screens) */}
         <div className="d-none d-lg-flex" style={{

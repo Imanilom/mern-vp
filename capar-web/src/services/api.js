@@ -287,10 +287,11 @@ export const api = {
     }
   },
 
-  async getRawData(userId) {
+  async getRawData(userId, date) {
     if (!userId) return null;
     try {
-      const { data } = await axios.get(`/data/raw/${userId}`);
+      const url = date ? `/data/raw/${userId}?date=${date}` : `/data/raw/${userId}`;
+      const { data } = await axios.get(url);
       return data || null;
     } catch (err) {
       console.error('getRawData Error:', err);

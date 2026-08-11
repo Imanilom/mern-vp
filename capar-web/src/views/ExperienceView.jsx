@@ -11,14 +11,19 @@ import {
   HelpCircle
 } from 'lucide-react';
 
-export const ExperienceView = ({ experienceModels }) => {
-  const [selectedModel, setSelectedModel] = useState(experienceModels?.[0] || null);
+export const ExperienceView = ({ experienceModels, globalParticipantFilter }) => {
+  const filteredModels = (experienceModels || []).filter(model => {
+    if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && model.participantId && model.participantId !== globalParticipantFilter) return false;
+    return true;
+  });
+
+  const [selectedModel, setSelectedModel] = useState(filteredModels?.[0] || null);
 
   useEffect(() => {
-    if (experienceModels && experienceModels.length > 0 && !selectedModel) {
-      setSelectedModel(experienceModels[0]);
+    if (filteredModels && filteredModels.length > 0 && !selectedModel) {
+      setSelectedModel(filteredModels[0]);
     }
-  }, [experienceModels]);
+  }, [filteredModels, selectedModel]);
   const [isLearningFrozen, setIsLearningFrozen] = useState(false);
 
   useEffect(() => {

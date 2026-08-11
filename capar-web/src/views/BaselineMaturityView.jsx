@@ -2,27 +2,63 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
 export const BaselineMaturityView = ({ participantId }) => {
-  const [isFrozen, setIsFrozen] = useState(true);
   const [baselineData, setBaselineData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedBaselineIdx, setSelectedBaselineIdx] = useState(0);
+
+  const [sourceWindows, setSourceWindows] = useState([]);
 
   useEffect(() => {
     if (participantId) {
       setLoading(true);
-      api.getBaselineMaturity(participantId).then(data => {
-        console.log(`[BaselineMaturityView] API Data (Baseline Maturity for ${participantId}):`, data);
-        setBaselineData(data);
+      Promise.all([
+        api.getBaselineMaturity(participantId).catch(() => []),
+        api.getRRSegments ? api.getRRSegments(participantId, 50).catch(() => []) : Promise.resolve([])
+      ]).then(([baseline, segments]) => {
+        setBaselineData(baseline || []);
+        
+        // Extract segments from API response
+        let segList = [];
+        if (Array.isArray(segments?.data)) segList = segments.data;
+        else if (Array.isArray(segments)) segList = segments;
+        else if (segments?.segments) segList = segments.segments;
+        
+        setSourceWindows(segList);
         setLoading(false);
       });
     }
   }, [participantId]);
 
   // Aggregate stats from the baseline data array if available
-  const activeBaseline = baselineData?.[0] || {};
+  const activeBaseline = baselineData?.[selectedBaselineIdx] || {};
   const baselineCount = activeBaseline.segment_count || 0;
   const isMature = activeBaseline.is_mature || false;
   const days = activeBaseline.maturity_detail?.distinct_days || 0;
-  const tauInVal = activeBaseline.stats?.mean_hr ? ((activeBaseline.stats.mean_hr / 100) + 1.2).toFixed(2) : '1.86'; // mock threshold derived from baseline hr if undefined
+  const tauInVal = activeBaseline.learned_tau?.tau_in?.toFixed(2) || (activeBaseline.stats?.mean_hr?.mean ? ((activeBaseline.stats.mean_hr.mean / 100) + 1.2).toFixed(2) : '1.86');
+  const isFrozen = activeBaseline.is_frozen || false;
+
+  // Calculate Day Dominance from window_timestamps
+  const dayDominance = React.useMemo(() => {
+    if (!activeBaseline.window_timestamps || activeBaseline.window_timestamps.length === 0) return [];
+    
+    const counts = {};
+    activeBaseline.window_timestamps.forEach(ts => {
+      const dt = new Date(ts);
+      const dayStr = `${dt.getDate()} ${dt.toLocaleString('default', { month: 'short' })} ${dt.getFullYear()}`;
+      counts[dayStr] = (counts[dayStr] || 0) + 1;
+    });
+
+    const total = activeBaseline.window_timestamps.length;
+    
+    return Object.entries(counts)
+      .map(([day, count]) => ({
+        day,
+        count,
+        percent: Math.round((count / total) * 100)
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3); // top 3 days
+  }, [activeBaseline.window_timestamps]);
   
   return (
     <div>
@@ -40,8 +76,20 @@ export const BaselineMaturityView = ({ participantId }) => {
         <div className="d-flex align-items-center gap-2">
           <button
             className="btn-outline-navy"
-            onClick={() => setIsFrozen(!isFrozen)}
+            onClick={() => {
+              if (activeBaseline._id) {
+                setLoading(true);
+                api.freezeBaseline(activeBaseline._id, !isFrozen).then(() => {
+                  // Refresh data
+                  api.getBaselineMaturity(participantId).then(data => {
+                    setBaselineData(data || []);
+                    setLoading(false);
+                  });
+                });
+              }
+            }}
             style={{ fontSize: 11.5 }}
+            disabled={!activeBaseline._id || loading}
           >
             <i className={`fa-solid ${isFrozen ? 'fa-lock-open' : 'fa-lock'} me-1`}></i>
             {isFrozen ? 'Request Unfreeze' : 'Freeze Baseline'}
@@ -52,6 +100,33 @@ export const BaselineMaturityView = ({ participantId }) => {
           </button>
         </div>
       </div>
+
+      {/* Baseline Selector Tabs */}
+      {baselineData.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, overflowX: 'auto', paddingBottom: 4 }}>
+          {baselineData.map((b, idx) => (
+            <button
+              key={b._id}
+              onClick={() => setSelectedBaselineIdx(idx)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 20,
+                border: '1px solid',
+                borderColor: idx === selectedBaselineIdx ? 'var(--teal)' : 'var(--line)',
+                background: idx === selectedBaselineIdx ? 'var(--teal)' : 'var(--surface)',
+                color: idx === selectedBaselineIdx ? '#fff' : 'var(--ink)',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s'
+              }}
+            >
+              {b.activity} · {b.time_period}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Metric Cards Row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
@@ -84,24 +159,27 @@ export const BaselineMaturityView = ({ participantId }) => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
         <div className="card-panel">
           <div className="mini-label mb-2">baseline_day_dominance (Kontribusi Per Hari)</div>
-          <div className="d-flex justify-content-between mb-1">
-            <span className="frame-note m-0">07 Aug 2026</span>
-            <span className="mini-value">34%</span>
-          </div>
-          <div className="progress-thin mb-3">
-            <div style={{ width: '34%', background: 'var(--amber)' }}></div>
-          </div>
-
-          <div className="d-flex justify-content-between mb-1">
-            <span className="frame-note m-0">06 Aug 2026</span>
-            <span className="mini-value">21%</span>
-          </div>
-          <div className="progress-thin mb-3">
-            <div style={{ width: '21%', background: 'var(--teal)' }}></div>
-          </div>
+          
+          {dayDominance.length === 0 ? (
+            <div className="frame-note m-0" style={{ fontSize: 12 }}>Belum ada data timestamp window.</div>
+          ) : (
+            dayDominance.map((d, i) => (
+              <React.Fragment key={d.day}>
+                <div className="d-flex justify-content-between mb-1">
+                  <span className="frame-note m-0">{d.day}</span>
+                  <span className="mini-value">{d.percent}%</span>
+                </div>
+                <div className="progress-thin mb-3">
+                  <div style={{ width: `${d.percent}%`, background: i === 0 ? 'var(--amber)' : 'var(--teal)' }}></div>
+                </div>
+              </React.Fragment>
+            ))
+          )}
 
           <div className="frame-note m-0" style={{ fontSize: 11 }}>
-            Dominance tertinggi 34% (di bawah ambang 40%), tidak terindikasi bias hari tunggal.
+            {activeBaseline.maturity_detail?.max_single_day_frac 
+              ? `Dominance tertinggi ${(activeBaseline.maturity_detail.max_single_day_frac * 100).toFixed(0)}%. ${activeBaseline.maturity_detail.max_single_day_frac < 0.4 ? 'Tidak terindikasi bias hari tunggal.' : 'Terindikasi bias hari tunggal!'}`
+              : 'Menunggu kalkulasi dominance selanjutnya.'}
           </div>
         </div>
 
@@ -115,7 +193,9 @@ export const BaselineMaturityView = ({ participantId }) => {
               </span>
             </div>
             <div className="frame-note m-0" style={{ fontSize: 11.5 }}>
-              Frozen since 08 Aug 12:00 WIB · Completeness 100%. Unfreeze memerlukan persetujuan PI sebelum re-adaptasi diaktifkan kembali.
+              {isFrozen 
+                ? `Frozen since ${activeBaseline.updatedAt ? new Date(activeBaseline.updatedAt).toLocaleString('id-ID', {day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit'}) : '...'} WIB · Unfreeze memerlukan persetujuan PI sebelum re-adaptasi diaktifkan kembali.`
+                : `Status: ${activeBaseline.status || 'learning'}. Model sedang terus beradaptasi.`}
             </div>
           </div>
 
@@ -141,34 +221,40 @@ export const BaselineMaturityView = ({ participantId }) => {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td className="mono">W-0032</td>
-                <td className="mono">07 Aug 21:40</td>
-                <td>rest</td>
-                <td><span className="evidence-chip chip-green">Clean</span></td>
-                <td className="mono" style={{ color: 'var(--green)', fontWeight: 800 }}>✓</td>
-              </tr>
-              <tr>
-                <td className="mono">W-0031</td>
-                <td className="mono">07 Aug 20:10</td>
-                <td>sitting</td>
-                <td><span className="evidence-chip chip-green">Clean</span></td>
-                <td className="mono" style={{ color: 'var(--green)', fontWeight: 800 }}>✓</td>
-              </tr>
-              <tr>
-                <td className="mono">W-0030</td>
-                <td className="mono">07 Aug 18:55</td>
-                <td>walking</td>
-                <td><span className="evidence-chip chip-amber">Marginal</span></td>
-                <td className="mono" style={{ color: 'var(--gray)' }}>Excluded</td>
-              </tr>
-              <tr>
-                <td className="mono">W-0029</td>
-                <td className="mono">07 Aug 16:20</td>
-                <td>sitting</td>
-                <td><span className="evidence-chip chip-green">Clean</span></td>
-                <td className="mono" style={{ color: 'var(--green)', fontWeight: 800 }}>✓</td>
-              </tr>
+              {sourceWindows.length === 0 ? (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--gray)' }}>
+                    Tidak ada data source window untuk pasien ini.
+                  </td>
+                </tr>
+              ) : (
+                sourceWindows.map((win, idx) => {
+                  const wid = win.id || win._id || `W-${String(idx + 1).padStart(4, '0')}`;
+                  const ts = win.timestamp || win.start_time || win.createdAt;
+                  const displayTs = ts ? new Date(ts).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Unknown';
+                  const ctx = win.context || win.activity || 'Unknown';
+                  
+                  // Simple mock logic for quality gate if backend doesn't provide it directly
+                  const qGate = win.quality_gate || (win.quality_score > 0.8 ? 'Clean' : 'Marginal');
+                  const isClean = qGate.toLowerCase() === 'clean';
+                  
+                  return (
+                    <tr key={wid}>
+                      <td className="mono">{wid.substring(0, 8)}</td>
+                      <td className="mono">{displayTs}</td>
+                      <td>{ctx}</td>
+                      <td>
+                        <span className={`evidence-chip ${isClean ? 'chip-green' : 'chip-amber'}`}>
+                          {qGate}
+                        </span>
+                      </td>
+                      <td className="mono" style={{ color: isClean ? 'var(--green)' : 'var(--gray)', fontWeight: isClean ? 800 : 400 }}>
+                        {isClean ? '✓' : 'Excluded'}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  ResponsiveContainer, ReferenceArea, ReferenceLine, Brush,
+  ScatterChart, Scatter, ZAxis
+} from 'recharts';
 import { api } from '../services/api';
 import { EvidenceBadge } from '../components/common/EvidenceBadge';
 import { StateBadge } from '../components/common/StateBadge';
@@ -16,7 +21,25 @@ import {
   Clock
 } from 'lucide-react';
 
-export const LiveMonitorView = ({ participants, initialSelectedId, onClearSelection }) => {
+const getTimestamp = (d) => {
+  if (d.timestamp) return new Date(d.timestamp).getTime();
+  if (d.createdAt) return new Date(d.createdAt).getTime();
+  if (d.date_created && d.time_created) {
+    const parts = d.date_created.split('/');
+    if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T${d.time_created}`).getTime();
+  }
+  if (d.time) return new Date(d.time).getTime();
+  if (d.time_created) return new Date(`1970-01-01T${d.time_created}`).getTime(); // Fallback for time only
+  return NaN;
+};
+
+export const LiveMonitorView = ({ 
+  participants, 
+  initialSelectedId, 
+  onClearSelection,
+  globalParticipantFilter,
+  globalDateFilter
+}) => {
   const [filterEvidence, setFilterEvidence] = useState('ALL');
   const [filterState, setFilterState] = useState('ALL');
   const [selectedParticipant, setSelectedParticipant] = useState(null);
@@ -38,18 +61,52 @@ export const LiveMonitorView = ({ participants, initialSelectedId, onClearSelect
   }, [initialSelectedId, safeParticipants]);
 
   useEffect(() => {
-    if (selectedParticipant) {
+    if (selectedParticipant && globalDateFilter) {
       setLoadingRaw(true);
       const targetId = selectedParticipant.guid || selectedParticipant.id || selectedParticipant._id;
-      api.getRawData(targetId).then(data => {
-        console.log(`[LiveMonitorView] API Data (Raw Data for ${targetId}):`, data);
+      api.getRawData(targetId, globalDateFilter).then(data => {
+        console.log(`[LiveMonitorView] API Data (Raw Data for ${targetId} on ${globalDateFilter}):`, data);
         setRawData(data);
         setLoadingRaw(false);
+      }).catch(err => {
+        console.error('Failed to fetch raw data for date', globalDateFilter, err);
+        setRawData(null);
+        setLoadingRaw(false);
       });
+    } else if (selectedParticipant && !globalDateFilter) {
+      // If there's a participant but no date filter yet, wait for it or fetch latest
+      // For now, wait for App.jsx to set globalDateFilter
+      setRawData(null);
     } else {
       setRawData(null);
     }
-  }, [selectedParticipant]);
+  }, [selectedParticipant, globalDateFilter]);
+
+  const displayRawData = useMemo(() => {
+    if (!rawData || !rawData.data || rawData.data.length === 0) return [];
+    let dArr = rawData.data;
+    let targetDateStr = globalDateFilter;
+    
+    let filtered = [];
+    if (targetDateStr) {
+      const [year, month, day] = targetDateStr.split('-');
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+      filtered = dArr.filter(d => {
+        const ts = getTimestamp(d);
+        if (isNaN(ts)) return false; 
+        return ts >= startOfDay.getTime() && ts <= endOfDay.getTime();
+      });
+    }
+
+    // Fallback: If filter returns empty, return the raw data so graph doesn't break
+    if (targetDateStr && filtered.length === 0) {
+      return dArr;
+    }
+    
+    return targetDateStr ? filtered : dArr;
+  }, [rawData, globalDateFilter]);
 
   const handleCloseDrawer = () => {
     setSelectedParticipant(null);
@@ -64,6 +121,7 @@ export const LiveMonitorView = ({ participants, initialSelectedId, onClearSelect
   };
 
   const filtered = safeParticipants.filter(p => {
+    if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && p.id !== globalParticipantFilter && p._id !== globalParticipantFilter) return false;
     if (filterEvidence !== 'ALL' && p.evidenceState !== filterEvidence) return false;
     if (filterState !== 'ALL' && p.physiologicalState !== filterState) return false;
     return true;
@@ -310,120 +368,217 @@ export const LiveMonitorView = ({ participants, initialSelectedId, onClearSelect
                 <div className="mini-label" style={{ marginBottom: 8 }}>Live Physiological Signal Analysis (HR &amp; RR)</div>
                 {loadingRaw ? (
                   <div style={{ fontSize: 11, color: 'var(--gray)', padding: 12 }}>Loading raw signal data...</div>
-                ) : rawData && rawData.data && rawData.data.length > 0 ? (
+                ) : (
                   <>
-                    {/* 1. HR & RR Line Chart */}
+                    {displayRawData.length === 0 ? (
+                      <div style={{ fontSize: 11, color: 'var(--gray)', padding: 12 }}>No raw data available for this user on the selected date range.</div>
+                    ) : (
+                      <>
+                        {/* 1. HR Line Chart */}
                     <div className="card-panel mb-3" style={{ background: '#0B192C', color: '#fff', padding: 14, borderRadius: 10 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ marginBottom: 8 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, color: '#8FB6C4', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Activity size={14} color="var(--teal)" />
-                          <span>Heart Rate (HR) &amp; RR Interval Trend Line</span>
+                          <span>Detak Jantung (Heart Rate)</span>
                         </div>
-                        <div style={{ display: 'flex', gap: 12, fontSize: 10 }}>
-                          <span style={{ color: '#00E5FF', fontWeight: 600 }}>─ HR (bpm)</span>
-                          <span style={{ color: '#FFB300', fontWeight: 600 }}>─ RR (ms)</span>
-                        </div>
+                        <p className="text-muted" style={{ fontSize: 10, marginTop: 4 }}>
+                          Area hijau muda = rentang normal saat istirahat (60–100 bpm).
+                        </p>
                       </div>
-
-                      {/* SVG Line Chart */}
+                      
                       {(() => {
-                        const items = rawData.data.slice(-30); // Use last 30 readings
-                        const width = 360;
-                        const height = 120;
-                        const padding = 20;
+                        const HR_NORMAL_MIN = 60;
+                        const HR_NORMAL_MAX = 100;
+                        const items = displayRawData.slice(-1000); // Use up to 1000 items
 
-                        const hrValues = items.map(d => Number(d.hr) || 0).filter(v => v > 0);
-                        const rrValues = items.map(d => Number(d.rr) || 0).filter(v => v > 0);
+                        const chartData = items.map(d => {
+                          const tTime = getTimestamp(d);
+                          const tStr = isNaN(tTime) ? '' : new Date(tTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                          return {
+                            ...d,
+                            hr: Number(d.hr) || null,
+                            rr: Number(d.rr) || null,
+                            timeLabel: tStr,
+                          };
+                        }).filter(d => d.hr !== null || d.rr !== null);
 
-                        const minHr = Math.min(...(hrValues.length ? hrValues : [50])) - 5;
-                        const maxHr = Math.max(...(hrValues.length ? hrValues : [120])) + 5;
-
-                        const minRr = Math.min(...(rrValues.length ? rrValues : [400])) - 20;
-                        const maxRr = Math.max(...(rrValues.length ? rrValues : [1200])) + 20;
-
-                        const getHrY = (val) => height - padding - ((val - minHr) / (maxHr - minHr || 1)) * (height - 2 * padding);
-                        const getRrY = (val) => height - padding - ((val - minRr) / (maxRr - minRr || 1)) * (height - 2 * padding);
-                        const getX = (idx) => padding + (idx / (items.length - 1 || 1)) * (width - 2 * padding);
-
-                        const hrPoints = items.map((d, idx) => `${getX(idx)},${getHrY(d.hr || minHr)}`).join(' ');
-                        const rrPoints = items.map((d, idx) => `${getX(idx)},${getRrY(d.rr || minRr)}`).join(' ');
+                        const SimpleTooltip = ({ active, payload, label }) => {
+                          if (!active || !payload || !payload.length) return null;
+                          const dataPoint = payload[0].payload;
+                          return (
+                            <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--ink)' }}>
+                              <div style={{ fontWeight: 600, marginBottom: 4 }}>Jam {label}</div>
+                              {payload.map((p, i) => (
+                                <div key={i} style={{ color: p.color }}>
+                                  {p.name}: <strong>{p.value}</strong> {p.dataKey === 'hr' ? 'bpm' : 'ms'}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        };
 
                         return (
-                          <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: height, overflow: 'visible' }}>
-                            {/* Grid Lines */}
-                            <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#1E3A5F" strokeDasharray="3 3" />
-                            <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#1E3A5F" strokeDasharray="3 3" />
-                            <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#1E3A5F" />
-
-                            {/* HR Line (Cyan) */}
-                            {items.length > 1 && (
-                              <polyline fill="none" stroke="#00E5FF" strokeWidth="2" points={hrPoints} />
-                            )}
-                            {/* RR Line (Amber) */}
-                            {items.length > 1 && (
-                              <polyline fill="none" stroke="#FFB300" strokeWidth="2" strokeDasharray="4 2" points={rrPoints} />
-                            )}
-
-                            {/* Data points */}
-                            {items.map((d, idx) => (
-                              <g key={idx}>
-                                <circle cx={getX(idx)} cy={getHrY(d.hr || minHr)} r="3" fill="#00E5FF" />
-                                <circle cx={getX(idx)} cy={getRrY(d.rr || minRr)} r="2.5" fill="#FFB300" />
-                              </g>
-                            ))}
-                          </svg>
+                          <div style={{ height: 240, width: '100%', marginTop: 10 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={chartData} syncId="liveMonitorTime" margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1E3A5F" vertical={false} />
+                                <XAxis dataKey="timeLabel" stroke="#8FB6C4" fontSize={10} tickMargin={8} minTickGap={40} />
+                                <YAxis stroke="#8FB6C4" fontSize={10} domain={['dataMin - 10', 'dataMax + 10']} />
+                                <ReferenceArea y1={HR_NORMAL_MIN} y2={HR_NORMAL_MAX} fill="#22c55e" fillOpacity={0.08} />
+                                <ReferenceLine y={HR_NORMAL_MIN} stroke="#22c55e" strokeDasharray="4 4" strokeOpacity={0.5} />
+                                <ReferenceLine y={HR_NORMAL_MAX} stroke="#22c55e" strokeDasharray="4 4" strokeOpacity={0.5} />
+                                <RechartsTooltip content={<SimpleTooltip />} />
+                                <Line type="monotone" dataKey="hr" name="HR" stroke="#00E5FF" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                                <Brush dataKey="timeLabel" height={30} stroke="#8FB6C4" fill="#0B192C" />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
                         );
                       })()}
                     </div>
 
-                    {/* 2. Poincaré / RR Scatter Plot */}
-                    <div className="card-panel mb-3" style={{ background: '#0F2337', color: '#fff', padding: 14, borderRadius: 10 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#8FB6C4', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <TrendingUp size={14} color="var(--teal)" />
-                        <span>Poincaré Scatter Plot (RR<sub>n</sub> vs RR<sub>n+1</sub>)</span>
+                    {/* 2. RR Line Chart */}
+                    <div className="card-panel mb-3" style={{ background: '#0B192C', color: '#fff', padding: 14, borderRadius: 10 }}>
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#8FB6C4', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Activity size={14} color="var(--teal)" />
+                          <span>Jarak Antar Detak (RR Interval)</span>
+                        </div>
+                        <p className="text-muted" style={{ fontSize: 10, marginTop: 4 }}>
+                          Semakin stabil garisnya, semakin teratur irama jantung.
+                        </p>
                       </div>
-
+                      
                       {(() => {
-                        const items = rawData.data.map(d => Number(d.rr)).filter(v => v > 0);
-                        const points = [];
-                        for (let i = 0; i < items.length - 1; i++) {
-                          points.push({ x: items[i], y: items[i + 1] });
-                        }
+                        const items = displayRawData.slice(-1000); // Use up to 1000 items
 
-                        const svgSize = 180;
-                        const pPad = 25;
-                        const allRr = items.length ? items : [600, 1000];
-                        const minVal = Math.min(...allRr) - 30;
-                        const maxVal = Math.max(...allRr) + 30;
+                        const chartData = items.map(d => {
+                          const tTime = getTimestamp(d);
+                          const tStr = isNaN(tTime) ? '' : new Date(tTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                          return {
+                            ...d,
+                            hr: Number(d.hr) || null,
+                            rr: Number(d.rr) || null,
+                            timeLabel: tStr,
+                          };
+                        }).filter(d => d.hr !== null || d.rr !== null);
 
-                        const scale = (val) => pPad + ((val - minVal) / (maxVal - minVal || 1)) * (svgSize - 2 * pPad);
-                        const scaleY = (val) => svgSize - pPad - ((val - minVal) / (maxVal - minVal || 1)) * (svgSize - 2 * pPad);
+                        const SimpleTooltip = ({ active, payload, label }) => {
+                          if (!active || !payload || !payload.length) return null;
+                          const dataPoint = payload[0].payload;
+                          return (
+                            <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--ink)' }}>
+                              <div style={{ fontWeight: 600, marginBottom: 4 }}>Jam {label}</div>
+                              {payload.map((p, i) => (
+                                <div key={i} style={{ color: p.color }}>
+                                  {p.name}: <strong>{p.value}</strong> {p.dataKey === 'hr' ? 'bpm' : 'ms'}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        };
 
                         return (
-                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <svg viewBox={`0 0 ${svgSize} ${svgSize}`} style={{ width: 220, height: 220, background: '#0B1426', borderRadius: 8, padding: 4 }}>
-                              {/* Identity Line (y = x) */}
-                              <line x1={pPad} y1={svgSize - pPad} x2={svgSize - pPad} y2={pPad} stroke="#2B4C6F" strokeDasharray="3 3" strokeWidth="1" />
-                              
-                              {/* Axis Labels */}
-                              <text x={svgSize / 2} y={svgSize - 4} fill="#8FB6C4" fontSize="8" textAnchor="middle">RR_n (ms)</text>
-                              <text x="8" y={svgSize / 2} fill="#8FB6C4" fontSize="8" textAnchor="middle" transform={`rotate(-90 8 ${svgSize / 2})`}>RR_n+1 (ms)</text>
-
-                              {/* Scatter Points */}
-                              {points.map((pt, idx) => (
-                                <circle
-                                  key={idx}
-                                  cx={scale(pt.x)}
-                                  cy={scaleY(pt.y)}
-                                  r="3"
-                                  fill="var(--teal)"
-                                  opacity="0.8"
-                                >
-                                  <title>{`RR_n: ${pt.x} ms, RR_n+1: ${pt.y} ms`}</title>
-                                </circle>
-                              ))}
-                            </svg>
+                          <div style={{ height: 180, width: '100%', marginTop: 10 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={chartData} syncId="liveMonitorTime" margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1E3A5F" vertical={false} />
+                                <XAxis dataKey="timeLabel" stroke="#8FB6C4" fontSize={10} tickMargin={8} minTickGap={40} />
+                                <YAxis stroke="#8FB6C4" fontSize={10} domain={['dataMin - 50', 'dataMax + 50']} />
+                                <RechartsTooltip content={<SimpleTooltip />} />
+                                <Line type="monotone" dataKey="rr" name="RR" stroke="#FFB300" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                              </LineChart>
+                            </ResponsiveContainer>
                           </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* 3. Poincaré Scatter Plot */}
+                    <div className="card-panel mb-3" style={{ background: '#0F2337', color: '#fff', padding: 14, borderRadius: 10 }}>
+                      {(() => {
+                        const rrIntervals = displayRawData.map(d => Number(d.rr)).filter(v => typeof v === 'number' && v > 0);
+                        const poincareData = (() => {
+                          if (rrIntervals.length < 2) return { points: [], sd1: 0, sd2: 0, ratio: 0 };
+                      
+                          const points = [];
+                          let sumDiff = 0, sumAdd = 0;
+                          const n = rrIntervals.length - 1;
+                      
+                          for (let i = 0; i < n; i++) {
+                            const rr_n = rrIntervals[i];
+                            const rr_n1 = rrIntervals[i+1];
+                            points.push({ x: rr_n, y: rr_n1 });
+                            sumDiff += (rr_n - rr_n1);
+                            sumAdd += (rr_n + rr_n1);
+                          }
+                          const meanDiff = sumDiff / n;
+                          const meanAdd = sumAdd / n;
+                      
+                          let sumSqDiff = 0, sumSqAdd = 0;
+                          for (let i = 0; i < n; i++) {
+                            const rr_n = rrIntervals[i];
+                            const rr_n1 = rrIntervals[i+1];
+                            sumSqDiff += Math.pow((rr_n - rr_n1) - meanDiff, 2);
+                            sumSqAdd += Math.pow((rr_n + rr_n1) - meanAdd, 2);
+                          }
+                      
+                          const varDiff = sumSqDiff / (n - 1 || 1);
+                          const varAdd = sumSqAdd / (n - 1 || 1);
+                          const sd1 = Math.sqrt(0.5 * varDiff);
+                          const sd2 = Math.sqrt(0.5 * varAdd);
+                      
+                          return { 
+                            points, 
+                            sd1: Math.round(sd1 * 100) / 100, 
+                            sd2: Math.round(sd2 * 100) / 100,
+                            ratio: sd2 !== 0 ? Math.round((sd1 / sd2) * 100) / 100 : 0
+                          };
+                        })();
+
+                        return (
+                          <>
+                            <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#8FB6C4', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <TrendingUp size={14} color="var(--teal)" />
+                                  <span>Scatter Plot HRV (Poincaré Plot)</span>
+                                </div>
+                                <p className="text-muted" style={{ fontSize: 10, marginTop: 4 }}>
+                                  Distribusi interval detak jantung untuk analisis variabilitas.
+                                </p>
+                              </div>
+                              <div style={{ textAlign: 'right', display: 'flex', gap: '16px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontSize: '10px', color: '#8FB6C4' }}>SD1 (Short)</span>
+                                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#00E5FF' }}>{poincareData.sd1} ms</span>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontSize: '10px', color: '#8FB6C4' }}>SD2 (Long)</span>
+                                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFB300' }}>{poincareData.sd2} ms</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div style={{ height: 260, width: '100%', marginTop: 10 }}>
+                              {poincareData.points.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1E3A5F" />
+                                    <XAxis type="number" dataKey="x" name="RRn" unit="ms" domain={['dataMin - 50', 'dataMax + 50']} stroke="#8FB6C4" fontSize={10} label={{ value: 'RR_n (ms)', position: 'insideBottom', offset: -10, fill: '#8FB6C4', fontSize: 10 }} />
+                                    <YAxis type="number" dataKey="y" name="RRn+1" unit="ms" domain={['dataMin - 50', 'dataMax + 50']} stroke="#8FB6C4" fontSize={10} label={{ value: 'RR_{n+1} (ms)', angle: -90, position: 'insideLeft', fill: '#8FB6C4', fontSize: 10 }} />
+                                    <ZAxis range={[30, 30]} />
+                                    <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'var(--surface)', borderRadius: 8, fontSize: 12, color: 'var(--ink)' }} />
+                                    <Scatter name="RR Intervals" data={poincareData.points} fill="var(--teal)" opacity={0.6} />
+                                  </ScatterChart>
+                                </ResponsiveContainer>
+                              ) : (
+                                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray)', fontSize: 11 }}>
+                                  Not enough data
+                                </div>
+                              )}
+                            </div>
+                          </>
                         );
                       })()}
                     </div>
@@ -441,7 +596,7 @@ export const LiveMonitorView = ({ participants, initialSelectedId, onClearSelect
                             </tr>
                           </thead>
                           <tbody>
-                            {rawData.data.slice(-10).reverse().map((row, idx) => (
+                            {displayRawData.slice(-10).reverse().map((row, idx) => (
                               <tr key={idx}>
                                 <td className="mono">{row.time_created || '-'}</td>
                                 <td className="mono" style={{ fontWeight: 600, color: 'var(--navy)' }}>{row.hr || '-'}</td>
@@ -454,10 +609,10 @@ export const LiveMonitorView = ({ participants, initialSelectedId, onClearSelect
                       </div>
                     </div>
                   </>
-                ) : (
-                  <div style={{ fontSize: 11, color: 'var(--gray)', padding: 12 }}>No raw data available for this user.</div>
                 )}
-              </div>
+              </>
+            )}
+          </div>
             </div>
           </div>
         </>

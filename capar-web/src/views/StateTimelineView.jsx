@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
-export const StateTimelineView = ({ participantId }) => {
+export const StateTimelineView = ({ participantId, globalDateFilter }) => {
   const [range, setRange] = useState('Day');
-  const [annotations, setAnnotations] = useState([
-    { time: '08:20', author: 'Rina S. (Reviewer)', note: 'Kegiatan pagi anak — kemungkinan aktivitas fisik non-fisiologis', episode: 'EP-240527-01' },
-    { time: '15:04', author: 'Dr. Aditya (PI)', note: 'Durasi persistent lama, cek device strap sebelum sesi berikutnya', episode: 'EP-240530-02' }
-  ]);
+  const [annotations, setAnnotations] = useState([]);
   const [showAnnotateModal, setShowAnnotateModal] = useState(false);
   const [newNote, setNewNote] = useState('');
   
@@ -16,9 +13,35 @@ export const StateTimelineView = ({ participantId }) => {
   useEffect(() => {
     if (participantId) {
       setLoading(true);
-      api.getRiwayatDeteksi(participantId).then(data => {
-        console.log(`[StateTimelineView] API Data (Riwayat Deteksi for ${participantId}):`, data);
-        setTimelineData(data);
+      Promise.all([
+        api.getRiwayatDeteksi(participantId).catch(() => null),
+        api.getRecentEvents ? api.getRecentEvents(participantId, 50).catch(() => ({})) : Promise.resolve({})
+      ]).then(([riwayatData, eventsData]) => {
+        setTimelineData(riwayatData);
+        
+        // Map events with notes to annotations
+        const events = Array.isArray(eventsData?.data) ? eventsData.data : [];
+        const mappedAnns = events
+          .filter(ev => {
+            if (!ev.reviewer_notes && !ev.annotation && !ev.validation_label) return false;
+            if (globalDateFilter && ev.onset_time) {
+              const ts = new Date(ev.onset_time).getTime();
+              if (!isNaN(ts)) {
+                const dt = new Date(ts);
+                const epDateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+                if (epDateStr !== globalDateFilter) return false;
+              }
+            }
+            return true;
+          })
+          .map((ev, idx) => ({
+            time: ev.onset_time ? new Date(ev.onset_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : (ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Unknown'),
+            author: ev.reviewer_name || 'Reviewer',
+            note: ev.reviewer_notes || ev.annotation || `Status: ${ev.validation_label}`,
+            episode: ev._id || ev.id || `EP-${idx}`
+          }));
+        
+        setAnnotations(mappedAnns);
         setLoading(false);
       });
     }
@@ -201,14 +224,22 @@ export const StateTimelineView = ({ participantId }) => {
               </tr>
             </thead>
             <tbody>
-              {annotations.map((ann, idx) => (
-                <tr key={idx}>
-                  <td className="mono" style={{ fontWeight: 700 }}>{ann.time}</td>
-                  <td style={{ fontWeight: 600 }}>{ann.author}</td>
-                  <td>{ann.note}</td>
-                  <td className="mono" style={{ fontWeight: 700, color: 'var(--navy)' }}>{ann.episode}</td>
+              {annotations.length === 0 ? (
+                <tr>
+                  <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--gray)' }}>
+                    Tidak ada anotasi pada rentang waktu ini.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                annotations.map((ann, idx) => (
+                  <tr key={idx}>
+                    <td className="mono" style={{ fontWeight: 700 }}>{ann.time}</td>
+                    <td style={{ fontWeight: 600 }}>{ann.author}</td>
+                    <td>{ann.note}</td>
+                    <td className="mono" style={{ fontWeight: 700, color: 'var(--navy)' }}>{ann.episode}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

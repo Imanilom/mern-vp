@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Filter, Clock, User, FileText, CheckCircle2, Lock } from 'lucide-react';
 
-export const AuditView = ({ auditTrail }) => {
+export const AuditView = ({ auditTrail, globalParticipantFilter, globalDateFilter }) => {
   const [filterAction, setFilterAction] = useState('ALL');
 
   const safeAudit = Array.isArray(auditTrail) ? auditTrail : [];
@@ -11,7 +11,16 @@ export const AuditView = ({ auditTrail }) => {
   }, [safeAudit]);
 
   const filtered = safeAudit.filter(item => {
+    if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && item.participantId && item.participantId !== globalParticipantFilter) return false;
     if (filterAction !== 'ALL' && item.action !== filterAction) return false;
+    if (globalDateFilter && item.timestamp) {
+      const ts = new Date(item.timestamp).getTime();
+      if (!isNaN(ts)) {
+        const itemDate = new Date(ts);
+        const dateStr = `${itemDate.getFullYear()}-${String(itemDate.getMonth()+1).padStart(2,'0')}-${String(itemDate.getDate()).padStart(2,'0')}`;
+        if (dateStr !== globalDateFilter) return false;
+      }
+    }
     return true;
   });
 

@@ -3,20 +3,32 @@ import { EvidenceBadge } from '../components/common/EvidenceBadge';
 import { StateBadge } from '../components/common/StateBadge';
 import { Users, Activity, AlertTriangle, ArrowRight, ShieldCheck, Search } from 'lucide-react';
 
-export const CohortOverviewView = ({ participants, onSelectParticipant, onNavigate }) => {
+export const CohortOverviewView = ({ 
+  participants, 
+  onSelectParticipant, 
+  onNavigate,
+  globalParticipantFilter
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredByGlobal = useMemo(() => {
+    return participants.filter(p => {
+      if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && p.id !== globalParticipantFilter && p._id !== globalParticipantFilter) return false;
+      return true;
+    });
+  }, [participants, globalParticipantFilter]);
 
   useEffect(() => {
     console.log('[CohortOverviewView] API Data (Participants):', participants);
   }, [participants]);
 
-  const activeCount = participants.length;
-  const evaluableCount = participants.filter(p => p.evidenceState === 'EVALUABLE').length;
-  const activeEpisodesCount = participants.filter(p => ['PERSISTENT_DEVIATION', 'DEVIATION_CANDIDATE', 'RECOVERY'].includes(p.physiologicalState)).length;
-  const qualityWarningsCount = participants.filter(p => p.evidenceState === 'QUALITY_WARNING' || p.evidenceState === 'UNCERTAIN_CONTEXT').length;
+  const activeCount = filteredByGlobal.length;
+  const evaluableCount = filteredByGlobal.filter(p => p.evidenceState === 'EVALUABLE').length;
+  const activeEpisodesCount = filteredByGlobal.filter(p => ['PERSISTENT_DEVIATION', 'DEVIATION_CANDIDATE', 'RECOVERY'].includes(p.physiologicalState)).length;
+  const qualityWarningsCount = filteredByGlobal.filter(p => p.evidenceState === 'QUALITY_WARNING' || p.evidenceState === 'UNCERTAIN_CONTEXT').length;
 
   const filteredPatients = useMemo(() => {
-    let sorted = [...participants].sort((a, b) => {
+    let sorted = [...filteredByGlobal].sort((a, b) => {
       const aNeedsAttention = ['PERSISTENT_DEVIATION', 'DEVIATION_CANDIDATE', 'UNRESOLVED'].includes(a.physiologicalState) || ['QUALITY_WARNING', 'UNCERTAIN_CONTEXT'].includes(a.evidenceState);
       const bNeedsAttention = ['PERSISTENT_DEVIATION', 'DEVIATION_CANDIDATE', 'UNRESOLVED'].includes(b.physiologicalState) || ['QUALITY_WARNING', 'UNCERTAIN_CONTEXT'].includes(b.evidenceState);
       if (aNeedsAttention && !bNeedsAttention) return -1;
@@ -29,7 +41,7 @@ export const CohortOverviewView = ({ participants, onSelectParticipant, onNaviga
       sorted = sorted.filter(p => (p.name || p.email || p.id || '').toLowerCase().includes(q));
     }
     return sorted;
-  }, [participants, searchQuery]);
+  }, [filteredByGlobal, searchQuery]);
 
   return (
     <div>
