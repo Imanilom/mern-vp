@@ -23,9 +23,9 @@ services:
       - 103.253.213.134
       - 203.175.8.227
 
-  backoffice:
-    build: ./backoffice
-    container_name: mern-vp-backoffice
+  capar-web:
+    build: ./capar-web
+    container_name: mern-vp-capar-web
     restart: always
     ports:
       - "8080:80"
