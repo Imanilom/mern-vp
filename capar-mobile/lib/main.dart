@@ -7,16 +7,26 @@ import 'screens/onboarding/baseline_readiness_screen.dart';
 import 'screens/onboarding/consent_screen.dart';
 import 'screens/onboarding/device_pairing_screen.dart';
 import 'screens/onboarding/welcome_screen.dart';
+import 'screens/onboarding/login_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'services/socket_service.dart';
 import 'theme/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'services/background_task.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const CaparMobileApp());
+  await BackgroundTask.initializeService();
+  final prefs = await SharedPreferences.getInstance();
+  final hasToken = prefs.getString('auth_token') != null;
+
+  runApp(CaparMobileApp(hasToken: hasToken));
 }
 
 class CaparMobileApp extends StatelessWidget {
-  const CaparMobileApp({super.key});
+  final bool hasToken;
+  const CaparMobileApp({super.key, required this.hasToken});
 
   @override
   Widget build(BuildContext context) {
@@ -31,11 +41,12 @@ class CaparMobileApp extends StatelessWidget {
           primary: AppColors.teal,
           surface: AppColors.surface,
         ),
-        fontFamily: 'Roboto',
+        textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme),
       ),
-      initialRoute: '/',
+      initialRoute: hasToken ? '/app' : '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
+        '/login': (context) => const LoginScreen(),
         '/consent': (context) => const ConsentScreen(),
         '/pairing': (context) => const DevicePairingScreen(),
         '/baseline': (context) => const BaselineReadinessScreen(),
@@ -54,6 +65,14 @@ class MainTabShell extends StatefulWidget {
 
 class _MainTabShellState extends State<MainTabShell> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SocketService.init(context);
+    });
+  }
 
   final List<Widget> _pages = const [
     HomeScreen(),

@@ -1,4 +1,5 @@
 import amqp from 'amqplib';
+import { io } from '../index.js';
 
 let connection = null;
 let channel = null;
@@ -78,6 +79,13 @@ export async function sendMobileNotification(userId, deviceId, type, message, ti
     // 2. Original direct queue
     ch.sendToQueue(queueName, payloadBuffer, { persistent: true });
     // console.log(`[NotificationService] Sent ${type} for user ${userId} to ${queueName}`);
+
+    // 3. Socket.io Broadcaster (Real-time to connected mobile apps)
+    if (io) {
+      // Emit to a specific room for this user. Clients must join this room on connect.
+      io.to(`user_${userId}`).emit('notification', payload);
+    }
+
     return true;
   } catch (err) {
     console.error('[NotificationService] Failed to send notification:', err.message);

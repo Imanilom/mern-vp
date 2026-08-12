@@ -1,8 +1,50 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class ApiService {
   static const String baseUrl = 'http://10.0.2.2:3030/api'; // Use 10.0.2.2 for Android emulator to host localhost
+
+  static Future<Map<String, String>> _getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  static Future<bool> login(String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/signin'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['token'] != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', data['token']);
+          if (data['_id'] != null) {
+            await prefs.setString('user_id', data['_id']);
+          }
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Exception login: $e');
+      return false;
+    }
+  }
+
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    await prefs.remove('user_id');
+  }
 
   static Future<bool> sendSensorData({
     required String userId,
@@ -10,9 +52,10 @@ class ApiService {
     required List<Map<String, dynamic>> readings,
   }) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/log/transport'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({
           'user_id': userId,
           'device_id': deviceId,
@@ -36,7 +79,8 @@ class ApiService {
 
   static Future<Map<String, dynamic>?> getDashboardData() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/dashboard'));
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse('$baseUrl/dashboard'), headers: headers);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
@@ -47,10 +91,23 @@ class ApiService {
     }
   }
 
+  static Future<dynamic> getRecentEvents(String userId, {int limit = 10}) async {
+    return _get('/analysis/recent/$userId?limit=$limit');
+  }
+
+  static Future<dynamic> annotateEvent(String eventId, Map<String, dynamic> data) async {
+    return _post('/analysis/events/$eventId/annotate', data);
+  }
+
+  static Future<dynamic> getFullMetrics(String userId) async {
+    return _get('/analysis/metrics/$userId');
+  }
+
   // --- HELPER METODE ---
   static Future<dynamic> _get(String path) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl$path'));
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse('$baseUrl$path'), headers: headers);
       if (response.statusCode == 200) return jsonDecode(response.body);
       return null;
     } catch (e) {
@@ -61,9 +118,10 @@ class ApiService {
 
   static Future<dynamic> _post(String path, Map<String, dynamic> body) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl$path'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode(body),
       );
       if (response.statusCode == 200 || response.statusCode == 201) return jsonDecode(response.body);
@@ -76,9 +134,10 @@ class ApiService {
 
   static Future<dynamic> _patch(String path, [Map<String, dynamic>? body]) async {
     try {
+      final headers = await _getHeaders();
       final response = await http.patch(
         Uri.parse('$baseUrl$path'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: body != null ? jsonEncode(body) : null,
       );
       if (response.statusCode == 200) return jsonDecode(response.body);
@@ -91,7 +150,8 @@ class ApiService {
 
   static Future<dynamic> _delete(String path) async {
     try {
-      final response = await http.delete(Uri.parse('$baseUrl$path'));
+      final headers = await _getHeaders();
+      final response = await http.delete(Uri.parse('$baseUrl$path'), headers: headers);
       if (response.statusCode == 200) return jsonDecode(response.body);
       return null;
     } catch (e) {

@@ -51,13 +51,13 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
     };
-    SocketService.init();
+    // SocketService is now initialized in main.dart
     _refreshLatestFromBackend();
   }
 
   @override
   void dispose() {
-    SocketService.dispose();
+    // We shouldn't dispose socket service on home screen dispose, let it run globally.
     super.dispose();
   }
 

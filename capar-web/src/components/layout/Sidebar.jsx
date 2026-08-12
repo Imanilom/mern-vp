@@ -49,7 +49,7 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
         />
       )}
 
-      <aside className={`backoffice-sidebar ${isOpen ? 'mobile-open' : ''}`}>
+      <aside className={`app-sidebar ${isOpen ? 'mobile-open' : ''}`}>
         <div className="brand" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <i className="fa-solid fa-heart-pulse"></i>
@@ -89,12 +89,7 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
         </nav>
 
         <div className="sb-foot">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <i className="fa-solid fa-lock" style={{ color: 'var(--teal)', fontSize: 11 }}></i>
-            <span style={{ color: '#8FB6C4', fontWeight: 600 }}>Governed Console</span>
-          </div>
-          <div>Role: <b>{userRole?.role || 'Reviewer'}</b></div>
-          <div style={{ fontSize: 10, color: '#5E7381', marginTop: 3 }}>Deny-by-default active</div>
+          Research prototype<br/>Non-diagnostic
         </div>
       </aside>
     </>

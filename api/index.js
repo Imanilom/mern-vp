@@ -83,6 +83,12 @@ export const io = new SocketIOServer(httpServer, {
 
 io.on("connection", (socket) => {
   console.log(`[Socket.io] Client connected: ${socket.id}`);
+  
+  socket.on("join_room", (room) => {
+    socket.join(room);
+    console.log(`[Socket.io] Client ${socket.id} joined room: ${room}`);
+  });
+
   socket.on("disconnect", () => {
     console.log(`[Socket.io] Client disconnected: ${socket.id}`);
   });

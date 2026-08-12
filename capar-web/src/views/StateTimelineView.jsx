@@ -247,11 +247,17 @@ export const StateTimelineView = ({ participantId, globalDateFilter }) => {
 
       {/* Modal Annotate */}
       {showAnnotateModal && (
-        <div className="modal-overlay" onClick={() => setShowAnnotateModal(false)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440, padding: 20 }}>
+        <div 
+          onClick={() => setShowAnnotateModal(false)}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(11, 17, 22, 0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ width: '100%', maxWidth: 440, padding: 20, background: 'var(--surface)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}
+          >
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Add Timeline Annotation</h3>
-              <button onClick={() => setShowAnnotateModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>✕</button>
+              <button onClick={() => setShowAnnotateModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--gray)' }}><i className="fa-solid fa-xmark"></i></button>
             </div>
 
             <form onSubmit={handleAddAnnotation}>

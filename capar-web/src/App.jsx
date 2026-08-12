@@ -173,7 +173,7 @@ export function App() {
   };
 
   return (
-    <div className="backoffice-shell">
+    <div className="app-shell">
       {/* Production Left Sidebar */}
       <Sidebar
         activeTab={activeTab}
@@ -184,7 +184,7 @@ export function App() {
       />
 
       {/* Production App Body */}
-      <div className="backoffice-body">
+      <div className="flex-grow-1 d-flex flex-column">
         {/* Top Header Bar */}
         <Topbar
           cohorts={cohorts}
@@ -204,7 +204,7 @@ export function App() {
         />
 
         {/* Scrollable Main Content Workspace */}
-        <main className="backoffice-main">
+        <main className="app-main">
           {(activeTab === 'overview' || activeTab === 'w1') && (
             <CohortOverviewView
               participants={participants}
