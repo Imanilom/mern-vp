@@ -83,7 +83,7 @@ export const io = new SocketIOServer(httpServer, {
 
 io.on("connection", (socket) => {
   console.log(`[Socket.io] Client connected: ${socket.id}`);
-  
+
   socket.on("join_room", (room) => {
     socket.join(room);
     console.log(`[Socket.io] Client ${socket.id} joined room: ${room}`);
@@ -101,7 +101,7 @@ app.use(helmet());
 // ── CORS — Whitelist dari environment variable ALLOWED_ORIGINS ──────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.replace(/['"]/g, '').split(',').map(o => o.trim())
-  : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:59674'];
+  : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:56710'];
 
 // Agar jika ada typo https://https:// di .env tetap aman:
 if (!allowedOrigins.includes('https://healthtrajectory.cloud')) {

@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://10.0.2.2:3030/api'; // Use 10.0.2.2 for Android emulator to host localhost
+  static const String baseUrl = kIsWeb 
+      ? 'https://healthtrajectory.cloud/api' 
+      : 'http://10.0.2.2:3030/api';
 
   static Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
@@ -91,17 +94,7 @@ class ApiService {
     }
   }
 
-  static Future<dynamic> getRecentEvents(String userId, {int limit = 10}) async {
-    return _get('/analysis/recent/$userId?limit=$limit');
-  }
 
-  static Future<dynamic> annotateEvent(String eventId, Map<String, dynamic> data) async {
-    return _post('/analysis/events/$eventId/annotate', data);
-  }
-
-  static Future<dynamic> getFullMetrics(String userId) async {
-    return _get('/analysis/metrics/$userId');
-  }
 
   // --- HELPER METODE ---
   static Future<dynamic> _get(String path) async {
@@ -225,4 +218,8 @@ class ApiService {
   // --- REPORT ROUTES ---
   static Future<dynamic> generateReport() => _get('/reports/generate');
   static Future<dynamic> getReportsList(String userId) => _get('/reports/list/$userId');
+
+  // --- USER ROUTES ---
+  static Future<dynamic> getMe() => _get('/me');
 }
+

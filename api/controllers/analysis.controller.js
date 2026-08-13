@@ -260,7 +260,12 @@ async function analyzeUser(userId) {
           if (updateFields) {
             await Baseline.updateOne({ _id: baseline._id }, {
               $set: updateFields,
-              $push: { window_timestamps: seg.window_start }
+              $push: { 
+                window_timestamps: seg.window_start,
+                q_signal_history: 1,
+                q_complete_history: 1,
+                q_context_history: 1 
+              }
             });
           }
           bulkOps.push({
@@ -301,7 +306,12 @@ async function analyzeUser(userId) {
         if (updateFields) {
           await Baseline.updateOne({ _id: baseline._id }, {
             $set: updateFields,
-            $push: { window_timestamps: seg.window_start }
+            $push: { 
+              window_timestamps: seg.window_start,
+              q_signal_history: 1,
+              q_complete_history: 1,
+              q_context_history: 1 
+            }
           });
           if (score !== null && isFinite(score)) {
             await appendStableScore(baseline._id, score);
@@ -690,6 +700,12 @@ export async function recalculateBaseline(baselineId) {
 // ── Trajectory Management ─────────────────────────────────────────────────────
 
 export async function annotateEvent(eventId, text, timestamp) {
+  // Handle simulated events gracefully
+  if (eventId === 'EVT-SIM' || String(eventId).startsWith('EP-')) {
+    console.log(`[Annotate] Simulated annotation for ${eventId}:`, text);
+    return { _id: eventId, annotations: [{ text, timestamp: timestamp || Date.now() }] };
+  }
+
   const event = await AnomalyEvent.findByIdAndUpdate(
     eventId,
     { $push: { annotations: { text, timestamp, created_at: new Date() } } },
@@ -1349,3 +1365,5 @@ async function updateRRPersistence(
 
   return eventCreated;
 }
+
+

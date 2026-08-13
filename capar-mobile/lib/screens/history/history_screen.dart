@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 import '../../theme/app_colors.dart';
 import '../../widgets/evidence_chip.dart';
+import '../../services/api_service.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -12,144 +15,233 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   Map<String, dynamic>? selectedEpisode;
+  List<Map<String, dynamic>> episodes = [];
+  bool isLoading = true;
+  String userId = '';
 
-  final List<Map<String, dynamic>> episodes = [
-    {
-      'id': 'EP-2026-0012',
-      'date': 'Hari ini 09:02 WIB',
-      'context': 'Duduk-berdiri acak',
-      'status': 'Recovered',
-      'duration': '38 m',
-      'recoveryTime': '6 m',
-      'onset': '08:24',
-      'recovery': '08:56',
-      'peakScore': 6.60,
-      'auc': 141.8,
-      'evidence': ['HR +2,1 SD', 'RMSSD −2,6 SD', 'DFA α1 +1,4 SD', 'Quality 0.94'],
-    },
-    {
-      'id': 'EP-2026-0011',
-      'date': 'Kemarin 16:40 WIB',
-      'context': 'Bekerja / rapat',
-      'status': 'Recovered',
-      'duration': '24 m',
-      'recoveryTime': '4 m',
-      'onset': '16:40',
-      'recovery': '17:04',
-      'peakScore': 2.40,
-      'auc': 62.4,
-      'evidence': ['HR +1,8 SD', 'RMSSD −1,9 SD', 'Quality 0.92'],
-    },
-    {
-      'id': 'EP-2026-0010',
-      'date': 'Senin 10:12 WIB',
-      'context': 'Berjalan santai',
-      'status': 'Unresolved',
-      'duration': '>90 m',
-      'recoveryTime': '—',
-      'onset': '10:12',
-      'recovery': '—',
-      'peakScore': 3.10,
-      'auc': 210.5,
-      'evidence': ['HR +2,5 SD', 'Quality 0.88'],
-    },
-    {
-      'id': 'EP-2026-0009',
-      'date': 'Minggu 21:03 WIB',
-      'context': 'Duduk / istirahat',
-      'status': 'Recovered',
-      'duration': '19 m',
-      'recoveryTime': '3 m',
-      'onset': '21:03',
-      'recovery': '21:22',
-      'peakScore': 1.95,
-      'auc': 41.2,
-      'evidence': ['HR +1,4 SD', 'RMSSD −1,5 SD', 'Quality 0.96'],
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    setState(() => isLoading = true);
+    final prefs = await SharedPreferences.getInstance();
+    final uid = prefs.getString('user_id') ?? '';
+    if (mounted) setState(() => userId = uid);
+
+    if (uid.isEmpty) {
+      if (mounted) setState(() => isLoading = false);
+      return;
+    }
+
+    try {
+      final result = await ApiService.getRecentEvents(uid, limit: 50);
+      final raw = result is Map
+          ? (result['data'] ?? result['events'] ?? const [])
+          : result ?? const [];
+
+      if (raw is List && mounted) {
+        setState(() {
+          episodes = raw.map((e) => _mapEvent(e as Map<String, dynamic>)).toList();
+          isLoading = false;
+        });
+      } else {
+        if (mounted) setState(() => isLoading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  Map<String, dynamic> _mapEvent(Map<String, dynamic> e) {
+    final createdAt = e['created_at'] ?? e['onset_time'] ?? e['timestamp'];
+    String dateLabel = '—';
+    String onsetStr = '—';
+    String recoveryStr = '—';
+    if (createdAt != null) {
+      try {
+        final dt = DateTime.parse(createdAt.toString()).toLocal();
+        final now = DateTime.now();
+        final diff = now.difference(dt);
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        if (diff.inDays == 0) {
+          dateLabel = 'Hari ini ${DateFormat('HH:mm').format(dt)} WIB';
+        } else if (diff.inDays == 1) {
+          dateLabel = 'Kemarin ${DateFormat('HH:mm').format(dt)} WIB';
+        } else {
+          dateLabel = '${days[dt.weekday % 7]} ${DateFormat('HH:mm').format(dt)} WIB';
+        }
+        onsetStr = DateFormat('HH:mm').format(dt);
+      } catch (_) {}
+    }
+    final recoveryAt = e['recovery_time'] ?? e['recovered_at'];
+    if (recoveryAt != null) {
+      try {
+        final dt = DateTime.parse(recoveryAt.toString()).toLocal();
+        recoveryStr = DateFormat('HH:mm').format(dt);
+      } catch (_) {}
+    }
+
+    final durationMs = e['duration_ms'];
+    final durationStr = durationMs != null
+        ? '${((durationMs as num) / 60000).round()} m'
+        : '—';
+
+    final recoveryMs = e['recovery_duration_ms'];
+    final recoveryDurStr = recoveryMs != null
+        ? '${((recoveryMs as num) / 60000).round()} m'
+        : '—';
+
+    final classification = e['classification'] ?? e['status'] ?? 'Unknown';
+    final isRecovered = classification == 'RECOVERED' || classification == 'Recovered';
+
+    final peakScore = e['peak_score'] ?? e['anomaly_score'] ?? e['score'] ?? 0.0;
+    final auc = e['auc_burden'] ?? e['auc'] ?? 0.0;
+
+    final id = e['_id'] ?? e['event_id'] ?? '—';
+    final shortId = id.toString().length > 8 ? 'EP-${id.toString().substring(0, 8).toUpperCase()}' : 'EP-$id';
+
+    final activity = e['activity'] ?? e['activity_context'] ?? '—';
+
+    final List<String> evidence = [];
+    if (e['hr_deviation'] != null) evidence.add('HR ${_fmtDev(e['hr_deviation'])} SD');
+    if (e['rmssd_deviation'] != null) evidence.add('RMSSD ${_fmtDev(e['rmssd_deviation'])} SD');
+    if (e['dfa_deviation'] != null) evidence.add('DFA α1 ${_fmtDev(e['dfa_deviation'])} SD');
+    if (e['quality_score'] != null) evidence.add('Quality ${(e['quality_score'] as num).toStringAsFixed(2)}');
+    if (evidence.isEmpty) evidence.add('Score: ${(peakScore as num).toStringAsFixed(2)}');
+
+    return {
+      'id': shortId,
+      'date': dateLabel,
+      'context': activity,
+      'status': isRecovered ? 'Recovered' : classification,
+      'duration': durationStr,
+      'recoveryTime': recoveryDurStr,
+      'onset': onsetStr,
+      'recovery': recoveryStr,
+      'peakScore': (peakScore as num).toDouble(),
+      'auc': (auc as num).toDouble(),
+      'evidence': evidence,
+      'raw': e,
+    };
+  }
+
+  String _fmtDev(dynamic v) {
+    if (v == null) return '0';
+    final n = (v as num).toDouble();
+    return n >= 0 ? '+${n.toStringAsFixed(1)}' : n.toStringAsFixed(1);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
-        child: selectedEpisode != null ? _buildEpisodeDetailScreen(selectedEpisode!) : _buildHistoryListScreen(),
+        child: selectedEpisode != null
+            ? _buildEpisodeDetailScreen(selectedEpisode!)
+            : _buildHistoryListScreen(),
       ),
     );
   }
 
-  // A14 History List
   Widget _buildHistoryListScreen() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Riwayat Episode',
-            style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.navy,
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'Catatan longitudinal episode deviasi & recovery',
-            style: TextStyle(fontSize: 12, color: AppColors.gray),
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Riwayat Episode',
+                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.navy),
+                    ),
+                    SizedBox(height: 2),
+                    Text('Catatan longitudinal episode deviasi & recovery', style: TextStyle(fontSize: 12, color: AppColors.gray)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: AppColors.teal),
+                onPressed: _loadHistory,
+                tooltip: 'Refresh',
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-
           Expanded(
-            child: ListView.builder(
-              itemCount: episodes.length,
-              itemBuilder: (ctx, idx) {
-                final ep = episodes[idx];
-                final isRecovered = ep['status'] == 'Recovered';
-
-                return Card(
-                  elevation: 0,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    side: const BorderSide(color: AppColors.line),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    onTap: () => setState(() => selectedEpisode = ep),
-                    title: Text(
-                      ep['date'],
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
-                    ),
-                    subtitle: Text(
-                      ep['context'],
-                      style: const TextStyle(fontSize: 11, color: AppColors.gray),
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        isRecovered ? EvidenceChip.recovered() : EvidenceChip.qualityWarning(),
-                        const SizedBox(height: 4),
-                        Text(
-                          ep['duration'],
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.ink),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : episodes.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        itemCount: episodes.length,
+                        itemBuilder: (ctx, idx) {
+                          final ep = episodes[idx];
+                          final isRecovered = ep['status'] == 'Recovered';
+                          return Card(
+                            elevation: 0,
+                            margin: const EdgeInsets.only(bottom: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: const BorderSide(color: AppColors.line),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              onTap: () => setState(() => selectedEpisode = ep),
+                              title: Text(ep['date'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                              subtitle: Text(ep['context'], style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  isRecovered ? EvidenceChip.recovered() : EvidenceChip.qualityWarning(),
+                                  const SizedBox(height: 4),
+                                  Text(ep['duration'], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
     );
   }
 
-  // A15 Episode Detail
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.history_rounded, size: 48, color: AppColors.line),
+          const SizedBox(height: 12),
+          const Text('Belum ada episode tercatat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.gray)),
+          const SizedBox(height: 6),
+          const Text('Episode akan muncul setelah sistem mendeteksi deviasi fisiologis', style: TextStyle(fontSize: 12, color: AppColors.gray), textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: _loadHistory,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Muat Ulang'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEpisodeDetailScreen(Map<String, dynamic> ep) {
+    final evidenceList = ep['evidence'] as List<String>;
+    final peakScore = (ep['peakScore'] as double).toStringAsFixed(2);
+    final auc = (ep['auc'] as double).toStringAsFixed(1);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -161,25 +253,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 icon: const Icon(Icons.arrow_back, color: AppColors.navy),
                 onPressed: () => setState(() => selectedEpisode = null),
               ),
-              Text(
-                ep['id'],
-                style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.navy,
-                ),
-              ),
+              Text(ep['id'], style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.navy)),
               const Spacer(),
-              EvidenceChip.recovered(),
+              ep['status'] == 'Recovered' ? EvidenceChip.recovered() : EvidenceChip.qualityWarning(),
             ],
           ),
           Padding(
             padding: const EdgeInsets.only(left: 48),
-            child: Text(
-              '${ep['date']} · ${ep['context']}',
-              style: const TextStyle(fontSize: 12, color: AppColors.gray),
-            ),
+            child: Text('${ep['date']} · ${ep['context']}', style: const TextStyle(fontSize: 12, color: AppColors.gray)),
           ),
           const SizedBox(height: 20),
 
@@ -193,9 +274,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.line),
             ),
-            child: CustomPaint(
-              painter: _TrajectoryPainter(),
-            ),
+            child: CustomPaint(painter: _TrajectoryPainter()),
           ),
           const SizedBox(height: 16),
 
@@ -210,8 +289,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             children: [
               _buildMetricCard('Onset', ep['onset']),
               _buildMetricCard('Recovery', ep['recovery']),
-              _buildMetricCard('Peak Score', ep['peakScore'].toString()),
-              _buildMetricCard('AUC Burden', ep['auc'].toString()),
+              _buildMetricCard('Peak Score', peakScore),
+              _buildMetricCard('AUC Burden', auc),
             ],
           ),
           const SizedBox(height: 16),
@@ -221,7 +300,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Wrap(
             spacing: 6,
             runSpacing: 6,
-            children: (ep['evidence'] as List<String>).map((ev) => Chip(
+            children: evidenceList.map((ev) => Chip(
               label: Text(ev, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.navy)),
               backgroundColor: AppColors.graySoft,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

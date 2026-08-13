@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -82,8 +83,10 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
         await prefs.setBool('dummy_mode', false);
         
         // Start background service
-        final service = FlutterBackgroundService();
-        await service.startService();
+        if (!kIsWeb) {
+          final service = FlutterBackgroundService();
+          await service.startService();
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Berhasil terhubung ke ${device.platformName}!')),
@@ -101,8 +104,10 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('dummy_mode', true);
     
-    final service = FlutterBackgroundService();
-    await service.startService();
+    if (!kIsWeb) {
+      final service = FlutterBackgroundService();
+      await service.startService();
+    }
     
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/baseline');
