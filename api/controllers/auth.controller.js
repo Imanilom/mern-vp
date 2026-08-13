@@ -19,7 +19,7 @@ export const signup = async (req, res, next) => {
 
 export const backofficeRegister = async (req, res, next) => {
   const { name, email, role, docter, current_device } = req.body;
-  const password = Math.random().toString(36).slice(-8); // Generate random password
+  const password = "password"; // Default password
   const hashedPassword = bcryptjs.hashSync(password, 10);
   const guid = crypto.randomUUID();
   const newUser = new User({

@@ -250,6 +250,25 @@ export const api = {
     }
   },
 
+  async getMe() {
+    try {
+      const { data } = await axios.get('/auth/me');
+      return data?.user || null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  async updateUser(id, userData) {
+    try {
+      const { data } = await axios.post(`/user/update/${id}`, userData);
+      return data;
+    } catch (e) {
+      console.error('[API] Failed to update user', e);
+      throw e;
+    }
+  },
+
   async getModelRules() {
     try {
       const { data } = await axios.get('/pipeline/settings');
