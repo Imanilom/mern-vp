@@ -3,10 +3,12 @@ import Patient from '../models/patient.model.js';
 import bcryptjs from 'bcryptjs';
 import { errorHandler } from '../utils/error.js';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 export const signup = async (req, res, next) => {
   const { name, email, password, phone_number } = req.body;
   const hashedPassword = bcryptjs.hashSync(password, 10);
-  const newUser = new User({name, email, password: hashedPassword, phone_number });
+  const guid = crypto.randomUUID();
+  const newUser = new User({name, email, password: hashedPassword, phone_number, guid });
   try {
     await newUser.save();
     res.status(201).json({message : 'User created successfully!'});
@@ -19,12 +21,14 @@ export const backofficeRegister = async (req, res, next) => {
   const { name, email, role, docter, current_device } = req.body;
   const password = Math.random().toString(36).slice(-8); // Generate random password
   const hashedPassword = bcryptjs.hashSync(password, 10);
+  const guid = crypto.randomUUID();
   const newUser = new User({
     name, 
     email, 
     role, 
     password: hashedPassword, 
     phone_number: "0000",
+    guid,
     ...(docter && { docter }),
     ...(current_device && { current_device })
   });
@@ -73,7 +77,6 @@ export const signin = async (req, res, next) => {
   }
 };
 
-
 export const google = async (req, res, next) => {
   try {
     const user = await User.findOne({ email: req.body.email });
@@ -101,6 +104,7 @@ export const google = async (req, res, next) => {
         phone_number : "0851",
         password: hashedPassword,
         profilePicture: req.body.photo,
+        guid: crypto.randomUUID(),
       });
       await newUser.save();
       const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
@@ -118,7 +122,6 @@ export const google = async (req, res, next) => {
     next(error);
   }
 };
-
 
 export const signOut = (req, res) => {
   res.clearCookie('access_token').status(200).json('Signout success!');
