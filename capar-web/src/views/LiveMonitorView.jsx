@@ -40,6 +40,7 @@ export const LiveMonitorView = ({
 }) => {
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [rawData, setRawData] = useState(null);
+  const [baselineData, setBaselineData] = useState(null);
   const [loadingRaw, setLoadingRaw] = useState(false);
 
   useEffect(() => {
@@ -53,15 +54,22 @@ export const LiveMonitorView = ({
     if (selectedParticipant && globalDateFilter) {
       setLoadingRaw(true);
       const targetId = selectedParticipant.guid || selectedParticipant.id || selectedParticipant._id;
-      api.getRawData(targetId, globalDateFilter).then(data => {
-        setRawData(data);
-        setLoadingRaw(false);
-      }).catch(err => {
-        setRawData(null);
+      
+      Promise.all([
+        api.getRawData(targetId, globalDateFilter).catch(() => null),
+        api.getRRBaseline(targetId).catch(() => null)
+      ]).then(([rawRes, baselineRes]) => {
+        setRawData(rawRes);
+        if (baselineRes && baselineRes.length > 0) {
+           setBaselineData(baselineRes[0]); // Ambil baseline terbaru
+        } else {
+           setBaselineData(null);
+        }
         setLoadingRaw(false);
       });
     } else {
       setRawData(null);
+      setBaselineData(null);
     }
   }, [selectedParticipant, globalDateFilter]);
 
@@ -92,18 +100,39 @@ export const LiveMonitorView = ({
     );
 
     const items = displayRawData.slice(-60); // take last 60 points for drawing
+    const getY = (hr) => {
+      let y = 90 - ((hr - 40) / 120) * 90;
+      return Math.max(5, Math.min(85, y));
+    };
+
     const points = items.map((d, i) => {
       const x = (i / 60) * 460;
       const hr = Number(d.hr) || 60;
-      // Normalize: let's assume max HR is around 160, min is 40. range 120
-      let y = 90 - ((hr - 40) / 120) * 90;
-      y = Math.max(5, Math.min(85, y));
-      return `${x},${y}`;
+      return `${x},${getY(hr)}`;
     }).join(' ');
+
+    let baselineArea = null;
+    let baselineLine = <line x1="0" y1="30" x2="460" y2="30" stroke="#B52A2A" strokeDasharray="4 3" strokeWidth="1"/>;
+
+    if (baselineData && baselineData.stats && baselineData.stats.hr_mean) {
+       const b_mean = baselineData.stats.hr_mean.mean;
+       const b_std = baselineData.stats.hr_mean.std;
+       if (b_mean) {
+          const y_mean = getY(b_mean);
+          baselineLine = <line x1="0" y1={y_mean} x2="460" y2={y_mean} stroke="#2E7D32" strokeDasharray="4 3" strokeWidth="1.5"/>;
+          
+          if (b_std) {
+             const y_top = getY(b_mean + b_std);
+             const y_bot = getY(b_mean - b_std);
+             baselineArea = <rect x="0" y={y_top} width="460" height={Math.max(1, y_bot - y_top)} fill="#2E7D32" fillOpacity="0.15" />;
+          }
+       }
+    }
 
     return (
       <svg viewBox="0 0 460 90" style={{ width: '100%', height: 90 }}>
-        <line x1="0" y1="30" x2="460" y2="30" stroke="#B52A2A" strokeDasharray="4 3" strokeWidth="1"/>
+        {baselineArea}
+        {baselineLine}
         <polyline points={points} fill="none" stroke="#B52A2A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     );

@@ -41,7 +41,7 @@ export const QUALITY_CONFIG = {
  * Konfigurasi maturity baseline.
  */
 export const MATURITY_CONFIG = {
-  min_effective_windows: 30,
+  min_effective_windows: 90,  // CAPAR: 90 windows per baseline (updated)
   min_distinct_days: 3,
   min_windows_per_day: 5,
   max_single_day_fraction: 0.60,
@@ -495,8 +495,8 @@ export function computeBaselineMaturity(baseline, featureValues) {
   const n = baseline.segment_count || 0;
   let level;
   if (mature)    level = 'mature';
-  else if (n >= 20) level = 'maturing';
-  else if (n >= 10) level = 'provisional';
+  else if (n >= 60) level = 'maturing';   // >= 60 windows → maturing
+  else if (n >= 30) level = 'provisional'; // >= 30 windows → provisional
   else              level = 'cold_start';
 
   return {

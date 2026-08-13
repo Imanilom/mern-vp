@@ -80,7 +80,7 @@ const PERSISTENCE_MIN = {
  * Minimum sample baseline agar Z-score dipercaya.
  * Sebelum matang, score tetap dihitung tapi dengan confidence rendah.
  */
-const BASELINE_MATURITY = 20;
+const BASELINE_MATURITY = 90; // CAPAR: 90 windows minimal per baseline (updated)
 
 /**
  * Referensi DFA α1 yang sehat.

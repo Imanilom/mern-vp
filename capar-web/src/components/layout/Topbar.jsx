@@ -26,50 +26,54 @@ export const Topbar = ({
           <i className="fa-solid fa-bars"></i>
         </button>
 
-        <label className="cohort-pill m-0">
-          <i className="fa-solid fa-users" style={{ color: 'var(--teal)' }}></i>
-          <select
-            value={selectedCohort}
-            onChange={(e) => setSelectedCohort(e.target.value)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              fontSize: 12,
-              fontWeight: 700,
-              color: 'var(--navy)',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            {cohorts.map((c) => (
-              <option key={c.id} value={c.id}>{c.label}</option>
-            ))}
-          </select>
-          <i className="fa-solid fa-chevron-down" style={{ fontSize: 9 }}></i>
-        </label>
+        {user?.role !== 'user' && (
+          <>
+            <label className="cohort-pill m-0">
+              <i className="fa-solid fa-users" style={{ color: 'var(--teal)' }}></i>
+              <select
+                value={selectedCohort}
+                onChange={(e) => setSelectedCohort(e.target.value)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--navy)',
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {cohorts.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
+              <i className="fa-solid fa-chevron-down" style={{ fontSize: 9 }}></i>
+            </label>
 
-        <label className="cohort-pill m-0">
-          <i className="fa-solid fa-user" style={{ color: 'var(--teal)' }}></i>
-          <select
-            value={globalParticipantFilter}
-            onChange={(e) => setGlobalParticipantFilter(e.target.value)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              fontSize: 12,
-              fontWeight: 700,
-              color: 'var(--navy)',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <option value="ALL">Semua Pasien</option>
-            {participants.map((p) => (
-              <option key={p.id || p._id} value={p.id || p._id}>{p.id || p._id}</option>
-            ))}
-          </select>
-          <i className="fa-solid fa-chevron-down" style={{ fontSize: 9 }}></i>
-        </label>
+            <label className="cohort-pill m-0">
+              <i className="fa-solid fa-user" style={{ color: 'var(--teal)' }}></i>
+              <select
+                value={globalParticipantFilter}
+                onChange={(e) => setGlobalParticipantFilter(e.target.value)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--navy)',
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="ALL">Semua Pasien</option>
+                {participants.map((p) => (
+                  <option key={p.id || p._id} value={p.id || p._id}>{p.name || p.id || p._id}</option>
+                ))}
+              </select>
+              <i className="fa-solid fa-chevron-down" style={{ fontSize: 9 }}></i>
+            </label>
+          </>
+        )}
 
         {activeParticipantId && availableDates.length > 0 && (
           <label className="topbar-search m-0" style={{ background: 'var(--surface)' }}>

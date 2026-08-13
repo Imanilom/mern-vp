@@ -608,25 +608,52 @@ export async function processHeartRateData(triggeredBy = 'CRON') {
 async function processUserData(userId) {
   let segmentsCreated = 0;
   let rawProcessed = 0;
-
-  const rawLogs = await PolarData.find({ user_id: userId, isChecked: false })
-    .sort({ timestamp: 1 })
-    .lean();
-
-  if (rawLogs.length === 0) {
-    return { segmentsCreated, rawProcessed };
-  }
-
-  console.log(`[processUserData] user=${userId} | total unprocessed logs=${rawLogs.length}`);
+  const BATCH_SIZE = 50000;
 
   const user = await User.findById(userId).lean();
+  let hasMore = true;
 
-  // ── Step 1: Filter IQR ─────────────────────────────────────────────────
-  const { filteredLogs } = filterIQ(rawLogs);
+  while (hasMore) {
+    const rawLogs = await PolarData.find({ 
+      user_id: userId, 
+      $or: [{ processStatus: 'PENDING' }, { isChecked: false }] 
+    })
+      .sort({ timestamp: 1 })
+      .limit(BATCH_SIZE)
+      .lean();
 
-  // ── Step 2: Segmentasi 5-menit ────────────────────────────────────────
-  const windows = segmentIntoWindows(filteredLogs);
-  console.log(`[processUserData] ${windows.length} window dibentuk dari data ini`);
+    if (rawLogs.length === 0) {
+      break;
+    }
+
+    let logsToProcess = rawLogs;
+
+    // Jika limit tercapai, kita mungkin memotong window di tengah.
+    // Tunda log dari window terakhir ke batch selanjutnya.
+    if (rawLogs.length === BATCH_SIZE) {
+       const lastLog = rawLogs[rawLogs.length - 1];
+       const lastWindowStart = Math.floor(lastLog.timestamp / WINDOW_MS) * WINDOW_MS;
+       
+       // Ambil log yang strictly SEBELUM window terakhir
+       const safeLogs = rawLogs.filter(l => l.timestamp < lastWindowStart);
+       
+       // Jika semua logs ada di satu window (sangat jarang), kita proses semuanya
+       // untuk menghindari infinite loop.
+       if (safeLogs.length > 0) {
+         logsToProcess = safeLogs;
+       }
+    } else {
+       hasMore = false;
+    }
+
+    console.log(`[processUserData] user=${userId} | memproses batch: ${logsToProcess.length} logs`);
+
+    // ── Step 1: Filter IQR ─────────────────────────────────────────────────
+    const { filteredLogs } = filterIQ(logsToProcess);
+
+    // ── Step 2: Segmentasi 5-menit ────────────────────────────────────────
+    const windows = segmentIntoWindows(filteredLogs);
+    console.log(`[processUserData] ${windows.length} window dibentuk dari batch ini`);
 
     // ── Step 3: Hitung fitur & simpan Segment ────────────────────────────
     const segmentDocs = [];
@@ -660,13 +687,17 @@ async function processUserData(userId) {
       segmentsCreated += bulkResult.upsertedCount + bulkResult.modifiedCount;
     }
 
-  // ── Step 4: Mark raw data sebagai processed ───────────────────────────
-  const processedIds = rawLogs.map(l => l._id);
-  await PolarData.updateMany(
-    { _id: { $in: processedIds } },
-    { $set: { isChecked: true, processStatus: 'DONE' } }
-  );
-  rawProcessed += processedIds.length;
+    // ── Step 4: Mark raw data sebagai processed ───────────────────────────
+    const processedIds = logsToProcess.map(l => l._id);
+    await PolarData.updateMany(
+      { _id: { $in: processedIds } },
+      { $set: { isChecked: true, processStatus: 'DONE' } }
+    );
+    rawProcessed += processedIds.length;
+    
+    // YIELD to GC
+    await new Promise(resolve => setImmediate(resolve));
+  }
 
   return { segmentsCreated, rawProcessed };
 }

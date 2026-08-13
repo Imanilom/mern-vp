@@ -155,6 +155,20 @@ export function App() {
     };
   }, [isAuthenticated, selectedCohort]);
 
+  // Force 'user' role to only see their own data
+  useEffect(() => {
+    if (userRole?.role === 'user' && participants.length > 0) {
+      if (globalParticipantFilter === 'ALL') {
+        const selfId = participants[0].id || participants[0]._id;
+        setGlobalParticipantFilter(selfId);
+        setSelectedParticipantId(selfId);
+        if (activeTab === 'overview') {
+          setActiveTab('live-monitor');
+        }
+      }
+    }
+  }, [userRole, participants, globalParticipantFilter, activeTab]);
+
   if (!isAuthenticated) {
     return <LoginView onLoginSuccess={() => {
       // Reload auth after successful login
@@ -166,6 +180,8 @@ export function App() {
       });
     }} />;
   }
+
+
 
   const handleSelectParticipant = (id) => {
     setSelectedParticipantId(id);

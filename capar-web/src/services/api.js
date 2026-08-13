@@ -104,9 +104,9 @@ export const api = {
         device: user.current_device,
         baselineMaturity: user.baseline_status || (user.mature_baselines > 0 ? 'mature' : 'learning'),
         evidenceState: user.evidenceState || (user.recentDeviation === 'Anomali terdeteksi' ? 'QUALITY_WARNING' : 'EVALUABLE'),
-        physiologicalState: user.physiologicalState || (user.alertPriority === 'High' ? 'PERSISTENT_DEVIATION' : (user.alertPriority === 'Medium' ? 'DEVIATION_CANDIDATE' : 'BASELINE_COMPATIBLE')),
+        physiologicalState: user.latest_physiological_state || user.physiologicalState || (user.alertPriority === 'High' ? 'PERSISTENT_DEVIATION' : (user.alertPriority === 'Medium' ? 'DEVIATION_CANDIDATE' : 'BASELINE_COMPATIBLE')),
         anomalyScore: user.anomalyScore ?? user.latest_score ?? (user.alertPriority === 'High' ? 4 : (user.alertPriority === 'Medium' ? 2 : 0)),
-        context: user.context || 'sitting',
+        context: user.latest_context || user.context || 'Unknown',
         contextConfidence: user.contextConfidence || 0.95,
         battery: user.battery || 100,
         clockDrift: user.clockDrift,
@@ -169,15 +169,17 @@ export const api = {
           if (!userId) return null;
 
           try {
-            const [baselineRes, metricRes, thresholdRes] = await Promise.all([
+            const [baselineRes, metricRes, thresholdRes, transitionRes] = await Promise.all([
               axios.get(`/analysis/baseline/${userId}`),
               axios.get(`/analysis/metrics/${userId}`),
               axios.get(`/analysis/thresholds/${userId}`).catch(() => ({ data: { data: null } })),
+              axios.get(`/analysis/transitions/${userId}`).catch(() => ({ data: { data: null } })),
             ]);
 
             const baselines = baselineRes.data?.data || [];
             const metrics = metricRes.data?.data || {};
             const thresholds = thresholdRes.data?.data || null;
+            const transitionsData = transitionRes.data?.data?.transition_matrix || null;
             const mature = baselines.filter((b) => b.is_mature).length;
 
             const h3a = metrics?.hypothesis?.H3a || {};
@@ -196,12 +198,25 @@ export const api = {
             const tauSource = globalTau.source || 'configured';
             const stableScoreCount = globalTau.stable_score_count || 0;
 
-            // Dummy transitions since backend doesn't provide Markov state transitions yet
-            const dummyTransitions = [
-              { from: 'Normal', to: 'Caution', probability: 0.15 },
-              { from: 'Caution', to: 'Alert', probability: 0.45 },
-              { from: 'Alert', to: 'Normal', probability: 0.85 }
-            ];
+            // Fetch Real transitions from backend (CAPAR Section 7.2)
+            let learnedTransitions = [];
+            if (transitionsData) {
+               Object.keys(transitionsData).forEach(fromState => {
+                  Object.keys(transitionsData[fromState]).forEach(toState => {
+                     const prob = transitionsData[fromState][toState];
+                     if (prob > 0) {
+                        learnedTransitions.push({ from: fromState, to: toState, probability: prob });
+                     }
+                  });
+               });
+            } else {
+               // Fallback if no data available yet
+               learnedTransitions = [
+                 { from: 'Normal', to: 'Caution', probability: 0.15 },
+                 { from: 'Caution', to: 'Alert', probability: 0.45 },
+                 { from: 'Alert', to: 'Normal', probability: 0.85 }
+               ];
+            }
 
             return {
               id: userId,
@@ -212,7 +227,7 @@ export const api = {
               p75RecoveryMinutes: avgRecMin ? Math.round(avgRecMin * 1.3) : 25,
               phenotype: mature > 0 ? 'Moderate Profile' : 'Learning Profile',
               confidenceScore: confScore,
-              learnedTransitions: dummyTransitions,
+              learnedTransitions,
               thresholdSource: tauSource,
               stableScoreCount,
               thresholdByActivity: thresholds?.threshold_by_activity || {},
