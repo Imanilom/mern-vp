@@ -172,25 +172,17 @@ export async function runAnalysisPipeline(triggeredBy = 'CRON') {
 
 async function analyzeUser(userId) {
   const BATCH = 200;
+  let skip = 0;
   let totalAnalyzed = 0;
   let totalEvents = 0;
 
-  // State persistence: track window berturut-turut di atas threshold
-  // Key: activity, Value: { count, startSegment, scores, segIds, peakScore, peakSeg }
+  const temporalStates = {};
   const persistenceState = {};
 
-  // Ambil 1 segment sebelumnya untuk hitung delta_HR antar window
-  let prevSegment = await Segment.findOne({
-    user_id: userId,
-    is_valid: true,
-    analyzed: true,
-  }).sort({ window_start: -1 }).lean();
-
-  // Proses segment berurutan (sorted by window_start ASC)
-  let skip = 0;
   while (true) {
     const segments = await Segment.find({
       user_id: userId,
+      window_type: '5min',
       is_valid: true,
       analyzed: false,
     })
@@ -199,7 +191,22 @@ async function analyzeUser(userId) {
       .limit(BATCH)
       .lean();
 
-    if (segments.length === 0) break;
+    if (segments.length === 0) {
+      // Fallback: check if there are segments with no window_type (legacy)
+      const legacySegments = await Segment.find({
+        user_id: userId,
+        window_type: { $exists: false },
+        is_valid: true,
+        analyzed: false,
+      })
+        .sort({ window_start: 1 })
+        .skip(skip)
+        .limit(BATCH)
+        .lean();
+      
+      if (legacySegments.length === 0) break;
+      segments.push(...legacySegments);
+    }
 
     const bulkOps = [];
 
@@ -209,40 +216,111 @@ async function analyzeUser(userId) {
       const activity = seg.activity_label || 'Unknown';
       const timePeriod = getTimePeriod(seg.window_start);
 
-      // ── Langkah 1: Ambil baseline ──────────────────────────────────────────
+      // 1. Ambil baseline
       const baseline = await getOrCreateBaseline(userId, activity, timePeriod);
+      const maturityLevel = baseline.maturity_detail?.level ||
+        (baseline.segment_count >= 30 ? 'maturing' :
+         baseline.segment_count >= 10 ? 'provisional' : 'cold_start');
 
-      // ── Langkah 2: Hitung Z-scores ─────────────────────────────────────────
-      const zScores = computeZScores(seg.features, baseline, seg);
+      const learnedTau = (baseline.learned_tau?.source === 'learned' && baseline.learned_tau?.tau_in)
+        ? baseline.learned_tau
+        : null;
 
-      // ── Langkah 3: Trajectory ──────────────────────────────────────────────
-      const trajectory = computeTrajectory(seg, prevSegment, persistenceState, activity);
+      // 2. Map fitur 5min (legacy schema) ke 7-komponen v1.0
+      const features = {
+        hr_mean: seg.features?.mean_hr ?? null,
+        hr_delta: seg.features?.delta_hr ?? null,
+        hr_slope: seg.features?.slope_hr ?? null,
+        sdnn: seg.features?.sdnn ?? null,
+        rmssd: seg.features?.rmssd ?? null,
+        dfa_alpha1: seg.features?.dfa_alpha1 ?? null,
+        motion_index: seg.features?.motion_intensity ?? null,
+        pnn50: seg.features?.pnn50 ?? null, // for saving
+      };
 
-      // ── Langkah 4: Composite anomaly score ────────────────────────────────
-      const score = computeCompositeScore(zScores);
+      // 3. Hitung skor
+      let { score, z_scores: rrZScores } = computePersonalizedScore(features, baseline);
+      let isProvisional = false;
 
-      // ── Langkah 5: Klasifikasi ─────────────────────────────────────────────
-      const classification = classify(score);
+      if (score === null) {
+        if (baseline.segment_count >= 5) {
+          const prov = computeProvisionalScore(features, baseline, activity);
+          if (prov.score !== null) {
+            score = prov.score;
+            rrZScores = prov.z_scores;
+            isProvisional = true;
+          }
+        }
 
-      // ── Langkah 6: Update persistence state ───────────────────────────────
-      const eventCreated = await updatePersistence(
-        userId,
-        seg,
-        score,
-        classification,
-        zScores,
-        trajectory,
-        persistenceState,
-        activity,
+        if (score === null) {
+          // Tetap tidak bisa dinilai
+          const updateFields = buildBaselineUpdateFields(
+            baseline, features, { accepted: true, q_signal: 1, q_complete: 1, q_context: 1 }, seg.window_start, true
+          );
+          if (updateFields) {
+            await Baseline.updateOne({ _id: baseline._id }, {
+              $set: updateFields,
+              $push: { window_timestamps: seg.window_start }
+            });
+          }
+          bulkOps.push({
+            updateOne: {
+              filter: { _id: seg._id },
+              update: { $set: {
+                analyzed: true, rr_status: 'INSUFFICIENT_BASELINE',
+                'maturity_detail.level': maturityLevel,
+              }},
+            },
+          });
+          totalAnalyzed++;
+          continue;
+        }
+      }
+
+      // 4. Temporal state machine
+      if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
+      
+      let { rr_status, safe_to_update } = updateTemporalState(
+        temporalStates[activity], score, maturityLevel, learnedTau
+      );
+
+      const prevRrStatus = temporalStates[activity]._prev_status || 'INSUFFICIENT_BASELINE';
+      temporalStates[activity]._prev_status = rr_status;
+
+      if (isProvisional) {
+        if (rr_status === 'NORMAL') rr_status = 'PROVISIONAL_NORMAL';
+        else rr_status = 'PROVISIONAL_DEVIATION';
+        safe_to_update = true; 
+      }
+
+      // 5. Update baseline jika aman
+      if (safe_to_update) {
+        const updateFields = buildBaselineUpdateFields(
+          baseline, features, { accepted: true, q_signal: 1, q_complete: 1, q_context: 1 }, seg.window_start, maturityLevel === 'cold_start'
+        );
+        if (updateFields) {
+          await Baseline.updateOne({ _id: baseline._id }, {
+            $set: updateFields,
+            $push: { window_timestamps: seg.window_start }
+          });
+          if (score !== null && isFinite(score)) {
+            await appendStableScore(baseline._id, score);
+          }
+        }
+      }
+
+      // 6. Record transition
+      await recordStateTransition(userId, activity, prevRrStatus, rr_status);
+
+      // 7. Update Event
+      const classification = classifyRR(score, maturityLevel);
+      const eventCreated = await updateRRPersistence(
+        userId, seg, score, classification, rrZScores, rr_status,
+        persistenceState, activity
       );
       if (eventCreated) totalEvents++;
 
-      // ── Langkah 7: Update baseline (Welford) ──────────────────────────────
-      if (classification === 'Normal') {
-        await updateBaseline(baseline, seg.features);
-      }
-
-      // ── Langkah 8: Kumpulkan bulk update untuk segment ────────────────────
+      // 8. Update segment
       bulkOps.push({
         updateOne: {
           filter: { _id: seg._id },
@@ -251,24 +329,23 @@ async function analyzeUser(userId) {
               analyzed: true,
               anomaly_score: round2(score),
               classification,
+              rr_status,
+              'maturity_detail.level': maturityLevel,
               z_scores: {
-                z_hr: round2(zScores.z_hr),
-                z_rr: round2(zScores.z_rr),
-                z_sdnn: round2(zScores.z_sdnn),
-                z_rmssd: round2(zScores.z_rmssd),
-                z_motion: round2(zScores.z_motion),
-                z_dfa: round2(zScores.z_dfa),
+                z_hr: round2(rrZScores?.hr_mean ?? null),
+                z_sdnn: round2(rrZScores?.sdnn ?? null),
+                z_rmssd: round2(rrZScores?.rmssd ?? null),
+                z_dfa: round2(rrZScores?.dfa_alpha1 ?? null),
+                z_motion: round2(rrZScores?.motion_index ?? null),
               },
             },
           },
         },
       });
 
-      prevSegment = seg;
       totalAnalyzed++;
     }
 
-    // Bulk write segment updates
     if (bulkOps.length > 0) {
       await Segment.bulkWrite(bulkOps, { ordered: false });
     }
@@ -277,326 +354,7 @@ async function analyzeUser(userId) {
     skip += BATCH;
   }
 
-  // Tutup event yang masih open jika score sudah kembali Normal
-  await closeResolvedEvents(userId, persistenceState);
-
   return { analyzed: totalAnalyzed, events: totalEvents };
-}
-
-// ── Baseline helpers ──────────────────────────────────────────────────────────
-
-/**
- * Ambil baseline dari DB, atau buat baru jika belum ada.
- */
-async function getOrCreateBaseline(userId, activity, timePeriod) {
-  let baseline = await Baseline.findOne({ user_id: userId, activity, time_period: timePeriod });
-
-  if (!baseline) {
-    baseline = await Baseline.create({
-      user_id: userId,
-      activity,
-      time_period: timePeriod,
-    });
-  }
-
-  return baseline;
-}
-
-/**
- * Update baseline dengan data baru menggunakan Welford's Online Algorithm.
- * O(1) per update — tidak perlu menyimpan data historis.
- */
-async function updateBaseline(baseline, features) {
-  if (baseline.is_frozen) return; // Jangan update jika baseline di-freeze
-
-  const featureKeys = ['mean_hr', 'std_hr', 'delta_hr', 'slope_hr',
-    'mean_rr', 'sdnn', 'rmssd', 'rolling_variance', 'motion_intensity', 'dfa_alpha1'];
-
-  const updateFields = {};
-
-  for (const key of featureKeys) {
-    const value = features?.[key];
-    if (value === null || value === undefined || isNaN(value)) continue;
-
-    const stat = baseline.stats[key] || { n: 0, mean: 0, M2: 0, std: 0, min: null, max: null };
-
-    // Welford update
-    stat.n += 1;
-    const delta = value - stat.mean;
-    stat.mean += delta / stat.n;
-    const delta2 = value - stat.mean;
-    stat.M2 += delta * delta2;
-    stat.std = stat.n > 1 ? Math.sqrt(stat.M2 / (stat.n - 1)) : 0;
-    stat.min = stat.min === null ? value : Math.min(stat.min, value);
-    stat.max = stat.max === null ? value : Math.max(stat.max, value);
-
-    updateFields[`stats.${key}`] = stat;
-  }
-
-  const newCount = baseline.segment_count + 1;
-  const isMature = newCount >= BASELINE_MATURITY;
-
-  await Baseline.updateOne(
-    { _id: baseline._id },
-    {
-      $set: {
-        ...updateFields,
-        segment_count: newCount,
-        is_mature: isMature,
-        last_updated: new Date(),
-      },
-    }
-  );
-
-  // Refresh in-memory untuk session saat ini
-  baseline.segment_count = newCount;
-  baseline.is_mature = isMature;
-  for (const [k, v] of Object.entries(updateFields)) {
-    const shortKey = k.replace('stats.', '');
-    if (baseline.stats) baseline.stats[shortKey] = v;
-  }
-}
-
-// ── Z-score computation ───────────────────────────────────────────────────────
-
-/**
- * Hitung Z-score context-aware untuk setiap fitur:
- *   Z_f = (f(t) - μ_f,a) / σ_f,a
- *
- * Jika baseline belum matang (n < MATURITY_THRESHOLD), Z-score dihitung
- * tapi diberi penalty factor 0.5 agar tidak terlalu agresif.
- */
-function computeZScores(features, baseline, seg) {
-  const zScore = (value, key) => {
-    if (value === null || value === undefined || isNaN(value)) return 0;
-    const stat = baseline.stats?.[key];
-    if (!stat || stat.n < 2 || stat.std < 0.001) return 0;
-    return ((value - stat.mean) / stat.std);
-  };
-
-  // DFA α1: deviasi dari referensi sehat (1.0), tidak pakai baseline personal
-  const dfaVal = features?.dfa_alpha1;
-  const zDfa = dfaVal !== null && dfaVal !== undefined && !isNaN(dfaVal)
-    ? Math.min(Math.abs(dfaVal - DFA_HEALTHY_ALPHA1) / DFA_NORM_FACTOR, 4)
-    : 0;
-
-  return {
-    z_hr: zScore(features?.mean_hr, 'mean_hr'),
-    z_rr: zScore(features?.mean_rr, 'mean_rr'),
-    z_sdnn: zScore(features?.sdnn, 'sdnn'),
-    z_rmssd: zScore(features?.rmssd, 'rmssd'),
-    z_motion: zScore(features?.motion_intensity, 'motion_intensity'),
-    z_dfa: zDfa,
-  };
-}
-
-// ── Composite score ───────────────────────────────────────────────────────────
-
-/**
- * Hitung composite anomaly score dari Z-scores terbobot.
- *   score = Σ weight_f × |Z_f|
- *
- * Score ≥ THRESHOLD.CAUTION → Caution
- * Score ≥ THRESHOLD.ALERT   → Alert
- */
-function computeCompositeScore(zScores) {
-  const d_hr = Math.max(0, zScores.z_hr);
-  const d_rr = Math.max(0, -zScores.z_rr);
-  const d_sdnn = Math.max(0, -zScores.z_sdnn);
-  const d_rmssd = Math.max(0, -zScores.z_rmssd);
-  const d_motion = Math.max(0, zScores.z_motion);
-  const d_dfa = Math.max(0, zScores.z_dfa);
-
-  return (
-    WEIGHTS.z_hr * d_hr +
-    WEIGHTS.z_rr * d_rr +
-    WEIGHTS.z_sdnn * d_sdnn +
-    WEIGHTS.z_rmssd * d_rmssd +
-    WEIGHTS.z_motion * d_motion +
-    WEIGHTS.z_dfa * d_dfa
-  );
-}
-
-// ── Klasifikasi ───────────────────────────────────────────────────────────────
-
-function classify(score) {
-  if (score >= THRESHOLD.ALERT) return 'Alert';
-  if (score >= THRESHOLD.CAUTION) return 'Caution';
-  return 'Normal';
-}
-
-// ── Trajectory analysis ───────────────────────────────────────────────────────
-
-/**
- * Hitung fitur trajectory untuk satu window.
- *
- * - delta_hr:   perubahan mean_hr dari window sebelumnya
- * - slope_hr:   slope HR di dalam window (dari features.slope_hr)
- * - persistence: dihitung dari persistenceState (diupdate oleh updatePersistence)
- * - dfa_alpha1: dari features
- * - dfa_alpha2: placeholder (null — untuk implementasi future)
- */
-function computeTrajectory(seg, prevSeg, persistenceState, activity) {
-  const currHr = seg.features?.mean_hr ?? 0;
-  const prevHr = prevSeg?.features?.mean_hr ?? currHr;
-  const deltaHr = currHr - prevHr;
-
-  const state = persistenceState[activity];
-
-  return {
-    delta_hr: round2(deltaHr),
-    slope_hr: round4(seg.features?.slope_hr ?? 0),
-    persistence: state?.count ?? 0,
-    dfa_alpha1: seg.features?.dfa_alpha1 ?? null,
-    dfa_alpha2: seg.features?.dfa_alpha2 ?? null, // long-range correlation
-    recovery_time_ms: null, // diisi saat event di-close
-  };
-}
-
-// ── Persistence & Event generation ───────────────────────────────────────────
-
-/**
- * Update state persistence per aktivitas dan buat AnomalyEvent jika perlu.
- *
- * Logic:
- *  - Jika score >= CAUTION: tambah counter, jika counter >= PERSISTENCE_MIN → buat/update event
- *  - Jika score < CAUTION: reset counter, tutup event open jika ada
- *
- * @returns {boolean} true jika event baru dibuat
- */
-async function updatePersistence(
-  userId, seg, score, classification,
-  zScores, trajectory, persistenceState, activity
-) {
-  if (!persistenceState[activity]) {
-    persistenceState[activity] = {
-      count: 0,
-      recoveryCount: 0,
-      segIds: [],
-      scores: [],
-      peakScore: 0,
-      peakSeg: null,
-      startSeg: null,
-      openEventId: null,
-    };
-  }
-
-  const state = persistenceState[activity];
-  let eventCreated = false;
-
-  if (classification !== 'Normal') {
-    state.recoveryCount = 0;
-    // Akumulasi window anomali
-    state.count++;
-    state.segIds.push(seg._id);
-    state.scores.push(score);
-
-    if (score > state.peakScore) {
-      state.peakScore = score;
-      state.peakSeg = seg;
-    }
-    if (!state.startSeg) {
-      state.startSeg = seg;
-    }
-
-    // Cek persistence threshold
-    const minRequired = classification === 'Alert'
-      ? PERSISTENCE_MIN.ALERT
-      : PERSISTENCE_MIN.CAUTION;
-
-    if (state.count >= minRequired && !state.openEventId) {
-      // Buat event baru
-      const event = await AnomalyEvent.create({
-        user_id: userId,
-        device_id: seg.device_id,
-        activity: activity,
-        onset_time: state.startSeg.window_start,
-        onset_score: state.scores[0],
-        peak_time: state.peakSeg.window_start,
-        peak_score: state.peakScore,
-        classification: classify(state.peakScore),
-        z_scores_at_peak: zScores,
-        trajectory: {
-          sequence_of_scores: state.scores,
-          delta_hr: trajectory.delta_hr,
-          slope_hr: trajectory.slope_hr,
-          persistence: state.count,
-          dfa_alpha1: state.peakSeg.features?.dfa_alpha1 ?? null,
-          dfa_alpha2: state.peakSeg.features?.dfa_alpha2 ?? null,
-          recovery_time_ms: null,
-        },
-        segment_ids: state.segIds,
-        status: 'open',
-      });
-
-      state.openEventId = event._id;
-      eventCreated = true;
-      console.log(`[Layer3] Event ${classify(state.peakScore)} dibuat untuk user=${userId} aktivitas=${activity}`);
-
-    } else if (state.openEventId) {
-      // Update event yang sudah ada (peak score mungkin naik)
-      await AnomalyEvent.updateOne(
-        { _id: state.openEventId },
-        {
-          $set: {
-            peak_time: state.peakSeg.window_start,
-            peak_score: state.peakScore,
-            classification: classify(state.peakScore),
-            'trajectory.sequence_of_scores': state.scores,
-            'trajectory.persistence': state.count,
-            'trajectory.dfa_alpha1': state.peakSeg.features?.dfa_alpha1 ?? null,
-            'z_scores_at_peak': zScores,
-          },
-          $push: { segment_ids: seg._id },
-        }
-      );
-    }
-
-  } else {
-    // Score kembali Normal
-    state.recoveryCount++;
-    const RECOVERY_MIN = 2; // Butuh 2 window Normal berturut-turut untuk menutup event
-
-    if (state.openEventId && state.recoveryCount >= RECOVERY_MIN) {
-      // Hitung recovery time: dari peak sampai window Normal ini
-      const recoveryMs = seg.window_end - (state.peakSeg?.window_start ?? seg.window_start);
-
-      await AnomalyEvent.updateOne(
-        { _id: state.openEventId },
-        {
-          $set: {
-            resolved_time: seg.window_start,
-            duration_ms: seg.window_start - (state.startSeg?.window_start ?? seg.window_start),
-            status: 'closed',
-            'trajectory.recovery_time_ms': Math.max(recoveryMs, 0),
-          },
-        }
-      );
-
-      console.log(`[Layer3] Event closed untuk user=${userId} aktivitas=${activity}, recovery=${recoveryMs}ms`);
-
-      // Reset state karena event sudah ditutup
-      state.count = 0;
-      state.recoveryCount = 0;
-      state.segIds = [];
-      state.scores = [];
-      state.peakScore = 0;
-      state.peakSeg = null;
-      state.startSeg = null;
-      state.openEventId = null;
-    } else if (!state.openEventId) {
-      // Jika tidak ada event open dan menerima Normal, reset saja akumulasi Caution/Alert sebelumnya
-      state.count = 0;
-      state.recoveryCount = 0;
-      state.segIds = [];
-      state.scores = [];
-      state.peakScore = 0;
-      state.peakSeg = null;
-      state.startSeg = null;
-    }
-  }
-
-  return eventCreated;
 }
 
 /**

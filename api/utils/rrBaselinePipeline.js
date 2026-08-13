@@ -35,6 +35,7 @@ export const QUALITY_CONFIG = {
   max_missing_fraction: 0.10,       // 10% maksimal missing
   min_activity_confidence: 0.80,    // kepercayaan minimum aktivitas
   min_rr_count: 45,                 // minimum RR per window 1 menit (>=75bpm x 60s)
+  max_relative_jump: 0.20,          // 20% max relative jump antar beat (J_max)
 };
 
 /**
@@ -60,8 +61,8 @@ export const MATURITY_CONFIG = {
  */
 export const RR_WEIGHTS = {
   z_rmssd: 0.50,
-  z_sdnn:  0.30,
-  z_hr:    0.20,
+  z_sdnn: 0.30,
+  z_hr: 0.20,
 };
 
 /**
@@ -70,12 +71,12 @@ export const RR_WEIGHTS = {
  * Total = 1.0
  */
 export const FEATURE_WEIGHTS = {
-  hr_mean:      0.20,
-  hr_delta:     0.10,
-  hr_slope:     0.10,
-  sdnn:         0.15,
-  rmssd:        0.20,
-  dfa_alpha1:   0.20,
+  hr_mean: 0.20,
+  hr_delta: 0.10,
+  hr_slope: 0.10,
+  sdnn: 0.15,
+  rmssd: 0.20,
+  dfa_alpha1: 0.20,
   motion_index: 0.05,
 };
 
@@ -91,11 +92,11 @@ export const MIN_SCORED_WEIGHT = 0.50;
  */
 export function getDynamicThreshold(maturityLevel) {
   switch (maturityLevel) {
-    case 'mature':      return { CAUTION: 1.5, ALERT: 3.0 };
-    case 'maturing':    return { CAUTION: 2.0, ALERT: 3.5 };
+    case 'mature': return { CAUTION: 1.5, ALERT: 3.0 };
+    case 'maturing': return { CAUTION: 2.0, ALERT: 3.5 };
     case 'provisional': return { CAUTION: 2.5, ALERT: 4.0 };
     case 'cold_start':
-    default:            return { CAUTION: 3.0, ALERT: 5.0 };
+    default: return { CAUTION: 3.0, ALERT: 5.0 };
   }
 }
 
@@ -113,11 +114,11 @@ export const PERSISTENCE_CONFIG = {
  * Digunakan untuk Empirical Bayes Shrinkage selama masa PROVISIONAL.
  */
 export const POPULATION_PRIORS = {
-  Rest:     { hr_mean: { mean: 65, sd: 10 }, sdnn: { mean: 50, sd: 15 }, rmssd: { mean: 42, sd: 18 }, dfa_alpha1: { mean: 1.10, sd: 0.20 } },
-  Light:    { hr_mean: { mean: 80, sd: 12 }, sdnn: { mean: 40, sd: 12 }, rmssd: { mean: 30, sd: 14 }, dfa_alpha1: { mean: 1.00, sd: 0.20 } },
+  Rest: { hr_mean: { mean: 65, sd: 10 }, sdnn: { mean: 50, sd: 15 }, rmssd: { mean: 42, sd: 18 }, dfa_alpha1: { mean: 1.10, sd: 0.20 } },
+  Light: { hr_mean: { mean: 80, sd: 12 }, sdnn: { mean: 40, sd: 12 }, rmssd: { mean: 30, sd: 14 }, dfa_alpha1: { mean: 1.00, sd: 0.20 } },
   Moderate: { hr_mean: { mean: 95, sd: 15 }, sdnn: { mean: 30, sd: 10 }, rmssd: { mean: 20, sd: 10 }, dfa_alpha1: { mean: 0.90, sd: 0.20 } },
-  Intense:  { hr_mean: { mean: 130, sd: 20 }, sdnn: { mean: 20, sd: 8  }, rmssd: { mean: 12, sd: 6  }, dfa_alpha1: { mean: 0.80, sd: 0.15 } },
-  Unknown:  { hr_mean: { mean: 75, sd: 15 }, sdnn: { mean: 45, sd: 15 }, rmssd: { mean: 35, sd: 15 }, dfa_alpha1: { mean: 1.00, sd: 0.20 } },
+  Intense: { hr_mean: { mean: 130, sd: 20 }, sdnn: { mean: 20, sd: 8 }, rmssd: { mean: 12, sd: 6 }, dfa_alpha1: { mean: 0.80, sd: 0.15 } },
+  Unknown: { hr_mean: { mean: 75, sd: 15 }, sdnn: { mean: 45, sd: 15 }, rmssd: { mean: 35, sd: 15 }, dfa_alpha1: { mean: 1.00, sd: 0.20 } },
 };
 
 // ── Quality Assessment ─────────────────────────────────────────────────────────
@@ -177,6 +178,7 @@ export function assessRRQuality(rrArr, activityConfidence, expectedCount) {
 
   const hw = Math.floor(QUALITY_CONFIG.local_median_beats / 2);
   for (let i = 0; i < n; i++) {
+    // 1. Local-median rule
     const lo = Math.max(0, i - hw);
     const hi = Math.min(n - 1, i + hw);
     const localMed = medianOf(work.slice(lo, hi + 1));
@@ -186,6 +188,15 @@ export function assessRRQuality(rrArr, activityConfidence, expectedCount) {
     );
     if (Math.abs(work[i] - localMed) > allowed) {
       bad[i] = true;
+    }
+    
+    // 2. Relative-jump rule (J_max) dari dokumen
+    if (i > 0 && !bad[i-1]) {
+      const prev = work[i-1];
+      const jump = Math.abs(work[i] - prev) / Math.max(prev, 1);
+      if (jump > QUALITY_CONFIG.max_relative_jump) {
+        bad[i] = true;
+      }
     }
   }
 
@@ -216,9 +227,9 @@ export function assessRRQuality(rrArr, activityConfidence, expectedCount) {
   }
 
   // Step 4: Quality scores
-  const q_signal   = clip(1 - artifact_fraction, 0, 1);
+  const q_signal = clip(1 - artifact_fraction, 0, 1);
   const q_complete = clip(1 - missing_fraction, 0, 1);
-  const q_context  = clip(activityConfidence, 0, 1);
+  const q_context = clip(activityConfidence, 0, 1);
 
   // Quality gates
   if (rr_clean.length < QUALITY_CONFIG.min_rr_count) {
@@ -283,9 +294,9 @@ export function extractRRFeatures(rr_clean, accelX = [], accelY = [], accelZ = [
   };
   if (!rr_clean || rr_clean.length < 2) return nullResult;
 
-  const n      = rr_clean.length;
+  const n = rr_clean.length;
   const meanRR = rr_clean.reduce((s, v) => s + v, 0) / n;
-  const hr     = rr_clean.map(r => 60000 / r);
+  const hr = rr_clean.map(r => 60000 / r);
 
   // ─── Time-domain ──────────────────────────────────────────────────────────
   const hr_mean = 60000 / meanRR;
@@ -306,11 +317,11 @@ export function extractRRFeatures(rr_clean, accelX = [], accelY = [], accelZ = [
     : 0;
 
   // hr_delta: perubahan rata-rata HR antara paruh pertama dan kedua window
-  const mid     = Math.max(1, Math.floor(n / 2));
+  const mid = Math.max(1, Math.floor(n / 2));
   const hrFirst = hr.slice(0, mid);
   const hrSecond = hr.slice(mid);
   const hr_delta = (hrSecond.reduce((s, v) => s + v, 0) / hrSecond.length)
-                 - (hrFirst.reduce((s, v) => s + v, 0) / hrFirst.length);
+    - (hrFirst.reduce((s, v) => s + v, 0) / hrFirst.length);
 
   // hr_slope: bpm per menit via regresi OLS
   let hr_slope = null;
@@ -344,14 +355,14 @@ export function extractRRFeatures(rr_clean, accelX = [], accelY = [], accelZ = [
   }
 
   return {
-    hr_mean:      isFinite(hr_mean)            ? r2(hr_mean)    : null,
-    sdnn:         isFinite(sdnn)               ? r2(sdnn)       : null,
-    rmssd:        isFinite(rmssd)              ? r2(rmssd)      : null,
-    hr_delta:     isFinite(hr_delta)           ? r2(hr_delta)   : null,
-    hr_slope:     hr_slope !== null            ? r2(hr_slope)   : null,
-    pnn50:        isFinite(pnn50)              ? r4(pnn50)      : null,
-    dfa_alpha1:   dfa_alpha1 !== null          ? r4(dfa_alpha1) : null,
-    dfa_alpha2:   dfa_alpha2 !== null          ? r4(dfa_alpha2) : null,
+    hr_mean: isFinite(hr_mean) ? r2(hr_mean) : null,
+    sdnn: isFinite(sdnn) ? r2(sdnn) : null,
+    rmssd: isFinite(rmssd) ? r2(rmssd) : null,
+    hr_delta: isFinite(hr_delta) ? r2(hr_delta) : null,
+    hr_slope: hr_slope !== null ? r2(hr_slope) : null,
+    pnn50: isFinite(pnn50) ? r4(pnn50) : null,
+    dfa_alpha1: dfa_alpha1 !== null ? r4(dfa_alpha1) : null,
+    dfa_alpha2: dfa_alpha2 !== null ? r4(dfa_alpha2) : null,
     motion_index: motion_index !== null && isFinite(motion_index) ? r4(motion_index) : null,
   };
 }
@@ -446,9 +457,9 @@ export function computeStabilityScore(values, timestamps, baselineSD) {
 export function computeBaselineMaturity(baseline, featureValues) {
   const cfg = MATURITY_CONFIG;
   const timestamps = baseline.window_timestamps || [];
-  const qSig  = baseline.q_signal_history   || [];
-  const qComp = baseline.q_complete_history  || [];
-  const qCtx  = baseline.q_context_history   || [];
+  const qSig = baseline.q_signal_history || [];
+  const qComp = baseline.q_complete_history || [];
+  const qCtx = baseline.q_context_history || [];
 
   const vals = featureValues && featureValues.length > 0 ? featureValues : [];
   const n_eff = vals.length > 0
@@ -466,9 +477,9 @@ export function computeBaselineMaturity(baseline, featureValues) {
   const max_single_day_frac = timestamps.length > 0 ? maxCount / timestamps.length : 1;
 
   const avg = arr => arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
-  const q_signal   = avg(qSig);
+  const q_signal = avg(qSig);
   const q_complete = avg(qComp);
-  const q_context  = avg(qCtx);
+  const q_context = avg(qCtx);
 
   const sd = baseline.stats?.rmssd?.std || 0;
   const q_stability = vals.length >= 2 && timestamps.length === vals.length
@@ -485,19 +496,19 @@ export function computeBaselineMaturity(baseline, featureValues) {
     failed.push(`hari_eligible=${eligibleDays} < ${cfg.min_distinct_days}`);
   if (max_single_day_frac > cfg.max_single_day_fraction)
     failed.push(`dominasi_hari=${(max_single_day_frac * 100).toFixed(0)}% > ${(cfg.max_single_day_fraction * 100).toFixed(0)}%`);
-  if (q_signal   < cfg.min_component_quality) failed.push(`q_signal=${q_signal.toFixed(2)} < ${cfg.min_component_quality}`);
+  if (q_signal < cfg.min_component_quality) failed.push(`q_signal=${q_signal.toFixed(2)} < ${cfg.min_component_quality}`);
   if (q_complete < cfg.min_component_quality) failed.push(`q_complete=${q_complete.toFixed(2)} < ${cfg.min_component_quality}`);
-  if (q_context  < cfg.min_component_quality) failed.push(`q_context=${q_context.toFixed(2)} < ${cfg.min_component_quality}`);
-  if (q_stability < cfg.min_stability_score)  failed.push(`q_stability=${q_stability.toFixed(2)} < ${cfg.min_stability_score}`);
-  if (bq < cfg.bq_min)                        failed.push(`BQ=${bq.toFixed(2)} < ${cfg.bq_min}`);
+  if (q_context < cfg.min_component_quality) failed.push(`q_context=${q_context.toFixed(2)} < ${cfg.min_component_quality}`);
+  if (q_stability < cfg.min_stability_score) failed.push(`q_stability=${q_stability.toFixed(2)} < ${cfg.min_stability_score}`);
+  if (bq < cfg.bq_min) failed.push(`BQ=${bq.toFixed(2)} < ${cfg.bq_min}`);
 
   const mature = failed.length === 0;
   const n = baseline.segment_count || 0;
   let level;
-  if (mature)    level = 'mature';
+  if (mature) level = 'mature';
   else if (n >= 60) level = 'maturing';   // >= 60 windows → maturing
   else if (n >= 30) level = 'provisional'; // >= 30 windows → provisional
-  else              level = 'cold_start';
+  else level = 'cold_start';
 
   return {
     mature, level,
@@ -552,8 +563,8 @@ export function computeRRZScores(features, baseline, maturityLevel) {
   };
 
   return {
-    z_hr:    zScore(features.hr_mean, 'mean_hr'),
-    z_sdnn:  zScore(features.sdnn, 'sdnn'),
+    z_hr: zScore(features.hr_mean, 'mean_hr'),
+    z_sdnn: zScore(features.sdnn, 'sdnn'),
     z_rmssd: zScore(features.rmssd, 'rmssd'),
   };
 }
@@ -570,8 +581,8 @@ export function computeRRZScores(features, baseline, maturityLevel) {
 export function computeRRCompositeScore(zScores) {
   return (
     RR_WEIGHTS.z_rmssd * Math.abs(zScores.z_rmssd || 0) +
-    RR_WEIGHTS.z_sdnn  * Math.abs(zScores.z_sdnn  || 0) +
-    RR_WEIGHTS.z_hr    * Math.abs(zScores.z_hr     || 0)
+    RR_WEIGHTS.z_sdnn * Math.abs(zScores.z_sdnn || 0) +
+    RR_WEIGHTS.z_hr * Math.abs(zScores.z_hr || 0)
   );
 }
 
@@ -584,7 +595,7 @@ export function computeRRCompositeScore(zScores) {
  */
 export function classifyRR(score, maturityLevel) {
   const thr = getDynamicThreshold(maturityLevel);
-  if (score >= thr.ALERT)   return 'Alert';
+  if (score >= thr.ALERT) return 'Alert';
   if (score >= thr.CAUTION) return 'Caution';
   return 'Normal';
 }
@@ -613,19 +624,19 @@ export function classifyRR(score, maturityLevel) {
 export function computePersonalizedScore(features, baseline) {
   // Mapping: feature key → stats key di baseline.stats
   const statKeyMap = {
-    hr_mean:      'mean_hr',
-    hr_delta:     'delta_hr',
-    hr_slope:     'slope_hr',
-    sdnn:         'sdnn',
-    rmssd:        'rmssd',
-    dfa_alpha1:   'dfa_alpha1',
+    hr_mean: 'mean_hr',
+    hr_delta: 'delta_hr',
+    hr_slope: 'slope_hr',
+    sdnn: 'sdnn',
+    rmssd: 'rmssd',
+    dfa_alpha1: 'dfa_alpha1',
     motion_index: 'motion_intensity',
   };
 
   const eps = 1e-8;
   const z_scores = {};
   let weightedSum = 0;
-  let usedWeight  = 0;
+  let usedWeight = 0;
 
   for (const [feature, weight] of Object.entries(FEATURE_WEIGHTS)) {
     if (weight <= 0) continue;
@@ -633,13 +644,23 @@ export function computePersonalizedScore(features, baseline) {
     if (value === null || value === undefined || !isFinite(value)) continue;
 
     const statKey = statKeyMap[feature];
-    const stat    = baseline.stats?.[statKey];
+    const stat = baseline.stats?.[statKey];
     if (!stat || stat.n < 2 || stat.std < 0.001) continue;
 
     const z = clip((value - stat.mean) / (stat.std + eps), -MAX_ABS_Z, MAX_ABS_Z);
     z_scores[feature] = z;
-    weightedSum += weight * Math.abs(z);
-    usedWeight  += weight;
+
+    let d = 0;
+    if (['hr_mean', 'hr_delta', 'hr_slope', 'motion_index'].includes(feature)) {
+      d = Math.max(0, z); // Arah high
+    } else if (['sdnn', 'rmssd'].includes(feature)) {
+      d = Math.max(0, -z); // Arah low
+    } else if (feature === 'dfa_alpha1') {
+      d = Math.abs(z); // Two-sided
+    }
+
+    weightedSum += weight * d;
+    usedWeight += weight;
   }
 
   if (usedWeight < MIN_SCORED_WEIGHT) {
@@ -647,7 +668,7 @@ export function computePersonalizedScore(features, baseline) {
   }
 
   return {
-    score:       weightedSum / usedWeight,
+    score: weightedSum / usedWeight,
     z_scores,
     used_weight: usedWeight,
   };
@@ -670,17 +691,17 @@ export function computePersonalizedScore(features, baseline) {
  */
 export function computeProvisionalScore(features, baseline, activityLabel) {
   const statKeyMap = {
-    hr_mean:      'mean_hr',
-    sdnn:         'sdnn',
-    rmssd:        'rmssd',
-    dfa_alpha1:   'dfa_alpha1',
+    hr_mean: 'mean_hr',
+    sdnn: 'sdnn',
+    rmssd: 'rmssd',
+    dfa_alpha1: 'dfa_alpha1',
   };
 
   const eps = 1e-8;
   const kappa = 30; // Shrinkage weight parameter
   const z_scores = {};
   let weightedSum = 0;
-  let usedWeight  = 0;
+  let usedWeight = 0;
 
   // Coba ambil priors berdasarkan aktivitas; jika tidak ada, gunakan 'Unknown'
   const priors = POPULATION_PRIORS[activityLabel] || POPULATION_PRIORS['Unknown'];
@@ -703,7 +724,7 @@ export function computeProvisionalScore(features, baseline, activityLabel) {
     if (prior) {
       const prior_mean = prior.mean;
       const prior_var = prior.sd * prior.sd;
-      
+
       const personal_mean = (stat && stat.n >= 1) ? stat.mean : prior_mean;
       const personal_var = (stat && stat.n >= 2) ? (stat.std * stat.std) : prior_var;
 
@@ -719,8 +740,18 @@ export function computeProvisionalScore(features, baseline, activityLabel) {
 
     const z = clip((value - shrunk_mean) / (shrunk_sd + eps), -MAX_ABS_Z, MAX_ABS_Z);
     z_scores[feature] = z;
-    weightedSum += weight * Math.abs(z);
-    usedWeight  += weight;
+
+    let d = 0;
+    if (['hr_mean', 'hr_delta', 'hr_slope', 'motion_index'].includes(feature)) {
+      d = Math.max(0, z); // Arah high
+    } else if (['sdnn', 'rmssd'].includes(feature)) {
+      d = Math.max(0, -z); // Arah low
+    } else if (feature === 'dfa_alpha1') {
+      d = Math.abs(z); // Two-sided
+    }
+
+    weightedSum += weight * d;
+    usedWeight += weight;
   }
 
   if (usedWeight < MIN_SCORED_WEIGHT) {
@@ -728,7 +759,7 @@ export function computeProvisionalScore(features, baseline, activityLabel) {
   }
 
   return {
-    score:       weightedSum / usedWeight,
+    score: weightedSum / usedWeight,
     z_scores,
     used_weight: usedWeight,
   };
@@ -756,14 +787,14 @@ export function updateTemporalState(state, score, maturityLevel, tau = null) {
   // tau_normal <= tau_out < tau_in
   let tau_in, tau_out, tau_normal;
   if (tau && tau.tau_in && tau.tau_out && tau.tau_normal &&
-      tau.tau_normal <= tau.tau_out && tau.tau_out < tau.tau_in) {
-    tau_in     = tau.tau_in;
-    tau_out    = tau.tau_out;
+    tau.tau_normal <= tau.tau_out && tau.tau_out < tau.tau_in) {
+    tau_in = tau.tau_in;
+    tau_out = tau.tau_out;
     tau_normal = tau.tau_normal;
   } else {
     // Fallback ke static threshold (maturity-based)
-    tau_in     = staticThr.CAUTION;  // entry threshold
-    tau_out    = staticThr.CAUTION * cfg.recovery_threshold_frac;
+    tau_in = staticThr.CAUTION;  // entry threshold
+    tau_out = staticThr.CAUTION * cfg.recovery_threshold_frac;
     tau_normal = tau_out * 0.7;
   }
 
@@ -846,12 +877,12 @@ export function buildBaselineUpdateFields(baseline, features, quality, windowTim
 
   // Mapping fitur → stats key di baseline (extended untuk 7-fitur pipeline)
   const featureMap = {
-    hr_mean:      'mean_hr',
-    hr_delta:     'delta_hr',
-    hr_slope:     'slope_hr',
-    sdnn:         'sdnn',
-    rmssd:        'rmssd',
-    dfa_alpha1:   'dfa_alpha1',
+    hr_mean: 'mean_hr',
+    hr_delta: 'delta_hr',
+    hr_slope: 'slope_hr',
+    sdnn: 'sdnn',
+    rmssd: 'rmssd',
+    dfa_alpha1: 'dfa_alpha1',
     motion_index: 'motion_intensity',
   };
   const updateFields = {};
@@ -867,20 +898,20 @@ export function buildBaselineUpdateFields(baseline, features, quality, windowTim
     if (!isProvisionalCandidate(value, stat)) continue;
 
     // Welford update
-    const newN    = stat.n + 1;
-    const delta   = value - stat.mean;
+    const newN = stat.n + 1;
+    const delta = value - stat.mean;
     const newMean = stat.mean + delta / newN;
-    const delta2  = value - newMean;
-    const newM2   = stat.M2 + delta * delta2;
-    const newStd  = newN > 1 ? Math.sqrt(newM2 / (newN - 1)) : 0;
+    const delta2 = value - newMean;
+    const newM2 = stat.M2 + delta * delta2;
+    const newStd = newN > 1 ? Math.sqrt(newM2 / (newN - 1)) : 0;
 
     updateFields[`stats.${statKey}`] = {
-      n:    newN,
+      n: newN,
       mean: r4(newMean),
-      M2:   r4(newM2),
-      std:  r4(newStd),
-      min:  stat.min === null ? value : Math.min(stat.min, value),
-      max:  stat.max === null ? value : Math.max(stat.max, value),
+      M2: r4(newM2),
+      std: r4(newStd),
+      min: stat.min === null ? value : Math.min(stat.min, value),
+      max: stat.max === null ? value : Math.max(stat.max, value),
     };
     anyUpdated = true;
   }
@@ -906,10 +937,10 @@ function clip(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
  * Digunakan untuk hr_slope.
  */
 function _polyfit1(x, y) {
-  const n    = x.length;
+  const n = x.length;
   if (n < 2) return [0, y[0] || 0];
-  const sumX  = x.reduce((s, v) => s + v, 0);
-  const sumY  = y.reduce((s, v) => s + v, 0);
+  const sumX = x.reduce((s, v) => s + v, 0);
+  const sumY = y.reduce((s, v) => s + v, 0);
   const sumXY = x.reduce((s, v, i) => s + v * y[i], 0);
   const sumX2 = x.reduce((s, v) => s + v * v, 0);
   const denom = n * sumX2 - sumX * sumX;
