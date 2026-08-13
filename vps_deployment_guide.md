@@ -168,4 +168,34 @@ sudo certbot --nginx -d domainanda.com -d www.domainanda.com
 - Ketik `Y` untuk menyetujui *Terms of Service*.
 - Certbot akan otomatis mengedit konfigurasi Nginx dan me-restartnya.
 
-**Selesai!** Aplikasi Anda sekarang sudah bisa diakses secara publik menggunakan `https://domainanda.com`.
+---
+
+## TAHAP 6: Setup Systemd Timer untuk Background Jobs (Cron)
+
+Aplikasi MERN ini membutuhkan dua *cron job* yang berjalan di latar belakang untuk memproses pipeline data sensor:
+- **Layer 2 (Preprocessing)**: Berjalan setiap 3 menit.
+- **Layer 3 (Analysis)**: Berjalan setiap 5 menit.
+
+Karena aplikasi dibungkus menggunakan Docker, kita akan memasang *timer* di level OS VPS (menggunakan Systemd) yang secara berkala akan memanggil fungsi di dalam aplikasi.
+
+### 1. Jalankan Script Installer
+Kami sudah menyediakan *script* otomatis untuk menginstal layanan ini di VPS. Jalankan dari folder proyek Anda:
+```bash
+cd ~/mern-vp
+sudo bash api/systemd/install-systemd-timers.sh
+```
+*Pastikan Anda sudah menjalankan perintah `docker compose up -d` (Tahap 4) sebelum menjalankan script ini, karena timer akan mencoba memanggil API di port 3030.*
+
+### 2. Cek Status Timer
+Untuk memastikan bahwa timer sudah berhasil diinstal dan diatur jadwalnya:
+```bash
+systemctl list-timers --all | grep mern
+```
+Anda akan melihat jadwal eksekusi selanjutnya untuk `mern-pipeline-layer2.timer` dan `mern-pipeline-layer3.timer`.
+
+### 3. Cek Log Eksekusi
+Jika Anda ingin melihat aktivitas log pemrosesan dari sistem yang berjalan di latar belakang:
+- Log Layer 2: `journalctl -u mern-pipeline-l2 -f`
+- Log Layer 3: `journalctl -u mern-pipeline-l3 -f`
+
+**Selesai!** Aplikasi Anda sekarang sudah bisa diakses secara publik menggunakan `https://domainanda.com` dan otomatis memproses data setiap saat.

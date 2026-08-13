@@ -14,6 +14,20 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+export const getAllUsers = async (req, res, next) => {
+  try {
+    const isDoctor = req.user.role === 'doctor';
+    let filter = {};
+    if (isDoctor) {
+      filter = { $or: [{ docter: req.user.id }, { _id: req.user.id }] }; // doctor can see themselves and their patients
+    }
+    const users = await User.find(filter).populate('docter', 'name email').sort({ created_at: -1 });
+    res.status(200).json(users);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const test = async (req, res, next) => {
   try {
     const folderMap = {
@@ -366,9 +380,10 @@ export const getRiwayatDeteksiWithDfa = async (req, res) => {
 
 export const updateUser = async (req, res, next) => {
   const isDoctor = req.user.role === 'doctor';
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'researcher';
   const isOwner = req.user.id === req.params.id;
 
-  if (!isDoctor && !isOwner) {
+  if (!isDoctor && !isAdmin && !isOwner) {
     return next(errorHandler(401, 'You can only update your own account!'));
   }
 
@@ -391,12 +406,13 @@ export const updateUser = async (req, res, next) => {
     if (req.body.weight !== undefined) updateFields.weight = req.body.weight;
     if (req.body.height !== undefined) updateFields.height = req.body.height;
 
-    // Advanced fields: Only doctors can update these for patients
-    if (isDoctor) {
+    // Advanced fields: Only doctors or admins can update these for patients
+    if (isDoctor || isAdmin) {
       if (req.body.guid !== undefined) updateFields.guid = req.body.guid;
       if (req.body.current_device !== undefined) updateFields.current_device = req.body.current_device;
       if (req.body.role !== undefined) updateFields.role = req.body.role;
       if (req.body.is_active !== undefined) updateFields.is_active = req.body.is_active;
+      if (req.body.docter !== undefined) updateFields.docter = req.body.docter;
     }
 
     const updatedUser = await User.findByIdAndUpdate(

@@ -3,7 +3,6 @@ import Patient from '../models/patient.model.js';
 import bcryptjs from 'bcryptjs';
 import { errorHandler } from '../utils/error.js';
 import jwt from 'jsonwebtoken';
-
 export const signup = async (req, res, next) => {
   const { name, email, password, phone_number } = req.body;
   const hashedPassword = bcryptjs.hashSync(password, 10);
@@ -17,10 +16,18 @@ export const signup = async (req, res, next) => {
 };
 
 export const backofficeRegister = async (req, res, next) => {
-  const { name, email, role } = req.body;
+  const { name, email, role, docter, current_device } = req.body;
   const password = Math.random().toString(36).slice(-8); // Generate random password
   const hashedPassword = bcryptjs.hashSync(password, 10);
-  const newUser = new User({name, email, role, password: hashedPassword, phone_number: "0000" });
+  const newUser = new User({
+    name, 
+    email, 
+    role, 
+    password: hashedPassword, 
+    phone_number: "0000",
+    ...(docter && { docter }),
+    ...(current_device && { current_device })
+  });
   try {
     await newUser.save();
     res.status(201).json({ success: true, message: 'User created successfully', data: { name, email, role }});

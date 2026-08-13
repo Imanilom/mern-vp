@@ -14,6 +14,7 @@ import { ModelRulesView } from './views/ModelRulesView';
 import { ExportView } from './views/ExportView';
 import { AuditView } from './views/AuditView';
 import { SettingsView } from './views/SettingsView';
+import UserManagementView from './views/UserManagementView';
 import { api } from './services/api';
 import { io } from 'socket.io-client';
 
@@ -287,10 +288,7 @@ export function App() {
           )}
           
           {(activeTab === 'user-management') && (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray)' }}>
-              <h2>User Management</h2>
-              <p>Module is being integrated from backoffice...</p>
-            </div>
+            <UserManagementView />
           )}
 
           {(activeTab === 'profile') && (

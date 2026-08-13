@@ -613,14 +613,20 @@ async function processUserData(userId) {
   const user = await User.findById(userId).lean();
   let hasMore = true;
 
+  console.log(`[processUserData] user=${userId} | Memulai loop hasMore`);
   while (hasMore) {
+    console.log(`[processUserData] user=${userId} | Querying data rawLogs...`);
+    // Menggunakan hint untuk memaksa penggunaan index agar tidak memory sort issue
     const rawLogs = await PolarData.find({ 
       user_id: userId, 
       $or: [{ processStatus: 'PENDING' }, { isChecked: false }] 
     })
+      .hint({ user_id: 1, timestamp: 1 })
       .sort({ timestamp: 1 })
       .limit(BATCH_SIZE)
       .lean();
+
+    console.log(`[processUserData] user=${userId} | Query selesai, rawLogs.length=${rawLogs.length}`);
 
     if (rawLogs.length === 0) {
       break;
@@ -688,11 +694,13 @@ async function processUserData(userId) {
     }
 
     // ── Step 4: Mark raw data sebagai processed ───────────────────────────
+    console.log(`[processUserData] user=${userId} | Mengupdate status ${logsToProcess.length} raw data ke DONE...`);
     const processedIds = logsToProcess.map(l => l._id);
     await PolarData.updateMany(
       { _id: { $in: processedIds } },
       { $set: { isChecked: true, processStatus: 'DONE' } }
     );
+    console.log(`[processUserData] user=${userId} | Update status selesai`);
     rawProcessed += processedIds.length;
     
     // YIELD to GC

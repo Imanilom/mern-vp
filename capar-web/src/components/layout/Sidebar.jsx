@@ -20,7 +20,7 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     
     // System & Admin
     { id: 'pipeline-monitor', label: 'Pipeline Monitor', icon: 'fa-microchip', roles: ['admin', 'researcher'] },
-    { id: 'user-management', label: 'User Management', icon: 'fa-users-gear', roles: ['admin'] },
+    { id: 'user-management', label: 'User Management', icon: 'fa-users-gear', roles: ['admin', 'doctor'] },
     { id: 'profile', label: 'My Profile', icon: 'fa-user', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'settings', label: 'Settings', icon: 'fa-gear', roles: ['admin'] },
   ];

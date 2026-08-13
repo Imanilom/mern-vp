@@ -1,9 +1,10 @@
 import express from 'express';
-import { deleteUser, getLogWithActivity, pushActivity, logdfa, dfaActivity, test, Dailymetrics, updateUser, getUser, getRiwayatDeteksiWithDfa} from '../controllers/user.controller.js';
+import { deleteUser, getLogWithActivity, pushActivity, logdfa, dfaActivity, test, Dailymetrics, updateUser, getUser, getRiwayatDeteksiWithDfa, getAllUsers } from '../controllers/user.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
 const router = express.Router();
 
 // router.get('/test', imputeData);
+router.get('/all', verifyToken, getAllUsers);
 router.get('/testLogActivity', verifyToken, getLogWithActivity)
 router.post('/pushActivity', verifyToken, pushActivity);
 router.get('/logdfa', verifyToken, logdfa);
