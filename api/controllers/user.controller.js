@@ -432,11 +432,21 @@ export const updateUser = async (req, res, next) => {
 };
 
 export const deleteUser = async (req, res, next) => {
-  if (req.user.id !== req.params.id)
-    return next(errorHandler(401, 'You can only delete your own account!'));
+  const isDoctor = req.user.role === 'doctor';
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'researcher';
+  const isOwner = req.user.id === req.params.id;
+
+  if (!isDoctor && !isAdmin && !isOwner) {
+    return next(errorHandler(401, 'You can only delete your own account unless you are a doctor or admin!'));
+  }
+
   try {
     await User.findByIdAndDelete(req.params.id);
-    res.clearCookie('access_token');
+    
+    if (isOwner) {
+      res.clearCookie('access_token');
+    }
+    
     res.status(200).json('User has been deleted!');
   } catch (error) {
     next(error);
