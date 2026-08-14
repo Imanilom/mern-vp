@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/evidence_chip.dart';
-import '../../services/api_service.dart';
 
 class TrajectoryPoint {
   final String time;
@@ -26,57 +25,25 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   Map<String, dynamic>? selectedEpisode;
-  bool isLoading = true;
   List<Map<String, dynamic>> episodes = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadEpisodes();
   }
 
-  Future<void> _loadData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final uid = prefs.getString('user_id') ?? '';
-      if (uid.isNotEmpty) {
-        final result = await ApiService.getRecentEvents(uid, limit: 30);
-        if (mounted && result != null && result['data'] != null) {
-          final List evs = result['data'];
-          setState(() {
-            episodes = evs.map<Map<String, dynamic>>((e) {
-              final onsetDt = e['onset_time'] != null ? DateTime.parse(e['onset_time']) : DateTime.now();
-              return {
-                'id': e['_id'] ?? 'Unknown',
-                'date': '${onsetDt.day}/${onsetDt.month}/${onsetDt.year} ${onsetDt.hour.toString().padLeft(2, '0')}:${onsetDt.minute.toString().padLeft(2, '0')}',
-                'context': e['activity'] ?? 'Unknown',
-                'status': e['status'] == 'open' ? 'Unresolved' : 'Recovered',
-                'duration': e['trajectory']?['persistence'] != null ? '${e['trajectory']['persistence']} m' : '—',
-                'recoveryTime': e['trajectory']?['recovery_time'] != null ? '${e['trajectory']['recovery_time']} m' : '—',
-                'onset': '${onsetDt.hour.toString().padLeft(2, '0')}:${onsetDt.minute.toString().padLeft(2, '0')}',
-                'recovery': '—',
-                'peakScore': (e['peak_score'] ?? 0.0).toDouble(),
-                'auc': 0.0,
-                'evidence': [
-                  if (e['features']?['mean_hr'] != null) 'HR ${e['features']['mean_hr'].toStringAsFixed(1)}',
-                  if (e['features']?['dfa_alpha1'] != null) 'DFA ${e['features']['dfa_alpha1'].toStringAsFixed(2)}',
-                  'Quality ${(e['quality_score'] ?? 1.0).toStringAsFixed(2)}'
-                ],
-                'points': const <TrajectoryPoint>[],
-                'raw': e,
-              };
-            }).toList();
-            isLoading = false;
-          });
-          return;
-        }
-      }
-    } catch (e) {
-      debugPrint('Error history: $e');
+  Future<void> _loadEpisodes() async {
+    setState(() => isLoading = true);
+    final fetched = await ApiService.fetchEpisodes();
+    if (mounted) {
+      setState(() {
+        episodes = fetched;
+        isLoading = false;
+      });
     }
-    if (mounted) setState(() => isLoading = false);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -117,78 +84,95 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ],
               ),
-              const Icon(Icons.sort_rounded, color: AppColors.gray),
             ],
           ),
-          const SizedBox(height: 24),
-          if (isLoading)
-            const Center(child: CircularProgressIndicator(color: AppColors.teal))
-          else if (episodes.isEmpty)
-            const Center(child: Text('Tidak ada episode riwayat', style: TextStyle(color: AppColors.gray)))
-          else
-            Expanded(
-              child: ListView.builder(
-                itemCount: episodes.length,
-                itemBuilder: (ctx, idx) {
-                final ep = episodes[idx];
-                final isRecovered = ep['status'] == 'Recovered';
-                final String emaTag = idx == 0 ? 'EMA 3/4' : (idx == 2 ? 'EMA 2/4' : 'EMA 4/4');
+          const SizedBox(height: 12),
 
-                return Card(
-                  elevation: 0,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    side: const BorderSide(color: AppColors.line),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    onTap: () => setState(() => selectedEpisode = ep),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${ep['id']} · ${ep['date']}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
-                        ),
-                        isRecovered ? EvidenceChip.recovered() : EvidenceChip.qualityWarning(),
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text(
-                          'Peak ${ep['peakScore']} · ${ep['duration']} · Konteks: ${ep['context']}',
-                          style: const TextStyle(fontSize: 11, color: AppColors.gray),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.tealSoft,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                emaTag,
-                                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: AppColors.teal),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Open detail →',
-                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.gray),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+          // Filter Chips (A04 Addendum)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterChip('All states', true),
+                const SizedBox(width: 6),
+                _buildFilterChip('This week', false),
+                const SizedBox(width: 6),
+                _buildFilterChip('All contexts', false),
+              ],
             ),
+          ),
+          const SizedBox(height: 14),
+
+          Expanded(
+            child: episodes.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Belum ada riwayat episode.',
+                      style: TextStyle(fontSize: 14, color: AppColors.gray),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: episodes.length,
+                    itemBuilder: (ctx, idx) {
+                      final ep = episodes[idx];
+                      final isRecovered = ep['status'] == 'Recovered';
+                      final String emaTag = idx == 0 ? 'EMA 3/4' : (idx == 2 ? 'EMA 2/4' : 'EMA 4/4');
+
+                      return Card(
+                        elevation: 0,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: const BorderSide(color: AppColors.line),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          onTap: () => setState(() => selectedEpisode = ep),
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${ep['id']} · ${ep['date']}',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
+                              ),
+                              isRecovered ? EvidenceChip.recovered() : EvidenceChip.qualityWarning(),
+                            ],
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text(
+                                'Peak ${ep['peakScore']} · ${ep['duration']} · Konteks: ${ep['context']}',
+                                style: const TextStyle(fontSize: 11, color: AppColors.gray),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.tealSoft,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      emaTag,
+                                      style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: AppColors.teal),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Open detail →',
+                                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.gray),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

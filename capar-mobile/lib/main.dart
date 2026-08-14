@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'screens/history/history_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -7,53 +9,22 @@ import 'screens/journey/journey_screen.dart';
 import 'screens/onboarding/baseline_readiness_screen.dart';
 import 'screens/onboarding/consent_screen.dart';
 import 'screens/onboarding/device_pairing_screen.dart';
+import 'screens/onboarding/splash_transition_screen.dart';
 import 'screens/onboarding/welcome_screen.dart';
-import 'screens/onboarding/login_screen.dart';
 import 'screens/profile/profile_screen.dart';
-import 'services/socket_service.dart';
 import 'theme/app_colors.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'services/background_task.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Catch Flutter framework errors so they show on screen instead of black screen
-  FlutterError.onError = (details) {
-    debugPrint('FlutterError: ${details.exception}');
-    debugPrint('Stack: ${details.stack}');
-    FlutterError.presentError(details);
-  };
-
-  // Show error widget instead of black screen on build errors
-  ErrorWidget.builder = (FlutterErrorDetails details) {
-    return MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.red.shade50,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'ERROR: ${details.exception}',
-              style: const TextStyle(color: Colors.red, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    );
-  };
-
-  final prefs = await SharedPreferences.getInstance();
-  final hasToken = prefs.getString('auth_token') != null;
-
-  runApp(CaparMobileApp(hasToken: hasToken));
+  runApp(
+    const ProviderScope(
+      child: CaparMobileApp(),
+    ),
+  );
 }
 
 class CaparMobileApp extends StatelessWidget {
-  final bool hasToken;
-  const CaparMobileApp({super.key, this.hasToken = false});
+  const CaparMobileApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -72,13 +43,13 @@ class CaparMobileApp extends StatelessWidget {
           ThemeData.light().textTheme,
         ),
       ),
-      initialRoute: hasToken ? '/app' : '/',
+      initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
-        '/login': (context) => const LoginScreen(),
         '/consent': (context) => const ConsentScreen(),
         '/pairing': (context) => const DevicePairingScreen(),
         '/baseline': (context) => const BaselineReadinessScreen(),
+        '/splash_transition': (context) => const SplashTransitionScreen(),
         '/app': (context) => const MainTabShell(),
       },
     );
@@ -94,18 +65,6 @@ class MainTabShell extends StatefulWidget {
 
 class _MainTabShellState extends State<MainTabShell> {
   int _currentIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      SocketService.init(context);
-      BackgroundTask.initializeService().catchError((e) {
-        debugPrint('Background service init error: $e');
-      });
-    });
-  }
 
   final List<Widget> _pages = const [
     HomeScreen(),

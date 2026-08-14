@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 
-import '../../theme/app_colors.dart';
 import '../../services/api_service.dart';
+import '../../theme/app_colors.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +15,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool emaPrompts = true;
   bool badgeNotifications = true;
   bool predictionNotifications = false;
+
+  void _syncPreferences() {
+    ApiService.updateUserPreferences({
+      'evidenceQualityPrompts': evidenceQualityPrompts,
+      'emaPrompts': emaPrompts,
+      'badgeNotifications': badgeNotifications,
+      'predictionNotifications': predictionNotifications,
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,22 +137,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildSwitchRow(
                       'Evidence quality prompts',
                       evidenceQualityPrompts,
-                      (val) => setState(() => evidenceQualityPrompts = val),
+                      (val) {
+                        setState(() => evidenceQualityPrompts = val);
+                        _syncPreferences();
+                      },
                     ),
                     _buildSwitchRow(
                       'EMA prompts',
                       emaPrompts,
-                      (val) => setState(() => emaPrompts = val),
+                      (val) {
+                        setState(() => emaPrompts = val);
+                        _syncPreferences();
+                      },
                     ),
                     _buildSwitchRow(
                       'Badge notifications',
                       badgeNotifications,
-                      (val) => setState(() => badgeNotifications = val),
+                      (val) {
+                        setState(() => badgeNotifications = val);
+                        _syncPreferences();
+                      },
                     ),
                     _buildSwitchRow(
                       'Prediction notifications',
                       predictionNotifications,
-                      (val) => setState(() => predictionNotifications = val),
+                      (val) {
+                        setState(() => predictionNotifications = val);
+                        _syncPreferences();
+                      },
                     ),
                   ],
                 ),
@@ -314,16 +334,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () async {
+            onPressed: () {
               Navigator.pop(ctx);
-              await ApiService.logout();
-              final service = FlutterBackgroundService();
-              if (await service.isRunning()) {
-                service.invoke('stopService');
-              }
-              if (context.mounted) {
-                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-              }
+              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
             },
             child: const Text('Yes, Withdraw', style: TextStyle(color: AppColors.red, fontWeight: FontWeight.w700)),
           ),

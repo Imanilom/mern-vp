@@ -1,118 +1,10 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../theme/app_colors.dart';
-import '../../services/ble_service.dart';
+import '../../widgets/evidence_chip.dart';
 
-class DevicePairingScreen extends StatefulWidget {
+class DevicePairingScreen extends StatelessWidget {
   const DevicePairingScreen({super.key});
-
-  @override
-  State<DevicePairingScreen> createState() => _DevicePairingScreenState();
-}
-
-class _DevicePairingScreenState extends State<DevicePairingScreen> {
-  bool _isScanning = false;
-  List<ScanResult> _scanResults = [];
-  StreamSubscription? _scanSub;
-  bool _isConnecting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkPermissionsAndScan();
-  }
-
-  Future<void> _checkPermissionsAndScan() async {
-    bool hasPermissions = await BleService.requestPermissions();
-    if (hasPermissions) {
-      _startScan();
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Izin Bluetooth/Lokasi dibutuhkan untuk mencari perangkat H10.')),
-        );
-      }
-    }
-  }
-
-  void _startScan() {
-    setState(() {
-      _isScanning = true;
-      _scanResults.clear();
-    });
-
-    _scanSub = BleService.scanForPolar().listen((results) {
-      if (mounted) {
-        setState(() {
-          _scanResults = results;
-        });
-      }
-    });
-
-    Future.delayed(const Duration(seconds: 10), () {
-      if (mounted) {
-        setState(() {
-          _isScanning = false;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _scanSub?.cancel();
-    BleService.stopScan();
-    super.dispose();
-  }
-
-  Future<void> _connect(BluetoothDevice device) async {
-    BleService.stopScan();
-    setState(() => _isConnecting = true);
-
-    bool success = await BleService.connectToDevice(device);
-    
-    if (mounted) {
-      setState(() => _isConnecting = false);
-      if (success) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('dummy_mode', false);
-        
-        // Start background service
-        if (!kIsWeb) {
-          final service = FlutterBackgroundService();
-          await service.startService();
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Berhasil terhubung ke ${device.platformName}!')),
-        );
-        Navigator.pushReplacementNamed(context, '/baseline');
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal terhubung atau Heart Rate Service tidak ditemukan.')),
-        );
-      }
-    }
-  }
-
-  Future<void> _useDummyMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('dummy_mode', true);
-    
-    if (!kIsWeb) {
-      final service = FlutterBackgroundService();
-      await service.startService();
-    }
-    
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/baseline');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,115 +14,217 @@ class _DevicePairingScreenState extends State<DevicePairingScreen> {
         backgroundColor: AppColors.bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.navy),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.navy),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Hubungkan Perangkat', style: TextStyle(color: AppColors.navy, fontSize: 16)),
+        title: const Text(
+          'Langkah 2 dari 3',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray),
+        ),
+        centerTitle: true,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Cari Polar H10',
-                style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.navy,
+        child: Column(
+          children: [
+            // Top Stepper Line
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.all(Radius.circular(4)),
+                child: LinearProgressIndicator(
+                  value: 0.66,
+                  minHeight: 4,
+                  backgroundColor: AppColors.graySoft,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.teal),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Pastikan Bluetooth Anda menyala dan sensor sudah terpasang di dada.',
-                style: TextStyle(fontSize: 14, color: AppColors.gray),
-              ),
-              const SizedBox(height: 20),
+            ),
+            const SizedBox(height: 16),
 
-              if (_isScanning)
-                const Center(child: CircularProgressIndicator())
-              else if (_scanResults.isEmpty)
-                const Center(
-                  child: Text(
-                    'Tidak menemukan perangkat Polar H10.',
-                    style: TextStyle(color: AppColors.gray),
-                  ),
-                ),
-
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _scanResults.length,
-                  itemBuilder: (context, index) {
-                    final r = _scanResults[index];
-                    return Card(
-                      color: AppColors.surface,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: AppColors.line),
-                      ),
-                      child: ListTile(
-                        leading: const Icon(Icons.bluetooth, color: AppColors.teal),
-                        title: Text(r.device.platformName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(r.device.remoteId.toString()),
-                        trailing: _isConnecting
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : ElevatedButton(
-                                onPressed: () => _connect(r.device),
-                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal, foregroundColor: Colors.white),
-                                child: const Text('Hubungkan'),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Polar H10',
+                              style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.navy,
                               ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Sistem sinyal RR beat-to-beat',
+                              style: TextStyle(fontSize: 12, color: AppColors.gray),
+                            ),
+                          ],
+                        ),
+                        EvidenceChip.evaluable(),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Radar Sensor Graphic Card
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.teal.withValues(alpha: 0.15),
+                              blurRadius: 30,
+                              spreadRadius: 10,
+                            ),
+                          ],
+                          border: Border.all(color: AppColors.tealSoft, width: 6),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: AppColors.tealSoft,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.teal.withValues(alpha: 0.3), width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.bluetooth_connected_rounded,
+                            size: 44,
+                            color: AppColors.teal,
+                          ),
+                        ),
                       ),
-                    );
-                  },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Status Checklist Card
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.line),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'TELEMETRI SENSOR REALT-TIME',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.gray,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _buildTelemetryItem(Icons.check_circle_rounded, 'Kontak elektroda', 'Baik (100%)', AppColors.green),
+                          const Divider(height: 20, color: AppColors.line),
+                          _buildTelemetryItem(Icons.rss_feed_rounded, 'Aliran data RR', 'Aktif (1000 Hz)', AppColors.green),
+                          const Divider(height: 20, color: AppColors.line),
+                          _buildTelemetryItem(Icons.access_time_rounded, 'Sinkronisasi jam', '±0,4 s drift', AppColors.navy),
+                          const Divider(height: 20, color: AppColors.line),
+                          _buildTelemetryItem(Icons.battery_charging_full_rounded, 'Status baterai', '76% (Tercukupi)', AppColors.green),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ),
 
-              const SizedBox(height: 20),
-              
-              // Fallback / Testing option
-              SizedBox(
+            // Action Button Container
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -3),
+                  ),
+                ],
+              ),
+              child: Container(
                 width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: _useDummyMode,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: AppColors.teal),
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.teal, Color(0xFF0F5F63)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/baseline');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: const Text(
-                    'Gunakan Dummy Mode (Untuk Emulator)',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.teal),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Periksa Kesiapan Baseline', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                    ],
                   ),
                 ),
               ),
-              
-              const SizedBox(height: 12),
-              
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isScanning ? null : _startScan,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.navy,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    _isScanning ? 'Mencari...' : 'Pindai Ulang',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTelemetryItem(IconData icon, String label, String value, Color valueColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: valueColor),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
+              ),
+            ),
+          ],
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w800,
+            color: valueColor,
+          ),
+        ),
+      ],
     );
   }
 }

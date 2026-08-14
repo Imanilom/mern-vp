@@ -1,114 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../theme/app_colors.dart';
 import '../../widgets/evidence_chip.dart';
-import '../../services/api_service.dart';
 
-class BaselineReadinessScreen extends StatefulWidget {
+class BaselineReadinessScreen extends StatelessWidget {
   const BaselineReadinessScreen({super.key});
-
-  @override
-  State<BaselineReadinessScreen> createState() => _BaselineReadinessScreenState();
-}
-
-class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
-  bool isLoading = true;
-
-  // Baseline readiness fields
-  String windowCount = '—';
-  double windowProgress = 0.0;
-  String nEff = '—';
-  double nEffProgress = 0.0;
-  String uniqueDays = '—';
-  double uniqueDaysProgress = 0.0;
-  String dayDominance = '—';
-  double dayDominanceProgress = 0.0;
-  String qualityScore = '—';
-  double qualityProgress = 0.0;
-
-  bool isReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadBaseline();
-  }
-
-  Future<void> _loadBaseline() async {
-    setState(() => isLoading = true);
-
-    final prefs = await SharedPreferences.getInstance();
-    final uid = prefs.getString('user_id') ?? '';
-
-    if (uid.isEmpty) {
-      if (mounted) setState(() => isLoading = false);
-      return;
-    }
-
-    try {
-      final res = await ApiService.getUserBaselines(uid);
-      if (res != null && mounted) {
-        final payload = res is Map ? (res['data'] ?? res) : <String, dynamic>{};
-        final baselines = payload is List ? payload : (payload['baselines'] ?? [payload]);
-
-        if (baselines is List && baselines.isNotEmpty) {
-          final b = baselines.first as Map<String, dynamic>;
-
-          // Window count: target = 30
-          final wc = (b['window_count'] ?? b['windowCount'] ?? b['n_windows'] ?? 0) as num;
-          final wcTarget = (b['window_target'] ?? b['windowTarget'] ?? 30) as num;
-
-          // n_eff: target = 30
-          final ne = (b['n_eff'] ?? b['nEff'] ?? b['effective_n'] ?? 0.0) as num;
-          final neTarget = (b['n_eff_target'] ?? b['nEffTarget'] ?? 30.0) as num;
-
-          // Unique days: target = 3
-          final ud = (b['unique_days'] ?? b['uniqueDays'] ?? b['n_days'] ?? 0) as num;
-          final udTarget = (b['unique_days_target'] ?? b['uniqueDaysTarget'] ?? 3) as num;
-
-          // Day dominance: ideal <= 80%
-          final dd = (b['day_dominance'] ?? b['dayDominance'] ?? b['dominance'] ?? 0.0) as num;
-
-          // Quality score: target >= 0.80
-          final qs = (b['quality_score'] ?? b['qualityScore'] ?? b['avg_quality'] ?? 0.0) as num;
-
-          // Is ready
-          final ready = b['is_ready'] ?? b['isReady'] ?? b['status'] == 'READY' || false;
-
-          setState(() {
-            windowCount = '${wc.toInt()} / ${wcTarget.toInt()}';
-            windowProgress = (wc / wcTarget).clamp(0.0, 1.0).toDouble();
-
-            nEff = ne.toStringAsFixed(1);
-            nEffProgress = (ne / neTarget).clamp(0.0, 1.0).toDouble();
-
-            uniqueDays = '${ud.toInt()} / ${udTarget.toInt()}';
-            uniqueDaysProgress = (ud / udTarget).clamp(0.0, 1.0).toDouble();
-
-            // Day dominance: below 80% is green, above is amber
-            dayDominance = '${(dd * 100).toStringAsFixed(0)}%';
-            dayDominanceProgress = dd.clamp(0.0, 1.0).toDouble();
-
-            qualityScore = qs.toStringAsFixed(2);
-            qualityProgress = qs.clamp(0.0, 1.0).toDouble();
-
-            isReady = ready is bool ? ready : ready == true;
-            isLoading = false;
-          });
-          return;
-        }
-      }
-    } catch (_) {
-      // Fallback to zeros
-    }
-
-    if (mounted) setState(() => isLoading = false);
-  }
-
-  Color _dominanceColor(double progress) {
-    return progress <= 0.80 ? AppColors.green : AppColors.amber;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,99 +14,221 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
         backgroundColor: AppColors.bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.navy),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.navy),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.teal),
-            onPressed: _loadBaseline,
-            tooltip: 'Refresh',
-          ),
-        ],
+        title: const Text(
+          'Langkah 3 dari 3',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray),
+        ),
+        centerTitle: true,
       ),
       body: SafeArea(
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+        child: Column(
+          children: [
+            // Top Stepper Line
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.all(Radius.circular(4)),
+                child: LinearProgressIndicator(
+                  value: 1.0,
+                  minHeight: 4,
+                  backgroundColor: AppColors.graySoft,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.teal),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    isReady ? EvidenceChip.evaluable() : EvidenceChip.provisional(),
-                    const SizedBox(height: 10),
-                    Text(
-                      isReady ? 'Baseline sudah matang' : 'Baseline belum sepenuhnya matang',
-                      style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.navy,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Baseline Progress',
+                              style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.navy,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Kematangan data konteks duduk',
+                              style: TextStyle(fontSize: 12, color: AppColors.gray),
+                            ),
+                          ],
+                        ),
+                        EvidenceChip.provisional(),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isReady
-                          ? 'Data cukup untuk mendeteksi deviasi fisiologis secara akurat.'
-                          : 'Data dapat dikumpulkan, tetapi keputusan episode belum digunakan sebagai alert final.',
-                      style: const TextStyle(fontSize: 12, color: AppColors.gray, height: 1.4),
-                    ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-                    // Progress Indicators Card
+                    // Explanation Notice Banner
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.line),
+                        color: AppColors.amberSoft,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.amber.withValues(alpha: 0.3)),
                       ),
-                      child: Column(
+                      child: const Row(
                         children: [
-                          _buildProgressRow('Window valid (n)', windowCount, windowProgress, AppColors.teal),
-                          const SizedBox(height: 16),
-                          _buildProgressRow('n efektif (n_eff)', nEff, nEffProgress, AppColors.teal),
-                          const SizedBox(height: 16),
-                          _buildProgressRow('Hari berbeda', uniqueDays, uniqueDaysProgress, uniqueDaysProgress >= 1.0 ? AppColors.green : AppColors.teal),
-                          const SizedBox(height: 16),
-                          _buildProgressRow('Dominasi hari', dayDominance, dayDominanceProgress, _dominanceColor(dayDominanceProgress)),
-                          const SizedBox(height: 16),
-                          _buildProgressRow('Kualitas sinyal', qualityScore, qualityProgress, qualityProgress >= 0.8 ? AppColors.green : AppColors.teal),
+                          Icon(Icons.lightbulb_outline_rounded, color: AppColors.amber, size: 20),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Baseline provisional siap untuk pencatatan sinyal. Pengambilan keputusan penuh akan diaktifkan setelah syarat 30 window terpenuhi.',
+                              style: TextStyle(fontSize: 11, color: AppColors.ink, height: 1.35),
+                            ),
+                          ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 20),
 
-                    const Spacer(),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pushReplacementNamed(context, '/app'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.teal,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          elevation: 0,
-                        ),
-                        child: const Text('Masuk ke Beranda', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    // Readiness Metrics Card
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.line),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'EVALUASI GERBANG KESIAPAN (READINESS GATES)',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.gray,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildProgressRow('Window valid (n)', '19 / 30', 0.63, AppColors.teal, 'PROVISIONAL'),
+                          const SizedBox(height: 14),
+                          _buildProgressRow('n efektif (n_eff)', '15.8', 0.53, AppColors.teal, 'LEARNING'),
+                          const SizedBox(height: 14),
+                          _buildProgressRow('Variasi hari', '3 / 3 hari', 1.0, AppColors.green, 'PASS'),
+                          const SizedBox(height: 14),
+                          _buildProgressRow('Dominasi hari', '72%', 0.72, AppColors.amber, 'PROVISIONAL'),
+                          const SizedBox(height: 14),
+                          _buildProgressRow('Kualitas sinyal', '0.91', 0.91, AppColors.green, 'PASS'),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
+            ),
+
+            // Action Button Container
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -3),
+                  ),
+                ],
+              ),
+              child: Container(
+                width: double.infinity,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.teal, Color(0xFF0F5F63)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(context, '/splash_transition');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Masuk ke Beranda Utama', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                      SizedBox(width: 8),
+                      Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildProgressRow(String label, String value, double progress, Color barColor) {
+  Widget _buildProgressRow(String label, String value, double progress, Color barColor, String statusTag) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gray, letterSpacing: 0.3)),
-            Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+              ),
+            ),
+            Row(
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: barColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    statusTag,
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: barColor),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 6),

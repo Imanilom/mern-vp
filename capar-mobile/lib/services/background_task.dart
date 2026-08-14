@@ -6,9 +6,11 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'api_service.dart';
 import 'ble_service.dart';
+import 'rmq_service.dart';
 
 // Global background entry point
 @pragma('vm:entry-point')
@@ -72,65 +74,27 @@ void onStart(ServiceInstance service) async {
       }
     });
   } else {
-    // REAL BLE MODE
-    if (BleService.hrCharacteristic != null) {
-      await BleService.hrCharacteristic!.setNotifyValue(true);
-      
-      List<Map<String, dynamic>> readingsBatch = [];
-      Timer? flushTimer;
-      
-      BleService.hrCharacteristic!.lastValueStream.listen((value) {
-        if (value.isNotEmpty) {
-          final data = BleService.parseHeartRateData(value);
-          final rrList = data['rr_list'] as List<int>;
-          
-          final now = DateTime.now().toIso8601String();
-          for (var rr in rrList) {
-            readingsBatch.add({
-              'rr': rr,
-              'time': now,
-            });
-          }
-        }
-      });
-
-      // Flush batch to API every 5 seconds
-      flushTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-        if (readingsBatch.isEmpty) return;
-
-        final batchToSend = List<Map<String, dynamic>>.from(readingsBatch);
-        readingsBatch.clear();
-
-        if (service is AndroidServiceInstance) {
-          if (await service.isForegroundService()) {
-            service.setForegroundNotificationInfo(
-              title: "CAPAR Active",
-              content: "Streaming RR data to backend... (${batchToSend.length} pts)",
-            );
-          }
-        }
-
-        try {
-          await ApiService.sendSensorData(
-            userId: userId, 
-            deviceId: BleService.connectedDevice?.remoteId.toString() ?? 'polar_h10', 
-            readings: batchToSend
+    // REAL BLE MODE is now handled in the main isolate via Riverpod's BleService.
+    // This background service simply keeps the app alive in the foreground to prevent OS from killing it during background execution.
+    Timer.periodic(const Duration(seconds: 15), (timer) async {
+      if (service is AndroidServiceInstance) {
+        if (await service.isForegroundService()) {
+          service.setForegroundNotificationInfo(
+            title: "CAPAR Active",
+            content: "Monitoring heart rate in background...",
           );
-        } catch (e) {
-          print("Background API Error: $e");
-          // Re-insert on failure? For now, we drop it to prevent OOM
         }
-      });
-    } else {
-      // Characteristic is null, stop service
-      service.stopSelf();
-    }
+      }
+    });
   }
 }
 
 class BackgroundTask {
   static Future<void> initializeService() async {
     if (kIsWeb) return;
+    
+    // Request notification permission for Android 13+
+    await Permission.notification.request();
 
     if (Platform.isAndroid) {
       final apiMatch = RegExp(r'API (\d+)').firstMatch(Platform.operatingSystemVersion);
