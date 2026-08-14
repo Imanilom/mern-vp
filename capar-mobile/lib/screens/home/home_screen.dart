@@ -439,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text('Kembali stabil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.navy)),
               SizedBox(height: 12),
-              Text('Detail statistik episode akan tersedia jika terhubung ke API', style: TextStyle(fontSize: 12, color: AppColors.gray, textAlign: TextAlign.center)),
+              Text('Detail statistik episode akan tersedia jika terhubung ke API', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.gray)),
             ],
           ),
         ),
