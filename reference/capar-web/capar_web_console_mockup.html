@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPAR — Web Research Console | Backoffice Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+:root{
+  --navy:#17324D; --navy-2:#0F2337; --navy-3:#1F3E5C;
+  --teal:#167C80; --teal-soft:#E4F3F3;
+  --green:#2E7D32; --green-soft:#E7F4E8;
+  --amber:#D98800; --amber-soft:#FBF0DD;
+  --red:#B52A2A; --red-soft:#FAE6E6;
+  --purple:#6657B8; --purple-soft:#EFECFA;
+  --blue:#2667A8; --blue-soft:#E6EEF7;
+  --gray:#687784; --gray-soft:#EEF1F3;
+  --bg:#F3F5F7; --surface:#FFFFFF; --line:#E4E8EC;
+  --ink:#152233;
+}
+*{box-sizing:border-box;}
+body{background:#DDE3E8; font-family:'Inter',sans-serif; color:var(--ink);}
+.mono{font-family:'JetBrains Mono',monospace;}
+h1,h2,h3,.display-font{font-family:'Plus Jakarta Sans',sans-serif;}
+
+/* ---- page header ---- */
+.gallery-top{background:linear-gradient(160deg,var(--navy) 0%, var(--navy-2) 100%); color:#fff; padding:56px 0 40px;}
+.gallery-top .eyebrow{font-family:'JetBrains Mono',monospace; letter-spacing:.12em; font-size:12px; color:#8FB6C4; text-transform:uppercase;}
+.gallery-top h1{font-size:2.1rem; font-weight:800; letter-spacing:-.01em;}
+.gallery-top p{color:#C6D3DB; max-width:680px; font-size:15px;}
+.badge-scope{border:1px solid rgba(255,255,255,.25); border-radius:999px; padding:6px 14px; font-size:12px; color:#DCE7EC; display:inline-flex; align-items:center; gap:8px; margin-top:18px;}
+.subnav{position:sticky; top:0; z-index:50; background:rgba(23,50,77,.97); backdrop-filter:blur(6px); border-bottom:1px solid rgba(255,255,255,.08);}
+.subnav a{color:#B9CBD4; text-decoration:none; font-size:13px; font-weight:600; padding:14px 16px; display:inline-block; white-space:nowrap;}
+.subnav a:hover{color:#fff;}
+.subnav-scroll{overflow-x:auto; scrollbar-width:none;}
+.subnav-scroll::-webkit-scrollbar{display:none;}
+
+.section-wrap{padding:52px 0 10px;}
+.section-head{margin-bottom:24px; max-width:900px;}
+.section-head .tag{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--teal); font-weight:600;}
+.section-head h2{font-size:1.5rem; font-weight:800; color:var(--navy); margin-top:4px;}
+.section-head p{color:var(--gray); font-size:14px; margin-top:6px;}
+.frame-note{font-size:12px; color:var(--gray); margin-top:12px; line-height:1.55; max-width:900px;}
+.frame-note b{color:var(--ink);}
+
+/* ---- browser chrome frame ---- */
+.browser-frame{background:#0B1116; border-radius:14px; padding:10px 10px 0; box-shadow:0 30px 60px -18px rgba(15,30,45,.5); margin-bottom:14px;}
+.browser-topbar{display:flex; align-items:center; gap:10px; padding:0 4px 10px;}
+.traffic{display:flex; gap:6px;}
+.traffic span{width:10px;height:10px;border-radius:50%;}
+.traffic .r{background:#FF5F57;} .traffic .y{background:#FEBC2E;} .traffic .g{background:#28C840;}
+.browser-url{flex:1; background:#1B2530; border-radius:7px; padding:5px 12px; font-size:11px; color:#8FA0AC; font-family:'JetBrains Mono',monospace;}
+.browser-inner{background:var(--bg); border-radius:10px 10px 0 0; overflow:hidden;}
+
+/* ---- app shell ---- */
+.app-shell{display:flex; min-height:560px;}
+.app-sidebar{width:200px; flex:0 0 auto; background:var(--navy-2); color:#B9CBD4; padding:18px 12px; display:flex; flex-direction:column;}
+.app-sidebar .brand{display:flex; align-items:center; gap:9px; color:#fff; font-weight:800; font-size:14px; padding:0 6px 18px;}
+.app-sidebar .brand i{color:var(--teal);}
+.app-sidebar .nav-link{display:flex; align-items:center; gap:10px; color:#9FB2BD; font-size:12.5px; font-weight:600; padding:9px 10px; border-radius:9px; margin-bottom:2px;}
+.app-sidebar .nav-link i{width:16px; text-align:center; font-size:12.5px;}
+.app-sidebar .nav-link.active{background:var(--teal); color:#fff;}
+.app-sidebar .nav-link:not(.active):hover{color:#fff;}
+.app-sidebar .sb-foot{margin-top:auto; font-size:10px; color:#5E7381; border-top:1px solid rgba(255,255,255,.08); padding-top:12px;}
+
+.app-topbar{background:#fff; border-bottom:1px solid var(--line); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; gap:14px;}
+.cohort-pill{background:var(--gray-soft); border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:7px;}
+.topbar-search{background:var(--gray-soft); border-radius:8px; padding:6px 12px; font-size:12px; color:var(--gray); display:flex; align-items:center; gap:8px; min-width:190px;}
+.role-badge{display:flex; align-items:center; gap:8px;}
+.role-badge .av{width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.role-badge .rt{font-size:11px; line-height:1.2;}
+.role-badge .rt b{display:block; font-size:12px; color:var(--ink);}
+
+.app-main{flex:1; padding:20px 22px; overflow:auto;}
+.page-title{font-family:'Plus Jakarta Sans'; font-weight:800; font-size:17px; color:var(--navy); margin:0;}
+.page-sub{font-size:11.5px; color:var(--gray); margin-bottom:16px;}
+
+.stat-card{background:#fff; border:1px solid var(--line); border-radius:12px; padding:13px 15px;}
+.stat-card .lbl{font-size:10px; text-transform:uppercase; letter-spacing:.05em; font-weight:700; color:var(--gray);}
+.stat-card .val{font-family:'Plus Jakarta Sans'; font-weight:800; font-size:22px; color:var(--ink); margin-top:2px;}
+.stat-card .sub{font-size:10.5px; color:var(--gray); margin-top:2px;}
+
+.evidence-chip{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:9.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase;}
+.chip-neutral{background:var(--gray-soft); color:var(--gray);}
+.chip-amber{background:var(--amber-soft); color:var(--amber);}
+.chip-blue{background:var(--blue-soft); color:var(--blue);}
+.chip-green{background:var(--green-soft); color:var(--green);}
+.chip-red{background:var(--red-soft); color:var(--red);}
+.chip-purple{background:var(--purple-soft); color:var(--purple);}
+
+.dtable{width:100%; border-collapse:collapse; font-size:11.5px;}
+.dtable th{text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--gray); font-weight:700; padding:8px 10px; border-bottom:1px solid var(--line); background:#FAFBFC;}
+.dtable td{padding:9px 10px; border-bottom:1px solid var(--line); color:var(--ink); vertical-align:middle;}
+.dtable tr:hover td{background:#FAFBFC;}
+.dtable .mono{font-size:11px;}
+
+.card-panel{background:#fff; border:1px solid var(--line); border-radius:12px; padding:15px;}
+.mini-label{font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--gray); font-weight:700;}
+.mini-value{font-size:12.5px; font-weight:700; color:var(--ink);}
+
+.progress-thin{height:6px; border-radius:4px; background:var(--gray-soft); overflow:hidden;}
+.progress-thin > div{height:100%; border-radius:4px;}
+.state-dist{display:flex; height:10px; border-radius:5px; overflow:hidden;}
+
+.btn-teal{background:var(--teal); border:none; color:#fff; font-weight:700; font-size:12px; padding:8px 14px; border-radius:9px;}
+.btn-outline-navy{background:#fff; border:1.4px solid var(--line); color:var(--navy); font-weight:700; font-size:11.5px; padding:7px 12px; border-radius:9px;}
+.badge-soft{border-radius:7px; padding:4px 9px; font-size:10px; font-weight:700;}
+
+.filter-bar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px;}
+.filter-chip{background:var(--gray-soft); border-radius:8px; padding:6px 11px; font-size:11px; font-weight:600; color:var(--navy); display:flex; align-items:center; gap:6px;}
+
+.tag-mini{display:inline-flex; align-items:center; gap:5px; font-size:9.5px; font-weight:700; color:var(--gray); background:var(--gray-soft); padding:3px 8px; border-radius:6px; margin-right:5px; margin-bottom:5px;}
+
+footer.credits{background:var(--navy-2); color:#93A6B0; padding:34px 0; font-size:12.5px; text-align:center;}
+footer.credits b{color:#fff;}
+</style>
+</head>
+<body>
+
+<div class="gallery-top">
+  <div class="container">
+    <div class="eyebrow"><i class="fa-solid fa-display"></i> Mockup · Fase 2 dari 2</div>
+    <h1>CAPAR Predictive State System</h1>
+    <p>Web Research Console — backoffice untuk peneliti, reviewer, dan administrator: observability real-time, review episode, personal experience model, transparansi rules, dan export data terkontrol. Melengkapi Android Participant App pada fase sebelumnya.</p>
+    <div class="badge-scope"><i class="fa-solid fa-shield-heart"></i> Role-based access · deny-by-default · setiap keputusan traceable</div>
+  </div>
+</div>
+
+<nav class="subnav">
+  <div class="container subnav-scroll">
+    <a href="#w0"><i class="fa-solid fa-key me-1"></i>Login &amp; MFA</a>
+    <a href="#w1"><i class="fa-solid fa-table-columns me-1"></i>Overview</a>
+    <a href="#w2"><i class="fa-solid fa-satellite-dish me-1"></i>Live Monitor</a>
+    <a href="#w2d"><i class="fa-solid fa-tower-broadcast me-1"></i>Signal &amp; Quality</a>
+    <a href="#w2e"><i class="fa-solid fa-ruler me-1"></i>Baseline Maturity</a>
+    <a href="#w3"><i class="fa-solid fa-wave-square me-1"></i>Episode</a>
+    <a href="#w3b"><i class="fa-solid fa-timeline me-1"></i>State Timeline</a>
+    <a href="#w4"><i class="fa-solid fa-brain me-1"></i>Experience</a>
+    <a href="#w4b"><i class="fa-solid fa-bullseye me-1"></i>Prediction Eval</a>
+    <a href="#w5"><i class="fa-solid fa-sliders me-1"></i>Model &amp; Rules</a>
+    <a href="#w6"><i class="fa-solid fa-file-export me-1"></i>Export</a>
+    <a href="#w7"><i class="fa-solid fa-clipboard-list me-1"></i>Audit</a>
+    <a href="#w8"><i class="fa-solid fa-user-shield me-1"></i>Settings</a>
+  </div>
+</nav>
+
+<div class="container-xxl px-3 px-lg-4" style="max-width:1180px;">
+
+<!-- =============== LOGIN & MFA =============== -->
+<section class="section-wrap" id="w0">
+  <div class="section-head">
+    <div class="tag">W01 — Authentication &amp; Role</div>
+    <h2>Login &amp; MFA</h2>
+    <p>Deny-by-default: <b>tidak ada participant data</b> yang terpanggil atau ter-render di landing sebelum autentikasi dan verifikasi role selesai.</p>
+  </div>
+  <div class="row g-3">
+    <div class="col-7">
+      <div class="browser-frame">
+        <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/login</div></div>
+        <div class="browser-inner">
+          <div style="min-height:560px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--navy) 0%, var(--navy-2) 100%);">
+            <div style="width:340px;background:#fff;border-radius:14px;padding:26px 24px;box-shadow:0 20px 40px -14px rgba(15,30,45,.4);">
+              <div class="d-flex align-items-center gap-2 mb-3"><i class="fa-solid fa-heart-pulse" style="color:var(--teal);font-size:18px;"></i><span style="font-family:'Plus Jakarta Sans';font-weight:800;font-size:14px;color:var(--navy);">CAPAR Console</span></div>
+              <div class="mini-label mb-1">Step 1 of 2 — Credentials</div>
+              <div class="mb-2">
+                <div class="frame-note m-0 mb-1">Institutional email</div>
+                <div class="card-panel py-2 px-2" style="background:var(--gray-soft);"><span class="mono" style="font-size:11.5px;color:var(--ink);">rina.s@capar-research.id</span></div>
+              </div>
+              <div class="mb-3">
+                <div class="frame-note m-0 mb-1">Password</div>
+                <div class="card-panel py-2 px-2" style="background:var(--gray-soft);"><span class="mono" style="font-size:11.5px;color:var(--ink);">••••••••••••</span></div>
+              </div>
+              <button class="btn-teal w-100 mb-2">Continue</button>
+              <div class="frame-note m-0 text-center">Lupa password? <span style="color:var(--teal);font-weight:700;">Hubungi admin</span></div>
+              <hr style="margin:16px 0;">
+              <div class="mini-label mb-1">Step 2 — MFA (TOTP)</div>
+              <div class="frame-note mb-2">Kode 6 digit dari authenticator app terdaftar untuk akun ini.</div>
+              <div class="d-flex gap-2 mb-3">
+                <div class="card-panel py-2 text-center flex-fill mono" style="background:var(--teal-soft);color:var(--teal);font-weight:800;">4</div>
+                <div class="card-panel py-2 text-center flex-fill mono" style="background:var(--teal-soft);color:var(--teal);font-weight:800;">8</div>
+                <div class="card-panel py-2 text-center flex-fill mono" style="background:var(--teal-soft);color:var(--teal);font-weight:800;">1</div>
+                <div class="card-panel py-2 text-center flex-fill mono" style="background:var(--gray-soft);">·</div>
+                <div class="card-panel py-2 text-center flex-fill mono" style="background:var(--gray-soft);">·</div>
+                <div class="card-panel py-2 text-center flex-fill mono" style="background:var(--gray-soft);">·</div>
+              </div>
+              <button class="btn-teal w-100">Verify &amp; sign in</button>
+              <div class="frame-note m-0 mt-2 text-center">Sesi berakhir otomatis 30 menit idle · perangkat dicatat</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-5">
+      <div class="card-panel mb-3">
+        <div class="mini-label mb-2">Role terverifikasi setelah MFA</div>
+        <div class="d-flex justify-content-between py-1 border-bottom"><span class="frame-note m-0">Signed in as</span><span class="mini-value">Rina S.</span></div>
+        <div class="d-flex justify-content-between py-1 border-bottom"><span class="frame-note m-0">Role</span><span class="mini-value" style="color:var(--teal)">Reviewer</span></div>
+        <div class="d-flex justify-content-between py-1 border-bottom"><span class="frame-note m-0">Cohort scope</span><span class="mini-value">Pilot-01 only</span></div>
+        <div class="d-flex justify-content-between py-1"><span class="frame-note m-0">Data visibility</span><span class="mini-value" style="color:var(--amber)">Pseudonymized</span></div>
+      </div>
+      <div class="card-panel">
+        <div class="mini-label mb-2">Role matrix (ringkas)</div>
+        <table class="dtable" style="font-size:11px;">
+          <thead><tr><th>Role</th><th>Live data</th><th>Re-ID</th><th>Config</th><th>Export</th></tr></thead>
+          <tbody>
+            <tr><td>PI</td><td class="mono">full</td><td class="mono">yes</td><td class="mono">approve</td><td class="mono">full</td></tr>
+            <tr><td>Researcher</td><td class="mono">full</td><td class="mono">no</td><td class="mono">draft</td><td class="mono">scoped</td></tr>
+            <tr><td>Reviewer</td><td class="mono">scoped</td><td class="mono">no</td><td class="mono">—</td><td class="mono">—</td></tr>
+            <tr><td>Admin</td><td class="mono">—</td><td class="mono">no</td><td class="mono">—</td><td class="mono">—</td></tr>
+          </tbody>
+        </table>
+        <div class="frame-note">Setiap login &amp; MFA event tercatat di Audit dengan device fingerprint dan IP range (AC-01).</div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Gagal MFA 3x → akun terkunci sementara dan notifikasi ke admin; tidak ada bypass role dari client-side (deny-by-default).</p>
+</section>
+
+<!-- =============== W02 COHORT OVERVIEW + PARTICIPANT DETAIL =============== -->
+<section class="section-wrap" id="w1">
+  <div class="section-head">
+    <div class="tag">W02 · W03 — Dashboard / Cohort Overview &amp; Participant Detail</div>
+    <h2>Overview</h2>
+    <p>Kesehatan operasional dataset dan episode aktif secara sekilas — prioritas ke <b>operational attention</b>, bukan ranking kesehatan peserta.</p>
+  </div>
+
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/overview</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link active" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <div class="d-flex gap-2 align-items-center">
+              <span class="cohort-pill"><i class="fa-solid fa-users"></i>Cohort: Pilot-01</span>
+              <span class="topbar-search"><i class="fa-regular fa-calendar"></i>27–30 May 2024</span>
+              <span class="topbar-search"><i class="fa-solid fa-magnifying-glass"></i>Cari participant…</span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+              <i class="fa-regular fa-bell" style="color:var(--gray)"></i>
+              <div class="role-badge"><div class="av">RS</div><div class="rt"><b>Rina S.</b>Researcher</div></div>
+            </div>
+          </div>
+          <div class="app-main">
+            <div class="d-flex justify-content-between align-items-center">
+              <div><div class="page-title">Cohort Overview</div><div class="page-sub">Ringkasan operasional dataset dan episode aktif</div></div>
+              <button class="btn-outline-navy"><i class="fa-solid fa-filter me-1"></i>Filter cohort</button>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-3"><div class="stat-card"><div class="lbl">Active users</div><div class="val" style="color:var(--teal)">28</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Evaluable</div><div class="val" style="color:var(--green)">21</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Active episodes</div><div class="val" style="color:var(--red)">3</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Quality warnings</div><div class="val" style="color:var(--gray)">5</div></div></div>
+            </div>
+            <div class="card-panel mb-3">
+              <div class="mini-label mb-2">State distribution</div>
+              <div class="state-dist mb-1">
+                <div style="width:52%;background:var(--green)"></div>
+                <div style="width:18%;background:var(--amber)"></div>
+                <div style="width:12%;background:var(--red)"></div>
+                <div style="width:10%;background:var(--purple)"></div>
+                <div style="width:8%;background:var(--gray)"></div>
+              </div>
+              <div class="d-flex gap-3 frame-note m-0" style="font-size:10px;">
+                <span><i class="fa-solid fa-circle" style="color:var(--green);font-size:7px;"></i> Baseline-compatible</span>
+                <span><i class="fa-solid fa-circle" style="color:var(--amber);font-size:7px;"></i> Candidate</span>
+                <span><i class="fa-solid fa-circle" style="color:var(--red);font-size:7px;"></i> Persistent</span>
+                <span><i class="fa-solid fa-circle" style="color:var(--purple);font-size:7px;"></i> Recovery</span>
+                <span><i class="fa-solid fa-circle" style="color:var(--gray);font-size:7px;"></i> Quality warning</span>
+              </div>
+            </div>
+            <div class="mini-label mb-2">Participants requiring attention</div>
+            <table class="dtable">
+              <thead><tr><th>ID</th><th>Context</th><th>Evidence</th><th>State</th><th>Score</th><th>Prediction</th></tr></thead>
+              <tbody>
+                <tr><td class="mono fw-bold">P07</td><td>sitting</td><td><span class="evidence-chip chip-green">Evaluable</span></td><td><span class="evidence-chip chip-red">Persistent</span></td><td class="mono">2.64</td><td class="mono" style="color:var(--purple)">Recovery 52%</td></tr>
+                <tr><td class="mono fw-bold">P13</td><td>sleep</td><td><span class="evidence-chip chip-neutral">Quality</span></td><td>—</td><td>—</td><td>—</td></tr>
+                <tr><td class="mono fw-bold">P21</td><td>walking</td><td><span class="evidence-chip chip-green">Evaluable</span></td><td><span class="evidence-chip chip-purple">Recovery</span></td><td class="mono">1.08</td><td class="mono" style="color:var(--green)">Recovered 74%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/participants/p07</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link active" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <div class="d-flex gap-2 align-items-center">
+              <span class="cohort-pill"><i class="fa-solid fa-arrow-left"></i>Participant P07</span>
+            </div>
+            <div class="role-badge"><div class="av">RS</div><div class="rt"><b>Rina S.</b>Researcher</div></div>
+          </div>
+          <div class="app-main">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div>
+                <div class="page-title">P07 · Live state</div>
+                <span class="evidence-chip chip-red mt-2 d-inline-flex">Persistent Deviation</span>
+              </div>
+              <button class="btn-teal">Open episode</button>
+            </div>
+            <div class="row g-3">
+              <div class="col-7">
+                <div class="card-panel mb-3">
+                  <div class="d-flex justify-content-between align-items-baseline mb-1">
+                    <span style="font-family:'Plus Jakarta Sans';font-weight:800;font-size:24px;">2.64</span>
+                    <span class="frame-note m-0">τin 1.86 · τout 1.18 · context sitting</span>
+                  </div>
+                  <div class="mini-label mb-1">Score trajectory &amp; state timeline</div>
+                  <svg viewBox="0 0 480 90" style="width:100%;height:90px;">
+                    <line x1="0" y1="35" x2="480" y2="35" stroke="#B52A2A" stroke-dasharray="4 3" stroke-width="1"/>
+                    <line x1="0" y1="60" x2="480" y2="60" stroke="var(--teal)" stroke-dasharray="4 3" stroke-width="1"/>
+                    <polyline points="0,70 60,55 120,25 180,15 240,20 300,30 360,25 420,32 480,30" fill="none" stroke="#17324D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="row g-2">
+                  <div class="col-6"><div class="stat-card"><div class="lbl">Signal quality</div><div class="val" style="font-size:16px;color:var(--green)">0.94</div></div></div>
+                  <div class="col-6"><div class="stat-card"><div class="lbl">Context confidence</div><div class="val" style="font-size:16px;color:var(--green)">0.96</div></div></div>
+                  <div class="col-6"><div class="stat-card"><div class="lbl">Baseline maturity</div><div class="val" style="font-size:16px;color:var(--blue)">Ready</div></div></div>
+                  <div class="col-6"><div class="stat-card"><div class="lbl">Next-state prediction</div><div class="val" style="font-size:16px;color:var(--purple)">Recovery 52%</div></div></div>
+                </div>
+              </div>
+              <div class="col-5">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">Evidence &amp; explanation</div>
+                  <div class="tag-mini">HR +2.1 SD</div><div class="tag-mini">RMSSD −2.6 SD</div><div class="tag-mini">DFA α1 +1.4 SD</div>
+                  <div class="frame-note mt-2">Provenance: <span class="mono">B-P07-sitting-04 / rule 1.3</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">AC-09: baseline/model/rule version <b>dapat ditelusuri</b> langsung dari participant/episode detail.</p>
+</section>
+
+<!-- =============== LIVE MONITOR =============== -->
+<section class="section-wrap" id="w2">
+  <div class="section-head">
+    <div class="tag">C.1 — Live Monitor</div>
+    <h2>Live Monitor</h2>
+    <p>Observabilitas near-real-time pada level cohort maupun individual. Tidak ada state fisiologis baru bila <span class="mono">evidence_state != EVALUABLE</span> — kartu berubah menjadi paused/quality warning.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/live-monitor</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link active" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-satellite-dish"></i>Real-time observability: signal → evidence → state</span>
+            <span class="cohort-pill">Cohort: Pilot-01 <i class="fa-solid fa-chevron-down ms-1" style="font-size:9px;"></i></span>
+          </div>
+          <div class="app-main">
+            <div class="row g-2 mb-3">
+              <div class="col-3"><div class="stat-card"><div class="lbl">Connected participants</div><div class="val" style="color:var(--teal)">18</div><div class="sub">16 evaluable · 2 paused</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Quality warnings</div><div class="val" style="color:var(--gray)">2</div><div class="sub">last 15 minutes</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Active episodes</div><div class="val" style="color:var(--red)">3</div><div class="sub">2 persistent · 1 recovery</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Median latency</div><div class="val" style="color:var(--blue)">4.2s</div><div class="sub">ingestion → state</div></div></div>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-7">
+                <div class="card-panel">
+                  <div class="mini-label mb-1">Participant P-2026-014 — live trajectory</div>
+                  <div class="frame-note mb-2">Context: sitting · evidence EVALUABLE · Polar H10 connected</div>
+                  <svg viewBox="0 0 460 90" style="width:100%;height:90px;">
+                    <line x1="0" y1="30" x2="460" y2="30" stroke="#B52A2A" stroke-dasharray="4 3" stroke-width="1"/>
+                    <polyline points="0,65 60,60 120,45 180,20 240,15 300,25 360,35 420,32 460,33" fill="none" stroke="#B52A2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <span class="evidence-chip chip-red">Persistent</span> <span class="frame-note m-0 d-inline">Score 1.62 · 3/4 windows · peak 2.31</span>
+                </div>
+              </div>
+              <div class="col-5">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">Evidence &amp; device</div>
+                  <div class="d-flex justify-content-between py-1 border-bottom"><span class="frame-note m-0">RR stream</span><span class="mini-value" style="color:var(--green)">active</span></div>
+                  <div class="d-flex justify-content-between py-1 border-bottom"><span class="frame-note m-0">Signal quality</span><span class="mini-value">0.94</span></div>
+                  <div class="d-flex justify-content-between py-1 border-bottom"><span class="frame-note m-0">Context confidence</span><span class="mini-value">0.91</span></div>
+                  <div class="d-flex justify-content-between py-1 border-bottom"><span class="frame-note m-0">Baseline</span><span class="mini-value" style="color:var(--blue)">ready</span></div>
+                  <div class="d-flex justify-content-between py-1"><span class="frame-note m-0">Battery</span><span class="mini-value">76%</span></div>
+                </div>
+              </div>
+            </div>
+            <table class="dtable">
+              <thead><tr><th>Participant</th><th>Evidence</th><th>State</th><th>Score</th><th>Context</th><th>Last update</th></tr></thead>
+              <tbody>
+                <tr><td class="mono fw-bold">P-014</td><td><span class="evidence-chip chip-green">Evaluable</span></td><td><span class="evidence-chip chip-red">Persistent</span></td><td class="mono">1.62</td><td>sitting</td><td class="mono">13:06:42</td></tr>
+                <tr><td class="mono fw-bold">P-027</td><td><span class="evidence-chip chip-green">Evaluable</span></td><td><span class="evidence-chip chip-purple">Recovery</span></td><td class="mono">0.94</td><td>work</td><td class="mono">13:06:39</td></tr>
+                <tr><td class="mono fw-bold">P-031</td><td><span class="evidence-chip chip-neutral">Quality warning</span></td><td>paused</td><td class="mono">—</td><td>walking</td><td class="mono">13:06:35</td></tr>
+                <tr><td class="mono fw-bold">P-042</td><td><span class="evidence-chip chip-amber">Insufficient</span></td><td>—</td><td class="mono">—</td><td>rest</td><td class="mono">13:06:31</td></tr>
+                <tr><td class="mono fw-bold">P-056</td><td><span class="evidence-chip chip-green">Evaluable</span></td><td><span class="evidence-chip chip-green">Baseline</span></td><td class="mono">0.31</td><td>sitting</td><td class="mono">13:06:28</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Update visual <b>tanpa reload penuh</b>; last_update selalu terlihat; warna selalu disertai label teks (Prinsip P8).</p>
+</section>
+
+<!-- =============== LIVE SIGNAL & QUALITY DETAIL =============== -->
+<section class="section-wrap" id="w2d">
+  <div class="section-head">
+    <div class="tag">W04 — Live Signal &amp; Quality (Detail)</div>
+    <h2>Signal &amp; Quality Detail</h2>
+    <p>Drill-down per partisipan: flag session bermasalah, kirim instruksi reconnect, dan pantau missingness/artifact per stream perangkat.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/live-monitor/p031/signal</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link active" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-tower-broadcast"></i>P-031 · quality warning session</span>
+            <div class="d-flex align-items-center gap-2">
+              <span class="evidence-chip chip-neutral">Quality warning</span>
+              <button class="btn-outline-navy" style="font-size:11px;padding:6px 10px;"><i class="fa-solid fa-flag me-1"></i>Flag session</button>
+              <button class="btn-teal" style="font-size:11px;padding:6px 10px;"><i class="fa-solid fa-arrows-rotate me-1"></i>Send reconnect</button>
+            </div>
+          </div>
+          <div class="app-main">
+            <div class="row g-2 mb-3">
+              <div class="col-3"><div class="stat-card"><div class="lbl">Missingness (1h)</div><div class="val" style="color:var(--amber)">14.2%</div><div class="sub">above 10% threshold</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Artifact ratio</div><div class="val" style="color:var(--red)">8.6%</div><div class="sub">motion + lead noise</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Reconnects (24h)</div><div class="val">3</div><div class="sub">last 12:41</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Session evaluable time</div><div class="val" style="color:var(--gray)">71%</div><div class="sub">since 08:00</div></div></div>
+            </div>
+            <div class="card-panel mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="mini-label m-0">Session boundaries — accepted vs rejected windows (RR stream)</div>
+                <span class="frame-note m-0" style="font-size:10px;">Session S-0091 · 08:00–13:07 · 61 windows total</span>
+              </div>
+              <svg viewBox="0 0 700 60" style="width:100%;height:52px;">
+                <line x1="0" y1="14" x2="0" y2="42" stroke="var(--navy)" stroke-width="1.4"/>
+                <line x1="700" y1="14" x2="700" y2="42" stroke="var(--navy)" stroke-width="1.4"/>
+                <rect x="0" y="20" width="700" height="16" rx="3" fill="#E7F4E8"/>
+                <rect x="40" y="20" width="26" height="16" rx="2" fill="var(--amber)"/>
+                <rect x="150" y="20" width="14" height="16" rx="2" fill="var(--red)"/>
+                <rect x="300" y="20" width="40" height="16" rx="2" fill="var(--amber)"/>
+                <rect x="480" y="20" width="18" height="16" rx="2" fill="var(--red)"/>
+                <rect x="600" y="20" width="30" height="16" rx="2" fill="var(--amber)"/>
+              </svg>
+              <div class="d-flex gap-3 frame-note m-0" style="font-size:10px;">
+                <span><i class="fa-solid fa-square" style="color:var(--green);font-size:7px;"></i> Accepted window (clean)</span>
+                <span><i class="fa-solid fa-square" style="color:var(--amber);font-size:7px;"></i> Rejected — missing</span>
+                <span><i class="fa-solid fa-square" style="color:var(--red);font-size:7px;"></i> Rejected — artifact</span>
+                <span><i class="fa-solid fa-grip-lines-vertical" style="color:var(--navy);font-size:9px;"></i> Session boundary</span>
+              </div>
+              <div class="d-flex gap-3 mt-2">
+                <span class="mini-value" style="color:var(--green)">54 accepted</span>
+                <span class="mini-value" style="color:var(--amber)">5 rejected · missing</span>
+                <span class="mini-value" style="color:var(--red)">2 rejected · artifact</span>
+              </div>
+            </div>
+            <div class="mini-label mb-2">Per-device stream quality</div>
+            <table class="dtable">
+              <thead><tr><th>Stream</th><th>Device</th><th>Missingness</th><th>Artifact</th><th>Status</th><th>Last reconnect instruction</th></tr></thead>
+              <tbody>
+                <tr><td>RR interval</td><td class="mono">Polar H10 · #A21F</td><td class="mono" style="color:var(--amber)">14.2%</td><td class="mono" style="color:var(--red)">8.6%</td><td><span class="evidence-chip chip-amber">Degraded</span></td><td class="frame-note m-0">12:41 · "Kencangkan strap dada"</td></tr>
+                <tr><td>Accelerometer</td><td class="mono">Polar H10 · #A21F</td><td class="mono">2.1%</td><td class="mono">1.0%</td><td><span class="evidence-chip chip-green">Nominal</span></td><td class="frame-note m-0">—</td></tr>
+                <tr><td>Context/GPS</td><td class="mono">Phone · Pixel-7</td><td class="mono">0.4%</td><td class="mono">—</td><td><span class="evidence-chip chip-green">Nominal</span></td><td class="frame-note m-0">—</td></tr>
+                <tr><td>Bluetooth link</td><td class="mono">Phone ↔ H10</td><td class="mono" style="color:var(--red)">3 drops/hr</td><td class="mono">—</td><td><span class="evidence-chip chip-red">Unstable</span></td><td class="frame-note m-0">11:58 · "Dekatkan jarak perangkat"</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Flag session <b>tidak menghapus data mentah</b>; hanya menandai untuk exclude dari evaluasi sampai diverifikasi manual (AC-04).</p>
+</section>
+
+<!-- =============== BASELINE MATURITY =============== -->
+<section class="section-wrap" id="w2e">
+  <div class="section-head">
+    <div class="tag">W05 — Baseline Maturity (Web)</div>
+    <h2>Baseline Maturity</h2>
+    <p>Versi web dari A04 — melihat source windows yang membentuk baseline personal, dan mengelola freeze/unfreeze secara governed.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/baseline/p014</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link active" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-ruler"></i>P-014 · baseline B-014-07</span>
+            <span class="cohort-pill">Cohort: Pilot-01 <i class="fa-solid fa-chevron-down ms-1" style="font-size:9px;"></i></span>
+          </div>
+          <div class="app-main">
+            <div class="row g-2 mb-2">
+              <div class="col-3"><div class="stat-card"><div class="lbl">baseline_n</div><div class="val" style="color:var(--teal)">32</div><div class="sub">min required 24</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">baseline_n_eff</div><div class="val" style="color:var(--teal)">27.4</div><div class="sub">after quality weighting</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">baseline_days</div><div class="val">6</div><div class="sub">min required 5 distinct days</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Q99 (τin source)</div><div class="val">1.86</div><div class="sub">rolling, guarded</div></div></div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">baseline_day_dominance (per hari kontribusi)</div>
+                  <div class="d-flex justify-content-between mb-1"><span class="frame-note m-0">07 Aug</span><span class="mini-value">34%</span></div>
+                  <div class="progress-thin mb-2"><div style="width:34%;background:var(--amber)"></div></div>
+                  <div class="d-flex justify-content-between mb-1"><span class="frame-note m-0">06 Aug</span><span class="mini-value">21%</span></div>
+                  <div class="progress-thin mb-1"><div style="width:21%;background:var(--teal)"></div></div>
+                  <div class="frame-note m-0">Dominance tertinggi 34% — di bawah ambang 40%, tidak flagged single-day bias.</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="stat-card h-100 d-flex flex-column justify-content-center">
+                  <div class="lbl">Status</div>
+                  <div class="val" style="color:var(--blue);font-size:20px;">Frozen</div>
+                  <div class="sub">since 08 Aug 12:00 · completeness 100%</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-panel mb-3" style="background:var(--blue-soft);border:none;">
+              <i class="fa-solid fa-lock" style="color:var(--blue)"></i>
+              <span class="frame-note m-0" style="color:var(--navy);font-weight:600;"> Baseline frozen. Unfreeze memerlukan alasan tertulis dan persetujuan PI sebelum re-adaptasi diaktifkan kembali.</span>
+            </div>
+            <div class="mini-label mb-2">Source windows (contributing to current baseline)</div>
+            <table class="dtable">
+              <thead><tr><th>Window</th><th>Collected</th><th>Context</th><th>Quality</th><th>Included</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">W-0032</td><td class="mono">07 Aug 21:40</td><td>rest</td><td><span class="evidence-chip chip-green">Clean</span></td><td class="mono" style="color:var(--green)">✓</td></tr>
+                <tr><td class="mono">W-0031</td><td class="mono">07 Aug 20:10</td><td>sitting</td><td><span class="evidence-chip chip-green">Clean</span></td><td class="mono" style="color:var(--green)">✓</td></tr>
+                <tr><td class="mono">W-0030</td><td class="mono">07 Aug 18:55</td><td>walking</td><td><span class="evidence-chip chip-amber">Marginal</span></td><td class="mono" style="color:var(--gray)">excluded</td></tr>
+                <tr><td class="mono">W-0029</td><td class="mono">07 Aug 16:20</td><td>sitting</td><td><span class="evidence-chip chip-green">Clean</span></td><td class="mono" style="color:var(--green)">✓</td></tr>
+                <tr><td class="mono">…</td><td class="mono">—</td><td>—</td><td>—</td><td>—</td></tr>
+              </tbody>
+            </table>
+            <div class="d-flex gap-2 mt-3">
+              <button class="btn-outline-navy"><i class="fa-solid fa-lock-open me-1"></i>Request unfreeze</button>
+              <button class="btn-outline-navy"><i class="fa-solid fa-table-list me-1"></i>View excluded windows</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Window marginal/artifact <b>otomatis dikeluarkan</b> dari kalkulasi Q99; exclude manual dicatat dengan alasan di Audit (AC-05).</p>
+</section>
+
+<!-- =============== EPISODE =============== -->
+<section class="section-wrap" id="w3">
+  <div class="section-head">
+    <div class="tag">C.2 · W07 — Episode</div>
+    <h2>Episode</h2>
+    <p>Mengelola dan mereview episode sebagai satu unit temporal — dari onset sampai recovery/outcome, dengan trajectory, EMA, dan reviewer decision menyatu dalam satu drawer.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/episodes</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link active" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-wave-square"></i>Review lifecycle from onset to recovery and outcome</span>
+            <span class="cohort-pill">Cohort: Pilot-01 <i class="fa-solid fa-chevron-down ms-1" style="font-size:9px;"></i></span>
+          </div>
+          <div class="app-main">
+            <div class="filter-bar">
+              <span class="filter-chip"><i class="fa-regular fa-calendar"></i>27 May – 30 May</span>
+              <span class="filter-chip">Context: all</span>
+              <span class="filter-chip">State: resolved</span>
+              <span class="filter-chip" style="background:var(--teal-soft);color:var(--teal);"><i class="fa-solid fa-magnifying-glass"></i>Search episode…</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-7">
+                <table class="dtable">
+                  <thead><tr><th>Episode</th><th>Participant</th><th>Context</th><th>Peak</th><th>Duration</th><th>Status</th></tr></thead>
+                  <tbody>
+                    <tr style="background:#F2F7F7;"><td class="mono fw-bold">EP-240527-01</td><td class="mono">P-014</td><td>kegiatan anak</td><td class="mono">2.40</td><td class="mono">37m40s</td><td><span class="evidence-chip chip-green">Resolved</span></td></tr>
+                    <tr><td class="mono fw-bold">EP-240530-02</td><td class="mono">P-014</td><td>duduk-berdiri</td><td class="mono">2.87</td><td class="mono">4h02m</td><td><span class="evidence-chip chip-green">Resolved</span></td></tr>
+                    <tr><td class="mono fw-bold">EP-260808-07</td><td class="mono">P-027</td><td>work</td><td class="mono">2.11</td><td class="mono">18m</td><td><span class="evidence-chip chip-purple">Recovery</span></td></tr>
+                    <tr><td class="mono fw-bold">EP-260808-08</td><td class="mono">P-031</td><td>rest</td><td class="mono">2.42</td><td class="mono">42m</td><td><span class="evidence-chip chip-amber">Review</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-5">
+                <div class="card-panel">
+                  <div class="d-flex justify-content-between align-items-start mb-1">
+                    <div class="mini-value" style="font-size:14px;">EP-240530-02</div>
+                    <span class="evidence-chip chip-green">Resolved</span>
+                  </div>
+                  <div class="frame-note mb-2" style="margin-top:0;">duduk berdiri acak · P-014</div>
+                  <div class="mini-label mb-1">Trajectory</div>
+                  <svg viewBox="0 0 260 70" style="width:100%;height:65px;">
+                    <polyline points="0,55 40,45 80,15 120,10 160,25 200,45 260,52" fill="none" stroke="#B52A2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <div class="row g-2 mt-1">
+                    <div class="col-6"><div class="frame-note m-0">Onset</div><div class="mini-value">11:28:36</div></div>
+                    <div class="col-6"><div class="frame-note m-0">Peak</div><div class="mini-value">2.87</div></div>
+                    <div class="col-6"><div class="frame-note m-0">Recovery</div><div class="mini-value">15:31:29</div></div>
+                    <div class="col-6"><div class="frame-note m-0">Persistence</div><div class="mini-value">12 windows</div></div>
+                    <div class="col-6"><div class="frame-note m-0">Deviation burden</div><div class="mini-value">17.15</div></div>
+                    <div class="col-6"><div class="frame-note m-0">EMA</div><div class="mini-value">4 responses</div></div>
+                  </div>
+                  <div class="d-flex gap-2 mt-3">
+                    <button class="btn-teal flex-fill">Open review</button>
+                    <button class="btn-outline-navy flex-fill">Compare episode</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Episode <b>unresolved tetap terbuka</b> sampai horizon/review; label <b>suppressed</b> tidak pernah dihapus dari audit.</p>
+</section>
+
+<!-- =============== STATE TIMELINE =============== -->
+<section class="section-wrap" id="w3b">
+  <div class="section-head">
+    <div class="tag">W06 — State Timeline</div>
+    <h2>State Timeline</h2>
+    <p>Timeline evidence dan state per partisipan dalam satu garis waktu kontinu, dengan zoom rentang waktu dan kemampuan annotate.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/timeline/p014</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link active" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-timeline"></i>P-014 · continuous evidence + state trace</span>
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-chip" style="background:var(--teal-soft);color:var(--teal);">Day</span>
+              <span class="filter-chip">Week</span>
+              <span class="filter-chip">Month</span>
+              <span class="filter-chip"><i class="fa-solid fa-magnifying-glass-plus me-1"></i>Zoom</span>
+              <button class="btn-teal" style="font-size:11px;padding:6px 10px;"><i class="fa-solid fa-note-sticky me-1"></i>Annotate</button>
+            </div>
+          </div>
+          <div class="app-main">
+            <div class="card-panel mb-3">
+              <div class="mini-label mb-2">27 May 2024 · 00:00 – 24:00</div>
+              <div class="state-dist mb-1" style="height:22px;">
+                <div style="width:22%;background:var(--green)" title="Baseline-compatible"></div>
+                <div style="width:6%;background:var(--gray)" title="Quality warning"></div>
+                <div style="width:14%;background:var(--amber)" title="Candidate"></div>
+                <div style="width:10%;background:var(--red)" title="Persistent"></div>
+                <div style="width:8%;background:var(--purple)" title="Recovery"></div>
+                <div style="width:40%;background:var(--green)" title="Baseline-compatible"></div>
+              </div>
+              <svg viewBox="0 0 700 10" style="width:100%;height:10px;">
+                <line x1="0" y1="5" x2="700" y2="5" stroke="var(--line)" stroke-width="1"/>
+                <line x1="200" y1="0" x2="200" y2="10" stroke="var(--navy)" stroke-width="1.4"/>
+                <line x1="452" y1="0" x2="452" y2="10" stroke="var(--navy)" stroke-width="1.4"/>
+              </svg>
+              <div class="d-flex justify-content-between frame-note m-0" style="font-size:10px;"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+              <div class="mini-label mt-3 mb-1">Context transition overlay</div>
+              <svg viewBox="0 0 700 22" style="width:100%;height:22px;">
+                <rect x="0" y="2" width="150" height="16" rx="2" fill="var(--gray-soft)"/>
+                <rect x="150" y="2" width="80" height="16" rx="2" fill="var(--blue-soft)"/>
+                <rect x="230" y="2" width="222" height="16" rx="2" fill="var(--gray-soft)"/>
+                <rect x="452" y="2" width="130" height="16" rx="2" fill="var(--teal-soft)"/>
+                <rect x="582" y="2" width="118" height="16" rx="2" fill="var(--gray-soft)"/>
+                <text x="6" y="14" font-size="8" fill="var(--gray)" font-family="Inter">sleep</text>
+                <text x="156" y="14" font-size="8" fill="var(--blue)" font-family="Inter">kegiatan anak</text>
+                <text x="236" y="14" font-size="8" fill="var(--gray)" font-family="Inter">sitting</text>
+                <text x="458" y="14" font-size="8" fill="var(--teal)" font-family="Inter">duduk-berdiri</text>
+                <text x="588" y="14" font-size="8" fill="var(--gray)" font-family="Inter">rest</text>
+              </svg>
+              <div class="d-flex gap-3 frame-note m-0 mt-2" style="font-size:10px;">
+                <span><i class="fa-solid fa-circle" style="color:var(--green);font-size:7px;"></i> Baseline-compatible</span>
+                <span><i class="fa-solid fa-circle" style="color:var(--amber);font-size:7px;"></i> Candidate</span>
+                <span><i class="fa-solid fa-circle" style="color:var(--red);font-size:7px;"></i> Persistent</span>
+                <span><i class="fa-solid fa-circle" style="color:var(--purple);font-size:7px;"></i> Recovery</span>
+                <span><i class="fa-solid fa-circle" style="color:var(--gray);font-size:7px;"></i> Quality warning</span>
+                <span><i class="fa-solid fa-flag" style="color:var(--navy);font-size:9px;"></i> Annotation</span>
+                <span><i class="fa-solid fa-square" style="color:var(--gray);font-size:7px;"></i> Context band (overlay)</span>
+              </div>
+            </div>
+            <div class="mini-label mb-2">Annotations on this range</div>
+            <table class="dtable">
+              <thead><tr><th>Time</th><th>Author</th><th>Note</th><th>Linked episode</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">08:20</td><td>Rina S. (Reviewer)</td><td class="frame-note m-0">Kegiatan pagi anak — kemungkinan aktivitas fisik non-fisiologis</td><td class="mono">EP-240527-01</td></tr>
+                <tr><td class="mono">15:04</td><td>Dr. Aditya (PI)</td><td class="frame-note m-0">Durasi persistent lama, cek device strap sebelum sesi berikutnya</td><td class="mono">EP-240530-02</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Zoom mempertahankan konteks evidence di bawah state; annotate <b>tidak mengubah</b> state/algorithm output — tersimpan sebagai lapisan terpisah (AC-08).</p>
+</section>
+
+<!-- =============== EXPERIENCE =============== -->
+<section class="section-wrap" id="w4">
+  <div class="section-head">
+    <div class="tag">C.3 · W08 — Experience</div>
+    <h2>Experience</h2>
+    <p>Menampilkan apa yang telah dipelajari dari episode personal — selalu disertai sample size (n) agar probabilitas tidak terkesan absolut.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/experience/p07</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link active" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-brain"></i>Personal episode memory and learned recovery profile</span>
+            <span class="cohort-pill">Cohort: Pilot-01 <i class="fa-solid fa-chevron-down ms-1" style="font-size:9px;"></i></span>
+          </div>
+          <div class="app-main">
+            <div class="row g-2 mb-3">
+              <div class="col-3"><div class="stat-card"><div class="lbl">Resolved episodes</div><div class="val" style="color:var(--teal)">12</div><div class="sub">participant P-014</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Median recovery</div><div class="val" style="color:var(--purple)">18 min</div><div class="sub">P25 11 · P75 27</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Repeated contexts</div><div class="val">3</div><div class="sub">sitting · work · walk</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Experience confidence</div><div class="val" style="color:var(--blue)">0.72</div><div class="sub">moderate evidence</div></div></div>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">Recovery profile by context</div>
+                  <div class="d-flex justify-content-between mb-1"><span class="frame-note m-0">sitting</span><span class="mini-value">18m</span></div>
+                  <div class="progress-thin mb-2"><div style="width:60%;background:var(--purple)"></div></div>
+                  <div class="d-flex justify-content-between mb-1"><span class="frame-note m-0">work</span><span class="mini-value">24m</span></div>
+                  <div class="progress-thin mb-2"><div style="width:80%;background:var(--purple)"></div></div>
+                  <div class="d-flex justify-content-between mb-1"><span class="frame-note m-0">walking</span><span class="mini-value">9m</span></div>
+                  <div class="progress-thin"><div style="width:30%;background:var(--purple)"></div></div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">Learned transition probabilities</div>
+                  <table class="dtable" style="font-size:11px;">
+                    <thead><tr><th>From</th><th>To</th><th>Prob.</th><th>Evidence</th></tr></thead>
+                    <tbody>
+                      <tr><td>Persistent</td><td>Recovery</td><td class="mono fw-bold" style="color:var(--purple)">0.63</td><td class="frame-note m-0">8 transitions</td></tr>
+                      <tr><td>Recovery</td><td>Recovered</td><td class="mono fw-bold" style="color:var(--green)">0.78</td><td class="frame-note m-0">10 transitions</td></tr>
+                      <tr><td>Recovery</td><td>Persistent</td><td class="mono fw-bold" style="color:var(--red)">0.14</td><td class="frame-note m-0">2 reversals</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <table class="dtable">
+              <thead><tr><th>Date</th><th>Episode</th><th>Context</th><th>Peak</th><th>Recovery</th><th>Learning action</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">30 May</td><td class="mono">EP-02</td><td>duduk-berdiri</td><td class="mono">2.87</td><td class="mono">4h02m</td><td>stored; high duration</td></tr>
+                <tr><td class="mono">27 May</td><td class="mono">EP-01</td><td>kegiatan anak</td><td class="mono">2.40</td><td class="mono">37m</td><td>stored</td></tr>
+                <tr><td class="mono">26 May</td><td class="mono">EP-00</td><td>sitting</td><td class="mono">1.96</td><td class="mono">17m</td><td>threshold calibration</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Jika pengalaman jarang → tampilkan <b>"Experience still sparse"</b>, bukan angka presisi seolah pasti.</p>
+</section>
+
+<!-- =============== PREDICTION EVALUATION =============== -->
+<section class="section-wrap" id="w4b">
+  <div class="section-head">
+    <div class="tag">W09 — Prediction Evaluation</div>
+    <h2>Prediction Evaluation</h2>
+    <p>Predicted vs observed pada level episode dan cohort — kalibrasi diukur, bukan diasumsikan, agar prediksi tidak dipercaya melebihi buktinya.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/prediction-eval</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link active" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-bullseye"></i>Predicted vs observed · calibration tracking</span>
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-chip"><i class="fa-regular fa-clock me-1"></i>Horizon: 30 min <i class="fa-solid fa-chevron-down ms-1" style="font-size:9px;"></i></span>
+              <button class="btn-outline-navy" style="font-size:11px;padding:6px 10px;"><i class="fa-solid fa-file-export me-1"></i>Export</button>
+            </div>
+          </div>
+          <div class="app-main">
+            <div class="row g-2 mb-3">
+              <div class="col-3"><div class="stat-card"><div class="lbl">Brier score</div><div class="val" style="color:var(--teal)">0.148</div><div class="sub">lower is better · n=64</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Log loss</div><div class="val" style="color:var(--blue)">0.41</div><div class="sub">horizon 30 min</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">AUC</div><div class="val" style="color:var(--purple)">0.79</div><div class="sub">persistent vs not</div></div></div>
+              <div class="col-3"><div class="stat-card"><div class="lbl">Predictions evaluated</div><div class="val">64</div><div class="sub">resolved episodes only</div></div></div>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-7">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">Confusion matrix — predicted vs observed (30 min horizon)</div>
+                  <table class="dtable" style="text-align:center;">
+                    <thead><tr><th></th><th>Observed: Persistent</th><th>Observed: Not persistent</th></tr></thead>
+                    <tbody>
+                      <tr><td style="text-align:left;font-weight:700;">Predicted: Persistent</td><td class="mono fw-bold" style="background:var(--green-soft);color:var(--green);">22</td><td class="mono fw-bold" style="background:var(--red-soft);color:var(--red);">6</td></tr>
+                      <tr><td style="text-align:left;font-weight:700;">Predicted: Not persistent</td><td class="mono fw-bold" style="background:var(--red-soft);color:var(--red);">5</td><td class="mono fw-bold" style="background:var(--green-soft);color:var(--green);">31</td></tr>
+                    </tbody>
+                  </table>
+                  <div class="frame-note">Precision 0.79 · Recall 0.81 · dihitung hanya dari episode yang sudah resolved (tidak ada leakage horizon).</div>
+                </div>
+              </div>
+              <div class="col-5">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">Calibration curve</div>
+                  <svg viewBox="0 0 220 110" style="width:100%;height:100px;">
+                    <line x1="10" y1="100" x2="210" y2="100" stroke="var(--line)" stroke-width="1"/>
+                    <line x1="10" y1="10" x2="10" y2="100" stroke="var(--line)" stroke-width="1"/>
+                    <line x1="10" y1="100" x2="210" y2="10" stroke="#B9C2C8" stroke-dasharray="3 3" stroke-width="1"/>
+                    <polyline points="10,95 60,72 110,50 160,28 210,14" fill="none" stroke="var(--teal)" stroke-width="2.5" stroke-linecap="round"/>
+                    <circle cx="10" cy="95" r="3" fill="var(--teal)"/><circle cx="60" cy="72" r="3" fill="var(--teal)"/><circle cx="110" cy="50" r="3" fill="var(--teal)"/><circle cx="160" cy="28" r="3" fill="var(--teal)"/><circle cx="210" cy="14" r="3" fill="var(--teal)"/>
+                  </svg>
+                  <div class="frame-note m-0">Garis putus-putus = kalibrasi sempurna. Kurva teal sedikit overconfident di bin probabilitas tinggi.</div>
+                </div>
+              </div>
+            </div>
+            <div class="mini-label mb-2">Recent predicted vs observed outcomes</div>
+            <table class="dtable">
+              <thead><tr><th>Episode</th><th>Predicted state (30m)</th><th>Predicted prob.</th><th>Observed outcome</th><th>Result</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">EP-240530-02</td><td><span class="evidence-chip chip-red">Persistent</span></td><td class="mono">0.81</td><td><span class="evidence-chip chip-red">Persistent</span></td><td><span class="evidence-chip chip-green">Correct</span></td></tr>
+                <tr><td class="mono">EP-260808-07</td><td><span class="evidence-chip chip-purple">Recovery</span></td><td class="mono">0.66</td><td><span class="evidence-chip chip-purple">Recovery</span></td><td><span class="evidence-chip chip-green">Correct</span></td></tr>
+                <tr><td class="mono">EP-260808-08</td><td><span class="evidence-chip chip-red">Persistent</span></td><td class="mono">0.58</td><td><span class="evidence-chip chip-purple">Recovery</span></td><td><span class="evidence-chip chip-red">Miss</span></td></tr>
+                <tr><td class="mono">EP-240527-01</td><td><span class="evidence-chip chip-amber">Candidate</span></td><td class="mono">0.72</td><td><span class="evidence-chip chip-green">Recovered</span></td><td><span class="evidence-chip chip-red">Miss</span></td></tr>
+                <tr><td class="mono">EP-260808-09</td><td><span class="evidence-chip chip-red">Persistent</span></td><td class="mono">0.69</td><td><span class="evidence-chip chip-neutral">— pending</span></td><td><span class="evidence-chip chip-neutral">Awaiting horizon</span></td></tr>
+              </tbody>
+            </table>
+            <div class="frame-note">Baris dengan observed outcome kosong = episode belum melewati horizon prediksi; <b>tidak dihitung</b> ke Brier score/log loss sampai next state tersedia.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Evaluasi prediksi <b>tidak pernah</b> memengaruhi label state real-time yang sudah ditampilkan ke partisipan — hanya untuk audit model (AC-09).</p>
+</section>
+
+<!-- =============== MODEL AND RULES =============== -->
+<section class="section-wrap" id="w5">
+  <div class="section-head">
+    <div class="tag">C.4 · W10 — Model and Rules</div>
+    <h2>Model and Rules</h2>
+    <p>Transparansi parameter, versioning, guardrail, dan simulasi. Perubahan tidak pernah langsung aktif tanpa audit trail dan approval gate.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/model-rules</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link active" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-sliders"></i>Transparent parameters, versions, guardrails, and simulation</span>
+            <span class="cohort-pill">Cohort: Pilot-01 <i class="fa-solid fa-chevron-down ms-1" style="font-size:9px;"></i></span>
+          </div>
+          <div class="app-main">
+            <div class="card-panel mb-3" style="background:var(--amber-soft);border:none;">
+              <i class="fa-solid fa-lock" style="color:var(--amber)"></i>
+              <span class="frame-note m-0" style="color:#8a6200;font-weight:600;"> Read-only by default. Parameter changes require draft → review → approval → activation → audit.</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-7">
+                <table class="dtable">
+                  <thead><tr><th>Parameter</th><th>Active value</th><th>Source</th><th>Guardrail</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono">τin</td><td class="mono fw-bold">1.86</td><td>personal Q99</td><td class="frame-note m-0">1.2 – 3.5</td></tr>
+                    <tr><td class="mono">τout</td><td class="mono fw-bold">1.18</td><td>hysteresis learned</td><td class="frame-note m-0">&lt; τin</td></tr>
+                    <tr><td class="mono">τnormal</td><td class="mono fw-bold">0.80</td><td>rule config</td><td class="frame-note m-0">≤ τout</td></tr>
+                    <tr><td class="mono">k/m</td><td class="mono fw-bold">3/4</td><td>protocol</td><td class="frame-note m-0">2 ≤ k ≤ m</td></tr>
+                    <tr><td class="mono">r</td><td class="mono fw-bold">2 windows</td><td>protocol</td><td class="frame-note m-0">1 – 5</td></tr>
+                    <tr><td class="mono">q</td><td class="mono fw-bold">3 windows</td><td>protocol</td><td class="frame-note m-0">2 – 6</td></tr>
+                    <tr><td class="mono">washout</td><td class="mono fw-bold">20 min</td><td>protocol</td><td class="frame-note m-0">≥ 0</td></tr>
+                  </tbody>
+                </table>
+                <div class="d-flex gap-2 mt-3">
+                  <button class="btn-teal">Create draft</button>
+                  <button class="btn-outline-navy">Run simulation</button>
+                </div>
+              </div>
+              <div class="col-5">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">Model versions</div>
+                  <table class="dtable" style="font-size:11px;">
+                    <thead><tr><th>Component</th><th>Version</th><th>Activated</th></tr></thead>
+                    <tbody>
+                      <tr><td>baseline</td><td class="mono">B-014-07</td><td class="mono">08 Aug 12:00</td></tr>
+                      <tr><td>state rules</td><td class="mono">SR-1.4</td><td class="mono">07 Aug 09:20</td></tr>
+                      <tr><td>experience</td><td class="mono">EXP-0.6</td><td class="mono">08 Aug 12:10</td></tr>
+                      <tr><td>prediction</td><td class="mono">PRED-0.4</td><td class="mono">08 Aug 12:10</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="card-panel mt-3">
+              <div class="mini-label mb-2">Rule simulation — score trajectory → state output</div>
+              <div class="d-flex align-items-center gap-4">
+                <svg viewBox="0 0 340 70" style="width:70%;height:70px;">
+                  <polyline points="0,55 50,45 100,15 150,10 200,25 250,45 300,52 340,50" fill="none" stroke="#17324D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="d-flex flex-column gap-1">
+                  <span class="evidence-chip chip-amber">Candidate</span>
+                  <span class="evidence-chip chip-red">Persistent</span>
+                  <span class="evidence-chip chip-purple">Recovery</span>
+                  <span class="evidence-chip chip-green">Recovered</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Active value, source, guardrail, owner, version, activation time, dan <b>rollback target</b> wajib terlihat (Acceptance).</p>
+</section>
+
+<!-- =============== EXPORT =============== -->
+<section class="section-wrap" id="w6">
+  <div class="section-head">
+    <div class="tag">C.5 · W12 — Export</div>
+    <h2>Export</h2>
+    <p>Ekspor dataset/report yang terkontrol untuk analisis, validasi, dan audit. Data sensitif melalui role-based masking; setiap export dicatat di audit log.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/export</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link active" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-file-export"></i>Governed dataset and report export with provenance</span>
+            <span class="cohort-pill">Cohort: Pilot-01 <i class="fa-solid fa-chevron-down ms-1" style="font-size:9px;"></i></span>
+          </div>
+          <div class="app-main">
+            <div class="row g-3">
+              <div class="col-7">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">New export job</div>
+                  <div class="row g-3">
+                    <div class="col-6">
+                      <div class="frame-note m-0 mb-1" style="font-weight:700;color:var(--ink);">1. Dataset level</div>
+                      <div class="form-check small"><input class="form-check-input" type="checkbox"><label class="form-check-label frame-note m-0">Feature windows</label></div>
+                      <div class="form-check small"><input class="form-check-input" type="checkbox" checked><label class="form-check-label" style="font-size:12px;font-weight:700;color:var(--teal);">State timeline</label></div>
+                      <div class="form-check small"><input class="form-check-input" type="checkbox" checked><label class="form-check-label" style="font-size:12px;font-weight:700;color:var(--teal);">Episode table</label></div>
+                      <div class="form-check small"><input class="form-check-input" type="checkbox"><label class="form-check-label frame-note m-0">Experience table</label></div>
+                      <div class="form-check small"><input class="form-check-input" type="checkbox"><label class="form-check-label frame-note m-0">Model/rule snapshot</label></div>
+                      <div class="form-check small"><input class="form-check-input" type="checkbox" checked><label class="form-check-label" style="font-size:12px;font-weight:700;color:var(--teal);">EMA responses</label></div>
+                      <div class="form-check small"><input class="form-check-input" type="checkbox"><label class="form-check-label frame-note m-0">Audit log</label></div>
+                    </div>
+                    <div class="col-6">
+                      <div class="frame-note m-0 mb-1" style="font-weight:700;color:var(--ink);">2. Filters</div>
+                      <div class="mini-label mt-2">Participant</div><div class="mini-value">P-014</div>
+                      <div class="mini-label mt-2">Date range</div><div class="mini-value">27–30 May 2024</div>
+                      <div class="mini-label mt-2">Context</div><div class="mini-value">All</div>
+                      <div class="mini-label mt-2">Include predictions</div><div class="mini-value" style="color:var(--green)">Yes</div>
+                    </div>
+                  </div>
+                  <div class="d-flex gap-2 mt-3">
+                    <button class="btn-teal">Generate export</button>
+                    <button class="btn-outline-navy">Preview columns</button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-5">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">Export jobs</div>
+                  <table class="dtable" style="font-size:11px;">
+                    <thead><tr><th>Job</th><th>Scope</th><th>Format</th><th>Status</th></tr></thead>
+                    <tbody>
+                      <tr><td class="mono">EX-103</td><td>episode+EMA</td><td class="mono">CSV</td><td><span class="evidence-chip chip-green">Ready</span></td></tr>
+                      <tr><td class="mono">EX-102</td><td>state timeline</td><td class="mono">JSON</td><td><span class="evidence-chip chip-green">Ready</span></td></tr>
+                      <tr><td class="mono">EX-101</td><td>audit</td><td class="mono">PDF</td><td><span class="evidence-chip chip-green">Ready</span></td></tr>
+                      <tr><td class="mono">EX-100</td><td>features</td><td class="mono">CSV</td><td><span class="evidence-chip chip-neutral">Expired</span></td></tr>
+                    </tbody>
+                  </table>
+                  <div class="frame-note">Every export records requester, role, filter scope, consent status, dataset/model versions, timestamp, and file checksum.</div>
+                  <button class="btn-teal w-100 mt-1">Download EX-103</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Field di luar consent scope <b>diblok</b>; export yang expired tidak dapat diunduh; default <b>pseudonymized</b> (AC-13).</p>
+</section>
+
+<!-- =============== AUDIT =============== -->
+<section class="section-wrap" id="w7">
+  <div class="section-head">
+    <div class="tag">W11 — Audit &amp; Provenance</div>
+    <h2>Audit &amp; Provenance</h2>
+    <p>Menelusuri rantai data → model → decision → feedback dengan immutable event ordering secara UI.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/audit</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link active" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-clipboard-list"></i>Data → model → decision → feedback trace</span>
+            <span class="topbar-search"><i class="fa-solid fa-magnifying-glass"></i>user_id, episode_id, actor…</span>
+          </div>
+          <div class="app-main">
+            <table class="dtable">
+              <thead><tr><th>Timestamp</th><th>Actor</th><th>Event</th><th>Entity</th><th>Version</th><th>Detail</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">08 Aug 12:10:04</td><td>PI · Dr. Aditya</td><td><span class="evidence-chip chip-blue">Config activated</span></td><td class="mono">rule-set</td><td class="mono">SR-1.4</td><td class="frame-note m-0">Approved from draft DR-22</td></tr>
+                <tr><td class="mono">08 Aug 11:52:31</td><td>Reviewer · Rina S.</td><td><span class="evidence-chip chip-green">Episode confirmed</span></td><td class="mono">EP-240530-02</td><td class="mono">—</td><td class="frame-note m-0">Validation label: Confirmed physiological episode</td></tr>
+                <tr><td class="mono">08 Aug 09:20:11</td><td>System</td><td><span class="evidence-chip chip-purple">Baseline updated</span></td><td class="mono">P-014</td><td class="mono">B-014-07</td><td class="frame-note m-0">Guarded adaptation, window n=32</td></tr>
+                <tr><td class="mono">07 Aug 22:04:57</td><td>Participant P-014</td><td><span class="evidence-chip chip-amber">EMA submitted</span></td><td class="mono">EMA-4</td><td class="mono">—</td><td class="frame-note m-0">Post-episode reflection, latency 22s</td></tr>
+                <tr><td class="mono">07 Aug 21:59:03</td><td>System</td><td><span class="evidence-chip chip-red">Episode opened</span></td><td class="mono">EP-260808-08</td><td class="mono">SR-1.3</td><td class="frame-note m-0">Persistence 3/4 windows confirmed</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Reviewer correction <b>tidak menimpa</b> algorithm output — tersimpan terpisah dengan actor, label, note, dan waktu (AC-08).</p>
+</section>
+
+<!-- =============== SETTINGS / USER MANAGEMENT =============== -->
+<section class="section-wrap" id="w8">
+  <div class="section-head">
+    <div class="tag">Optional (Addendum) — Settings &amp; User Management</div>
+    <h2>Settings &amp; User Management</h2>
+    <p>Administrasi role dan device mapping. Disebutkan sebagai layar <b>opsional</b> pada addendum — disertakan agar alur governance role &amp; perangkat tetap utuh.</p>
+  </div>
+  <div class="browser-frame">
+    <div class="browser-topbar"><div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="browser-url"><i class="fa-solid fa-lock me-1"></i>console.capar-research.id/settings</div></div>
+    <div class="browser-inner">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="brand"><i class="fa-solid fa-heart-pulse"></i>CAPAR Console</div>
+          <a class="nav-link" href="#w1"><i class="fa-solid fa-table-columns"></i>Overview</a>
+          <a class="nav-link" href="#w2"><i class="fa-solid fa-satellite-dish"></i>Live Monitor</a>
+          <a class="nav-link" href="#w2d"><i class="fa-solid fa-tower-broadcast"></i>Signal &amp; Quality</a>
+          <a class="nav-link" href="#w2e"><i class="fa-solid fa-ruler"></i>Baseline Maturity</a>
+          <a class="nav-link" href="#w3"><i class="fa-solid fa-wave-square"></i>Episode</a>
+          <a class="nav-link" href="#w3b"><i class="fa-solid fa-timeline"></i>State Timeline</a>
+          <a class="nav-link" href="#w4"><i class="fa-solid fa-brain"></i>Experience</a>
+          <a class="nav-link" href="#w4b"><i class="fa-solid fa-bullseye"></i>Prediction Eval</a>
+          <a class="nav-link" href="#w5"><i class="fa-solid fa-sliders"></i>Model and Rules</a>
+          <a class="nav-link" href="#w6"><i class="fa-solid fa-file-export"></i>Export</a>
+          <a class="nav-link" href="#w7"><i class="fa-solid fa-clipboard-list"></i>Audit</a>
+          <a class="nav-link active" href="#w8"><i class="fa-solid fa-user-shield"></i>Settings</a>
+          <div class="sb-foot">Research prototype<br>Non-diagnostic</div>
+        </aside>
+        <div class="flex-grow-1 d-flex flex-column">
+          <div class="app-topbar">
+            <span class="cohort-pill"><i class="fa-solid fa-user-shield"></i>Role admin &amp; device mapping</span>
+            <button class="btn-teal" style="font-size:11px;padding:6px 10px;"><i class="fa-solid fa-user-plus me-1"></i>Invite user</button>
+          </div>
+          <div class="app-main">
+            <div class="mini-label mb-2">Users &amp; roles</div>
+            <table class="dtable mb-3">
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Cohort scope</th><th>MFA</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td class="fw-bold">Dr. Aditya P.</td><td class="mono">aditya@capar-research.id</td><td><span class="evidence-chip chip-blue">PI</span></td><td>Pilot-01, Pilot-02</td><td class="mono" style="color:var(--green)">enabled</td><td><span class="evidence-chip chip-green">Active</span></td></tr>
+                <tr><td class="fw-bold">Rina S.</td><td class="mono">rina.s@capar-research.id</td><td><span class="evidence-chip chip-teal" style="background:var(--teal-soft);color:var(--teal);">Reviewer</span></td><td>Pilot-01</td><td class="mono" style="color:var(--green)">enabled</td><td><span class="evidence-chip chip-green">Active</span></td></tr>
+                <tr><td class="fw-bold">Budi H.</td><td class="mono">budi.h@capar-research.id</td><td><span class="evidence-chip chip-purple">Researcher</span></td><td>Pilot-01</td><td class="mono" style="color:var(--green)">enabled</td><td><span class="evidence-chip chip-green">Active</span></td></tr>
+                <tr><td class="fw-bold">Sari W.</td><td class="mono">sari.w@capar-research.id</td><td><span class="evidence-chip chip-gray" style="background:var(--gray-soft);color:var(--gray);">Admin</span></td><td>— (no live data)</td><td class="mono" style="color:var(--amber)">pending</td><td><span class="evidence-chip chip-amber">Invited</span></td></tr>
+              </tbody>
+            </table>
+            <div class="row g-3">
+              <div class="col-7">
+                <div class="mini-label mb-2">Device mapping</div>
+                <table class="dtable">
+                  <thead><tr><th>Device ID</th><th>Type</th><th>Assigned to</th><th>Since</th><th>Status</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono">A21F</td><td>Polar H10</td><td class="mono">P-014</td><td class="mono">15 May 2024</td><td><span class="evidence-chip chip-green">Paired</span></td></tr>
+                    <tr><td class="mono">B08C</td><td>Polar H10</td><td class="mono">P-027</td><td class="mono">15 May 2024</td><td><span class="evidence-chip chip-green">Paired</span></td></tr>
+                    <tr><td class="mono">Pixel-7 · #442</td><td>Companion phone</td><td class="mono">P-031</td><td class="mono">18 May 2024</td><td><span class="evidence-chip chip-amber">Unstable link</span></td></tr>
+                    <tr><td class="mono">C55A</td><td>Polar H10</td><td class="mono">— unassigned</td><td class="mono">—</td><td><span class="evidence-chip chip-neutral">In stock</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-5">
+                <div class="card-panel">
+                  <div class="mini-label mb-2">Role change request</div>
+                  <div class="frame-note mb-2">Perubahan role/cohort scope butuh approval PI dan tercatat di Audit — tidak instan.</div>
+                  <div class="d-flex justify-content-between py-1 border-bottom"><span class="frame-note m-0">Requested</span><span class="mini-value">Budi H. → Reviewer</span></div>
+                  <div class="d-flex justify-content-between py-1 border-bottom"><span class="frame-note m-0">Requested by</span><span class="mini-value">Sari W. (Admin)</span></div>
+                  <div class="d-flex justify-content-between py-1"><span class="frame-note m-0">Status</span><span class="mini-value" style="color:var(--amber)">Awaiting PI approval</span></div>
+                  <div class="d-flex gap-2 mt-3">
+                    <button class="btn-teal flex-fill">Approve</button>
+                    <button class="btn-outline-navy flex-fill">Reject</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="frame-note">Admin <b>tidak memiliki akses</b> ke live physiological data; scope role dan device mapping selalu tercermin di Audit.</p>
+</section>
+
+</div><!-- /container -->
+
+<footer class="credits">
+  <div class="container">
+    <b>CAPAR Predictive State System</b> — Web Research Console Mockup · Fase Backoffice<br>
+    Dibangun dari UI/UX Design Specification Section 9 &amp; Addendum C (Login/MFA, Overview, Live Monitor, Signal &amp; Quality, Baseline Maturity, Episode, State Timeline, Experience, Prediction Evaluation, Model &amp; Rules, Export, Audit, Settings) · Bootstrap 5 · Font Awesome · Google Fonts<br>
+    <span style="opacity:.7;">Berpasangan dengan Android Participant App mockup (fase mobile)</span>
+  </div>
+</footer>
+
+</body>
+</html>

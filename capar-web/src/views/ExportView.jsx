@@ -11,10 +11,12 @@ import {
 } from 'lucide-react';
 
 export const ExportView = ({ exportJobs }) => {
-  const [jobs, setJobs] = useState(exportJobs);
+  const [jobs, setJobs] = useState(exportJobs || []);
 
   useEffect(() => {
-    console.log('[ExportView] API Data (Export Jobs):', exportJobs);
+    if (exportJobs && exportJobs.length > 0) {
+      setJobs(exportJobs);
+    }
   }, [exportJobs]);
   const [datasetLevels, setDatasetLevels] = useState({
     featureWindows: false,

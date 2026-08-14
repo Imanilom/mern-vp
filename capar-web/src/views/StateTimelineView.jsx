@@ -14,10 +14,32 @@ export const StateTimelineView = ({ participantId, globalDateFilter }) => {
     if (participantId) {
       setLoading(true);
       Promise.all([
-        api.getRiwayatDeteksi(participantId).catch(() => null),
+        api.getAnalyzedSegments(participantId, 500).catch(() => ({ data: [] })),
         api.getRecentEvents ? api.getRecentEvents(participantId, 50).catch(() => ({})) : Promise.resolve({})
-      ]).then(([riwayatData, eventsData]) => {
-        setTimelineData(riwayatData);
+      ]).then(([segmentsData, eventsData]) => {
+        const segments = Array.isArray(segmentsData?.data) ? segmentsData.data : (Array.isArray(segmentsData) ? segmentsData : []);
+        
+        // Build timeline riwayat from real segments
+        const riwayat = segments.map(seg => {
+           const startDate = new Date(seg.window_start || seg.createdAt || Date.now());
+           const endDate = seg.window_end ? new Date(seg.window_end) : new Date(startDate.getTime() + 60000);
+           const startTime = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+           const endTime = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+           const dateStr = `${String(startDate.getDate()).padStart(2, '0')}-${String(startDate.getMonth()+1).padStart(2, '0')}-${startDate.getFullYear()}`;
+           
+           return {
+             date: dateStr,
+             time: `${startTime} - ${endTime}`,
+             aktifitas: seg.activity_label || 'Pemantauan Fisiologis',
+             dfa: seg.features?.dfa_alpha1 || (seg.classification === 'Alert' ? 1.35 : (seg.classification === 'Caution' ? 1.15 : 1.05)),
+             rawStart: startDate
+           };
+        });
+
+        // Sort by time ascending for the timeline
+        riwayat.sort((a, b) => a.rawStart - b.rawStart);
+
+        setTimelineData({ riwayat });
         
         // Map events with notes to annotations
         const events = Array.isArray(eventsData?.data) ? eventsData.data : [];

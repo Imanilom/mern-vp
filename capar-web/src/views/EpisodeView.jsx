@@ -70,36 +70,43 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
   const renderTrajectorySVG = () => {
     if (!selectedEpisode) return null;
     const trajectoryScores = selectedEpisode.raw?.trajectory?.sequence_of_scores || [];
-    let polylinePoints = "0,85 35,75 70,32 105,15 140,10 175,25 210,40 245,67 280,80";
-    let peakMarker = { cx: 140, cy: 10 };
+    
+    if (!trajectoryScores || trajectoryScores.length === 0) {
+      return (
+        <div style={{ width: '100%', height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gray-soft)', borderRadius: 8 }}>
+          <span style={{ fontSize: 11, color: 'var(--gray)' }}>No trajectory data available for this episode.</span>
+        </div>
+      );
+    }
+
+    let polylinePoints = "";
+    let peakMarker = { cx: 0, cy: 0 };
     let peakScoreText = selectedEpisode.peakScore.toFixed(2);
     
     let tauInY = 35;
     let tauOutY = 65;
 
-    if (trajectoryScores.length > 0) {
-      const maxScore = Math.max(...trajectoryScores, 1.86 * 1.2, 3.0);
-      const minScore = 0;
-      const yRange = maxScore - minScore;
-      const getY = (score) => 95 - ((score - minScore) / yRange) * 85;
+    const maxScore = Math.max(...trajectoryScores, 1.86 * 1.2, 3.0);
+    const minScore = 0;
+    const yRange = maxScore - minScore;
+    const getY = (score) => 95 - ((score - minScore) / yRange) * 85;
 
-      tauInY = getY(1.86);
-      tauOutY = getY(1.18);
+    tauInY = getY(1.86);
+    tauOutY = getY(1.18);
 
-      const pointsArray = trajectoryScores.map((score, i) => {
-        const x = (i / (trajectoryScores.length - 1 || 1)) * 300;
-        const y = getY(score);
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      });
-      polylinePoints = pointsArray.join(' ');
+    const pointsArray = trajectoryScores.map((score, i) => {
+      const x = (i / (trajectoryScores.length - 1 || 1)) * 300;
+      const y = getY(score);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    polylinePoints = pointsArray.join(' ');
 
-      const peakIdx = trajectoryScores.indexOf(Math.max(...trajectoryScores));
-      if (peakIdx >= 0) {
-        const px = (peakIdx / (trajectoryScores.length - 1 || 1)) * 300;
-        const py = getY(trajectoryScores[peakIdx]);
-        peakMarker = { cx: px, cy: py };
-        peakScoreText = trajectoryScores[peakIdx].toFixed(2);
-      }
+    const peakIdx = trajectoryScores.indexOf(Math.max(...trajectoryScores));
+    if (peakIdx >= 0) {
+      const px = (peakIdx / (trajectoryScores.length - 1 || 1)) * 300;
+      const py = getY(trajectoryScores[peakIdx]);
+      peakMarker = { cx: px, cy: py };
+      peakScoreText = trajectoryScores[peakIdx].toFixed(2);
     }
 
     return (

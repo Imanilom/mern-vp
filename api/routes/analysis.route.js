@@ -387,4 +387,29 @@ router.get('/recovery-estimate/:userId', verifyToken, resolveUserIdParam, getRec
 /** GET /api/analysis/transitions/:userId — personal transition matrix */
 router.get('/transitions/:userId', verifyToken, resolveUserIdParam, getPersonalTransitions);
 
+import { getSignalQuality } from '../controllers/quality.controller.js';
+/** GET /api/analysis/signal-quality/:userId */
+router.get('/signal-quality/:userId', verifyToken, resolveUserIdParam, getSignalQuality);
+
+import { computeConfusionMatrix, computeClassificationMetrics } from '../controllers/evaluation.controller.js';
+/** GET /api/analysis/evaluation/:userId */
+router.get('/evaluation/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
+  try {
+    const cm = await computeConfusionMatrix(req.params.userId);
+    const metrics = computeClassificationMetrics(cm);
+    const roc = await computeROCandAUC(req.params.userId);
+    
+    res.json({
+      success: true,
+      data: {
+        confusionMatrix: cm,
+        metrics: metrics,
+        roc: roc
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 export default router;

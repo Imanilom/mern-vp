@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -130,6 +131,15 @@ void onStart(ServiceInstance service) async {
 class BackgroundTask {
   static Future<void> initializeService() async {
     if (kIsWeb) return;
+
+    if (Platform.isAndroid) {
+      final apiMatch = RegExp(r'API (\d+)').firstMatch(Platform.operatingSystemVersion);
+      final apiLevel = apiMatch != null ? int.tryParse(apiMatch.group(1) ?? '') : null;
+      if (apiLevel != null && apiLevel >= 34) {
+        debugPrint('Skipping background service init on Android 14+ because the current flutter_background_service plugin crashes with MissingForegroundServiceTypeException.');
+        return;
+      }
+    }
     
     final service = FlutterBackgroundService();
 

@@ -412,6 +412,7 @@ export async function getRecentEvents(userId, limit = 20) {
     .lean();
 }
 
+
 /**
  * Ambil ringkasan baseline semua aktivitas untuk satu user dan hitung
  * metrik trajectory relevance (TRS) untuk dashboard/analisis.

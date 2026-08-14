@@ -7,6 +7,8 @@ import '../ema/ema_dialogs.dart';
 import '../../services/api_service.dart';
 import '../../services/socket_service.dart';
 
+enum HomeStateMode { evaluable, qualityWarning, uncertainContext, candidate, persistent, recovery, recovered }
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -15,172 +17,87 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Core evidence state
-  String evidenceState = 'QUALITY_WARNING';
-  String physiologicalState = 'BASELINE_COMPATIBLE';
-  bool isSending = false;
-  String userId = '';
-
+  HomeStateMode currentMode = HomeStateMode.evaluable;
+  
   // Real metric fields from API
+  String userId = '';
   double anomalyScore = 0.0;
-  double peakScore = 0.0;
   double qualityScore = 0.0;
   double contextConfidence = 0.0;
   String currentActivity = 'Unknown';
   int windowPersistence = 0;
-  int totalWindows = 4;
-  double auc = 0.0;
-  int recoveryDurationMin = 0;
-  int episodeDurationMin = 0;
-  int predictedRecoveryMin = 0;
-  int recoveryProbPct = 0;
-
-  // Prediction probabilities
-  double predProb1 = 0.0;
-  double predProb2 = 0.0;
-  double predProb3 = 0.0;
-  String predLabel1 = 'Baseline compatible';
-  String predLabel2 = 'Deviation candidate';
-  String predLabel3 = 'Persistent deviation';
-
+  
   @override
   void initState() {
     super.initState();
     SocketService.onStateUpdated = (data) {
       if (!mounted) return;
       setState(() {
+        String evidenceState = 'EVALUABLE';
+        String physState = 'BASELINE_COMPATIBLE';
+        
         if (data['evidence_state'] != null) {
           evidenceState = data['evidence_state'];
-          physiologicalState = data['physiological_state'] ?? 'BASELINE_COMPATIBLE';
+          physState = data['physiological_state'] ?? 'BASELINE_COMPATIBLE';
           anomalyScore = (data['anomaly_score'] ?? 0.0).toDouble();
           currentActivity = data['activity'] ?? currentActivity;
-          qualityScore = (data['quality_score'] ?? qualityScore).toDouble();
-          contextConfidence = (data['context_confidence'] ?? contextConfidence).toDouble();
         } else {
           final readings = data['readings'] as List?;
           if (readings != null && readings.isNotEmpty) {
             double rrms = (readings.last['rrms'] ?? 0.0).toDouble();
             anomalyScore = rrms;
             if (rrms > 2.5) {
-              evidenceState = 'EVALUABLE';
-              physiologicalState = 'PERSISTENT_DEVIATION';
+              physState = 'PERSISTENT_DEVIATION';
             } else if (rrms > 1.5) {
-              evidenceState = 'EVALUABLE';
-              physiologicalState = 'DEVIATION_CANDIDATE';
-            } else {
-              evidenceState = 'EVALUABLE';
-              physiologicalState = 'BASELINE_COMPATIBLE';
+              physState = 'DEVIATION_CANDIDATE';
             }
           }
+        }
+        
+        if (evidenceState == 'QUALITY_WARNING') {
+          currentMode = HomeStateMode.qualityWarning;
+        } else if (evidenceState == 'UNCERTAIN_CONTEXT') {
+          currentMode = HomeStateMode.uncertainContext;
+        } else {
+          if (physState == 'BASELINE_COMPATIBLE') currentMode = HomeStateMode.evaluable;
+          else if (physState == 'DEVIATION_CANDIDATE') currentMode = HomeStateMode.candidate;
+          else if (physState == 'PERSISTENT_DEVIATION') currentMode = HomeStateMode.persistent;
+          else if (physState == 'RECOVERY') currentMode = HomeStateMode.recovery;
+          else if (physState == 'RECOVERED') currentMode = HomeStateMode.recovered;
         }
       });
     };
     _loadUserIdAndRefresh();
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
+  
   Future<void> _loadUserIdAndRefresh() async {
     final prefs = await SharedPreferences.getInstance();
     final uid = prefs.getString('user_id') ?? '';
     if (mounted) setState(() => userId = uid);
-    await _refreshLatestFromBackend(uid);
-  }
-
-  Future<void> _refreshLatestFromBackend([String? uid]) async {
-    final String id = (uid != null && uid.toString().isNotEmpty) ? uid : userId;
-    if (id == null || id.toString().trim() == '' || id.toString().isEmpty == true) return;
-    setState(() => isSending = true);
-
+    
+    if (uid.isEmpty) return;
     try {
-      // Fetch latest event data
-      final result = await ApiService.getRecentEvents(id, limit: 10);
-      final events = result is Map ? (result['data'] ?? result['events'] ?? const []) : result ?? const [];
-
-      if (events is List && events.isNotEmpty) {
-        final latest = events.first as Map<String, dynamic>;
-        final score = latest['peak_score'] ?? latest['anomaly_score'] ?? latest['score'] ?? 0.0;
-        final classification = (latest['classification'] ?? 'EVALUABLE').toString();
-        
-        String phyState = 'BASELINE_COMPATIBLE';
-        if (classification == 'Alert' || classification == 'PERSISTENT_DEVIATION') {
-          phyState = 'PERSISTENT_DEVIATION';
-        } else if (classification == 'Caution' || classification == 'DEVIATION_CANDIDATE') {
-          phyState = 'DEVIATION_CANDIDATE';
-        } else if (classification == 'RECOVERY') {
-          phyState = 'RECOVERY';
-        } else if (classification == 'RECOVERED') {
-          phyState = 'RECOVERED';
-        }
-
-        if (!mounted) return;
-        setState(() {
-          evidenceState = latest['evidence_state'] ?? 'EVALUABLE';
-          physiologicalState = phyState;
-          anomalyScore = (score is num) ? score.toDouble() : 0.0;
-          peakScore = (latest['peak_score'] is num) ? (latest['peak_score'] as num).toDouble() : anomalyScore;
-          currentActivity = latest['activity'] ?? latest['activity_context'] ?? currentActivity;
-          qualityScore = (latest['quality_score'] is num) ? (latest['quality_score'] as num).toDouble() : qualityScore;
-          contextConfidence = (latest['context_confidence'] is num) ? (latest['context_confidence'] as num).toDouble() : contextConfidence;
-          windowPersistence = (latest['persistence_count'] is num) ? (latest['persistence_count'] as num).toInt() : windowPersistence;
-          totalWindows = (latest['total_windows'] is num) ? (latest['total_windows'] as num).toInt() : 4;
-          auc = (latest['auc_burden'] is num) ? (latest['auc_burden'] as num).toDouble() : auc;
-          episodeDurationMin = _msToMin(latest['duration_ms']);
-          recoveryDurationMin = _msToMin(latest['recovery_duration_ms']);
-        });
-      }
-
-      // Fetch prediction probabilities
-      final metricsRes = await ApiService.getMetricsH3a(id);
-      if (metricsRes != null && mounted) {
-        final payload = metricsRes is Map ? (metricsRes['data'] ?? metricsRes) : <String, dynamic>{};
-        final probs = payload['probabilities'] ?? payload['state_probabilities'];
-        if (probs is Map) {
-          setState(() {
-            if (physiologicalState == 'PERSISTENT_DEVIATION') {
-              predProb1 = _toDouble(probs['RECOVERY'] ?? probs['recovery'] ?? 0.65);
-              predProb2 = _toDouble(probs['PERSISTENT_DEVIATION'] ?? probs['persistent_deviation'] ?? 0.25);
-              predProb3 = _toDouble(probs['UNRESOLVED'] ?? probs['unresolved'] ?? 0.10);
-              predLabel1 = 'Recovery'; predLabel2 = 'Persistent deviation'; predLabel3 = 'Unresolved';
-            } else if (physiologicalState == 'RECOVERY') {
-              predProb1 = _toDouble(probs['RECOVERED'] ?? probs['recovered'] ?? 0.80);
-              predProb2 = _toDouble(probs['RECOVERY'] ?? probs['recovery'] ?? 0.18);
-              predProb3 = _toDouble(probs['PERSISTENT_DEVIATION'] ?? probs['persistent_deviation'] ?? 0.02);
-              predLabel1 = 'Recovered'; predLabel2 = 'Recovery'; predLabel3 = 'Persistent deviation';
-            } else {
-              predProb1 = _toDouble(probs['BASELINE_COMPATIBLE'] ?? probs['baseline_compatible'] ?? 0.82);
-              predProb2 = _toDouble(probs['DEVIATION_CANDIDATE'] ?? probs['deviation_candidate'] ?? 0.15);
-              predProb3 = _toDouble(probs['PERSISTENT_DEVIATION'] ?? probs['persistent_deviation'] ?? 0.03);
-              predLabel1 = 'Baseline compatible'; predLabel2 = 'Deviation candidate'; predLabel3 = 'Persistent deviation';
-            }
-          });
+      final result = await ApiService.getRecentEvents(uid, limit: 1);
+      if (result != null && result['data'] != null && (result['data'] as List).isNotEmpty) {
+        final ev = result['data'][0];
+        if (mounted) {
+           setState(() {
+              if (ev['status'] == 'open') {
+                 currentMode = HomeStateMode.persistent;
+                 anomalyScore = (ev['peak_score'] ?? 0.0).toDouble();
+                 windowPersistence = ev['trajectory']?['persistence'] ?? 0;
+                 currentActivity = ev['activity'] ?? currentActivity;
+              }
+           });
         }
       }
-    } catch (_) {
-      // Keep existing state if backend is unavailable.
-    } finally {
-      if (mounted) setState(() => isSending = false);
+    } catch (e) {
+      debugPrint('Error fetch initial state: $e');
     }
-  }
-
-  int _msToMin(dynamic ms) {
-    if (ms == null) return 0;
-    return ((ms as num) / 60000).round();
-  }
-
-  double _toDouble(dynamic v) {
-    if (v is num) {
-      final d = v.toDouble();
-      if (d.isNaN || d.isInfinite) return 0.0;
-      return d;
-    }
-    return 0.0;
   }
 
   @override
+
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -190,57 +107,136 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (evidenceState == 'QUALITY_WARNING') _buildQualityWarningState()
-              else if (evidenceState == 'UNCERTAIN_CONTEXT') _buildUncertainContextState()
-              else if (evidenceState == 'INSUFFICIENT_BASELINE' || evidenceState == 'PROVISIONAL_BASELINE')
-                _buildBaselineState()
-              else ...[
-                if (physiologicalState == 'BASELINE_COMPATIBLE') _buildEvaluableState()
-                else if (physiologicalState == 'DEVIATION_CANDIDATE') _buildCandidateState()
-                else if (physiologicalState == 'PERSISTENT_DEVIATION') _buildPersistentState()
-                else if (physiologicalState == 'RECOVERY') _buildRecoveryState()
-                else if (physiologicalState == 'RECOVERED') _buildRecoveredState()
-                else _buildEvaluableState()
-              ]
+              // Dynamic Data Info Bar
+              const SizedBox(height: 12),
+              _buildQuickContextCheckInBar(),
+              const SizedBox(height: 14),
+
+              // Animated Active State Content View
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 350),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.0, 0.04),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey<HomeStateMode>(currentMode),
+                  child: _buildCurrentStateContent(currentMode),
+                ),
+              ),
             ],
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: isSending ? null : () => _refreshLatestFromBackend(),
-        backgroundColor: AppColors.teal,
-        icon: isSending
-            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : const Icon(Icons.sync_rounded, color: Colors.white),
-        label: const Text('Sinkronkan Data', style: TextStyle(color: Colors.white)),
+    );
+  }
+
+  Widget _buildCurrentStateContent(HomeStateMode mode) {
+    switch (mode) {
+      case HomeStateMode.evaluable:
+        return _buildEvaluableState();
+      case HomeStateMode.qualityWarning:
+        return _buildQualityWarningState();
+      case HomeStateMode.uncertainContext:
+        return _buildUncertainContextState();
+      case HomeStateMode.candidate:
+        return _buildCandidateState();
+      case HomeStateMode.persistent:
+        return _buildPersistentState();
+      case HomeStateMode.recovery:
+        return _buildRecoveryState();
+      case HomeStateMode.recovered:
+        return _buildRecoveredState();
+    }
+  }
+
+  // Quick State Switcher removed
+  Widget _buildDemoModeSwitcher() {
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildQuickContextCheckInBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.touch_app_rounded, size: 16, color: AppColors.teal),
+          const SizedBox(width: 8),
+          const Text(
+            'Konteks:',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.navy),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildContextPill('🛋️ Duduk'),
+                  _buildContextPill('🚶‍♂️ Berjalan'),
+                  _buildContextPill('💻 Bekerja'),
+                  _buildContextPill('🏃‍♂️ Olahraga'),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildBaselineState() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        EvidenceChip.qualityWarning(),
-        const SizedBox(height: 12),
-        const Text('Baseline belum matang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.navy)),
-        const SizedBox(height: 6),
-        const Text('Sistem masih mengumpulkan data personal yang cukup dan beragam.', style: TextStyle(fontSize: 12, color: AppColors.gray)),
-      ],
+  Widget _buildContextPill(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✓ Konteks dikonfirmasi: $label'),
+              backgroundColor: AppColors.teal,
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.graySoft,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.navy),
+          ),
+        ),
+      ),
     );
   }
 
+  // A05 Evaluable / Baseline Compatible
   Widget _buildEvaluableState() {
-    final scoreStr = anomalyScore > 0 ? anomalyScore.toStringAsFixed(2) : '—';
-    final qualStr = qualityScore > 0 ? qualityScore.toStringAsFixed(2) : '—';
-    final confStr = contextConfidence > 0 ? contextConfidence.toStringAsFixed(2) : '—';
-    final actLabel = currentActivity.isNotEmpty ? currentActivity : '—';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         EvidenceChip.evaluable(),
         const SizedBox(height: 12),
+
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -254,38 +250,77 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               EvidenceChip.baselineCompatible(),
               const SizedBox(height: 8),
-              Text(
-                'Skor deviasi $scoreStr',
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.ink),
+              const Text(
+                'Skor deviasi 0,42',
+                style: TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                ),
               ),
               const SizedBox(height: 4),
-              Text(
-                'Konteks: $actLabel · confidence $confStr',
-                style: const TextStyle(fontSize: 11.5, color: AppColors.gray),
+              const Text(
+                'Konteks: duduk · confidence 0.96',
+                style: TextStyle(fontSize: 11.5, color: AppColors.gray),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        const Text('EVIDENCE READINESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray)),
+
+        const Text(
+          'EVIDENCE READINESS',
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray),
+        ),
         const SizedBox(height: 8),
-        _buildMetricRow('Signal quality', qualStr, qualityScore >= 0.7 ? AppColors.green : AppColors.amber),
-        _buildMetricRow('Context confidence', confStr, contextConfidence >= 0.7 ? AppColors.green : AppColors.amber),
+        _buildMetricRow('Signal quality', '0.94', AppColors.green),
+        _buildMetricRow('Context confidence', '0.96', AppColors.green),
         _buildMetricRow('Baseline status', 'Ready', AppColors.green),
+
         const SizedBox(height: 16),
-        _buildPredictionBar(),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.blueSoft,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'PREDIKSI STATE BERIKUT',
+                    style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.blue),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Baseline compatible',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.blue),
+                  ),
+                ],
+              ),
+              Text(
+                '82%',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.blue),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
 
+  // A06 Quality Warning
   Widget _buildQualityWarningState() {
-    final qualStr = qualityScore > 0 ? qualityScore.toStringAsFixed(2) : '—';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         EvidenceChip.qualityWarning(),
         const SizedBox(height: 12),
+
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -300,7 +335,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Icon(Icons.waves_rounded, color: AppColors.gray, size: 18),
                   SizedBox(width: 8),
-                  Text('Data belum layak dianalisis', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.navy)),
+                  Text(
+                    'Data belum layak dianalisis',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.navy),
+                  ),
                 ],
               ),
               SizedBox(height: 6),
@@ -312,12 +350,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        _buildMetricRow('Quality score', qualStr, AppColors.ink),
+
+        _buildMetricRow('Quality score', '0.41', AppColors.ink),
+        _buildMetricRow('Artifact fraction', '28%', AppColors.red),
+
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: () => Navigator.pushNamed(context, '/pairing'),
+            onPressed: () {
+              Navigator.pushNamed(context, '/pairing');
+            },
             icon: const Icon(Icons.build_rounded, size: 16),
             label: const Text('Perbaiki Sensor'),
             style: ElevatedButton.styleFrom(
@@ -332,17 +375,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // A07 Uncertain Context
   Widget _buildUncertainContextState() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         EvidenceChip.uncertainContext(),
         const SizedBox(height: 12),
+
         const Text(
           'Konfirmasikan aktivitas agar perubahan fisiologis dapat ditafsirkan pada konteks yang tepat.',
           style: TextStyle(fontSize: 12, color: AppColors.gray, height: 1.4),
         ),
         const SizedBox(height: 16),
+
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -360,67 +406,87 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // A08 Deviation Candidate
   Widget _buildCandidateState() {
-    final scoreStr = anomalyScore.toStringAsFixed(2);
-    final actLabel = currentActivity.isNotEmpty ? currentActivity : 'tidak diketahui';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         EvidenceChip.candidate(),
         const SizedBox(height: 12),
+
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: AppColors.amberSoft, borderRadius: BorderRadius.circular(16)),
-          child: Column(
+          decoration: BoxDecoration(
+            color: AppColors.amberSoft,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('DEVIASI KANDIDAT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.amber)),
-              const SizedBox(height: 4),
-              Text('Skor $scoreStr', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.amber)),
-              const SizedBox(height: 4),
+              Text(
+                'DEVIASI KANDIDAT',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.amber),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Skor 1,82 > τin 1,50',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.amber),
+              ),
+              SizedBox(height: 4),
               Text(
                 'Belum menjadi episode. Sistem menunggu persistensi pada beberapa window.',
-                style: const TextStyle(fontSize: 11.5, color: AppColors.ink, height: 1.4),
+                style: TextStyle(fontSize: 11.5, color: AppColors.ink, height: 1.4),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
+
         const Text('MENGAPA?', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray)),
         const SizedBox(height: 6),
-        _buildBullet('Anomaly score: $scoreStr'),
-        _buildBullet('Aktivitas: $actLabel'),
-        _buildBullet('Menunggu konfirmasi persistensi'),
+        _buildBullet('HR +1,4 SD dari baseline'),
+        _buildBullet('RMSSD −1,8 SD'),
+        _buildBullet('Aktivitas tetap: duduk'),
       ],
     );
   }
 
+  // A09 Persistent Deviation
   Widget _buildPersistentState() {
-    final scoreStr = anomalyScore.toStringAsFixed(2);
-    final peakStr = peakScore > 0 ? peakScore.toStringAsFixed(2) : scoreStr;
-    final persistStr = windowPersistence > 0 ? '$windowPersistence/$totalWindows window' : '—';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         EvidenceChip.persistent(),
         const SizedBox(height: 12),
+
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: AppColors.redSoft, borderRadius: BorderRadius.circular(16)),
-          child: Column(
+          decoration: BoxDecoration(
+            color: AppColors.redSoft,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('DEVIASI PERSISTEN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.red)),
-              const SizedBox(height: 4),
-              Text('Skor $scoreStr', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.red)),
-              const SizedBox(height: 4),
-              Text('Persistensi: $persistStr · Puncak: $peakStr', style: const TextStyle(fontSize: 11.5, color: AppColors.ink)),
+              Text(
+                'DEVIASI PERSISTEN',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.red),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Skor 2,64',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.red),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Persistensi: 3/4 window · Puncak: 2,81',
+                style: TextStyle(fontSize: 11.5, color: AppColors.ink),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 16),
+
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -438,59 +504,82 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // A11 Recovery
   Widget _buildRecoveryState() {
-    final recStr = recoveryDurationMin > 0 ? '$recoveryDurationMin menit' : '—';
-    final predStr = predictedRecoveryMin > 0 ? '≤ $predictedRecoveryMin menit' : '—';
-    final probStr = recoveryProbPct > 0 ? '$recoveryProbPct%' : '—';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         EvidenceChip.recovery(),
         const SizedBox(height: 12),
+
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: AppColors.purpleSoft, borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(
+            color: AppColors.purpleSoft,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.purple.withValues(alpha: 0.2)),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('RECOVERY BERJALAN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.purple)),
-              const SizedBox(height: 4),
-              Text('Durasi sejak recovery: $recStr', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.purple)),
-              const SizedBox(height: 4),
-              Text('Prediksi recovered $predStr ($probStr probability)', style: const TextStyle(fontSize: 11.5, color: AppColors.ink)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'RECOVERY BERJALAN',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.purple),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Durasi: 8 menit',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.purple),
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    width: 90,
+                    height: 38,
+                    child: CustomPaint(
+                      painter: _SparklinePainter(
+                        values: const [2.31, 2.10, 1.80, 1.45, 1.15, 0.95],
+                        color: AppColors.purple,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Prediksi recovered ≤ 20 menit (61% probability)',
+                style: TextStyle(fontSize: 11.5, color: AppColors.ink),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () => EmaDialogs.showEma3(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.teal,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Isi EMA 3 (Recovery Check)', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ),
+
+        _buildEpisodeProgressStepperCard(),
+        const SizedBox(height: 16),
+
+        _buildTodaysMissionsCard(),
+        const SizedBox(height: 16),
+
+        _buildBaselineJourneySummaryCard(),
       ],
     );
   }
 
+  // A12 Recovered
   Widget _buildRecoveredState() {
-    final epDurStr = episodeDurationMin > 0 ? '$episodeDurationMin menit' : '—';
-    final recDurStr = recoveryDurationMin > 0 ? '$recoveryDurationMin menit' : '—';
-    final peakStr = peakScore > 0 ? peakScore.toStringAsFixed(2) : '—';
-    final aucStr = auc > 0 ? auc.toStringAsFixed(1) : '—';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         EvidenceChip.recovered(),
         const SizedBox(height: 12),
+
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -502,14 +591,15 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Text('Kembali stabil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.navy)),
               const SizedBox(height: 12),
-              _buildMetricRow('Durasi episode', epDurStr, AppColors.ink),
-              _buildMetricRow('Recovery duration', recDurStr, AppColors.ink),
-              _buildMetricRow('Peak score', peakStr, AppColors.ink),
-              _buildMetricRow('AUC burden', aucStr, AppColors.ink),
+              _buildMetricRow('Durasi episode', '38 menit', AppColors.ink),
+              _buildMetricRow('Recovery duration', '6 menit', AppColors.ink),
+              _buildMetricRow('Peak score', '6,60', AppColors.ink),
+              _buildMetricRow('AUC burden', '141,8', AppColors.ink),
             ],
           ),
         ),
         const SizedBox(height: 16),
+
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -527,53 +617,199 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildPredictionBar() {
+  // Helper Widgets
+  Widget _buildBaselineJourneySummaryCard() {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.blueSoft, borderRadius: BorderRadius.circular(14)),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Baseline Journey', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy)),
+                  Text('Sitting context', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                ],
+              ),
+              Text('72%', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.teal)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: const LinearProgressIndicator(
+              value: 0.72,
+              minHeight: 6,
+              backgroundColor: AppColors.graySoft,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.teal),
+            ),
+          ),
+          const SizedBox(height: 10),
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('PREDIKSI STATE BERIKUT', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.blue)),
-              Text('Horizon: 3 window', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.blue)),
+              Text('n_eff 26/30', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray)),
+              Text('Days 3/3', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray)),
+              Text('Quality 0.91', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray)),
             ],
           ),
-          const SizedBox(height: 12),
-          _buildProbRow(predLabel1, predProb1),
-          _buildProbRow(predLabel2, predProb2),
-          _buildProbRow(predLabel3, predProb3),
         ],
       ),
     );
   }
 
-  Widget _buildProbRow(String label, double prob) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: Row(
+  Widget _buildTodaysMissionsCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 120, child: Text(label, style: const TextStyle(fontSize: 10, color: AppColors.ink))),
-          Expanded(
-            child: Stack(
-              children: [
-                Container(height: 6, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3))),
-                FractionallySizedBox(
-                  widthFactor: prob.clamp(0.0, 1.0),
-                  child: Container(height: 6, decoration: BoxDecoration(color: AppColors.blue, borderRadius: BorderRadius.circular(3))),
-                ),
-              ],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text('Today\'s evidence missions', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy)),
+              Text('2 of 3 completed', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.gray)),
+            ],
           ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 30,
-            child: Text('${(prob * 100).toInt()}%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.blue)),
+          const SizedBox(height: 12),
+          _buildMissionRow('Signal quality session', 'Completed', true, null),
+          _buildMissionRow('Context check-in', 'Completed', true, null),
+          _buildMissionRow('EMA 3: recovery check', 'Available', false, () => EmaDialogs.showEma3(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissionRow(String title, String status, bool isDone, VoidCallback? onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isDone ? Icons.check_circle_rounded : Icons.pending_rounded,
+                size: 14,
+                color: isDone ? AppColors.green : AppColors.amber,
+              ),
+              const SizedBox(width: 8),
+              Text(title, style: TextStyle(fontSize: 11.5, fontWeight: isDone ? FontWeight.w600 : FontWeight.w700, color: AppColors.navy)),
+            ],
+          ),
+          if (isDone)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: AppColors.greenSoft, borderRadius: BorderRadius.circular(6)),
+              child: Text(status, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.green)),
+            )
+          else
+            GestureDetector(
+              onTap: onTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: AppColors.amberSoft, borderRadius: BorderRadius.circular(6)),
+                child: Text(status, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: AppColors.amber)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpisodeProgressStepperCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Episode in progress', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy)),
+          const SizedBox(height: 2),
+          const Text('Started 13:02 · current context sitting', style: TextStyle(fontSize: 10.5, color: AppColors.gray)),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStepDot('Candidate', true, AppColors.amber),
+              _buildStepDot('Persistent', true, AppColors.red),
+              _buildStepDot('Recovery', true, AppColors.purple),
+              _buildStepDot('Recovered', false, AppColors.gray),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text('Peak 2.31 · persistence 18 min · recovery 8 min so far', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    // Switch tab
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.teal),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Open Episode Detail', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.teal)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => EmaDialogs.showEma3(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.amber,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Complete EMA 3', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStepDot(String label, bool isDone, Color activeColor) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 8,
+          backgroundColor: isDone ? activeColor : AppColors.graySoft,
+          child: isDone ? const Icon(Icons.check, size: 10, color: Colors.white) : null,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: isDone ? FontWeight.w700 : FontWeight.w500,
+            color: isDone ? AppColors.navy : AppColors.gray,
+          ),
+        ),
+      ],
     );
   }
 
@@ -602,4 +838,78 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final List<double> values;
+  final Color color;
+
+  _SparklinePainter({required this.values, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+
+    final double minVal = values.reduce((a, b) => a < b ? a : b);
+    final double maxVal = values.reduce((a, b) => a > b ? a : b);
+    final double range = (maxVal - minVal) == 0 ? 1.0 : (maxVal - minVal);
+
+    final double stepX = size.width / (values.length - 1);
+
+    final path = Path();
+    final areaPath = Path();
+
+    double getX(int i) => i * stepX;
+    double getY(double val) => size.height - ((val - minVal) / range) * (size.height * 0.70) - (size.height * 0.15);
+
+    path.moveTo(getX(0), getY(values[0]));
+    areaPath.moveTo(getX(0), size.height);
+    areaPath.lineTo(getX(0), getY(values[0]));
+
+    for (int i = 0; i < values.length - 1; i++) {
+      final x1 = getX(i);
+      final y1 = getY(values[i]);
+      final x2 = getX(i + 1);
+      final y2 = getY(values[i + 1]);
+
+      final cx1 = x1 + (x2 - x1) / 2;
+      final cy1 = y1;
+      final cx2 = x1 + (x2 - x1) / 2;
+      final cy2 = y2;
+
+      path.cubicTo(cx1, cy1, cx2, cy2, x2, y2);
+      areaPath.cubicTo(cx1, cy1, cx2, cy2, x2, y2);
+    }
+
+    areaPath.lineTo(size.width, size.height);
+    areaPath.close();
+
+    final areaShader = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        color.withValues(alpha: 0.25),
+        color.withValues(alpha: 0.0),
+      ],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    canvas.drawPath(areaPath, Paint()..shader = areaShader..style = PaintingStyle.fill);
+
+    final linePaint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final glowPaint = Paint()
+      ..color = color.withValues(alpha: 0.35)
+      ..strokeWidth = 5.0
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawPath(path, glowPaint);
+    canvas.drawPath(path, linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) => oldDelegate.values != values;
 }

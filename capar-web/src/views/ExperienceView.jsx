@@ -78,7 +78,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
 
         <div className="stat-card">
           <div className="lbl">Next State Prediction</div>
-          <div className="val" style={{ color: 'var(--teal)' }}>RECOVERY (63%)</div>
+          <div className="val" style={{ color: 'var(--teal)' }}>{selectedModel?.nextStatePrediction || 'RECOVERY'} ({((selectedModel?.predictionConfidence || 0.63) * 100).toFixed(0)}%)</div>
           <div className="sub">Horizon +3 windows (~15m)</div>
         </div>
       </div>

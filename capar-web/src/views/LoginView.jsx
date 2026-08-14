@@ -27,94 +27,76 @@ export const LoginView = ({ onLoginSuccess }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(160deg, #17324D 0%, #0F2337 100%)',
-      padding: 20
+      background: 'linear-gradient(160deg, var(--navy) 0%, var(--navy-2) 100%)',
     }}>
       <div style={{
-        width: 380,
-        background: '#ffffff',
-        borderRadius: 16,
-        padding: 32,
-        boxShadow: '0 24px 48px -14px rgba(15, 30, 45, 0.5)',
-        border: '1px solid rgba(255, 255, 255, 0.2)'
+        width: 360,
+        background: '#fff',
+        borderRadius: 14,
+        padding: '26px 24px',
+        boxShadow: '0 20px 40px -14px rgba(15,30,45,.4)'
       }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--teal-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <HeartPulse size={20} color="var(--teal)" />
-          </div>
-          <div>
-            <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--navy)', margin: 0 }}>CAPAR Console</h2>
-            <div style={{ fontSize: 11, color: 'var(--gray)' }}>Web Research Backoffice</div>
-          </div>
+        <div className="d-flex align-items-center gap-2 mb-3">
+          <HeartPulse style={{ color: 'var(--teal)' }} size={22} />
+          <span style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 16, color: 'var(--navy)' }}>CAPAR Console</span>
         </div>
-
+        
         <form onSubmit={handleSubmit}>
-          <div className="mini-label" style={{ marginBottom: 12 }}>Institutional Auth</div>
-
-          <div style={{ marginTop: 8, marginBottom: 12, fontSize: 11, color: 'var(--gray)' }}>
-            Demo admin: admin@htm.id / 123456
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: 4 }}>Institutional Email</label>
+          <div className="mini-label mb-1">Step 1 of 2 — Credentials</div>
+          
+          <div className="mb-2">
+            <div className="frame-note m-0 mb-1">Institutional email</div>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              style={{
-                width: '100%',
-                padding: '9px 12px',
-                background: 'var(--gray-soft)',
-                border: '1px solid var(--line)',
-                borderRadius: 8,
-                fontSize: 12.5,
-                outline: 'none'
-              }}
+              className="card-panel py-2 px-2 mono w-100"
+              style={{ background: 'var(--gray-soft)', fontSize: 11.5, color: 'var(--ink)', border: '1px solid var(--line)', outline: 'none' }}
             />
           </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: 4 }}>Password</label>
+          
+          <div className="mb-3">
+            <div className="frame-note m-0 mb-1">Password</div>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              style={{
-                width: '100%',
-                padding: '9px 12px',
-                background: 'var(--gray-soft)',
-                border: '1px solid var(--line)',
-                borderRadius: 8,
-                fontSize: 12.5,
-                outline: 'none'
-              }}
+              className="card-panel py-2 px-2 mono w-100"
+              style={{ background: 'var(--gray-soft)', fontSize: 11.5, color: 'var(--ink)', border: '1px solid var(--line)', outline: 'none' }}
             />
           </div>
-
-          <button type="submit" className="btn-teal" disabled={isSubmitting} style={{ width: '100%', padding: '10px 16px' }}>
-            <span>{isSubmitting ? 'Signing in...' : 'Sign In'}</span>
-            <ArrowRight size={14} />
+          
+          <button type="submit" className="btn-teal w-100 mb-2" disabled={isSubmitting}>
+            {isSubmitting ? 'Signing in...' : 'Continue'}
           </button>
+          
+          <div className="frame-note m-0 text-center">
+            Lupa password? <span style={{ color: 'var(--teal)', fontWeight: 700, cursor: 'pointer' }}>Hubungi admin</span>
+          </div>
+          
+          <hr style={{ margin: '16px 0' }} />
+          
+          <div className="mini-label mb-1">Step 2 — MFA (TOTP)</div>
+          <div className="frame-note mb-2" style={{ marginTop: 0 }}>Kode 6 digit dari authenticator app terdaftar untuk akun ini.</div>
+          
+          <div className="d-flex gap-2 mb-3">
+            <div className="card-panel py-2 text-center flex-fill mono" style={{ background: 'var(--gray-soft)', color: 'var(--gray)' }}>·</div>
+            <div className="card-panel py-2 text-center flex-fill mono" style={{ background: 'var(--gray-soft)', color: 'var(--gray)' }}>·</div>
+            <div className="card-panel py-2 text-center flex-fill mono" style={{ background: 'var(--gray-soft)', color: 'var(--gray)' }}>·</div>
+            <div className="card-panel py-2 text-center flex-fill mono" style={{ background: 'var(--gray-soft)', color: 'var(--gray)' }}>·</div>
+            <div className="card-panel py-2 text-center flex-fill mono" style={{ background: 'var(--gray-soft)', color: 'var(--gray)' }}>·</div>
+            <div className="card-panel py-2 text-center flex-fill mono" style={{ background: 'var(--gray-soft)', color: 'var(--gray)' }}>·</div>
+          </div>
+          
+          <button type="button" className="btn-teal w-100" style={{ opacity: 0.5, cursor: 'not-allowed' }}>Verify & sign in</button>
+          
+          <div className="frame-note m-0 mt-3 text-center d-flex align-items-center justify-content-center gap-1" style={{ fontSize: 10 }}>
+            <Lock size={10} color="var(--teal)" />
+            Sesi berakhir otomatis 30 menit idle · perangkat dicatat
+          </div>
         </form>
-
-        <div style={{
-          marginTop: 20,
-          paddingTop: 14,
-          borderTop: '1px solid var(--line)',
-          fontSize: 10.5,
-          color: 'var(--gray)',
-          textAlign: 'center',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6
-        }}>
-          <Lock size={12} color="var(--teal)" />
-          <span>Sesi idle berakhir dalam 30 min · Deny-by-default active</span>
-        </div>
       </div>
     </div>
   );

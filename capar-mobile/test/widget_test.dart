@@ -3,7 +3,7 @@ import 'package:capar_mobile/main.dart';
 
 void main() {
   testWidgets('Capar Mobile smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const CaparMobileApp());
+    await tester.pumpWidget(const CaparMobileApp(hasToken: false));
     expect(find.text('CAPAR'), findsOneWidget);
   });
 }

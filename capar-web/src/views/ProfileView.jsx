@@ -38,45 +38,48 @@ export const ProfileView = ({ user }) => {
   };
 
   return (
-    <div style={{ padding: 30 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 30 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--teal-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <User size={24} color="var(--teal)" />
-        </div>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--navy)' }}>My Profile</h2>
-          <div style={{ fontSize: 12, color: 'var(--gray)' }}>Manage your personal details and security</div>
-        </div>
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <h1 className="page-title">My Profile</h1>
+        <p className="page-sub">Manage your personal details and security</p>
       </div>
 
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
         {/* Profile Details */}
-        <div style={{ flex: '1 1 300px', background: '#fff', borderRadius: 12, padding: 20, border: '1px solid var(--line)' }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)', marginBottom: 16 }}>Profile Information</h3>
+        <div className="card-panel" style={{ flex: '1 1 300px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--teal-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <User size={24} color="var(--teal)" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--navy)', margin: 0 }}>Profile Information</h3>
+              <div style={{ fontSize: 11.5, color: 'var(--gray)' }}>Account Details</div>
+            </div>
+          </div>
           
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Name</label>
-            <div style={{ fontSize: 13, color: 'var(--ink)' }}>{user?.name || 'Unknown'}</div>
+          <div style={{ marginBottom: 12, borderBottom: '1px solid var(--line)', paddingBottom: 12 }}>
+            <div className="mini-label mb-1">Name</div>
+            <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 600 }}>{user?.name || 'Unknown'}</div>
           </div>
 
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Email</label>
+          <div style={{ marginBottom: 12, borderBottom: '1px solid var(--line)', paddingBottom: 12 }}>
+            <div className="mini-label mb-1">Email</div>
             <div style={{ fontSize: 13, color: 'var(--ink)' }}>{user?.email || 'Unknown'}</div>
           </div>
 
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Role</label>
-            <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: 4, background: 'var(--gray-soft)', fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>
-              {user?.role?.toUpperCase()}
-            </div>
+          <div>
+            <div className="mini-label mb-1">Role</div>
+            <span className={`badge-soft ${user?.role === 'admin' ? 'chip-purple' : user?.role === 'reviewer' ? 'chip-blue' : 'chip-green'}`}>
+              {user?.role?.toUpperCase() || 'USER'}
+            </span>
           </div>
         </div>
 
         {/* Change Password */}
-        <div style={{ flex: '1 1 300px', background: '#fff', borderRadius: 12, padding: 20, border: '1px solid var(--line)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div className="card-panel" style={{ flex: '1 1 300px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
             <Key size={16} color="var(--navy)" />
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)', margin: 0 }}>Change Password</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--navy)', margin: 0 }}>Change Password</h3>
           </div>
 
           {message && (
@@ -93,7 +96,7 @@ export const ProfileView = ({ user }) => {
 
           <form onSubmit={handleUpdatePassword}>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: 4 }}>New Password</label>
+              <div className="mini-label mb-1">New Password</div>
               <input
                 type="password"
                 value={password}
@@ -105,7 +108,7 @@ export const ProfileView = ({ user }) => {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: 4 }}>Confirm New Password</label>
+              <div className="mini-label mb-1">Confirm New Password</div>
               <input
                 type="password"
                 value={confirmPassword}
@@ -116,7 +119,7 @@ export const ProfileView = ({ user }) => {
               />
             </div>
 
-            <button type="submit" className="btn-teal" disabled={isSubmitting} style={{ padding: '8px 16px', fontSize: 12, border: 'none', borderRadius: 6, cursor: 'pointer', background: 'var(--teal)', color: 'white' }}>
+            <button type="submit" className="btn-teal w-100" disabled={isSubmitting}>
               {isSubmitting ? 'Updating...' : 'Update Password'}
             </button>
           </form>

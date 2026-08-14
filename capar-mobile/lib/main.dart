@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/history/history_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/insight/insight_screen.dart';
+import 'screens/journey/journey_screen.dart';
 import 'screens/onboarding/baseline_readiness_screen.dart';
 import 'screens/onboarding/consent_screen.dart';
 import 'screens/onboarding/device_pairing_screen.dart';
@@ -17,7 +18,33 @@ import 'services/background_task.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await BackgroundTask.initializeService();
+  
+  // Catch Flutter framework errors so they show on screen instead of black screen
+  FlutterError.onError = (details) {
+    debugPrint('FlutterError: ${details.exception}');
+    debugPrint('Stack: ${details.stack}');
+    FlutterError.presentError(details);
+  };
+
+  // Show error widget instead of black screen on build errors
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.red.shade50,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'ERROR: ${details.exception}',
+              style: const TextStyle(color: Colors.red, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+
   final prefs = await SharedPreferences.getInstance();
   final hasToken = prefs.getString('auth_token') != null;
 
@@ -26,7 +53,7 @@ void main() async {
 
 class CaparMobileApp extends StatelessWidget {
   final bool hasToken;
-  const CaparMobileApp({super.key, required this.hasToken});
+  const CaparMobileApp({super.key, this.hasToken = false});
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +68,9 @@ class CaparMobileApp extends StatelessWidget {
           primary: AppColors.teal,
           surface: AppColors.surface,
         ),
-        textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme),
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(
+          ThemeData.light().textTheme,
+        ),
       ),
       initialRoute: hasToken ? '/app' : '/',
       routes: {
@@ -70,12 +99,17 @@ class _MainTabShellState extends State<MainTabShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       SocketService.init(context);
+      BackgroundTask.initializeService().catchError((e) {
+        debugPrint('Background service init error: $e');
+      });
     });
   }
 
   final List<Widget> _pages = const [
     HomeScreen(),
+    JourneyScreen(),
     HistoryScreen(),
     InsightScreen(),
     ProfileScreen(),
@@ -88,34 +122,61 @@ class _MainTabShellState extends State<MainTabShell> {
         index: _currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (idx) => setState(() => _currentIndex = idx),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.teal,
-        unselectedItemColor: AppColors.gray,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Beranda',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, -3),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (idx) => setState(() => _currentIndex = idx),
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: AppColors.surface,
+            selectedItemColor: AppColors.teal,
+            unselectedItemColor: AppColors.gray,
+            selectedFontSize: 11,
+            unselectedFontSize: 10.5,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            elevation: 0,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                activeIcon: Icon(Icons.home_rounded, size: 24),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.explore_rounded),
+                activeIcon: Icon(Icons.explore_rounded, size: 24),
+                label: 'Journey',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.show_chart_rounded),
+                activeIcon: Icon(Icons.show_chart_rounded, size: 24),
+                label: 'Episode',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.lightbulb_rounded),
+                activeIcon: Icon(Icons.lightbulb_rounded, size: 24),
+                label: 'Insights',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_rounded),
+                activeIcon: Icon(Icons.person_rounded, size: 24),
+                label: 'Profile',
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history_rounded),
-            label: 'Riwayat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.lightbulb_rounded),
-            label: 'Insight',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'Profil',
-          ),
-        ],
+        ),
       ),
     );
   }

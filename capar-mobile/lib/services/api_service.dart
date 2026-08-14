@@ -175,6 +175,7 @@ class ApiService {
   static Future<dynamic> getAnalyzedSegments(String userId, {int limit = 100}) => _get('/analysis/segments/$userId?limit=$limit');
   static Future<dynamic> getRecentEvents(String userId, {int limit = 20}) => _get('/analysis/events/$userId?limit=$limit');
   static Future<dynamic> getEventDetails(String eventId) => _get('/analysis/events/details/$eventId');
+  static Future<dynamic> getTransitions(String userId) => _get('/analysis/transitions/$userId');
   static Future<dynamic> annotateEvent(String eventId, Map<String, dynamic> metadata) => _post('/analysis/events/$eventId/annotate', metadata);
   static Future<dynamic> updateEventStatus(String eventId, String status) => _patch('/analysis/events/$eventId/status', {'status': status});
   static Future<dynamic> validateEvent(String eventId, String label, String notes) => _patch('/analysis/events/$eventId/validate', {'label': label, 'notes': notes});

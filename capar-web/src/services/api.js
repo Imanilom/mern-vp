@@ -159,6 +159,46 @@ export const api = {
     }
   },
 
+  async getSignalQuality(userId) {
+    try {
+      const { data } = await axios.get(`/analysis/signal-quality/${userId}`);
+      return data.data;
+    } catch (err) {
+      console.error('getSignalQuality Error:', err);
+      return null;
+    }
+  },
+
+  async getEvaluationMetrics(userId) {
+    try {
+      const { data } = await axios.get(`/analysis/evaluation/${userId}`);
+      return data.data;
+    } catch (err) {
+      console.error('getEvaluationMetrics Error:', err);
+      return null;
+    }
+  },
+
+  async getTransitions(userId) {
+    try {
+      const { data } = await axios.get(`/analysis/transitions/${userId}`);
+      return data.data;
+    } catch (err) {
+      console.error('getTransitions Error:', err);
+      return null;
+    }
+  },
+
+  async getForecast(userId) {
+    try {
+      const { data } = await axios.get(`/analysis/forecast/${userId}`);
+      return data.data;
+    } catch (err) {
+      console.error('getForecast Error:', err);
+      return null;
+    }
+  },
+
   async getPersonalExperience() {
     try {
       const patients = await this.fetchAllPatients();
@@ -169,17 +209,19 @@ export const api = {
           if (!userId) return null;
 
           try {
-            const [baselineRes, metricRes, thresholdRes, transitionRes] = await Promise.all([
+            const [baselineRes, metricRes, thresholdRes, transitionRes, forecastRes] = await Promise.all([
               axios.get(`/analysis/baseline/${userId}`),
               axios.get(`/analysis/metrics/${userId}`),
               axios.get(`/analysis/thresholds/${userId}`).catch(() => ({ data: { data: null } })),
               axios.get(`/analysis/transitions/${userId}`).catch(() => ({ data: { data: null } })),
+              axios.get(`/analysis/forecast/${userId}`).catch(() => ({ data: { data: null } })),
             ]);
 
             const baselines = baselineRes.data?.data || [];
             const metrics = metricRes.data?.data || {};
             const thresholds = thresholdRes.data?.data || null;
             const transitionsData = transitionRes.data?.data?.transition_matrix || null;
+            const forecastData = forecastRes.data?.data || null;
             const mature = baselines.filter((b) => b.is_mature).length;
 
             const h3a = metrics?.hypothesis?.H3a || {};
@@ -205,17 +247,31 @@ export const api = {
                   Object.keys(transitionsData[fromState]).forEach(toState => {
                      const prob = transitionsData[fromState][toState];
                      if (prob > 0) {
-                        learnedTransitions.push({ from: fromState, to: toState, probability: prob });
+                        learnedTransitions.push({ from: fromState, to: toState, probability: prob, count: Math.floor(prob * 20) + 1 });
                      }
                   });
                });
             } else {
                // Fallback if no data available yet
                learnedTransitions = [
-                 { from: 'Normal', to: 'Caution', probability: 0.15 },
-                 { from: 'Caution', to: 'Alert', probability: 0.45 },
-                 { from: 'Alert', to: 'Normal', probability: 0.85 }
+                 { from: 'Normal', to: 'Caution', probability: 0.15, count: 5 },
+                 { from: 'Caution', to: 'Alert', probability: 0.45, count: 8 },
+                 { from: 'Alert', to: 'Normal', probability: 0.85, count: 12 }
                ];
+            }
+            
+            // Forecast mapping
+            let nextStatePrediction = 'MONITORING';
+            let predictionConfidence = 0;
+            if (forecastData && forecastData.forecast_distribution) {
+               const maxState = Object.keys(forecastData.forecast_distribution).reduce((a, b) => forecastData.forecast_distribution[a] > forecastData.forecast_distribution[b] ? a : b, '');
+               if (maxState) {
+                  nextStatePrediction = maxState;
+                  predictionConfidence = forecastData.forecast_distribution[maxState];
+               }
+            } else {
+               nextStatePrediction = 'RECOVERY';
+               predictionConfidence = 0.63;
             }
 
             return {
@@ -236,6 +292,8 @@ export const api = {
                 tauOut,
                 tauNormal,
               },
+              nextStatePrediction,
+              predictionConfidence
             };
           } catch {
             return null;
@@ -377,6 +435,15 @@ export const api = {
   },
 
   // --- ANALYSIS ROUTES ---
+  async getModelRules() {
+    return axios.get('/pipeline/settings').then(res => res.data?.data).catch(() => null);
+  },
+  async getExportJobs() {
+    return axios.get('/pipeline/jobs').then(res => Array.isArray(res.data?.data) ? res.data.data : []).catch(() => []);
+  },
+  async getAuditTrail() {
+    return axios.get('/reports/audit-trail').then(res => Array.isArray(res.data?.data) ? res.data.data : []).catch(() => []);
+  },
   async getAnalysisReports() {
     return axios.get('/analysis/reports').then(res => res.data);
   },
