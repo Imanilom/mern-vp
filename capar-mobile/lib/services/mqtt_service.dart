@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import '../../shared/models/models.dart';
-import '../notifications/notification_service.dart';
+import 'notifications/notification_service.dart';
 
 class MqttService extends ChangeNotifier {
   MqttServerClient? _client;

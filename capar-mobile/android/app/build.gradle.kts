@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.capar.research.capar_mobile"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

@@ -9,6 +9,12 @@ class ApiService {
     return 'http://10.0.2.2:3030/api';
   }
 
+  static Future<bool> login(String email, String password) async {
+    // Dummy login implementation
+    await Future.delayed(const Duration(seconds: 1));
+    return email.isNotEmpty && password.isNotEmpty;
+  }
+
   // Health check
   static Future<bool> checkHealth() async {
     try {

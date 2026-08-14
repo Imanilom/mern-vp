@@ -9,6 +9,7 @@ import 'screens/journey/journey_screen.dart';
 import 'screens/onboarding/baseline_readiness_screen.dart';
 import 'screens/onboarding/consent_screen.dart';
 import 'screens/onboarding/device_pairing_screen.dart';
+import 'screens/onboarding/login_screen.dart';
 import 'screens/onboarding/splash_transition_screen.dart';
 import 'screens/onboarding/welcome_screen.dart';
 import 'screens/profile/profile_screen.dart';
@@ -46,6 +47,7 @@ class CaparMobileApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
+        '/login': (context) => const LoginScreen(),
         '/consent': (context) => const ConsentScreen(),
         '/pairing': (context) => const DevicePairingScreen(),
         '/baseline': (context) => const BaselineReadinessScreen(),

@@ -172,7 +172,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/consent');
+                      Navigator.pushNamed(context, '/login');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,

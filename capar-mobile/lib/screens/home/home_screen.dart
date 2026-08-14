@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../services/api_service.dart';
+import '../../services/telemetry_controller.dart';
+import '../../services/ble_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/evidence_chip.dart';
 import '../ema/ema_dialogs.dart';
 
 enum HomeStateMode { evaluable, qualityWarning, uncertainContext, candidate, persistent, recovery, recovered }
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   HomeStateMode currentMode = HomeStateMode.evaluable;
   bool isSyncing = false;
 
@@ -43,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildQuickContextCheckInBar(),
+              _buildStreamingStatusBar(),
               const SizedBox(height: 14),
 
               // Animated Active State Content View
@@ -96,66 +100,57 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 
-  Widget _buildQuickContextCheckInBar() {
+  Widget _buildStreamingStatusBar() {
+    final telemetry = ref.watch(telemetryControllerProvider);
+    final readingAsync = ref.watch(currentSensorReadingProvider);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: telemetry.isStreaming ? AppColors.tealSoft : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: telemetry.isStreaming ? AppColors.teal : AppColors.line),
       ),
       child: Row(
         children: [
-          const Icon(Icons.touch_app_rounded, size: 16, color: AppColors.teal),
-          const SizedBox(width: 8),
-          const Text(
-            'Konteks:',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.navy),
+          Icon(
+            telemetry.isStreaming ? Icons.rss_feed_rounded : Icons.sensors_off_rounded,
+            size: 20,
+            color: telemetry.isStreaming ? AppColors.teal : AppColors.gray,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildContextPill('🛋️ Duduk'),
-                  _buildContextPill('🚶‍♂️ Berjalan'),
-                  _buildContextPill('💻 Bekerja'),
-                  _buildContextPill('🏃‍♂️ Olahraga'),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  telemetry.isStreaming ? 'Streaming Aktif' : 'Streaming Tidak Aktif',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: telemetry.isStreaming ? AppColors.teal : AppColors.gray,
+                  ),
+                ),
+                if (telemetry.isStreaming)
+                  readingAsync.when(
+                    data: (reading) => Text(
+                      'HR: ${reading.heartRate} bpm | RMSSD: ${reading.rmssd} ms',
+                      style: const TextStyle(fontSize: 11, color: AppColors.navy),
+                    ),
+                    loading: () => const Text('Menerima data...', style: TextStyle(fontSize: 11, color: AppColors.navy)),
+                    error: (_, __) => const Text('Error membaca sensor', style: TextStyle(fontSize: 11, color: Colors.red)),
+                  ),
+              ],
             ),
           ),
+          if (telemetry.isStreaming)
+            TextButton(
+              onPressed: () {
+                ref.read(telemetryControllerProvider).stopStreaming();
+              },
+              child: const Text('Hentikan', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+            )
         ],
-      ),
-    );
-  }
-
-  Widget _buildContextPill(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: InkWell(
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✓ Konteks dikonfirmasi: $label'),
-              backgroundColor: AppColors.teal,
-              duration: const Duration(seconds: 1),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppColors.graySoft,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.navy),
-          ),
-        ),
       ),
     );
   }
