@@ -5,12 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'api_service.dart';
-import 'ble_service.dart';
-import 'rmq_service.dart';
 
 // Global background entry point
 @pragma('vm:entry-point')
@@ -70,7 +67,7 @@ void onStart(ServiceInstance service) async {
           readings: fakeReadings
         );
       } catch (e) {
-        print("Dummy Background API Error: $e");
+        debugPrint("Dummy Background API Error: $e");
       }
     });
   } else {

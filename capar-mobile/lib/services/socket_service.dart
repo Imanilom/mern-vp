@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 import '../screens/ema/ema_dialogs.dart';
 
 class SocketService {
-  static IO.Socket? _socket;
+  static io.Socket? _socket;
   static Function(Map<String, dynamic>)? onStateUpdated;
   static BuildContext? _appContext;
 
@@ -17,7 +17,7 @@ class SocketService {
     final userId = prefs.getString('user_id');
 
     // Connect to the backend
-    _socket = IO.io(ApiService.baseUrl.replaceAll('/api', ''), IO.OptionBuilder()
+    _socket = io.io(ApiService.baseUrl.replaceAll('/api', ''), io.OptionBuilder()
       .setTransports(['websocket'])
       .disableAutoConnect()
       .build()
@@ -26,7 +26,7 @@ class SocketService {
     _socket?.connect();
 
     _socket?.onConnect((_) {
-      print('Socket connected');
+      debugPrint('Socket connected');
       if (userId != null) {
         _socket?.emit('join_room', 'user_$userId');
       }
@@ -41,13 +41,13 @@ class SocketService {
 
     // Listen for RMQ Mobile Notifications forwarded by Socket.io
     _socket?.on('notification', (data) {
-      print('Received notification: $data');
+      debugPrint('Received notification: $data');
       if (_appContext != null) {
         _showNotificationDialog(data);
       }
     });
 
-    _socket?.onDisconnect((_) => print('Socket disconnected'));
+    _socket?.onDisconnect((_) => debugPrint('Socket disconnected'));
   }
 
   static void _showNotificationDialog(dynamic data) {
@@ -83,7 +83,7 @@ class SocketService {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Mengerti', style: const TextStyle(color: Colors.teal)),
+            child: const Text('Mengerti', style: TextStyle(color: Colors.teal)),
           )
         ],
       ),

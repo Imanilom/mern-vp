@@ -131,15 +131,4 @@ class JourneyScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildContextJourneyRow(String title, String pct, String statusLabel, double value, Color color) {
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildMissionItem(String title, String count, bool isDone) {
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildBadgeCard(String title, String desc, IconData icon, Color color) {
-    return const SizedBox.shrink();
-  }
 }

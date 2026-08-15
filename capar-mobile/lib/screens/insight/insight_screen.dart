@@ -88,58 +88,5 @@ class _InsightScreenState extends State<InsightScreen> {
     );
   }
 
-  Widget _buildParamRow(String param, String val, String source) {
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildProbBar(String label, double val, Color barColor, String pctText) {
-    return const SizedBox.shrink();
-  }
-}
-
-class _ThresholdRangeBand extends StatelessWidget {
-  final double startFraction;
-  final double endFraction;
-
-  const _ThresholdRangeBand({
-    required this.startFraction,
-    required this.endFraction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final totalWidth = constraints.maxWidth;
-        final left = totalWidth * startFraction;
-        final width = totalWidth * (endFraction - startFraction);
-
-        return Container(
-          height: 8,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: AppColors.graySoft,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                left: left,
-                width: width,
-                top: 0,
-                bottom: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.teal,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }
 
