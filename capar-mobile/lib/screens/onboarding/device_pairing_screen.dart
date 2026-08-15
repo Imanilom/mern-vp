@@ -196,10 +196,14 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
           itemCount: snapshot.data!.length,
           itemBuilder: (context, index) {
             final result = snapshot.data![index];
-            final name = result.device.platformName.isNotEmpty ? result.device.platformName : result.device.advName;
-            
-            // Only show Polar devices or devices with names for cleaner UI
-            if (name.isEmpty) return const SizedBox.shrink();
+            final advName = result.advertisementData.advName;
+            final platformName = result.device.platformName;
+
+            String name = platformName.isNotEmpty
+                ? platformName
+                : (advName.isNotEmpty
+                    ? advName
+                    : "Polar H10 Sensor (${result.device.remoteId.str.replaceAll(':', '').substring(0, 4)})");
 
             return Card(
               color: AppColors.surface,

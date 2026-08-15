@@ -82,8 +82,11 @@ class MqttService extends ChangeNotifier {
         'readings': readings.map((r) => {
           'timestamp': r.timestamp.millisecondsSinceEpoch ~/ 1000,
           'hr': r.heartRate,
+          'heart_rate': r.heartRate,
           'rr': r.rrInterval,
+          'rr_interval': r.rrInterval,
           'rrms': r.rmssd,
+          'rmssd': r.rmssd,
           'activity': r.motionState,
           'battery': r.battery,
           'signal_quality': r.signalQuality,

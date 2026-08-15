@@ -38,22 +38,38 @@ class BleService extends ChangeNotifier {
 
   Future<void> startScan() async {
     try {
-      final scanGranted = await Permission.bluetoothScan.request().isGranted;
-      final connectGranted = await Permission.bluetoothConnect.request().isGranted;
-      final locationGranted = await Permission.location.request().isGranted;
-
-      if (scanGranted && connectGranted && locationGranted) {
-        await FlutterBluePlus.startScan(
-          timeout: const Duration(seconds: 15),
-        );
-      } else {
-        // Fallback for older Android versions or if permissions are partially granted
-        await FlutterBluePlus.startScan(
-          timeout: const Duration(seconds: 15),
-        );
+      // Check bluetooth adapter state
+      final adapterState = await FlutterBluePlus.adapterState.first;
+      if (adapterState != BluetoothAdapterState.on) {
+        debugPrint("Bluetooth adapter is off");
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          try {
+            await FlutterBluePlus.turnOn();
+          } catch (_) {}
+        }
       }
+
+      await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+        Permission.location,
+      ].request();
+
+      // Stop any active scan first
+      await FlutterBluePlus.stopScan();
+
+      // Start scan with Heart Rate service Guid filter (0x180D) and fallback to general scan
+      await FlutterBluePlus.startScan(
+        withServices: [Guid("180d")],
+        timeout: const Duration(seconds: 15),
+      );
     } catch (e) {
-      debugPrint("Error starting BLE scan: $e");
+      debugPrint("Error starting BLE scan with service filter, trying general scan: $e");
+      try {
+        await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+      } catch (err) {
+        debugPrint("Error in fallback BLE scan: $err");
+      }
     }
   }
 
@@ -69,10 +85,11 @@ class BleService extends ChangeNotifier {
   Future<bool> connectToDevice(BluetoothDevice device) async {
     try {
       await disconnect();
-      
-      await device.connect(autoConnect: false, timeout: const Duration(seconds: 10));
+      await stopScan();
+
+      await device.connect(autoConnect: false, timeout: const Duration(seconds: 12));
       _connectedDevice = device;
-      
+
       // Listen to connection state changes
       _connSubscription = device.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected) {
@@ -83,7 +100,7 @@ class BleService extends ChangeNotifier {
       // Discover services
       List<BluetoothService> services = await device.discoverServices();
       BluetoothCharacteristic? hrChar;
-      
+
       for (var service in services) {
         final sUuid = service.uuid.toString().toLowerCase();
         if (sUuid.contains("180d")) {
@@ -116,16 +133,16 @@ class BleService extends ChangeNotifier {
         deviceName = device.platformName.isNotEmpty
             ? device.platformName
             : (device.advName.isNotEmpty ? device.advName : "Polar H10");
-        batteryLevel = 95; 
+        batteryLevel = 95;
         signalQuality = 98;
         if (!_isDisposed) notifyListeners();
 
-        // Enable notifications/indications on characteristic
-        await hrChar.setNotifyValue(true);
-        _hrSubscription = hrChar.lastValueStream.listen((data) {
+        // Listen to notifications on heart rate characteristic
+        _hrSubscription = hrChar.onValueReceived.listen((data) {
           _parseHeartRateMeasurement(data);
         });
-        
+        await hrChar.setNotifyValue(true);
+
         return true;
       }
     } catch (e) {
