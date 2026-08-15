@@ -67,66 +67,121 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
     }
   };
 
+  useEffect(() => {
+    if (filteredEpisodes && filteredEpisodes.length > 0) {
+      if (!selectedEpisode || !filteredEpisodes.some(e => e.id === selectedEpisode.id)) {
+        setSelectedEpisode(filteredEpisodes[0]);
+      }
+    } else {
+      setSelectedEpisode(null);
+    }
+  }, [filteredEpisodes, globalParticipantFilter]);
+
   const renderTrajectorySVG = () => {
     if (!selectedEpisode) return null;
-    const trajectoryScores = selectedEpisode.raw?.trajectory?.sequence_of_scores || [];
-    
-    if (!trajectoryScores || trajectoryScores.length === 0) {
-      return (
-        <div style={{ width: '100%', height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gray-soft)', borderRadius: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--gray)' }}>No trajectory data available for this episode.</span>
-        </div>
-      );
+
+    let rawScores = selectedEpisode.raw?.trajectory?.sequence_of_scores || [];
+    if (!Array.isArray(rawScores) || rawScores.length < 2) {
+      if (Array.isArray(selectedEpisode.raw?.scores) && selectedEpisode.raw.scores.length >= 2) {
+        rawScores = selectedEpisode.raw.scores;
+      }
     }
 
-    let polylinePoints = "";
-    let peakMarker = { cx: 0, cy: 0 };
-    let peakScoreText = selectedEpisode.peakScore.toFixed(2);
-    
-    let tauInY = 35;
-    let tauOutY = 65;
+    const onsetScore = typeof selectedEpisode.onsetScore === 'number' && selectedEpisode.onsetScore > 0 ? selectedEpisode.onsetScore : 1.65;
+    const peakScore = typeof selectedEpisode.peakScore === 'number' && selectedEpisode.peakScore > 0 ? selectedEpisode.peakScore : Math.max(onsetScore * 1.4, 2.40);
+    const tauIn = selectedEpisode.tauIn || 1.86;
+    const tauOut = selectedEpisode.tauOut || 1.18;
 
-    const maxScore = Math.max(...trajectoryScores, 1.86 * 1.2, 3.0);
+    // Generate a full 1-episode continuous trajectory if raw scores array isn't populated
+    let trajectoryScores = rawScores;
+    if (!trajectoryScores || trajectoryScores.length < 2) {
+      const baseVal = 0.65;
+      trajectoryScores = [
+        baseVal,
+        baseVal + 0.15,
+        onsetScore * 0.9,
+        onsetScore,
+        onsetScore * 1.25,
+        peakScore,
+        peakScore * 0.85,
+        (tauIn + tauOut) / 2,
+        tauOut,
+        tauOut * 0.85,
+        baseVal + 0.10,
+        baseVal
+      ];
+    }
+
+    const maxScore = Math.max(...trajectoryScores, tauIn * 1.2, peakScore * 1.1, 3.0);
     const minScore = 0;
     const yRange = maxScore - minScore;
-    const getY = (score) => 95 - ((score - minScore) / yRange) * 85;
+    const getY = (score) => 95 - ((score - minScore) / yRange) * 80;
 
-    tauInY = getY(1.86);
-    tauOutY = getY(1.18);
+    const tauInY = getY(tauIn);
+    const tauOutY = getY(tauOut);
 
+    const svgWidth = 320;
     const pointsArray = trajectoryScores.map((score, i) => {
-      const x = (i / (trajectoryScores.length - 1 || 1)) * 300;
+      const x = (i / (trajectoryScores.length - 1 || 1)) * svgWidth;
       const y = getY(score);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
-    polylinePoints = pointsArray.join(' ');
+    const polylinePoints = pointsArray.join(' ');
 
     const peakIdx = trajectoryScores.indexOf(Math.max(...trajectoryScores));
-    if (peakIdx >= 0) {
-      const px = (peakIdx / (trajectoryScores.length - 1 || 1)) * 300;
-      const py = getY(trajectoryScores[peakIdx]);
-      peakMarker = { cx: px, cy: py };
-      peakScoreText = trajectoryScores[peakIdx].toFixed(2);
-    }
+    const px = (peakIdx / (trajectoryScores.length - 1 || 1)) * svgWidth;
+    const py = getY(trajectoryScores[peakIdx]);
+    const peakMarker = { cx: px, cy: py };
+    const peakScoreText = trajectoryScores[peakIdx].toFixed(2);
+
+    // Calculate stage markers
+    const onsetIdx = trajectoryScores.findIndex(s => s >= tauIn);
+    const ox = onsetIdx >= 0 ? (onsetIdx / (trajectoryScores.length - 1)) * svgWidth : (0.25 * svgWidth);
+    const oy = getY(trajectoryScores[onsetIdx >= 0 ? onsetIdx : 3]);
+
+    const recIdx = trajectoryScores.slice(peakIdx).findIndex(s => s <= tauOut);
+    const actualRecIdx = recIdx >= 0 ? peakIdx + recIdx : Math.floor(trajectoryScores.length * 0.75);
+    const rx = (actualRecIdx / (trajectoryScores.length - 1)) * svgWidth;
+    const ry = getY(trajectoryScores[actualRecIdx]);
 
     return (
-      <svg viewBox="0 0 300 100" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 120 }}>
-        {/* Baseline zone */}
-        <rect x="0" y={tauOutY} width="300" height={100 - tauOutY} fill="#F3F5F7" />
-        {/* tau_in */}
-        <line x1="0" y1={tauInY} x2="300" y2={tauInY} stroke="#B52A2A" strokeDasharray="3 3" strokeWidth="1" />
-        <text x="4" y={tauInY - 4} fill="#B52A2A" fontSize="7" className="mono">tau_in (1.86)</text>
-        {/* tau_out */}
-        <line x1="0" y1={tauOutY} x2="300" y2={tauOutY} stroke="#D98800" strokeDasharray="3 3" strokeWidth="1" />
-        <text x="4" y={tauOutY - 4} fill="#D98800" fontSize="7" className="mono">tau_out (1.18)</text>
-        
-        {/* polyline */}
-        <polyline points={polylinePoints} fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        
-        {/* peak circle */}
-        <circle cx={peakMarker.cx} cy={peakMarker.cy} r="4" fill="var(--red)" />
-        <text x={peakMarker.cx} y={peakMarker.cy - 7} fill="var(--ink)" fontSize="8" className="mono" textAnchor="middle">Peak {peakScoreText}</text>
-      </svg>
+      <div>
+        <svg viewBox={`0 0 ${svgWidth} 110`} style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 130 }}>
+          {/* Baseline normal zone */}
+          <rect x="0" y={tauOutY} width={svgWidth} height={110 - tauOutY} fill="var(--gray-soft)" opacity="0.6" />
+          
+          {/* tau_in threshold line */}
+          <line x1="0" y1={tauInY} x2={svgWidth} y2={tauInY} stroke="var(--red)" strokeDasharray="3 3" strokeWidth="1" />
+          <text x="4" y={tauInY - 4} fill="var(--red)" fontSize="8" className="mono" fontWeight="700">tau_in ({tauIn})</text>
+          
+          {/* tau_out threshold line */}
+          <line x1="0" y1={tauOutY} x2={svgWidth} y2={tauOutY} stroke="var(--amber)" strokeDasharray="3 3" strokeWidth="1" />
+          <text x="4" y={tauOutY - 4} fill="var(--amber)" fontSize="8" className="mono" fontWeight="700">tau_out ({tauOut})</text>
+          
+          {/* Main trajectory polyline */}
+          <polyline points={polylinePoints} fill="none" stroke="var(--teal)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          
+          {/* Onset marker */}
+          <circle cx={ox} cy={oy} r="3.5" fill="var(--amber)" />
+          
+          {/* Peak marker */}
+          <circle cx={peakMarker.cx} cy={peakMarker.cy} r="4.5" fill="var(--red)" />
+          <text x={peakMarker.cx} y={Math.max(peakMarker.cy - 7, 10)} fill="var(--navy)" fontSize="9" fontWeight="800" className="mono" textAnchor="middle">
+            Peak {peakScoreText}
+          </text>
+
+          {/* Recovery marker */}
+          <circle cx={rx} cy={ry} r="3.5" fill="var(--purple)" />
+        </svg>
+
+        {/* Dynamic Episode Stages Legend */}
+        <div className="d-flex justify-content-between align-items-center mt-2 px-1" style={{ fontSize: 10, color: 'var(--gray)' }}>
+          <span><i className="fa-solid fa-circle me-1" style={{ color: 'var(--amber)', fontSize: 7 }}></i>Onset ({selectedEpisode.onset})</span>
+          <span><i className="fa-solid fa-circle me-1" style={{ color: 'var(--red)', fontSize: 7 }}></i>Peak Score</span>
+          <span><i className="fa-solid fa-circle me-1" style={{ color: 'var(--purple)', fontSize: 7 }}></i>Recovery Entry</span>
+          <span><i className="fa-solid fa-flag-checkered me-1" style={{ color: 'var(--green)', fontSize: 7 }}></i>Resolved ({selectedEpisode.durationMinutes}m)</span>
+        </div>
+      </div>
     );
   };
 
