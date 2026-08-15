@@ -13,22 +13,30 @@ import {
 
 export const ExperienceView = ({ experienceModels, globalParticipantFilter }) => {
   const filteredModels = (experienceModels || []).filter(model => {
-    if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && model.participantId && model.participantId !== globalParticipantFilter) return false;
+    if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && model.participantId !== globalParticipantFilter && model.id !== globalParticipantFilter) return false;
     return true;
   });
 
-  const [selectedModel, setSelectedModel] = useState(filteredModels?.[0] || null);
+  const [selectedModel, setSelectedModel] = useState(null);
 
   useEffect(() => {
-    if (filteredModels && filteredModels.length > 0 && !selectedModel) {
-      setSelectedModel(filteredModels[0]);
+    if (filteredModels && filteredModels.length > 0) {
+      if (!selectedModel || !filteredModels.some(m => m.id === selectedModel.id || m.participantId === selectedModel.participantId)) {
+        setSelectedModel(filteredModels[0]);
+      }
+    } else {
+      setSelectedModel(null);
     }
-  }, [filteredModels, selectedModel]);
+  }, [filteredModels, globalParticipantFilter]);
+
   const [isLearningFrozen, setIsLearningFrozen] = useState(false);
 
   useEffect(() => {
     console.log('[ExperienceView] API Data (Personal Experience Models):', experienceModels);
   }, [experienceModels]);
+
+  const confScorePct = Math.round((selectedModel?.confidenceScore ?? 0) * ((selectedModel?.confidenceScore ?? 0) <= 1 ? 100 : 1));
+  const predConfPct = Math.round((selectedModel?.predictionConfidence ?? 0) * ((selectedModel?.predictionConfidence ?? 0) <= 1 ? 100 : 1));
 
   return (
     <div>
@@ -56,29 +64,29 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div className="stat-card">
           <div className="lbl">Resolved Episodes Memory</div>
-          <div className="val">{selectedModel?.resolvedEpisodesCount || 12}</div>
-          <div className="sub">P-014 context: sitting</div>
+          <div className="val">{selectedModel?.resolvedEpisodesCount ?? 0}</div>
+          <div className="sub">Participant: {selectedModel?.participantId || (globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'All')}</div>
         </div>
 
         <div className="stat-card">
           <div className="lbl">Median Recovery Duration</div>
           <div className="val" style={{ color: 'var(--purple)' }}>
-            {selectedModel?.medianRecoveryMinutes || 18} <span style={{ fontSize: 14 }}>min</span>
+            {selectedModel?.medianRecoveryMinutes ?? 0} <span style={{ fontSize: 14 }}>min</span>
           </div>
-          <div className="sub">P25: {selectedModel?.p25RecoveryMinutes || 11}m · P75: {selectedModel?.p75RecoveryMinutes || 27}m</div>
+          <div className="sub">P25: {selectedModel?.p25RecoveryMinutes ?? 0}m · P75: {selectedModel?.p75RecoveryMinutes ?? 0}m</div>
         </div>
 
         <div className="stat-card">
           <div className="lbl">Recovery Phenotype</div>
           <div className="val" style={{ fontSize: 18, color: 'var(--navy)' }}>
-            {selectedModel?.phenotype || 'Moderate Profile'}
+            {selectedModel?.phenotype ?? 'No Data'}
           </div>
-          <div className="sub">Confidence: {((selectedModel?.confidenceScore || 0.85) * 100).toFixed(0)}%</div>
+          <div className="sub">Confidence: {confScorePct}%</div>
         </div>
 
         <div className="stat-card">
           <div className="lbl">Next State Prediction</div>
-          <div className="val" style={{ color: 'var(--teal)' }}>{selectedModel?.nextStatePrediction || 'RECOVERY'} ({((selectedModel?.predictionConfidence || 0.63) * 100).toFixed(0)}%)</div>
+          <div className="val" style={{ color: 'var(--teal)' }}>{selectedModel?.nextStatePrediction ?? 'BASELINE_COMPATIBLE'} ({predConfPct}%)</div>
           <div className="sub">Horizon +3 windows (~15m)</div>
         </div>
       </div>
@@ -91,39 +99,45 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
               <div className="mini-label">Markov Transition Model</div>
               <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--navy)' }}>Learned Transition Matrix Heatmap</div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--gray)' }}>n=12 episodes</div>
+            <div style={{ fontSize: 11, color: 'var(--gray)' }}>n={selectedModel?.resolvedEpisodesCount ?? 0} episodes</div>
           </div>
 
           <div className="table-responsive">
-            <table className="dtable" style={{ marginBottom: 14 }}>
-              <thead>
-                <tr>
-                  <th>From State</th>
-                  <th>To Target State</th>
-                  <th>Probability</th>
-                  <th>Transitions (n)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedModel?.learnedTransitions?.map((tr, idx) => (
-                  <tr key={idx}>
-                    <td className="mono" style={{ fontWeight: 700 }}>{tr.from}</td>
-                    <td className="mono" style={{ fontWeight: 700, color: 'var(--teal)' }}>{tr.to}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div className="progress-thin" style={{ flex: 1 }}>
-                          <div style={{ width: `${tr.probability * 100}%`, background: tr.probability > 0.5 ? 'var(--teal)' : 'var(--gray)' }} />
-                        </div>
-                        <span className="mono" style={{ fontWeight: 800, minWidth: 45 }}>
-                          {(tr.probability * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="mono">{tr.count} events</td>
+            {selectedModel?.learnedTransitions && selectedModel.learnedTransitions.length > 0 ? (
+              <table className="dtable" style={{ marginBottom: 14 }}>
+                <thead>
+                  <tr>
+                    <th>From State</th>
+                    <th>To Target State</th>
+                    <th>Probability</th>
+                    <th>Transitions (n)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {selectedModel.learnedTransitions.map((tr, idx) => (
+                    <tr key={idx}>
+                      <td className="mono" style={{ fontWeight: 700 }}>{tr.from}</td>
+                      <td className="mono" style={{ fontWeight: 700, color: 'var(--teal)' }}>{tr.to}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div className="progress-thin" style={{ flex: 1 }}>
+                            <div style={{ width: `${(tr.probability * 100).toFixed(0)}%`, background: tr.probability > 0.5 ? 'var(--teal)' : 'var(--gray)' }} />
+                          </div>
+                          <span className="mono" style={{ fontWeight: 800, minWidth: 45 }}>
+                            {(tr.probability * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="mono">{tr.count} events</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--gray)', fontSize: 12 }}>
+                Belum ada matriks transisi (Markov Model) yang dipelajari untuk partisipan ini.
+              </div>
+            )}
           </div>
 
           <div style={{ fontSize: 11, color: 'var(--gray)', background: 'var(--gray-soft)', padding: 10, borderRadius: 8 }}>
@@ -145,7 +159,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
                 <div style={{ fontSize: 10.5, color: 'var(--gray)' }}>Personal Q99 deviation percentile</div>
               </div>
               <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--red)' }}>
-                {selectedModel?.adaptiveThresholds?.tauIn || 1.86}
+                {selectedModel?.adaptiveThresholds?.tauIn ?? '1.50'}
               </div>
             </div>
 
@@ -155,7 +169,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
                 <div style={{ fontSize: 10.5, color: 'var(--gray)' }}>Personal learned hysteresis boundary</div>
               </div>
               <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--amber)' }}>
-                {selectedModel?.adaptiveThresholds?.tauOut || 1.18}
+                {selectedModel?.adaptiveThresholds?.tauOut ?? '1.00'}
               </div>
             </div>
 
@@ -165,7 +179,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
                 <div style={{ fontSize: 10.5, color: 'var(--gray)' }}>Rule config default upper bound</div>
               </div>
               <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--green)' }}>
-                {selectedModel?.adaptiveThresholds?.tauNormal || 0.80}
+                {selectedModel?.adaptiveThresholds?.tauNormal ?? '0.70'}
               </div>
             </div>
           </div>
@@ -173,8 +187,8 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
             <div className="mini-label" style={{ marginBottom: 6 }}>Model Governance &amp; Version</div>
             <div style={{ fontSize: 11.5, color: 'var(--ink)' }}>
-              <div>Experience Model Version: <b className="mono">EXP-0.6</b></div>
-              <div>Last calibrated: <b>2026-08-08 09:00 WIB</b></div>
+              <div>Threshold Source: <b className="mono">{selectedModel?.thresholdSource || 'CAPAR Rule Default'}</b></div>
+              <div>Stable Score Memory: <b>{selectedModel?.stableScoreCount ?? 0} windows</b></div>
               <div>Audit status: <span className="chip-green" style={{ fontSize: 9, padding: '2px 6px' }}>VERSIONED &amp; AUDITED</span></div>
             </div>
           </div>

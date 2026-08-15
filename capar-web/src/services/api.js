@@ -210,8 +210,8 @@ export const api = {
 
           try {
             const [baselineRes, metricRes, thresholdRes, transitionRes, forecastRes] = await Promise.all([
-              axios.get(`/analysis/baseline/${userId}`),
-              axios.get(`/analysis/metrics/${userId}`),
+              axios.get(`/analysis/baseline/${userId}`).catch(() => ({ data: { data: [] } })),
+              axios.get(`/analysis/metrics/${userId}`).catch(() => ({ data: { data: {} } })),
               axios.get(`/analysis/thresholds/${userId}`).catch(() => ({ data: { data: null } })),
               axios.get(`/analysis/transitions/${userId}`).catch(() => ({ data: { data: null } })),
               axios.get(`/analysis/forecast/${userId}`).catch(() => ({ data: { data: null } })),
@@ -230,58 +230,61 @@ export const api = {
 
             const avgRecMs = h3a.avg_recovery_ms || 0;
             const avgRecMin = avgRecMs > 0 ? Math.round(avgRecMs / 60000) : 0;
-            const confScore = classMetrics.f1 ? Math.round(classMetrics.f1 * 100) : (h1a.TCR ? Math.round(h1a.TCR * 100) : 85);
+            const confScore = classMetrics.f1 !== undefined ? Math.round(classMetrics.f1 * 100) : (h1a.TCR !== undefined ? Math.round(h1a.TCR * 100) : 0);
 
             // Real CAPAR-learned thresholds (Section 7.1)
             const globalTau = thresholds?.global_threshold || {};
-            const tauIn = globalTau.tau_in ?? 1.5;
-            const tauOut = globalTau.tau_out ?? 1.0;
-            const tauNormal = globalTau.tau_normal ?? 0.7;
+            const tauIn = globalTau.tau_in ?? 1.50;
+            const tauOut = globalTau.tau_out ?? 1.00;
+            const tauNormal = globalTau.tau_normal ?? 0.70;
             const tauSource = globalTau.source || 'configured';
             const stableScoreCount = globalTau.stable_score_count || 0;
 
             // Fetch Real transitions from backend (CAPAR Section 7.2)
             let learnedTransitions = [];
-            if (transitionsData) {
+            if (transitionsData && typeof transitionsData === 'object') {
                Object.keys(transitionsData).forEach(fromState => {
-                  Object.keys(transitionsData[fromState]).forEach(toState => {
-                     const prob = transitionsData[fromState][toState];
-                     if (prob > 0) {
-                        learnedTransitions.push({ from: fromState, to: toState, probability: prob, count: Math.floor(prob * 20) + 1 });
-                     }
-                  });
+                  if (typeof transitionsData[fromState] === 'object') {
+                     Object.keys(transitionsData[fromState]).forEach(toState => {
+                        const prob = transitionsData[fromState][toState];
+                        if (typeof prob === 'number' && prob > 0) {
+                           learnedTransitions.push({ from: fromState, to: toState, probability: prob, count: Math.round(prob * 20) || 1 });
+                        }
+                     });
+                  }
                });
-            } else {
-               // Fallback if no data available yet
-               learnedTransitions = [
-                 { from: 'Normal', to: 'Caution', probability: 0.15, count: 5 },
-                 { from: 'Caution', to: 'Alert', probability: 0.45, count: 8 },
-                 { from: 'Alert', to: 'Normal', probability: 0.85, count: 12 }
-               ];
             }
-            
-            // Forecast mapping
-            let nextStatePrediction = 'MONITORING';
+
+            // Forecast mapping from backend
+            let nextStatePrediction = 'BASELINE_COMPATIBLE';
             let predictionConfidence = 0;
-            if (forecastData && forecastData.forecast_distribution) {
-               const maxState = Object.keys(forecastData.forecast_distribution).reduce((a, b) => forecastData.forecast_distribution[a] > forecastData.forecast_distribution[b] ? a : b, '');
-               if (maxState) {
-                  nextStatePrediction = maxState;
-                  predictionConfidence = forecastData.forecast_distribution[maxState];
+            if (forecastData) {
+               if (forecastData.most_likely_next) {
+                  nextStatePrediction = forecastData.most_likely_next;
+               } else if (forecastData.next_state_probabilities) {
+                  const states = Object.keys(forecastData.next_state_probabilities);
+                  if (states.length > 0) {
+                     nextStatePrediction = states.reduce((a, b) => (forecastData.next_state_probabilities[a] > (forecastData.next_state_probabilities[b] || 0) ? a : b), states[0]);
+                  }
+               } else if (forecastData.current_state) {
+                  nextStatePrediction = forecastData.current_state;
                }
-            } else {
-               nextStatePrediction = 'RECOVERY';
-               predictionConfidence = 0.63;
+
+               if (forecastData.next_state_probabilities && forecastData.next_state_probabilities[nextStatePrediction] !== undefined) {
+                  predictionConfidence = forecastData.next_state_probabilities[nextStatePrediction];
+               } else if (forecastData.prediction_confidence !== undefined) {
+                  predictionConfidence = forecastData.prediction_confidence;
+               }
             }
 
             return {
               id: userId,
-              participantId: userId,
+              participantId: user.guid || user.name || userId,
               resolvedEpisodesCount: baselines.length || h3a.trajectory_event_count || 0,
-              medianRecoveryMinutes: avgRecMin || 15,
-              p25RecoveryMinutes: avgRecMin ? Math.round(avgRecMin * 0.7) : 10,
-              p75RecoveryMinutes: avgRecMin ? Math.round(avgRecMin * 1.3) : 25,
-              phenotype: mature > 0 ? 'Moderate Profile' : 'Learning Profile',
+              medianRecoveryMinutes: avgRecMin,
+              p25RecoveryMinutes: avgRecMin ? Math.round(avgRecMin * 0.7) : 0,
+              p75RecoveryMinutes: avgRecMin ? Math.round(avgRecMin * 1.3) : 0,
+              phenotype: mature > 0 ? 'Mature Profile' : (baselines.length > 0 ? 'Learning Profile' : 'No Data'),
               confidenceScore: confScore,
               learnedTransitions,
               thresholdSource: tauSource,

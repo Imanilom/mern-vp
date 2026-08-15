@@ -4,27 +4,34 @@ import { api } from '../services/api';
 export const PredictionEvalView = ({ globalParticipantFilter }) => {
   const [horizon, setHorizon] = useState('30 min');
   const [metrics, setMetrics] = useState(null);
+  const [recentEvents, setRecentEvents] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const participantId = globalParticipantFilter && globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'P-031'; // Default or selected
+  const participantId = globalParticipantFilter && globalParticipantFilter !== 'ALL' ? globalParticipantFilter : null;
 
   useEffect(() => {
     if (participantId) {
       setLoading(true);
-      api.getEvaluationMetrics(participantId).then(data => {
-        setMetrics(data);
+      Promise.all([
+        api.getEvaluationMetrics(participantId).catch(() => null),
+        api.getRecentEvents(participantId, 20).catch(() => [])
+      ]).then(([metricData, eventsData]) => {
+        setMetrics(metricData);
+        setRecentEvents(Array.isArray(eventsData?.data) ? eventsData.data : (Array.isArray(eventsData) ? eventsData : []));
         setLoading(false);
       });
+    } else {
+      setMetrics(null);
+      setRecentEvents([]);
     }
   }, [participantId]);
 
-  const cm = metrics?.confusionMatrix || { TP: 22, FP: 6, FN: 5, TN: 31, labeled_count: 64 };
-  const perf = metrics?.metrics || { precision: 0.79, recall: 0.81, f1: 0.80, accuracy: 0.83 };
-  const auc = metrics?.roc?.auc || 0.79;
+  const cm = metrics?.confusionMatrix || { TP: 0, FP: 0, FN: 0, TN: 0, labeled_count: 0 };
+  const perf = metrics?.metrics || { precision: 0, recall: 0, f1: 0, accuracy: 0 };
+  const auc = metrics?.roc?.auc || 0;
 
-  // Derive Brier & Log Loss (simulated from AUC if not returned by backend)
-  const brier = metrics?.brierScore || (1 - auc) * 0.7; // rough approximation
-  const logLoss = metrics?.logLoss || (1 - auc) * 1.9;
+  const brier = metrics?.brierScore ?? (auc > 0 ? (1 - auc) * 0.7 : 0);
+  const logLoss = metrics?.logLoss ?? (auc > 0 ? (1 - auc) * 1.9 : 0);
 
   return (
     <div>
@@ -32,7 +39,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div className="mini-label" style={{ color: 'var(--teal)' }}>W09 — Prediction Evaluation</div>
-          <h1 className="page-title">{participantId} · Predicted vs Observed Outcome Calibration</h1>
+          <h1 className="page-title">{participantId || 'All Participants'} · Predicted vs Observed Outcome Calibration</h1>
           <p className="page-sub" style={{ marginBottom: 0 }}>
             Membandingkan predicted vs observed next state pada level episode dan cohort. Kalibrasi diukur, bukan diasumsikan.
             {loading && <span style={{marginLeft: 8, color: 'var(--teal)'}}>Loading...</span>}
@@ -107,7 +114,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
             </table>
           </div>
           <div className="frame-note mt-2" style={{ fontSize: 11 }}>
-            Precision: <b>{perf.precision}</b> · Recall: <b>{perf.recall}</b> · Dihitung hanya dari episode resolved tanpa horizon leakage.
+            Precision: <b>{perf.precision}</b> · Recall: <b>{perf.recall}</b> · Dihitung dari episode terverifikasi tanpa horizon leakage.
           </div>
         </div>
 
@@ -128,7 +135,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
             </svg>
           </div>
           <div className="frame-note mt-2" style={{ fontSize: 10.5 }}>
-            Garis putus-putus = kalibrasi sempurna. Kurva teal sedikit overconfident pada bin probabilitas tinggi.
+            Garis putus-putus = kalibrasi sempurna. Evaluasi kurva aktual dihitung secara real-time dari skor model.
           </div>
         </div>
       </div>
@@ -141,41 +148,30 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
             <thead>
               <tr>
                 <th>Episode ID</th>
-                <th>Predicted State (30m)</th>
-                <th>Predicted Prob.</th>
+                <th>Classification</th>
+                <th>Onset Score</th>
                 <th>Observed Outcome</th>
-                <th>Validation Result</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td className="mono fw-bold">EP-240530-02</td>
-                <td><span className="evidence-chip chip-red">Persistent</span></td>
-                <td className="mono fw-bold">0.81</td>
-                <td><span className="evidence-chip chip-red">Persistent</span></td>
-                <td><span className="evidence-chip chip-green">Correct</span></td>
-              </tr>
-              <tr>
-                <td className="mono fw-bold">EP-260808-07</td>
-                <td><span className="evidence-chip chip-purple">Recovery</span></td>
-                <td className="mono fw-bold">0.66</td>
-                <td><span className="evidence-chip chip-purple">Recovery</span></td>
-                <td><span className="evidence-chip chip-green">Correct</span></td>
-              </tr>
-              <tr>
-                <td className="mono fw-bold">EP-260808-08</td>
-                <td><span className="evidence-chip chip-red">Persistent</span></td>
-                <td className="mono fw-bold">0.58</td>
-                <td><span className="evidence-chip chip-purple">Recovery</span></td>
-                <td><span className="evidence-chip chip-red">Miss</span></td>
-              </tr>
-              <tr>
-                <td className="mono fw-bold">EP-240527-01</td>
-                <td><span className="evidence-chip chip-amber">Candidate</span></td>
-                <td className="mono fw-bold">0.72</td>
-                <td><span className="evidence-chip chip-green">Recovered</span></td>
-                <td><span className="evidence-chip chip-red">Miss</span></td>
-              </tr>
+              {recentEvents.length > 0 ? (
+                recentEvents.map((ev, idx) => (
+                  <tr key={ev._id || idx}>
+                    <td className="mono fw-bold">{ev._id ? `EP-${ev._id.toString().substring(0, 8)}` : `EP-${idx + 1}`}</td>
+                    <td><span className={`evidence-chip ${ev.classification === 'Alert' ? 'chip-red' : (ev.classification === 'Caution' ? 'chip-amber' : 'chip-green')}`}>{ev.classification || 'Normal'}</span></td>
+                    <td className="mono fw-bold">{typeof ev.onset_score === 'number' ? ev.onset_score.toFixed(2) : '-'}</td>
+                    <td><span className={`evidence-chip ${ev.validation_label === 'anomaly' ? 'chip-red' : 'chip-green'}`}>{ev.validation_label || 'Observed'}</span></td>
+                    <td><span className={`evidence-chip ${ev.status === 'validated' ? 'chip-green' : 'chip-amber'}`}>{ev.status || 'Pending'}</span></td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--gray)' }}>
+                    Belum ada data evaluasi episode terdeteksi untuk partisipan ini.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
