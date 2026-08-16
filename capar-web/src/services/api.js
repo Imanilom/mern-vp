@@ -459,6 +459,9 @@ export const api = {
   async getEventDetails(eventId) {
     return axios.get(`/analysis/events/details/${eventId}`).then(res => res.data);
   },
+  async getEpisodeAnalysis(userId) {
+    return axios.get(`/analysis/episode-analysis/${userId}`).then(res => Array.isArray(res.data?.data) ? res.data.data : []);
+  },
   async annotateEvent(eventId, text, timestamp) {
     return axios.post(`/analysis/events/${eventId}/annotate`, { text, timestamp }).then(res => res.data);
   },

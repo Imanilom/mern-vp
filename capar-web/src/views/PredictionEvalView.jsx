@@ -5,6 +5,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
   const [horizon, setHorizon] = useState('30 min');
   const [metrics, setMetrics] = useState(null);
   const [recentEvents, setRecentEvents] = useState([]);
+  const [episodeAnalysis, setEpisodeAnalysis] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const participantId = globalParticipantFilter && globalParticipantFilter !== 'ALL' ? globalParticipantFilter : null;
@@ -14,15 +15,18 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
       setLoading(true);
       Promise.all([
         api.getEvaluationMetrics(participantId).catch(() => null),
-        api.getRecentEvents(participantId, 20).catch(() => [])
-      ]).then(([metricData, eventsData]) => {
+        api.getRecentEvents(participantId, 20).catch(() => []),
+        api.getEpisodeAnalysis(participantId).catch(() => [])
+      ]).then(([metricData, eventsData, epAnalysisData]) => {
         setMetrics(metricData);
         setRecentEvents(Array.isArray(eventsData?.data) ? eventsData.data : (Array.isArray(eventsData) ? eventsData : []));
+        setEpisodeAnalysis(epAnalysisData || []);
         setLoading(false);
       });
     } else {
       setMetrics(null);
       setRecentEvents([]);
+      setEpisodeAnalysis([]);
     }
   }, [participantId]);
 
@@ -169,6 +173,110 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--gray)' }}>
                     Belum ada data evaluasi episode terdeteksi untuk partisipan ini.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Comprehensive Episode Analysis Data Table */}
+      <div className="card-panel mt-4">
+        <div className="mini-label mb-2">Comprehensive Episode Analysis Data (E1-E6, Z1-Z4)</div>
+        <div className="table-responsive" style={{ maxHeight: 400, overflow: 'auto' }}>
+          <table className="dtable" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
+            <thead>
+              <tr>
+                <th style={{ position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1 }}>Time</th>
+                <th>Episode ID</th>
+                <th>Activity</th>
+                <th>Context</th>
+                <th>Evidence State</th>
+                <th>Physiological</th>
+                <th>Y True</th>
+                <th>Anom. Score</th>
+                <th>Latent Sev.</th>
+                <th>Tau In</th>
+                <th>Tau Out</th>
+                <th>Tau Normal</th>
+                <th>HR Mean</th>
+                <th>RMSSD</th>
+                <th>SDNN</th>
+                <th>DFA α1</th>
+                <th>Quality Gate</th>
+                <th>Pred E1</th>
+                <th>Result E1</th>
+                <th>Pred E2</th>
+                <th>Result E2</th>
+                <th>Pred E3</th>
+                <th>Result E3</th>
+                <th>Pred E4</th>
+                <th>Result E4</th>
+                <th>Pred E5</th>
+                <th>Result E5</th>
+                <th>Pred E6</th>
+                <th>Result E6</th>
+                <th>Z E1</th>
+                <th>Z E2</th>
+                <th>Z E3</th>
+                <th>Z E4</th>
+              </tr>
+            </thead>
+            <tbody>
+              {episodeAnalysis.length > 0 ? (
+                episodeAnalysis.map((ea, idx) => (
+                  <tr key={ea._id || idx}>
+                    <td style={{ position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1, fontWeight: 600 }}>
+                      {new Date(ea.start_time).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
+                    </td>
+                    <td className="mono">{ea.episode_id ? `EP-${ea.episode_id.toString().substring(0, 6)}` : '-'}</td>
+                    <td>{ea.activity || '-'}</td>
+                    <td>{ea.context || '-'}</td>
+                    <td><span className={`evidence-chip ${ea.evidence_state === 'ALERT' ? 'chip-red' : 'chip-amber'}`}>{ea.evidence_state || '-'}</span></td>
+                    <td>{ea.physiological_state || '-'}</td>
+                    <td>{ea.y_true || '-'}</td>
+                    <td className="mono fw-bold">{typeof ea.anomaly_score === 'number' ? ea.anomaly_score.toFixed(2) : '-'}</td>
+                    <td className="mono">{typeof ea.latent_severity === 'number' ? ea.latent_severity.toFixed(2) : '-'}</td>
+                    <td className="mono">{typeof ea.tau_in === 'number' ? ea.tau_in.toFixed(2) : '-'}</td>
+                    <td className="mono">{typeof ea.tau_out === 'number' ? ea.tau_out.toFixed(2) : '-'}</td>
+                    <td className="mono">{typeof ea.tau_normal === 'number' ? ea.tau_normal.toFixed(2) : '-'}</td>
+                    <td className="mono">{typeof ea.hr_mean === 'number' ? ea.hr_mean.toFixed(1) : '-'}</td>
+                    <td className="mono">{typeof ea.rmssd === 'number' ? ea.rmssd.toFixed(1) : '-'}</td>
+                    <td className="mono">{typeof ea.sdnn === 'number' ? ea.sdnn.toFixed(1) : '-'}</td>
+                    <td className="mono">{typeof ea.dfa_alpha1 === 'number' ? ea.dfa_alpha1.toFixed(2) : '-'}</td>
+                    <td>{ea.quality_gate_pass ? <span className="text-success"><i className="fa-solid fa-check"></i> Pass</span> : <span className="text-danger"><i className="fa-solid fa-xmark"></i> Fail</span>}</td>
+                    
+                    {/* E1 to E6 Predictions & Results */}
+                    <td>{ea.pred_E1 || '-'}</td>
+                    <td>{ea.result_E1 === 'TP' || ea.result_E1 === 'TN' ? <span className="text-success fw-bold">{ea.result_E1}</span> : (ea.result_E1 ? <span className="text-danger fw-bold">{ea.result_E1}</span> : '-')}</td>
+                    
+                    <td>{ea.pred_E2 || '-'}</td>
+                    <td>{ea.result_E2 === 'TP' || ea.result_E2 === 'TN' ? <span className="text-success fw-bold">{ea.result_E2}</span> : (ea.result_E2 ? <span className="text-danger fw-bold">{ea.result_E2}</span> : '-')}</td>
+                    
+                    <td>{ea.pred_E3 || '-'}</td>
+                    <td>{ea.result_E3 === 'TP' || ea.result_E3 === 'TN' ? <span className="text-success fw-bold">{ea.result_E3}</span> : (ea.result_E3 ? <span className="text-danger fw-bold">{ea.result_E3}</span> : '-')}</td>
+                    
+                    <td>{ea.pred_E4 || '-'}</td>
+                    <td>{ea.result_E4 === 'TP' || ea.result_E4 === 'TN' ? <span className="text-success fw-bold">{ea.result_E4}</span> : (ea.result_E4 ? <span className="text-danger fw-bold">{ea.result_E4}</span> : '-')}</td>
+                    
+                    <td>{ea.pred_E5 || '-'}</td>
+                    <td>{ea.result_E5 === 'TP' || ea.result_E5 === 'TN' ? <span className="text-success fw-bold">{ea.result_E5}</span> : (ea.result_E5 ? <span className="text-danger fw-bold">{ea.result_E5}</span> : '-')}</td>
+                    
+                    <td>{ea.pred_E6 || '-'}</td>
+                    <td>{ea.result_E6 === 'TP' || ea.result_E6 === 'TN' ? <span className="text-success fw-bold">{ea.result_E6}</span> : (ea.result_E6 ? <span className="text-danger fw-bold">{ea.result_E6}</span> : '-')}</td>
+                    
+                    {/* Z Scores */}
+                    <td className="mono">{typeof ea.z_E1 === 'number' ? ea.z_E1.toFixed(2) : '-'}</td>
+                    <td className="mono">{typeof ea.z_E2 === 'number' ? ea.z_E2.toFixed(2) : '-'}</td>
+                    <td className="mono">{typeof ea.z_E3 === 'number' ? ea.z_E3.toFixed(2) : '-'}</td>
+                    <td className="mono">{typeof ea.z_E4 === 'number' ? ea.z_E4.toFixed(2) : '-'}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="33" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--gray)' }}>
+                    Belum ada data episode analysis detail (E1-E6) untuk partisipan ini.
                   </td>
                 </tr>
               )}

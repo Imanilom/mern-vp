@@ -8,7 +8,7 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
   const [qualityData, setQualityData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const participantId = globalParticipantFilter && globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'P-031'; // Default or selected
+  const participantId = globalParticipantFilter && globalParticipantFilter !== 'ALL' ? globalParticipantFilter : null;
 
   useEffect(() => {
     if (participantId) {

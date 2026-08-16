@@ -95,91 +95,190 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
     // Generate a full 1-episode continuous trajectory if raw scores array isn't populated
     let trajectoryScores = rawScores;
     if (!trajectoryScores || trajectoryScores.length < 2) {
-      const baseVal = 0.65;
+      const baseVal = 0.55;
       trajectoryScores = [
         baseVal,
         baseVal + 0.15,
-        onsetScore * 0.9,
+        onsetScore * 0.85,
         onsetScore,
         onsetScore * 1.25,
         peakScore,
-        peakScore * 0.85,
+        peakScore * 0.88,
         (tauIn + tauOut) / 2,
         tauOut,
-        tauOut * 0.85,
+        tauOut * 0.82,
         baseVal + 0.10,
         baseVal
       ];
     }
 
-    const maxScore = Math.max(...trajectoryScores, tauIn * 1.2, peakScore * 1.1, 3.0);
+    // Canvas layout dimensions
+    const width = 540;
+    const height = 220;
+    const paddingLeft = 45;
+    const paddingRight = 20;
+    const paddingTop = 25;
+    const paddingBottom = 35;
+    const chartW = width - paddingLeft - paddingRight;
+    const chartH = height - paddingTop - paddingBottom;
+
+    const maxScore = Math.max(...trajectoryScores, tauIn * 1.25, peakScore * 1.15, 3.5);
     const minScore = 0;
-    const yRange = maxScore - minScore;
-    const getY = (score) => 95 - ((score - minScore) / yRange) * 80;
+    const scoreRange = maxScore - minScore;
+
+    const getY = (score) => paddingTop + chartH - ((score - minScore) / scoreRange) * chartH;
+    const getX = (index) => paddingLeft + (index / (trajectoryScores.length - 1 || 1)) * chartW;
 
     const tauInY = getY(tauIn);
     const tauOutY = getY(tauOut);
+    const zeroY = getY(0);
 
-    const svgWidth = 320;
-    const pointsArray = trajectoryScores.map((score, i) => {
-      const x = (i / (trajectoryScores.length - 1 || 1)) * svgWidth;
-      const y = getY(score);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    });
+    // Build curve points string
+    const pointsArray = trajectoryScores.map((score, i) => `${getX(i).toFixed(1)},${getY(score).toFixed(1)}`);
     const polylinePoints = pointsArray.join(' ');
 
+    // Peak marker
     const peakIdx = trajectoryScores.indexOf(Math.max(...trajectoryScores));
-    const px = (peakIdx / (trajectoryScores.length - 1 || 1)) * svgWidth;
+    const px = getX(peakIdx);
     const py = getY(trajectoryScores[peakIdx]);
-    const peakMarker = { cx: px, cy: py };
     const peakScoreText = trajectoryScores[peakIdx].toFixed(2);
 
-    // Calculate stage markers
+    // Onset marker (where score crosses tauIn or rises significantly)
     const onsetIdx = trajectoryScores.findIndex(s => s >= tauIn);
-    const ox = onsetIdx >= 0 ? (onsetIdx / (trajectoryScores.length - 1)) * svgWidth : (0.25 * svgWidth);
-    const oy = getY(trajectoryScores[onsetIdx >= 0 ? onsetIdx : 3]);
+    const actualOnsetIdx = onsetIdx >= 0 ? onsetIdx : 3;
+    const ox = getX(actualOnsetIdx);
+    const oy = getY(trajectoryScores[actualOnsetIdx]);
 
+    // Recovery entry marker
     const recIdx = trajectoryScores.slice(peakIdx).findIndex(s => s <= tauOut);
     const actualRecIdx = recIdx >= 0 ? peakIdx + recIdx : Math.floor(trajectoryScores.length * 0.75);
-    const rx = (actualRecIdx / (trajectoryScores.length - 1)) * svgWidth;
+    const rx = getX(actualRecIdx);
     const ry = getY(trajectoryScores[actualRecIdx]);
+
+    // Compute X-axis time labels
+    const onsetTimeStr = selectedEpisode.onset || '12:00';
+    let durationMins = selectedEpisode.durationMinutes || 15;
+    
+    // Parse onset hour & minute if possible
+    let startMin = 0;
+    let startHour = 12;
+    if (onsetTimeStr.includes(':')) {
+      const parts = onsetTimeStr.split(':');
+      startHour = parseInt(parts[0], 10) || 12;
+      startMin = parseInt(parts[1], 10) || 0;
+    }
+
+    const getTimeAt = (frac) => {
+      const addMins = Math.round(frac * durationMins);
+      const totalMins = startHour * 60 + startMin + addMins;
+      const h = Math.floor(totalMins / 60) % 24;
+      const m = totalMins % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
+
+    // Grid ticks for Y-axis (0, 1, 2, 3)
+    const yTicks = [0, 1.0, 2.0, 3.0].filter(val => val <= maxScore);
 
     return (
       <div>
-        <svg viewBox={`0 0 ${svgWidth} 110`} style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 130 }}>
-          {/* Baseline normal zone */}
-          <rect x="0" y={tauOutY} width={svgWidth} height={110 - tauOutY} fill="var(--gray-soft)" opacity="0.6" />
-          
-          {/* tau_in threshold line */}
-          <line x1="0" y1={tauInY} x2={svgWidth} y2={tauInY} stroke="var(--red)" strokeDasharray="3 3" strokeWidth="1" />
-          <text x="4" y={tauInY - 4} fill="var(--red)" fontSize="8" className="mono" fontWeight="700">tau_in ({tauIn})</text>
-          
-          {/* tau_out threshold line */}
-          <line x1="0" y1={tauOutY} x2={svgWidth} y2={tauOutY} stroke="var(--amber)" strokeDasharray="3 3" strokeWidth="1" />
-          <text x="4" y={tauOutY - 4} fill="var(--amber)" fontSize="8" className="mono" fontWeight="700">tau_out ({tauOut})</text>
-          
-          {/* Main trajectory polyline */}
-          <polyline points={polylinePoints} fill="none" stroke="var(--teal)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          
-          {/* Onset marker */}
-          <circle cx={ox} cy={oy} r="3.5" fill="var(--amber)" />
-          
-          {/* Peak marker */}
-          <circle cx={peakMarker.cx} cy={peakMarker.cy} r="4.5" fill="var(--red)" />
-          <text x={peakMarker.cx} y={Math.max(peakMarker.cy - 7, 10)} fill="var(--navy)" fontSize="9" fontWeight="800" className="mono" textAnchor="middle">
-            Peak {peakScoreText}
-          </text>
+        {/* Expanded SVG Canvas */}
+        <div style={{ background: '#ffffff', borderRadius: 10, border: '1px solid var(--line)', padding: 6, marginBottom: 12 }}>
+          <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+            {/* Shaded Physiological Zones */}
+            {/* 1. Baseline Zone (0 to tau_out) */}
+            <rect x={paddingLeft} y={tauOutY} width={chartW} height={zeroY - tauOutY} fill="#EBF7ED" opacity="0.7" />
+            {/* 2. Candidate Zone (tau_out to tau_in) */}
+            <rect x={paddingLeft} y={tauInY} width={chartW} height={tauOutY - tauInY} fill="#FFF9E6" opacity="0.8" />
+            {/* 3. Persistent Anomaly Zone (above tau_in) */}
+            <rect x={paddingLeft} y={paddingTop} width={chartW} height={tauInY - paddingTop} fill="#FDF2F2" opacity="0.8" />
 
-          {/* Recovery marker */}
-          <circle cx={rx} cy={ry} r="3.5" fill="var(--purple)" />
-        </svg>
+            {/* Y-Axis Gridlines & Labels */}
+            {yTicks.map(tick => {
+              const ty = getY(tick);
+              return (
+                <g key={tick}>
+                  <line x1={paddingLeft} y1={ty} x2={width - paddingRight} y2={ty} stroke="var(--line)" strokeDasharray="2 2" strokeWidth="1" />
+                  <text x={paddingLeft - 8} y={ty + 4} fill="var(--gray)" fontSize="10" fontWeight="600" className="mono" textAnchor="end">{tick.toFixed(1)}</text>
+                </g>
+              );
+            })}
 
-        {/* Dynamic Episode Stages Legend */}
-        <div className="d-flex justify-content-between align-items-center mt-2 px-1" style={{ fontSize: 10, color: 'var(--gray)' }}>
-          <span><i className="fa-solid fa-circle me-1" style={{ color: 'var(--amber)', fontSize: 7 }}></i>Onset ({selectedEpisode.onset})</span>
-          <span><i className="fa-solid fa-circle me-1" style={{ color: 'var(--red)', fontSize: 7 }}></i>Peak Score</span>
-          <span><i className="fa-solid fa-circle me-1" style={{ color: 'var(--purple)', fontSize: 7 }}></i>Recovery Entry</span>
-          <span><i className="fa-solid fa-flag-checkered me-1" style={{ color: 'var(--green)', fontSize: 7 }}></i>Resolved ({selectedEpisode.durationMinutes}m)</span>
+            {/* Y-Axis Line */}
+            <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={zeroY} stroke="var(--navy)" strokeWidth="1.5" />
+            {/* X-Axis Line */}
+            <line x1={paddingLeft} y1={zeroY} x2={width - paddingRight} y2={zeroY} stroke="var(--navy)" strokeWidth="1.5" />
+
+            {/* X-Axis Time Ticks */}
+            {[0, 0.25, 0.5, 0.75, 1.0].map((frac, idx) => {
+              const tx = paddingLeft + frac * chartW;
+              return (
+                <g key={idx}>
+                  <line x1={tx} y1={zeroY} x2={tx} y2={zeroY + 4} stroke="var(--navy)" strokeWidth="1.5" />
+                  <text x={tx} y={zeroY + 16} fill="var(--navy)" fontSize="10" fontWeight="700" className="mono" textAnchor="middle">
+                    {getTimeAt(frac)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* tau_in Threshold Line & Badge */}
+            <line x1={paddingLeft} y1={tauInY} x2={width - paddingRight} y2={tauInY} stroke="#B52A2A" strokeDasharray="4 3" strokeWidth="1.8" />
+            <rect x={paddingLeft + 6} y={tauInY - 16} width="165" height="14" rx="3" fill="#B52A2A" />
+            <text x={paddingLeft + 10} y={tauInY - 5} fill="#ffffff" fontSize="9" fontWeight="800" className="mono">
+              tau_in = {tauIn.toFixed(2)} (Candidate Onset)
+            </text>
+
+            {/* tau_out Threshold Line & Badge */}
+            <line x1={paddingLeft} y1={tauOutY} x2={width - paddingRight} y2={tauOutY} stroke="#D98800" strokeDasharray="4 3" strokeWidth="1.8" />
+            <rect x={paddingLeft + 6} y={tauOutY + 2} width="160" height="14" rx="3" fill="#D98800" />
+            <text x={paddingLeft + 10} y={tauOutY + 13} fill="#ffffff" fontSize="9" fontWeight="800" className="mono">
+              tau_out = {tauOut.toFixed(2)} (Recovery Entry)
+            </text>
+
+            {/* Main Trajectory Line */}
+            <polyline points={polylinePoints} fill="none" stroke="var(--teal)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+            {/* Stage Markers */}
+            {/* 1. Onset Marker */}
+            <circle cx={ox} cy={oy} r="5" fill="#D98800" stroke="#ffffff" strokeWidth="1.5" />
+            
+            {/* 2. Peak Score Marker & Prominent Callout */}
+            <circle cx={px} cy={py} r="6" fill="#B52A2A" stroke="#ffffff" strokeWidth="2" />
+            <rect x={Math.max(paddingLeft, Math.min(width - paddingRight - 85, px - 42))} y={Math.max(paddingTop + 2, py - 24)} width="84" height="18" rx="4" fill="var(--navy)" />
+            <text x={Math.max(paddingLeft + 42, Math.min(width - paddingRight - 43, px))} y={Math.max(paddingTop + 14, py - 11)} fill="#ffffff" fontSize="10" fontWeight="800" className="mono" textAnchor="middle">
+              Peak: {peakScoreText}
+            </text>
+
+            {/* 3. Recovery Entry Marker */}
+            <circle cx={rx} cy={ry} r="5" fill="var(--purple)" stroke="#ffffff" strokeWidth="1.5" />
+          </svg>
+        </div>
+
+        {/* Dynamic Episode Stages Callout Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 10 }}>
+          <div style={{ background: 'var(--amber-soft)', border: '1px solid var(--amber)', padding: '6px 8px', borderRadius: 8 }}>
+            <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--amber)' }}>1. ONSET TRIGGER</div>
+            <div className="mono" style={{ fontSize: 11, fontWeight: 800, color: 'var(--navy)' }}>{selectedEpisode.onset}</div>
+            <div style={{ fontSize: 9.5, color: 'var(--gray)' }}>Score: {onsetScore.toFixed(2)}</div>
+          </div>
+
+          <div style={{ background: 'var(--red-soft)', border: '1px solid var(--red)', padding: '6px 8px', borderRadius: 8 }}>
+            <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--red)' }}>2. DEVIATION PEAK</div>
+            <div className="mono" style={{ fontSize: 11, fontWeight: 800, color: 'var(--red)' }}>Peak {peakScore.toFixed(2)}</div>
+            <div style={{ fontSize: 9.5, color: 'var(--gray)' }}>Max Anomaly</div>
+          </div>
+
+          <div style={{ background: 'var(--purple-soft)', border: '1px solid var(--purple)', padding: '6px 8px', borderRadius: 8 }}>
+            <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--purple)' }}>3. RECOVERY ENTRY</div>
+            <div className="mono" style={{ fontSize: 11, fontWeight: 800, color: 'var(--purple)' }}>tau_out ({tauOut})</div>
+            <div style={{ fontSize: 9.5, color: 'var(--gray)' }}>Hysteresis Pass</div>
+          </div>
+
+          <div style={{ background: 'var(--green-soft)', border: '1px solid var(--green)', padding: '6px 8px', borderRadius: 8 }}>
+            <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--green)' }}>4. RESOLVED STATE</div>
+            <div className="mono" style={{ fontSize: 11, fontWeight: 800, color: 'var(--green)' }}>{selectedEpisode.durationMinutes}m</div>
+            <div style={{ fontSize: 9.5, color: 'var(--gray)' }}>Return Baseline</div>
+          </div>
         </div>
       </div>
     );

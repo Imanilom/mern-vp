@@ -16,6 +16,7 @@
 import Segment from '../models/segment.model.js';
 import Baseline from '../models/baseline.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
+import EpisodeAnalysis from '../models/episode_analysis.model.js';
 import User from '../models/user.model.js';
 import mongoose from 'mongoose';
 import ProcessingJob from '../models/processingjob.model.js';
@@ -1367,4 +1368,26 @@ async function updateRRPersistence(
   return eventCreated;
 }
 
+export async function getEpisodeAnalysis(req, res) {
+  try {
+    const { userId } = req.params;
+    const { limit = 50 } = req.query;
+    const records = await EpisodeAnalysis.find({ user_id: userId })
+      .sort({ start_time: -1 })
+      .limit(parseInt(limit, 10))
+      .lean();
+    res.json({ success: true, data: records });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
 
+export async function createEpisodeAnalysis(req, res) {
+  try {
+    const data = req.body;
+    const record = await EpisodeAnalysis.create(data);
+    res.status(201).json({ success: true, data: record });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}

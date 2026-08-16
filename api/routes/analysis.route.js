@@ -22,6 +22,8 @@ import {
   validateSegmentByDoctor,
   getKalmanTrajectory,
   runRRAnalysisPipeline,
+  getEpisodeAnalysis,
+  createEpisodeAnalysis,
 } from '../controllers/analysis.controller.js';
 import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions } from '../controllers/capar.prediction.controller.js';
 import { generateReportData } from '../controllers/report.controller.js';
@@ -107,6 +109,12 @@ router.get('/events/:userId', verifyToken, resolveUserIdParam, async (req, res) 
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+/** GET /api/analysis/episode-analysis/:userId — detailed episode evaluations */
+router.get('/episode-analysis/:userId', verifyToken, resolveUserIdParam, getEpisodeAnalysis);
+
+/** POST /api/analysis/episode-analysis — create a detailed episode evaluation */
+router.post('/episode-analysis', verifyToken, createEpisodeAnalysis);
 
 /** GET /api/analysis/events/details/:eventId — full event details + segments */
 router.get('/events/details/:eventId', verifyToken, async (req, res) => {

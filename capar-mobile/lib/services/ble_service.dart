@@ -58,18 +58,12 @@ class BleService extends ChangeNotifier {
       // Stop any active scan first
       await FlutterBluePlus.stopScan();
 
-      // Start scan with Heart Rate service Guid filter (0x180D) and fallback to general scan
+      // Start scan without restrictive service filter to reliably discover Polar H10
       await FlutterBluePlus.startScan(
-        withServices: [Guid("180d")],
         timeout: const Duration(seconds: 15),
       );
     } catch (e) {
-      debugPrint("Error starting BLE scan with service filter, trying general scan: $e");
-      try {
-        await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
-      } catch (err) {
-        debugPrint("Error in fallback BLE scan: $err");
-      }
+      debugPrint("Error starting BLE scan: $e");
     }
   }
 
@@ -137,11 +131,21 @@ class BleService extends ChangeNotifier {
         signalQuality = 98;
         if (!_isDisposed) notifyListeners();
 
-        // Listen to notifications on heart rate characteristic
-        _hrSubscription = hrChar.onValueReceived.listen((data) {
-          _parseHeartRateMeasurement(data);
-        });
+        // 1. Set notification value first
         await hrChar.setNotifyValue(true);
+
+        // 2. Listen to lastValueStream & onValueReceived for high reliability
+        _hrSubscription = hrChar.lastValueStream.listen((data) {
+          if (data.isNotEmpty) {
+            _parseHeartRateMeasurement(data);
+          }
+        });
+        
+        hrChar.onValueReceived.listen((data) {
+          if (data.isNotEmpty) {
+            _parseHeartRateMeasurement(data);
+          }
+        });
 
         return true;
       }

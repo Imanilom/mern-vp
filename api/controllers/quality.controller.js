@@ -39,16 +39,16 @@ export const getSignalQuality = async (req, res) => {
         missingness: missingness.toFixed(1),
         artifact: artifact.toFixed(1),
         evaluableTime: evaluableTime.toFixed(0),
-        reconnects: Math.floor(Math.random() * 5), // simulated
-        device: 'Polar H10',
+        reconnects: 0,
+        device: 'Polar H10 BLE Sensor',
         perDeviceQuality: [
           {
-            stream: 'RR Interval',
+            stream: 'RR Interval & HR Stream',
             device: 'Polar H10',
             missingness: missingness.toFixed(1) + '%',
             artifact: artifact.toFixed(1) + '%',
             status: missingness > 10 ? 'Degraded' : 'Nominal',
-            lastInstruction: missingness > 10 ? 'Kencangkan strap' : '-'
+            lastInstruction: missingness > 10 ? 'Kencangkan strap / Reconnect' : '-'
           }
         ]
       }
