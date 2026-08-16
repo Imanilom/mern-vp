@@ -10,7 +10,7 @@ class TelemetryController {
   Timer? _flushTimer;
   final List<SensorReading> _buffer = [];
   bool _isStreaming = false;
-  ProviderSubscription? _subscription;
+  StreamSubscription<SensorReading>? _streamSub;
 
   TelemetryController(this.ref);
 
@@ -28,23 +28,20 @@ class TelemetryController {
       _flushBuffer(userId, deviceId);
     });
 
-    // Listen to incoming sensor readings
-    _subscription = ref.listen<AsyncValue<SensorReading>>(
-      currentSensorReadingProvider,
-      (previous, next) {
-        if (next.hasValue && next.value != null && _isStreaming) {
-          _buffer.add(next.value!);
-        }
-      },
-      fireImmediately: false,
-    );
+    // Listen to incoming sensor readings directly from BleService
+    final bleService = ref.read(bleServiceProvider);
+    _streamSub = bleService.readingStream.listen((reading) {
+      if (_isStreaming) {
+        _buffer.add(reading);
+      }
+    });
   }
 
   void stopStreaming() {
     debugPrint('[TelemetryController] Menghentikan streaming...');
     _isStreaming = false;
     _flushTimer?.cancel();
-    _subscription?.close();
+    _streamSub?.cancel();
     _buffer.clear();
   }
 

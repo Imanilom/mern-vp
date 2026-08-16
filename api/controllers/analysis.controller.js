@@ -386,6 +386,36 @@ async function closeResolvedEvents(userId, persistenceState) {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
+ * Ambil atau buat baseline untuk user_id, activity, dan timePeriod tertentu.
+ */
+export async function getOrCreateBaseline(userId, activity, timePeriod) {
+  let baseline = await Baseline.findOne({ user_id: userId, activity, time_period: timePeriod });
+  if (!baseline) {
+    baseline = await Baseline.create({
+      user_id: userId,
+      activity,
+      time_period: timePeriod,
+      segment_count: 0,
+      is_mature: false,
+      status: 'learning',
+      stats: {
+        mean_hr: { n: 0, mean: 0, M2: 0 },
+        std_hr: { n: 0, mean: 0, M2: 0 },
+        delta_hr: { n: 0, mean: 0, M2: 0 },
+        slope_hr: { n: 0, mean: 0, M2: 0 },
+        mean_rr: { n: 0, mean: 0, M2: 0 },
+        sdnn: { n: 0, mean: 0, M2: 0 },
+        rmssd: { n: 0, mean: 0, M2: 0 },
+        rolling_variance: { n: 0, mean: 0, M2: 0 },
+        motion_intensity: { n: 0, mean: 0, M2: 0 },
+        dfa_alpha1: { n: 0, mean: 0, M2: 0 },
+      }
+    });
+  }
+  return baseline;
+}
+
+/**
  * Tentukan periode waktu dari epoch ms.
  * night: 00–06, morning: 06–12, afternoon: 12–18, evening: 18–24
  */

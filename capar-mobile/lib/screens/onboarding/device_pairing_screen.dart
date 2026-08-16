@@ -174,36 +174,30 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
       stream: bleService.scanResults,
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
-            child: Column(
-              children: [
-                const SizedBox(height: 40),
-                const CircularProgressIndicator(color: AppColors.teal),
-                const SizedBox(height: 16),
-                const Text('Mencari perangkat Polar...', style: TextStyle(color: AppColors.gray)),
-                TextButton(
-                  onPressed: () => bleService.startScan(),
-                  child: const Text('Pindai Ulang', style: TextStyle(color: AppColors.teal)),
-                )
-              ],
-            ),
-          );
+          return _buildLoadingScan(bleService);
+        }
+
+        // Hanya tampilkan device yang namanya mengandung "Polar"
+        final polarDevices = snapshot.data!.where((r) {
+          final pName = r.device.platformName.toLowerCase();
+          final aName = r.advertisementData.advName.toLowerCase();
+          return pName.contains('polar') || aName.contains('polar');
+        }).toList();
+
+        if (polarDevices.isEmpty) {
+          return _buildLoadingScan(bleService);
         }
 
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: snapshot.data!.length,
+          itemCount: polarDevices.length,
           itemBuilder: (context, index) {
-            final result = snapshot.data![index];
+            final result = polarDevices[index];
             final advName = result.advertisementData.advName;
             final platformName = result.device.platformName;
 
-            String name = platformName.isNotEmpty
-                ? platformName
-                : (advName.isNotEmpty
-                    ? advName
-                    : "Polar H10 Sensor (${result.device.remoteId.str.replaceAll(':', '').substring(0, 4)})");
+            String name = platformName.isNotEmpty ? platformName : advName;
 
             return Card(
               color: AppColors.surface,
@@ -225,6 +219,23 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildLoadingScan(BleService bleService) {
+    return Center(
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          const CircularProgressIndicator(color: AppColors.teal),
+          const SizedBox(height: 16),
+          const Text('Mencari perangkat Polar...', style: TextStyle(color: AppColors.gray)),
+          TextButton(
+            onPressed: () => bleService.startScan(),
+            child: const Text('Pindai Ulang', style: TextStyle(color: AppColors.teal)),
+          )
+        ],
+      ),
     );
   }
 
