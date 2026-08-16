@@ -280,6 +280,12 @@ export function App() {
             />
           )}
 
+          {(activeTab === 'prediction-eval' || activeTab === 'w9') && (
+            <PredictionEvalView 
+              globalParticipantFilter={globalParticipantFilter}
+            />
+          )}
+
           {(activeTab === 'pipeline-monitor' || activeTab === 'w5') && (
             <ModelRulesView modelConfig={modelConfig} />
           )}
