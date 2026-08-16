@@ -126,18 +126,6 @@ app.use(cors({
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
-// ── Rate Limiter untuk endpoint Auth (proteksi brute force) ─────────────────
-// Trust proxy if running behind Nginx/load balancer
-app.set('trust proxy', 1);
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 menit
-  max: 20,                   // Maks 20 request per IP per window
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { success: false, message: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' },
-});
-
 // ── Rate Limiter global (untuk semua endpoint) ───────────────────────────────
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 menit
@@ -167,7 +155,7 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 app.use("/api/user", userRouter);
-app.use("/api/auth", authLimiter, authRouter); // Rate limited
+app.use("/api/auth", authRouter);
 app.use("/api/garmin", garminRouter);
 app.use("/api/activity", activityRouter);
 app.use("/api/recomendation", recomendationRouter);
