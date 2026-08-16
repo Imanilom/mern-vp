@@ -16,6 +16,7 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     { id: 'baseline-maturity', label: 'Baseline Model', icon: 'fa-chart-simple', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'state-timeline', label: 'Trajectory Analysis', icon: 'fa-chart-line', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'episode', label: 'Anomaly Detection', icon: 'fa-triangle-exclamation', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'prediction-eval', label: 'Prediction Eval', icon: 'fa-bullseye', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'reports', label: 'Reports', icon: 'fa-file-lines', roles: ['admin', 'researcher', 'doctor', 'user'] },
     
     // System & Admin
