@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:polar/polar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../theme/app_colors.dart';
@@ -35,39 +35,64 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
   Future<void> _startStreaming() async {
     final ble = ref.read(bleServiceProvider);
     final mqtt = ref.read(mqttServiceProvider);
-    final telemetry = ref.read(telemetryControllerProvider);
 
     if (!ble.isConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hubungkan Polar H10 terlebih dahulu!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hubungkan Polar H10 terlebih dahulu!')),
+      );
       return;
     }
 
-    // Show loading
+    // Ambil userId dari SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('user_id') ?? '';
+
+    if (userId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User ID tidak ditemukan. Silakan login ulang.')),
+        );
+      }
+      return;
+    }
+
+    // Update activity context ke BLE service
+    ble.updateMotionState(_selectedActivity);
+
+    // Tampilkan loading
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (c) => const Center(child: CircularProgressIndicator(color: AppColors.teal)),
+      builder: (c) => const Center(
+        child: CircularProgressIndicator(color: AppColors.teal),
+      ),
     );
 
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('user_id') ?? 'P012'; // Fallback to P012 if not found
-    
-    // Connect MQTT
-    bool mqttConnected = await mqtt.connect(userId);
-    
+    // Connect MQTT dengan userId yang benar
+    final mqttConnected = await mqtt.connect(userId);
+
     if (!mounted) return;
-    Navigator.pop(context); // hide loading
+    Navigator.pop(context); // sembunyikan loading
 
     if (!mqttConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal terhubung ke RabbitMQ Broker!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal terhubung ke RabbitMQ Broker! Periksa koneksi internet.')),
+      );
       return;
     }
 
-    // Provider sudah diinisialisasi (telemetry), akan jalan otomatis
-    
-    // Go to next screen (Dashboard)
-    Navigator.pushNamed(context, '/app');
+    // ⬇ Inisialisasi TelemetryController secara eksplisit
+    // Ini penting agar provider tidak lazy-init saat HomeScreen dibuka nanti
+    // sehingga BLE readings sudah di-buffer sejak awal streaming dimulai
+    ref.read(telemetryControllerProvider).startStreaming();
+
+    debugPrint('[DevicePairing] MQTT connected ✓ | TelemetryController aktif | userId=$userId');
+
+    // Navigasi ke Dashboard
+    if (mounted) Navigator.pushNamed(context, '/app');
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -169,53 +194,32 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
   }
 
   Widget _buildScanResults(BleService bleService) {
-    return StreamBuilder<List<ScanResult>>(
+    return StreamBuilder<PolarDeviceInfo>(
       stream: bleService.scanResults,
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        if (!snapshot.hasData) {
           return _buildLoadingScan(bleService);
         }
 
-        // Hanya tampilkan device yang namanya mengandung "Polar"
-        final polarDevices = snapshot.data!.where((r) {
-          final pName = r.device.platformName.toLowerCase();
-          final aName = r.advertisementData.advName.toLowerCase();
-          return pName.contains('polar') || aName.contains('polar');
-        }).toList();
+        final device = snapshot.data!;
+        final name = device.name.isNotEmpty ? device.name : 'Polar Device';
 
-        if (polarDevices.isEmpty) {
-          return _buildLoadingScan(bleService);
-        }
-
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: polarDevices.length,
-          itemBuilder: (context, index) {
-            final result = polarDevices[index];
-            final advName = result.advertisementData.advName;
-            final platformName = result.device.platformName;
-
-            String name = platformName.isNotEmpty ? platformName : advName;
-
-            return Card(
-              color: AppColors.surface,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: AppColors.line),
-              ),
-              child: ListTile(
-                leading: const Icon(Icons.bluetooth, color: AppColors.teal),
-                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy)),
-                subtitle: Text(result.device.remoteId.toString(), style: const TextStyle(fontSize: 12, color: AppColors.gray)),
-                trailing: TextButton(
-                  onPressed: () => bleService.connectToDevice(result.device),
-                  child: const Text('Hubungkan', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.teal)),
-                ),
-              ),
-            );
-          },
+        return Card(
+          color: AppColors.surface,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: AppColors.line),
+          ),
+          child: ListTile(
+            leading: const Icon(Icons.bluetooth, color: AppColors.teal),
+            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy)),
+            subtitle: Text(device.deviceId, style: const TextStyle(fontSize: 12, color: AppColors.gray)),
+            trailing: TextButton(
+              onPressed: () => bleService.connectToDevice(device.deviceId),
+              child: const Text('Hubungkan', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.teal)),
+            ),
+          ),
         );
       },
     );

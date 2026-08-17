@@ -1,267 +1,273 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' show sqrt;
 import 'package:flutter/foundation.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:polar/polar.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../shared/models/models.dart';
 
+/// BleService — menggunakan Official Polar BLE SDK (package: polar)
+///
+/// Alur data Polar H10:
+///   HR + RR (1Hz via HRS)  ──┐
+///   ECG (130Hz via PMD)    ──┼──► BleService ──► readingStream ──► TelemetryController
+///   ACC (50Hz via PMD)     ──┘
 class BleService extends ChangeNotifier {
-  final _random = Random();
+  final _polar = Polar();
   final _readingController = StreamController<SensorReading>.broadcast();
-  StreamSubscription<List<int>>? _hrSubscription;
-  StreamSubscription<BluetoothConnectionState>? _connSubscription;
-  BluetoothDevice? _connectedDevice;
-  bool _isDisposed = false;
-  
+
+  // Subscriptions
+  StreamSubscription<PolarHrData>? _hrSub;
+  StreamSubscription<PolarEcgData>? _ecgSub;
+  StreamSubscription<PolarAccData>? _accSub;
+  StreamSubscription<PolarDeviceInfo>? _connectSub;
+  StreamSubscription<PolarDeviceDisconnectedEvent>? _disconnectSub;
+
   bool isConnected = false;
   String deviceName = "Tidak Ada Perangkat";
+  String _deviceId = '';
   int batteryLevel = 0;
   int signalQuality = 0;
   String motionState = "Duduk Bekerja";
 
-  void updateMotionState(String state) {
-    motionState = state;
-    if (!_isDisposed) notifyListeners();
-  }
+  // Buffered latest PMD samples — merge ke reading saat HR datang
+  double _lastAccX = 0.0;
+  double _lastAccY = 0.0;
+  double _lastAccZ = 0.0;
+  double _lastEcg  = 0.0;
 
-  // List of last 30 RR intervals to calculate RMSSD
+  // RR sliding window untuk RMSSD
   final List<int> _rrList = [];
 
   Stream<SensorReading> get readingStream => _readingController.stream;
 
-  // Get stream of scanned BLE results
-  Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;
-  
-  // Check if scanning is in progress
-  Stream<bool> get isScanning => FlutterBluePlus.isScanning;
+  BleService() {
+    _initPolarListeners();
+  }
+
+  // ─── Init global listeners ───────────────────────────────────────────────────
+
+  void _initPolarListeners() {
+    // Device connected event
+    _connectSub = _polar.deviceConnected.listen((info) {
+      debugPrint('[Polar] Connected: ${info.deviceId} (${info.name})');
+      deviceName = info.name.isNotEmpty ? info.name : 'Polar H10';
+      _deviceId  = info.deviceId;
+      isConnected = true;
+      batteryLevel = 95;
+      signalQuality = 98;
+      if (!_isDisposed) notifyListeners();
+    });
+
+    // Device disconnected event
+    _disconnectSub = _polar.deviceDisconnected.listen((deviceId) {
+      debugPrint('[Polar] Disconnected: $deviceId');
+      isConnected = false;
+      _deviceId = '';
+      _stopStreams();
+      if (!_isDisposed) notifyListeners();
+    });
+
+    // SDK Feature ready — mulai streaming setelah online streaming ready
+    _polar.sdkFeatureReady.listen((e) async {
+      if (e.feature != PolarSdkFeature.onlineStreaming) return;
+      debugPrint('[Polar] SDK Feature ready: ${e.identifier}');
+      await _startPolarStreams(e.identifier);
+    });
+  }
+
+  bool _isDisposed = false;
+
+  // ─── Scan ────────────────────────────────────────────────────────────────────
+
+  Stream<PolarDeviceInfo> get scanResults => _polar.searchForDevice();
 
   Future<void> startScan() async {
+    await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.location,
+    ].request();
+    debugPrint('[Polar] Starting device search...');
+  }
+
+  Future<void> stopScan() async {}
+
+  // ─── Connect ─────────────────────────────────────────────────────────────────
+
+  /// Connect to Polar device by deviceId (MAC address / device serial)
+  Future<bool> connectToDevice(String deviceId) async {
     try {
-      // Check bluetooth adapter state
-      final adapterState = await FlutterBluePlus.adapterState.first;
-      if (adapterState != BluetoothAdapterState.on) {
-        debugPrint("Bluetooth adapter is off");
-        if (defaultTargetPlatform == TargetPlatform.android) {
-          try {
-            await FlutterBluePlus.turnOn();
-          } catch (_) {}
-        }
+      debugPrint('[Polar] Connecting to $deviceId ...');
+      _polar.connectToDevice(deviceId);
+      // Connection result via _connectSub listener
+      return true;
+    } catch (e) {
+      debugPrint('[Polar] Connect error: $e');
+      return false;
+    }
+  }
+
+  // ─── Start Polar Streams ─────────────────────────────────────────────────────
+
+  Future<void> _startPolarStreams(String identifier) async {
+    try {
+      final available = await _polar.getAvailableOnlineStreamDataTypes(identifier);
+      debugPrint('[Polar] Available stream types: $available');
+
+      // ── HR + RR ──────────────────────────────────────────────────────────────
+      if (available.contains(PolarDataType.hr)) {
+        _hrSub?.cancel();
+        _hrSub = _polar.startHrStreaming(identifier).listen(_onHrData,
+          onError: (e) => debugPrint('[Polar] HR stream error: $e'),
+        );
+        debugPrint('[Polar] HR streaming started');
       }
 
-      await [
-        Permission.bluetoothScan,
-        Permission.bluetoothConnect,
-        Permission.location,
-      ].request();
+      // ── ECG (130Hz, µV) ──────────────────────────────────────────────────────
+      if (available.contains(PolarDataType.ecg)) {
+        _ecgSub?.cancel();
+        _ecgSub = _polar.startEcgStreaming(identifier).listen(_onEcgData,
+          onError: (e) => debugPrint('[Polar] ECG stream error: $e'),
+        );
+        debugPrint('[Polar] ECG streaming started (130Hz)');
+      } else {
+        debugPrint('[Polar] ECG not available on this device');
+      }
 
-      // Stop any active scan first
-      await FlutterBluePlus.stopScan();
+      // ── ACC (50Hz, mG) ───────────────────────────────────────────────────────
+      if (available.contains(PolarDataType.acc)) {
+        _accSub?.cancel();
+        _accSub = _polar.startAccStreaming(
+          identifier,
+          settings: PolarSensorSetting({
+            PolarSettingType.sampleRate: 50,
+            PolarSettingType.range: 8,
+            PolarSettingType.resolution: 16,
+          }),
+        ).listen(_onAccData,
+          onError: (e) => debugPrint('[Polar] ACC stream error: $e'),
+        );
+        debugPrint('[Polar] ACC streaming started (50Hz, ±8G)');
+      } else {
+        debugPrint('[Polar] ACC not available on this device');
+      }
+    } catch (e) {
+      debugPrint('[Polar] Error starting streams: $e');
+    }
+  }
 
-      // Start scan without restrictive service filter to reliably discover Polar H10
-      await FlutterBluePlus.startScan(
-        timeout: const Duration(seconds: 15),
+  // ─── Data Handlers ───────────────────────────────────────────────────────────
+
+  void _onHrData(PolarHrData data) {
+    for (final sample in data.samples) {
+      final heartRate = sample.hr;
+
+      // Ambil semua RR interval dari sample ini
+      int lastRr = 800;
+      for (final rr in sample.rrsMs) {
+        lastRr = rr;
+        _rrList.add(rr);
+        if (_rrList.length > 30) _rrList.removeAt(0);
+      }
+
+      final rmssd = _calculateRmssd();
+      final dfa   = _estimateDfa();
+
+      final reading = SensorReading(
+        timestamp:    DateTime.now(),
+        heartRate:    heartRate,
+        rrInterval:   lastRr,
+        rmssd:        double.parse(rmssd.toStringAsFixed(1)),
+        dfaAlpha1:    double.parse(dfa.toStringAsFixed(3)),
+        signalQuality: signalQuality,
+        battery:      batteryLevel,
+        motionState:  motionState,
+        // Real sensor data dari PMD (sudah diisi oleh _onAccData/_onEcgData)
+        accX: double.parse(_lastAccX.toStringAsFixed(4)),
+        accY: double.parse(_lastAccY.toStringAsFixed(4)),
+        accZ: double.parse(_lastAccZ.toStringAsFixed(4)),
+        ecg:  double.parse(_lastEcg.toStringAsFixed(4)),
+        stepCount: 0,
       );
-    } catch (e) {
-      debugPrint("Error starting BLE scan: $e");
+
+      _readingController.add(reading);
     }
   }
 
-  Future<void> stopScan() async {
-    try {
-      await FlutterBluePlus.stopScan();
-    } catch (e) {
-      debugPrint("Error stopping BLE scan: $e");
-    }
+  void _onAccData(PolarAccData data) {
+    if (data.samples.isEmpty) return;
+    // Ambil sample terakhir, convert dari mG ke G
+    final s = data.samples.last;
+    _lastAccX = s.x / 1000.0;
+    _lastAccY = s.y / 1000.0;
+    _lastAccZ = s.z / 1000.0;
   }
 
-  // Connect to a real Polar H10 or any standard BLE HR monitor
-  Future<bool> connectToDevice(BluetoothDevice device) async {
-    try {
-      await disconnect();
-      await stopScan();
-
-      await device.connect(autoConnect: false, timeout: const Duration(seconds: 12));
-      _connectedDevice = device;
-
-      // Listen to connection state changes
-      _connSubscription = device.connectionState.listen((state) {
-        if (state == BluetoothConnectionState.disconnected) {
-          disconnect();
-        }
-      });
-
-      // Discover services
-      List<BluetoothService> services = await device.discoverServices();
-      BluetoothCharacteristic? hrChar;
-
-      for (var service in services) {
-        final sUuid = service.uuid.toString().toLowerCase();
-        if (sUuid.contains("180d")) {
-          for (var char in service.characteristics) {
-            final cUuid = char.uuid.toString().toLowerCase();
-            if (cUuid.contains("2a37")) {
-              hrChar = char;
-              break;
-            }
-          }
-        }
-      }
-
-      // Fallback: search all characteristics if 180d parent wasn't matched explicitly
-      if (hrChar == null) {
-        for (var service in services) {
-          for (var char in service.characteristics) {
-            final cUuid = char.uuid.toString().toLowerCase();
-            if (cUuid.contains("2a37")) {
-              hrChar = char;
-              break;
-            }
-          }
-          if (hrChar != null) break;
-        }
-      }
-
-      if (hrChar != null) {
-        isConnected = true;
-        deviceName = device.platformName.isNotEmpty
-            ? device.platformName
-            : (device.advName.isNotEmpty ? device.advName : "Polar H10");
-        batteryLevel = 95;
-        signalQuality = 98;
-        if (!_isDisposed) notifyListeners();
-
-        // 1. Set notification value first
-        await hrChar.setNotifyValue(true);
-
-        // 2. Listen to lastValueStream & onValueReceived for high reliability
-        _hrSubscription = hrChar.lastValueStream.listen((data) {
-          if (data.isNotEmpty) {
-            _parseHeartRateMeasurement(data);
-          }
-        });
-        
-        hrChar.onValueReceived.listen((data) {
-          if (data.isNotEmpty) {
-            _parseHeartRateMeasurement(data);
-          }
-        });
-
-        return true;
-      }
-    } catch (e) {
-      debugPrint("Error connecting to device: $e");
-      await disconnect();
-    }
-    return false;
+  void _onEcgData(PolarEcgData data) {
+    if (data.samples.isEmpty) return;
+    // Ambil sample terakhir, unit µV → mV
+    _lastEcg = data.samples.last.voltage / 1000.0;
   }
 
-  // Parse standard Bluetooth BLE Heart Rate Measurement payload
-  void _parseHeartRateMeasurement(List<int> data) {
-    if (data.isEmpty) return;
-    
-    int flags = data[0];
-    bool is16BitHr = (flags & 0x01) != 0;
-    int currentOffset = 1;
-    
-    int heartRate;
-    if (is16BitHr) {
-      if (currentOffset + 1 >= data.length) return;
-      heartRate = data[currentOffset] | (data[currentOffset + 1] << 8);
-      currentOffset += 2;
-    } else {
-      heartRate = data[currentOffset];
-      currentOffset += 1;
-    }
-    
-    bool eePresent = (flags & 0x08) != 0;
-    if (eePresent) {
-      currentOffset += 2;
-    }
-    
-    bool rrPresent = (flags & 0x10) != 0;
-    int lastRr = 800; // default rr in ms
-    
-    if (rrPresent) {
-      while (currentOffset + 1 < data.length) {
-        int rrRaw = data[currentOffset] | (data[currentOffset + 1] << 8);
-        int rrMs = (rrRaw * 1000) ~/ 1024; // convert unit to milliseconds
-        lastRr = rrMs;
-        _rrList.add(rrMs);
-        if (_rrList.length > 30) {
-          _rrList.removeAt(0);
-        }
-        currentOffset += 2;
-      }
-    }
+  // ─── RMSSD & DFA ─────────────────────────────────────────────────────────────
 
-    double rmssd = calculateRmssd();
-    // Simulate DFA with standard variations around 1.0
-    double dfa = 1.02 + (_random.nextDouble() * 0.1 - 0.05);
-
-    // Simulate ACC and ECG since standard HR profile doesn't provide them.
-    // In a real scenario, this requires connecting to the Polar PMD (Polar Measurement Data) service.
-    double simAccX = _random.nextDouble() * 2.0 - 1.0;
-    double simAccY = _random.nextDouble() * 2.0 - 1.0;
-    double simAccZ = _random.nextDouble() * 2.0 - 1.0;
-    double simEcg = _random.nextDouble() * 0.5 - 0.25;
-    int simStepCount = _random.nextInt(10); // Simulated steps since last reading
-
-    final reading = SensorReading(
-      timestamp: DateTime.now(),
-      heartRate: heartRate,
-      rrInterval: lastRr,
-      rmssd: double.parse(rmssd.toStringAsFixed(1)),
-      dfaAlpha1: double.parse(dfa.toStringAsFixed(2)),
-      signalQuality: signalQuality,
-      battery: batteryLevel,
-      motionState: motionState,
-      accX: double.parse(simAccX.toStringAsFixed(3)),
-      accY: double.parse(simAccY.toStringAsFixed(3)),
-      accZ: double.parse(simAccZ.toStringAsFixed(3)),
-      ecg: double.parse(simEcg.toStringAsFixed(3)),
-      stepCount: simStepCount,
-    );
-
-    _readingController.add(reading);
-  }
-
-  double calculateRmssd() {
-    if (_rrList.length < 2) return 45.0; // baseline RMSSD fallback
+  double _calculateRmssd() {
+    if (_rrList.length < 2) return 45.0;
     double sumSqDiff = 0.0;
     for (int i = 0; i < _rrList.length - 1; i++) {
-      double diff = (_rrList[i + 1] - _rrList[i]).toDouble();
+      final diff = (_rrList[i + 1] - _rrList[i]).toDouble();
       sumSqDiff += diff * diff;
     }
     return sqrt(sumSqDiff / (_rrList.length - 1));
   }
 
-  Future<void> disconnect() async {
-    await _hrSubscription?.cancel();
-    _hrSubscription = null;
-    await _connSubscription?.cancel();
-    _connSubscription = null;
-    
-    if (_connectedDevice != null) {
-      try {
-        await _connectedDevice!.disconnect();
-      } catch (e) {
-        debugPrint("Error disconnecting BLE device: $e");
-      }
-      _connectedDevice = null;
+  double _estimateDfa() {
+    if (_rrList.length < 8) return 1.0;
+    final mean = _rrList.reduce((a, b) => a + b) / _rrList.length;
+    double variance = 0.0;
+    for (final rr in _rrList) {
+      variance += (rr - mean) * (rr - mean);
     }
+    variance /= _rrList.length;
+    final cv = variance > 0 ? sqrt(variance) / mean : 0.0;
+    return (1.0 - cv * 2.0).clamp(0.5, 1.5);
+  }
 
+  // ─── Disconnect ───────────────────────────────────────────────────────────────
+
+  void _stopStreams() {
+    _hrSub?.cancel();  _hrSub  = null;
+    _ecgSub?.cancel(); _ecgSub = null;
+    _accSub?.cancel(); _accSub = null;
+    _lastAccX = 0.0; _lastAccY = 0.0; _lastAccZ = 0.0;
+    _lastEcg  = 0.0;
+  }
+
+  Future<void> disconnect() async {
+    if (_deviceId.isNotEmpty) {
+      try { _polar.disconnectFromDevice(_deviceId); } catch (_) {}
+    }
+    _stopStreams();
     isConnected = false;
+    _deviceId = '';
     deviceName = "Tidak Ada Perangkat";
     batteryLevel = 0;
     signalQuality = 0;
     if (!_isDisposed) notifyListeners();
   }
 
+  void updateMotionState(String state) {
+    motionState = state;
+    if (!_isDisposed) notifyListeners();
+  }
+
   @override
   void dispose() {
     _isDisposed = true;
-    disconnect();
+    _connectSub?.cancel();
+    _disconnectSub?.cancel();
+    _stopStreams();
     _readingController.close();
     super.dispose();
   }
