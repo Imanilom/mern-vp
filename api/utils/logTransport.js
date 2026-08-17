@@ -108,6 +108,13 @@ async function getChannel() {
       channel = await connection.createChannel();
       // We assume the queue already exists (e.g. created as stream externally)
     }
+    
+    // Pastikan antrean selalu di-bind ke amq.topic (default exchange plugin MQTT RabbitMQ)
+    try {
+      await channel.bindQueue(queueName, 'amq.topic', queueName);
+    } catch (bindErr) {
+      console.warn(`[RabbitMQ] bindQueue warning: ${bindErr.message}`);
+    }
     return channel;
   } catch (error) {
     console.error(`[RabbitMQ] Failed to connect/create channel: ${error.message}`);

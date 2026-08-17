@@ -63,8 +63,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
       return;
     }
 
-    // Start Telemetry buffering
-    telemetry.startStreaming(userId, ble.deviceName);
+    // Provider sudah diinisialisasi (telemetry), akan jalan otomatis
     
     // Go to next screen (Dashboard)
     Navigator.pushNamed(context, '/app');
