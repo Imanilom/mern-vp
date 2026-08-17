@@ -24,6 +24,7 @@ import analysisRouter from './routes/analysis.route.js';
 import pipelineRouter from './routes/pipeline.route.js';
 import reportRouter from './routes/report.route.js';
 import mlRouter from './routes/ml.route.js';
+import systemRouter from './routes/system.route.js';
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 
@@ -175,6 +176,7 @@ app.use("/api/doctor", doctorRouter);
 app.use("/api/patient-user", userpatientRouter);
 app.use("/api/ai", aipipelineRouter);
 app.use("/api/ml", mlRouter);
+app.use("/api/system", systemRouter);
 
 // Role & Auth endpoints
 app.get("/api/me", verifyToken, (req, res) => {

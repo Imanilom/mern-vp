@@ -24,6 +24,7 @@ class TelemetryController extends ChangeNotifier {
   final List<PendingDataRecord> _queue = [];
   int _idCounter = 0;
   bool _isSyncing = false;
+  bool _isStreaming = true; // Auto-started by default
 
   TelemetryController(this.ref);
 
@@ -31,7 +32,22 @@ class TelemetryController extends ChangeNotifier {
 
   int get pendingCount => _queue.where((r) => r.status == 'pending').length;
 
+  bool get isStreaming => _isStreaming;
+
+  void startStreaming() {
+    _isStreaming = true;
+    notifyListeners();
+  }
+
+  void stopStreaming() {
+    _isStreaming = false;
+    _queue.clear();
+    notifyListeners();
+  }
+
   void addReading(SensorReading reading) {
+    if (!_isStreaming) return;
+
     _queue.add(PendingDataRecord(
       id: "${DateTime.now().millisecondsSinceEpoch}_${_idCounter++}",
       reading: reading,

@@ -5,11 +5,11 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
   let role = userRole?.role || 'user';
   if (role.toLowerCase() === 'administrator') role = 'admin';
   if (role === 'patient') role = 'user';
-  
+
   const allNavItems = [
     // Workspace / Doctor Overview
     { id: 'overview', label: 'Daftar Pasien', icon: 'fa-house-medical', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    
+
     // Patient Dashboard
     { id: 'live-monitor', label: 'Live Monitoring', icon: 'fa-satellite-dish', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'activity-context', label: 'Activity Context', icon: 'fa-shoe-prints', roles: ['admin', 'researcher', 'doctor', 'user'] },
@@ -18,12 +18,12 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     { id: 'episode', label: 'Anomaly Detection', icon: 'fa-triangle-exclamation', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'prediction-eval', label: 'Prediction Eval', icon: 'fa-bullseye', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'reports', label: 'Reports', icon: 'fa-file-lines', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    
+
     // System & Admin
-    { id: 'pipeline-monitor', label: 'Pipeline Monitor', icon: 'fa-microchip', roles: ['admin', 'researcher'] },
+    { id: 'pipeline-monitor', label: 'Pipeline Monitor', icon: 'fa-microchip', roles: ['admin', 'doctor', 'researcher'] },
     { id: 'user-management', label: 'User Management', icon: 'fa-users-gear', roles: ['admin', 'doctor'] },
     { id: 'profile', label: 'My Profile', icon: 'fa-user', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'settings', label: 'Settings', icon: 'fa-gear', roles: ['admin'] },
+    { id: 'settings', label: 'Settings', icon: 'fa-gear', roles: ['admin', 'doctor', 'researcher'] },
   ];
 
   const navItems = allNavItems.filter(item => item.roles.includes(role));
@@ -90,7 +90,7 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
         </nav>
 
         <div className="sb-foot">
-          Research prototype<br/>Non-diagnostic
+          Research prototype<br />Non-diagnostic
         </div>
       </aside>
     </>
