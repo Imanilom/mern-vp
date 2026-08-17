@@ -332,7 +332,7 @@ export const api = {
 
   async getModelRules() {
     try {
-      const { data } = await axios.get('/pipeline/settings');
+      const { data } = await axios.get('/system/model-rules');
       return data?.data || null;
     } catch (err) {
       console.error('getModelRules Error:', err);
@@ -342,18 +342,28 @@ export const api = {
 
   async getExportJobs() {
     try {
-      const { data } = await axios.get('/pipeline/jobs');
-      return data?.data || data?.jobs || [];
+      const { data } = await axios.get('/system/export-jobs');
+      return data?.data || [];
     } catch (err) {
       console.error('getExportJobs Error:', err);
       return [];
     }
   },
 
+  async generateExportJob(payload) {
+    try {
+      const { data } = await axios.post('/system/export-jobs', payload);
+      return data;
+    } catch (err) {
+      console.error('generateExportJob Error:', err);
+      return { success: false, message: err.message };
+    }
+  },
+
   async getAuditTrail() {
     try {
-      const { data } = await axios.get('/reports/generate?type=population');
-      return Array.isArray(data?.data) ? data.data : (data?.summary ? [data.summary] : []);
+      const { data } = await axios.get('/system/audit-trail');
+      return Array.isArray(data?.data) ? data.data : [];
     } catch (err) {
       console.error('getAuditTrail Error:', err);
       return [];
@@ -438,15 +448,7 @@ export const api = {
   },
 
   // --- ANALYSIS ROUTES ---
-  async getModelRules() {
-    return axios.get('/pipeline/settings').then(res => res.data?.data).catch(() => null);
-  },
-  async getExportJobs() {
-    return axios.get('/pipeline/jobs').then(res => Array.isArray(res.data?.data) ? res.data.data : []).catch(() => []);
-  },
-  async getAuditTrail() {
-    return axios.get('/reports/audit-trail').then(res => Array.isArray(res.data?.data) ? res.data.data : []).catch(() => []);
-  },
+  // getModelRules, getExportJobs, getAuditTrail defined above (using /system/* endpoints)
   async getAnalysisReports() {
     return axios.get('/analysis/reports').then(res => res.data);
   },

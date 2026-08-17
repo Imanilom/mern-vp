@@ -223,7 +223,7 @@ export function App() {
 
         {/* Scrollable Main Content Workspace */}
         <main className="app-main">
-          {(activeTab === 'overview' || activeTab === 'w1') && (
+          {(activeTab === 'overview') && (
             <CohortOverviewView
               participants={participants}
               onSelectParticipant={handleSelectParticipant}
@@ -232,7 +232,7 @@ export function App() {
             />
           )}
 
-          {(activeTab === 'live-monitor' || activeTab === 'w2') && (
+          {(activeTab === 'live-monitor') && (
             <LiveMonitorView 
               participants={participants} 
               initialSelectedId={selectedParticipantId}
@@ -242,29 +242,28 @@ export function App() {
             />
           )}
 
-          {(activeTab === 'activity-context' || activeTab === 'w3b') && (
-            <StateTimelineView 
-              participantId={globalParticipantFilter !== 'ALL' ? globalParticipantFilter : (selectedParticipantId || 'P-014')} 
+          {(activeTab === 'signal-quality') && (
+            <SignalQualityView
+              participantId={globalParticipantFilter !== 'ALL' ? globalParticipantFilter : (selectedParticipantId || null)}
               globalDateFilter={globalDateFilter}
             />
           )}
 
-          {(activeTab === 'baseline-maturity' || activeTab === 'w2e') && (
+          {(activeTab === 'baseline-maturity') && (
             <BaselineMaturityView 
-              participantId={globalParticipantFilter !== 'ALL' ? globalParticipantFilter : (selectedParticipantId || 'P-014')} 
+              participantId={globalParticipantFilter !== 'ALL' ? globalParticipantFilter : (selectedParticipantId || null)}
               globalDateFilter={globalDateFilter}
             />
           )}
 
           {(activeTab === 'state-timeline') && (
-            <ExperienceView 
-              experienceModels={experienceModels}
-              globalParticipantFilter={globalParticipantFilter}
+            <StateTimelineView 
+              participantId={globalParticipantFilter !== 'ALL' ? globalParticipantFilter : (selectedParticipantId || null)}
               globalDateFilter={globalDateFilter}
             />
           )}
 
-          {(activeTab === 'episode' || activeTab === 'w3') && (
+          {(activeTab === 'episode') && (
             <EpisodeView 
               episodes={episodes}
               globalParticipantFilter={globalParticipantFilter}
@@ -272,7 +271,35 @@ export function App() {
             />
           )}
 
-          {(activeTab === 'reports' || activeTab === 'w7') && (
+          {(activeTab === 'experience') && (
+            <ExperienceView 
+              experienceModels={experienceModels}
+              globalParticipantFilter={globalParticipantFilter}
+              globalDateFilter={globalDateFilter}
+            />
+          )}
+
+          {(activeTab === 'prediction-eval') && (
+            <PredictionEvalView 
+              globalParticipantFilter={globalParticipantFilter}
+            />
+          )}
+
+          {(activeTab === 'model-rules') && (
+            <ModelRulesView modelConfig={modelConfig} />
+          )}
+
+          {(activeTab === 'export') && (
+            <ExportView 
+              exportJobs={exportJobs}
+              onRefresh={async () => {
+                const exports = await api.getExportJobs();
+                setExportJobs(exports);
+              }}
+            />
+          )}
+
+          {(activeTab === 'audit') && (
             <AuditView 
               auditTrail={auditTrail}
               globalParticipantFilter={globalParticipantFilter}
@@ -280,17 +307,7 @@ export function App() {
             />
           )}
 
-          {(activeTab === 'prediction-eval' || activeTab === 'w9') && (
-            <PredictionEvalView 
-              globalParticipantFilter={globalParticipantFilter}
-            />
-          )}
-
-          {(activeTab === 'pipeline-monitor' || activeTab === 'w5') && (
-            <ModelRulesView modelConfig={modelConfig} />
-          )}
-
-          {(activeTab === 'settings' || activeTab === 'w8') && (
+          {(activeTab === 'settings') && (
             <SettingsView user={userRole} />
           )}
           
@@ -301,6 +318,7 @@ export function App() {
           {(activeTab === 'profile') && (
             <ProfileView user={userRole} />
           )}
+
         </main>
       </div>
 

@@ -7,23 +7,29 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
   if (role === 'patient') role = 'user';
 
   const allNavItems = [
-    // Workspace / Doctor Overview
-    { id: 'overview', label: 'Daftar Pasien', icon: 'fa-house-medical', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    // === Cohort & Patient ===
+    { id: 'overview',          label: 'Daftar Pasien',      icon: 'fa-house-medical',         roles: ['admin', 'researcher', 'doctor', 'user'] },
 
-    // Patient Dashboard
-    { id: 'live-monitor', label: 'Live Monitoring', icon: 'fa-satellite-dish', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'activity-context', label: 'Activity Context', icon: 'fa-shoe-prints', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'baseline-maturity', label: 'Baseline Model', icon: 'fa-chart-simple', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'state-timeline', label: 'Trajectory Analysis', icon: 'fa-chart-line', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'episode', label: 'Anomaly Detection', icon: 'fa-triangle-exclamation', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'prediction-eval', label: 'Prediction Eval', icon: 'fa-bullseye', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'reports', label: 'Reports', icon: 'fa-file-lines', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    // === Per-Participant Monitoring ===
+    { id: 'live-monitor',      label: 'Live Monitoring',    icon: 'fa-satellite-dish',         roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'signal-quality',    label: 'Signal & Quality',   icon: 'fa-tower-broadcast',        roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'baseline-maturity', label: 'Baseline Model',     icon: 'fa-chart-simple',           roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'state-timeline',    label: 'State Timeline',     icon: 'fa-timeline',               roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'episode',           label: 'Episode Review',     icon: 'fa-wave-square',            roles: ['admin', 'researcher', 'doctor', 'user'] },
 
-    // System & Admin
-    { id: 'pipeline-monitor', label: 'Pipeline Monitor', icon: 'fa-microchip', roles: ['admin', 'doctor', 'researcher'] },
-    { id: 'user-management', label: 'User Management', icon: 'fa-users-gear', roles: ['admin', 'doctor'] },
-    { id: 'profile', label: 'My Profile', icon: 'fa-user', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'settings', label: 'Settings', icon: 'fa-gear', roles: ['admin', 'doctor', 'researcher'] },
+    // === Analysis & Learning ===
+    { id: 'experience',        label: 'Experience Memory',  icon: 'fa-brain',                  roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'prediction-eval',   label: 'Prediction Eval',    icon: 'fa-bullseye',               roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'model-rules',       label: 'Model & Rules',      icon: 'fa-sliders',                roles: ['admin', 'researcher', 'doctor'] },
+
+    // === Data & Governance ===
+    { id: 'export',            label: 'Export Data',        icon: 'fa-file-export',            roles: ['admin', 'researcher', 'doctor'] },
+    { id: 'audit',             label: 'Audit Provenance',   icon: 'fa-clipboard-list',         roles: ['admin', 'researcher', 'doctor'] },
+
+    // === System & Admin ===
+    { id: 'user-management',   label: 'User Management',    icon: 'fa-users-gear',             roles: ['admin', 'doctor'] },
+    { id: 'profile',           label: 'My Profile',         icon: 'fa-user',                   roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'settings',          label: 'Settings',           icon: 'fa-user-shield',            roles: ['admin', 'doctor', 'researcher', 'user'] },
   ];
 
   const navItems = allNavItems.filter(item => item.roles.includes(role));
@@ -31,6 +37,24 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
   const handleNavClick = (id) => {
     setActiveTab(id);
     if (onCloseMobile) onCloseMobile();
+  };
+
+  // Group labels
+  const groupLabels = {
+    'overview':          null,
+    'live-monitor':      'Monitoring',
+    'signal-quality':    null,
+    'baseline-maturity': null,
+    'state-timeline':    null,
+    'episode':           null,
+    'experience':        'Analysis',
+    'prediction-eval':   null,
+    'model-rules':       null,
+    'export':            'Data & Governance',
+    'audit':             null,
+    'user-management':   'System',
+    'profile':           null,
+    'settings':          null,
   };
 
   return (
@@ -76,15 +100,29 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
+            const groupLabel = groupLabels[item.id];
             return (
-              <a
-                key={item.id}
-                className={`nav-link ${isActive ? 'active' : ''}`}
-                onClick={() => handleNavClick(item.id)}
-              >
-                <i className={`fa-solid ${item.icon}`}></i>
-                <span>{item.label}</span>
-              </a>
+              <React.Fragment key={item.id}>
+                {groupLabel && (
+                  <div style={{
+                    fontSize: 9,
+                    fontWeight: 800,
+                    color: '#4A7A8A',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    padding: '12px 16px 4px 16px',
+                  }}>
+                    {groupLabel}
+                  </div>
+                )}
+                <a
+                  className={`nav-link ${isActive ? 'active' : ''}`}
+                  onClick={() => handleNavClick(item.id)}
+                >
+                  <i className={`fa-solid ${item.icon}`}></i>
+                  <span>{item.label}</span>
+                </a>
+              </React.Fragment>
             );
           })}
         </nav>
