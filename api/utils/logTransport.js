@@ -325,5 +325,11 @@ export async function startLogTransportConsumer() {
         ch.ack(msg);
       }
     }
-  }, { noAck: false, arguments: { 'x-stream-offset': 'first' } });
+  }, { noAck: false }); // REMOVED x-stream-offset: first to prevent PRECONDITION_FAILED on classic queues
+
+  // Handle jika channel ditutup oleh server (misal karena error atau restart)
+  ch.on('close', () => {
+    console.warn('[RabbitMQ Consumer] Channel closed, attempting to restart consumer in 5 seconds...');
+    setTimeout(startLogTransportConsumer, 5000);
+  });
 }

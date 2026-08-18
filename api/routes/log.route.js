@@ -1,6 +1,7 @@
 import express from 'express';
 import { createLog, createTransportLog, upload } from '../controllers/logs.controller.js';
 import { mobilePing, mobileStatus } from '../controllers/mobile_stream.controller.js';
+import { checkRabbitMqStatus } from '../controllers/rmq_debug.controller.js';
 
 const router = express.Router();
 
@@ -34,5 +35,7 @@ router.post('/transport', createTransportLog);
  */
 router.post('/mobile-ping', mobilePing);
 router.get('/mobile-status', mobileStatus);
+
+router.get('/rmq-debug', checkRabbitMqStatus);
 
 export default router;
