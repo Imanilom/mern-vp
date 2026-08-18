@@ -76,8 +76,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _loadLiveStatus() async {
     setState(() => isSyncing = true);
     final sq = await ApiService.fetchSignalQuality();
-    if (sq != null && sq['status'] == 'warning') {
-      if (mounted) setState(() => currentMode = HomeStateMode.qualityWarning);
+    if (sq != null) {
+      final double artifact = double.tryParse(sq['artifact']?.toString() ?? '0') ?? 0.0;
+      final double missingness = double.tryParse(sq['missingness']?.toString() ?? '0') ?? 0.0;
+      
+      // Jika data tidak layak (artefak atau missingness tinggi)
+      if (artifact > 10 || missingness > 10) {
+        if (mounted) setState(() => currentMode = HomeStateMode.qualityWarning);
+      } else {
+        // Jika layak, nonaktifkan warning (kembali ke evaluable jika sedang di state warning)
+        if (mounted && currentMode == HomeStateMode.qualityWarning) {
+          setState(() => currentMode = HomeStateMode.evaluable);
+        }
+      }
     }
     if (mounted) setState(() => isSyncing = false);
   }
