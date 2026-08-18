@@ -1,10 +1,46 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../shared/models/models.dart';
+import 'api_service.dart';
 import 'mqtt_service.dart';
 import 'ble_service.dart';
+
+/// Kirim ping ke backend VPS untuk monitoring status streaming.
+/// Fire-and-forget: gagal tidak mempengaruhi alur utama.
+Future<void> _sendMobilePing({
+  required String userId,
+  required String event,
+  String deviceId = 'POLAR_H10',
+  int readingsCount = 0,
+  bool mqttConnected = false,
+  String? errorMessage,
+  String platform = 'android',
+}) async {
+  try {
+    await http.post(
+      Uri.parse('${ApiService.baseUrl}/log/mobile-ping'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id':       userId,
+        'device_id':     deviceId,
+        'event':         event,
+        'readings_count': readingsCount,
+        'mqtt_connected': mqttConnected,
+        'error_message': errorMessage,
+        'platform':      platform,
+        'app_version':   '1.0.0',
+      }),
+    ).timeout(const Duration(seconds: 5));
+    debugPrint('[MobilePing] event=$event dikirim ke VPS');
+  } catch (e) {
+    // Ping gagal — tidak mengganggu streaming
+    debugPrint('[MobilePing] Gagal kirim ping (event=$event): $e');
+  }
+}
 
 class PendingDataRecord {
   final String id;
@@ -51,6 +87,13 @@ class TelemetryController extends ChangeNotifier {
     _startFlushTimer();
     debugPrint('[TelemetryController] ▶ Streaming dimulai, flush timer aktif');
     notifyListeners();
+    // Ping VPS: streaming dimulai
+    SharedPreferences.getInstance().then((prefs) {
+      final userId = prefs.getString('user_id') ?? '';
+      if (userId.isNotEmpty) {
+        _sendMobilePing(userId: userId, event: 'streaming_started');
+      }
+    });
   }
 
   void stopStreaming() {
@@ -136,12 +179,21 @@ class TelemetryController extends ChangeNotifier {
         final ok = await mqtt.connect(userId);
         if (!ok) {
           debugPrint('[TelemetryController] ❌ MQTT connect gagal, data ditandai failed');
+          _sendMobilePing(
+            userId: userId, deviceId: deviceId,
+            event: 'mqtt_failed', mqttConnected: false,
+            errorMessage: 'MQTT connect gagal ke broker',
+          );
           _markAsFailed(pendingRecords);
           _isSyncing = false;
           notifyListeners();
           return;
         }
         debugPrint('[TelemetryController] ✅ MQTT connect berhasil');
+        _sendMobilePing(
+          userId: userId, deviceId: deviceId,
+          event: 'mqtt_connected', mqttConnected: true,
+        );
       }
 
       final readings = pendingRecords.map((r) => r.reading).toList();
@@ -157,9 +209,24 @@ class TelemetryController extends ChangeNotifier {
         // Hapus yang sudah terkirim dari queue
         _queue.removeWhere((r) => pendingRecords.any((p) => p.id == r.id));
         debugPrint('[TelemetryController] ✅ ${readings.length} readings terkirim ke RMQ. Sisa queue: ${_queue.length}');
+        // Ping VPS: publish berhasil
+        _sendMobilePing(
+          userId: userId, deviceId: deviceId,
+          event: 'publish_success',
+          readingsCount: readings.length,
+          mqttConnected: true,
+        );
       } else {
         _markAsFailed(pendingRecords);
         debugPrint('[TelemetryController] ❌ publishSensorReadings gagal, ${pendingRecords.length} records ditandai failed');
+        // Ping VPS: publish gagal
+        _sendMobilePing(
+          userId: userId, deviceId: deviceId,
+          event: 'publish_failed',
+          readingsCount: readings.length,
+          mqttConnected: true,
+          errorMessage: 'publishSensorReadings returned false',
+        );
       }
     } catch (e, stackTrace) {
       debugPrint('[TelemetryController] ❌ Exception: $e');

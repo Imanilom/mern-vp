@@ -1,5 +1,6 @@
 import express from 'express';
 import { createLog, createTransportLog, upload } from '../controllers/logs.controller.js';
+import { mobilePing, mobileStatus } from '../controllers/mobile_stream.controller.js';
 
 const router = express.Router();
 
@@ -21,5 +22,17 @@ const router = express.Router();
  */
 router.post('/logs', upload.single('file'), createLog);
 router.post('/transport', createTransportLog);
+
+/**
+ * POST /api/log/mobile-ping
+ * Dipanggil Flutter saat streaming event terjadi.
+ * Body: { user_id, device_id, event, readings_count, mqtt_connected, error_message, platform }
+ *
+ * GET /api/log/mobile-status
+ * Dashboard VPS: status streaming & data terbaru per user.
+ * Query: ?user_id=...&limit=50&event=...&since=ISO_DATE
+ */
+router.post('/mobile-ping', mobilePing);
+router.get('/mobile-status', mobileStatus);
 
 export default router;
