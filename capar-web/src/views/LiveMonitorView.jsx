@@ -104,7 +104,7 @@ export const LiveMonitorView = ({
 
   useEffect(() => {
     if (displayRawData.length > 0) {
-      setLiveData(displayRawData.slice(-60).map(d => ({
+      setLiveData(displayRawData.slice(-1000).map(d => ({
         time: new Date(getTimestamp(d)).toLocaleTimeString('id-ID', { hour12: false }),
         hr: Number(d.hr) || 0,
         rrms: Number(d.rrms) || 0,

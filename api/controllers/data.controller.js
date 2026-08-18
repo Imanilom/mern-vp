@@ -1597,24 +1597,27 @@ export const getRawPolarData = async (req, res, next) => {
 
     // ── Gunakan timestamp (Number) untuk filter tanggal agar memanfaatkan index ──
     if (date) {
-      // date format: YYYY-MM-DD
-      const dayStart = new Date(date + 'T00:00:00.000Z').getTime();
-      const dayEnd   = new Date(date + 'T23:59:59.999Z').getTime();
-      query.timestamp = { $gte: dayStart, $lte: dayEnd };
+      let tsStartMs = new Date(date + 'T00:00:00.000Z').getTime();
+      let tsEndMs   = new Date(date + 'T23:59:59.999Z').getTime();
+      
+      if (startTime) {
+        const [sh, sm] = startTime.split(':').map(Number);
+        const [eh, em] = (endTime || '23:59').split(':').map(Number);
+        const baseDay = new Date(date + 'T00:00:00.000Z').getTime();
+        tsStartMs = baseDay + (sh * 3600 + sm * 60) * 1000;
+        tsEndMs   = baseDay + (eh * 3600 + em * 60 + 59) * 1000;
+      }
+      
+      const tsStartSec = Math.floor(tsStartMs / 1000);
+      const tsEndSec = Math.floor(tsEndMs / 1000);
+      
+      query.$or = [
+        { timestamp: { $gte: tsStartMs, $lte: tsEndMs } },
+        { timestamp: { $gte: tsStartSec, $lte: tsEndSec } }
+      ];
     } else if (since) {
       // ── Mode live polling: hanya ambil data setelah timestamp terakhir ──
-      // Gunakan ?since=<timestamp_ms> agar tidak mengirim ulang data lama
       query.timestamp = { $gt: parseInt(since, 10) };
-    }
-
-    if (startTime && query.timestamp) {
-      // startTime & endTime hanya berlaku jika date juga dikirim
-      const [sh, sm] = startTime.split(':').map(Number);
-      const [eh, em] = (endTime || '23:59').split(':').map(Number);
-      const baseDay = new Date(date + 'T00:00:00.000Z');
-      const tsStart = baseDay.getTime() + (sh * 3600 + sm * 60) * 1000;
-      const tsEnd   = baseDay.getTime() + (eh * 3600 + em * 60 + 59) * 1000;
-      query.timestamp = { $gte: tsStart, $lte: tsEnd };
     }
 
     // Limit lebih besar jika ada filter tanggal (bisa seharian penuh ~8640 titik per menit)
