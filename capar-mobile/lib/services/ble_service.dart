@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:polar/polar.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/models/models.dart';
 
 /// BleService — menggunakan Official Polar BLE SDK (package: polar)
@@ -26,6 +27,7 @@ class BleService extends ChangeNotifier {
   bool isConnected = false;
   String deviceName = "Tidak Ada Perangkat";
   String _deviceId = '';
+  String get deviceId => _deviceId;
   int batteryLevel = 0;
   int signalQuality = 0;
   String motionState = "Duduk Bekerja";
@@ -53,6 +55,9 @@ class BleService extends ChangeNotifier {
       debugPrint('[Polar] Connected: ${info.deviceId} (${info.name})');
       deviceName = info.name.isNotEmpty ? info.name : 'Polar H10';
       _deviceId  = info.deviceId;
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString('device_id', info.deviceId);
+      });
       isConnected = true;
       batteryLevel = 95;
       signalQuality = 98;

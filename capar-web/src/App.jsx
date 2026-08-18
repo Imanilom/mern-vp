@@ -44,6 +44,9 @@ export function App() {
   const [auditTrail, setAuditTrail] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
+  
+  // New state to hold raw stream data
+  const [liveSensorData, setLiveSensorData] = useState(null);
 
   useEffect(() => {
     async function loadAuth() {
@@ -131,6 +134,7 @@ export function App() {
     loadData();
 
     socket.on('new_sensor_data', (payload) => {
+      setLiveSensorData(payload);
       setParticipants((prev) => {
         // Here we could update specific participant state based on payload.user_id
         // For now, we will just force a re-render or push the latest HR/RR
@@ -239,6 +243,7 @@ export function App() {
               onClearSelection={() => setSelectedParticipantId(null)}
               globalParticipantFilter={globalParticipantFilter}
               globalDateFilter={globalDateFilter}
+              liveSensorData={liveSensorData}
             />
           )}
 

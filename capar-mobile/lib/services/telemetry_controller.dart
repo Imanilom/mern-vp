@@ -158,10 +158,13 @@ class TelemetryController extends ChangeNotifier {
 
     try {
       final bleService = ref.read(bleServiceProvider);
-      final deviceId = bleService.isConnected ? bleService.deviceName : 'POLAR_H10';
-
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('user_id') ?? '';
+      
+      final savedDeviceId = prefs.getString('device_id') ?? 'POLAR_H10';
+      final deviceId = bleService.isConnected && bleService.deviceId.isNotEmpty
+          ? bleService.deviceId
+          : savedDeviceId;
 
       if (userId.isEmpty) {
         debugPrint('[TelemetryController] ❌ userId tidak ditemukan di SharedPreferences, skip sync');

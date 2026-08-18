@@ -15,8 +15,11 @@ import 'screens/onboarding/welcome_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'theme/app_colors.dart';
 
-void main() {
+import 'services/background_task.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await BackgroundTask.initializeService();
   runApp(
     const ProviderScope(
       child: CaparMobileApp(),

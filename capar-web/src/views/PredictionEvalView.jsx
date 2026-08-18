@@ -30,8 +30,30 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
     }
   }, [participantId]);
 
-  const cm = metrics?.confusionMatrix || { TP: 0, FP: 0, FN: 0, TN: 0, labeled_count: 0 };
-  const perf = metrics?.metrics || { precision: 0, recall: 0, f1: 0, accuracy: 0 };
+  const cm = React.useMemo(() => {
+    let TP = 0, FP = 0, FN = 0, TN = 0;
+    episodeAnalysis.forEach(ea => {
+      if (ea.result_E1 === 'TP') TP++;
+      else if (ea.result_E1 === 'FP') FP++;
+      else if (ea.result_E1 === 'FN') FN++;
+      else if (ea.result_E1 === 'TN') TN++;
+    });
+    return { TP, FP, FN, TN, labeled_count: TP + FP + FN + TN };
+  }, [episodeAnalysis]);
+
+  const perf = React.useMemo(() => {
+    const { TP, FP, FN, TN } = cm;
+    const precision = (TP + FP) > 0 ? TP / (TP + FP) : 0;
+    const recall = (TP + FN) > 0 ? TP / (TP + FN) : 0;
+    const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+    const accuracy = (TP + TN + FP + FN) > 0 ? (TP + TN) / (TP + FP + FN + TN) : 0;
+    return {
+      precision: precision.toFixed(4),
+      recall: recall.toFixed(4),
+      f1: f1.toFixed(4),
+      accuracy: accuracy.toFixed(4)
+    };
+  }, [cm]);
   const auc = metrics?.roc?.auc || 0;
 
   const brier = metrics?.brierScore ?? (auc > 0 ? (1 - auc) * 0.7 : 0);

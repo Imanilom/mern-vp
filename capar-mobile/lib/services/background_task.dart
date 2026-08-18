@@ -32,6 +32,7 @@ void onStart(ServiceInstance service) async {
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('token');
   final userId = prefs.getString('user_id') ?? '';
+  final deviceId = prefs.getString('device_id') ?? 'polar_h10';
 
   if (token == null || userId.isEmpty) {
     debugPrint('[BackgroundTask] Token atau userId tidak ditemukan, service dihentikan.');
@@ -64,7 +65,7 @@ void onStart(ServiceInstance service) async {
       try {
         await ApiService.sendSensorData(
           userId: userId, 
-          deviceId: 'dummy_polar_h10', 
+          deviceId: deviceId, 
           readings: fakeReadings
         );
       } catch (e) {

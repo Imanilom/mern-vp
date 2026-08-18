@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../services/api_service.dart';
 import '../../services/telemetry_controller.dart';
 import '../../services/ble_service.dart';
+import '../../widgets/realtime_chart_widget.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/evidence_chip.dart';
 import '../ema/ema_dialogs.dart';
@@ -109,8 +110,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               _buildStreamingStatusBar(),
               const SizedBox(height: 12),
 
-              // ── MongoDB Sync Chart ──────────────────────────────────────────
-              const MongoSyncWidget(),
+              // ── Live Stream Chart ──────────────────────────────────────────
+              const RealtimeChartWidget(),
               const SizedBox(height: 16),
 
               // ── State Switcher Pills ────────────────────────────────────────
