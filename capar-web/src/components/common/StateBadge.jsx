@@ -1,0 +1,52 @@
+import React from 'react';
+import { CheckCircle2, AlertTriangle, Activity, RefreshCw, XCircle, HelpCircle } from 'lucide-react';
+
+export const StateBadge = ({ state }) => {
+  let chipClass = "chip-neutral";
+  let label = state || "UNKNOWN";
+  let Icon = HelpCircle;
+
+  switch (state) {
+    case "BASELINE_COMPATIBLE":
+      chipClass = "chip-green";
+      label = "BASELINE COMPATIBLE";
+      Icon = CheckCircle2;
+      break;
+    case "DEVIATION_CANDIDATE":
+      chipClass = "chip-amber";
+      label = "DEVIATION CANDIDATE";
+      Icon = Activity;
+      break;
+    case "PERSISTENT_DEVIATION":
+    case "PERSISTENT_DEV":
+      chipClass = "chip-red";
+      label = "PERSISTENT DEVIATION";
+      Icon = AlertTriangle;
+      break;
+    case "RECOVERY":
+      chipClass = "chip-purple";
+      label = "RECOVERY";
+      Icon = RefreshCw;
+      break;
+    case "RECOVERED":
+      chipClass = "chip-green";
+      label = "RECOVERED";
+      Icon = CheckCircle2;
+      break;
+    case "UNRESOLVED":
+      chipClass = "chip-red";
+      label = "UNRESOLVED";
+      Icon = XCircle;
+      break;
+    default:
+      chipClass = "chip-neutral";
+      Icon = HelpCircle;
+  }
+
+  return (
+    <span className={`evidence-chip ${chipClass}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+      <Icon size={12} />
+      {label}
+    </span>
+  );
+};

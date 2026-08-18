@@ -1,0 +1,85 @@
+[
+  {
+    "timestamp": 1692584021,
+    "hrAnomalies": [
+      119,
+      119,
+      114,
+      114,
+      121,
+      121
+    ],
+    "rrAnomalies": [
+      666,
+      666
+    ]
+  },
+  {
+    "timestamp": 1692584623,
+    "hrAnomalies": [
+      109,
+      109,
+      116,
+      116,
+      110,
+      110,
+      108,
+      108,
+      113,
+      113,
+      109,
+      109
+    ],
+    "rrAnomalies": [
+      750,
+      750,
+      549,
+      549
+    ]
+  },
+  {
+    "timestamp": 1692586320,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      731,
+      731
+    ]
+  },
+  {
+    "timestamp": 1692586922,
+    "hrAnomalies": [
+      105,
+      105,
+      104,
+      104,
+      104,
+      104
+    ],
+    "rrAnomalies": [
+      750,
+      750,
+      723,
+      723
+    ]
+  },
+  {
+    "timestamp": 1692589238,
+    "hrAnomalies": [
+      111,
+      125,
+      112,
+      115,
+      114
+    ],
+    "rrAnomalies": [
+      518
+    ]
+  },
+  {
+    "timestamp": 1692589840,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      708
+    ]
+  }
+]

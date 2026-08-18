@@ -1,0 +1,142 @@
+import User from '../models/user.model.js';
+import Patient from '../models/patient.model.js';
+import bcryptjs from 'bcryptjs';
+import { errorHandler } from '../utils/error.js';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+export const signup = async (req, res, next) => {
+  const { name, email, password, phone_number } = req.body;
+  const hashedPassword = bcryptjs.hashSync(password, 10);
+  const guid = crypto.randomUUID();
+  const newUser = new User({name, email, password: hashedPassword, phone_number, guid });
+  try {
+    await newUser.save();
+    res.status(201).json({message : 'User created successfully!'});
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const backofficeRegister = async (req, res, next) => {
+  const { name, email, role, docter, current_device } = req.body;
+  const password = "password"; // Default password
+  const hashedPassword = bcryptjs.hashSync(password, 10);
+  const guid = crypto.randomUUID();
+  const newUser = new User({
+    name, 
+    email, 
+    role, 
+    password: hashedPassword, 
+    phone_number: "0000",
+    guid,
+    ...(docter && { docter }),
+    ...(current_device && { current_device })
+  });
+  try {
+    await newUser.save();
+    res.status(201).json({ success: true, message: 'User created successfully', data: { name, email, role }});
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const signin = async (req, res, next) => {
+  const { email, password } = req.body;
+  try {
+    const escapedEmail = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const emailRegex = new RegExp(`^${escapedEmail}$`, 'i');
+
+    let validUser = await User.findOne({ email: emailRegex });
+    let isPatient = false;
+
+    if (!validUser) {
+      validUser = await Patient.findOne({ email: emailRegex });
+      isPatient = true;
+    }
+
+    if (!validUser) return next(errorHandler(404, 'User not found!'));
+    const validPassword = bcryptjs.compareSync(password, validUser.password);
+    if (!validPassword) return next(errorHandler(401, 'Wrong credentials!'));
+
+    const userRole = validUser.role || (isPatient ? 'patient' : 'user');
+    const token = jwt.sign({ 
+      id: validUser._id, 
+      current_device : validUser.current_device, 
+      role : userRole, 
+      guid : validUser.guid 
+    }, process.env.JWT_SECRET);
+
+    const { password: pass, ...rest } = validUser._doc;
+
+    res
+      .cookie('access_token', token, { httpOnly: true })
+      .status(200)
+      .json({ ...rest, role: userRole, token });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const google = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (user) {
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+      const { password: hashedPassword, ...rest } = user._doc;
+      const expiryDate = new Date(Date.now() + 3600000); // 1 hour
+      res
+        .cookie('access_token', token, {
+          httpOnly: true,
+          expires: expiryDate,
+        })
+        .status(200)
+        .json(rest);
+    } else {
+      const generatedPassword =
+        Math.random().toString(36).slice(-8) +
+        Math.random().toString(36).slice(-8);
+      const hashedPassword = bcryptjs.hashSync(generatedPassword, 10);
+      const newUser = new User({
+        name:
+          req.body.name.split(' ').join('').toLowerCase() +
+          Math.random().toString(36).slice(-8),
+        email: req.body.email,
+        phone_number : "0851",
+        password: hashedPassword,
+        profilePicture: req.body.photo,
+        guid: crypto.randomUUID(),
+      });
+      await newUser.save();
+      const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
+      const { password: hashedPassword2, ...rest } = newUser._doc;
+      const expiryDate = new Date(Date.now() + 3600000); // 1 hour
+      res
+        .cookie('access_token', token, {
+          httpOnly: true,
+          expires: expiryDate,
+        })
+        .status(200)
+        .json(rest);
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const signOut = (req, res) => {
+  res.clearCookie('access_token').status(200).json('Signout success!');
+};
+
+export const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      const patient = await Patient.findById(req.user.id).select('-password');
+      if (!patient) return next(errorHandler(404, 'User not found'));
+      return res.status(200).json({ success: true, user: { ...patient._doc, role: 'patient' } });
+    }
+    res.status(200).json({ success: true, user: user });
+  } catch (error) {
+    next(error);
+  }
+};

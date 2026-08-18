@@ -1,0 +1,204 @@
+[
+  {
+    "timestamp": 1694476823,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      799,
+      808
+    ]
+  },
+  {
+    "timestamp": 1694477425,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      763,
+      770
+    ]
+  },
+  {
+    "timestamp": 1694478118,
+    "hrAnomalies": [],
+    "rrAnomalies": [
+      689,
+      691,
+      692,
+      706,
+      706,
+      725,
+      771
+    ]
+  },
+  {
+    "timestamp": 1694478721,
+    "hrAnomalies": [
+      114,
+      114
+    ],
+    "rrAnomalies": [
+      761,
+      761,
+      711,
+      711,
+      762,
+      762,
+      697,
+      723
+    ]
+  },
+  {
+    "timestamp": 1694481004,
+    "hrAnomalies": [
+      119,
+      119
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694487975,
+    "hrAnomalies": [
+      113,
+      115,
+      116,
+      118
+    ],
+    "rrAnomalies": [
+      792,
+      807,
+      813
+    ]
+  },
+  {
+    "timestamp": 1694489178,
+    "hrAnomalies": [
+      84
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694491203,
+    "hrAnomalies": [
+      104,
+      105,
+      105
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694492343,
+    "hrAnomalies": [
+      104,
+      105
+    ],
+    "rrAnomalies": []
+  },
+  {
+    "timestamp": 1694492948,
+    "hrAnomalies": [
+      87,
+      87,
+      87,
+      87,
+      88,
+      88
+    ],
+    "rrAnomalies": [
+      681,
+      681,
+      683,
+      683,
+      685,
+      685,
+      688,
+      688,
+      689,
+      689,
+      689,
+      689,
+      692,
+      693,
+      693
+    ]
+  },
+  {
+    "timestamp": 1694494884,
+    "hrAnomalies": [
+      86,
+      86,
+      87,
+      87
+    ],
+    "rrAnomalies": [
+      626,
+      679,
+      908
+    ]
+  },
+  {
+    "timestamp": 1694497191,
+    "hrAnomalies": [
+      90,
+      90,
+      90,
+      91,
+      91,
+      92,
+      93,
+      93,
+      94,
+      94,
+      95,
+      97,
+      97,
+      98,
+      100,
+      101
+    ],
+    "rrAnomalies": [
+      601,
+      607,
+      648,
+      650,
+      655,
+      662,
+      666,
+      668,
+      673,
+      677,
+      795,
+      800
+    ]
+  },
+  {
+    "timestamp": 1694497791,
+    "hrAnomalies": [
+      107,
+      107
+    ],
+    "rrAnomalies": [
+      473,
+      570
+    ]
+  },
+  {
+    "timestamp": 1694498394,
+    "hrAnomalies": [
+      104,
+      105,
+      101
+    ],
+    "rrAnomalies": [
+      576
+    ]
+  },
+  {
+    "timestamp": 1694499509,
+    "hrAnomalies": [
+      88,
+      89,
+      89,
+      89,
+      89
+    ],
+    "rrAnomalies": []
+  }
+]

@@ -1,0 +1,470 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../services/api_service.dart';
+import '../../services/ble_service.dart';
+import '../../services/telemetry_controller.dart';
+import '../../theme/app_colors.dart';
+import '../ema/ema_dialogs.dart';
+
+class JourneyScreen extends ConsumerStatefulWidget {
+  const JourneyScreen({super.key});
+
+  @override
+  ConsumerState<JourneyScreen> createState() => _JourneyScreenState();
+}
+
+class _JourneyScreenState extends ConsumerState<JourneyScreen> {
+  int _completedMissions = 0;
+  int _totalDays = 0;
+  int _totalEpisodes = 0;
+  bool _isLoadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    setState(() => _isLoadingStats = true);
+    final episodes = await ApiService.fetchEpisodes();
+    if (mounted) {
+      setState(() {
+        _totalEpisodes = episodes.length;
+        _completedMissions = (episodes.length * 2).clamp(0, 10);
+        _isLoadingStats = false;
+      });
+    }
+    // Hitung total hari dari SharedPreferences (set saat pertama kali login)
+    final prefs = await SharedPreferences.getInstance();
+    final firstLoginMs = prefs.getInt('first_login_ms');
+    if (firstLoginMs != null && mounted) {
+      final days = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(firstLoginMs)).inDays;
+      setState(() => _totalDays = days.clamp(0, 999));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ble = ref.watch(bleServiceProvider);
+    final telemetry = ref.watch(telemetryControllerProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: AppColors.teal,
+          onRefresh: _loadStats,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header ─────────────────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'CAPAR Journey',
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Kematangan evidence & partisipasi riset',
+                          style: TextStyle(fontSize: 12, color: AppColors.gray),
+                        ),
+                      ],
+                    ),
+                    // Status koneksi BLE
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/pairing'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: ble.isConnected ? AppColors.greenSoft : AppColors.graySoft,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: ble.isConnected
+                                ? AppColors.green.withValues(alpha: 0.3)
+                                : AppColors.line,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              ble.isConnected ? Icons.sensors_rounded : Icons.sensors_off_rounded,
+                              size: 12,
+                              color: ble.isConnected ? AppColors.green : AppColors.gray,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              ble.isConnected ? ble.deviceName : 'Pairing',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: ble.isConnected ? AppColors.green : AppColors.gray,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                // ── Quick Stats Row ─────────────────────────────────────────
+                _buildQuickStats(telemetry),
+                const SizedBox(height: 14),
+
+                // ── Device & Streaming Card ─────────────────────────────────
+                _buildDeviceCard(ble, telemetry),
+                const SizedBox(height: 14),
+
+                // ── Evidence Level Card ─────────────────────────────────────
+                _buildEvidenceLevelCard(),
+                const SizedBox(height: 14),
+
+                // ── Mission Center ──────────────────────────────────────────
+                _buildMissionCenter(),
+                const SizedBox(height: 14),
+
+                // ── EMA Quick Access ────────────────────────────────────────
+                _buildEmaQuickAccess(),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Quick Stats ───────────────────────────────────────────────────────────
+
+  Widget _buildQuickStats(TelemetryController telemetry) {
+    return Row(
+      children: [
+        _buildStatBox('Hari Partisipasi', _isLoadingStats ? '…' : '$_totalDays', AppColors.teal),
+        const SizedBox(width: 10),
+        _buildStatBox('Episode Tercatat', _isLoadingStats ? '…' : '$_totalEpisodes', AppColors.amber),
+        const SizedBox(width: 10),
+        _buildStatBox('Data Pending', '${telemetry.pendingCount}', AppColors.purple),
+      ],
+    );
+  }
+
+  Widget _buildStatBox(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(fontSize: 9.5, color: AppColors.gray, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Device Card ───────────────────────────────────────────────────────────
+
+  Widget _buildDeviceCard(BleService ble, TelemetryController telemetry) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: ble.isConnected ? AppColors.tealSoft : AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ble.isConnected ? AppColors.teal.withValues(alpha: 0.3) : AppColors.line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: ble.isConnected ? AppColors.teal : AppColors.graySoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              ble.isConnected ? Icons.bluetooth_connected_rounded : Icons.bluetooth_disabled_rounded,
+              color: ble.isConnected ? Colors.white : AppColors.gray,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ble.isConnected ? ble.deviceName : 'Perangkat Belum Terhubung',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: ble.isConnected ? AppColors.teal : AppColors.gray,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                if (ble.isConnected)
+                  Text(
+                    'Baterai: ${ble.batteryLevel}% · SQ: ${ble.signalQuality}% · ${ble.motionState}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.navy),
+                  )
+                else
+                  const Text('Tap untuk mulai pairing Polar H10', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pushNamed(context, '/pairing'),
+            child: Text(
+              ble.isConnected ? 'Ganti' : 'Pairing',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.teal),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Evidence Level Card ───────────────────────────────────────────────────
+
+  Widget _buildEvidenceLevelCard() {
+    // Level dihitung dari total episode
+    final int level = (_totalEpisodes == 0)
+        ? 1
+        : (_totalEpisodes < 3 ? 2 : (_totalEpisodes < 7 ? 3 : 4));
+    final String levelLabel = ['', 'Novice', 'Contributor', 'Advanced', 'Expert'][level];
+    final double progress = (_totalEpisodes / 10).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'EVIDENCE LEVEL & JOURNEY',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray, letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppColors.teal, AppColors.purple], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: Text('L$level', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(levelLabel, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.navy)),
+                        Text('$_totalEpisodes / 10 ep', style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 7,
+                        backgroundColor: AppColors.line,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.teal),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Data episode berkontribusi pada akurasi model prediksi.',
+                      style: TextStyle(fontSize: 10.5, color: AppColors.gray),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Mission Center ────────────────────────────────────────────────────────
+
+  Widget _buildMissionCenter() {
+    final missions = [
+      _Mission('Selesaikan 1 streaming sesi penuh', _totalDays >= 1, Icons.sensors_rounded),
+      _Mission('Isi EMA pertama kali', _completedMissions >= 1, Icons.edit_note_rounded),
+      _Mission('Rekam 3 hari data berturut-turut', _totalDays >= 3, Icons.calendar_today_rounded),
+      _Mission('Capai 1 episode terdata lengkap', _totalEpisodes >= 1, Icons.flag_rounded),
+      _Mission('Selesaikan 5 sesi EMA', _completedMissions >= 5, Icons.check_circle_rounded),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'MISSION CENTER & BADGES',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray, letterSpacing: 0.5),
+              ),
+              Text(
+                '${missions.where((m) => m.done).length}/${missions.length}',
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.teal),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...missions.map((m) => _buildMissionRow(m)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissionRow(_Mission m) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: m.done ? AppColors.greenSoft : AppColors.graySoft,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(m.icon, size: 16, color: m.done ? AppColors.green : AppColors.gray),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              m.label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: m.done ? AppColors.navy : AppColors.gray,
+                decoration: m.done ? TextDecoration.none : TextDecoration.none,
+              ),
+            ),
+          ),
+          if (m.done)
+            const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 18)
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: AppColors.graySoft, borderRadius: BorderRadius.circular(6)),
+              child: const Text('Open', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.gray)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── EMA Quick Access ──────────────────────────────────────────────────────
+
+  Widget _buildEmaQuickAccess() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'EMA QUICK ACCESS',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray, letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildEmaButton('EMA 1', 'Konteks', AppColors.amber, () => EmaDialogs.showEma1(context)),
+              const SizedBox(width: 8),
+              _buildEmaButton('EMA 2', 'Gejala', AppColors.red, () => EmaDialogs.showEma2(context)),
+              const SizedBox(width: 8),
+              _buildEmaButton('EMA 3', 'Recovery', AppColors.purple, () => EmaDialogs.showEma3(context)),
+              const SizedBox(width: 8),
+              _buildEmaButton('EMA 4', 'Refleksi', AppColors.teal, () => EmaDialogs.showEma4(context)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmaButton(String code, String sub, Color color, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Column(
+            children: [
+              Text(code, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+              const SizedBox(height: 2),
+              Text(sub, style: TextStyle(fontSize: 9.5, color: color.withValues(alpha: 0.8), fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Mission {
+  final String label;
+  final bool done;
+  final IconData icon;
+  const _Mission(this.label, this.done, this.icon);
+}

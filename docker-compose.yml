@@ -1,0 +1,50 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: mern-vp-rabbitmq
+    restart: always
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  mongodb:
+    image: mongo:6.0
+    container_name: mern-vp-mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: capar_admin
+      MONGO_INITDB_ROOT_PASSWORD: SecurePassword123! # Ganti dengan password yang lebih kuat
+    ports:
+      # HANYA ekspos ke localhost VPS (127.0.0.1) agar tidak bisa diakses dari internet publik
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  api:
+    build: ./api
+    container_name: mern-vp-api
+    restart: always
+    ports:
+      - "3030:3030"
+    env_file:
+      - ./api/.env
+    environment:
+      - PORT=3030
+      - ALLOWED_ORIGINS=https://healthtrajectory.cloud,https://api.healthtrajectory.cloud
+    depends_on:
+      - rabbitmq
+    dns:
+      - 103.253.213.134
+      - 203.175.8.227
+
+  capar-web:
+    build: ./capar-web
+    container_name: mern-vp-capar-web
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - NODE_ENV=production
+
+volumes:
+  rabbitmq_data:
+  mongodb_data:

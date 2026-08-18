@@ -1,0 +1,20 @@
+[
+  {
+    "timestamp": 1687559245,
+    "hrAnomalies": [
+      113
+    ],
+    "rrAnomalies": [
+      733
+    ]
+  },
+  {
+    "timestamp": 1687563097,
+    "hrAnomalies": [
+      122
+    ],
+    "rrAnomalies": [
+      504
+    ]
+  }
+]

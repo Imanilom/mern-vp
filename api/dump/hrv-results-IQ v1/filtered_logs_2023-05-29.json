@@ -1,0 +1,20 @@
+{
+  "metrics": null,
+  "filteredLogs": [
+    {
+      "timestamp": 1685337419,
+      "HR": 55,
+      "RR": 20
+    },
+    {
+      "timestamp": 1685337561,
+      "HR": 80,
+      "RR": 34
+    },
+    {
+      "timestamp": 1685346348,
+      "HR": 52,
+      "RR": 31
+    }
+  ]
+}
