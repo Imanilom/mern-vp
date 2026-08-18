@@ -1611,9 +1611,13 @@ export const getRawPolarData = async (req, res, next) => {
       const tsStartSec = Math.floor(tsStartMs / 1000);
       const tsEndSec = Math.floor(tsEndMs / 1000);
       
+      const [year, month, day] = date.split('-');
+      const dateCreatedStr = `${day}-${month}-${year}`;
+      
       query.$or = [
         { timestamp: { $gte: tsStartMs, $lte: tsEndMs } },
-        { timestamp: { $gte: tsStartSec, $lte: tsEndSec } }
+        { timestamp: { $gte: tsStartSec, $lte: tsEndSec } },
+        { date_created: dateCreatedStr }
       ];
     } else if (since) {
       // ── Mode live polling: hanya ambil data setelah timestamp terakhir ──
