@@ -3,11 +3,20 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { api } from '../services/api';
 
 const getTimestamp = (d) => {
-  if (d.timestamp) return new Date(d.timestamp).getTime();
-  if (d.createdAt) return new Date(d.createdAt).getTime();
+  if (d.timestamp) {
+     const ts = Number(d.timestamp);
+     return ts < 10000000000 ? ts * 1000 : ts;
+  }
+  if (d.createdAt) {
+     if (typeof d.createdAt === 'object' && d.createdAt.$date) return new Date(d.createdAt.$date).getTime();
+     return new Date(d.createdAt).getTime();
+  }
   if (d.date_created && d.time_created) {
-    const parts = d.date_created.split('/');
-    if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T${d.time_created}`).getTime();
+    const sep = d.date_created.includes('-') ? '-' : '/';
+    const parts = d.date_created.split(sep);
+    if (parts.length === 3) {
+      return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T${d.time_created}`).getTime();
+    }
   }
   if (d.time) return new Date(d.time).getTime();
   if (d.time_created) return new Date(`1970-01-01T${d.time_created}`).getTime();

@@ -19,7 +19,10 @@ import { ProfileView } from './views/ProfileView';
 import { api } from './services/api';
 import { io } from 'socket.io-client';
 
-const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3030', {
+const isDev = import.meta.env.DEV;
+const socketUrl = isDev ? '/' : (import.meta.env.VITE_API_URL || 'http://localhost:3030');
+
+const socket = io(socketUrl, {
   transports: ['websocket', 'polling']
 });
 
@@ -80,7 +83,14 @@ export function App() {
       segments.forEach(seg => {
         const val = seg.window_start || seg.timestamp || seg.createdAt;
         if (val) {
-          const ts = new Date(val).getTime();
+          let ts = NaN;
+          if (typeof val === 'number') {
+             ts = val < 10000000000 ? val * 1000 : val;
+          } else if (typeof val === 'object' && val.$date) {
+             ts = new Date(val.$date).getTime();
+          } else {
+             ts = new Date(val).getTime();
+          }
           if (!isNaN(ts)) {
             const dt = new Date(ts);
             const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
