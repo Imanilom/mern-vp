@@ -77,9 +77,13 @@ export function App() {
       return;
     }
 
-    api.getAnalyzedSegments(targetPatientId, 500).then(data => {
+    Promise.all([
+      api.getAnalyzedSegments(targetPatientId, 500).catch(() => null),
+      api.getRawData(targetPatientId).catch(() => null)
+    ]).then(([segmentsRes, rawRes]) => {
       const dates = new Set();
-      const segments = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      
+      const segments = Array.isArray(segmentsRes?.data) ? segmentsRes.data : (Array.isArray(segmentsRes) ? segmentsRes : []);
       segments.forEach(seg => {
         const val = seg.window_start || seg.timestamp || seg.createdAt;
         if (val) {
@@ -98,6 +102,32 @@ export function App() {
           }
         }
       });
+
+      const rawLogs = Array.isArray(rawRes?.data) ? rawRes.data : (Array.isArray(rawRes) ? rawRes : []);
+      rawLogs.forEach(log => {
+        let ts = NaN;
+        if (log.timestamp) {
+          const nts = Number(log.timestamp);
+          ts = nts < 10000000000 ? nts * 1000 : nts;
+        } else if (log.createdAt) {
+          ts = new Date(log.createdAt).getTime();
+        } else if (log.date_created) {
+          const sep = log.date_created.includes('-') ? '-' : '/';
+          const parts = log.date_created.split(sep);
+          if (parts.length === 3) {
+            const yyyy = parts[0].length === 4 ? parts[0] : parts[2];
+            const mm = parts[1];
+            const dd = parts[0].length === 4 ? parts[2] : parts[0];
+            ts = new Date(`${yyyy}-${mm}-${dd}T${log.time_created || '00:00:00'}`).getTime();
+          }
+        }
+        if (!isNaN(ts)) {
+          const dt = new Date(ts);
+          const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+          dates.add(dateStr);
+        }
+      });
+
       const datesArr = Array.from(dates).sort();
       setAvailableDates(datesArr);
       

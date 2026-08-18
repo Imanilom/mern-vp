@@ -1607,6 +1607,28 @@ const normDateCreatedExpr = {
           ],
         },
       },
+      {
+        // DD/MM/YYYY -> susun ulang jadi YYYY-MM-DD
+        case: { $regexMatch: { input: { $ifNull: ["$date_created", ""] }, regex: /^\d{2}\/\d{2}\/\d{4}$/ } },
+        then: {
+          $concat: [
+            { $substrCP: ["$date_created", 6, 4] }, "-",
+            { $substrCP: ["$date_created", 3, 2] }, "-",
+            { $substrCP: ["$date_created", 0, 2] },
+          ],
+        },
+      },
+      {
+        // YYYY/MM/DD -> ubah / jadi -
+        case: { $regexMatch: { input: { $ifNull: ["$date_created", ""] }, regex: /^\d{4}\/\d{2}\/\d{2}$/ } },
+        then: {
+          $concat: [
+            { $substrCP: ["$date_created", 0, 4] }, "-",
+            { $substrCP: ["$date_created", 5, 2] }, "-",
+            { $substrCP: ["$date_created", 8, 2] },
+          ],
+        },
+      },
     ],
     default: null,
   },

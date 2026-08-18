@@ -15,7 +15,10 @@ const getTimestamp = (d) => {
     const sep = d.date_created.includes('-') ? '-' : '/';
     const parts = d.date_created.split(sep);
     if (parts.length === 3) {
-      return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T${d.time_created}`).getTime();
+      const yyyy = parts[0].length === 4 ? parts[0] : parts[2];
+      const mm = parts[1];
+      const dd = parts[0].length === 4 ? parts[2] : parts[0];
+      return new Date(`${yyyy}-${mm}-${dd}T${d.time_created}`).getTime();
     }
   }
   if (d.time) return new Date(d.time).getTime();
@@ -63,12 +66,12 @@ export const LiveMonitorView = ({
   }, [initialSelectedId, participants]);
 
   useEffect(() => {
-    if (selectedParticipant && globalDateFilter) {
+    if (selectedParticipant) {
       setLoadingRaw(true);
       const targetId = selectedParticipant.guid || selectedParticipant.id || selectedParticipant._id;
       
       Promise.all([
-        api.getRawData(targetId, globalDateFilter).catch(() => null),
+        api.getRawData(targetId, globalDateFilter || undefined).catch(() => null),
         api.getRRBaseline(targetId).catch(() => null)
       ]).then(([rawRes, baselineRes]) => {
         setRawData(rawRes);
