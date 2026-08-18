@@ -87,20 +87,8 @@ export const LiveMonitorView = ({
 
   const displayRawData = useMemo(() => {
     if (!rawData || !rawData.data || rawData.data.length === 0) return [];
-    let dArr = rawData.data;
-    if (globalDateFilter) {
-      const [year, month, day] = globalDateFilter.split('-');
-      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0).getTime();
-      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
-      const filtered = dArr.filter(d => {
-        const ts = getTimestamp(d);
-        if (isNaN(ts)) return false; 
-        return ts >= startOfDay && ts <= endOfDay;
-      });
-      if (filtered.length > 0) return filtered;
-    }
-    return dArr;
-  }, [rawData, globalDateFilter]);
+    return rawData.data;
+  }, [rawData]);
 
   useEffect(() => {
     if (displayRawData.length > 0) {
@@ -233,7 +221,14 @@ export const LiveMonitorView = ({
           <div className="col-7">
             <div className="card-panel h-100">
               <div className="d-flex justify-content-between">
-                <div className="mini-label mb-1">Participant {selectedParticipant.id} — live trajectory</div>
+                <div className="mini-label mb-1">
+                  Participant {selectedParticipant.id} — trajectory
+                  {liveData && liveData.length > 0 && (
+                    <span style={{ fontWeight: 'normal', color: 'var(--gray)', marginLeft: '6px', textTransform: 'none' }}>
+                      ({liveData[0].time} - {liveData[liveData.length - 1].time})
+                    </span>
+                  )}
+                </div>
                 <button onClick={() => setSelectedParticipant(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--gray)' }}><i className="fa-solid fa-xmark"></i></button>
               </div>
               <div className="frame-note mb-2 mt-0">Context: {selectedParticipant.context || 'unknown'} · evidence {selectedParticipant.evidenceState} · {selectedParticipant.device || 'device'}</div>
