@@ -592,7 +592,7 @@ export async function processHeartRateData(triggeredBy = 'CRON') {
       end_time: new Date(),
       duration_ms: Date.now() - job.start_time.getTime(),
       error: error.message,
-    }).catch(() => {});
+    }).catch(() => { });
     return { success: false, message: error.message };
   }
 }
@@ -617,9 +617,9 @@ async function processUserData(userId) {
   while (hasMore) {
     console.log(`[processUserData] user=${userId} | Querying data rawLogs...`);
     // Menggunakan hint untuk memaksa penggunaan index agar tidak memory sort issue
-    const rawLogs = await PolarData.find({ 
-      user_id: userId, 
-      $or: [{ processStatus: 'PENDING' }, { isChecked: false }] 
+    const rawLogs = await PolarData.find({
+      user_id: userId,
+      $or: [{ processStatus: 'PENDING' }, { isChecked: false }]
     })
       .hint({ user_id: 1, timestamp: 1 })
       .sort({ timestamp: 1 })
@@ -637,19 +637,19 @@ async function processUserData(userId) {
     // Jika limit tercapai, kita mungkin memotong window di tengah.
     // Tunda log dari window terakhir ke batch selanjutnya.
     if (rawLogs.length === BATCH_SIZE) {
-       const lastLog = rawLogs[rawLogs.length - 1];
-       const lastWindowStart = Math.floor(lastLog.timestamp / WINDOW_MS) * WINDOW_MS;
-       
-       // Ambil log yang strictly SEBELUM window terakhir
-       const safeLogs = rawLogs.filter(l => l.timestamp < lastWindowStart);
-       
-       // Jika semua logs ada di satu window (sangat jarang), kita proses semuanya
-       // untuk menghindari infinite loop.
-       if (safeLogs.length > 0) {
-         logsToProcess = safeLogs;
-       }
+      const lastLog = rawLogs[rawLogs.length - 1];
+      const lastWindowStart = Math.floor(lastLog.timestamp / WINDOW_MS) * WINDOW_MS;
+
+      // Ambil log yang strictly SEBELUM window terakhir
+      const safeLogs = rawLogs.filter(l => l.timestamp < lastWindowStart);
+
+      // Jika semua logs ada di satu window (sangat jarang), kita proses semuanya
+      // untuk menghindari infinite loop.
+      if (safeLogs.length > 0) {
+        logsToProcess = safeLogs;
+      }
     } else {
-       hasMore = false;
+      hasMore = false;
     }
 
     console.log(`[processUserData] user=${userId} | memproses batch: ${logsToProcess.length} logs`);
@@ -702,7 +702,7 @@ async function processUserData(userId) {
     );
     console.log(`[processUserData] user=${userId} | Update status selesai`);
     rawProcessed += processedIds.length;
-    
+
     // YIELD to GC
     await new Promise(resolve => setImmediate(resolve));
   }
@@ -729,11 +729,11 @@ function segmentIntoWindows(logs) {
   // Helper untuk memotong episode menjadi window 5 menit
   const processEpisode = (episodeLogs, activity) => {
     if (episodeLogs.length === 0) return;
-    
+
     // Mulai window dari awal episode
     let windowStart = Math.floor(episodeLogs[0].timestamp / WINDOW_MS) * WINDOW_MS;
     let currentWindowLogs = [];
-    
+
     for (const log of episodeLogs) {
       if (log.timestamp >= windowStart + WINDOW_MS) {
         if (currentWindowLogs.length > 0) {
@@ -750,7 +750,7 @@ function segmentIntoWindows(logs) {
       }
       currentWindowLogs.push(log);
     }
-    
+
     if (currentWindowLogs.length > 0) {
       windows.push({
         windowStart,
@@ -1062,7 +1062,7 @@ export async function processOneMinuteRRSegments(triggeredBy = 'CRON') {
       status: 'FAILED', end_time: new Date(),
       duration_ms: Date.now() - job.start_time.getTime(),
       error: err.message,
-    }).catch(() => {});
+    }).catch(() => { });
     return { success: false, error: err.message };
   }
 }
@@ -1575,16 +1575,83 @@ const calculateTriangularIndex = (logs) => {
 };
 
 
+// ── Helper: normalisasi timestamp ke milidetik ──────────────────────────────
+// Timestamp detik (10 digit, ~1.7e9) vs milidetik (13 digit, ~1.7e12).
+// Ambang 10^12 aman dipakai sebagai pembeda karena detik Unix baru akan
+// menembus 10^10 sekitar tahun 2286, sedangkan ms Unix sekarang sudah > 10^12.
+const normTsExpr = {
+  $cond: [
+    { $lt: ["$timestamp", 10000000000] }, // < 10 digit besar → asumsikan detik
+    { $multiply: ["$timestamp", 1000] },
+    "$timestamp",
+  ],
+};
+
+// Ubah date_created ke bentuk kanonik "YYYY-MM-DD", apapun formatnya (atau null)
+const normDateCreatedExpr = {
+  $switch: {
+    branches: [
+      {
+        // sudah YYYY-MM-DD
+        case: { $regexMatch: { input: { $ifNull: ["$date_created", ""] }, regex: /^\d{4}-\d{2}-\d{2}$/ } },
+        then: "$date_created",
+      },
+      {
+        // DD-MM-YYYY -> susun ulang jadi YYYY-MM-DD
+        case: { $regexMatch: { input: { $ifNull: ["$date_created", ""] }, regex: /^\d{2}-\d{2}-\d{4}$/ } },
+        then: {
+          $concat: [
+            { $substrCP: ["$date_created", 6, 4] }, "-",
+            { $substrCP: ["$date_created", 3, 2] }, "-",
+            { $substrCP: ["$date_created", 0, 2] },
+          ],
+        },
+      },
+    ],
+    default: null,
+  },
+};
+
+// effective_date: gabungan date_created(+time_created) yang sudah dinormalisasi,
+// fallback ke createdAt, fallback terakhir ke timestamp yang sudah dinormalisasi ms.
+const effectiveDateExpr = {
+  $let: {
+    vars: { normDate: normDateCreatedExpr },
+    in: {
+      $switch: {
+        branches: [
+          {
+            case: { $ne: ["$$normDate", null] },
+            then: {
+              $dateFromString: {
+                dateString: {
+                  $concat: ["$$normDate", "T", { $ifNull: ["$time_created", "00:00:00"] }],
+                },
+                onError: null,
+                onNull: null,
+              },
+            },
+          },
+          {
+            case: { $ifNull: ["$createdAt", false] },
+            then: "$createdAt",
+          },
+        ],
+        default: { $toDate: normTsExpr },
+      },
+    },
+  },
+};
+
 export const getRawPolarData = async (req, res, next) => {
   try {
-    const { userId } = req.params; // this is actually the guid, e.g. "P012"
+    const { userId } = req.params; // guid, mis. "P012"
     const { date, startTime, endTime, since } = req.query;
 
     if (!userId) {
       return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
-    // Resolve guid or Mongo _id -> actual Mongo _id
     const userQuery = mongoose.Types.ObjectId.isValid(userId)
       ? { $or: [{ _id: userId }, { guid: userId }] }
       : { guid: userId };
@@ -1593,63 +1660,57 @@ export const getRawPolarData = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const query = { user_id: user._id };
+    const matchStage = { user_id: user._id };
+    const limit = (date || since) ? 5000 : 1000;
+    const sortDir = (!date && !since) ? -1 : 1;
 
-    // ── Gunakan timestamp (Number) untuk filter tanggal agar memanfaatkan index ──
+    const pipeline = [
+      { $match: matchStage },
+      { $addFields: { norm_timestamp: normTsExpr, effective_date: effectiveDateExpr } },
+    ];
+
+    // ── Filter berdasarkan tanggal (pakai effective_date yang sudah konsisten) ──
     if (date) {
-      let tsStartMs = new Date(date + 'T00:00:00.000Z').getTime();
-      let tsEndMs   = new Date(date + 'T23:59:59.999Z').getTime();
-      
+      let rangeStart = new Date(date + 'T00:00:00.000Z');
+      let rangeEnd = new Date(date + 'T23:59:59.999Z');
+
       if (startTime) {
         const [sh, sm] = startTime.split(':').map(Number);
         const [eh, em] = (endTime || '23:59').split(':').map(Number);
-        const baseDay = new Date(date + 'T00:00:00.000Z').getTime();
-        tsStartMs = baseDay + (sh * 3600 + sm * 60) * 1000;
-        tsEndMs   = baseDay + (eh * 3600 + em * 60 + 59) * 1000;
+        rangeStart = new Date(date + 'T00:00:00.000Z');
+        rangeStart.setUTCHours(sh, sm, 0, 0);
+        rangeEnd = new Date(date + 'T00:00:00.000Z');
+        rangeEnd.setUTCHours(eh, em, 59, 999);
       }
-      
-      const tsStartSec = Math.floor(tsStartMs / 1000);
-      const tsEndSec = Math.floor(tsEndMs / 1000);
-      
-      const [year, month, day] = date.split('-');
-      const dateCreatedStr1 = `${day}-${month}-${year}`;
-      const dateCreatedStr2 = `${year}-${month}-${day}`;
-      
-      const baseDayDt = new Date(date + 'T00:00:00.000Z');
-      const endDayDt  = new Date(date + 'T23:59:59.999Z');
-      
-      query.$or = [
-        { timestamp: { $gte: tsStartMs, $lte: tsEndMs } },
-        { timestamp: { $gte: tsStartSec, $lte: tsEndSec } },
-        { date_created: dateCreatedStr1 },
-        { date_created: dateCreatedStr2 },
-        { createdAt: { $gte: baseDayDt, $lte: endDayDt } }
-      ];
+
+      pipeline.push({ $match: { effective_date: { $gte: rangeStart, $lte: rangeEnd } } });
     } else if (since) {
-      // ── Mode live polling: hanya ambil data setelah timestamp terakhir ──
-      query.timestamp = { $gt: parseInt(since, 10) };
+      // ── Mode live polling: pakai norm_timestamp (selalu ms) ──
+      pipeline.push({ $match: { norm_timestamp: { $gt: parseInt(since, 10) } } });
     }
 
-    // Limit lebih besar jika ada filter tanggal (bisa seharian penuh ~8640 titik per menit)
-    const limit = (date || since) ? 5000 : 1000;
+    pipeline.push(
+      { $sort: { effective_date: sortDir, norm_timestamp: sortDir } },
+      { $limit: limit },
+      {
+        $project: {
+          _id: 1,
+          timestamp: '$norm_timestamp', // selalu dikembalikan dalam ms, konsisten untuk client
+          hr: 1, rr: 1, rrms: 1, activity: 1,
+          date_created: 1, time_created: 1, createdAt: 1,
+        },
+      }
+    );
 
-    // Jika tidak ada filter (tampilan awal tanpa filter tanggal), ambil N data TERBARU, lalu reverse agar kronologis
-    const sortDir = (!date && !since) ? -1 : 1;
+    let rawData = await PolarData.aggregate(pipeline);
 
-    const rawData = await PolarData.find(query)
-      .sort({ timestamp: sortDir })
-      .limit(limit)
-      .select('timestamp hr rr rrms activity date_created time_created createdAt')
-      .lean();
-      
     if (sortDir === -1) {
-      rawData.reverse();
+      rawData.reverse(); // supaya urutan hasil tetap kronologis di response
     }
 
     return res.status(200).json({
       success: true,
       data: rawData,
-      // Kembalikan timestamp data terakhir agar client bisa pakai ?since= berikutnya
       lastTimestamp: rawData.length > 0 ? rawData[rawData.length - 1].timestamp : null,
     });
   } catch (error) {
