@@ -32,14 +32,13 @@ class TelemetryController extends ChangeNotifier {
   final List<PendingDataRecord> _queue = [];
   int _idCounter = 0;
   bool _isSyncing = false;
-  bool _isStreaming = true;
+  bool _isStreaming = false; // false sampai startStreaming() dipanggil dari pairing
 
   /// Auto-flush timer — kirim data setiap 10 detik meskipun buffer < 5
   Timer? _flushTimer;
 
-  TelemetryController(this.ref) {
-    _startFlushTimer();
-  }
+  TelemetryController(this.ref);
+  // FIXED: tidak panggil _startFlushTimer() dari constructor, tunggu startStreaming()
 
   List<PendingDataRecord> get pendingQueue => List.unmodifiable(_queue);
   int get pendingCount => _queue.where((r) => r.status == 'pending').length;
@@ -50,6 +49,7 @@ class TelemetryController extends ChangeNotifier {
   void startStreaming() {
     _isStreaming = true;
     _startFlushTimer();
+    debugPrint('[TelemetryController] ▶ Streaming dimulai, flush timer aktif');
     notifyListeners();
   }
 
@@ -57,7 +57,8 @@ class TelemetryController extends ChangeNotifier {
     _isStreaming = false;
     _flushTimer?.cancel();
     _flushTimer = null;
-    _queue.clear();
+    // FIXED: TIDAK clear queue agar data pending tidak hilang saat stream berhenti sementara
+    debugPrint('[TelemetryController] ⏹ Streaming dihentikan. Queue dipertahankan: ${_queue.length} items');
     notifyListeners();
   }
 
@@ -68,25 +69,32 @@ class TelemetryController extends ChangeNotifier {
     // Kirim data setiap 10 detik, terlepas dari jumlah pending
     _flushTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (_isStreaming && pendingCount > 0) {
+        debugPrint('[TelemetryController] ⏰ Auto-flush: ${pendingCount} readings pending → kirim ke RMQ');
         _syncToRabbitMQ();
       }
     });
+    debugPrint('[TelemetryController] ⏰ Auto-flush timer dimulai (interval 10s)');
   }
 
   // ─── Add Reading ─────────────────────────────────────────────────────────────
 
   void addReading(SensorReading reading) {
-    if (!_isStreaming) return;
+    if (!_isStreaming) {
+      debugPrint('[TelemetryController] ⚠ addReading dipanggil tapi isStreaming=false, skip');
+      return;
+    }
 
     _queue.add(PendingDataRecord(
       id: '${DateTime.now().millisecondsSinceEpoch}_${_idCounter++}',
       reading: reading,
       createdAt: DateTime.now(),
     ));
+    debugPrint('[TelemetryController] ➕ Reading HR=${reading.heartRate} RR=${reading.rrInterval} | queue pending: $pendingCount');
     notifyListeners();
 
     // Batch flush saat buffer penuh (≥5 readings ≈ setiap ~5 detik)
     if (pendingCount >= 5) {
+      debugPrint('[TelemetryController] 📦 Buffer penuh ($pendingCount), trigger flush');
       _syncToRabbitMQ();
     }
   }
@@ -94,12 +102,16 @@ class TelemetryController extends ChangeNotifier {
   // ─── Sync ke RabbitMQ ────────────────────────────────────────────────────────
 
   Future<void> _syncToRabbitMQ() async {
-    if (_isSyncing) return;
+    if (_isSyncing) {
+      debugPrint('[TelemetryController] 🔄 Sync sudah berjalan, skip');
+      return;
+    }
 
     final pendingRecords = _queue.where((r) => r.status == 'pending').toList();
     if (pendingRecords.isEmpty) return;
 
     _isSyncing = true;
+    debugPrint('[TelemetryController] 🚀 Mulai sync ${pendingRecords.length} readings ke RabbitMQ...');
 
     try {
       final bleService = ref.read(bleServiceProvider);
@@ -109,27 +121,32 @@ class TelemetryController extends ChangeNotifier {
       final userId = prefs.getString('user_id') ?? '';
 
       if (userId.isEmpty) {
-        debugPrint('[TelemetryController] userId tidak ditemukan di SharedPreferences, skip sync');
+        debugPrint('[TelemetryController] ❌ userId tidak ditemukan di SharedPreferences, skip sync');
         _isSyncing = false;
         return;
       }
+      debugPrint('[TelemetryController] userId=$userId | device=$deviceId');
 
       final mqtt = ref.read(mqttServiceProvider);
+      debugPrint('[TelemetryController] MQTT.isConnected=${mqtt.isConnected}');
 
       // Pastikan MQTT connect dengan userId yang benar
       if (!mqtt.isConnected) {
-        debugPrint('[TelemetryController] MQTT tidak connected, mencoba connect...');
+        debugPrint('[TelemetryController] ⚠ MQTT tidak connected, mencoba connect ke broker...');
         final ok = await mqtt.connect(userId);
         if (!ok) {
-          debugPrint('[TelemetryController] MQTT connect gagal, tandai sebagai failed');
+          debugPrint('[TelemetryController] ❌ MQTT connect gagal, data ditandai failed');
           _markAsFailed(pendingRecords);
           _isSyncing = false;
           notifyListeners();
           return;
         }
+        debugPrint('[TelemetryController] ✅ MQTT connect berhasil');
       }
 
       final readings = pendingRecords.map((r) => r.reading).toList();
+      debugPrint('[TelemetryController] 📤 publishSensorReadings: ${readings.length} readings...');
+
       final success = await mqtt.publishSensorReadings(
         userId: userId,
         deviceId: deviceId,
@@ -139,13 +156,14 @@ class TelemetryController extends ChangeNotifier {
       if (success) {
         // Hapus yang sudah terkirim dari queue
         _queue.removeWhere((r) => pendingRecords.any((p) => p.id == r.id));
-        debugPrint('[TelemetryController] ✓ ${readings.length} readings terkirim ke RMQ');
+        debugPrint('[TelemetryController] ✅ ${readings.length} readings terkirim ke RMQ. Sisa queue: ${_queue.length}');
       } else {
         _markAsFailed(pendingRecords);
-        debugPrint('[TelemetryController] ✗ Gagal kirim ke RMQ');
+        debugPrint('[TelemetryController] ❌ publishSensorReadings gagal, ${pendingRecords.length} records ditandai failed');
       }
-    } catch (e) {
-      debugPrint('[TelemetryController] Exception sync: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[TelemetryController] ❌ Exception: $e');
+      debugPrint('[TelemetryController] StackTrace: $stackTrace');
       _markAsFailed(
         _queue.where((r) => r.status == 'pending').toList(),
       );

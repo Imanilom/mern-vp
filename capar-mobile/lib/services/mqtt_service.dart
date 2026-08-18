@@ -31,24 +31,29 @@ class MqttService extends ChangeNotifier {
     if (isConnected &&
         _client != null &&
         _client!.connectionStatus?.state == MqttConnectionState.connected) {
+      debugPrint('[MQTT] Sudah connected, reuse koneksi');
       if (userId != null) _subscribeToNotifications(userId);
       return true;
     }
 
     // Guard double-connect
-    if (_isConnecting) return false;
+    if (_isConnecting) {
+      debugPrint('[MQTT] Sudah dalam proses connecting, skip');
+      return false;
+    }
     _isConnecting = true;
 
     try {
       final clientId = 'capar_${DateTime.now().millisecondsSinceEpoch}';
+      debugPrint('[MQTT] Membuat client: $clientId');
       _client = MqttServerClient.withPort(brokerHost, clientId, mqttPort);
-      _client!.logging(on: false);
+      _client!.logging(on: true); // aktifkan log MQTT internal
       _client!.keepAlivePeriod = 60;
       _client!.autoReconnect = true;
       _client!.onDisconnected = _onDisconnected;
       _client!.onConnected = _onConnected;
       _client!.onAutoReconnected = () {
-        debugPrint('[MQTT] Auto-reconnected to RabbitMQ');
+        debugPrint('[MQTT] Auto-reconnected ke RabbitMQ');
         isConnected = true;
         notifyListeners();
       };
@@ -59,10 +64,11 @@ class MqttService extends ChangeNotifier {
           .withWillQos(MqttQos.atLeastOnce);
       _client!.connectionMessage = connMsg;
 
-      debugPrint('[MQTT] Connecting to $brokerHost:$mqttPort ...');
+      debugPrint('[MQTT] Connecting ke $brokerHost:$mqttPort (user: $mqttUser)...');
       await _client!.connect(mqttUser, mqttPass);
-    } catch (e) {
-      debugPrint('[MQTT] Connection exception: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[MQTT] ❌ Connection exception: $e');
+      debugPrint('[MQTT] StackTrace: $stackTrace');
       _cleanupClient();
       return false;
     } finally {
@@ -70,13 +76,13 @@ class MqttService extends ChangeNotifier {
     }
 
     if (_client?.connectionStatus?.state == MqttConnectionState.connected) {
-      debugPrint('[MQTT] Connected ✓ → queue: $topicName');
+      debugPrint('[MQTT] ✅ Connected ke $brokerHost → queue: $topicName');
       isConnected = true;
       notifyListeners();
       if (userId != null) _subscribeToNotifications(userId);
       return true;
     } else {
-      debugPrint('[MQTT] Connection failed: ${_client?.connectionStatus}');
+      debugPrint('[MQTT] ❌ Connection failed. Status: ${_client?.connectionStatus}');
       _cleanupClient();
       return false;
     }
@@ -89,12 +95,21 @@ class MqttService extends ChangeNotifier {
     required String deviceId,
     required List<SensorReading> readings,
   }) async {
-    if (readings.isEmpty) return false;
+    if (readings.isEmpty) {
+      debugPrint('[MQTT] publishSensorReadings dipanggil dengan readings kosong, skip');
+      return false;
+    }
+
+    debugPrint('[MQTT] publishSensorReadings: userId=$userId, device=$deviceId, ${readings.length} readings');
 
     // Ensure connected (dengan userId agar subscribe notif benar)
     if (!isConnected) {
+      debugPrint('[MQTT] Belum connected, mencoba connect dulu...');
       final ok = await connect(userId);
-      if (!ok) return false;
+      if (!ok) {
+        debugPrint('[MQTT] ❌ Connect gagal, publish dibatalkan');
+        return false;
+      }
     }
 
     try {
@@ -127,13 +142,16 @@ class MqttService extends ChangeNotifier {
       };
 
       final jsonStr = jsonEncode(payload);
+      debugPrint('[MQTT] Payload size: ${jsonStr.length} bytes, topic: $topicName');
+
       final builder = MqttClientPayloadBuilder()..addString(jsonStr);
 
       _client!.publishMessage(topicName, MqttQos.atLeastOnce, builder.payload!);
-      debugPrint('[MQTT → RMQ] Published ${readings.length} readings (userId=$userId, device=$deviceId)');
+      debugPrint('[MQTT] ✅ Published ${readings.length} readings → topic: $topicName (userId=$userId)');
       return true;
-    } catch (e) {
-      debugPrint('[MQTT] Publish error: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[MQTT] ❌ Publish error: $e');
+      debugPrint('[MQTT] StackTrace: $stackTrace');
       // Reset koneksi agar next cycle reconnect
       isConnected = false;
       notifyListeners();
