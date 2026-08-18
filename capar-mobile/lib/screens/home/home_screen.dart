@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import '../../services/api_service.dart';
 import '../../services/telemetry_controller.dart';
@@ -106,6 +108,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // ── Streaming Status Bar ────────────────────────────────────────
               _buildStreamingStatusBar(),
               const SizedBox(height: 12),
+
+              // ── MongoDB Sync Chart ──────────────────────────────────────────
+              const MongoSyncWidget(),
+              const SizedBox(height: 16),
 
               // ── State Switcher Pills ────────────────────────────────────────
               _buildStateSwitcher(),

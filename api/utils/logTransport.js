@@ -329,7 +329,12 @@ export async function startLogTransportConsumer() {
 
   // Handle jika channel ditutup oleh server (misal karena error atau restart)
   ch.on('close', () => {
-    console.warn('[RabbitMQ Consumer] Channel closed, attempting to restart consumer in 5 seconds...');
+    console.error('[RabbitMQ Consumer] Channel unexpectedly closed! Backend stopped listening to queue.');
+    console.warn('[RabbitMQ Consumer] Attempting to restart consumer in 5 seconds...');
     setTimeout(startLogTransportConsumer, 5000);
+  });
+  
+  ch.on('error', (err) => {
+    console.error('[RabbitMQ Consumer] Channel error during consume:', err.message);
   });
 }

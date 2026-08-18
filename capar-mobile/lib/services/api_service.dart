@@ -59,6 +59,29 @@ class ApiService {
     return false;
   }
 
+  // Cek status sinkronisasi MongoDB di VPS
+  static Future<Map<String, dynamic>?> fetchMobileStatus() async {
+    try {
+      final uid = await _getUserId();
+      if (uid.isEmpty) return null;
+      
+      final response = await http
+          .get(Uri.parse('$baseUrl/log/mobile-status?user_id=$uid'))
+          .timeout(const Duration(seconds: 5));
+          
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['summary'] != null) {
+          final summaryList = data['summary'] as List;
+          if (summaryList.isNotEmpty) return summaryList.first;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Fetch mobile status error: $e');
+    }
+    return null;
+  }
+
   // Fetch episodes / events untuk user
   static Future<List<Map<String, dynamic>>> fetchEpisodes({String? userId}) async {
     try {
