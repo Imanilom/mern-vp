@@ -1612,12 +1612,18 @@ export const getRawPolarData = async (req, res, next) => {
       const tsEndSec = Math.floor(tsEndMs / 1000);
       
       const [year, month, day] = date.split('-');
-      const dateCreatedStr = `${day}-${month}-${year}`;
+      const dateCreatedStr1 = `${day}-${month}-${year}`;
+      const dateCreatedStr2 = `${year}-${month}-${day}`;
+      
+      const baseDayDt = new Date(date + 'T00:00:00.000Z');
+      const endDayDt  = new Date(date + 'T23:59:59.999Z');
       
       query.$or = [
         { timestamp: { $gte: tsStartMs, $lte: tsEndMs } },
         { timestamp: { $gte: tsStartSec, $lte: tsEndSec } },
-        { date_created: dateCreatedStr }
+        { date_created: dateCreatedStr1 },
+        { date_created: dateCreatedStr2 },
+        { createdAt: { $gte: baseDayDt, $lte: endDayDt } }
       ];
     } else if (since) {
       // ── Mode live polling: hanya ambil data setelah timestamp terakhir ──
@@ -1627,12 +1633,18 @@ export const getRawPolarData = async (req, res, next) => {
     // Limit lebih besar jika ada filter tanggal (bisa seharian penuh ~8640 titik per menit)
     const limit = (date || since) ? 5000 : 1000;
 
-    // Sort ASC langsung (tidak perlu reverse)
+    // Jika tidak ada filter (tampilan awal tanpa filter tanggal), ambil N data TERBARU, lalu reverse agar kronologis
+    const sortDir = (!date && !since) ? -1 : 1;
+
     const rawData = await PolarData.find(query)
-      .sort({ timestamp: 1 })
+      .sort({ timestamp: sortDir })
       .limit(limit)
-      .select('timestamp hr rr rrms activity date_created time_created')
+      .select('timestamp hr rr rrms activity date_created time_created createdAt')
       .lean();
+      
+    if (sortDir === -1) {
+      rawData.reverse();
+    }
 
     return res.status(200).json({
       success: true,
