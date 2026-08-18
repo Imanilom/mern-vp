@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // Gunakan 10.0.2.2 untuk Android Emulator, localhost untuk Desktop/Web/iOS Simulator
@@ -10,9 +11,33 @@ class ApiService {
   }
 
   static Future<bool> login(String email, String password) async {
-    // Dummy login implementation
-    await Future.delayed(const Duration(seconds: 1));
-    return email.isNotEmpty && password.isNotEmpty;
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/signin'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'email': email, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final userId = data['_id'];
+        final token = data['token'];
+
+        if (userId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_id', userId.toString());
+          if (token != null) {
+            await prefs.setString('token', token.toString());
+          }
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Login error: $e');
+    }
+    return false;
   }
 
   // Health check
