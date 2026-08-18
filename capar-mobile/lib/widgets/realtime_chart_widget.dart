@@ -6,7 +6,7 @@ import '../services/ble_service.dart';
 import '../shared/models/models.dart';
 
 class RealtimeChartWidget extends ConsumerStatefulWidget {
-  const RealtimeChartWidget({Key? key}) : super(key: key);
+  const RealtimeChartWidget({super.key});
 
   @override
   ConsumerState<RealtimeChartWidget> createState() => _RealtimeChartWidgetState();
@@ -138,7 +138,6 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
                 ),
                 borderData: FlBorderData(show: false),
               ),
-              swapAnimationDuration: const Duration(milliseconds: 250),
             ),
           ),
         ],
