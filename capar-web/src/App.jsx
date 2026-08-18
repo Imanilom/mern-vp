@@ -19,8 +19,8 @@ import { ProfileView } from './views/ProfileView';
 import { api } from './services/api';
 import { io } from 'socket.io-client';
 
-const isDev = import.meta.env.DEV;
-const socketUrl = isDev ? '/' : (import.meta.env.VITE_API_URL || 'http://localhost:3030');
+const apiUrl = import.meta.env.VITE_API_URL || '';
+const socketUrl = apiUrl ? apiUrl.replace(/\/api\/?$/, '') : '/';
 
 const socket = io(socketUrl, {
   transports: ['websocket', 'polling']
