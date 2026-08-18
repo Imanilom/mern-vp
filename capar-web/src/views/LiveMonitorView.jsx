@@ -57,6 +57,13 @@ export const LiveMonitorView = ({
   const [baselineData, setBaselineData] = useState(null);
   const [loadingRaw, setLoadingRaw] = useState(false);
   const [liveData, setLiveData] = useState([]);
+  const [activeStreamTab, setActiveStreamTab] = useState('hr'); // 'hr' | 'acc' | 'ecg' | 'all'
+
+  const parseAcc = (val) => {
+    const num = Number(val) || 0;
+    if (Math.abs(num) > 10) return Number((num / 1000).toFixed(3));
+    return Number(num.toFixed(3));
+  };
 
   useEffect(() => {
     if (initialSelectedId && participants.length > 0) {
@@ -99,9 +106,10 @@ export const LiveMonitorView = ({
         time: new Date(getTimestamp(d)).toLocaleTimeString('id-ID', { hour12: false }),
         hr: Number(d.hr) || 0,
         rrms: Number(d.rrms) || 0,
-        acc_x: Number(d.acc_x) || 0,
-        acc_y: Number(d.acc_y) || 0,
-        acc_z: Number(d.acc_z) || 0,
+        acc_x: parseAcc(d.acc_x),
+        acc_y: parseAcc(d.acc_y),
+        acc_z: parseAcc(d.acc_z),
+        ecg: Number(d.ecg) || 0,
       })));
     } else {
       setLiveData([]);
@@ -121,9 +129,10 @@ export const LiveMonitorView = ({
             time: new Date(getTimestamp(payloadToUse) || Date.now()).toLocaleTimeString('id-ID', { hour12: false }),
             hr: Number(payloadToUse.hr) || 0,
             rrms: Number(payloadToUse.rrms) || 0,
-            acc_x: Number(payloadToUse.acc_x) || 0,
-            acc_y: Number(payloadToUse.acc_y) || 0,
-            acc_z: Number(payloadToUse.acc_z) || 0,
+            acc_x: parseAcc(payloadToUse.acc_x ?? payloadToUse.accX),
+            acc_y: parseAcc(payloadToUse.acc_y ?? payloadToUse.accY),
+            acc_z: parseAcc(payloadToUse.acc_z ?? payloadToUse.accZ),
+            ecg: Number(payloadToUse.ecg) || 0,
           };
           const next = [...prev, newPt];
           if (next.length > 60) return next.slice(next.length - 60);
@@ -148,14 +157,14 @@ export const LiveMonitorView = ({
        b_std = baselineData.stats.hr_mean.std;
     }
 
-    return (
+    const renderHRChart = () => (
       <div style={{ width: '100%', height: 180 }}>
         <ResponsiveContainer>
           <LineChart data={liveData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
             <XAxis dataKey="time" hide />
             <YAxis yAxisId="left" domain={['auto', 'auto']} tick={{fontSize: 10}} width={30} />
-            <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} tick={{fontSize: 10}} width={30} hide />
+            <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} tick={{fontSize: 10}} width={35} />
             <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid var(--line)', fontSize: 12, backgroundColor: 'rgba(255,255,255,0.9)' }} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             
@@ -166,11 +175,109 @@ export const LiveMonitorView = ({
               <ReferenceLine yAxisId="left" y={b_mean} stroke="#2E7D32" strokeDasharray="3 3" />
             )}
             
-            <Line yAxisId="left" type="monotone" dataKey="hr" name="Heart Rate" stroke="var(--red)" strokeWidth={2} dot={false} isAnimationActive={false} />
-            <Line yAxisId="right" type="monotone" dataKey="rrms" name="RRMS" stroke="var(--teal)" strokeWidth={2} dot={false} isAnimationActive={false} />
-            <Line yAxisId="right" type="monotone" dataKey="acc_x" name="Acc X" stroke="var(--blue)" strokeWidth={1} strokeDasharray="3 3" dot={false} isAnimationActive={false} />
+            <Line yAxisId="left" type="monotone" dataKey="hr" name="Heart Rate (BPM)" stroke="var(--red)" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Line yAxisId="right" type="monotone" dataKey="rrms" name="RRMS (ms)" stroke="var(--teal)" strokeWidth={2} dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
+      </div>
+    );
+
+    const renderACCChart = () => (
+      <div style={{ width: '100%', height: 180 }}>
+        <ResponsiveContainer>
+          <LineChart data={liveData} margin={{ top: 5, right: 0, left: -10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+            <XAxis dataKey="time" hide />
+            <YAxis domain={['auto', 'auto']} tick={{fontSize: 10}} tickFormatter={(v) => typeof v === 'number' ? v.toFixed(2) : v} width={40} />
+            <Tooltip 
+              contentStyle={{ borderRadius: 8, border: '1px solid var(--line)', fontSize: 12, backgroundColor: 'rgba(255,255,255,0.9)' }} 
+              formatter={(val, name) => [`${typeof val === 'number' ? val.toFixed(3) : val} g`, name]}
+            />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="acc_x" name="Acc X (g)" stroke="#2196F3" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="acc_y" name="Acc Y (g)" stroke="#4CAF50" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="acc_z" name="Acc Z (g)" stroke="#FF9800" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+
+    const renderECGChart = () => (
+      <div style={{ width: '100%', height: 180 }}>
+        <ResponsiveContainer>
+          <LineChart data={liveData} margin={{ top: 5, right: 0, left: -10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+            <XAxis dataKey="time" hide />
+            <YAxis domain={['auto', 'auto']} tick={{fontSize: 10}} width={45} />
+            <Tooltip 
+              contentStyle={{ borderRadius: 8, border: '1px solid var(--line)', fontSize: 12, backgroundColor: 'rgba(255,255,255,0.9)' }} 
+              formatter={(val, name) => [`${val} µV`, name]}
+            />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="ecg" name="ECG Signal (µV)" stroke="#9C27B0" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+
+    return (
+      <div>
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <div className="d-flex gap-1">
+            <button 
+              type="button" 
+              className={`btn btn-sm ${activeStreamTab === 'hr' ? 'btn-navy' : 'btn-outline-navy'}`}
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              onClick={() => setActiveStreamTab('hr')}
+            >
+              HR &amp; RR
+            </button>
+            <button 
+              type="button" 
+              className={`btn btn-sm ${activeStreamTab === 'acc' ? 'btn-navy' : 'btn-outline-navy'}`}
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              onClick={() => setActiveStreamTab('acc')}
+            >
+              ACC (Float g)
+            </button>
+            <button 
+              type="button" 
+              className={`btn btn-sm ${activeStreamTab === 'ecg' ? 'btn-navy' : 'btn-outline-navy'}`}
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              onClick={() => setActiveStreamTab('ecg')}
+            >
+              ECG (µV)
+            </button>
+            <button 
+              type="button" 
+              className={`btn btn-sm ${activeStreamTab === 'all' ? 'btn-navy' : 'btn-outline-navy'}`}
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              onClick={() => setActiveStreamTab('all')}
+            >
+              Semua Stream
+            </button>
+          </div>
+        </div>
+
+        {activeStreamTab === 'hr' && renderHRChart()}
+        {activeStreamTab === 'acc' && renderACCChart()}
+        {activeStreamTab === 'ecg' && renderECGChart()}
+        {activeStreamTab === 'all' && (
+          <div className="d-flex flex-column gap-3">
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>Heart Rate &amp; RR Interval</div>
+              {renderHRChart()}
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>3-Axis Accelerometer (g float)</div>
+              {renderACCChart()}
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>ECG Waveform Signal (µV)</div>
+              {renderECGChart()}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -183,6 +290,8 @@ export const LiveMonitorView = ({
   const activeCount = participants.filter(p => p.evidenceState === 'EVALUABLE').length;
   const warningCount = participants.filter(p => p.evidenceState === 'QUALITY_WARNING').length;
   const episodeCount = participants.filter(p => p.physiologicalState === 'PERSISTENT_DEVIATION').length;
+
+  const latestPt = liveData.length > 0 ? liveData[liveData.length - 1] : null;
 
   return (
     <div>
@@ -250,7 +359,9 @@ export const LiveMonitorView = ({
             <div className="card-panel h-100">
               <div className="mini-label mb-2">Evidence &amp; device</div>
               <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">RR stream</span><span className="mini-value" style={{ color: 'var(--green)' }}>active</span></div>
-              <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">HR Mean</span><span className="mini-value">{selectedParticipant.hrMean || '-'}</span></div>
+              <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">HR Mean</span><span className="mini-value">{selectedParticipant.hrMean || (latestPt ? `${latestPt.hr} BPM` : '-')}</span></div>
+              <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">ACC (X, Y, Z)</span><span className="mini-value" style={{ color: '#2196F3' }}>{latestPt ? `${latestPt.acc_x.toFixed(2)}, ${latestPt.acc_y.toFixed(2)}, ${latestPt.acc_z.toFixed(2)} g` : '-'}</span></div>
+              <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">ECG Signal</span><span className="mini-value" style={{ color: '#9C27B0' }}>{latestPt ? `${latestPt.ecg} µV` : '-'}</span></div>
               <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">Context confidence</span><span className="mini-value">{typeof selectedParticipant.contextConfidence === 'number' ? (selectedParticipant.contextConfidence * 100).toFixed(0) : '0'}%</span></div>
               <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">Baseline</span><span className="mini-value" style={{ color: 'var(--blue)' }}>{selectedParticipant.baselineMaturity || 'ready'}</span></div>
               <div className="d-flex justify-content-between py-1"><span className="frame-note m-0">Battery</span><span className="mini-value">{selectedParticipant.battery || 100}%</span></div>

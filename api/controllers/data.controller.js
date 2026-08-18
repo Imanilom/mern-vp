@@ -1719,6 +1719,7 @@ export const getRawPolarData = async (req, res, next) => {
           _id: 1,
           timestamp: '$norm_timestamp', // selalu dikembalikan dalam ms, konsisten untuk client
           hr: 1, rr: 1, rrms: 1, activity: 1,
+          acc_x: 1, acc_y: 1, acc_z: 1, ecg: 1,
           date_created: 1, time_created: 1, createdAt: 1,
         },
       }
