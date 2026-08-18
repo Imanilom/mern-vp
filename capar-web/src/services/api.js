@@ -1,7 +1,16 @@
 import axios from 'axios';
 
 // Configure Axios Defaults
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+let API_URL = import.meta.env.VITE_API_URL || '/api';
+
+if (API_URL === '/api' && typeof window !== 'undefined') {
+  if (window.location.hostname === 'healthtrajectory.cloud') {
+    API_URL = 'https://api.healthtrajectory.cloud';
+  } else if (window.location.port !== '3031' && window.location.port !== '5173') {
+    API_URL = `${window.location.protocol}//${window.location.hostname}:3030`;
+  }
+}
+
 axios.defaults.baseURL = API_URL;
 axios.defaults.withCredentials = true;
 

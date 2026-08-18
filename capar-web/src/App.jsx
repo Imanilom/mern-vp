@@ -20,7 +20,18 @@ import { api } from './services/api';
 import { io } from 'socket.io-client';
 
 const apiUrl = import.meta.env.VITE_API_URL || '';
-const socketUrl = apiUrl ? apiUrl.replace(/\/api\/?$/, '') : '/';
+let socketUrl = apiUrl ? apiUrl.replace(/\/api\/?$/, '') : '/';
+
+// Fallback cerdas untuk production jika URL origin adalah healthtrajectory.cloud
+// namun VITE_API_URL tidak disetel saat build Docker.
+if (!apiUrl && typeof window !== 'undefined') {
+  if (window.location.hostname === 'healthtrajectory.cloud') {
+    socketUrl = 'https://api.healthtrajectory.cloud';
+  } else if (window.location.port !== '3031' && window.location.port !== '5173') {
+    // Asumsikan proxy berjalan di host yang sama port 3030
+    socketUrl = `${window.location.protocol}//${window.location.hostname}:3030`;
+  }
+}
 
 const socket = io(socketUrl, {
   transports: ['websocket', 'polling']
