@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 class ApiService {
   // Gunakan 10.0.2.2 untuk Android Emulator, localhost untuk Desktop/Web/iOS Simulator
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:3030/api';
-    return 'http://10.0.2.2:3030/api';
+    if (kIsWeb) return 'https://healthtrajectory.cloud/api';
+    return 'https://healthtrajectory.cloud/api';
   }
 
   static Future<bool> login(String email, String password) async {
