@@ -222,7 +222,7 @@ export async function startLogTransportConsumer() {
           const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
           const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
           
-          let act = r.activity || 'Lainnya';
+          let act = r.activity || r.motion_state || 'Duduk';
           if (!validActivities.includes(act)) act = 'Lainnya';
 
           return {
@@ -230,18 +230,18 @@ export async function startLogTransportConsumer() {
             timestamp: r.timestamp || Math.floor(Date.now() / 1000),
             date_created: dateStr,
             time_created: timeStr,
-            hr: r.heart_rate || 0,
-            rr: r.rr_interval || 0,
-            rrms: r.rmssd || null,
+            hr: r.heart_rate || r.hr || 0,
+            rr: r.rr_interval || r.rr || 0,
+            rrms: r.rmssd || r.rrms || null,
             activity: act,
-            device_id: envelope.device_id || 'POLAR_H10',
+            device_id: envelope.device_id || 'UNKNOWN',
             isChecked: false,
             processStatus: 'PENDING',
-            acc_x: r.acc_x ?? 0,
-            acc_y: r.acc_y ?? 0,
-            acc_z: r.acc_z ?? 0,
+            acc_x: r.acc_x ?? r.accX ?? 0,
+            acc_y: r.acc_y ?? r.accY ?? 0,
+            acc_z: r.acc_z ?? r.accZ ?? 0,
+            step_count: r.step_count ?? r.stepCount ?? 0,
             ecg: r.ecg ?? 0,
-            step_count: r.step_count ?? 0,
           };
         }).filter(d => d.hr >= 30 && d.hr <= 220 && d.rr >= 300 && d.rr <= 2000);
 
