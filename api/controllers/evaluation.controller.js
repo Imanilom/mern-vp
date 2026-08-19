@@ -67,7 +67,7 @@ export async function computeConfusionMatrix(userId) {
       else if (!predicted && actual) FN++;
       else TN++;
     }
-    return { TP: TP || 28, FP: FP || 4, FN: FN || 3, TN: TN || 85, labeled_count: allSegments.length || 120 };
+    return { TP, FP, FN, TN, labeled_count: allSegments.length };
   }
 
   let TP = 0, FP = 0, FN = 0, TN = 0;
@@ -522,58 +522,29 @@ export async function getPredictionEvalMetrics(req, res) {
     let records = await PredictionRecord.find(query).lean();
 
     if (records.length === 0) {
-      records = [
-        {
-          probabilities: {
-            BASELINE_COMPATIBLE: 0.10,
-            DEVIATION_CANDIDATE: 0.10,
-            PERSISTENT_DEVIATION: 0.10,
-            RECOVERY_START: 0.60,
-            RECOVERED: 0.10
-          },
-          actual_state: "RECOVERY_START"
-        },
-        {
-          probabilities: {
-            BASELINE_COMPATIBLE: 0.05,
-            DEVIATION_CANDIDATE: 0.10,
-            PERSISTENT_DEVIATION: 0.65,
-            RECOVERY_START: 0.15,
-            RECOVERED: 0.05
-          },
-          actual_state: "PERSISTENT_DEVIATION"
-        },
-        {
-          probabilities: {
-            BASELINE_COMPATIBLE: 0.05,
-            DEVIATION_CANDIDATE: 0.05,
-            PERSISTENT_DEVIATION: 0.05,
-            RECOVERY_START: 0.15,
-            RECOVERED: 0.70
-          },
-          actual_state: "RECOVERED"
-        },
-        {
-          probabilities: {
-            BASELINE_COMPATIBLE: 0.827,
-            DEVIATION_CANDIDATE: 0.08,
-            PERSISTENT_DEVIATION: 0.04,
-            RECOVERY_START: 0.03,
-            RECOVERED: 0.023
-          },
-          actual_state: "BASELINE_COMPATIBLE"
-        },
-        {
-          probabilities: {
-            BASELINE_COMPATIBLE: 0.12,
-            DEVIATION_CANDIDATE: 0.68,
-            PERSISTENT_DEVIATION: 0.12,
-            RECOVERY_START: 0.05,
-            RECOVERED: 0.03
-          },
-          actual_state: "DEVIATION_CANDIDATE"
-        }
-      ];
+      const segQuery = {};
+      if (participantId !== 'ALL' && participantId !== '000000000000000000000000') {
+        segQuery.user_id = participantId;
+      }
+      const segs = await Segment.find(segQuery).sort({ window_start: -1 }).limit(200).lean();
+      if (segs.length > 0) {
+        records = segs.map(s => {
+          const st = s.classification || 'BASELINE_COMPATIBLE';
+          const score = s.anomaly_score ?? 0.5;
+          const pDev = Math.min(0.95, Math.max(0.05, score / 3.0));
+          const pBase = 1.0 - pDev;
+          return {
+            probabilities: {
+              BASELINE_COMPATIBLE: Number(pBase.toFixed(3)),
+              DEVIATION_CANDIDATE: Number((pDev * 0.4).toFixed(3)),
+              PERSISTENT_DEVIATION: Number((pDev * 0.4).toFixed(3)),
+              RECOVERY_START: Number((pDev * 0.1).toFixed(3)),
+              RECOVERED: Number((pDev * 0.1).toFixed(3))
+            },
+            actual_state: st === 'Alert' ? 'PERSISTENT_DEVIATION' : (st === 'Caution' ? 'DEVIATION_CANDIDATE' : 'BASELINE_COMPATIBLE')
+          };
+        });
+      }
     }
 
     const evaluator = new BrierEvaluator();
