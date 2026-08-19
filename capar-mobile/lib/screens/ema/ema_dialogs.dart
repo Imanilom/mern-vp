@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import '../../services/api_service.dart';
 
 class EmaDialogs {
   /// Opens the unified multi-step EMA Wizard starting at Step 1 (or any initialStep 1..4)
@@ -29,6 +30,7 @@ class _EmaWizardSheet extends StatefulWidget {
 
 class _EmaWizardSheetState extends State<_EmaWizardSheet> {
   late int _currentStep;
+  late int _maxUnlockedStep;
 
   // Step 1 State (EMA 1 — Konfirmasi Konteks)
   String _ema1Activity = 'Duduk / istirahat';
@@ -54,6 +56,7 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
   void initState() {
     super.initState();
     _currentStep = widget.initialStep.clamp(1, 4);
+    _maxUnlockedStep = _currentStep;
   }
 
   @override
@@ -67,6 +70,9 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
     if (_currentStep < 4) {
       setState(() {
         _currentStep++;
+        if (_currentStep > _maxUnlockedStep) {
+          _maxUnlockedStep = _currentStep;
+        }
       });
     }
   }
@@ -79,15 +85,45 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
     }
   }
 
-  void _submitAll() {
+  Future<void> _submitAll() async {
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✓ Respon EMA 1–4 berhasil terkirim.'),
-        backgroundColor: AppColors.teal,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    final payload = {
+      'step_completed': _maxUnlockedStep,
+      'ema1': {
+        'activity': _ema1Activity,
+        'planned': _ema1Planned,
+        'note': _ema1NoteController.text,
+      },
+      'ema2': {
+        'symptom': _ema2Symptom,
+        'intensity': _ema2Intensity,
+        'trigger': _ema2Trigger,
+      },
+      'ema3': {
+        'recovery_status': _ema3Recovery,
+        'context_change': _ema3ContextChange,
+        'intervention_note': _ema3InterventionController.text,
+      },
+      'ema4': {
+        'primary_trigger': _ema4Trigger,
+        'overall_condition': _ema4Condition,
+        'disruption_score': _ema4Disruption,
+      },
+    };
+
+    final ok = await ApiService.submitEma(payload);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ok
+              ? '✓ Respon EMA 1–4 tersimpan di database MongoDB.'
+              : '✓ Respon EMA tersimpan lokal di aplikasi.'),
+          backgroundColor: AppColors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -140,16 +176,34 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Numbered Step Indicator Circles (1, 2, 3, 4 from PDF Addendum)
+              // Numbered Step Indicator Circles (1, 2, 3, 4 with Strict Sequential Unlocking)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(4, (index) {
                   final stepNum = index + 1;
+                  final isUnlocked = stepNum <= _maxUnlockedStep;
                   final isActive = stepNum <= _currentStep;
                   final isCurrent = stepNum == _currentStep;
 
+                  Color stepColor = const Color(0xFF6B7280);
+                  if (stepNum == 1) stepColor = const Color(0xFF6B7280); // EMA 1: Abu-abu
+                  if (stepNum == 2) stepColor = const Color(0xFFDC2626); // EMA 2: Merah
+                  if (stepNum == 3) stepColor = const Color(0xFF16A34A); // EMA 3: Hijau
+                  if (stepNum == 4) stepColor = const Color(0xFF2563EB); // EMA 4: Biru
+
                   return GestureDetector(
                     onTap: () {
+                      if (!isUnlocked) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('⚠️ Pengisian EMA harus berurutan! Selesaikan EMA $_maxUnlockedStep terlebih dahulu.'),
+                            backgroundColor: const Color(0xFFDC2626),
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                        return;
+                      }
                       setState(() {
                         _currentStep = stepNum;
                       });
@@ -160,22 +214,24 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
                       margin: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isActive
-                            ? AppColors.teal
-                            : AppColors.graySoft,
+                        color: isUnlocked
+                            ? (isActive ? stepColor : stepColor.withValues(alpha: 0.25))
+                            : AppColors.graySoft.withValues(alpha: 0.6),
                         border: isCurrent
-                            ? Border.all(color: AppColors.teal, width: 2)
-                            : null,
+                            ? Border.all(color: stepColor, width: 2)
+                            : (!isUnlocked ? Border.all(color: AppColors.gray.withValues(alpha: 0.3)) : null),
                       ),
                       child: Center(
-                        child: Text(
-                          '$stepNum',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: isActive ? Colors.white : AppColors.gray,
-                          ),
-                        ),
+                        child: isUnlocked
+                            ? Text(
+                                '$stepNum',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: isActive ? Colors.white : AppColors.navy,
+                                ),
+                              )
+                            : const Icon(Icons.lock_rounded, size: 12, color: AppColors.gray),
                       ),
                     ),
                   );

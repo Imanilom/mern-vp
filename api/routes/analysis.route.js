@@ -24,8 +24,11 @@ import {
   runRRAnalysisPipeline,
   getEpisodeAnalysis,
   createEpisodeAnalysis,
+  saveEmaResponse,
+  getStreamingSignalQualityStats,
+  getCandidateAndPersistentEpisodes,
 } from '../controllers/analysis.controller.js';
-import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions } from '../controllers/capar.prediction.controller.js';
+import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions, getRecoveryTimeToRecoveredPrediction } from '../controllers/capar.prediction.controller.js';
 import { generateReportData } from '../controllers/report.controller.js';
 import { computePersonalThresholds } from '../utils/capar.thresholds.js';
 import { verifyToken } from '../utils/verifyUser.js';
@@ -40,7 +43,7 @@ const router = express.Router();
 async function resolveUserIdParam(req, res, next) {
   try {
     const { userId } = req.params;
-    if (!userId) return next();
+    if (!userId || userId.toUpperCase() === 'ALL') return next();
 
     let user = null;
     if (mongoose.Types.ObjectId.isValid(userId)) {
@@ -48,15 +51,14 @@ async function resolveUserIdParam(req, res, next) {
     }
     if (!user) {
       user = await User.findOne({ $or: [{ guid: userId }, { name: userId }, { current_device: userId }] })
-          || await Patient.findOne({ $or: [{ guid: userId }, { name: userId }] });
+        || await Patient.findOne({ $or: [{ guid: userId }, { name: userId }] });
     }
 
     if (user) {
       req.params.userId = user._id.toString();
     } else if (!mongoose.Types.ObjectId.isValid(userId)) {
       // If user is not found and userId is not a 24-hex ObjectId (e.g. "P-014"),
-      // assign a dummy valid ObjectId so queries like Baseline.find({ user_id: req.params.userId })
-      // return [] with 200 OK instead of throwing a 500 CastError.
+      // assign a dummy valid ObjectId so queries return [] with 200 OK instead of throwing a 500 CastError.
       req.params.userId = '000000000000000000000000';
     }
     next();
@@ -92,7 +94,7 @@ router.get('/thresholds/:userId', verifyToken, resolveUserIdParam, async (req, r
 router.get('/segments/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 100;
-    const data  = await getAnalyzedSegments(req.params.userId, limit);
+    const data = await getAnalyzedSegments(req.params.userId, limit);
     res.json({ success: true, data, count: data.length });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -102,7 +104,7 @@ router.get('/segments/:userId', verifyToken, resolveUserIdParam, async (req, res
 /** GET /api/analysis/events/:userId — event log anomali */
 router.get('/events/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
-    const limit  = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 20;
     const events = await getRecentEvents(req.params.userId, limit);
     res.json({ success: true, data: events, count: events.length });
   } catch (err) {
@@ -115,6 +117,17 @@ router.get('/episode-analysis/:userId', verifyToken, resolveUserIdParam, getEpis
 
 /** POST /api/analysis/episode-analysis — create a detailed episode evaluation */
 router.post('/episode-analysis', verifyToken, createEpisodeAnalysis);
+
+/** POST /api/analysis/ema — Simpan respon EMA 1-4 ke MongoDB */
+router.post('/ema', verifyToken, async (req, res) => {
+  try {
+    const userId = req.body.user_id || req.user?.id || req.user?._id;
+    const result = await saveEmaResponse(userId, req.body);
+    res.json({ success: true, message: 'Respon EMA berhasil tersimpan di database.', data: result });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 /** GET /api/analysis/events/details/:eventId — full event details + segments */
 router.get('/events/details/:eventId', verifyToken, async (req, res) => {
@@ -353,7 +366,7 @@ router.post('/rr/trigger', verifyToken, async (req, res) => {
  */
 router.get('/rr/segments/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
-    const limit  = parseInt(req.query.limit) || 100;
+    const limit = parseInt(req.query.limit) || 100;
     const status = req.query.status;
     const filter = { user_id: req.params.userId, window_type: '1min' };
     if (status) filter.rr_status = status;
@@ -406,7 +419,7 @@ router.get('/evaluation/:userId', verifyToken, resolveUserIdParam, async (req, r
     const cm = await computeConfusionMatrix(req.params.userId);
     const metrics = computeClassificationMetrics(cm);
     const roc = await computeROCandAUC(req.params.userId);
-    
+
     res.json({
       success: true,
       data: {
@@ -419,5 +432,41 @@ router.get('/evaluation/:userId', verifyToken, resolveUserIdParam, async (req, r
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+import { runWindowOptimizationSimulation } from '../scripts/test_baseline_window_optimization.js';
+
+/** GET /api/analysis/test-window-optimization — Pengetesan terpisah simulasi 30 window vs 15 window */
+router.get('/test-window-optimization', verifyToken, async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const report = await runWindowOptimizationSimulation(userId);
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** GET /api/analysis/signal-quality/:userId — Statistik filter kualitas sinyal, artifact fraction, & missing values */
+router.get('/signal-quality/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
+  try {
+    const stats = await getStreamingSignalQualityStats(req.params.userId);
+    res.json({ success: true, data: stats });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** GET /api/analysis/candidate-episodes/:userId — Tabel dinamis Candidate Onset & Persistent Episodes dengan alasan detail */
+router.get('/candidate-episodes/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
+  try {
+    const data = await getCandidateAndPersistentEpisodes(req.params.userId);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** GET /api/analysis/recovery-time-prediction/:userId — Model Prediksi Waktu Tersisa Menuju Recovered & Probabilitas Pemulihan */
+router.get('/recovery-time-prediction/:userId', verifyToken, resolveUserIdParam, getRecoveryTimeToRecoveredPrediction);
 
 export default router;

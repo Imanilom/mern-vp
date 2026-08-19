@@ -220,4 +220,50 @@ class ApiService {
     }
     return false;
   }
+
+  // Fetch baseline readiness & provisional metrics
+  static Future<Map<String, dynamic>?> fetchBaselineReadiness({String? userId}) async {
+    try {
+      final uid = userId ?? await _getUserId();
+      if (uid.isEmpty) return null;
+
+      final response = await http
+          .get(Uri.parse('$baseUrl/analysis/baseline/$uid'))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          if (data['data'] is List && (data['data'] as List).isNotEmpty) {
+            return (data['data'] as List).first as Map<String, dynamic>;
+          } else if (data['data'] is Map<String, dynamic>) {
+            return data['data'] as Map<String, dynamic>;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Fetch baseline readiness error: $e');
+    }
+    return null;
+  }
+
+  // Submit EMA 1–4 survey response to MongoDB backend
+  static Future<bool> submitEma(Map<String, dynamic> payload) async {
+    try {
+      final uid = await _getUserId();
+      if (uid.isNotEmpty) {
+        payload['user_id'] = uid;
+      }
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/analysis/ema'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(payload),
+          )
+          .timeout(const Duration(seconds: 5));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[ApiService] Submit EMA error: $e');
+    }
+    return false;
+  }
 }

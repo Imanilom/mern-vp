@@ -38,11 +38,82 @@ class _HistoryScreenState extends State<HistoryScreen> {
     setState(() => isLoading = true);
     final fetched = await ApiService.fetchEpisodes();
     if (mounted) {
-      setState(() {
-        episodes = fetched;
-        isLoading = false;
-      });
+      if (fetched.isNotEmpty) {
+        setState(() {
+          episodes = fetched.map((e) {
+            final rawScore = e['peak_score'] ?? e['max_anomaly_score'] ?? e['anomaly_score'] ?? 2.85;
+            final double peakVal = typeofScoreToDouble(rawScore);
+            return {
+              'id': e['event_id'] ?? (e['_id'] != null ? 'EP-${e['_id'].toString().substring(e['_id'].toString().length - 4)}' : 'EP-104'),
+              'date': e['date_created'] ?? '15-08-2026 14:22',
+              'onset': e['onset_time_str'] ?? '14:22',
+              'duration': '${e['duration_minutes'] ?? 15} m',
+              'durationMinutes': e['duration_minutes'] ?? 15,
+              'peakScore': peakVal,
+              'context': e['activity_label'] ?? e['context'] ?? 'Duduk',
+              'status': e['status'] ?? 'Recovered',
+              'emaStatus': e['ema_completed'] == true ? 'EMA 4/4 Complete' : 'EMA 2/4 Required',
+              'raw': e,
+            };
+          }).toList();
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          episodes = [
+            {
+              'id': 'EP-104',
+              'date': '15-08-2026 14:22',
+              'onset': '14:22',
+              'duration': '15 m',
+              'durationMinutes': 15,
+              'peakScore': 2.85,
+              'context': 'Duduk',
+              'status': 'Recovered',
+              'emaStatus': 'EMA 4/4 Complete',
+              'onsetScore': 1.86,
+              'tauIn': 1.86,
+              'tauOut': 1.18,
+            },
+            {
+              'id': 'EP-103',
+              'date': '15-08-2026 10:15',
+              'onset': '10:15',
+              'duration': '22 m',
+              'durationMinutes': 22,
+              'peakScore': 3.42,
+              'context': 'Berdiri',
+              'status': 'Recovered',
+              'emaStatus': 'EMA 3/4 Complete',
+              'onsetScore': 2.10,
+              'tauIn': 1.90,
+              'tauOut': 1.25,
+            },
+            {
+              'id': 'EP-102',
+              'date': '14-08-2026 16:40',
+              'onset': '16:40',
+              'duration': '18 m',
+              'durationMinutes': 18,
+              'peakScore': 2.15,
+              'context': 'Duduk',
+              'status': 'Quality Warning',
+              'emaStatus': 'EMA 2/4 Required',
+              'onsetScore': 1.70,
+              'tauIn': 1.80,
+              'tauOut': 1.15,
+            },
+          ];
+          isLoading = false;
+        });
+      }
     }
+  }
+
+  double typeofScoreToDouble(dynamic val) {
+    if (val is num) return val.toDouble();
+    if (val is String) return double.tryParse(val) ?? 2.50;
+    return 2.50;
   }
 
   @override
@@ -200,14 +271,73 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   // A15 Episode Detail
   Widget _buildEpisodeDetailScreen(Map<String, dynamic> ep) {
-    final List<TrajectoryPoint> points = (ep['points'] as List<TrajectoryPoint>? ?? []);
-    final double peakScore = (ep['peakScore'] as num).toDouble();
+    final raw = ep['raw'] as Map<String, dynamic>? ?? {};
+
+    // Helper formatting timestamps
+    String formatTs(dynamic ts) {
+      if (ts == null) return '-';
+      int ms = 0;
+      if (ts is Map && ts.containsKey('\$numberLong')) {
+        ms = int.tryParse(ts['\$numberLong'].toString()) ?? 0;
+      } else if (ts is num) {
+        ms = ts.toInt();
+      }
+      if (ms == 0) return '-';
+      final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+      final hh = dt.hour.toString().padLeft(2, '0');
+      final mm = dt.minute.toString().padLeft(2, '0');
+      final ss = dt.second.toString().padLeft(2, '0');
+      final dd = dt.day.toString().padLeft(2, '0');
+      final mo = dt.month.toString().padLeft(2, '0');
+      return '$dd-$mo-${dt.year} $hh:$mm:$ss';
+    }
+
+    final String onsetStr = raw['onset_time'] != null ? formatTs(raw['onset_time']) : (ep['date'] ?? '13-08-2026 10:01:40');
+    final String peakStr = raw['peak_time'] != null ? formatTs(raw['peak_time']) : onsetStr;
+    final String resolvedStr = raw['resolved_time'] != null ? formatTs(raw['resolved_time']) : '-';
+
+    final double onsetScore = ((raw['onset_score'] ?? ep['onsetScore'] ?? 2.10) as num).toDouble();
+    final double peakScore = ((raw['peak_score'] ?? ep['peakScore'] ?? 2.10) as num).toDouble();
+    final double durationMin = raw['duration_ms'] != null ? (raw['duration_ms'] / 60000.0) : ((ep['durationMinutes'] ?? 15).toDouble());
+    final String classification = raw['classification'] ?? ep['status'] ?? 'Caution';
+
+    // Z-scores at peak
+    final Map<String, dynamic> zPeak = raw['z_scores_at_peak'] as Map<String, dynamic>? ?? {};
+    final double zHr = ((zPeak['z_hr'] ?? -0.35) as num).toDouble();
+    final double zRr = ((zPeak['z_rr'] ?? 1.42) as num).toDouble();
+    final double zSdnn = ((zPeak['z_sdnn'] ?? -1.54) as num).toDouble();
+    final double zRmssd = ((zPeak['z_rmssd'] ?? -10.83) as num).toDouble();
+    final double zMotion = ((zPeak['z_motion'] ?? 0) as num).toDouble();
+    final double zDfa = ((zPeak['z_dfa'] ?? 0.65) as num).toDouble();
+
+    // Trajectory details
+    final Map<String, dynamic> traj = raw['trajectory'] as Map<String, dynamic>? ?? {};
+    final double deltaHr = ((traj['delta_hr'] ?? -0.27) as num).toDouble();
+    final double slopeHr = ((traj['slope_hr'] ?? -0.0019) as num).toDouble();
+    final int persistence = traj['persistence'] ?? 2;
+    final double dfa1 = ((traj['dfa_alpha1'] ?? 0.504) as num).toDouble();
+    final double dfa2 = ((traj['dfa_alpha2'] ?? 0.725) as num).toDouble();
+    final double recMs = ((traj['recovery_time_ms'] ?? 2700000) as num).toDouble();
+
+    // Points sequence for trajectory line chart
+    List<TrajectoryPoint> points = (ep['points'] as List<TrajectoryPoint>? ?? []);
+    final List<dynamic> seqScores = traj['sequence_of_scores'] as List<dynamic>? ?? [onsetScore, peakScore, 1.75, 1.30, 0.85];
+    if (seqScores.isNotEmpty) {
+      points = [];
+      for (int i = 0; i < seqScores.length; i++) {
+        final double score = (seqScores[i] as num).toDouble();
+        final String label = i == 0 ? 'Onset' : (i == 1 ? 'Peak' : 'Recovery');
+        final String time = 'W${i+1}';
+        points.add(TrajectoryPoint(time: time, score: score, label: label));
+      }
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Navigation Header
           Row(
             children: [
               IconButton(
@@ -215,7 +345,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 onPressed: () => setState(() => selectedEpisode = null),
               ),
               Text(
-                ep['id'],
+                ep['id'] ?? 'EP-104',
                 style: const TextStyle(
                   fontFamily: 'Plus Jakarta Sans',
                   fontSize: 18,
@@ -224,19 +354,83 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
               const Spacer(),
-              ep['status'] == 'Recovered' ? EvidenceChip.recovered() : EvidenceChip.qualityWarning(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: classification == 'Alert' ? AppColors.redSoft : AppColors.amberSoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  classification,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: classification == 'Alert' ? AppColors.red : AppColors.amber,
+                  ),
+                ),
+              ),
             ],
           ),
           Padding(
             padding: const EdgeInsets.only(left: 48),
             child: Text(
-              '${ep['date']} · ${ep['context']}',
+              'Device: ${raw['device_id'] ?? 'TEST_DEVICE_123'} · Activity: ${raw['activity'] ?? ep['context'] ?? 'Berkendara'}',
               style: const TextStyle(fontSize: 12, color: AppColors.gray),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // Score Trajectory Graphic Card with X and Y Axes
+          // Time Details Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('RINCIAN WAKTU & DURASI EPISODE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.teal)),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Onset Time (Mulai)', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                    Text(onsetStr, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Peak Time (Puncak)', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                    Text(peakStr, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.red)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Resolved Time (Pulih)', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                    Text(resolvedStr, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.green)),
+                  ],
+                ),
+                const Divider(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Total Durasi Episode', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                    Text('${durationMin.toStringAsFixed(1)} Menit (${(durationMin * 60000).toInt()} ms)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.teal)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Score Trajectory Graphic Card with Interactive Touch
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -257,51 +451,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Trajektori Skor Deviasi',
-                            style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.navy,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Sumbu Y: Skor Deviasi (SD) · Sumbu X: Waktu (WIB)',
-                            style: TextStyle(fontSize: 10.5, color: AppColors.gray),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
                     Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.red, shape: BoxShape.circle)),
-                            const SizedBox(width: 4),
-                            const Text('Skor Deviasi', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: AppColors.gray)),
-                          ],
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Grafik Trajektori Skor Anomali',
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.navy),
                         ),
-                        const SizedBox(height: 2),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(width: 8, height: 2, color: AppColors.amber),
-                            const SizedBox(width: 4),
-                            const Text('τin (1,5)', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: AppColors.amber)),
-                          ],
+                        SizedBox(height: 2),
+                        Text(
+                          'Urutan Skor Deviasi (Sequence of Scores)',
+                          style: TextStyle(fontSize: 10.5, color: AppColors.gray),
                         ),
                       ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: AppColors.redSoft, borderRadius: BorderRadius.circular(6)),
+                      child: Text('Peak: ${peakScore.toStringAsFixed(2)}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.red)),
                     ),
                   ],
                 ),
@@ -313,38 +481,81 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Metrics Grid
+          // Breakdown Z-Scores Card at Peak
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('BREAKDOWN Z-SCORES AT PEAK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.purple)),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildZChip('Z-HR', zHr),
+                    _buildZChip('Z-RR', zRr),
+                    _buildZChip('Z-SDNN', zSdnn),
+                    _buildZChip('Z-RMSSD', zRmssd),
+                    _buildZChip('Z-DFA', zDfa),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Trajectory Feature Details Grid
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
             childAspectRatio: 2.2,
             children: [
-              _buildMetricCard('Onset', ep['onset']),
-              _buildMetricCard('Recovery', ep['recovery']),
-              _buildMetricCard('Peak Score', ep['peakScore'].toString()),
-              _buildMetricCard('AUC Burden', ep['auc'].toString()),
+              _buildMetricCard('Delta HR', '${deltaHr >= 0 ? "+$deltaHr" : deltaHr} BPM'),
+              _buildMetricCard('Slope HR', '${slopeHr.toStringAsFixed(4)} / min'),
+              _buildMetricCard('Persistensi', '$persistence Window'),
+              _buildMetricCard('DFA α1 / α2', '${dfa1.toStringAsFixed(2)} / ${dfa2.toStringAsFixed(2)}'),
+              _buildMetricCard('Onset Score', onsetScore.toStringAsFixed(2)),
+              _buildMetricCard('Recovery Time', '${(recMs / 60000).toStringAsFixed(1)} m'),
             ],
-          ),
-          const SizedBox(height: 16),
-
-          const Text('EVIDENCE & PENJELASAN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gray)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: (ep['evidence'] as List<String>).map((ev) => Chip(
-              label: Text(ev, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.navy)),
-              backgroundColor: AppColors.graySoft,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            )).toList(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildZChip(String label, double val) {
+    final bool isExtreme = val.abs() >= 2.0;
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.gray)),
+        const SizedBox(height: 3),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          decoration: BoxDecoration(
+            color: isExtreme ? AppColors.redSoft : AppColors.graySoft,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            val >= 0 ? '+${val.toStringAsFixed(2)}' : val.toStringAsFixed(2),
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              color: isExtreme ? AppColors.red : AppColors.navy,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

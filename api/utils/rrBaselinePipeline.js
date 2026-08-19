@@ -42,16 +42,18 @@ export const QUALITY_CONFIG = {
  * Konfigurasi maturity baseline.
  */
 export const MATURITY_CONFIG = {
-  min_effective_windows: 90,  // CAPAR: 90 windows per baseline (updated)
+  provisional_min_windows: 15, // 15 windows @ 2 min = 30 min total per activity
+  mature_min_windows: 30,      // 30 windows @ 2 min = 60 min total per activity
+  min_effective_windows: 45,
   min_distinct_days: 3,
   min_windows_per_day: 5,
   max_single_day_fraction: 0.60,
-  bq_min: 0.75,
-  min_stability_score: 0.70,
+  bq_min: 0.70,
+  min_stability_score: 0.65,
   min_component_quality: 0.60,
   autocorr_max_lag: 20,
   provisional_outlier_mad: 4.0,
-  provisional_outlier_min_n: 10,
+  provisional_outlier_min_n: 8,
 };
 
 /**
@@ -506,8 +508,8 @@ export function computeBaselineMaturity(baseline, featureValues) {
   const n = baseline.segment_count || 0;
   let level;
   if (mature) level = 'mature';
-  else if (n >= 60) level = 'maturing';   // >= 60 windows → maturing
-  else if (n >= 30) level = 'provisional'; // >= 30 windows → provisional
+  else if (n >= 30) level = 'maturing';    // >= 30 windows (60 mins) → maturing
+  else if (n >= 15) level = 'provisional'; // >= 15 windows (30 mins) → provisional (Live monitoring active!)
   else level = 'cold_start';
 
   return {

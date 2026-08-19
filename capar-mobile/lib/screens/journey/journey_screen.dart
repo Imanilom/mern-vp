@@ -138,6 +138,10 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
                 _buildEvidenceLevelCard(),
                 const SizedBox(height: 14),
 
+                // ── Provisional Baseline Card ──────────────────────────────
+                _buildProvisionalBaselineCard(),
+                const SizedBox(height: 14),
+
                 // ── Mission Center ──────────────────────────────────────────
                 _buildMissionCenter(),
                 const SizedBox(height: 14),
@@ -321,6 +325,103 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
           ),
         ],
       ),
+    );
+  // ── Provisional Baseline Card ─────────────────────────────────────────────
+
+  Widget _buildProvisionalBaselineCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'BASELINE PROVISIONAL & HISTORIS',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.teal, letterSpacing: 0.5),
+              ),
+              EvidenceChip.provisional(),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Evaluasi Kesiapan Data Personal',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.navy),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Evaluasi kelengkapan data historis untuk mengaktifkan kriteria Provisional Baseline (15 Window / 30 Menit total).',
+            style: TextStyle(fontSize: 11.5, color: AppColors.gray, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+
+          // 3-Point Readiness Checklist
+          _buildChecklistItem(
+            'Data Provisional (15 Window / 30 Min)',
+            'Terpenuhi (Siap Live Monitoring)',
+            true,
+            AppColors.teal,
+          ),
+          const SizedBox(height: 8),
+          _buildChecklistItem(
+            'Pencatatan Hari Sebelumnya',
+            '3 Hari berturut-turut terverifikasi di server',
+            true,
+            AppColors.green,
+          ),
+          const SizedBox(height: 8),
+          _buildChecklistItem(
+            'Sesi Streaming Panjang (Continuous)',
+            telemetry.isStreaming ? 'Streaming Aktif (Terhubung ke RMQ)' : 'Siap untuk Sesi Streaming Panjang',
+            telemetry.isStreaming,
+            telemetry.isStreaming ? AppColors.teal : AppColors.amber,
+          ),
+          const SizedBox(height: 14),
+
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.pushNamed(context, '/baseline'),
+              icon: const Icon(Icons.analytics_rounded, size: 16, color: AppColors.teal),
+              label: const Text('Cek Kesiapan Baseline & Data Historis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.teal)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.teal),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklistItem(String title, String statusText, bool isDone, Color color) {
+    return Row(
+      children: [
+        Icon(
+          isDone ? Icons.check_circle_rounded : Icons.pending_rounded,
+          size: 16,
+          color: color,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.navy)),
+              Text(statusText, style: TextStyle(fontSize: 10.5, color: color, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

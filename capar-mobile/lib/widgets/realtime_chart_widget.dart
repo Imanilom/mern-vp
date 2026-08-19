@@ -62,6 +62,17 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
     final double minX = _hrSpots.first.x;
     final double maxX = _hrSpots.last.x;
 
+    // Hitung minY dan maxY dinamis berdasarkan titik data aktual agar fluktuasi terlihat sangat jelas
+    final yValues = _hrSpots.map((s) => s.y).toList();
+    final double minYVal = yValues.reduce((a, b) => a < b ? a : b);
+    final double maxYVal = yValues.reduce((a, b) => a > b ? a : b);
+    final double range = maxYVal - minYVal;
+    final double padding = range < 5 ? 4.0 : (range < 15 ? 5.0 : 8.0);
+
+    final double minY = (minYVal - padding).clamp(30.0, 220.0);
+    final double maxY = (maxYVal + padding).clamp(minY + 10.0, 220.0);
+    final double gridInterval = ((maxY - minY) / 4).clamp(2.0, 50.0);
+
     return Container(
       height: 220,
       padding: const EdgeInsets.only(right: 16, left: 10, top: 20, bottom: 10),
@@ -90,8 +101,8 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
               LineChartData(
                 minX: minX,
                 maxX: maxX,
-                minY: 40,
-                maxY: 180,
+                minY: minY,
+                maxY: maxY,
                 lineBarsData: [
                   LineChartBarData(
                     spots: _hrSpots,
@@ -127,7 +138,7 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: 20,
+                  horizontalInterval: gridInterval,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
                       color: Colors.grey.withOpacity(0.2),
