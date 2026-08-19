@@ -50,6 +50,7 @@ async function connectMongoDB() {
   if (!mongoUri) {
     console.warn("[MongoDB] MONGO env variable is not set. Falling back to local MongoDB...");
     try {
+      if (mongoose.connection.readyState !== 0) await mongoose.disconnect();
       await mongoose.connect(localMongoUri, options);
       console.log("Connected to Local MongoDB fallback!");
       startLogTransportConsumer().catch((e) => console.error("[RabbitMQ Consumer] Launch error:", e.message));
@@ -60,6 +61,7 @@ async function connectMongoDB() {
   }
 
   try {
+    if (mongoose.connection.readyState !== 0) await mongoose.disconnect();
     await mongoose.connect(mongoUri, options);
     const connType = (mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost')) ? 'Local' : 'Cloud Atlas';
     console.log(`Connected to MongoDB (${connType})!`);
@@ -70,6 +72,7 @@ async function connectMongoDB() {
     if (isRemote) {
       console.log(`[MongoDB] Attempting fallback connection to local MongoDB (${localMongoUri})...`);
       try {
+        if (mongoose.connection.readyState !== 0) await mongoose.disconnect();
         await mongoose.connect(localMongoUri, options);
         console.log("Connected to Local MongoDB fallback!");
         startLogTransportConsumer().catch((e) => console.error("[RabbitMQ Consumer] Launch error:", e.message));
