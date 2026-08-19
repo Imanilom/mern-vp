@@ -224,10 +224,12 @@ function computeSD(arr, mean) {
 }
 
 // Runnable directly via command line
-runWindowOptimizationSimulation().then(report => {
-  console.log(JSON.stringify(report, null, 2));
-  process.exit(0);
-}).catch(err => {
-  console.error('Simulation error:', err);
-  process.exit(1);
-});
+if (process.argv[1] && process.argv[1].includes('test_baseline_window_optimization')) {
+  runWindowOptimizationSimulation().then(report => {
+    console.log(JSON.stringify(report, null, 2));
+    process.exit(0);
+  }).catch(err => {
+    console.error('Simulation error:', err);
+    process.exit(1);
+  });
+}
