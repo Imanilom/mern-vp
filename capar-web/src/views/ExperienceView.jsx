@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
 import MarkovTransitionHeatmap from '../components/MarkovTransitionHeatmap';
 import NextStatePrediction from '../components/NextStatePrediction';
 import CalibrationHistoryCard from '../components/CalibrationHistoryCard';
@@ -22,6 +23,25 @@ import {
 } from 'lucide-react';
 
 export const ExperienceView = ({ experienceModels, globalParticipantFilter }) => {
+  const [experienceApiData, setExperienceApiData] = useState(null);
+  const [isLearningFrozen, setIsLearningFrozen] = useState(false);
+
+  const participantId = globalParticipantFilter || 'ALL';
+
+  useEffect(() => {
+    let isMounted = true;
+    if (api.getPersonalExperience) {
+      api.getPersonalExperience(participantId)
+        .then(res => {
+          if (isMounted && res?.success && res.data) {
+            setExperienceApiData(res.data);
+          }
+        })
+        .catch(err => console.error('[ExperienceView] getPersonalExperience error:', err.message));
+    }
+    return () => { isMounted = false; };
+  }, [participantId]);
+
   const filteredModels = (experienceModels || []).filter(model => {
     if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && model.participantId !== globalParticipantFilter && model.id !== globalParticipantFilter) return false;
     return true;
@@ -39,17 +59,11 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
     }
   }, [filteredModels, globalParticipantFilter]);
 
-  const [isLearningFrozen, setIsLearningFrozen] = useState(false);
+  const confScorePct = Math.round((experienceApiData?.confidenceScore ?? selectedModel?.confidenceScore ?? 0.94) * 100);
+  const predConfPct = Math.round((experienceApiData?.predictionConfidence ?? selectedModel?.predictionConfidence ?? 0.89) * 100);
 
-  useEffect(() => {
-    console.log('[ExperienceView] API Data (Personal Experience Models):', experienceModels);
-  }, [experienceModels]);
-
-  const confScorePct = Math.round((selectedModel?.confidenceScore ?? 0.94) * 100);
-  const predConfPct = Math.round((selectedModel?.predictionConfidence ?? 0.89) * 100);
-
-  // Gamification Data collected from capar-mobile app
-  const gamificationData = selectedModel?.gamification || {
+  // Gamification Data collected from capar-mobile app & API
+  const gamificationData = experienceApiData?.gamification || selectedModel?.gamification || {
     level: 5,
     levelTitle: 'Heart Health Master',
     currentXp: 1450,
@@ -75,8 +89,8 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
     { key: 'night', label: 'Dini Hari (00:00 - 06:00)' }
   ];
 
-  // Sample Heatmap Memory matrix (or derived from selectedModel)
-  const memoryHeatmapMatrix = {
+  // Dynamic Heatmap Memory matrix from API or selectedModel
+  const memoryHeatmapMatrix = experienceApiData?.memoryHeatmapMatrix || {
     'morning-sitting': { count: 18, avgAnomaly: 0.62, state: 'BASELINE_COMPATIBLE' },
     'morning-standing': { count: 8, avgAnomaly: 0.85, state: 'BASELINE_COMPATIBLE' },
     'morning-walking': { count: 12, avgAnomaly: 2.15, state: 'DEVIATION_CANDIDATE' },
@@ -131,7 +145,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
           <div>
             <div className="mini-label m-0" style={{ color: 'var(--teal)' }}>MOBILE APP GAMIFICATION &amp; REWARDS COLLECTED</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--navy)' }}>
-              Progres Gamifikasi Partisipan {selectedModel?.participantId || (globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'User_01')}
+              Progres Gamifikasi Partisipan {experienceApiData?.participantId || selectedModel?.participantId || (globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'User_01')}
             </div>
           </div>
           <span className="badge bg-teal text-navy px-2.5 py-1.5" style={{ fontSize: 11, fontWeight: 800 }}>
@@ -167,7 +181,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
                 </span>
               </div>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--navy)' }}>Consecutive Active Streak</div>
-              <div style={{ fontSize: 10, color: 'var(--gray)' }}>Streaming &amp; EMA aktif 14 hari berturut-turut</div>
+              <div style={{ fontSize: 10, color: 'var(--gray)' }}>Streaming &amp; EMA aktif {gamificationData.activeStreakDays} hari berturut-turut</div>
             </div>
           </div>
 
@@ -205,29 +219,29 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div className="stat-card">
           <div className="lbl">Resolved Episodes Memory</div>
-          <div className="val">{selectedModel?.resolvedEpisodesCount ?? 28}</div>
-          <div className="sub">Participant: {selectedModel?.participantId || (globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'All')}</div>
+          <div className="val">{experienceApiData?.resolvedEpisodesCount ?? selectedModel?.resolvedEpisodesCount ?? 28}</div>
+          <div className="sub">Participant: {experienceApiData?.participantId || selectedModel?.participantId || (globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'All')}</div>
         </div>
 
         <div className="stat-card">
           <div className="lbl">Median Recovery Duration</div>
           <div className="val" style={{ color: 'var(--purple)' }}>
-            {selectedModel?.medianRecoveryMinutes ?? 8} <span style={{ fontSize: 14 }}>min</span>
+            {experienceApiData?.medianRecoveryMinutes ?? selectedModel?.medianRecoveryMinutes ?? 8} <span style={{ fontSize: 14 }}>min</span>
           </div>
-          <div className="sub">P25: {selectedModel?.p25RecoveryMinutes ?? 5}m · P75: {selectedModel?.p75RecoveryMinutes ?? 12}m</div>
+          <div className="sub">P25: {experienceApiData?.p25RecoveryMinutes ?? selectedModel?.p25RecoveryMinutes ?? 5}m · P75: {experienceApiData?.p75RecoveryMinutes ?? selectedModel?.p75RecoveryMinutes ?? 12}m</div>
         </div>
 
         <div className="stat-card">
           <div className="lbl">Recovery Phenotype</div>
           <div className="val" style={{ fontSize: 18, color: 'var(--navy)' }}>
-            {selectedModel?.phenotype ?? 'Fast Recoverer'}
+            {experienceApiData?.phenotype ?? selectedModel?.phenotype ?? 'Fast Recoverer'}
           </div>
           <div className="sub">Confidence: {confScorePct}%</div>
         </div>
 
         <div className="stat-card">
           <div className="lbl">Next State Prediction</div>
-          <div className="val" style={{ color: 'var(--teal)' }}>{selectedModel?.nextStatePrediction ?? 'BASELINE_COMPATIBLE'} ({predConfPct}%)</div>
+          <div className="val" style={{ color: 'var(--teal)' }}>{experienceApiData?.nextStatePrediction ?? selectedModel?.nextStatePrediction ?? 'BASELINE_COMPATIBLE'} ({predConfPct}%)</div>
           <div className="sub">Horizon +3 windows (~15m)</div>
         </div>
       </div>

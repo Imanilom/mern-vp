@@ -17,101 +17,17 @@ export const BaselineMaturityView = ({ participantId }) => {
       api.getUserBaselines(targetUserId).catch(() => []),
       api.getRRBaseline(targetUserId).catch(() => []),
       api.getRRSegments ? api.getRRSegments(targetUserId, 50).catch(() => []) : Promise.resolve([])
-    ]).then(([userBases, rrBases, segments]) => {
+    ]).then(([userBasesRes, rrBasesRes, segmentsRes]) => {
       let combined = [];
-      if (Array.isArray(userBases) && userBases.length > 0) combined = userBases;
-      else if (Array.isArray(rrBases) && rrBases.length > 0) combined = rrBases;
+      const userBases = Array.isArray(userBasesRes) ? userBasesRes : (userBasesRes?.data || []);
+      const rrBases = Array.isArray(rrBasesRes) ? rrBasesRes : (rrBasesRes?.data || []);
       
-      // Fallback sample detailed baseline models if DB returns empty
-      if (combined.length === 0) {
-        combined = [
-          {
-            _id: '6a89c1001122334455667788',
-            user_id: participantId || '675ba1e92b8428e4dd641cd0',
-            activity: 'sitting',
-            time_period: 'Morning (08:00 - 12:00)',
-            segment_count: 30,
-            is_mature: true,
-            is_frozen: false,
-            status: 'Approved',
-            stats: {
-              hr_mean: { mean: 67.18, std: 2.12 },
-              rmssd: { mean: 35.68, std: 4.15 },
-              sdnn: { mean: 48.18, std: 5.10 },
-              dfa_alpha1: { mean: 0.9929, std: 0.08 }
-            },
-            maturity_detail: {
-              level: 'mature',
-              distinct_days: 3,
-              n_effective: 29.5,
-              max_single_day_frac: 0.35,
-              q_signal: 0.96,
-              q_stability: 0.88,
-              bq: 0.91
-            },
-            learned_tau: { tau_in: 1.86, tau_out: 1.00, tau_normal: 0.75 }
-          },
-          {
-            _id: '6a89c1001122334455667789',
-            user_id: participantId || '675ba1e92b8428e4dd641cd0',
-            activity: 'standing',
-            time_period: 'Afternoon (12:00 - 17:00)',
-            segment_count: 15,
-            is_mature: false,
-            is_frozen: false,
-            status: 'Provisional',
-            stats: {
-              hr_mean: { mean: 84.50, std: 3.40 },
-              rmssd: { mean: 24.20, std: 3.10 },
-              sdnn: { mean: 32.10, std: 4.20 },
-              dfa_alpha1: { mean: 0.885, std: 0.12 }
-            },
-            maturity_detail: {
-              level: 'provisional',
-              distinct_days: 2,
-              n_effective: 14.8,
-              max_single_day_frac: 0.50,
-              q_signal: 0.94,
-              q_stability: 0.78,
-              bq: 0.82
-            },
-            learned_tau: { tau_in: 2.10, tau_out: 1.15, tau_normal: 0.80 }
-          },
-          {
-            _id: '6a89c1001122334455667790',
-            user_id: participantId || '675ba1e92b8428e4dd641cd0',
-            activity: 'walking',
-            time_period: 'Evening (17:00 - 21:00)',
-            segment_count: 8,
-            is_mature: false,
-            is_frozen: true,
-            status: 'Cold Start',
-            stats: {
-              hr_mean: { mean: 104.20, std: 5.80 },
-              rmssd: { mean: 18.50, std: 2.80 },
-              sdnn: { mean: 26.40, std: 3.90 },
-              dfa_alpha1: { mean: 0.760, std: 0.15 }
-            },
-            maturity_detail: {
-              level: 'cold_start',
-              distinct_days: 1,
-              n_effective: 7.6,
-              max_single_day_frac: 0.85,
-              q_signal: 0.91,
-              q_stability: 0.62,
-              bq: 0.68
-            },
-            learned_tau: { tau_in: 2.50, tau_out: 1.30, tau_normal: 0.90 }
-          }
-        ];
-      }
-
+      if (userBases.length > 0) combined = userBases;
+      else if (rrBases.length > 0) combined = rrBases;
+      
       setBaselineData(combined);
 
-      let segList = [];
-      if (Array.isArray(segments?.data)) segList = segments.data;
-      else if (Array.isArray(segments)) segList = segments;
-      else if (segments?.segments) segList = segments.segments;
+      const segList = Array.isArray(segmentsRes) ? segmentsRes : (segmentsRes?.data || segmentsRes?.segments || []);
       setSourceWindows(segList);
 
       setLoading(false);

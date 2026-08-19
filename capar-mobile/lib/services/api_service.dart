@@ -310,4 +310,25 @@ class ApiService {
     }
     return [];
   }
+
+  // Fetch Personal Experience Memory & Gamification metrics
+  static Future<Map<String, dynamic>?> fetchPersonalExperience({String? userId}) async {
+    try {
+      final uid = userId ?? await _getUserId();
+      final target = uid.isNotEmpty ? uid : 'ALL';
+
+      final response = await http
+          .get(Uri.parse('$baseUrl/analysis/experience/$target'))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data['data'] as Map<String, dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Fetch experience memory error: $e');
+    }
+    return null;
+  }
 }

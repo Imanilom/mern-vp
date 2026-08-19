@@ -483,6 +483,12 @@ export const api = {
   async getUserBaselines(userId) {
     return axios.get(`/analysis/baseline/${userId}`).then(res => res.data);
   },
+  async getRRBaseline(userId) {
+    return axios.get(`/analysis/rr/baseline/${userId}`).then(res => res.data);
+  },
+  async getRRSegments(userId, limit = 50) {
+    return axios.get(`/analysis/rr/segments/${userId}?limit=${limit}`).then(res => res.data);
+  },
   async freezeBaseline(baselineId, isFrozen) {
     return axios.patch(`/analysis/baseline/${baselineId}/freeze`, { is_frozen: isFrozen }).then(res => res.data);
   },
@@ -586,5 +592,10 @@ export const api = {
   },
   async postBrierEvaluation(records, referenceBrier = null) {
     return axios.post('/prediction-eval/brier', { records, reference_brier: referenceBrier }).then(res => res.data);
+  },
+
+  // --- PERSONAL EXPERIENCE MEMORY & GAMIFICATION ---
+  async getPersonalExperience(userId = 'ALL') {
+    return axios.get(`/analysis/experience/${userId}`).then(res => res.data);
   }
 };

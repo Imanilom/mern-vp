@@ -28,6 +28,8 @@ import {
   getStreamingSignalQualityStats,
   getCandidateAndPersistentEpisodes,
   getCalibrationHistory,
+  getPersonalExperienceMemory,
+  getSegmentAuditWindows,
 } from '../controllers/analysis.controller.js';
 import { calculateBrierScoreHandler, getPredictionEvalMetrics } from '../controllers/evaluation.controller.js';
 import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions, getRecoveryTimeToRecoveredPrediction, getMarkovModelHandler } from '../controllers/capar.prediction.controller.js';
@@ -389,10 +391,17 @@ router.get('/rr/segments/:userId', verifyToken, resolveUserIdParam, async (req, 
  */
 router.get('/rr/baseline/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
-    const Baseline = (await import('../models/baseline.model.js')).default;
-    const data = await Baseline.find({ user_id: req.params.userId })
-      .select('activity time_period segment_count is_mature maturity_detail stats.mean_hr stats.sdnn stats.rmssd last_updated')
-      .lean();
+    const data = await getUserBaselines(req.params.userId);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** GET /api/analysis/rr/segments/:userId — Rincian Window & Audit Segmentasi */
+router.get('/rr/segments/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
+  try {
+    const data = await getSegmentAuditWindows(req.params.userId, req.query.limit || 50);
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -485,5 +494,8 @@ router.post('/brier-eval', calculateBrierScoreHandler);
 /** GET /api/analysis/prediction-eval/metrics/:userId — Get Prediction Eval metrics & Brier Scores */
 router.get('/prediction-eval/metrics/:userId', resolveUserIdParam, getPredictionEvalMetrics);
 router.get('/prediction-eval/brier/:userId', resolveUserIdParam, getPredictionEvalMetrics);
+
+/** GET /api/analysis/experience/:userId — Personal Experience Memory & Gamification Sync */
+router.get('/experience/:userId', resolveUserIdParam, getPersonalExperienceMemory);
 
 export default router;

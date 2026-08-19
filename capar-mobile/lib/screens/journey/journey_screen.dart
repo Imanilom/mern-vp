@@ -21,6 +21,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
   int _totalDays = 0;
   int _totalEpisodes = 0;
   bool _isLoadingStats = true;
+  Map<String, dynamic>? _experienceData;
 
   @override
   void initState() {
@@ -30,20 +31,35 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
 
   Future<void> _loadStats() async {
     setState(() => _isLoadingStats = true);
-    final episodes = await ApiService.fetchEpisodes();
+    final results = await Future.wait([
+      ApiService.fetchEpisodes(),
+      ApiService.fetchPersonalExperience(),
+    ]);
+
+    final episodes = results[0] as List<Map<String, dynamic>>;
+    final expData = results[1] as Map<String, dynamic>?;
+
     if (mounted) {
       setState(() {
-        _totalEpisodes = episodes.length;
-        _completedMissions = (episodes.length * 2).clamp(0, 10);
+        _experienceData = expData;
+        final gami = expData?['gamification'] as Map<String, dynamic>?;
+        _totalEpisodes = expData?['resolvedEpisodesCount'] as int? ?? episodes.length;
+        _completedMissions = gami?['completedQuestsCount'] as int? ?? (episodes.length * 2).clamp(0, 10);
+        if (gami?['activeStreakDays'] != null) {
+          _totalDays = gami!['activeStreakDays'] as int;
+        }
         _isLoadingStats = false;
       });
     }
-    // Hitung total hari dari SharedPreferences (set saat pertama kali login)
-    final prefs = await SharedPreferences.getInstance();
-    final firstLoginMs = prefs.getInt('first_login_ms');
-    if (firstLoginMs != null && mounted) {
-      final days = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(firstLoginMs)).inDays;
-      setState(() => _totalDays = days.clamp(0, 999));
+
+    // Hitung fallback total hari jika belum didapat dari API
+    if (_totalDays == 0) {
+      final prefs = await SharedPreferences.getInstance();
+      final firstLoginMs = prefs.getInt('first_login_ms');
+      if (firstLoginMs != null && mounted) {
+        final days = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(firstLoginMs)).inDays;
+        setState(() => _totalDays = days.clamp(0, 999));
+      }
     }
   }
 
@@ -256,12 +272,12 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
   // ── Evidence Level Card ───────────────────────────────────────────────────
 
   Widget _buildEvidenceLevelCard() {
-    // Level dihitung dari total episode
-    final int level = (_totalEpisodes == 0)
-        ? 1
-        : (_totalEpisodes < 3 ? 2 : (_totalEpisodes < 7 ? 3 : 4));
-    final String levelLabel = ['', 'Novice', 'Contributor', 'Advanced', 'Expert'][level];
-    final double progress = (_totalEpisodes / 10).clamp(0.0, 1.0);
+    final gami = _experienceData?['gamification'] as Map<String, dynamic>?;
+    final int level = gami?['level'] as int? ?? ((_totalEpisodes == 0) ? 1 : (_totalEpisodes < 3 ? 2 : (_totalEpisodes < 7 ? 3 : 4)));
+    final String levelLabel = gami?['levelTitle'] as String? ?? (level < 5 ? ['', 'Novice', 'Contributor', 'Advanced', 'Expert'][level] : 'Master');
+    final int xp = gami?['currentXp'] as int? ?? 1450;
+    final int nextXp = gami?['nextLevelXp'] as int? ?? 2000;
+    final double progress = (xp / nextXp).clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.all(16),
