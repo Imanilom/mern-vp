@@ -118,11 +118,11 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
   }, [cm]);
 
   // ── 3. Dynamic Brier Score, Log Loss & ROC AUC for Active Dataset / Episode ─
-  const { auc, brier, logLoss, rocPoints, calibrationBins } = useMemo(() => {
+  const { auc, brier, logLoss, rocPoints, chartRocPoints, calibrationBins } = useMemo(() => {
     const dataset = activeEpRecords.length > 0 ? activeEpRecords : episodeAnalysis;
 
     if (!dataset || dataset.length === 0) {
-      return { auc: 0.94, brier: 0.042, logLoss: 0.145, rocPoints: [], calibrationBins: [] };
+      return { auc: 0.94, brier: 0.042, logLoss: 0.145, rocPoints: [], chartRocPoints: [], calibrationBins: [] };
     }
 
     const samples = dataset.map(ea => {

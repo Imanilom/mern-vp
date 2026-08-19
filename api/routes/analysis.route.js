@@ -398,8 +398,9 @@ router.get('/recovery-estimate/:userId', verifyToken, resolveUserIdParam, getRec
 /** GET /api/analysis/transitions/:userId — personal transition matrix */
 router.get('/transitions/:userId', verifyToken, resolveUserIdParam, getPersonalTransitions);
 
-/** GET /api/analysis/markov/:userId & /participants/:participantId/markov — Guarded Markov Transition Model */
+/** GET /api/analysis/markov/:userId & /api/participants/:userId/markov — Guarded Markov Transition Model */
 router.get('/markov/:userId', getMarkovModelHandler);
+router.get('/:userId/markov', getMarkovModelHandler);
 router.get('/participants/:participantId/markov', getMarkovModelHandler);
 
 /** GET /api/analysis/calibration-history/:userId — Calibration history */
