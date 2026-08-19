@@ -1927,10 +1927,11 @@ export async function getPersonalExperienceMemory(req, res) {
       eventQuery.user_id = userId;
     }
 
-    const [segments, events, baselines] = await Promise.all([
+    const [segments, events, baselines, emaResponses] = await Promise.all([
       Segment.find(matchStage).select('window_start activity_label classification anomaly_score quality_gate_pass').lean(),
       AnomalyEvent.find(eventQuery).select('onset_time end_time duration_ms status trajectory classification').lean(),
-      Baseline.find(eventQuery).select('distinct_days segment_count is_mature').lean()
+      Baseline.find(eventQuery).select('distinct_days segment_count is_mature').lean(),
+      EmaResponse.find(eventQuery).sort({ submitted_at: -1 }).lean().catch(() => [])
     ]);
 
     // 1. Heatmap 2D Grid calculation (Time of Day vs Activity Context)
@@ -2044,6 +2045,45 @@ export async function getPersonalExperienceMemory(req, res) {
     if (medianRec > 15) phenotype = 'Sustained Deviation';
     else if (medianRec > 8) phenotype = 'Gradual Recoverer';
 
+    // Process Answered EMA List (Provisional & Historis)
+    const answeredEmaList = emaResponses.map(ema => {
+      const step = ema.step_completed || 1;
+      let activity = 'Konteks Umum';
+      let details = 'Jawaban EMA Terdaftar';
+
+      if (ema.ema1) {
+        activity = ema.ema1.activity || 'Aktivitas Utama';
+        details = ema.ema1.note ? `Catatan: ${ema.ema1.note}` : `Rencana: ${ema.ema1.planned || '-'}`;
+      } else if (ema.ema2) {
+        activity = ema.ema2.symptom || 'Evaluasi Gejala';
+        details = `Pemicu: ${ema.ema2.trigger || '-'} (Intensitas: ${ema.ema2.intensity}/10)`;
+      } else if (ema.ema3) {
+        activity = ema.ema3.recovery_status || 'Evaluasi Pemulihan';
+        details = `Perubahan Konteks: ${ema.ema3.context_change || '-'} · Intervensi: ${ema.ema3.intervention_note || '-'}`;
+      } else if (ema.ema4) {
+        activity = ema.ema4.primary_trigger || 'Kondisi Keseluruhan';
+        details = `Kondisi: ${ema.ema4.overall_condition || '-'} (Disrupsi: ${ema.ema4.disruption_score}/10)`;
+      }
+
+      const submittedDt = ema.submitted_at ? new Date(ema.submitted_at) : new Date();
+      const submittedAtFormatted = submittedDt.toLocaleString('id-ID', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      }) + ' WIB';
+
+      return {
+        id: ema._id,
+        event_id: ema.event_id || 'PROVISIONAL_SW',
+        step: `EMA ${step}`,
+        activity,
+        details,
+        submittedAtFormatted,
+        submittedAt: submittedDt.toISOString()
+      };
+    });
+
+    const answeredEmaCount = answeredEmaList.length;
+
     // 3. Gamification Metrics Calculation
     const distinctDaysSet = new Set();
     segments.forEach(s => {
@@ -2051,14 +2091,22 @@ export async function getPersonalExperienceMemory(req, res) {
         distinctDaysSet.add(new Date(s.window_start).toISOString().substring(0, 10));
       }
     });
+    emaResponses.forEach(e => {
+      if (e.submitted_at) {
+        distinctDaysSet.add(new Date(e.submitted_at).toISOString().substring(0, 10));
+      }
+    });
 
-    const activeStreakDays = Math.max(distinctDaysSet.size, baselines[0]?.distinct_days || 1, 14);
+    const activeStreakDays = distinctDaysSet.size > 0
+      ? Math.max(distinctDaysSet.size, baselines[0]?.distinct_days || 1)
+      : (baselines[0]?.distinct_days || 14);
+
     const totalSegmentsCount = segments.length || 120;
-    const completedQuestsCount = Math.min(resolvedCount, 24);
+    const completedQuestsCount = Math.max(answeredEmaCount, Math.min(resolvedCount, 24));
     const totalQuestsCount = Math.max(completedQuestsCount + 1, 25);
     const questCompletionPct = Math.round((completedQuestsCount / totalQuestsCount) * 100);
 
-    const currentXp = (activeStreakDays * 80 + totalSegmentsCount * 5 + resolvedCount * 25) % 2000;
+    const currentXp = (activeStreakDays * 80 + totalSegmentsCount * 5 + completedQuestsCount * 30 + resolvedCount * 25) % 2000;
     const nextLevelXp = 2000;
     const level = Math.min(10, Math.max(1, Math.floor(currentXp / 400) + 1));
     const levelTitle = level <= 2 ? 'Heart Health Explorer' : (level <= 5 ? 'Heart Health Guardian' : 'Heart Health Master');
@@ -2094,6 +2142,8 @@ export async function getPersonalExperienceMemory(req, res) {
           totalQuestsCount,
           badges
         },
+        answeredEmaCount,
+        answeredEmaList,
         memoryHeatmapMatrix: formattedHeatmap,
         computed_at: new Date().toISOString()
       }

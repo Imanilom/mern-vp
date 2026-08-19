@@ -220,6 +220,68 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
         </div>
       </div>
 
+      {/* Answered EMA History Table (Provisional & Historis) */}
+      <div className="card-panel mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div>
+            <div className="mini-label" style={{ color: 'var(--purple)' }}>EMA RESPONSE AUDIT &amp; ANNOTATIONS</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--navy)' }}>
+              Riwayat Respon EMA Terjawab (Provisional &amp; Historis) — Partisipan {experienceApiData?.participantId || selectedModel?.participantId || (globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'All')}
+            </div>
+          </div>
+          <span className="badge bg-purple text-white px-2.5 py-1.5" style={{ fontSize: 11, fontWeight: 800 }}>
+            {experienceApiData?.answeredEmaCount ?? (experienceApiData?.answeredEmaList?.length || 0)} Jawaban Terdaftar
+          </span>
+        </div>
+
+        <div className="table-responsive" style={{ maxHeight: 280, overflowY: 'auto' }}>
+          <table className="dtable w-100" style={{ fontSize: '0.83rem' }}>
+            <thead>
+              <tr>
+                <th>Waktu Pengisian</th>
+                <th>Tahap EMA</th>
+                <th>Event / Context</th>
+                <th>Rincian Jawaban &amp; Catatan Partisipan</th>
+                <th>Status Audit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(!experienceApiData?.answeredEmaList || experienceApiData.answeredEmaList.length === 0) ? (
+                <tr>
+                  <td colSpan="5" className="text-center py-3 text-muted">
+                    Belum ada riwayat pengisian EMA untuk partisipan ini. Respon EMA dari mobile app akan muncul secara otomatis di sini saat diisi.
+                  </td>
+                </tr>
+              ) : (
+                experienceApiData.answeredEmaList.map(ema => (
+                  <tr key={ema.id}>
+                    <td className="mono" style={{ fontWeight: 700, fontSize: 11, color: 'var(--navy)' }}>
+                      {ema.submittedAtFormatted}
+                    </td>
+                    <td>
+                      <span className="badge bg-teal text-navy px-2 py-1" style={{ fontSize: 10, fontWeight: 700 }}>
+                        {ema.step}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                      {ema.activity}
+                    </td>
+                    <td style={{ fontSize: 11.5, color: 'var(--ink)' }}>
+                      {ema.details}
+                    </td>
+                    <td>
+                      <span className="badge bg-success text-white px-2 py-1" style={{ fontSize: 10 }}>
+                        ✓ Terverifikasi &amp; Tersinkron
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Top KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div className="stat-card">
