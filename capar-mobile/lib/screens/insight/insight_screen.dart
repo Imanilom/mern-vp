@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/api_service.dart';
 import '../../services/ble_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/markov_heatmap_widget.dart';
+import '../../widgets/calibration_history_widget.dart';
 
 class InsightScreen extends ConsumerStatefulWidget {
   const InsightScreen({super.key});
@@ -14,6 +16,8 @@ class InsightScreen extends ConsumerStatefulWidget {
 
 class _InsightScreenState extends ConsumerState<InsightScreen> {
   Map<String, dynamic>? forecastData;
+  Map<String, dynamic>? markovData;
+  List<Map<String, dynamic>> calibrationHistory = [];
   bool isLoading = true;
   String? errorMsg;
 
@@ -29,10 +33,20 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
       errorMsg = null;
     });
     try {
-      final data = await ApiService.fetchForecast();
+      final results = await Future.wait([
+        ApiService.fetchForecast(),
+        ApiService.fetchMarkovModel(),
+        ApiService.fetchCalibrationHistory(),
+      ]);
+      final fData = results[0] as Map<String, dynamic>?;
+      final mData = results[1] as Map<String, dynamic>?;
+      final cData = results[2] as List<Map<String, dynamic>>;
+
       if (mounted) {
         setState(() {
-          forecastData = data;
+          forecastData = fData;
+          markovData = mData;
+          calibrationHistory = cData;
           isLoading = false;
         });
       }
@@ -109,9 +123,21 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
                 _buildForecastCard(),
                 const SizedBox(height: 14),
 
+                // ── Markov Transition Model Heatmap ─────────────────────────
+                if (markovData != null && markovData!['matrix'] != null) ...[
+                  MarkovHeatmapWidget(markovData: markovData!),
+                  const SizedBox(height: 14),
+                ],
+
                 // ── Recovery Profile ───────────────────────────────────────
                 _buildRecoveryProfileCard(),
                 const SizedBox(height: 14),
+
+                // ── Calibration History ───────────────────────────────────
+                if (calibrationHistory.isNotEmpty) ...[
+                  CalibrationHistoryWidget(history: calibrationHistory),
+                  const SizedBox(height: 14),
+                ],
 
                 // ── Horizon Prediction ─────────────────────────────────────
                 _buildHorizonCard(),

@@ -27,8 +27,10 @@ import {
   saveEmaResponse,
   getStreamingSignalQualityStats,
   getCandidateAndPersistentEpisodes,
+  getCalibrationHistory,
 } from '../controllers/analysis.controller.js';
-import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions, getRecoveryTimeToRecoveredPrediction } from '../controllers/capar.prediction.controller.js';
+import { calculateBrierScoreHandler, getPredictionEvalMetrics } from '../controllers/evaluation.controller.js';
+import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions, getRecoveryTimeToRecoveredPrediction, getMarkovModelHandler } from '../controllers/capar.prediction.controller.js';
 import { generateReportData } from '../controllers/report.controller.js';
 import { computePersonalThresholds } from '../utils/capar.thresholds.js';
 import { verifyToken } from '../utils/verifyUser.js';
@@ -408,6 +410,13 @@ router.get('/recovery-estimate/:userId', verifyToken, resolveUserIdParam, getRec
 /** GET /api/analysis/transitions/:userId — personal transition matrix */
 router.get('/transitions/:userId', verifyToken, resolveUserIdParam, getPersonalTransitions);
 
+/** GET /api/analysis/markov/:userId & /participants/:participantId/markov — Guarded Markov Transition Model */
+router.get('/markov/:userId', getMarkovModelHandler);
+router.get('/participants/:participantId/markov', getMarkovModelHandler);
+
+/** GET /api/analysis/calibration-history/:userId — Calibration history */
+router.get('/calibration-history/:userId', getCalibrationHistory);
+
 import { getSignalQuality } from '../controllers/quality.controller.js';
 /** GET /api/analysis/signal-quality/:userId */
 router.get('/signal-quality/:userId', verifyToken, resolveUserIdParam, getSignalQuality);
@@ -468,5 +477,13 @@ router.get('/candidate-episodes/:userId', verifyToken, resolveUserIdParam, async
 
 /** GET /api/analysis/recovery-time-prediction/:userId — Model Prediksi Waktu Tersisa Menuju Recovered & Probabilitas Pemulihan */
 router.get('/recovery-time-prediction/:userId', verifyToken, resolveUserIdParam, getRecoveryTimeToRecoveredPrediction);
+
+/** POST /api/analysis/prediction-eval/brier — Evaluasi Brier Score dari array prediction records */
+router.post('/prediction-eval/brier', calculateBrierScoreHandler);
+router.post('/brier-eval', calculateBrierScoreHandler);
+
+/** GET /api/analysis/prediction-eval/metrics/:userId — Get Prediction Eval metrics & Brier Scores */
+router.get('/prediction-eval/metrics/:userId', resolveUserIdParam, getPredictionEvalMetrics);
+router.get('/prediction-eval/brier/:userId', resolveUserIdParam, getPredictionEvalMetrics);
 
 export default router;

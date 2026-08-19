@@ -191,10 +191,10 @@ export function assessRRQuality(rrArr, activityConfidence, expectedCount) {
     if (Math.abs(work[i] - localMed) > allowed) {
       bad[i] = true;
     }
-    
+
     // 2. Relative-jump rule (J_max) dari dokumen
-    if (i > 0 && !bad[i-1]) {
-      const prev = work[i-1];
+    if (i > 0 && !bad[i - 1]) {
+      const prev = work[i - 1];
       const jump = Math.abs(work[i] - prev) / Math.max(prev, 1);
       if (jump > QUALITY_CONFIG.max_relative_jump) {
         bad[i] = true;
@@ -243,9 +243,8 @@ export function assessRRQuality(rrArr, activityConfidence, expectedCount) {
   if (missing_fraction > QUALITY_CONFIG.max_missing_fraction) {
     reasons.push(`Missing data ${(missing_fraction * 100).toFixed(1)}% > batas ${(QUALITY_CONFIG.max_missing_fraction * 100).toFixed(1)}%.`);
   }
-  if (activityConfidence < QUALITY_CONFIG.min_activity_confidence) {
-    reasons.push(`Confidence aktivitas ${activityConfidence.toFixed(2)} < ${QUALITY_CONFIG.min_activity_confidence.toFixed(2)}.`);
-  }
+  // UNCERTAIN_CONTEXT / Confidence aktivitas rendah TIDAK MENCEGAT sistem dalam membuat baseline.
+  // Data tetap diterima (accepted = true) khusus untuk pembentukan baseline akumulatif.
   if (rr_clean.some(v => !isFinite(v))) {
     reasons.push('Koreksi RR menghasilkan nilai non-finite.');
   }
@@ -500,20 +499,25 @@ export function computeBaselineMaturity(baseline, featureValues) {
     failed.push(`dominasi_hari=${(max_single_day_frac * 100).toFixed(0)}% > ${(cfg.max_single_day_fraction * 100).toFixed(0)}%`);
   if (q_signal < cfg.min_component_quality) failed.push(`q_signal=${q_signal.toFixed(2)} < ${cfg.min_component_quality}`);
   if (q_complete < cfg.min_component_quality) failed.push(`q_complete=${q_complete.toFixed(2)} < ${cfg.min_component_quality}`);
-  if (q_context < cfg.min_component_quality) failed.push(`q_context=${q_context.toFixed(2)} < ${cfg.min_component_quality}`);
+  // UNCERTAIN_CONTEXT / q_context rendah TIDAK mencegat maturity baseline
   if (q_stability < cfg.min_stability_score) failed.push(`q_stability=${q_stability.toFixed(2)} < ${cfg.min_stability_score}`);
   if (bq < cfg.bq_min) failed.push(`BQ=${bq.toFixed(2)} < ${cfg.bq_min}`);
 
-  const mature = failed.length === 0;
+  const mature = failed.length === 0 || eligibleDays >= 2;
   const n = baseline.segment_count || 0;
   let level;
-  if (mature) level = 'mature';
+  if (mature || eligibleDays >= 2) level = 'mature';
   else if (n >= 30) level = 'maturing';    // >= 30 windows (60 mins) → maturing
   else if (n >= 15) level = 'provisional'; // >= 15 windows (30 mins) → provisional (Live monitoring active!)
   else level = 'cold_start';
 
+  const auto_frozen = eligibleDays >= 3 && (n >= 30 || mature);
+  const active_since = baseline.frozen_active_since || (auto_frozen ? (timestamps[0] ? new Date(timestamps[0]).toISOString() : new Date().toISOString()) : null);
+
   return {
     mature, level,
+    auto_frozen,
+    active_since,
     n_effective: r2(n_eff),
     distinct_days: eligibleDays,
     max_single_day_frac: r4(max_single_day_frac),

@@ -128,6 +128,29 @@ class ApiService {
     return null;
   }
 
+  // Fetch Markov Transition Model & Horizon prediction
+  static Future<Map<String, dynamic>?> fetchMarkovModel({String? userId, int horizon = 3}) async {
+    try {
+      final uid = userId ?? await _getUserId();
+      if (uid.isEmpty) {
+        debugPrint('[ApiService] fetchMarkovModel: userId kosong, skip request.');
+        return null;
+      }
+      final response = await http
+          .get(Uri.parse('$baseUrl/analysis/markov/$uid?horizon=$horizon'))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'READY' || data['matrix'] != null) {
+          return data as Map<String, dynamic>?;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Fetch markov model error: $e');
+    }
+    return null;
+  }
+
   // Send sensor data to backend (RabbitMQ Transport)
   static Future<bool> sendSensorData({
     required String userId,
@@ -265,5 +288,26 @@ class ApiService {
       debugPrint('[ApiService] Submit EMA error: $e');
     }
     return false;
+  }
+
+  // Fetch Baseline Calibration History
+  static Future<List<Map<String, dynamic>>> fetchCalibrationHistory({String? userId}) async {
+    try {
+      final uid = userId ?? await _getUserId();
+      if (uid.isEmpty) return [];
+
+      final response = await http
+          .get(Uri.parse('$baseUrl/analysis/calibration-history/$uid'))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Fetch calibration history error: $e');
+    }
+    return [];
   }
 }

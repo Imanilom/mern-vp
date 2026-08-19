@@ -533,6 +533,11 @@ export const api = {
     return axios.get(`/analysis/rr/baseline/${userId}`).then(res => res.data);
   },
 
+  async getSignalQuality(userId) {
+    const target = userId && userId !== 'ALL' ? userId : 'ALL';
+    return axios.get(`/analysis/signal-quality/${target}`).then(res => res.data?.data || res.data);
+  },
+
   // --- DATA ROUTES ---
   async getFilteredAndRawData() {
     return axios.get('/data/filtered-raw').then(res => res.data);
@@ -573,5 +578,13 @@ export const api = {
   },
   async getReportsList(userId) {
     return axios.get(`/reports/list/${userId}`).then(res => res.data);
+  },
+
+  // --- PREDICTION EVALUATION ROUTES ---
+  async getPredictionEvalBrier(userId = 'ALL', horizon = 3) {
+    return axios.get(`/prediction-eval/brier/${userId}?horizon=${horizon}`).then(res => res.data);
+  },
+  async postBrierEvaluation(records, referenceBrier = null) {
+    return axios.post('/prediction-eval/brier', { records, reference_brier: referenceBrier }).then(res => res.data);
   }
 };

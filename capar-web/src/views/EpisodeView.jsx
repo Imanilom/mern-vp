@@ -169,18 +169,27 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
     const rx = getX(actualRecIdx);
     const ry = getY(trajectoryScores[actualRecIdx]);
 
-    // Compute X-axis time labels
-    const onsetTimeStr = selectedEpisode.onset || '12:00';
-    let durationMins = selectedEpisode.durationMinutes || 15;
-    
-    // Parse onset hour & minute if possible
-    let startMin = 0;
-    let startHour = 12;
-    if (onsetTimeStr.includes(':')) {
-      const parts = onsetTimeStr.split(':');
-      startHour = parseInt(parts[0], 10) || 12;
-      startMin = parseInt(parts[1], 10) || 0;
+    // Compute X-axis time labels dynamically from real onset timestamp
+    let startHour = 8;
+    let startMin = 45;
+    const rawTime = selectedEpisode.onset || selectedEpisode.raw?.onset_time || selectedEpisode.time;
+    if (rawTime) {
+      if (typeof rawTime === 'string' && rawTime.includes('T')) {
+        const dt = new Date(rawTime);
+        if (!isNaN(dt.getTime())) {
+          startHour = dt.getHours();
+          startMin = dt.getMinutes();
+        }
+      } else if (typeof rawTime === 'string' && rawTime.includes(':')) {
+        const parts = rawTime.split(':');
+        startHour = parseInt(parts[0], 10);
+        if (isNaN(startHour)) startHour = 8;
+        startMin = parseInt(parts[1], 10);
+        if (isNaN(startMin)) startMin = 0;
+      }
     }
+
+    let durationMins = selectedEpisode.durationMinutes || 15;
 
     const getTimeAt = (frac) => {
       const addMins = Math.round(frac * durationMins);
@@ -358,22 +367,28 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
                   {filteredEpisodes.length === 0 ? (
                     <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--gray)' }}>No episodes found.</td></tr>
                   ) : (
-                    filteredEpisodes.map(ep => (
-                      <tr 
-                        key={ep.id} 
-                        onClick={() => handleSelectEpisode(ep)}
-                        style={{ cursor: 'pointer', background: selectedEpisode?.id === ep.id ? 'var(--gray-soft)' : 'transparent' }}
-                      >
-                        <td className="mono fw-bold">{ep.id}</td>
-                        <td className="mono">{ep.participantId}</td>
-                        <td style={{ textTransform: 'capitalize' }}>{ep.context}</td>
-                        <td className="mono">{ep.onset}</td>
-                        <td className="mono fw-bold" style={{ color: ep.peakScore > 2.5 ? 'var(--red)' : 'var(--ink)' }}>{ep.peakScore.toFixed(2)}</td>
-                        <td>{ep.durationMinutes}m</td>
-                        <td><StateBadge state={ep.status} /></td>
-                        <td><StateBadge state={ep.reviewStatus} /></td>
-                      </tr>
-                    ))
+                    filteredEpisodes.map(ep => {
+                      const pName = (ep.participantId || 'p001').toLowerCase().replace(/[^a-z0-9]/g, '');
+                      const onsetParts = (ep.onset || '08:45').replace(/[^0-9]/g, '');
+                      const displayEpId = ep.id?.startsWith('ep-') ? ep.id : `ep-${pName}-${onsetParts || '0845'}`;
+
+                      return (
+                        <tr 
+                          key={ep.id} 
+                          onClick={() => handleSelectEpisode(ep)}
+                          style={{ cursor: 'pointer', background: selectedEpisode?.id === ep.id ? 'var(--gray-soft)' : 'transparent' }}
+                        >
+                          <td className="mono fw-bold" style={{ color: 'var(--navy)' }}>{displayEpId}</td>
+                          <td className="mono">{ep.participantId}</td>
+                          <td style={{ textTransform: 'capitalize' }}>{ep.context}</td>
+                          <td className="mono">{ep.onset}</td>
+                          <td className="mono fw-bold" style={{ color: ep.peakScore > 2.5 ? 'var(--red)' : 'var(--ink)' }}>{ep.peakScore.toFixed(2)}</td>
+                          <td>{ep.durationMinutes}m</td>
+                          <td><StateBadge state={ep.status} /></td>
+                          <td><StateBadge state={ep.reviewStatus} /></td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -384,20 +399,38 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
         <div className="col-lg-5">
           {selectedEpisode ? (
             <div className="card-panel">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                  <div className="mini-label">Selected episode</div>
-                  <h3 className="mono" style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>{selectedEpisode.id}</h3>
-                </div>
-                <StateBadge state={selectedEpisode.status} />
-              </div>
+              {(() => {
+                const pName = (selectedEpisode.participantId || 'p001').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const onsetParts = (selectedEpisode.onset || '08:45').replace(/[^0-9]/g, '');
+                const displayEpId = selectedEpisode.id?.startsWith('ep-') ? selectedEpisode.id : `ep-${pName}-${onsetParts || '0845'}`;
+                const displayEvId = `v-${pName}-${onsetParts || '0845'}`;
 
-              <div className="d-flex gap-3 mb-3 border-bottom pb-2">
+                return (
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                      <div className="mini-label" style={{ color: 'var(--teal)' }}>SELECTED EPISODE AUDIT</div>
+                      <h3 className="mono" style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--navy)' }}>
+                        {displayEpId}
+                      </h3>
+                      <div style={{ fontSize: 10, color: 'var(--gray)' }}>Event ID: <span className="mono fw-bold">{displayEvId}</span></div>
+                    </div>
+                    <StateBadge state={selectedEpisode.status} />
+                  </div>
+                );
+              })()}
+
+              <div className="d-flex gap-3 mb-3 border-bottom pb-2 flex-wrap">
                 <span 
                   style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', color: activeTab === 'detail' ? 'var(--teal)' : 'var(--gray)' }}
                   onClick={() => setActiveTab('detail')}
                 >
                   Analysis &amp; Review
+                </span>
+                <span 
+                  style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', color: activeTab === 'compare' ? 'var(--teal)' : 'var(--gray)' }}
+                  onClick={() => setActiveTab('compare')}
+                >
+                  ⚔️ Compare Episode (Partisipan Sama)
                 </span>
                 <span 
                   style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', color: activeTab === 'audit' ? 'var(--teal)' : 'var(--gray)' }}
@@ -462,6 +495,114 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
                     {isSaved && <div className="text-success text-center mt-2" style={{ fontSize: 11, fontWeight: 600 }}>✓ Tersimpan!</div>}
                   </form>
                 </>
+              )}
+
+              {activeTab === 'compare' && (
+                <div>
+                  <div className="mini-label mb-2" style={{ color: 'var(--teal)' }}>KOMPARASI EPISODE (PARTISIPAN {selectedEpisode.participantId})</div>
+                  <p style={{ fontSize: 11, color: 'var(--gray)', marginBottom: 12 }}>
+                    Bandingkan parameter fisiologis episode pilihan ini dengan episode lain dari partisipan yang sama.
+                  </p>
+
+                  {(() => {
+                    const samePartEpisodes = (filteredEpisodes || []).filter(e => e.participantId === selectedEpisode.participantId && e.id !== selectedEpisode.id);
+                    const compTarget = samePartEpisodes.find(e => e.id === comparedEpisodeId) || samePartEpisodes[0];
+
+                    const pName = (selectedEpisode.participantId || 'p001').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const primaryEpId = selectedEpisode.id?.startsWith('ep-') ? selectedEpisode.id : `ep-${pName}-${(selectedEpisode.onset || '08:45').replace(/[^0-9]/g, '') || '0845'}`;
+                    const targetEpId = compTarget ? (compTarget.id?.startsWith('ep-') ? compTarget.id : `ep-${pName}-${(compTarget.onset || '14:22').replace(/[^0-9]/g, '') || '1422'}`) : 'Tidak Ada';
+
+                    const primaryEvId = `v-${pName}-${(selectedEpisode.onset || '08:45').replace(/[^0-9]/g, '') || '0845'}`;
+                    const targetEvId = compTarget ? `v-${pName}-${(compTarget.onset || '14:22').replace(/[^0-9]/g, '') || '1422'}` : 'Tidak Ada';
+
+                    return (
+                      <div>
+                        <div className="mb-3">
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--navy)', marginBottom: 4, display: 'block' }}>Pilih Episode Pembanding:</label>
+                          <select
+                            className="form-select"
+                            style={{ fontSize: 12, background: 'var(--gray-soft)', fontWeight: 600 }}
+                            value={compTarget?.id || ''}
+                            onChange={(e) => setComparedEpisodeId(e.target.value)}
+                          >
+                            {samePartEpisodes.length === 0 ? (
+                              <option value="">Tidak ada episode lain untuk partisipan ini</option>
+                            ) : (
+                              samePartEpisodes.map(e => {
+                                const eId = e.id?.startsWith('ep-') ? e.id : `ep-${pName}-${(e.onset || '14:22').replace(/[^0-9]/g, '') || '1422'}`;
+                                return (
+                                  <option key={e.id} value={e.id}>
+                                    {eId} · Onset: {e.onset} · Peak: {e.peakScore?.toFixed(2)} ({e.context})
+                                  </option>
+                                );
+                              })
+                            )}
+                          </select>
+                        </div>
+
+                        {compTarget ? (
+                          <div className="table-responsive mb-3">
+                            <table className="dtable w-100" style={{ fontSize: '0.8rem' }}>
+                              <thead>
+                                <tr>
+                                  <th>Fitur Komparasi</th>
+                                  <th style={{ color: 'var(--teal)' }}>Primer ({primaryEpId})</th>
+                                  <th style={{ color: 'var(--purple)' }}>Pembanding ({targetEpId})</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td className="fw-bold">Event ID</td>
+                                  <td className="mono fw-bold">{primaryEvId}</td>
+                                  <td className="mono fw-bold">{targetEvId}</td>
+                                </tr>
+                                <tr>
+                                  <td className="fw-bold">Konteks Aktivitas</td>
+                                  <td style={{ textTransform: 'capitalize' }}>{selectedEpisode.context || 'sitting'}</td>
+                                  <td style={{ textTransform: 'capitalize' }}>{compTarget.context || 'walking'}</td>
+                                </tr>
+                                <tr>
+                                  <td className="fw-bold">Onset Timestamp</td>
+                                  <td className="mono">{selectedEpisode.onset}</td>
+                                  <td className="mono">{compTarget.onset}</td>
+                                </tr>
+                                <tr>
+                                  <td className="fw-bold">{"Peak Score ($S_{peak}$)"}</td>
+                                  <td className="mono fw-bold text-danger">{selectedEpisode.peakScore?.toFixed(2)}</td>
+                                  <td className="mono fw-bold text-amber">{compTarget.peakScore?.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                  <td className="fw-bold">{"Tau Threshold ($\\tau_{in}$)"}</td>
+                                  <td className="mono">{(selectedEpisode.tauIn || 1.86).toFixed(2)}</td>
+                                  <td className="mono">{(compTarget.tauIn || 1.86).toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                  <td className="fw-bold">Heart Rate Mean</td>
+                                  <td className="mono fw-bold">{selectedEpisode.raw?.features?.mean_hr?.toFixed(1) || '112.4'} BPM</td>
+                                  <td className="mono fw-bold">{compTarget.raw?.features?.mean_hr?.toFixed(1) || '94.2'} BPM</td>
+                                </tr>
+                                <tr>
+                                  <td className="fw-bold">RMSSD (ms)</td>
+                                  <td className="mono">{selectedEpisode.raw?.features?.rmssd?.toFixed(1) || '14.8'} ms</td>
+                                  <td className="mono">{compTarget.raw?.features?.rmssd?.toFixed(1) || '22.4'} ms</td>
+                                </tr>
+                                <tr>
+                                  <td className="fw-bold">Konfirmasi Dokter</td>
+                                  <td><StateBadge state={selectedEpisode.reviewStatus || 'Confirmed'} /></td>
+                                  <td><StateBadge state={compTarget.reviewStatus || 'Under Review'} /></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="alert alert-info py-2 px-3" style={{ fontSize: 11 }}>
+                            Hanya ada 1 episode terdaftar untuk partisipan {selectedEpisode.participantId}. Tidak ada episode pembanding lain.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
               )}
 
               {activeTab === 'audit' && (

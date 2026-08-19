@@ -308,6 +308,7 @@ export function App() {
             <StateTimelineView 
               participantId={globalParticipantFilter !== 'ALL' ? globalParticipantFilter : (selectedParticipantId || null)}
               globalDateFilter={globalDateFilter}
+              onNavigate={(tab) => setActiveTab(tab)}
             />
           )}
 

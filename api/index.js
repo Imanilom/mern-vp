@@ -193,6 +193,8 @@ app.use("/api/data", data);
 app.use("/api/faktorresiko", faktorresiko);
 app.use("/api/log", logRouter);
 app.use("/api/analysis", analysisRouter);
+app.use("/api/participants", analysisRouter);
+app.use("/api/prediction-eval", analysisRouter);
 app.use("/api/pipeline", pipelineRouter);
 app.use("/api/reports", reportRouter);
 app.use("/api/doctor", doctorRouter);
