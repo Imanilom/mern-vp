@@ -20,7 +20,12 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
   const [filterState, setFilterState] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredEpisodes = (episodes || []).filter(ep => {
+  const rawEpisodesList = Array.isArray(episodes)
+    ? episodes
+    : (Array.isArray(episodes?.data) ? episodes.data : []);
+
+  const filteredEpisodes = rawEpisodesList.filter(ep => {
+    if (!ep || typeof ep !== 'object') return false;
     if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && ep.participantId !== globalParticipantFilter) return false;
     if (globalDateFilter && ep.raw?.onset_time) {
       const ts = new Date(ep.raw.onset_time).getTime();

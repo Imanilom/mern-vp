@@ -42,7 +42,12 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
     return () => { isMounted = false; };
   }, [participantId]);
 
-  const filteredModels = (experienceModels || []).filter(model => {
+  const rawModelsList = Array.isArray(experienceModels)
+    ? experienceModels
+    : (Array.isArray(experienceModels?.data) ? experienceModels.data : (experienceModels && typeof experienceModels === 'object' && experienceModels.participantId ? [experienceModels] : []));
+
+  const filteredModels = rawModelsList.filter(model => {
+    if (!model || typeof model !== 'object') return false;
     if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && model.participantId !== globalParticipantFilter && model.id !== globalParticipantFilter) return false;
     return true;
   });

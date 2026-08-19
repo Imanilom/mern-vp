@@ -364,21 +364,10 @@ router.post('/rr/trigger', verifyToken, async (req, res) => {
   }
 });
 
-/**
- * GET /api/analysis/rr/segments/:userId
- * Ambil segmen 1-menit dengan rr_status untuk user tertentu.
- */
+/** GET /api/analysis/rr/segments/:userId — Rincian Window & Audit Segmentasi */
 router.get('/rr/segments/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 100;
-    const status = req.query.status;
-    const filter = { user_id: req.params.userId, window_type: '1min' };
-    if (status) filter.rr_status = status;
-    const data = await Segment.find(filter)
-      .sort({ window_start: -1 })
-      .limit(limit)
-      .select('window_start window_end activity_label rr_status anomaly_score classification z_scores signal_quality_detail features analyzed')
-      .lean();
+    const data = await getSegmentAuditWindows(req.params.userId, req.query.limit || 50);
     res.json({ success: true, data, count: data.length });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -392,16 +381,6 @@ router.get('/rr/segments/:userId', verifyToken, resolveUserIdParam, async (req, 
 router.get('/rr/baseline/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
     const data = await getUserBaselines(req.params.userId);
-    res.json({ success: true, data });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-/** GET /api/analysis/rr/segments/:userId — Rincian Window & Audit Segmentasi */
-router.get('/rr/segments/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
-  try {
-    const data = await getSegmentAuditWindows(req.params.userId, req.query.limit || 50);
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
