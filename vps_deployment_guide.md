@@ -135,18 +135,95 @@ sudo nano /etc/nginx/sites-available/mern-vp
 ```
 Masukkan konfigurasi berikut (Ganti `domainanda.com` dengan domain asli Anda):
 ```nginx
+# Map Connection header secara dinamis (Upgrade jika WebSocket, close jika HTTP biasa)
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+# ── API Backend (subdomain) ───────────────────────────────────────────────────
 server {
-    listen 80;
-    server_name domainanda.com www.domainanda.com;
+    listen 443 ssl;
+    server_name api.healthtrajectory.cloud;
+
+    ssl_certificate /etc/letsencrypt/live/healthtrajectory.cloud/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/healthtrajectory.cloud/privkey.pem;
 
     location / {
-        proxy_pass http://localhost:3031;
+        proxy_pass http://localhost:3030;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        proxy_set_header Connection $connection_upgrade;
         proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    location /socket.io/ {
+        proxy_pass http://localhost:3030;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name api.healthtrajectory.cloud;
+    return 301 https://$host$request_uri;
+}
+
+# ── Backoffice Frontend ───────────────────────────────────────────────────────
+server {
+    listen 443 ssl;
+    server_name healthtrajectory.cloud www.healthtrajectory.cloud;
+
+    ssl_certificate /etc/letsencrypt/live/healthtrajectory.cloud/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/healthtrajectory.cloud/privkey.pem;
+
+    # Proxy /api/* ke backend
+    location /api/ {
+        proxy_pass http://localhost:3030;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Konfigurasi khusus WebSocket / Socket.io
+    location /socket.io/ {
+        proxy_pass http://localhost:3030;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Semua request lain → React frontend (port 8080)
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+server {
+    listen 80;
+    server_name healthtrajectory.cloud www.healthtrajectory.cloud;
+    return 301 https://$host$request_uri;
 }
 ```
 Simpan (`Ctrl+X` -> `Y` -> `Enter`).

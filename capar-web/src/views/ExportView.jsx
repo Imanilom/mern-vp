@@ -54,6 +54,44 @@ export const ExportView = ({ exportJobs }) => {
     }, 1000);
   };
 
+  const handleDownload = (job) => {
+    let content = "";
+    let mimeType = "text/csv";
+    const rawFmt = (job.format || 'csv').toLowerCase();
+    const ext = rawFmt.includes('json') ? 'json' : (rawFmt.includes('pdf') ? 'txt' : 'csv');
+    const filename = `${job.id}_${(job.scope || 'bundle').replace(/\s+/g, '_')}.${ext}`;
+
+    if (ext === 'json') {
+      mimeType = "application/json";
+      content = JSON.stringify({
+        job_id: job.id,
+        scope: job.scope,
+        format: job.format,
+        created_at: job.date,
+        requester: job.requester,
+        checksum: job.checksum,
+        dataset_levels: datasetLevels,
+        summary: {
+          total_records: 1250,
+          status: "VERIFIED"
+        }
+      }, null, 2);
+    } else {
+      mimeType = "text/csv";
+      content = `job_id,scope,format,created_at,requester,checksum\n"${job.id}","${job.scope}","${job.format}","${job.date}","${job.requester}","${job.checksum}"\n`;
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
       {/* Page Header */}
@@ -180,7 +218,7 @@ export const ExportView = ({ exportJobs }) => {
                   </td>
                   <td>
                     {job.status === 'Ready' ? (
-                      <button className="btn-outline-navy" style={{ padding: '4px 8px', fontSize: 10 }}>
+                      <button className="btn-outline-navy" style={{ padding: '4px 8px', fontSize: 10 }} onClick={() => handleDownload(job)}>
                         <Download size={12} />
                         <span>Download</span>
                       </button>

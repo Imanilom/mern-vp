@@ -20,10 +20,13 @@ import { api } from './services/api';
 import { io } from 'socket.io-client';
 
 const apiUrl = import.meta.env.VITE_API_URL || '';
-const socketUrl = apiUrl ? apiUrl.replace(/\/api\/?$/, '') : '/';
+const socketUrl = apiUrl ? apiUrl.replace(/\/api\/?$/, '') : (typeof window !== 'undefined' ? window.location.origin : '/');
 
 const socket = io(socketUrl, {
-  transports: ['websocket', 'polling']
+  transports: ['polling', 'websocket'],
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
 });
 
 export function App() {

@@ -92,9 +92,12 @@ export const io = new SocketIOServer(httpServer, {
   cors: {
     origin: process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.replace(/['"]/g, '').split(',').map(o => o.trim())
-      : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:59674'],
-    methods: ["GET", "POST"]
-  }
+      : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:59674', '*'],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+  transports: ['polling', 'websocket'],
+  allowEIO3: true,
 });
 
 io.on("connection", (socket) => {

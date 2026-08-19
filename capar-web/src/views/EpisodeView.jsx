@@ -122,12 +122,22 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
     const chartW = width - paddingLeft - paddingRight;
     const chartH = height - paddingTop - paddingBottom;
 
-    const maxScore = Math.max(...trajectoryScores, tauIn * 1.25, peakScore * 1.15, 3.5);
+    const maxScore = Math.max(...trajectoryScores.filter(s => typeof s === 'number' && !isNaN(s)), tauIn * 1.25, peakScore * 1.15, 3.5) || 3.5;
     const minScore = 0;
-    const scoreRange = maxScore - minScore;
+    const scoreRange = (maxScore - minScore) || 1;
 
-    const getY = (score) => paddingTop + chartH - ((score - minScore) / scoreRange) * chartH;
-    const getX = (index) => paddingLeft + (index / (trajectoryScores.length - 1 || 1)) * chartW;
+    const getY = (score) => {
+      const val = typeof score === 'number' && !isNaN(score) ? score : 0;
+      const y = paddingTop + chartH - ((val - minScore) / scoreRange) * chartH;
+      return isNaN(y) ? paddingTop + chartH : y;
+    };
+
+    const getX = (index) => {
+      const len = trajectoryScores.length;
+      const idx = typeof index === 'number' && !isNaN(index) ? Math.max(0, Math.min(index, len - 1)) : 0;
+      const x = paddingLeft + (idx / (len > 1 ? len - 1 : 1)) * chartW;
+      return isNaN(x) ? paddingLeft : x;
+    };
 
     const tauInY = getY(tauIn);
     const tauOutY = getY(tauOut);
@@ -138,20 +148,24 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
     const polylinePoints = pointsArray.join(' ');
 
     // Peak marker
-    const peakIdx = trajectoryScores.indexOf(Math.max(...trajectoryScores));
+    const maxVal = Math.max(...trajectoryScores.filter(s => typeof s === 'number' && !isNaN(s)));
+    const rawPeakIdx = trajectoryScores.indexOf(maxVal);
+    const peakIdx = rawPeakIdx >= 0 && rawPeakIdx < trajectoryScores.length ? rawPeakIdx : 0;
     const px = getX(peakIdx);
     const py = getY(trajectoryScores[peakIdx]);
-    const peakScoreText = trajectoryScores[peakIdx].toFixed(2);
+    const peakScoreText = typeof trajectoryScores[peakIdx] === 'number' ? trajectoryScores[peakIdx].toFixed(2) : '0.00';
 
     // Onset marker (where score crosses tauIn or rises significantly)
-    const onsetIdx = trajectoryScores.findIndex(s => s >= tauIn);
-    const actualOnsetIdx = onsetIdx >= 0 ? onsetIdx : 3;
+    const onsetIdx = trajectoryScores.findIndex(s => typeof s === 'number' && s >= tauIn);
+    const rawOnsetIdx = onsetIdx >= 0 ? onsetIdx : Math.min(3, trajectoryScores.length - 1);
+    const actualOnsetIdx = rawOnsetIdx >= 0 && rawOnsetIdx < trajectoryScores.length ? rawOnsetIdx : 0;
     const ox = getX(actualOnsetIdx);
     const oy = getY(trajectoryScores[actualOnsetIdx]);
 
     // Recovery entry marker
-    const recIdx = trajectoryScores.slice(peakIdx).findIndex(s => s <= tauOut);
-    const actualRecIdx = recIdx >= 0 ? peakIdx + recIdx : Math.floor(trajectoryScores.length * 0.75);
+    const recIdx = trajectoryScores.slice(peakIdx).findIndex(s => typeof s === 'number' && s <= tauOut);
+    const rawRecIdx = recIdx >= 0 ? peakIdx + recIdx : Math.floor(trajectoryScores.length * 0.75);
+    const actualRecIdx = rawRecIdx >= 0 && rawRecIdx < trajectoryScores.length ? rawRecIdx : trajectoryScores.length - 1;
     const rx = getX(actualRecIdx);
     const ry = getY(trajectoryScores[actualRecIdx]);
 
