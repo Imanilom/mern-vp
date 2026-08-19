@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../widgets/evidence_chip.dart';
 import '../../services/api_service.dart';
 import '../../services/ble_service.dart';
 import '../../services/telemetry_controller.dart';
@@ -139,7 +140,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
                 const SizedBox(height: 14),
 
                 // ── Provisional Baseline Card ──────────────────────────────
-                _buildProvisionalBaselineCard(),
+                _buildProvisionalBaselineCard(telemetry),
                 const SizedBox(height: 14),
 
                 // ── Mission Center ──────────────────────────────────────────
@@ -326,9 +327,11 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
         ],
       ),
     );
+  }
+
   // ── Provisional Baseline Card ─────────────────────────────────────────────
 
-  Widget _buildProvisionalBaselineCard() {
+  Widget _buildProvisionalBaselineCard(TelemetryController telemetry) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

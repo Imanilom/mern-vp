@@ -504,6 +504,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     _buildZChip('Z-RR', zRr),
                     _buildZChip('Z-SDNN', zSdnn),
                     _buildZChip('Z-RMSSD', zRmssd),
+                    _buildZChip('Z-Motion', zMotion),
                     _buildZChip('Z-DFA', zDfa),
                   ],
                 ),
