@@ -75,7 +75,7 @@ class CalibrationHistoryWidget extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: history.length,
-            separatorBuilder: (_, __) => const Divider(color: AppColors.line, height: 16),
+            separatorBuilder: (_, index) => const Divider(color: AppColors.line, height: 16),
             itemBuilder: (context, index) {
               final item = history[index];
               final version = item['version']?.toString() ?? 'v1.0';

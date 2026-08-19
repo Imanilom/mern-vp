@@ -38,75 +38,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
     setState(() => isLoading = true);
     final fetched = await ApiService.fetchEpisodes();
     if (mounted) {
-      if (fetched.isNotEmpty) {
-        setState(() {
-          episodes = fetched.map((e) {
-            final rawScore = e['peak_score'] ?? e['max_anomaly_score'] ?? e['anomaly_score'] ?? 2.85;
-            final double peakVal = typeofScoreToDouble(rawScore);
-            return {
-              'id': e['event_id'] ?? (e['_id'] != null ? 'EP-${e['_id'].toString().substring(e['_id'].toString().length - 4)}' : 'EP-104'),
-              'date': e['date_created'] ?? '15-08-2026 14:22',
-              'onset': e['onset_time_str'] ?? '14:22',
-              'duration': '${e['duration_minutes'] ?? 15} m',
-              'durationMinutes': e['duration_minutes'] ?? 15,
-              'peakScore': peakVal,
-              'context': e['activity_label'] ?? e['context'] ?? 'Duduk',
-              'status': e['status'] ?? 'Recovered',
-              'emaStatus': e['ema_completed'] == true ? 'EMA 4/4 Complete' : 'EMA 2/4 Required',
-              'raw': e,
-            };
-          }).toList();
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          episodes = [
-            {
-              'id': 'EP-104',
-              'date': '15-08-2026 14:22',
-              'onset': '14:22',
-              'duration': '15 m',
-              'durationMinutes': 15,
-              'peakScore': 2.85,
-              'context': 'Duduk',
-              'status': 'Recovered',
-              'emaStatus': 'EMA 4/4 Complete',
-              'onsetScore': 1.86,
-              'tauIn': 1.86,
-              'tauOut': 1.18,
-            },
-            {
-              'id': 'EP-103',
-              'date': '15-08-2026 10:15',
-              'onset': '10:15',
-              'duration': '22 m',
-              'durationMinutes': 22,
-              'peakScore': 3.42,
-              'context': 'Berdiri',
-              'status': 'Recovered',
-              'emaStatus': 'EMA 3/4 Complete',
-              'onsetScore': 2.10,
-              'tauIn': 1.90,
-              'tauOut': 1.25,
-            },
-            {
-              'id': 'EP-102',
-              'date': '14-08-2026 16:40',
-              'onset': '16:40',
-              'duration': '18 m',
-              'durationMinutes': 18,
-              'peakScore': 2.15,
-              'context': 'Duduk',
-              'status': 'Quality Warning',
-              'emaStatus': 'EMA 2/4 Required',
-              'onsetScore': 1.70,
-              'tauIn': 1.80,
-              'tauOut': 1.15,
-            },
-          ];
-          isLoading = false;
-        });
-      }
+      setState(() {
+        episodes = fetched.map((e) {
+          final rawScore = e['peak_score'] ?? e['max_anomaly_score'] ?? e['anomaly_score'] ?? 0.0;
+          final double peakVal = typeofScoreToDouble(rawScore);
+          return {
+            'id': e['event_id'] ?? (e['_id'] != null ? 'EP-${e['_id'].toString().substring(e['_id'].toString().length - 4)}' : 'EP-000'),
+            'date': e['date_created'] ?? (e['onset_time'] != null ? e['onset_time'].toString().substring(0, 10) : '-'),
+            'onset': e['onset_time_str'] ?? (e['onset_time'] != null ? e['onset_time'].toString().substring(11, 16) : '-'),
+            'duration': '${e['duration_minutes'] ?? 0} m',
+            'durationMinutes': e['duration_minutes'] ?? 0,
+            'peakScore': peakVal,
+            'context': e['activity_label'] ?? e['context'] ?? 'Umum',
+            'status': e['status'] ?? 'Recovered',
+            'emaStatus': e['ema_completed'] == true ? 'EMA Selesai' : 'EMA Diperlukan',
+            'raw': e,
+          };
+        }).toList();
+        isLoading = false;
+      });
     }
   }
 
@@ -345,7 +295,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 onPressed: () => setState(() => selectedEpisode = null),
               ),
               Text(
-                ep['id'] ?? 'EP-104',
+                ep['id'] ?? 'EP-000',
                 style: const TextStyle(
                   fontFamily: 'Plus Jakarta Sans',
                   fontSize: 18,

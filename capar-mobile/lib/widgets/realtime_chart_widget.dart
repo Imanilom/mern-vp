@@ -53,7 +53,7 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withOpacity(0.2)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
         ),
         child: const Text('Menunggu stream data sensor...', style: TextStyle(color: Colors.grey)),
       );
@@ -81,7 +81,7 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -113,7 +113,7 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
                     dotData: FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: Colors.redAccent.withOpacity(0.1),
+                      color: Colors.redAccent.withValues(alpha: 0.1),
                     ),
                   ),
                 ],
@@ -141,7 +141,7 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
                   horizontalInterval: gridInterval,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: Colors.grey.withValues(alpha: 0.2),
                       strokeWidth: 1,
                       dashArray: [5, 5],
                     );

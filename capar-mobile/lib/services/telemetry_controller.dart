@@ -112,7 +112,7 @@ class TelemetryController extends ChangeNotifier {
     // Kirim data setiap 10 detik, terlepas dari jumlah pending
     _flushTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (_isStreaming && pendingCount > 0) {
-        debugPrint('[TelemetryController] ⏰ Auto-flush: ${pendingCount} readings pending → kirim ke RMQ');
+        debugPrint('[TelemetryController] ⏰ Auto-flush: $pendingCount readings pending → kirim ke RMQ');
         _syncToRabbitMQ();
       }
     });
