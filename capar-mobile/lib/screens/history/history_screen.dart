@@ -137,7 +137,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     itemBuilder: (ctx, idx) {
                       final ep = episodes[idx];
                       final isRecovered = ep['status'] == 'Recovered';
-                      final String emaTag = idx == 0 ? 'EMA 3/4' : (idx == 2 ? 'EMA 2/4' : 'EMA 4/4');
+                      final raw = ep['raw'] as Map<String, dynamic>? ?? {};
+                      final String emaTag = ep['emaStatus'] ?? (raw['step_completed'] != null ? 'EMA ${raw['step_completed']}/4' : 'EMA Diisi');
 
                       return Card(
                         elevation: 0,
@@ -242,36 +243,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return '$dd-$mo-${dt.year} $hh:$mm:$ss';
     }
 
-    final String onsetStr = raw['onset_time'] != null ? formatTs(raw['onset_time']) : (ep['date'] ?? '13-08-2026 10:01:40');
+    final String onsetStr = raw['onset_time'] != null ? formatTs(raw['onset_time']) : (ep['date'] ?? '-');
     final String peakStr = raw['peak_time'] != null ? formatTs(raw['peak_time']) : onsetStr;
     final String resolvedStr = raw['resolved_time'] != null ? formatTs(raw['resolved_time']) : '-';
 
-    final double onsetScore = ((raw['onset_score'] ?? ep['onsetScore'] ?? 2.10) as num).toDouble();
-    final double peakScore = ((raw['peak_score'] ?? ep['peakScore'] ?? 2.10) as num).toDouble();
-    final double durationMin = raw['duration_ms'] != null ? (raw['duration_ms'] / 60000.0) : ((ep['durationMinutes'] ?? 15).toDouble());
-    final String classification = raw['classification'] ?? ep['status'] ?? 'Caution';
+    final double onsetScore = ((raw['onset_score'] ?? ep['onsetScore'] ?? 0.0) as num).toDouble();
+    final double peakScore = ((raw['peak_score'] ?? ep['peakScore'] ?? 0.0) as num).toDouble();
+    final double durationMin = raw['duration_ms'] != null ? (raw['duration_ms'] / 60000.0) : ((ep['durationMinutes'] ?? 0).toDouble());
+    final String classification = raw['classification'] ?? ep['status'] ?? 'Normal';
 
     // Z-scores at peak
     final Map<String, dynamic> zPeak = raw['z_scores_at_peak'] as Map<String, dynamic>? ?? {};
-    final double zHr = ((zPeak['z_hr'] ?? -0.35) as num).toDouble();
-    final double zRr = ((zPeak['z_rr'] ?? 1.42) as num).toDouble();
-    final double zSdnn = ((zPeak['z_sdnn'] ?? -1.54) as num).toDouble();
-    final double zRmssd = ((zPeak['z_rmssd'] ?? -10.83) as num).toDouble();
-    final double zMotion = ((zPeak['z_motion'] ?? 0) as num).toDouble();
-    final double zDfa = ((zPeak['z_dfa'] ?? 0.65) as num).toDouble();
+    final double zHr = ((zPeak['z_hr'] ?? 0.0) as num).toDouble();
+    final double zRr = ((zPeak['z_rr'] ?? 0.0) as num).toDouble();
+    final double zSdnn = ((zPeak['z_sdnn'] ?? 0.0) as num).toDouble();
+    final double zRmssd = ((zPeak['z_rmssd'] ?? 0.0) as num).toDouble();
+    final double zMotion = ((zPeak['z_motion'] ?? 0.0) as num).toDouble();
+    final double zDfa = ((zPeak['z_dfa'] ?? 0.0) as num).toDouble();
 
     // Trajectory details
     final Map<String, dynamic> traj = raw['trajectory'] as Map<String, dynamic>? ?? {};
-    final double deltaHr = ((traj['delta_hr'] ?? -0.27) as num).toDouble();
-    final double slopeHr = ((traj['slope_hr'] ?? -0.0019) as num).toDouble();
-    final int persistence = traj['persistence'] ?? 2;
-    final double dfa1 = ((traj['dfa_alpha1'] ?? 0.504) as num).toDouble();
-    final double dfa2 = ((traj['dfa_alpha2'] ?? 0.725) as num).toDouble();
-    final double recMs = ((traj['recovery_time_ms'] ?? 2700000) as num).toDouble();
+    final double deltaHr = ((traj['delta_hr'] ?? 0.0) as num).toDouble();
+    final double slopeHr = ((traj['slope_hr'] ?? 0.0) as num).toDouble();
+    final int persistence = traj['persistence'] ?? 0;
+    final double dfa1 = ((traj['dfa_alpha1'] ?? 0.0) as num).toDouble();
+    final double dfa2 = ((traj['dfa_alpha2'] ?? 0.0) as num).toDouble();
+    final double recMs = ((traj['recovery_time_ms'] ?? 0.0) as num).toDouble();
 
     // Points sequence for trajectory line chart
     List<TrajectoryPoint> points = (ep['points'] as List<TrajectoryPoint>? ?? []);
-    final List<dynamic> seqScores = traj['sequence_of_scores'] as List<dynamic>? ?? [onsetScore, peakScore, 1.75, 1.30, 0.85];
+    final List<dynamic> seqScores = traj['sequence_of_scores'] as List<dynamic>? ?? [onsetScore, peakScore];
     if (seqScores.isNotEmpty) {
       points = [];
       for (int i = 0; i < seqScores.length; i++) {

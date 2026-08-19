@@ -275,7 +275,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
     final gami = _experienceData?['gamification'] as Map<String, dynamic>?;
     final int level = gami?['level'] as int? ?? ((_totalEpisodes == 0) ? 1 : (_totalEpisodes < 3 ? 2 : (_totalEpisodes < 7 ? 3 : 4)));
     final String levelLabel = gami?['levelTitle'] as String? ?? (level < 5 ? ['', 'Novice', 'Contributor', 'Advanced', 'Expert'][level] : 'Master');
-    final int xp = gami?['currentXp'] as int? ?? 1450;
+    final int xp = gami?['currentXp'] as int? ?? 0;
     final int nextXp = gami?['nextLevelXp'] as int? ?? 2000;
     final double progress = (xp / nextXp).clamp(0.0, 1.0);
 
@@ -384,16 +384,16 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
           // 3-Point Readiness Checklist
           _buildChecklistItem(
             'Data Provisional (15 Window / 30 Min)',
-            'Terpenuhi (Siap Live Monitoring)',
-            true,
-            AppColors.teal,
+            _totalEpisodes > 0 || _totalDays >= 1 ? 'Terpenuhi (Siap Live Monitoring)' : 'Mengumpulkan Sesi Window...',
+            _totalEpisodes > 0 || _totalDays >= 1,
+            (_totalEpisodes > 0 || _totalDays >= 1) ? AppColors.teal : AppColors.amber,
           ),
           const SizedBox(height: 8),
           _buildChecklistItem(
             'Pencatatan Hari Sebelumnya',
-            '3 Hari berturut-turut terverifikasi di server',
-            true,
-            AppColors.green,
+            _totalDays > 0 ? '$_totalDays Hari terverifikasi di server' : 'Belum ada hari terverifikasi',
+            _totalDays >= 1,
+            _totalDays >= 1 ? AppColors.green : AppColors.gray,
           ),
           const SizedBox(height: 8),
           _buildChecklistItem(
