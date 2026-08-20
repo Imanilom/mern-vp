@@ -27,9 +27,34 @@ class MarkovHeatmapWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final episodeCount = markovData['episode_count'] ?? 0;
-    final alpha = markovData['alpha'] ?? 0.5;
-    final rawMatrix = markovData['matrix'] as List<dynamic>? ?? [];
+    final episodeCount = (markovData['episode_count'] as num?)?.toInt() ?? 
+        (markovData['total_transitions'] as num?)?.toInt() ?? 0;
+    final alpha = (markovData['alpha'] as num?)?.toDouble() ?? 0.5;
+
+    List<dynamic> rawMatrix = [];
+    if (markovData['matrix'] is List) {
+      rawMatrix = markovData['matrix'] as List<dynamic>;
+    } else if (markovData['matrix'] is Map) {
+      final map = markovData['matrix'] as Map<String, dynamic>;
+      map.forEach((currSt, nextMap) {
+        final List<dynamic> trans = [];
+        if (nextMap is Map) {
+          nextMap.forEach((nextSt, prob) {
+            final double p = (prob is num) ? prob.toDouble() : 0.0;
+            trans.add({
+              'next_state': nextSt,
+              'allowed': p > 0,
+              'probability': p,
+              'count': (p * (episodeCount > 0 ? episodeCount : 10)).round(),
+            });
+          });
+        }
+        rawMatrix.add({
+          'current_state': currSt,
+          'transitions': trans,
+        });
+      });
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),

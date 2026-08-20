@@ -410,10 +410,16 @@ export async function getMarkovModelHandler(req, res) {
       .populate('segment_ids')
       .lean();
 
+    // Fetch continuous segments for user to build real transition sequences
+    const segs = await Segment.find(query)
+      .sort({ window_start: 1 })
+      .select('rr_status classification window_start')
+      .lean();
+
     // Map DB events to episode objects expected by PersonalMarkovModel
     let episodes = (events || []).map(event => {
       const windows = (event.segment_ids || []).map(seg => ({
-        state: seg.rr_status || 'BASELINE_COMPATIBLE',
+        state: seg.rr_status || seg.classification || 'BASELINE_COMPATIBLE',
         quality_ok: seg.quality_flag !== 'REJECTED' && seg.rr_status !== 'QUALITY_WARNING',
       }));
 
@@ -429,6 +435,18 @@ export async function getMarkovModelHandler(req, res) {
         ],
       };
     });
+
+    if (segs.length > 1) {
+      const segWindows = segs.map(s => ({
+        state: markov.normalizeState(s.rr_status || s.classification) || 'BASELINE_COMPATIBLE',
+        quality_ok: true,
+      }));
+      episodes.push({
+        episode_id: 'EP-DB-SEGMENTS',
+        verified: true,
+        windows: segWindows,
+      });
+    }
 
     // Fallback seed episodes if DB has limited recorded episodes for demonstration
     if (episodes.length === 0) {

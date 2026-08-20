@@ -5,6 +5,7 @@ import '../../services/api_service.dart';
 import '../../services/ble_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/markov_heatmap_widget.dart';
+import '../../widgets/personal_experience_heatmap_widget.dart';
 import '../../widgets/calibration_history_widget.dart';
 
 class InsightScreen extends ConsumerStatefulWidget {
@@ -17,6 +18,7 @@ class InsightScreen extends ConsumerStatefulWidget {
 class _InsightScreenState extends ConsumerState<InsightScreen> {
   Map<String, dynamic>? forecastData;
   Map<String, dynamic>? markovData;
+  Map<String, dynamic>? experienceData;
   List<Map<String, dynamic>> calibrationHistory = [];
   int selectedHorizon = 3;
   bool isLoading = true;
@@ -128,10 +130,16 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
                 if (markovData != null) ...[
                   _buildMarkovPredictionCard(),
                   const SizedBox(height: 14),
-                  if (markovData!['matrix'] != null) ...[
-                    MarkovHeatmapWidget(markovData: markovData!),
-                    const SizedBox(height: 14),
-                  ],
+                  MarkovHeatmapWidget(markovData: markovData!),
+                  const SizedBox(height: 14),
+                ],
+
+                // ── 2D Context x Time-of-Day Memory Heatmap Matrix ────────
+                if (experienceData != null && experienceData!['memoryHeatmapMatrix'] != null) ...[
+                  PersonalExperienceHeatmapWidget(
+                    heatmapMatrix: experienceData!['memoryHeatmapMatrix'] as Map<String, dynamic>,
+                  ),
+                  const SizedBox(height: 14),
                 ],
 
                 // ── Recovery Profile ───────────────────────────────────────
