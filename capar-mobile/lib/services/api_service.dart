@@ -256,8 +256,13 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
-          if (data['data'] is List && (data['data'] as List).isNotEmpty) {
-            return (data['data'] as List).first as Map<String, dynamic>;
+          if (data['data'] is List) {
+            final list = List<Map<String, dynamic>>.from(data['data']);
+            if (list.isNotEmpty) {
+              final first = Map<String, dynamic>.from(list.first);
+              first['all_baselines'] = list;
+              return first;
+            }
           } else if (data['data'] is Map<String, dynamic>) {
             return data['data'] as Map<String, dynamic>;
           }

@@ -37,14 +37,26 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Parse baseline metrics or fallback to current provisional values
-    final segmentCount = _baselineData?['segment_count'] ?? _mobileStatus?['total_records'] ?? 19;
-    final provRequired = 15;
-    final matRequired = 30;
-    final progressProv = (segmentCount / provRequired).clamp(0.0, 1.0);
-    final progressMat = (segmentCount / matRequired).clamp(0.0, 1.0);
-    final nEff = _baselineData?['maturity_detail']?['n_effective'] ?? (segmentCount * 0.82);
-    final isFrozen = _baselineData?['is_frozen'] ?? false;
+    final rawSegCount = _baselineData?['segment_count'] ?? _mobileStatus?['total_records'] ?? 0;
+    final int segmentCount = (rawSegCount is num) ? rawSegCount.toInt() : 0;
+    const int provRequired = 15;
+    const int matRequired = 30;
+
+    final double progressProv = (segmentCount / provRequired).clamp(0.0, 1.0);
+    final double progressMat = (segmentCount / matRequired).clamp(0.0, 1.0);
+
+    final nEffRaw = _baselineData?['maturity_detail']?['n_effective'] ?? (segmentCount * 0.85);
+    final double nEff = (nEffRaw is num) ? nEffRaw.toDouble() : 0.0;
+    final bool isFrozen = _baselineData?['is_frozen'] ?? (segmentCount >= matRequired);
+
+    final int distinctDays = ((_baselineData?['maturity_detail']?['distinct_days'] ?? 0) as num).toInt();
+    final double maxDayFrac = ((_baselineData?['maturity_detail']?['max_single_day_frac'] ?? 0.0) as num).toDouble();
+    final double qSignal = ((_baselineData?['maturity_detail']?['q_signal'] ?? 0.0) as num).toDouble();
+
+    final allBaselines = (_baselineData?['all_baselines'] as List<dynamic>?)
+            ?.map((b) => b as Map<String, dynamic>)
+            .toList() ??
+        [];
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -88,7 +100,7 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          isFrozen ? 'Baseline Personal Terkunci (Mature)' : 'Kematangan data provisional',
+                          isFrozen ? 'Baseline Personal Terkunci (Mature)' : 'Kematangan data provisional personal',
                           style: const TextStyle(fontSize: 12, color: AppColors.gray),
                         ),
                       ],
@@ -98,7 +110,7 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Percentage Remaining Banner (Pengecekan % Sisa Baseline Compatible)
+                // Percentage Remaining Banner (Baseline Compatible)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -188,13 +200,13 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                       const SizedBox(height: 14),
                       _buildProgressRow('Baseline Mature (n)', '$segmentCount / $matRequired (60 min)', progressMat, AppColors.purple, segmentCount >= 30 ? 'MATURE' : 'AUTO ACCUMULATING'),
                       const SizedBox(height: 14),
-                      _buildProgressRow('n efektif (n_eff)', nEff is double ? nEff.toStringAsFixed(1) : '$nEff', (nEff / 30).clamp(0.0, 1.0), AppColors.teal, nEff >= 12 ? 'READY' : 'LEARNING'),
+                      _buildProgressRow('n efektif (n_eff)', nEff.toStringAsFixed(1), (nEff / 30.0).clamp(0.0, 1.0), AppColors.teal, nEff >= 12 ? 'READY' : 'LEARNING'),
                       const SizedBox(height: 14),
-                      _buildProgressRow('Variasi hari', '3 / 3 hari', 1.0, AppColors.green, 'PASS'),
+                      _buildProgressRow('Variasi hari', '$distinctDays / 3 hari', (distinctDays / 3.0).clamp(0.0, 1.0), distinctDays >= 3 ? AppColors.green : AppColors.amber, distinctDays >= 3 ? 'PASS' : 'ACCUMULATING'),
                       const SizedBox(height: 14),
-                      _buildProgressRow('Dominasi hari', '72%', 0.72, AppColors.amber, 'PROVISIONAL'),
+                      _buildProgressRow('Dominasi hari', '${(maxDayFrac * 100).toStringAsFixed(0)}%', maxDayFrac.clamp(0.0, 1.0), maxDayFrac <= 0.4 ? AppColors.green : AppColors.amber, maxDayFrac <= 0.4 ? 'BALANCED' : 'PROVISIONAL'),
                       const SizedBox(height: 14),
-                      _buildProgressRow('Kualitas sinyal', '0.94', 0.94, AppColors.green, 'PASS'),
+                      _buildProgressRow('Kualitas sinyal', qSignal > 0 ? qSignal.toStringAsFixed(2) : '-', qSignal.clamp(0.0, 1.0), qSignal >= 0.8 ? AppColors.green : AppColors.amber, qSignal >= 0.8 ? 'EXCELLENT' : 'CHECK SENSOR'),
                     ],
                   ),
                 ),
@@ -212,7 +224,7 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'DATA HISTORIS BASELINE AKTIVITAS',
+                        'MODEL BASELINE PERSONAL PER-AKTIIVITAS',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
@@ -221,11 +233,39 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      _buildActivityBaselineTile('Duduk', 'HR Mean: 74 bpm · RR: 812 ms', '30 min rec', AppColors.teal),
-                      const Divider(height: 20),
-                      _buildActivityBaselineTile('Berdiri', 'HR Mean: 84 bpm · RR: 720 ms', '15 min rec', AppColors.blue),
-                      const Divider(height: 20),
-                      _buildActivityBaselineTile('Berjalan / Bergerak', 'HR Mean: 98 bpm · RR: 610 ms', '20 min rec', AppColors.purple),
+                      if (allBaselines.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12.0),
+                          child: Text(
+                            'Belum ada data baseline aktivitas. Lakukan streaming sensor Polar H10 untuk membangkitkan model baseline provisional.',
+                            style: TextStyle(fontSize: 11.5, color: AppColors.gray, height: 1.4),
+                          ),
+                        )
+                      else
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: allBaselines.length,
+                          separatorBuilder: (_, index) => const Divider(height: 20, color: AppColors.line),
+                          itemBuilder: (ctx, idx) {
+                            const colors = [AppColors.teal, AppColors.purple, AppColors.blue, AppColors.amber];
+                            final b = allBaselines[idx];
+                            final act = b['activity']?.toString() ?? 'General';
+                            final stats = b['stats'] as Map<String, dynamic>? ?? {};
+
+                            final hrMean = stats['hr_mean']?['mean']?.toString() ?? '-';
+                            final rmssdMean = stats['rmssd']?['mean']?.toString() ?? '-';
+                            final sdnnMean = stats['sdnn']?['mean']?.toString() ?? '-';
+                            final dfaMean = stats['dfa_alpha1']?['mean']?.toString() ?? '-';
+                            final segs = b['segment_count'] ?? 0;
+
+                            final color = colors[idx % colors.length];
+                            final metricsStr = 'HR: $hrMean bpm · RMSSD: $rmssdMean ms · SDNN: $sdnnMean ms · DFA: $dfaMean';
+                            final durStr = '$segs win (${segs * 2} m)';
+
+                            return _buildActivityBaselineTile(act, metricsStr, durStr, color);
+                          },
+                        ),
                     ],
                   ),
                 ),
@@ -311,7 +351,7 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(activity, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy)),
-              Text(metrics, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+              Text(metrics, style: const TextStyle(fontSize: 10.5, color: AppColors.gray)),
             ],
           ),
         ),
@@ -321,7 +361,7 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
             color: AppColors.graySoft,
             borderRadius: BorderRadius.circular(6),
           ),
-          child: Text(duration, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.ink)),
+          child: Text(duration, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
         ),
       ],
     );

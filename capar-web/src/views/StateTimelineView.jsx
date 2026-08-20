@@ -48,17 +48,6 @@ export const StateTimelineView = ({ participantId, globalDateFilter, onNavigate 
            };
         });
 
-        // Fallback sample timeline data if database has empty segments
-        if (riwayat.length === 0) {
-          const now = Date.now();
-          riwayat = [
-            { id: 'S-01', date: '19-08-2026', time: '08:00 - 08:40', startTimeStr: '08:00', endTimeStr: '08:40', aktifitas: 'sitting (Duduk)', dfa: 1.02, status: 'BASELINE_COMPATIBLE', anomalyScore: 0.64, hrMean: 67.2, rmssd: 35.7, rawStart: new Date(now - 120*60*1000) },
-            { id: 'S-02', date: '19-08-2026', time: '08:40 - 09:15', startTimeStr: '08:40', endTimeStr: '09:15', aktifitas: 'walking (Berjalan)', dfa: 1.18, status: 'DEVIATION_CANDIDATE', anomalyScore: 2.15, hrMean: 94.5, rmssd: 22.4, rawStart: new Date(now - 80*60*1000) },
-            { id: 'S-03', date: '19-08-2026', time: '09:15 - 09:50', startTimeStr: '09:15', endTimeStr: '09:50', aktifitas: 'driving (Berkendara)', dfa: 1.42, status: 'PERSISTENT_DEVIATION', anomalyScore: 3.42, hrMean: 112.4, rmssd: 14.8, rawStart: new Date(now - 45*60*1000) },
-            { id: 'S-04', date: '19-08-2026', time: '09:50 - 10:30', startTimeStr: '09:50', endTimeStr: '10:30', aktifitas: 'resting (Istirahat)', dfa: 0.98, status: 'RECOVERY', anomalyScore: 0.82, hrMean: 72.1, rmssd: 31.5, rawStart: new Date(now - 10*60*1000) }
-          ];
-        }
-
         riwayat.sort((a, b) => a.rawStart - b.rawStart);
         setTimelineData({ riwayat });
         
@@ -101,14 +90,6 @@ export const StateTimelineView = ({ participantId, globalDateFilter, onNavigate 
               episodeId: formatEpId(nameStr, timeStr)
             };
           });
-
-        if (mappedAnns.length === 0) {
-          const nameStr = participantId || 'p001';
-          mappedAnns = [
-            { time: '08:45', author: 'Dr. Sp.JP (Reviewer Klinis)', note: 'Konfirmasi Dokter: Respon simpatis meningkat (Sinus Takhikardia saat berjalan).', doctorValidation: 'TP - Sinus Takhikardia', eventId: formatEvId(nameStr, '08:45'), episodeId: formatEpId(nameStr, '08:45') },
-            { time: '09:30', author: 'Dr. Sp.JP (Reviewer Klinis)', note: 'Konfirmasi Dokter: Persistent Anomaly terverifikasi 3 window (Stres fisik berkendara).', doctorValidation: 'TP - Persistent Stress', eventId: formatEvId(nameStr, '09:30'), episodeId: formatEpId(nameStr, '09:30') }
-          ];
-        }
         
         setAnnotations(mappedAnns);
         setLoading(false);
