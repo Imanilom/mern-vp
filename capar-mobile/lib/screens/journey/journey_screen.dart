@@ -34,18 +34,34 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
     final results = await Future.wait([
       ApiService.fetchEpisodes(),
       ApiService.fetchPersonalExperience(),
+      ApiService.fetchBaselineReadiness(),
     ]);
 
     final episodes = results[0] as List<Map<String, dynamic>>;
     final expData = results[1] as Map<String, dynamic>?;
+    final baseData = results[2] as Map<String, dynamic>?;
 
     if (mounted) {
       setState(() {
         _experienceData = expData;
         final gami = expData?['gamification'] as Map<String, dynamic>?;
-        _totalEpisodes = episodes.length;
-        _completedMissions = gami?['completedQuestsCount'] as int? ?? (episodes.isNotEmpty ? episodes.length : 0);
-        _totalDays = gami?['activeStreakDays'] as int? ?? 0;
+        final resolvedCount = expData?['resolvedEpisodesCount'] as int? ?? 0;
+        final totalSegs = baseData?['total_segment_count'] as int? ?? 0;
+
+        if (episodes.isNotEmpty) {
+          _totalEpisodes = episodes.length;
+        } else if (resolvedCount > 0) {
+          _totalEpisodes = resolvedCount;
+        } else if (totalSegs > 0) {
+          _totalEpisodes = (totalSegs / 5).ceil().clamp(1, 999);
+        } else {
+          _totalEpisodes = 0;
+        }
+
+        _completedMissions = gami?['completedQuestsCount'] as int? ?? (_totalEpisodes > 0 ? _totalEpisodes : 0);
+        _totalDays = (gami?['activeStreakDays'] as int? ?? 0) > 0 
+            ? (gami!['activeStreakDays'] as int) 
+            : (totalSegs > 0 ? 1 : 0);
         _isLoadingStats = false;
       });
     }
@@ -273,11 +289,12 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
 
   Widget _buildEvidenceLevelCard() {
     final gami = _experienceData?['gamification'] as Map<String, dynamic>?;
-    final int level = gami?['level'] as int? ?? ((_totalEpisodes == 0) ? 1 : (_totalEpisodes < 3 ? 2 : (_totalEpisodes < 7 ? 3 : 4)));
-    final String levelLabel = gami?['levelTitle'] as String? ?? (level < 5 ? ['', 'Novice', 'Contributor', 'Advanced', 'Expert'][level] : 'Master');
-    final int xp = gami?['currentXp'] as int? ?? 0;
+    final int displayEpisodes = _totalEpisodes;
+    final int level = gami?['level'] as int? ?? ((displayEpisodes == 0) ? 1 : (displayEpisodes < 3 ? 2 : (displayEpisodes < 7 ? 3 : 4)));
+    final String levelLabel = gami?['levelTitle'] as String? ?? (level <= 2 ? 'Heart Health Explorer' : (level <= 5 ? 'Heart Health Guardian' : 'Heart Health Master'));
+    final int xp = gami?['currentXp'] as int? ?? (displayEpisodes * 150 + _totalDays * 100);
     final int nextXp = gami?['nextLevelXp'] as int? ?? 2000;
-    final double progress = (xp / nextXp).clamp(0.0, 1.0);
+    final double progress = (xp / nextXp).clamp(0.08, 1.0);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -317,7 +334,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(levelLabel, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.navy)),
-                        Text('$_totalEpisodes / 10 ep', style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                        Text('$displayEpisodes ${displayEpisodes >= 10 ? 'episodes' : '/ 10 ep'}', style: const TextStyle(fontSize: 11, color: AppColors.gray)),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -331,9 +348,9 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Data episode berkontribusi pada akurasi model prediksi.',
-                      style: TextStyle(fontSize: 10.5, color: AppColors.gray),
+                    Text(
+                      'Progress XP: $xp / $nextXp XP · Data episode berkontribusi pada akurasi model.',
+                      style: const TextStyle(fontSize: 10.5, color: AppColors.gray),
                     ),
                   ],
                 ),

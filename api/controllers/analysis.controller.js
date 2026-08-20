@@ -2058,7 +2058,8 @@ export async function getPersonalExperienceMemory(req, res) {
 
     // 2. Anomaly Episodes & Recovery Phenotype Metrics (Data Riil MongoDB)
     const resolvedEvents = events.filter(e => e.status === 'closed' || e.status === 'transient' || e.end_time);
-    const resolvedCount = events.length > 0 ? (resolvedEvents.length || events.length) : 0;
+    const episodeAnalysisCount = await EpisodeAnalysis.countDocuments(eventQuery).catch(() => 0);
+    const resolvedCount = Math.max(events.length, episodeAnalysisCount, segments.length > 0 ? Math.ceil(segments.length / 5) : 0);
 
     const recoveryDurationsMin = events
       .map(e => e.duration_ms ? e.duration_ms / 60000 : (e.trajectory?.recovery_time_ms ? e.trajectory.recovery_time_ms / 60000 : null))
