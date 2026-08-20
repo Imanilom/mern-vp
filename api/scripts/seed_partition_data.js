@@ -269,6 +269,45 @@ async function run() {
     console.log(` Seeded ${users.length} users successfully!`);
   }
 
+function mapActivityToSegmentEnum(act) {
+  switch (act.toLowerCase()) {
+    case 'sitting':
+    case 'resting':
+    case 'tidur':
+    case 'berbaring':
+    case 'duduk':
+      return 'Rest';
+    case 'standing':
+    case 'driving':
+    case 'berdiri':
+    case 'berkendara':
+      return 'Light';
+    case 'walking':
+    case 'berjalan':
+      return 'Moderate';
+    case 'running':
+    case 'intense':
+    case 'berlari':
+      return 'Intense';
+    default:
+      return 'Rest';
+  }
+}
+
+function mapClassificationToSegmentEnum(cls) {
+  switch (cls) {
+    case 'BASELINE_COMPATIBLE':
+    case 'RECOVERY':
+      return 'Normal';
+    case 'DEVIATION_CANDIDATE':
+      return 'Caution';
+    case 'PERSISTENT_DEVIATION':
+      return 'Alert';
+    default:
+      return 'Normal';
+  }
+}
+
   // 4. Partition 50 1-minute windows & insert raw PolarData for each user without data
   const activities = ['sitting', 'standing', 'walking', 'resting', 'driving'];
   let overallSeededSegments = 0;
@@ -289,22 +328,24 @@ async function run() {
 
       for (let i = 0; i < needed; i++) {
         const wSrc = windows[(userOffset + i) % windows.length];
-        const activity = activities[i % activities.length];
+        const rawActivity = activities[i % activities.length];
+        const activityLabel = mapActivityToSegmentEnum(rawActivity);
 
-        let classification = 'BASELINE_COMPATIBLE';
+        let rawClassification = 'BASELINE_COMPATIBLE';
         let anomalyScore = Number((0.35 + (i % 7) * 0.08).toFixed(2));
 
         if (i >= 35 && i < 40) {
-          classification = 'DEVIATION_CANDIDATE';
+          rawClassification = 'DEVIATION_CANDIDATE';
           anomalyScore = Number((1.85 + (i % 3) * 0.15).toFixed(2));
         } else if (i >= 40 && i < 45) {
-          classification = 'PERSISTENT_DEVIATION';
+          rawClassification = 'PERSISTENT_DEVIATION';
           anomalyScore = Number((2.85 + (i % 3) * 0.25).toFixed(2));
         } else if (i >= 45) {
-          classification = 'RECOVERY';
+          rawClassification = 'RECOVERY';
           anomalyScore = Number((0.95 + (i % 3) * 0.10).toFixed(2));
         }
 
+        const classification = mapClassificationToSegmentEnum(rawClassification);
         const nowOffsetMs = Date.now() - (needed - i) * 60 * 1000;
 
         newSegDocs.push({
@@ -313,7 +354,7 @@ async function run() {
           window_type: '1min',
           window_start: nowOffsetMs,
           window_end: nowOffsetMs + 60000,
-          activity_label: activity,
+          activity_label: activityLabel,
           features: wSrc.features,
           rr_raw: wSrc.features.rr_raw,
           raw_count: wSrc.features.raw_count,
@@ -375,7 +416,8 @@ async function run() {
     // 5. Generate / Update Baseline models for this user across activities
     console.log(`  Calculating Baseline models for user ${user.name}...`);
     for (const act of activities) {
-      const userSegs = await Segment.find({ user_id: user._id, activity_label: act }).lean();
+      const actLabel = mapActivityToSegmentEnum(act);
+      const userSegs = await Segment.find({ user_id: user._id, activity_label: actLabel }).lean();
       if (userSegs.length > 0) {
         const hrs = userSegs.map(s => s.features?.mean_hr || 72);
         const rmssds = userSegs.map(s => s.features?.rmssd || 35);
