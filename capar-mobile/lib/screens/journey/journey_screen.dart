@@ -43,11 +43,9 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
       setState(() {
         _experienceData = expData;
         final gami = expData?['gamification'] as Map<String, dynamic>?;
-        _totalEpisodes = expData?['resolvedEpisodesCount'] as int? ?? episodes.length;
-        _completedMissions = gami?['completedQuestsCount'] as int? ?? (episodes.length * 2).clamp(0, 10);
-        if (gami?['activeStreakDays'] != null) {
-          _totalDays = gami!['activeStreakDays'] as int;
-        }
+        _totalEpisodes = episodes.length;
+        _completedMissions = gami?['completedQuestsCount'] as int? ?? (episodes.isNotEmpty ? episodes.length : 0);
+        _totalDays = gami?['activeStreakDays'] as int? ?? 0;
         _isLoadingStats = false;
       });
     }
@@ -58,7 +56,9 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
       final firstLoginMs = prefs.getInt('first_login_ms');
       if (firstLoginMs != null && mounted) {
         final days = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(firstLoginMs)).inDays;
-        setState(() => _totalDays = days.clamp(0, 999));
+        setState(() => _totalDays = days > 0 ? days : 1);
+      } else if (mounted) {
+        setState(() => _totalDays = 1);
       }
     }
   }

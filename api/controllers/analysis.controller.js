@@ -1970,7 +1970,7 @@ export async function getPersonalExperienceMemory(req, res) {
   try {
     const userId = req.params.userId || 'ALL';
 
-    const matchStage = { analyzed: true, is_valid: true };
+    const matchStage = {};
     if (userId && userId !== 'ALL' && userId !== '000000000000000000000000') {
       matchStage.user_id = userId;
     }
@@ -2056,27 +2056,9 @@ export async function getPersonalExperienceMemory(req, res) {
       };
     });
 
-    // Fallback matrix for new participants
-    const hasData = Object.values(formattedHeatmap).some(c => c.count > 0);
-    if (!hasData) {
-      formattedHeatmap['morning-sitting'] = { count: 18, avgAnomaly: 0.62, state: 'BASELINE_COMPATIBLE' };
-      formattedHeatmap['morning-standing'] = { count: 8, avgAnomaly: 0.85, state: 'BASELINE_COMPATIBLE' };
-      formattedHeatmap['morning-walking'] = { count: 12, avgAnomaly: 2.15, state: 'DEVIATION_CANDIDATE' };
-      formattedHeatmap['morning-driving'] = { count: 4, avgAnomaly: 0.72, state: 'BASELINE_COMPATIBLE' };
-      formattedHeatmap['morning-resting'] = { count: 6, avgAnomaly: 0.54, state: 'BASELINE_COMPATIBLE' };
-      formattedHeatmap['afternoon-sitting'] = { count: 22, avgAnomaly: 0.68, state: 'BASELINE_COMPATIBLE' };
-      formattedHeatmap['afternoon-standing'] = { count: 10, avgAnomaly: 1.12, state: 'DEVIATION_CANDIDATE' };
-      formattedHeatmap['afternoon-walking'] = { count: 15, avgAnomaly: 1.85, state: 'DEVIATION_CANDIDATE' };
-      formattedHeatmap['afternoon-driving'] = { count: 9, avgAnomaly: 3.42, state: 'PERSISTENT_DEVIATION' };
-      formattedHeatmap['afternoon-resting'] = { count: 8, avgAnomaly: 0.58, state: 'BASELINE_COMPATIBLE' };
-      formattedHeatmap['evening-sitting'] = { count: 14, avgAnomaly: 0.59, state: 'BASELINE_COMPATIBLE' };
-      formattedHeatmap['evening-resting'] = { count: 16, avgAnomaly: 0.48, state: 'BASELINE_COMPATIBLE' };
-      formattedHeatmap['night-resting'] = { count: 28, avgAnomaly: 0.42, state: 'BASELINE_COMPATIBLE' };
-    }
-
-    // 2. Anomaly Episodes & Recovery Phenotype Metrics
+    // 2. Anomaly Episodes & Recovery Phenotype Metrics (Data Riil MongoDB)
     const resolvedEvents = events.filter(e => e.status === 'closed' || e.status === 'transient' || e.end_time);
-    const resolvedCount = resolvedEvents.length || events.length || 28;
+    const resolvedCount = events.length > 0 ? (resolvedEvents.length || events.length) : 0;
 
     const recoveryDurationsMin = events
       .map(e => e.duration_ms ? e.duration_ms / 60000 : (e.trajectory?.recovery_time_ms ? e.trajectory.recovery_time_ms / 60000 : null))
@@ -2137,7 +2119,7 @@ export async function getPersonalExperienceMemory(req, res) {
 
     const answeredEmaCount = answeredEmaList.length;
 
-    // 3. Gamification Metrics Calculation
+    // 3. Gamification Metrics Calculation (Berdasarkan Data Riil MongoDB)
     const distinctDaysSet = new Set();
     segments.forEach(s => {
       if (s.window_start) {
@@ -2150,18 +2132,16 @@ export async function getPersonalExperienceMemory(req, res) {
       }
     });
 
-    const activeStreakDays = distinctDaysSet.size > 0
-      ? Math.max(distinctDaysSet.size, baselines[0]?.distinct_days || 1)
-      : (baselines[0]?.distinct_days || 14);
+    const activeStreakDays = distinctDaysSet.size;
+    const totalSegmentsCount = segments.length;
+    const completedQuestsCount = answeredEmaCount > 0 ? answeredEmaCount : (events.length > 0 ? Math.min(events.length, 5) : 0);
+    const totalQuestsCount = Math.max(completedQuestsCount + 1, 5);
+    const questCompletionPct = totalQuestsCount > 0 ? Math.round((completedQuestsCount / totalQuestsCount) * 100) : 0;
 
-    const totalSegmentsCount = segments.length || 120;
-    const completedQuestsCount = Math.max(answeredEmaCount, Math.min(resolvedCount, 24));
-    const totalQuestsCount = Math.max(completedQuestsCount + 1, 25);
-    const questCompletionPct = Math.round((completedQuestsCount / totalQuestsCount) * 100);
-
-    const currentXp = (activeStreakDays * 80 + totalSegmentsCount * 5 + completedQuestsCount * 30 + resolvedCount * 25) % 2000;
+    const totalXp = (activeStreakDays * 100) + (totalSegmentsCount * 5) + (completedQuestsCount * 50) + (resolvedCount * 30);
     const nextLevelXp = 2000;
-    const level = Math.min(10, Math.max(1, Math.floor(currentXp / 400) + 1));
+    const currentXp = totalXp % nextLevelXp;
+    const level = Math.min(10, Math.max(1, Math.floor(totalXp / 500) + 1));
     const levelTitle = level <= 2 ? 'Heart Health Explorer' : (level <= 5 ? 'Heart Health Guardian' : 'Heart Health Master');
 
     const badges = [
