@@ -284,3 +284,14 @@ app.post('/api/internal/run-pipeline', async (req, res) => {
     return res.json({ success: true, message: 'Layer 2 pipeline triggered by systemd timer.' });
   }
 });
+
+// ── CAPAR EpisodeAnalysis Auto-Sync Job Scheduler ──────────────────────────────────
+// Membangkitkan & menyinkronkan dokumen EpisodeAnalysis dari AnomalyEvent setiap 3 menit
+setInterval(async () => {
+  try {
+    const { syncAndGenerateEpisodeAnalyses } = await import('./controllers/analysis.controller.js');
+    await syncAndGenerateEpisodeAnalyses();
+  } catch (err) {
+    console.error('[EpisodeAnalysis Job Scheduler Error]:', err.message);
+  }
+}, 180000);

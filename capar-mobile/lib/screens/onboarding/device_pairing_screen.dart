@@ -93,6 +93,46 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
     if (mounted) Navigator.pushNamed(context, '/app');
   }
 
+  Future<void> _enableEmulatorBypass() async {
+    final ble = ref.read(bleServiceProvider);
+    final mqtt = ref.read(mqttServiceProvider);
+
+    ble.enableSimulationMode();
+    ble.updateMotionState(_selectedActivity);
+
+    final prefs = await SharedPreferences.getInstance();
+    String userId = prefs.getString('user_id') ?? '';
+    if (userId.isEmpty) {
+      userId = '675ba1e92b8428e4dd641cd0'; // Default test user ID (Dokter)
+      await prefs.setString('user_id', userId);
+    }
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => const Center(
+        child: CircularProgressIndicator(color: AppColors.teal),
+      ),
+    );
+
+    // Try MQTT connection
+    await mqtt.connect(userId).catchError((_) => false);
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    ref.read(telemetryControllerProvider).startStreaming();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('⚡ Emulator Bypass Mode Aktif: Perangkat Polar H10 Disimulasikan!'),
+        backgroundColor: AppColors.teal,
+      ),
+    );
+
+    if (mounted) Navigator.pushNamed(context, '/app');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,8 +163,54 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (!bleState.isConnected) ...[
+                      // Emulator Bypass Card
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: AppColors.tealSoft,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.teal),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.bolt_rounded, color: AppColors.teal, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Bypass Perangkat (Emulator Mode)',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.navy),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Gunakan mode simulator untuk menguji tampilan grafik real-time dan isian seluruh halaman di emulator tanpa fisik Polar H10.',
+                              style: TextStyle(fontSize: 11.5, color: AppColors.ink, height: 1.35),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _enableEmulatorBypass,
+                                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                                label: const Text('Aktifkan Simulator & Start Live Session', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.teal,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const Text(
-                        'Pindai Perangkat',
+                        'Pindai Perangkat BLE',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.navy),
                       ),
                       const SizedBox(height: 8),

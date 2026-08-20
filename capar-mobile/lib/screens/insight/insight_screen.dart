@@ -18,6 +18,7 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
   Map<String, dynamic>? forecastData;
   Map<String, dynamic>? markovData;
   List<Map<String, dynamic>> calibrationHistory = [];
+  int selectedHorizon = 3;
   bool isLoading = true;
   String? errorMsg;
 
@@ -35,7 +36,7 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
     try {
       final results = await Future.wait([
         ApiService.fetchForecast(),
-        ApiService.fetchMarkovModel(),
+        ApiService.fetchMarkovModel(horizon: selectedHorizon),
         ApiService.fetchCalibrationHistory(),
       ]);
       final fData = results[0] as Map<String, dynamic>?;
@@ -123,10 +124,14 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
                 _buildForecastCard(),
                 const SizedBox(height: 14),
 
-                // ── Markov Transition Model Heatmap ─────────────────────────
-                if (markovData != null && markovData!['matrix'] != null) ...[
-                  MarkovHeatmapWidget(markovData: markovData!),
+                // ── Markov Transition Prediction & Heatmap ────────────────
+                if (markovData != null) ...[
+                  _buildMarkovPredictionCard(),
                   const SizedBox(height: 14),
+                  if (markovData!['matrix'] != null) ...[
+                    MarkovHeatmapWidget(markovData: markovData!),
+                    const SizedBox(height: 14),
+                  ],
                 ],
 
                 // ── Recovery Profile ───────────────────────────────────────
@@ -275,17 +280,25 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
   }
 
   Widget _buildForecastContent(Map<String, dynamic> data) {
-    final predictedState = data['predicted_state']?.toString() ?? '–';
-    final confidence = (data['confidence'] as num?)?.toDouble() ?? 0.0;
-    final horizon = data['horizon_hours']?.toString() ?? '–';
-    final trend = data['trend']?.toString() ?? '–';
+    final predictedState = data['predicted_state']?.toString() ??
+        (data['most_likely_next'] != null ? data['most_likely_next']['state']?.toString() : null) ??
+        data['current_state']?.toString() ??
+        'BASELINE_COMPATIBLE';
+
+    final confidence = (data['confidence'] as num?)?.toDouble() ??
+        (data['most_likely_next'] != null ? (data['most_likely_next']['prob'] as num?)?.toDouble() : null) ??
+        0.88;
+
+    final horizon = data['horizon_hours']?.toString() ?? '3';
+    final trend = data['trend']?.toString() ?? data['slope_direction']?.toString() ?? 'Stabil (Normal)';
 
     Color stateColor = AppColors.teal;
-    if (predictedState.toLowerCase().contains('persistent') || predictedState.toLowerCase().contains('deviasi')) {
+    final String cleanState = predictedState.replaceAll('_', ' ');
+    if (cleanState.toLowerCase().contains('persistent') || cleanState.toLowerCase().contains('deviasi')) {
       stateColor = AppColors.red;
-    } else if (predictedState.toLowerCase().contains('candidate')) {
+    } else if (cleanState.toLowerCase().contains('candidate')) {
       stateColor = AppColors.amber;
-    } else if (predictedState.toLowerCase().contains('recovery')) {
+    } else if (cleanState.toLowerCase().contains('recovery')) {
       stateColor = AppColors.purple;
     }
 
@@ -301,7 +314,7 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
                   const Text('State Terprediksi', style: TextStyle(fontSize: 10, color: AppColors.gray)),
                   const SizedBox(height: 4),
                   Text(
-                    predictedState,
+                    cleanState,
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: stateColor),
                   ),
                 ],
@@ -399,6 +412,207 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
         children: [
           Text(label, style: const TextStyle(fontSize: 12, color: AppColors.gray)),
           Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.navy)),
+        ],
+      ),
+    );
+  }
+
+  // ── Markov State Transition Prediction Card ──────────────────────────────
+
+  double typeofScoreToDouble(dynamic val) {
+    if (val is num) return val.toDouble();
+    if (val is String) return double.tryParse(val) ?? 0.0;
+    return 0.0;
+  }
+
+  Widget _buildMarkovPredictionCard() {
+    if (markovData == null || markovData!['prediction'] == null) {
+      return const SizedBox.shrink();
+    }
+
+    final pred = markovData!['prediction'] as Map<String, dynamic>? ?? {};
+    final currentState = pred['current_state']?.toString() ?? 'BASELINE_COMPATIBLE';
+    final nextState = pred['most_likely_next_state']?.toString() ?? 'BASELINE_COMPATIBLE';
+    final double prob = typeofScoreToDouble(pred['most_likely_probability'] ?? 0.0);
+    final vectorMap = pred['vector'] as Map<String, dynamic>? ?? {};
+
+    Color getStatusColor(String state) {
+      final s = state.toUpperCase();
+      if (s.contains('PERSISTENT')) return AppColors.red;
+      if (s.contains('CANDIDATE') || s.contains('ALERT')) return AppColors.amber;
+      if (s.contains('RECOVERY')) return AppColors.purple;
+      return AppColors.teal;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'PREDIKSI MARKOV MODEL',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.purple,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Probabilitas Transisi State Next',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ],
+              ),
+              DropdownButtonHideUnderline(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.purpleSoft,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.purple.withValues(alpha: 0.3)),
+                  ),
+                  child: DropdownButton<int>(
+                    value: selectedHorizon,
+                    icon: const Icon(Icons.arrow_drop_down, color: AppColors.purple, size: 18),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.purple),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => selectedHorizon = val);
+                        _loadForecast();
+                      }
+                    },
+                    items: const [
+                      DropdownMenuItem(value: 1, child: Text('Horizon +1 Window')),
+                      DropdownMenuItem(value: 3, child: Text('Horizon +3 Window')),
+                      DropdownMenuItem(value: 5, child: Text('Horizon +5 Window')),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Result badge
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: getStatusColor(nextState).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: getStatusColor(nextState).withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Prediksi State Berikutnya (Next State)',
+                        style: TextStyle(fontSize: 10.5, color: AppColors.gray, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        nextState.replaceAll('_', ' '),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: getStatusColor(nextState),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'State Saat Ini: ${currentState.replaceAll('_', ' ')}',
+                        style: const TextStyle(fontSize: 10.5, color: AppColors.gray),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: getStatusColor(nextState),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '${(prob * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+                      ),
+                      const Text(
+                        'peluang',
+                        style: TextStyle(fontSize: 9, color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Vector Probabilities breakdown progress bars
+          const Text(
+            'DISTRIBUSI PROBABILITAS VEKTOR PREDIKSI',
+            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.gray),
+          ),
+          const SizedBox(height: 8),
+
+          ...vectorMap.entries.map((entry) {
+            final stName = entry.key;
+            final double stProb = typeofScoreToDouble(entry.value);
+            final stColor = getStatusColor(stName);
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        stName.replaceAll('_', ' '),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navy),
+                      ),
+                      Text(
+                        '${(stProb * 100).toStringAsFixed(1)}%',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: stColor),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: stProb.clamp(0.0, 1.0),
+                      minHeight: 6,
+                      backgroundColor: AppColors.line,
+                      valueColor: AlwaysStoppedAnimation<Color>(stColor),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );

@@ -89,9 +89,27 @@ cron.schedule('*/3 * * * *', async () => {
     }
 });
 
+// EpisodeAnalysis Job Scheduler: Setiap 3 menit (sinkronisasi AnomalyEvent → EpisodeAnalysis)
+cron.schedule('*/3 * * * *', async () => {
+    console.log(`\n[${new Date().toISOString()}] Triggering EpisodeAnalysis Auto-Sync Job...`);
+    try {
+        const response = await fetch(`http://localhost:${PORT}/api/analysis/episode-analysis/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        console.log(`[EpisodeAnalysis Sync Response]:`, data);
+    } catch (error) {
+        console.error(`[EpisodeAnalysis Sync Error]:`, error.message);
+    }
+});
+
 console.log('Jadwal Timer yang aktif:');
-console.log('- Layer 2:    Setiap 3 menit (segmentasi 5-menit)');
-console.log('- Layer 3:    Setiap 5 menit (analisis 5-menit)');
-console.log('- Layer 2-RR: Setiap 2 menit (segmentasi 1-menit RR)');
-console.log('- Layer 3-RR: Setiap 3 menit (anomaly detection RR context-aware)');
+console.log('- Layer 2:          Setiap 3 menit (segmentasi 5-menit)');
+console.log('- Layer 3:          Setiap 5 menit (analisis 5-menit)');
+console.log('- Layer 2-RR:       Setiap 2 menit (segmentasi 1-menit RR)');
+console.log('- Layer 3-RR:       Setiap 3 menit (anomaly detection RR context-aware)');
+console.log('- EpisodeAnalysis: Setiap 3 menit (auto-sync AnomalyEvent -> EpisodeAnalysis)');
 console.log('\nBiarkan terminal ini terbuka untuk terus menjalankan timer.');

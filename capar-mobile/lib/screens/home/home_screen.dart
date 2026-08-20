@@ -254,9 +254,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: const Text('Hentikan', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
             )
           else if (!ble.isConnected)
-            TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/pairing'),
-              child: const Text('Pairing', style: TextStyle(color: AppColors.teal, fontWeight: FontWeight.bold, fontSize: 12)),
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    ble.enableSimulationMode();
+                    ref.read(telemetryControllerProvider).startStreaming();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('⚡ Mode Simulator Aktif: Memulai Streaming Live Data!'),
+                        backgroundColor: AppColors.teal,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.bolt_rounded, size: 14, color: AppColors.teal),
+                  label: const Text('Simulator', style: TextStyle(color: AppColors.teal, fontWeight: FontWeight.bold, fontSize: 11)),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pushNamed(context, '/pairing'),
+                  child: const Text('Pairing', style: TextStyle(color: AppColors.navy, fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ],
             ),
         ],
       ),

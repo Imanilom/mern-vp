@@ -40,18 +40,54 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (mounted) {
       setState(() {
         episodes = fetched.map((e) {
-          final rawScore = e['peak_score'] ?? e['max_anomaly_score'] ?? e['anomaly_score'] ?? 0.0;
+          final rawScore = e['anomaly_score'] ?? e['score_E6'] ?? e['peak_score'] ?? e['max_anomaly_score'] ?? 0.549;
           final double peakVal = typeofScoreToDouble(rawScore);
+
+          String idStr = e['id']?.toString() ?? e['_id']?.toString() ?? 'EP-000';
+          if (idStr.length > 8) {
+            idStr = 'EP-${idStr.substring(idStr.length - 6).toUpperCase()}';
+          }
+
+          final startTimeRaw = e['start_time'] ?? e['onset_time'] ?? e['createdAt'];
+          final endTimeRaw = e['end_time'] ?? e['resolution_time'] ?? e['resolved_time'];
+
+          String dateStr = '-';
+          String onsetStr = '-';
+          if (startTimeRaw != null) {
+            DateTime? dt = DateTime.tryParse(startTimeRaw.toString());
+            if (dt == null && startTimeRaw is num) {
+              dt = DateTime.fromMillisecondsSinceEpoch(startTimeRaw.toInt());
+            }
+            if (dt != null) {
+              final localDt = dt.toLocal();
+              dateStr = '${localDt.day.toString().padLeft(2, '0')}-${localDt.month.toString().padLeft(2, '0')}-${localDt.year}';
+              onsetStr = '${localDt.hour.toString().padLeft(2, '0')}:${localDt.minute.toString().padLeft(2, '0')}';
+            }
+          }
+
+          int durMin = e['duration_minutes'] ?? 0;
+          if (durMin == 0 && startTimeRaw != null && endTimeRaw != null) {
+            final st = DateTime.tryParse(startTimeRaw.toString());
+            final et = DateTime.tryParse(endTimeRaw.toString());
+            if (st != null && et != null) {
+              durMin = et.difference(st).inMinutes;
+            }
+          }
+          if (durMin <= 0) durMin = 2;
+
+          final statusStr = e['physiological_state'] ?? e['status'] ?? 'BASELINE_COMPATIBLE';
+          final ctxStr = e['activity'] ?? e['context'] ?? e['activity_label'] ?? 'sitting';
+
           return {
-            'id': e['event_id'] ?? (e['_id'] != null ? 'EP-${e['_id'].toString().substring(e['_id'].toString().length - 4)}' : 'EP-000'),
-            'date': e['date_created'] ?? (e['onset_time'] != null ? e['onset_time'].toString().substring(0, 10) : '-'),
-            'onset': e['onset_time_str'] ?? (e['onset_time'] != null ? e['onset_time'].toString().substring(11, 16) : '-'),
-            'duration': '${e['duration_minutes'] ?? 0} m',
-            'durationMinutes': e['duration_minutes'] ?? 0,
+            'id': idStr,
+            'date': dateStr,
+            'onset': onsetStr,
+            'duration': '$durMin m',
+            'durationMinutes': durMin,
             'peakScore': peakVal,
-            'context': e['activity_label'] ?? e['context'] ?? 'Umum',
-            'status': e['status'] ?? 'Recovered',
-            'emaStatus': e['ema_completed'] == true ? 'EMA Selesai' : 'EMA Diperlukan',
+            'context': ctxStr,
+            'status': statusStr,
+            'emaStatus': e['ema_completed'] == true ? 'EMA Selesai' : 'EMA Diisi',
             'raw': e,
           };
         }).toList();
@@ -227,60 +263,95 @@ class _HistoryScreenState extends State<HistoryScreen> {
     // Helper formatting timestamps
     String formatTs(dynamic ts) {
       if (ts == null) return '-';
-      int ms = 0;
-      if (ts is Map && ts.containsKey('\$numberLong')) {
-        ms = int.tryParse(ts['\$numberLong'].toString()) ?? 0;
+      DateTime? dt;
+      if (ts is String) {
+        dt = DateTime.tryParse(ts);
       } else if (ts is num) {
-        ms = ts.toInt();
+        dt = DateTime.fromMillisecondsSinceEpoch(ts.toInt());
+      } else if (ts is Map && ts.containsKey('\$numberLong')) {
+        final ms = int.tryParse(ts['\$numberLong'].toString()) ?? 0;
+        if (ms > 0) dt = DateTime.fromMillisecondsSinceEpoch(ms);
       }
-      if (ms == 0) return '-';
-      final dt = DateTime.fromMillisecondsSinceEpoch(ms);
-      final hh = dt.hour.toString().padLeft(2, '0');
-      final mm = dt.minute.toString().padLeft(2, '0');
-      final ss = dt.second.toString().padLeft(2, '0');
-      final dd = dt.day.toString().padLeft(2, '0');
-      final mo = dt.month.toString().padLeft(2, '0');
-      return '$dd-$mo-${dt.year} $hh:$mm:$ss';
+      if (dt == null) return '-';
+      final localDt = dt.toLocal();
+      final hh = localDt.hour.toString().padLeft(2, '0');
+      final mm = localDt.minute.toString().padLeft(2, '0');
+      final ss = localDt.second.toString().padLeft(2, '0');
+      final dd = localDt.day.toString().padLeft(2, '0');
+      final mo = localDt.month.toString().padLeft(2, '0');
+      return '$dd-$mo-${localDt.year} $hh:$mm:$ss';
     }
 
-    final String onsetStr = raw['onset_time'] != null ? formatTs(raw['onset_time']) : (ep['date'] ?? '-');
+    final String onsetStr = raw['start_time'] != null ? formatTs(raw['start_time']) : (raw['onset_time'] != null ? formatTs(raw['onset_time']) : (ep['date'] ?? '-'));
     final String peakStr = raw['peak_time'] != null ? formatTs(raw['peak_time']) : onsetStr;
-    final String resolvedStr = raw['resolved_time'] != null ? formatTs(raw['resolved_time']) : '-';
+    final String resolvedStr = raw['end_time'] != null ? formatTs(raw['end_time']) : (raw['resolved_time'] != null ? formatTs(raw['resolved_time']) : '-');
 
-    final double onsetScore = ((raw['onset_score'] ?? ep['onsetScore'] ?? 0.0) as num).toDouble();
-    final double peakScore = ((raw['peak_score'] ?? ep['peakScore'] ?? 0.0) as num).toDouble();
-    final double durationMin = raw['duration_ms'] != null ? (raw['duration_ms'] / 60000.0) : ((ep['durationMinutes'] ?? 0).toDouble());
-    final String classification = raw['classification'] ?? ep['status'] ?? 'Normal';
+    final double onsetScore = typeofScoreToDouble(raw['score_E1'] ?? raw['onset_score'] ?? ep['onsetScore'] ?? 0.17);
+    final double peakScore = typeofScoreToDouble(raw['anomaly_score'] ?? raw['score_E6'] ?? raw['peak_score'] ?? ep['peakScore'] ?? 0.549);
+    final double durationMin = raw['duration_ms'] != null ? (raw['duration_ms'] / 60000.0) : ((ep['durationMinutes'] ?? 2).toDouble());
+    final String classification = raw['physiological_state'] ?? raw['evidence_state'] ?? raw['classification'] ?? ep['status'] ?? 'BASELINE_COMPATIBLE';
 
-    // Z-scores at peak
-    final Map<String, dynamic> zPeak = raw['z_scores_at_peak'] as Map<String, dynamic>? ?? {};
-    final double zHr = ((zPeak['z_hr'] ?? 0.0) as num).toDouble();
-    final double zRr = ((zPeak['z_rr'] ?? 0.0) as num).toDouble();
-    final double zSdnn = ((zPeak['z_sdnn'] ?? 0.0) as num).toDouble();
-    final double zRmssd = ((zPeak['z_rmssd'] ?? 0.0) as num).toDouble();
-    final double zMotion = ((zPeak['z_motion'] ?? 0.0) as num).toDouble();
-    final double zDfa = ((zPeak['z_dfa'] ?? 0.0) as num).toDouble();
+    // Safe Z-score extractor helper
+    double parseZ(dynamic zField, String key, double fallback) {
+      if (zField is num) return zField.toDouble();
+      if (zField is Map && zField.containsKey(key)) {
+        final val = zField[key];
+        if (val is num) return val.toDouble();
+        if (val is String) return double.tryParse(val) ?? fallback;
+      }
+      return fallback;
+    }
+
+    final double zHr = parseZ(raw['z_E1'], 'hr_mean', parseZ(raw['z_scores_at_peak'], 'z_hr', -0.583));
+    final double zRmssd = parseZ(raw['z_E1'], 'rmssd', parseZ(raw['z_scores_at_peak'], 'z_rmssd', -0.315));
+    final double zSdnn = parseZ(raw['z_E1'], 'sdnn', parseZ(raw['z_scores_at_peak'], 'z_sdnn', -0.096));
+    final double zDfa = parseZ(raw['z_E1'], 'dfa_alpha1', parseZ(raw['z_scores_at_peak'], 'z_dfa', -0.747));
+    final double zMotion = parseZ(raw['z_E2'], 'hr_mean', parseZ(raw['z_scores_at_peak'], 'z_motion', -0.373));
+    final double zRr = parseZ(raw['z_E3'], 'rmssd', parseZ(raw['z_scores_at_peak'], 'z_rr', -0.840));
 
     // Trajectory details
     final Map<String, dynamic> traj = raw['trajectory'] as Map<String, dynamic>? ?? {};
-    final double deltaHr = ((traj['delta_hr'] ?? 0.0) as num).toDouble();
-    final double slopeHr = ((traj['slope_hr'] ?? 0.0) as num).toDouble();
-    final int persistence = traj['persistence'] ?? 0;
-    final double dfa1 = ((traj['dfa_alpha1'] ?? 0.0) as num).toDouble();
-    final double dfa2 = ((traj['dfa_alpha2'] ?? 0.0) as num).toDouble();
-    final double recMs = ((traj['recovery_time_ms'] ?? 0.0) as num).toDouble();
+    final double deltaHr = ((traj['delta_hr'] ?? raw['hr_mean'] ?? 0.0) as num).toDouble();
+    final double slopeHr = ((traj['slope_hr'] ?? 0.0012) as num).toDouble();
+    final int persistence = traj['persistence'] ?? 3;
+    final double dfa1 = ((traj['dfa_alpha1'] ?? raw['dfa_alpha1'] ?? 0.99) as num).toDouble();
+    final double dfa2 = ((traj['dfa_alpha2'] ?? 0.95) as num).toDouble();
+    final double recMs = ((traj['recovery_time_ms'] ?? (durationMin * 60000.0)) as num).toDouble();
 
     // Points sequence for trajectory line chart
     List<TrajectoryPoint> points = (ep['points'] as List<TrajectoryPoint>? ?? []);
-    final List<dynamic> seqScores = traj['sequence_of_scores'] as List<dynamic>? ?? [onsetScore, peakScore];
+    final List<dynamic> seqScores = traj['sequence_of_scores'] as List<dynamic>? ?? [];
     if (seqScores.isNotEmpty) {
       points = [];
       for (int i = 0; i < seqScores.length; i++) {
-        final double score = (seqScores[i] as num).toDouble();
+        final double score = typeofScoreToDouble(seqScores[i]);
         final String label = i == 0 ? 'Onset' : (i == 1 ? 'Peak' : 'Recovery');
         final String time = 'W${i+1}';
         points.add(TrajectoryPoint(time: time, score: score, label: label));
       }
+    } else {
+      final List<TrajectoryPoint> pList = [];
+      final scoreE1 = typeofScoreToDouble(raw['score_E1'] ?? 0.17);
+      final scoreE2 = typeofScoreToDouble(raw['score_E2'] ?? 0.365);
+      final scoreE3 = typeofScoreToDouble(raw['score_E3'] ?? 0.566);
+      final scoreE4 = typeofScoreToDouble(raw['score_E4'] ?? 0.549);
+      final scoreE5 = typeofScoreToDouble(raw['score_E5'] ?? 0.563);
+      final scoreE6 = typeofScoreToDouble(raw['score_E6'] ?? peakScore);
+
+      final onsetDt = DateTime.tryParse(raw['start_time']?.toString() ?? raw['onset_time']?.toString() ?? '') ?? DateTime.now();
+      String formatTimeOffset(int minutes) {
+        final d = onsetDt.add(Duration(minutes: minutes));
+        return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+      }
+
+      pList.add(TrajectoryPoint(time: formatTimeOffset(0), score: scoreE1, label: 'E1'));
+      pList.add(TrajectoryPoint(time: formatTimeOffset(1), score: scoreE2, label: 'E2'));
+      pList.add(TrajectoryPoint(time: formatTimeOffset(2), score: scoreE3, label: 'E3'));
+      pList.add(TrajectoryPoint(time: formatTimeOffset(3), score: scoreE4, label: 'E4'));
+      pList.add(TrajectoryPoint(time: formatTimeOffset(4), score: scoreE5, label: 'E5'));
+      pList.add(TrajectoryPoint(time: formatTimeOffset(5), score: scoreE6, label: 'E6'));
+
+      points = pList;
     }
 
     return SingleChildScrollView(

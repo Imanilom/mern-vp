@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' show sqrt;
+import 'dart:math' show sqrt, sin, Random;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:polar/polar.dart';
@@ -241,7 +241,78 @@ class BleService extends ChangeNotifier {
 
   // ─── Disconnect ───────────────────────────────────────────────────────────────
 
+  Timer? _simulatedTimer;
+  bool isSimulated = false;
+
+  void enableSimulationMode() {
+    _stopStreams();
+    _simulatedTimer?.cancel();
+
+    isSimulated = true;
+    isConnected = true;
+    deviceName = "Polar H10 (Emulator Simulation)";
+    _deviceId = "EMULATOR-POLAR-H10";
+    batteryLevel = 95;
+    signalQuality = 98;
+
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('device_id', _deviceId);
+    });
+
+    const double hrBase = 72.0;
+    int tickCount = 0;
+    final random = Random();
+
+    _simulatedTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+      tickCount++;
+      // Sine wave oscillation for subtle natural heart rate variability & riak naik turun
+      final hrDelta = (3.5 * sin(tickCount * 0.25)) + ((random.nextDouble() - 0.5) * 1.5);
+      final currentHr = (hrBase + hrDelta).round().clamp(55, 130);
+      final currentRr = (60000.0 / currentHr + ((random.nextDouble() - 0.5) * 20)).round();
+
+      _rrList.add(currentRr);
+      if (_rrList.length > 30) _rrList.removeAt(0);
+
+      final rmssd = _calculateRmssd();
+      final dfa = _estimateDfa();
+
+      _lastAccX = (random.nextDouble() * 0.05).clamp(0.0, 0.1);
+      _lastAccY = (random.nextDouble() * 0.05).clamp(0.0, 0.1);
+      _lastAccZ = 0.98 + (random.nextDouble() * 0.04 - 0.02);
+      _lastEcg = 0.05 + (sin(tickCount * 1.0) * 0.15);
+
+      final reading = SensorReading(
+        timestamp: DateTime.now(),
+        heartRate: currentHr,
+        rrInterval: currentRr,
+        rmssd: double.parse(rmssd.toStringAsFixed(1)),
+        dfaAlpha1: double.parse(dfa.toStringAsFixed(3)),
+        signalQuality: signalQuality,
+        battery: batteryLevel,
+        motionState: motionState,
+        accX: double.parse(_lastAccX.toStringAsFixed(4)),
+        accY: double.parse(_lastAccY.toStringAsFixed(4)),
+        accZ: double.parse(_lastAccZ.toStringAsFixed(4)),
+        ecg: double.parse(_lastEcg.toStringAsFixed(4)),
+        stepCount: tickCount * 2,
+      );
+
+      _readingController.add(reading);
+    });
+
+    if (!_isDisposed) notifyListeners();
+  }
+
+  void disableSimulationMode() {
+    _simulatedTimer?.cancel();
+    _simulatedTimer = null;
+    isSimulated = false;
+    disconnect();
+  }
+
   void _stopStreams() {
+    _simulatedTimer?.cancel();
+    _simulatedTimer = null;
     _hrSub?.cancel();  _hrSub  = null;
     _ecgSub?.cancel(); _ecgSub = null;
     _accSub?.cancel(); _accSub = null;

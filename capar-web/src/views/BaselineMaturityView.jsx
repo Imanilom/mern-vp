@@ -133,26 +133,26 @@ export const BaselineMaturityView = ({ participantId }) => {
                 baselineData.map((b, idx) => {
                   const isMature = b.is_mature || b.maturity_detail?.level === 'mature' || b.segment_count >= 30;
                   const isProv = b.maturity_detail?.level === 'provisional' || (b.segment_count >= 15 && b.segment_count < 30);
-                  const hrMean = b.stats?.hr_mean?.mean ?? b.stats?.mean_hr?.mean ?? 67.18;
-                  const hrSd = b.stats?.hr_mean?.std ?? b.stats?.mean_hr?.std ?? 2.12;
-                  const rmssdMean = b.stats?.rmssd?.mean ?? 35.68;
-                  const rmssdSd = b.stats?.rmssd?.std ?? 4.15;
-                  const sdnnMean = b.stats?.sdnn?.mean ?? 48.18;
-                  const sdnnSd = b.stats?.sdnn?.std ?? 5.10;
-                  const dfaMean = b.stats?.dfa_alpha1?.mean ?? 0.9929;
-                  const dfaSd = b.stats?.dfa_alpha1?.std ?? 0.08;
+                  const hrMean = b.stats?.hr_mean?.mean ?? b.stats?.mean_hr?.mean ?? 0.0;
+                  const hrSd = b.stats?.hr_mean?.std ?? b.stats?.mean_hr?.std ?? 0.0;
+                  const rmssdMean = b.stats?.rmssd?.mean ?? 0.0;
+                  const rmssdSd = b.stats?.rmssd?.std ?? 0.0;
+                  const sdnnMean = b.stats?.sdnn?.mean ?? 0.0;
+                  const sdnnSd = b.stats?.sdnn?.std ?? 0.0;
+                  const dfaMean = b.stats?.dfa_alpha1?.mean ?? 0.0;
+                  const dfaSd = b.stats?.dfa_alpha1?.std ?? 0.0;
                   const winCount = b.segment_count || 0;
                   const daysCount = b.maturity_detail?.distinct_days || (winCount >= 30 ? 3 : 1);
-                  const qSig = b.maturity_detail?.q_signal ?? 0.96;
-                  const bq = b.maturity_detail?.bq ?? 0.91;
+                  const qSig = b.maturity_detail?.q_signal ?? 0.0;
+                  const bq = b.maturity_detail?.bq ?? 0.0;
                   const tauIn = b.learned_tau?.tau_in ?? 1.86;
 
                   // 3-Day Coverage Auto Frozen Governance Logic
                   const is3DayCoverage = daysCount >= 3 || winCount >= 30;
                   const isFrozen = b.is_frozen || is3DayCoverage;
 
-                  const activeSinceDate = b.active_since || b.createdAt || new Date(Date.now() - (3 * 24 * 60 * 60 * 1000)).toISOString();
-                  const activeSinceStr = new Date(activeSinceDate).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+                  const activeSinceDate = b.active_since || b.createdAt;
+                  const activeSinceStr = activeSinceDate ? new Date(activeSinceDate).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB' : '-';
 
                   return (
                     <tr 
@@ -286,36 +286,12 @@ export const BaselineMaturityView = ({ participantId }) => {
                 </tr>
               </thead>
               <tbody>
-                {(sourceWindows.length === 0 ? (
-                  Array.from({ length: Math.min(30, activeBaseline.segment_count || 15) }, (_, i) => {
-                    const winNum = i + 1;
-                    const sampleStart = i * 60 + 1;
-                    const sampleEnd = (i + 1) * 60;
-                    const now = Date.now();
-                    const tsDate = new Date(now - (30 - winNum) * 2 * 60 * 1000);
-                    const timestampFormatted = tsDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
-                    
-                    const isNoiseOrOutlier = winNum === 7 || winNum === 22;
-                    const artifactPct = isNoiseOrOutlier ? 18.4 : Number((Math.random() * 3.5 + 1.2).toFixed(1));
-                    const missingPct = isNoiseOrOutlier ? 12.0 : Number((Math.random() * 2.0 + 0.5).toFixed(1));
-                    const cleanPct = Number((100 - artifactPct - missingPct).toFixed(1));
-                    const qSig = Number((cleanPct / 100).toFixed(2));
-                    const includedInDistribution = !isNoiseOrOutlier && cleanPct >= 85.0;
-
-                    return {
-                      wid: `WIN-${String(winNum).padStart(3, '0')}`,
-                      winNum,
-                      sampleRange: `Sampel #${sampleStart} - #${sampleEnd}`,
-                      timestampFormatted,
-                      context: activeBaseline.activity || 'sitting',
-                      artifactPct,
-                      missingPct,
-                      cleanPct,
-                      qSig,
-                      includedInDistribution,
-                      reasons: isNoiseOrOutlier ? 'Noise gerakan > 10% & Outlier SD > 3.0' : 'Sinyal bersih'
-                    };
-                  })
+                {sourceWindows.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--gray)' }}>
+                      Belum ada data window segmen terverifikasi untuk model baseline ini di MongoDB.
+                    </td>
+                  </tr>
                 ) : (
                   sourceWindows.map((win, i) => {
                     const winNum = i + 1;
@@ -337,50 +313,38 @@ export const BaselineMaturityView = ({ participantId }) => {
 
                     const includedInDistribution = win.is_valid !== false && cleanPct >= 85.0;
 
-                    return {
-                      wid,
-                      winNum,
-                      sampleRange: `Sampel #${sampleStart} - #${sampleEnd}`,
-                      timestampFormatted: displayTs,
-                      context: ctx,
-                      artifactPct,
-                      missingPct,
-                      cleanPct,
-                      qSig,
-                      includedInDistribution,
-                      reasons: includedInDistribution ? 'Sinyal bersih' : 'Terkontaminasi noise'
-                    };
+                    return (
+                      <tr key={wid}>
+                        <td className="mono" style={{ fontSize: 11, fontWeight: 700, color: 'var(--navy)' }}>
+                          <div>Window #{winNum}</div>
+                          <div style={{ fontSize: 9.5, color: 'var(--gray)', fontWeight: 400 }}>{wid}</div>
+                        </td>
+                        <td className="mono" style={{ fontSize: 11, fontWeight: 600 }}>Sampel #{sampleStart} - #{sampleEnd}</td>
+                        <td className="mono" style={{ fontSize: 11 }}>{displayTs}</td>
+                        <td style={{ textTransform: 'capitalize', fontWeight: 600 }}>{ctx}</td>
+                        <td>
+                          <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 700 }}>
+                            Clean: {cleanPct}% (Q_sig: {qSig})
+                          </div>
+                          <div style={{ fontSize: 10, color: artifactPct > 5 ? '#E53935' : 'var(--gray)' }}>
+                            Noise: {artifactPct}% · Drop: {missingPct}%
+                          </div>
+                        </td>
+                        <td>
+                          {includedInDistribution ? (
+                            <span className="badge bg-success text-white px-2 py-1" style={{ fontSize: 10.5 }}>
+                              ✓ Masuk Distribusi Baseline (|Z| ≤ 3.0)
+                            </span>
+                          ) : (
+                            <span className="badge bg-danger text-white px-2 py-1" style={{ fontSize: 10.5 }}>
+                              ✕ Dikeluarkan dari Distribusi (Terkontaminasi noise)
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
                   })
-                )).map((row) => (
-                  <tr key={row.wid}>
-                    <td className="mono" style={{ fontSize: 11, fontWeight: 700, color: 'var(--navy)' }}>
-                      <div>Window #{row.winNum}</div>
-                      <div style={{ fontSize: 9.5, color: 'var(--gray)', fontWeight: 400 }}>{row.wid}</div>
-                    </td>
-                    <td className="mono" style={{ fontSize: 11, fontWeight: 600 }}>{row.sampleRange}</td>
-                    <td className="mono" style={{ fontSize: 11 }}>{row.timestampFormatted}</td>
-                    <td style={{ textTransform: 'capitalize', fontWeight: 600 }}>{row.context}</td>
-                    <td>
-                      <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 700 }}>
-                        Clean: {row.cleanPct}% (Q_sig: {row.qSig})
-                      </div>
-                      <div style={{ fontSize: 10, color: row.artifactPct > 5 ? '#E53935' : 'var(--gray)' }}>
-                        Noise: {row.artifactPct}% · Drop: {row.missingPct}%
-                      </div>
-                    </td>
-                    <td>
-                      {row.includedInDistribution ? (
-                        <span className="badge bg-success text-white px-2 py-1" style={{ fontSize: 10.5 }}>
-                          ✓ Masuk Distribusi Baseline (|Z| ≤ 3.0)
-                        </span>
-                      ) : (
-                        <span className="badge bg-danger text-white px-2 py-1" style={{ fontSize: 10.5 }}>
-                          ✕ Dikeluarkan dari Distribusi ({row.reasons})
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

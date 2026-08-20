@@ -24,6 +24,7 @@ import {
   runRRAnalysisPipeline,
   getEpisodeAnalysis,
   createEpisodeAnalysis,
+  triggerEpisodeAnalysisGeneration,
   saveEmaResponse,
   getStreamingSignalQualityStats,
   getCandidateAndPersistentEpisodes,
@@ -121,6 +122,9 @@ router.get('/episode-analysis/:userId', verifyToken, resolveUserIdParam, getEpis
 
 /** POST /api/analysis/episode-analysis — create a detailed episode evaluation */
 router.post('/episode-analysis', verifyToken, createEpisodeAnalysis);
+
+/** POST /api/analysis/episode-analysis/generate — sinkronisasi AnomalyEvent ke EpisodeAnalysis */
+router.post('/episode-analysis/generate', verifyToken, triggerEpisodeAnalysisGeneration);
 
 /** POST /api/analysis/ema — Simpan respon EMA 1-4 ke MongoDB */
 router.post('/ema', verifyToken, async (req, res) => {
