@@ -386,7 +386,7 @@ function mapClassificationToSegmentEnum(cls) {
               hr: sm.hr,
               rr: sm.rr,
               rrms: sm.rrms || sm.rr,
-              activity: mapActivityToIndonesian(activity),
+              activity: mapActivityToIndonesian(rawActivity),
               device_id: user.current_device || sm.deviceId || 'C0680226',
               processStatus: 'DONE',
               isChecked: true
