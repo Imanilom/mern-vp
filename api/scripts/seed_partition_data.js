@@ -415,12 +415,46 @@ async function run() {
     }
   }
 
-  console.log('\n======================================================');
-  console.log(` DATA PARTITIONING & POLARDATA SEEDING COMPLETE!`);
+  // 6. Generate and print detailed distribution summary table
+  const summaryRows = [];
+  for (const user of users) {
+    const rawCount = await PolarData.countDocuments({ user_id: user._id });
+    const segCount = await Segment.countDocuments({ user_id: user._id });
+    const baseCount = await Baseline.countDocuments({ user_id: user._id });
+
+    const segs = await Segment.find({ user_id: user._id }).lean();
+    const actMap = {};
+    const classMap = {};
+    for (const s of segs) {
+      actMap[s.activity_label] = (actMap[s.activity_label] || 0) + 1;
+      classMap[s.classification] = (classMap[s.classification] || 0) + 1;
+    }
+
+    const actStr = Object.entries(actMap).map(([k, v]) => `${k}:${v}`).join(', ') || '-';
+    const classStr = Object.entries(classMap).map(([k, v]) => `${k}:${v}`).join(', ') || '-';
+
+    summaryRows.push({
+      'User ID': user._id.toString().substring(0, 8) + '...',
+      'Nama User': user.name,
+      'Email': user.email,
+      'PolarData (Samples)': rawCount,
+      'Segmen (1-Min)': segCount,
+      'Model Baseline': baseCount,
+      'Sebaran Aktivitas': actStr,
+      'Klasifikasi Segmentasi': classStr
+    });
+  }
+
+  console.log('\n====================================================================================================');
+  console.log('                            TABEL AUDIT DISTRIBUSI DATA USER & BASELINE                             ');
+  console.log('====================================================================================================');
+  console.table(summaryRows);
+  console.log('====================================================================================================\n');
+
+  console.log(' DATA PARTITIONING & POLARDATA SEEDING COMPLETE!');
   console.log(` Total Segments Seeded: ${overallSeededSegments}`);
   console.log(` Total PolarData Records Seeded: ${overallSeededPolarData}`);
-  console.log(` Processed Users Count: ${users.length}`);
-  console.log('======================================================\n');
+  console.log(` Processed Users Count: ${users.length}\n`);
 
   await mongoose.disconnect();
   process.exit(0);
