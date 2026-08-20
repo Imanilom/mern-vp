@@ -13,7 +13,7 @@ node_modules
 dist
 dist-ssr
 *.local
-data
+
 graphs
 
 # Editor directories and files
