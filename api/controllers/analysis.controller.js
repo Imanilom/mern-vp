@@ -887,26 +887,42 @@ export async function getCalibrationHistory(req, res) {
 
     const baselines = await Baseline.find(query).sort({ updatedAt: -1 }).lean();
 
-    let history = (baselines || []).map((b, idx) => ({
-      id: b._id ? b._id.toString() : `cal-${idx + 1}`,
-      version: `v${b.version || 1}.${idx + 1}`,
-      timestamp: b.updatedAt ? new Date(b.updatedAt).toISOString() : new Date().toISOString(),
-      activity: b.activity || 'sitting',
-      time_period: b.time_period || 'Morning (08:00 - 12:00)',
-      segment_count: b.segment_count || 30,
-      distinct_days: b.maturity_detail?.distinct_days || 1,
-      quality_score: Math.round((b.maturity_detail?.bq || 0.92) * 100),
-      is_mature: b.is_mature ?? (b.segment_count >= 15),
-      status: b.is_mature ? 'Approved' : 'Provisional',
-      learned_tau: b.learned_tau?.tau_in ? b.learned_tau : { tau_in: 1.86, tau_out: 1.18, tau_normal: 0.75 },
-      hr_mean: Number((b.stats?.mean_hr?.mean || b.stats?.hr_mean?.mean || 68.5).toFixed(1)),
-      rmssd_mean: Number((b.stats?.rmssd?.mean || 35.7).toFixed(1)),
-    }));
+    let history = [];
 
-    if (history.length === 0) {
-      // Agregasi riwayat kalibrasi secara dinamis murni dari segmen riil pengguna
-      const userSegs = await Segment.find(query).sort({ window_start: -1 }).limit(200).lean();
-      
+    if (baselines && baselines.length > 0) {
+      history = baselines.map((b) => {
+        const meanHr = b.stats?.mean_hr?.mean || b.stats?.hr_mean?.mean || null;
+        const meanRmssd = b.stats?.rmssd?.mean || null;
+        const stdHr = b.stats?.mean_hr?.std || 2.5;
+
+        const tauIn = b.learned_tau?.tau_in ?? Number((1.5 + stdHr * 0.08).toFixed(2));
+        const tauOut = b.learned_tau?.tau_out ?? Number((1.0 + stdHr * 0.04).toFixed(2));
+        const tauNorm = b.learned_tau?.tau_normal ?? 0.75;
+
+        return {
+          id: b._id ? b._id.toString() : `cal-${b.activity}`,
+          version: `v${b.version || 1}.0`,
+          timestamp: b.updatedAt ? new Date(b.updatedAt).toISOString() : new Date().toISOString(),
+          activity: b.activity || 'sitting',
+          time_period: b.time_period || 'sirkadian',
+          segment_count: b.segment_count || 0,
+          distinct_days: b.maturity_detail?.distinct_days || 1,
+          quality_score: Math.round((b.maturity_detail?.bq || 0.90) * 100),
+          is_mature: b.is_mature ?? (b.segment_count >= 15),
+          status: b.is_mature ? 'Approved' : 'Provisional',
+          learned_tau: {
+            tau_in: tauIn,
+            tau_out: tauOut,
+            tau_normal: tauNorm,
+          },
+          hr_mean: meanHr !== null ? Number(meanHr.toFixed(1)) : null,
+          rmssd_mean: meanRmssd !== null ? Number(meanRmssd.toFixed(1)) : null,
+        };
+      });
+    } else {
+      // Agregasi riwayat kalibrasi secara dinamis murni dari segmen riil pengguna di MongoDB
+      const userSegs = await Segment.find(query).sort({ window_start: -1 }).limit(500).lean();
+
       if (userSegs.length > 0) {
         const activityGroups = {};
         userSegs.forEach(seg => {
@@ -915,26 +931,49 @@ export async function getCalibrationHistory(req, res) {
           activityGroups[act].push(seg);
         });
 
-        history = Object.entries(activityGroups).map(([act, segList], idx) => {
+        history = Object.entries(activityGroups).map(([act, segList]) => {
           const count = segList.length;
-          const hrAvg = segList.reduce((acc, s) => acc + (s.features?.mean_hr || 70), 0) / count;
-          const rmssdAvg = segList.reduce((acc, s) => acc + (s.features?.rmssd || 35), 0) / count;
+
+          // Compute real mean & variance for HR & RMSSD
+          const hrVals = segList.map(s => s.features?.mean_hr).filter(v => typeof v === 'number' && v > 0);
+          const rmssdVals = segList.map(s => s.features?.rmssd).filter(v => typeof v === 'number' && v > 0);
+
+          const hrAvg = hrVals.length > 0 ? (hrVals.reduce((a, b) => a + b, 0) / hrVals.length) : null;
+          const rmssdAvg = rmssdVals.length > 0 ? (rmssdVals.reduce((a, b) => a + b, 0) / rmssdVals.length) : null;
+
+          // Compute variance/std for real dynamic tau
+          let stdHr = 2.5;
+          if (hrVals.length > 1 && hrAvg !== null) {
+            const variance = hrVals.reduce((sum, v) => sum + Math.pow(v - hrAvg, 2), 0) / hrVals.length;
+            stdHr = Math.sqrt(variance);
+          }
+
+          const tauIn = Number((1.5 + stdHr * 0.08).toFixed(2));
+          const tauOut = Number((1.0 + stdHr * 0.04).toFixed(2));
+          const tauNorm = 0.75;
           const isMature = count >= 15;
 
+          // Count distinct days
+          const daysSet = new Set();
+          segList.forEach(s => {
+            if (s.window_start) daysSet.add(new Date(s.window_start).toISOString().substring(0, 10));
+          });
+          const distinctDays = Math.max(1, daysSet.size);
+
           return {
-            id: `cal-user-${idx + 1}`,
-            version: `v1.${idx + 1}`,
+            id: `cal-real-${act}`,
+            version: 'v1.0',
             timestamp: segList[0].window_start ? new Date(segList[0].window_start).toISOString() : new Date().toISOString(),
             activity: act,
             time_period: 'Per-Individu (Real Stream)',
             segment_count: count,
-            distinct_days: 1,
-            quality_score: Math.min(98, 70 + count),
+            distinct_days: distinctDays,
+            quality_score: Math.min(98, Math.max(60, 65 + count)),
             is_mature: isMature,
             status: isMature ? 'Approved' : 'Provisional',
-            learned_tau: { tau_in: 1.85, tau_out: 1.15, tau_normal: 0.75 },
-            hr_mean: Number(hrAvg.toFixed(1)),
-            rmssd_mean: Number(rmssdAvg.toFixed(1)),
+            learned_tau: { tau_in: tauIn, tau_out: tauOut, tau_normal: tauNorm },
+            hr_mean: hrAvg !== null ? Number(hrAvg.toFixed(1)) : null,
+            rmssd_mean: rmssdAvg !== null ? Number(rmssdAvg.toFixed(1)) : null,
           };
         });
       }
