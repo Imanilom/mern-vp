@@ -30,8 +30,8 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
 
     Promise.all([
       api.getFullMetrics ? api.getFullMetrics(fetchId).catch(() => null) : Promise.resolve(null),
-      api.getRecentEvents(fetchId !== 'ALL' ? fetchId : undefined, 20).catch(() => []),
-      api.getEpisodeAnalysis(fetchId !== 'ALL' ? fetchId : undefined).catch(() => []),
+      api.getRecentEvents(fetchId, 20).catch(() => []),
+      api.getEpisodeAnalysis(fetchId).catch(() => []),
       api.getPredictionEvalBrier ? api.getPredictionEvalBrier(fetchId, horizonNum).catch(() => null) : Promise.resolve(null)
     ]).then(([metricData, eventsData, epAnalysisData, brierData]) => {
       setMetrics(metricData);
