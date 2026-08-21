@@ -1844,19 +1844,24 @@ export async function getEpisodeAnalysis(req, res) {
     }
     const { limit = 50 } = req.query;
 
-    const query = (userId && userId !== 'ALL' && userId !== '000000000000000000000000') ? { user_id: userId } : {};
+    const isFiltered = userId !== 'ALL' && userId !== '000000000000000000000000';
+    const query = isFiltered
+      ? (mongoose.Types.ObjectId.isValid(userId) ? { user_id: new mongoose.Types.ObjectId(userId) } : { user_id: userId })
+      : {};
 
-    // Auto-sync AnomalyEvent records to EpisodeAnalysis collection
-    await syncAndGenerateEpisodeAnalyses(userId).catch(() => null);
+    // Only auto-sync for specific users (not for ALL — too expensive)
+    if (isFiltered) {
+      await syncAndGenerateEpisodeAnalyses(userId).catch(() => null);
+    }
 
     let records = await EpisodeAnalysis.find(query)
       .sort({ start_time: -1 })
       .limit(parseInt(limit, 10))
-      .populate('episode_id')
       .lean();
 
     res.json({ success: true, data: records, count: records.length });
   } catch (err) {
+    console.error('[getEpisodeAnalysis] Error:', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 }
