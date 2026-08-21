@@ -682,25 +682,42 @@ export async function getActivityContext(req, res) {
 export async function getUserBaselines(userId) {
   const query = {};
   if (userId && userId !== 'ALL' && userId !== '000000000000000000000000') {
-    query.user_id = userId;
+    const objId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : null;
+    query.user_id = objId || userId;
   }
 
   let list = await Baseline.find(query)
+    .populate('user_id', 'name email role current_device docter')
     .sort({ last_updated: -1 })
     .select('-stats.mean_hr.M2 -stats.mean_rr.M2 -stats.sdnn.M2 -stats.rmssd.M2')
     .lean();
 
   if (list && list.length > 0) {
-    return list;
+    return list.map(b => {
+      const u = b.user_id && typeof b.user_id === 'object' ? b.user_id : null;
+      const uName = u?.name || u?.email || (b.user_id?.toString() || 'Dokter Sp.JP (Reviewer Klinis)');
+      return {
+        ...b,
+        user_id: u ? u._id.toString() : (b.user_id ? b.user_id.toString() : userId),
+        user_name: uName,
+        participant_name: uName,
+        user_email: u?.email || '',
+        device_id: u?.current_device || '-',
+      };
+    });
   }
 
   // Aggregate from Segment collection if Baseline collection is empty
   const segQuery = {};
   if (userId && userId !== 'ALL' && userId !== '000000000000000000000000') {
-    segQuery.user_id = userId;
+    const objId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : null;
+    segQuery.user_id = objId || userId;
   }
 
-  const segments = await Segment.find(segQuery).sort({ window_start: -1 }).lean();
+  const segments = await Segment.find(segQuery)
+    .populate('user_id', 'name email role current_device')
+    .sort({ window_start: -1 })
+    .lean();
 
   if (!segments || segments.length === 0) {
     return [];
@@ -714,6 +731,8 @@ export async function getUserBaselines(userId) {
   });
 
   const generatedBaselines = Object.entries(grouped).map(([act, segs], idx) => {
+    const u = segs[0].user_id && typeof segs[0].user_id === 'object' ? segs[0].user_id : null;
+    const uName = u?.name || u?.email || (userId !== 'ALL' ? userId : 'Dokter Sp.JP (Reviewer Klinis)');
     const count = segs.length;
     const hrs = segs.map(s => s.features?.mean_hr).filter(Boolean);
     const rmssds = segs.map(s => s.features?.rmssd).filter(Boolean);
@@ -742,7 +761,10 @@ export async function getUserBaselines(userId) {
 
     return {
       _id: `generated-base-${act}-${idx}`,
-      user_id: userId,
+      user_id: u ? u._id.toString() : userId,
+      user_name: uName,
+      participant_name: uName,
+      user_email: u?.email || '',
       activity: act,
       time_period: act === 'sitting' ? 'Morning (08:00 - 12:00)' : (act === 'standing' ? 'Afternoon (12:00 - 17:00)' : 'Evening (17:00 - 21:00)'),
       segment_count: count,

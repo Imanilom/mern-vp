@@ -11,13 +11,16 @@ export const BaselineMaturityView = ({ participantId }) => {
 
   const targetUserId = participantId && participantId !== 'ALL' ? participantId : 'ALL';
 
+  const [userMap, setUserMap] = useState({});
+
   const loadBaselines = () => {
     setLoading(true);
     Promise.all([
       api.getUserBaselines(targetUserId).catch(() => []),
       api.getRRBaseline(targetUserId).catch(() => []),
-      api.getRRSegments ? api.getRRSegments(targetUserId, 50).catch(() => []) : Promise.resolve([])
-    ]).then(([userBasesRes, rrBasesRes, segmentsRes]) => {
+      api.getRRSegments ? api.getRRSegments(targetUserId, 50).catch(() => []) : Promise.resolve([]),
+      api.fetchAllPatients().catch(() => [])
+    ]).then(([userBasesRes, rrBasesRes, segmentsRes, patientsRes]) => {
       let combined = [];
       const userBases = Array.isArray(userBasesRes) ? userBasesRes : (userBasesRes?.data || []);
       const rrBases = Array.isArray(rrBasesRes) ? rrBasesRes : (rrBasesRes?.data || []);
@@ -26,6 +29,13 @@ export const BaselineMaturityView = ({ participantId }) => {
       else if (rrBases.length > 0) combined = rrBases;
       
       setBaselineData(combined);
+
+      const map = {};
+      (patientsRes || []).forEach(p => {
+        const uid = p.guid || p._id || p.id;
+        if (uid) map[uid] = p.name || p.email;
+      });
+      setUserMap(map);
 
       const segList = Array.isArray(segmentsRes) ? segmentsRes : (segmentsRes?.data || segmentsRes?.segments || []);
       setSourceWindows(segList);
@@ -161,7 +171,7 @@ export const BaselineMaturityView = ({ participantId }) => {
                       style={{ cursor: 'pointer', background: selectedBaselineIdx === idx ? 'var(--gray-soft)' : 'transparent' }}
                     >
                       <td className="mono" style={{ fontWeight: 700, fontSize: 11, color: 'var(--navy)' }}>
-                        <div>{b.user_name || b.participant_name || (b.user_id && b.user_id.length > 20 ? 'Dokter Sp.JP (Reviewer Klinis)' : b.user_id) || 'Peserta Baseline'}</div>
+                        <div>{userMap[b.user_id] || b.user_name || b.participant_name || (b.user_id === '675ba1e92b8428e4dd641cd0' ? 'Dokter Sp.JP (Reviewer Klinis)' : (b.user_id === '6a7e4fdba6e8c17678a91e90' ? 'Peserta 3' : b.user_id)) || 'Peserta Baseline'}</div>
                         <div style={{ fontSize: 9.5, color: 'var(--gray)', fontWeight: 400 }}>{b.user_id || b._id?.substring(0, 10) || `BASE-${idx+1}`}</div>
                       </td>
                       <td style={{ textTransform: 'capitalize', fontWeight: 600 }}>
