@@ -524,14 +524,25 @@ export const LiveMonitorView = ({
                       onClick={() => setSelectedParticipant(p)}
                       style={{ cursor: 'pointer', background: selectedParticipant?.id === p.id ? 'var(--gray-soft)' : 'transparent' }}
                     >
-                      <td className="mono fw-bold">{p.id}</td>
+                      <td className="mono fw-bold">
+                        <div>{p.name || p.email || p.id}</div>
+                        {p.id && p.id !== p.name && (
+                          <div style={{ fontSize: 9.5, color: 'var(--gray)', fontWeight: 400 }}>{p.id}</div>
+                        )}
+                      </td>
                       <td><EvidenceBadge state={p.evidenceState} /></td>
                       <td>
-                        {p.physiologicalState === 'paused' || p.evidenceState === 'QUALITY_WARNING' || p.evidenceState === 'INSUFFICIENT_BASELINE' ? (
-                          <span style={{ color: 'var(--gray)' }}>paused</span>
-                        ) : (
-                          <StateBadge state={p.physiologicalState} />
-                        )}
+                        {(() => {
+                          const isPaused = p.physiologicalState === 'paused' || p.evidenceState === 'QUALITY_WARNING' || p.evidenceState === 'INSUFFICIENT_BASELINE';
+                          let stateKey = p.physiologicalState || 'BASELINE_COMPATIBLE';
+                          if (isPaused) {
+                            if (stateKey.includes('PERSISTENT')) stateKey = 'PERSISTENT_PAUSED';
+                            else if (stateKey.includes('DEVIATION') || stateKey.includes('CANDIDATE')) stateKey = 'DEVIATION_PAUSED';
+                            else if (stateKey.includes('RECOVERY')) stateKey = 'RECOVERY_PAUSED';
+                            else stateKey = 'BASELINE_PAUSED';
+                          }
+                          return <StateBadge state={stateKey} />;
+                        })()}
                       </td>
                       <td className="mono">{typeof p.anomalyScore === 'number' ? p.anomalyScore.toFixed(2) : '—'}</td>
                       <td style={{ textTransform: 'capitalize' }}>{p.context || '—'}</td>

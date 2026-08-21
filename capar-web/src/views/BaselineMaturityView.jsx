@@ -161,8 +161,8 @@ export const BaselineMaturityView = ({ participantId }) => {
                       style={{ cursor: 'pointer', background: selectedBaselineIdx === idx ? 'var(--gray-soft)' : 'transparent' }}
                     >
                       <td className="mono" style={{ fontWeight: 700, fontSize: 11, color: 'var(--navy)' }}>
-                        <div>{b.user_id || participantId || 'User_01'}</div>
-                        <div style={{ fontSize: 9.5, color: 'var(--gray)', fontWeight: 400 }}>{b._id?.substring(0, 10) || `BASE-${idx+1}`}</div>
+                        <div>{b.user_name || b.participant_name || (b.user_id && b.user_id.length > 20 ? 'Dokter Sp.JP (Reviewer Klinis)' : b.user_id) || 'Peserta Baseline'}</div>
+                        <div style={{ fontSize: 9.5, color: 'var(--gray)', fontWeight: 400 }}>{b.user_id || b._id?.substring(0, 10) || `BASE-${idx+1}`}</div>
                       </td>
                       <td style={{ textTransform: 'capitalize', fontWeight: 600 }}>
                         <div>{b.activity || 'sitting'}</div>

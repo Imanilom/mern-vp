@@ -8,13 +8,26 @@ export const StateBadge = ({ state }) => {
 
   switch (state) {
     case "BASELINE_COMPATIBLE":
+    case "BASELINE":
       chipClass = "chip-green";
       label = "BASELINE COMPATIBLE";
+      Icon = CheckCircle2;
+      break;
+    case "BASELINE_PAUSED":
+    case "BASELINE_COMPATIBLE_PAUSED":
+      chipClass = "chip-neutral";
+      label = "BASELINE PAUSED";
       Icon = CheckCircle2;
       break;
     case "DEVIATION_CANDIDATE":
       chipClass = "chip-amber";
       label = "DEVIATION CANDIDATE";
+      Icon = Activity;
+      break;
+    case "DEVIATION_PAUSED":
+    case "DEVIATION_CANDIDATE_PAUSED":
+      chipClass = "chip-amber";
+      label = "DEVIATION PAUSED";
       Icon = Activity;
       break;
     case "PERSISTENT_DEVIATION":
@@ -23,9 +36,20 @@ export const StateBadge = ({ state }) => {
       label = "PERSISTENT DEVIATION";
       Icon = AlertTriangle;
       break;
+    case "PERSISTENT_PAUSED":
+    case "PERSISTENT_DEVIATION_PAUSED":
+      chipClass = "chip-red";
+      label = "PERSISTENT PAUSED";
+      Icon = AlertTriangle;
+      break;
     case "RECOVERY":
       chipClass = "chip-purple";
       label = "RECOVERY";
+      Icon = RefreshCw;
+      break;
+    case "RECOVERY_PAUSED":
+      chipClass = "chip-purple";
+      label = "RECOVERY PAUSED";
       Icon = RefreshCw;
       break;
     case "RECOVERED":
