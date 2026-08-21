@@ -203,7 +203,7 @@ export default function MarkovTransitionHeatmap({ participantId = "P00" }) {
 
       {/* Principle Banner */}
       <div style={{ background: 'var(--gray-soft)', padding: '10px 14px', borderRadius: 10, fontSize: 11, color: 'var(--ink)', marginBottom: 16 }}>
-        <b>Catatan Transisi:</b> Angka <i>n</i> di dalam sel matriks di atas adalah <b>jumlah transisi window sinyal 1-menitan ($S_t \rightarrow S_{t+1}$)</b>, sedangkan jumlah sampel episode kejadian anomali terdaftar berjumlah <b>{data.episode_count} episode</b>.
+        <b>Catatan Transisi:</b> Angka <i>n</i> di dalam sel matriks di atas adalah <b>jumlah transisi window sinyal 1-menitan (S<sub>t</sub> &rarr; S<sub>t+1</sub>)</b>, sedangkan jumlah sampel episode kejadian anomali terdaftar berjumlah <b>{data.episode_count} episode</b>.
       </div>
 
       {/* Model Readiness & Metadata Table */}
