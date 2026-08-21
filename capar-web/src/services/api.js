@@ -595,10 +595,15 @@ export const api = {
 
   // --- PREDICTION EVALUATION ROUTES ---
   async getPredictionEvalBrier(userId = 'ALL', horizon = 3) {
-    return axios.get(`/prediction-eval/brier/${userId}?horizon=${horizon}`).then(res => res.data);
+    const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
+    return axios.get(`/analysis/prediction-eval/brier/${target}?horizon=${horizon}`)
+      .catch(() => axios.get(`/prediction-eval/brier/${target}?horizon=${horizon}`))
+      .then(res => res.data);
   },
   async postBrierEvaluation(records, referenceBrier = null) {
-    return axios.post('/prediction-eval/brier', { records, reference_brier: referenceBrier }).then(res => res.data);
+    return axios.post('/analysis/prediction-eval/brier', { records, reference_brier: referenceBrier })
+      .catch(() => axios.post('/prediction-eval/brier', { records, reference_brier: referenceBrier }))
+      .then(res => res.data);
   },
 
   // --- PERSONAL EXPERIENCE MEMORY & GAMIFICATION ---

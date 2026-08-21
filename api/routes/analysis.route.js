@@ -48,7 +48,10 @@ const router = express.Router();
 async function resolveUserIdParam(req, res, next) {
   try {
     const { userId } = req.params;
-    if (!userId || userId.toUpperCase() === 'ALL') return next();
+    if (!userId || userId.toUpperCase() === 'ALL' || userId === 'undefined' || userId === 'null') {
+      req.params.userId = 'ALL';
+      return next();
+    }
 
     let user = null;
     if (mongoose.Types.ObjectId.isValid(userId)) {

@@ -1743,8 +1743,9 @@ async function updateRRPersistence(
  */
 export async function syncAndGenerateEpisodeAnalyses(targetUserId = null) {
   try {
-    const eventQuery = (targetUserId && targetUserId !== 'ALL' && targetUserId !== '000000000000000000000000') 
-      ? { user_id: targetUserId } 
+    const isFiltered = targetUserId && targetUserId !== 'ALL' && targetUserId !== '000000000000000000000000' && targetUserId !== 'undefined' && targetUserId !== 'null';
+    const eventQuery = isFiltered
+      ? (mongoose.Types.ObjectId.isValid(targetUserId) ? { user_id: new mongoose.Types.ObjectId(targetUserId) } : { user_id: targetUserId }) 
       : {};
 
     const events = await AnomalyEvent.find(eventQuery).sort({ onset_time: -1 }).lean();
@@ -1837,13 +1838,16 @@ export async function syncAndGenerateEpisodeAnalyses(targetUserId = null) {
 
 export async function getEpisodeAnalysis(req, res) {
   try {
-    const { userId } = req.params;
+    let { userId } = req.params;
+    if (!userId || userId === 'undefined' || userId === 'null' || userId.toUpperCase() === 'ALL') {
+      userId = 'ALL';
+    }
     const { limit = 50 } = req.query;
 
     const query = (userId && userId !== 'ALL' && userId !== '000000000000000000000000') ? { user_id: userId } : {};
 
     // Auto-sync AnomalyEvent records to EpisodeAnalysis collection
-    await syncAndGenerateEpisodeAnalyses(userId);
+    await syncAndGenerateEpisodeAnalyses(userId).catch(() => null);
 
     let records = await EpisodeAnalysis.find(query)
       .sort({ start_time: -1 })
