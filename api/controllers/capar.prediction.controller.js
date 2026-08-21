@@ -520,11 +520,9 @@ export async function getMarkovModelHandler(req, res) {
 
     // Get current state from latest segment or default
     let currentState = 'BASELINE_COMPATIBLE';
-    if (objId) {
-      const latestSeg = await Segment.findOne({ user_id: objId }).sort({ window_start: -1 }).lean();
-      if (latestSeg?.rr_status) {
-        currentState = markov.normalizeState(latestSeg.rr_status) || 'BASELINE_COMPATIBLE';
-      }
+    const latestSeg = await Segment.findOne(query).sort({ window_start: -1 }).lean();
+    if (latestSeg?.rr_status) {
+      currentState = markov.normalizeState(latestSeg.rr_status) || 'BASELINE_COMPATIBLE';
     }
 
     const prediction = markov.predict(matrix, currentState, horizon);
