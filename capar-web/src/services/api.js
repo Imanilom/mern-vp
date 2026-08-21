@@ -471,7 +471,7 @@ export const api = {
   },
   async getEpisodeAnalysis(userId = 'ALL') {
     const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
-    return axios.get(`/analysis/episode-analysis/${target}`).then(res => Array.isArray(res.data?.data) ? res.data.data : []);
+    return axios.get(`/analysis/episode-analysis/${target}`).then(res => Array.isArray(res.data?.data) ? res.data.data : []).catch(() => []);
   },
   async annotateEvent(eventId, text, timestamp) {
     return axios.post(`/analysis/events/${eventId}/annotate`, { text, timestamp }).then(res => res.data);
@@ -608,7 +608,8 @@ export const api = {
   },
 
   // --- PERSONAL EXPERIENCE MEMORY & GAMIFICATION ---
-  async getPersonalExperience(userId = 'ALL') {
-    return axios.get(`/analysis/experience/${userId}`).then(res => res.data);
+  async getPersonalExperienceByUser(userId = 'ALL') {
+    const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
+    return axios.get(`/analysis/experience/${target}`).then(res => res.data).catch(() => null);
   }
 };

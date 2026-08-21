@@ -16,7 +16,7 @@ export const CohortOverviewView = ({
 
   useEffect(() => {
     setLoadingEpAnalysis(true);
-    const pId = globalParticipantFilter !== 'ALL' ? globalParticipantFilter : undefined;
+    const pId = (globalParticipantFilter && globalParticipantFilter !== 'ALL') ? globalParticipantFilter : 'ALL';
     api.getEpisodeAnalysis(pId)
       .then(data => {
         setEpisodeAnalysisData(Array.isArray(data) ? data : []);

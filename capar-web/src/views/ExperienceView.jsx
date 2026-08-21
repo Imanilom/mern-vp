@@ -30,14 +30,16 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
 
   useEffect(() => {
     let isMounted = true;
-    if (api.getPersonalExperience) {
-      api.getPersonalExperience(participantId)
+    const target = (participantId && participantId !== 'undefined' && participantId !== 'null') ? participantId : 'ALL';
+    const fn = api.getPersonalExperienceByUser || api.getPersonalExperience;
+    if (fn) {
+      fn.call(api, target)
         .then(res => {
           if (isMounted && res?.success && res.data) {
             setExperienceApiData(res.data);
           }
         })
-        .catch(err => console.error('[ExperienceView] getPersonalExperience error:', err.message));
+        .catch(err => console.error('[ExperienceView] getPersonalExperience error:', err?.message));
     }
     return () => { isMounted = false; };
   }, [participantId]);
