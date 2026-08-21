@@ -17,6 +17,8 @@ import { getRecoveryDistribution } from '../utils/capar.thresholds.js';
 import { PersonalMarkovModel } from '../utils/capar.markov.js';
 import Segment from '../models/segment.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
+import User from '../models/user.model.js';
+import Patient from '../models/patient.model.js';
 import mongoose from 'mongoose';
 
 const HORIZON_STEPS = 3; // Default horizon untuk multi-step forecast
@@ -393,18 +395,50 @@ export async function getRecoveryTimeToRecoveredPrediction(req, res) {
  */
 export async function getMarkovModelHandler(req, res) {
   try {
-    const participantId = req.params.participantId || req.params.userId || 'P00';
+    const rawParticipantId = req.params.participantId || req.params.userId || 'P00';
     const horizon = parseInt(req.query.horizon, 10) || 3;
     const alpha = parseFloat(req.query.alpha) || 0.5;
 
     const markov = new PersonalMarkovModel(alpha);
 
-    // Fetch verified/closed episodes from DB for this participant
-    const objId = mongoose.Types.ObjectId.isValid(participantId)
-      ? new mongoose.Types.ObjectId(participantId)
-      : null;
+    // Dynamic resolution of participant ID (ObjectId vs String GUID vs Email vs Name)
+    let query = {};
+    if (rawParticipantId && rawParticipantId.toUpperCase() !== 'ALL' && rawParticipantId !== 'P00' && rawParticipantId !== '000000000000000000000000') {
+      let targetUserId = null;
+      if (mongoose.Types.ObjectId.isValid(rawParticipantId)) {
+        targetUserId = new mongoose.Types.ObjectId(rawParticipantId);
+      } else {
+        const foundUser = await User.findOne({
+          $or: [
+            { guid: rawParticipantId },
+            { email: rawParticipantId },
+            { name: rawParticipantId },
+            { current_device: rawParticipantId }
+          ]
+        }).select('_id').lean();
 
-    const query = objId ? { user_id: objId } : {};
+        if (foundUser) {
+          targetUserId = foundUser._id;
+        } else {
+          const foundPatient = await Patient.findOne({
+            $or: [
+              { guid: rawParticipantId },
+              { name: rawParticipantId }
+            ]
+          }).select('_id').lean();
+
+          if (foundPatient) {
+            targetUserId = foundPatient._id;
+          } else {
+            targetUserId = rawParticipantId;
+          }
+        }
+      }
+
+      if (targetUserId) {
+        query = { user_id: targetUserId };
+      }
+    }
 
     const events = await AnomalyEvent.find(query)
       .populate('segment_ids')
@@ -498,7 +532,7 @@ export async function getMarkovModelHandler(req, res) {
 
     return res.json({
       status: 'READY',
-      participant_id: participantId,
+      participant_id: rawParticipantId,
       episode_count: episodes.length,
       alpha: markov.alpha,
       model: 'Guarded First-Order Personal Markov Model',

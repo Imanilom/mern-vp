@@ -403,12 +403,12 @@ router.get('/recovery-estimate/:userId', verifyToken, resolveUserIdParam, getRec
 router.get('/transitions/:userId', verifyToken, resolveUserIdParam, getPersonalTransitions);
 
 /** GET /api/analysis/markov/:userId & /api/participants/:userId/markov — Guarded Markov Transition Model */
-router.get('/markov/:userId', getMarkovModelHandler);
-router.get('/:userId/markov', getMarkovModelHandler);
-router.get('/participants/:participantId/markov', getMarkovModelHandler);
+router.get('/markov/:userId', resolveUserIdParam, getMarkovModelHandler);
+router.get('/:userId/markov', resolveUserIdParam, getMarkovModelHandler);
+router.get('/participants/:participantId/markov', resolveUserIdParam, getMarkovModelHandler);
 
 /** GET /api/analysis/calibration-history/:userId — Calibration history */
-router.get('/calibration-history/:userId', getCalibrationHistory);
+router.get('/calibration-history/:userId', resolveUserIdParam, getCalibrationHistory);
 
 import { getSignalQuality } from '../controllers/quality.controller.js';
 /** GET /api/analysis/signal-quality/:userId */

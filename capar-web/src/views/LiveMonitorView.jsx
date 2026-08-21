@@ -55,6 +55,7 @@ export const LiveMonitorView = ({
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [rawData, setRawData] = useState(null);
   const [baselineData, setBaselineData] = useState(null);
+  const [participantEvents, setParticipantEvents] = useState(null);
   const [loadingRaw, setLoadingRaw] = useState(false);
   const [liveData, setLiveData] = useState([]);
   const [activeStreamTab, setActiveStreamTab] = useState('hr'); // 'hr' | 'acc' | 'ecg' | 'all'
@@ -67,7 +68,7 @@ export const LiveMonitorView = ({
 
   useEffect(() => {
     if (initialSelectedId && participants.length > 0) {
-      const found = participants.find(p => p.id === initialSelectedId || p._id === initialSelectedId);
+      const found = participants.find(p => p.id === initialSelectedId || p._id === initialSelectedId || p.guid === initialSelectedId);
       if (found) setSelectedParticipant(found);
     }
   }, [initialSelectedId, participants]);
@@ -79,19 +80,22 @@ export const LiveMonitorView = ({
       
       Promise.all([
         api.getRawData(targetId, globalDateFilter || undefined).catch(() => null),
-        api.getRRBaseline(targetId).catch(() => null)
-      ]).then(([rawRes, baselineRes]) => {
+        api.getRRBaseline(targetId).catch(() => null),
+        api.getRecentEvents(targetId).catch(() => null)
+      ]).then(([rawRes, baselineRes, eventsRes]) => {
         setRawData(rawRes);
         if (baselineRes && baselineRes.length > 0) {
            setBaselineData(baselineRes[0]); // Ambil baseline terbaru
         } else {
            setBaselineData(null);
         }
+        setParticipantEvents(eventsRes);
         setLoadingRaw(false);
       });
     } else {
       setRawData(null);
       setBaselineData(null);
+      setParticipantEvents(null);
     }
   }, [selectedParticipant, globalDateFilter]);
 
@@ -346,17 +350,30 @@ export const LiveMonitorView = ({
   };
 
   const filteredParticipants = participants.filter(p => {
-    if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && p.id !== globalParticipantFilter && p._id !== globalParticipantFilter) return false;
+    if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && p.id !== globalParticipantFilter && p._id !== globalParticipantFilter && p.guid !== globalParticipantFilter) return false;
     return true;
   });
 
-  const activeCount = participants.filter(p => p.evidenceState === 'EVALUABLE').length;
+  // Scope participants for stats: if selectedParticipant is chosen, target scope is [selectedParticipant].
+  // If global filter is set (and no local selectedParticipant), target scope is filteredParticipants.
+  // Otherwise target scope is all participants.
+  const targetParticipantsForStats = useMemo(() => {
+    if (selectedParticipant) {
+      return [selectedParticipant];
+    }
+    if (globalParticipantFilter && globalParticipantFilter !== 'ALL') {
+      return filteredParticipants;
+    }
+    return participants;
+  }, [selectedParticipant, globalParticipantFilter, filteredParticipants, participants]);
+
+  const activeCount = targetParticipantsForStats.filter(p => p.evidenceState === 'EVALUABLE').length;
 
   const warningCount = useMemo(() => {
     const fifteenMinsAgo = Date.now() - 15 * 60 * 1000;
     
     // Filter partisipan streaming aktif dalam 15 menit terakhir
-    const activeStreamingParticipants = participants.filter(p => {
+    const activeStreamingParticipants = targetParticipantsForStats.filter(p => {
       if (!p.lastUpdate) return false;
       const lastUpdateTs = new Date(p.lastUpdate).getTime();
       return !isNaN(lastUpdateTs) && lastUpdateTs >= fifteenMinsAgo;
@@ -376,7 +393,7 @@ export const LiveMonitorView = ({
       if (isWarn) count++;
     }
 
-    if (count === 0 && liveData.length > 0) {
+    if (count === 0 && liveData.length > 0 && selectedParticipant) {
       const recentLive15m = liveData.filter(d => {
         const ts = new Date(d.time).getTime();
         return !isNaN(ts) && ts >= fifteenMinsAgo;
@@ -390,13 +407,25 @@ export const LiveMonitorView = ({
     }
 
     return count;
-  }, [participants, liveData]);
+  }, [targetParticipantsForStats, liveData, selectedParticipant]);
 
-  const persistentCount = participants.filter(p => p.physiologicalState === 'PERSISTENT_DEVIATION' || p.status === 'Alert' || p.status === 'PERSISTENT_DEVIATION').length;
-  const candidateCount = participants.filter(p => p.physiologicalState === 'DEVIATION_CANDIDATE' || p.status === 'Caution' || p.status === 'DEVIATION_CANDIDATE').length;
-  const recoveryCount = participants.filter(p => p.physiologicalState === 'RECOVERY' || p.status === 'Recovering' || p.status === 'RECOVERY').length;
+  const persistentCount = targetParticipantsForStats.filter(p => p.physiologicalState === 'PERSISTENT_DEVIATION' || p.status === 'Alert' || p.status === 'PERSISTENT_DEVIATION').length;
+  const candidateCount = targetParticipantsForStats.filter(p => p.physiologicalState === 'DEVIATION_CANDIDATE' || p.status === 'Caution' || p.status === 'DEVIATION_CANDIDATE').length;
+  const recoveryCount = targetParticipantsForStats.filter(p => p.physiologicalState === 'RECOVERY' || p.status === 'Recovering' || p.status === 'RECOVERY').length;
   
-  const totalActiveEpisodes = persistentCount + candidateCount + recoveryCount;
+  const totalActiveEpisodes = useMemo(() => {
+    if (selectedParticipant) {
+      if (participantEvents && typeof participantEvents.open_events === 'number') {
+        return participantEvents.open_events;
+      }
+      if (participantEvents && Array.isArray(participantEvents.data)) {
+        const openEvs = participantEvents.data.filter(e => e.status === 'open' || e.status === 'active');
+        return openEvs.length;
+      }
+      return persistentCount + candidateCount + recoveryCount;
+    }
+    return persistentCount + candidateCount + recoveryCount;
+  }, [selectedParticipant, participantEvents, persistentCount, candidateCount, recoveryCount]);
 
   const latestPt = liveData.length > 0 ? liveData[liveData.length - 1] : null;
 
@@ -407,8 +436,12 @@ export const LiveMonitorView = ({
         <div className="col-3">
           <div className="stat-card">
             <div className="lbl">Connected participants</div>
-            <div className="val" style={{ color: 'var(--teal)' }}>{participants.length}</div>
-            <div className="sub">{activeCount} evaluable · {participants.length - activeCount} paused</div>
+            <div className="val" style={{ color: 'var(--teal)' }}>{targetParticipantsForStats.length}</div>
+            <div className="sub">
+              {selectedParticipant 
+                ? (selectedParticipant.name || selectedParticipant.id) 
+                : `${activeCount} evaluable · ${participants.length - activeCount} paused`}
+            </div>
           </div>
         </div>
         <div className="col-3">
@@ -422,7 +455,11 @@ export const LiveMonitorView = ({
           <div className="stat-card">
             <div className="lbl">Active episodes</div>
             <div className="val" style={{ color: 'var(--red)' }}>{totalActiveEpisodes}</div>
-            <div className="sub">{persistentCount} persistent · {candidateCount} candidate</div>
+            <div className="sub">
+              {selectedParticipant 
+                ? `Participant ${selectedParticipant.name || selectedParticipant.id}` 
+                : `${persistentCount} persistent · ${candidateCount} candidate`}
+            </div>
           </div>
         </div>
         <div className="col-3">
@@ -448,7 +485,15 @@ export const LiveMonitorView = ({
                     </span>
                   )}
                 </div>
-                <button onClick={() => setSelectedParticipant(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--gray)' }}><i className="fa-solid fa-xmark"></i></button>
+                <button 
+                  onClick={() => {
+                    setSelectedParticipant(null);
+                    if (onClearSelection) onClearSelection();
+                  }} 
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--gray)' }}
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
               </div>
               <div className="frame-note mb-2 mt-0">Context: {selectedParticipant.context || 'unknown'} · evidence {selectedParticipant.evidenceState} · {selectedParticipant.device || 'device'}</div>
               
@@ -465,6 +510,12 @@ export const LiveMonitorView = ({
           <div className="col-5">
             <div className="card-panel h-100">
               <div className="mini-label mb-2">Evidence &amp; Filter Quality Assessment</div>
+              <div className="d-flex justify-content-between py-1 border-bottom">
+                <span className="frame-note m-0">Active Episodes</span>
+                <span className="mini-value" style={{ color: totalActiveEpisodes > 0 ? 'var(--red)' : 'var(--green)', fontWeight: 700 }}>
+                  {totalActiveEpisodes} {totalActiveEpisodes === 1 ? 'episode' : 'episodes'} ({selectedParticipant.physiologicalState || 'BASELINE_COMPATIBLE'})
+                </span>
+              </div>
               <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">Data Bagus (Clean %)</span><span className="mini-value" style={{ color: 'var(--green)', fontWeight: 700 }}>94.2%</span></div>
               <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">Artifact Fraction (Noise %)</span><span className="mini-value" style={{ color: '#E53935', fontWeight: 600 }}>3.8%</span></div>
               <div className="d-flex justify-content-between py-1 border-bottom"><span className="frame-note m-0">Missing Value Fraction %</span><span className="mini-value" style={{ color: '#FB8C00', fontWeight: 600 }}>2.0%</span></div>

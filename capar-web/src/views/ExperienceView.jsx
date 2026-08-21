@@ -64,6 +64,33 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
     }
   }, [filteredModels, globalParticipantFilter]);
 
+  const effectiveParticipantId = (globalParticipantFilter && globalParticipantFilter !== 'ALL')
+    ? globalParticipantFilter
+    : (selectedModel?.participantId || selectedModel?.id || (experienceApiData?.participantId || 'ALL'));
+
+  const [selectedActivityContext, setSelectedActivityContext] = useState('all');
+
+  const activeTauIn = useMemo(() => {
+    if (selectedActivityContext !== 'all' && selectedModel?.thresholdByActivity?.[selectedActivityContext]?.tau_in) {
+      return selectedModel.thresholdByActivity[selectedActivityContext].tau_in;
+    }
+    return selectedModel?.adaptiveThresholds?.tauIn ?? '1.86';
+  }, [selectedActivityContext, selectedModel]);
+
+  const activeTauOut = useMemo(() => {
+    if (selectedActivityContext !== 'all' && selectedModel?.thresholdByActivity?.[selectedActivityContext]?.tau_out) {
+      return selectedModel.thresholdByActivity[selectedActivityContext].tau_out;
+    }
+    return selectedModel?.adaptiveThresholds?.tauOut ?? '1.18';
+  }, [selectedActivityContext, selectedModel]);
+
+  const activeTauNormal = useMemo(() => {
+    if (selectedActivityContext !== 'all' && selectedModel?.thresholdByActivity?.[selectedActivityContext]?.tau_normal) {
+      return selectedModel.thresholdByActivity[selectedActivityContext].tau_normal;
+    }
+    return selectedModel?.adaptiveThresholds?.tauNormal ?? '0.75';
+  }, [selectedActivityContext, selectedModel]);
+
   const confScorePct = Math.round((experienceApiData?.confidenceScore ?? selectedModel?.confidenceScore ?? 0.94) * 100);
   const predConfPct = Math.round((experienceApiData?.predictionConfidence ?? selectedModel?.predictionConfidence ?? 0.89) * 100);
 
@@ -380,82 +407,99 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
+      {/* Middle Grid: Markov Heatmap (Left) & Next State Prediction (Right) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginBottom: 24 }}>
         {/* Left: Learned Markov Transition Matrix Heatmap Component */}
         <div>
-          <MarkovTransitionHeatmap participantId={selectedModel?.participantId || selectedModel?.id || (globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'P00')} />
+          <MarkovTransitionHeatmap participantId={effectiveParticipantId} />
         </div>
 
-        {/* Right: Next State Prediction & Adaptive Thresholds */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Right: Next State Prediction */}
+        <div>
           <NextStatePrediction
+            participantId={effectiveParticipantId}
             predictedState={selectedModel?.predictedNextState || 'BASELINE_COMPATIBLE'}
             confidence={selectedModel?.predictionConfidence ?? 0.91}
             horizonWindows={3}
-            probabilities={selectedModel?.probabilities || {
-              BASELINE_COMPATIBLE: 0.91,
-              DEVIATION_CANDIDATE: 0.07,
-              PERSISTENT_DEVIATION: 0.02,
-              RECOVERY_START: 0.0,
-              RECOVERED: 0.0
-            }}
+            probabilities={selectedModel?.probabilities}
           />
-
-        {/* Right: Adaptive Thresholds & Calibration Source */}
-        <div className="card-panel">
-          <div className="mini-label" style={{ marginBottom: 4 }}>Adaptive Personal Thresholds</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--navy)', marginBottom: 14 }}>
-            Threshold Calibration per Participant Context
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--gray-soft)', borderRadius: 8 }}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--navy)' }}>tau_in (Candidate Onset)</div>
-                <div style={{ fontSize: 10.5, color: 'var(--gray)' }}>Personal Q99 deviation percentile</div>
-              </div>
-              <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--red)' }}>
-                {selectedModel?.adaptiveThresholds?.tauIn ?? '1.86'}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--gray-soft)', borderRadius: 8 }}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--navy)' }}>tau_out (Recovery Entry)</div>
-                <div style={{ fontSize: 10.5, color: 'var(--gray)' }}>Personal learned hysteresis boundary</div>
-              </div>
-              <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--amber)' }}>
-                {selectedModel?.adaptiveThresholds?.tauOut ?? '1.18'}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--gray-soft)', borderRadius: 8 }}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--navy)' }}>tau_normal (Baseline Range)</div>
-                <div style={{ fontSize: 10.5, color: 'var(--gray)' }}>Rule config default upper bound</div>
-              </div>
-              <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--green)' }}>
-                {selectedModel?.adaptiveThresholds?.tauNormal ?? '0.75'}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-            <div className="mini-label" style={{ marginBottom: 6 }}>Model Governance &amp; Version</div>
-            <div style={{ fontSize: 11.5, color: 'var(--ink)' }}>
-              <div>Threshold Source: <b className="mono">{selectedModel?.thresholdSource || 'CAPAR Personal Empirical Percentile'}</b></div>
-              <div>Stable Score Memory: <b>{selectedModel?.stableScoreCount ?? 120} windows</b></div>
-              <div>Audit status: <span className="chip-green" style={{ fontSize: 9, padding: '2px 6px' }}>VERSIONED &amp; AUDITED</span></div>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Baseline Calibration History Section */}
-      <div style={{ marginTop: 24 }}>
-        <CalibrationHistoryCard participantId={selectedModel?.participantId || selectedModel?.id || (globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'P00')} />
+      {/* Lower Row: Adaptive Personal Thresholds (Left) & Personal Baseline Governance (Right) */}
+      <div className="row g-3">
+        {/* Left: Adaptive Thresholds & Calibration Context */}
+        <div className="col-md-5">
+          <div className="card-panel h-100">
+            <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+              <div>
+                <div className="mini-label m-0">Adaptive Personal Thresholds</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--navy)' }}>
+                  Threshold Calibration per Context
+                </div>
+              </div>
+              <select
+                className="form-select form-select-sm border-0 bg-light mono"
+                style={{ width: 'auto', fontSize: 11, fontWeight: 700 }}
+                value={selectedActivityContext}
+                onChange={(e) => setSelectedActivityContext(e.target.value)}
+              >
+                <option value="all">Aktivitas: Semuanya (Global)</option>
+                <option value="Rest">Aktivitas: Rest / Istirahat</option>
+                <option value="Light">Aktivitas: Ringan (Light)</option>
+                <option value="Moderate">Aktivitas: Sedang (Moderate)</option>
+                <option value="Intense">Aktivitas: Berat (Intense)</option>
+              </select>
+            </div>
+
+            <div className="d-flex flex-column gap-2 mb-3">
+              <div className="d-flex justify-content-between align-items-center p-2 rounded" style={{ background: 'var(--gray-soft)' }}>
+                <div>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--navy)' }}>tau_in (Candidate Onset)</div>
+                  <div style={{ fontSize: 10, color: 'var(--gray)' }}>Personal Q99 deviation percentile</div>
+                </div>
+                <div className="mono" style={{ fontSize: 16, fontWeight: 800, color: 'var(--red)' }}>
+                  {activeTauIn}
+                </div>
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center p-2 rounded" style={{ background: 'var(--gray-soft)' }}>
+                <div>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--navy)' }}>tau_out (Recovery Entry)</div>
+                  <div style={{ fontSize: 10, color: 'var(--gray)' }}>Personal learned hysteresis boundary</div>
+                </div>
+                <div className="mono" style={{ fontSize: 16, fontWeight: 800, color: 'var(--amber)' }}>
+                  {activeTauOut}
+                </div>
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center p-2 rounded" style={{ background: 'var(--gray-soft)' }}>
+                <div>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--navy)' }}>tau_normal (Baseline Range)</div>
+                  <div style={{ fontSize: 10, color: 'var(--gray)' }}>Rule config default upper bound</div>
+                </div>
+                <div className="mono" style={{ fontSize: 16, fontWeight: 800, color: 'var(--green)' }}>
+                  {activeTauNormal}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+              <div className="mini-label mb-1">Model Governance &amp; Version</div>
+              <div style={{ fontSize: 11, color: 'var(--ink)' }}>
+                <div>Threshold Source: <b className="mono">{selectedModel?.thresholdSource || 'CAPAR Personal Empirical Percentile'}</b></div>
+                <div>Stable Score Memory: <b>{selectedModel?.stableScoreCount ?? 120} windows</b></div>
+                <div>Audit status: <span className="chip-green ms-1" style={{ fontSize: 9, padding: '1px 6px' }}>VERSIONED &amp; AUDITED</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Personal Baseline Governance & History Card */}
+        <div className="col-md-7">
+          <CalibrationHistoryCard participantId={effectiveParticipantId} />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 };

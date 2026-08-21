@@ -1,28 +1,60 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 const STATE_LABEL = {
   BASELINE_COMPATIBLE: "Baseline Compatible",
   DEVIATION_CANDIDATE: "Deviation Candidate",
   PERSISTENT_DEVIATION: "Persistent Deviation",
+  RECOVERY: "Recovery Start",
   RECOVERY_START: "Recovery Start",
-  RECOVERED: "Recovered"
+  RECOVERED: "Recovered",
+  UNRESOLVED: "Unresolved"
 };
 
 const STATE_COLOR = {
   BASELINE_COMPATIBLE: "#10b981",
   DEVIATION_CANDIDATE: "#f59e0b",
   PERSISTENT_DEVIATION: "#ef4444",
+  RECOVERY: "#8b5cf6",
   RECOVERY_START: "#8b5cf6",
-  RECOVERED: "#06b6d4"
+  RECOVERED: "#06b6d4",
+  UNRESOLVED: "#ef4444"
 };
 
 export default function NextStatePrediction({
-  predictedState = "BASELINE_COMPATIBLE",
-  confidence = 0.91,
+  participantId,
+  predictedState: initialPredictedState = "BASELINE_COMPATIBLE",
+  confidence: initialConfidence = 0.91,
   horizonWindows = 3,
   windowMinutes = 5,
-  probabilities = {}
+  probabilities: initialProbabilities = null
 }) {
+  const [forecast, setForecast] = useState(null);
+
+  useEffect(() => {
+    if (!participantId) return;
+    let isMounted = true;
+
+    fetch(`/api/analysis/forecast/${participantId}?horizon=3`)
+      .then(res => res.json())
+      .then(json => {
+        if (isMounted && json?.success && json?.data) {
+          setForecast(json.data);
+        }
+      })
+      .catch(err => console.error("[NextStatePrediction] fetch error:", err));
+
+    return () => { isMounted = false; };
+  }, [participantId]);
+
+  const predictedState = forecast?.predicted_state || (typeof forecast?.most_likely_next === 'object' ? forecast?.most_likely_next?.state : forecast?.most_likely_next) || initialPredictedState;
+  const confidence = forecast?.confidence || (typeof forecast?.most_likely_next === 'object' ? forecast?.most_likely_next?.prob : undefined) || initialConfidence;
+  const probabilities = forecast?.next_state_probabilities || initialProbabilities || {
+    BASELINE_COMPATIBLE: 0.91,
+    DEVIATION_CANDIDATE: 0.07,
+    PERSISTENT_DEVIATION: 0.02,
+    RECOVERY_START: 0.0,
+    RECOVERED: 0.0
+  };
   const horizonMinutes = horizonWindows * windowMinutes;
   const confPct = ((confidence || 0) * 100).toFixed(1);
   const color = STATE_COLOR[predictedState] || "#0d9488";

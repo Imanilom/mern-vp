@@ -263,22 +263,24 @@ export const api = {
             // Forecast mapping from backend
             let nextStatePrediction = 'BASELINE_COMPATIBLE';
             let predictionConfidence = 0;
+            let probabilities = forecastData?.next_state_probabilities || null;
+
             if (forecastData) {
-               if (forecastData.most_likely_next) {
-                  nextStatePrediction = forecastData.most_likely_next;
+               if (typeof forecastData.predicted_state === 'string') {
+                  nextStatePrediction = forecastData.predicted_state;
+               } else if (forecastData.most_likely_next) {
+                  nextStatePrediction = typeof forecastData.most_likely_next === 'object' ? forecastData.most_likely_next.state : forecastData.most_likely_next;
                } else if (forecastData.next_state_probabilities) {
                   const states = Object.keys(forecastData.next_state_probabilities);
                   if (states.length > 0) {
                      nextStatePrediction = states.reduce((a, b) => (forecastData.next_state_probabilities[a] > (forecastData.next_state_probabilities[b] || 0) ? a : b), states[0]);
                   }
-               } else if (forecastData.current_state) {
-                  nextStatePrediction = forecastData.current_state;
                }
 
-               if (forecastData.next_state_probabilities && forecastData.next_state_probabilities[nextStatePrediction] !== undefined) {
+               if (forecastData.confidence !== undefined) {
+                  predictionConfidence = forecastData.confidence;
+               } else if (forecastData.next_state_probabilities && forecastData.next_state_probabilities[nextStatePrediction] !== undefined) {
                   predictionConfidence = forecastData.next_state_probabilities[nextStatePrediction];
-               } else if (forecastData.prediction_confidence !== undefined) {
-                  predictionConfidence = forecastData.prediction_confidence;
                }
             }
 
@@ -301,7 +303,8 @@ export const api = {
                 tauNormal,
               },
               nextStatePrediction,
-              predictionConfidence
+              predictionConfidence,
+              probabilities
             };
           } catch {
             return null;
