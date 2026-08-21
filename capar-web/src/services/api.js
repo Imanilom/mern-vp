@@ -111,7 +111,11 @@ export const api = {
         contextConfidence: user.contextConfidence || 0.95,
         battery: user.battery || 100,
         clockDrift: user.clockDrift,
-        lastUpdate: user.updatedAt ? new Date(user.updatedAt).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : undefined,
+        peakHr: user.peakHr,
+        peakTime: user.peakTime,
+        persistenceWindow: user.persistenceWindow,
+        hrMean: user.hrMean,
+        lastUpdate: user.updatedAt ? new Date(user.updatedAt).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : undefined,
         ...user,
       }));
     } catch (err) {

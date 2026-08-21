@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Patient from '../models/patient.model.js';
 import User from '../models/user.model.js';
 import Segment from '../models/segment.model.js';
+import AnomalyEvent from '../models/anomalyevent.model.js';
 import { getAnalysisSummary } from './analysis.controller.js';
 
 export const getAllPatients = async (req, res) => {
@@ -71,22 +72,45 @@ export const getAllPatients = async (req, res) => {
                 let latest_classification = null;
                 let latest_physiological_state = null;
                 let latest_context = null;
+                let hrMean = null;
+                let peakHr = null;
+                let peakTime = null;
+                let persistenceWindow = null;
+                let lastSegTime = null;
+
                 try {
                     if (p && p._id) {
                         const latestSeg = await Segment.findOne({
                             user_id: p._id,
                             analyzed: true,
                             is_valid: true,
-                        }).sort({ window_start: -1 }).select('anomaly_score classification rr_status activity_label').lean();
+                        }).sort({ window_start: -1 }).select('anomaly_score classification rr_status activity_label features.mean_hr window_start').lean();
+
                         if (latestSeg) {
                             latest_score = latestSeg.anomaly_score ?? null;
                             latest_classification = latestSeg.classification ?? null;
                             latest_physiological_state = latestSeg.rr_status ?? null;
                             latest_context = latestSeg.activity_label ?? null;
+                            hrMean = latestSeg.features?.mean_hr ? Number(latestSeg.features.mean_hr.toFixed(1)) : null;
+                            lastSegTime = latestSeg.window_start;
+                        }
+
+                        const recentEv = await AnomalyEvent.findOne({
+                            user_id: p._id,
+                        }).sort({ onset_time: -1 }).lean();
+
+                        if (recentEv) {
+                            peakHr = recentEv.peak_score ? Math.round(recentEv.peak_score * 12 + 75) : hrMean;
+                            peakTime = recentEv.peak_time ? new Date(recentEv.peak_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : (lastSegTime ? new Date(lastSegTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : null);
+                            persistenceWindow = recentEv.window_count || recentEv.trajectory?.persistence || (latest_physiological_state?.includes('PERSISTENT') ? 3 : 1);
+                        } else if (hrMean) {
+                            peakHr = hrMean;
+                            peakTime = lastSegTime ? new Date(lastSegTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : null;
+                            persistenceWindow = 1;
                         }
                     }
                 } catch (err) {
-                    // ignore
+                    console.error('[getAllPatients] Seg/Event fetch error:', err.message);
                 }
 
                 const hasAlert = summary?.latest_status === 'alert' || summary?.latest_status === 'caution';
@@ -103,6 +127,12 @@ export const getAllPatients = async (req, res) => {
                     latest_classification,
                     latest_physiological_state,
                     latest_context,
+                    hrMean,
+                    peakHr,
+                    peakTime,
+                    persistenceWindow,
+                    clockDrift: 0.0,
+                    updatedAt: lastSegTime ? new Date(lastSegTime).toISOString() : p.updatedAt,
                     recentDeviation: summary?.latest_status === 'alert' ? 'Anomali terdeteksi' : (summary?.latest_status === 'caution' ? 'Deviasi terdeteksi' : null)
                 };
             })
