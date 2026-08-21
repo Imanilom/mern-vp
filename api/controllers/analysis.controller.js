@@ -60,6 +60,7 @@ import {
   classifyRR,
   updateTemporalState,
   createTemporalState,
+  touchTemporalState,
   buildBaselineUpdateFields,
 } from '../utils/rrBaselinePipeline.js';
 
@@ -273,6 +274,9 @@ async function analyzeUser(userId) {
         }
 
         if (score === null) {
+          if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
+          touchTemporalState(temporalStates[activity], seg.window_start);
+
           // Tetap tidak bisa dinilai
           const updateFields = buildBaselineUpdateFields(
             baseline, features, { accepted: true, q_signal: 1, q_complete: 1, q_context: 1 }, seg.window_start, true
@@ -306,7 +310,7 @@ async function analyzeUser(userId) {
       if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
       
       let { rr_status, safe_to_update } = updateTemporalState(
-        temporalStates[activity], score, maturityLevel, learnedTau
+        temporalStates[activity], score, maturityLevel, learnedTau, seg.window_start
       );
 
       const prevRrStatus = temporalStates[activity]._prev_status || 'INSUFFICIENT_BASELINE';
@@ -343,7 +347,7 @@ async function analyzeUser(userId) {
       await recordStateTransition(userId, activity, prevRrStatus, rr_status);
 
       // 7. Update Event
-      const classification = classifyRR(score, maturityLevel);
+      const classification = classifyRR(score, maturityLevel, learnedTau);
       const eventCreated = await updateRRPersistence(
         userId, seg, score, classification, rrZScores, rr_status,
         persistenceState, activity
@@ -1353,6 +1357,9 @@ async function analyzeOneMinuteUser(userId) {
       };
 
       if (!quality.accepted) {
+        if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
+        touchTemporalState(temporalStates[activity], seg.window_start);
+
         bulkOps.push({
           updateOne: {
             filter: { _id: seg._id },
@@ -1381,6 +1388,9 @@ async function analyzeOneMinuteUser(userId) {
 
       // Jika skor null → baseline belum cukup
       if (score === null) {
+        if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
+        touchTemporalState(temporalStates[activity], seg.window_start);
+
         // Coba PROVISIONAL branch jika data > 5 segments
         if (baseline.segment_count >= 5) {
           const prov = computeProvisionalScore(features, baseline, activity);
@@ -1427,15 +1437,14 @@ async function analyzeOneMinuteUser(userId) {
         }
       }
 
-      // 6. Klasifikasi menggunakan dynamic threshold (per maturity level)
-      //    Untuk provisional, gunakan threshold yang sesuai (misal 2.5)
-      const classification = classifyRR(score, maturityLevel);
+      // 6. Klasifikasi menggunakan dynamic threshold / tau personal
+      const classification = classifyRR(score, maturityLevel, learnedTau);
 
       // 7. Temporal state machine (9-state) — dengan tau personal (CAPAR Section 8)
       if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
       
       let { rr_status, safe_to_update } = updateTemporalState(
-        temporalStates[activity], score, maturityLevel, learnedTau
+        temporalStates[activity], score, maturityLevel, learnedTau, seg.window_start
       );
 
       // Track previous status untuk transition learning
@@ -1558,37 +1567,77 @@ async function updateRRPersistence(
     persistenceState[activity] = {
       count: 0, recoveryCount: 0, segIds: [], scores: [],
       peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
+      lastWindowStart: null,
     };
   }
 
   const state = persistenceState[activity];
   let eventCreated = false;
 
-  // T_max: episode dianggap UNRESOLVED setelah 2 jam (7200 detik) — CAPAR Section 8
+  // ── Tangani status PAUSED lebih dulu ────────────────────────────────────
+  if (rr_status === 'PERSISTENT_PAUSED' || rr_status === 'DEVIATION_PAUSED' || rr_status === 'BASELINE_PAUSED') {
+    if (state.openEventId) {
+      const segWinStart = new Date(seg.window_start).getTime();
+      const gapMs = state.lastWindowStart ? Math.max(0, segWinStart - state.lastWindowStart) : 0;
+      await AnomalyEvent.updateOne(
+        { _id: state.openEventId },
+        {
+          $set: { status: 'paused', last_paused_at: segWinStart },
+          $inc: { total_paused_ms: gapMs },
+          $push: {
+            pause_history: {
+              paused_from: state.lastWindowStart || segWinStart,
+              resumed_at: segWinStart,
+              gap_ms: gapMs,
+            },
+          },
+        }
+      );
+    }
+    state.lastWindowStart = new Date(seg.window_start).getTime();
+    return eventCreated; // skip semua logic count/T_MAX untuk window ini
+  }
+
   const T_MAX_MS = 2 * 60 * 60 * 1000;
 
-  // Cek UNRESOLVED pada event yang sudah terlalu lama open
+  // ── Cek UNRESOLVED — sekarang dikoreksi dengan total_paused_ms ──────────
   if (state.openEventId && state.startSeg) {
-    const elapsed = seg.window_start - state.startSeg.window_start;
-    if (elapsed > T_MAX_MS && rr_status !== 'RECOVERED') {
+    const segWinStart = new Date(seg.window_start).getTime();
+    const startWinStart = new Date(state.startSeg.window_start).getTime();
+    const rawElapsed = segWinStart - startWinStart;
+
+    // Ambil total_paused_ms terkini dari event
+    const eventDoc = await AnomalyEvent.findById(state.openEventId).select('total_paused_ms').lean();
+    const pausedMs = eventDoc?.total_paused_ms || 0;
+    const effectiveElapsed = rawElapsed - pausedMs; // durasi AKTIF, bukan wall-clock
+
+    if (effectiveElapsed > T_MAX_MS && rr_status !== 'RECOVERED') {
       await AnomalyEvent.updateOne(
-        { _id: state.openEventId, status: 'open' },
+        { _id: state.openEventId, status: { $in: ['open', 'paused'] } },
         {
           $set: {
             status: 'unresolved',
-            unresolved_reason: `duration_exceeded_T_max (${Math.round(elapsed / 60000)} menit)`,
+            unresolved_reason: `duration_exceeded_T_max (${Math.round(effectiveElapsed / 60000)} menit aktif, ${Math.round(pausedMs / 60000)} menit paused di-exclude)`,
             window_count: state.segIds.length,
           },
         }
       );
-      console.log(`[Layer3-RR] Event UNRESOLVED user=${userId} act=${activity} elapsed=${Math.round(elapsed / 60000)}m`);
-      // Reset state setelah unresolved
+      console.log(`[Layer3-RR] Event UNRESOLVED user=${userId} act=${activity} activeElapsed=${Math.round(effectiveElapsed / 60000)}m`);
       persistenceState[activity] = {
         count: 0, recoveryCount: 0, segIds: [], scores: [],
         peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
+        lastWindowStart: segWinStart,
       };
       return eventCreated;
     }
+  }
+
+  // Kalau event sebelumnya sempat paused dan sekarang aktif lagi → resume status ke 'open'
+  if (state.openEventId) {
+    await AnomalyEvent.updateOne(
+      { _id: state.openEventId, status: 'paused' },
+      { $set: { status: 'open' } }
+    );
   }
 
   if (rr_status === 'PERSISTENT_DEVIATION' || rr_status === 'DEVIATION_CANDIDATE') {
@@ -1604,9 +1653,9 @@ async function updateRRPersistence(
         user_id: userId,
         device_id: seg.device_id,
         activity,
-        onset_time: state.startSeg.window_start,
+        onset_time: new Date(state.startSeg.window_start).getTime(),
         onset_score: state.scores[0],
-        peak_time: state.peakSeg.window_start,
+        peak_time: new Date(state.peakSeg.window_start).getTime(),
         peak_score: state.peakScore,
         classification,
         z_scores_at_peak: zScores,
@@ -1618,6 +1667,7 @@ async function updateRRPersistence(
         segment_ids: state.segIds,
         window_count: state.count,
         status: 'open',
+        total_paused_ms: 0,
       });
       state.openEventId = event._id;
       eventCreated = true;
@@ -1636,10 +1686,13 @@ async function updateRRPersistence(
     }
   } else if (rr_status === 'RECOVERED') {
     if (state.openEventId) {
-      const recoveryMs = seg.window_end - (state.peakSeg?.window_start ?? seg.window_start);
+      const segWinStart = new Date(seg.window_start).getTime();
+      const segWinEnd = seg.window_end ? new Date(seg.window_end).getTime() : segWinStart + 60000;
+      const peakWinStart = state.peakSeg?.window_start ? new Date(state.peakSeg.window_start).getTime() : segWinStart;
+      const startWinStart = state.startSeg?.window_start ? new Date(state.startSeg.window_start).getTime() : segWinStart;
 
-      // Hitung AUC score — trapezoidal integration (CAPAR Section 9)
-      // AUC = Σ_i 0.5*(S_i + S_{i+1}) * Δt   (Δt = window_duration_ms = 60000 ms for 1-min)
+      const recoveryMs = segWinEnd - peakWinStart;
+
       const WINDOW_MS = 60000;
       let auc_score = 0;
       const scores = state.scores;
@@ -1648,21 +1701,26 @@ async function updateRRPersistence(
       }
       auc_score = parseFloat(auc_score.toFixed(2));
 
+      const eventDoc = await AnomalyEvent.findById(state.openEventId).select('total_paused_ms').lean();
+      const pausedMs = eventDoc?.total_paused_ms || 0;
+      const totalDurationMs = segWinStart - startWinStart;
+
       await AnomalyEvent.updateOne({ _id: state.openEventId }, {
         $set: {
-          resolved_time: seg.window_start,
-          duration_ms: seg.window_start - (state.startSeg?.window_start ?? seg.window_start),
+          resolved_time: segWinStart,
+          duration_ms: totalDurationMs,
           status: 'closed',
           auc_score,
           window_count: state.segIds.length,
           'trajectory.recovery_time_ms': Math.max(recoveryMs, 0),
         },
       });
-      console.log(`[Layer3-RR] Event closed user=${userId} act=${activity} AUC=${auc_score}`);
+      console.log(`[Layer3-RR] Event closed user=${userId} act=${activity} AUC=${auc_score} totalDuration=${Math.round(totalDurationMs/60000)}m paused=${Math.round(pausedMs/60000)}m`);
     }
     persistenceState[activity] = {
       count: 0, recoveryCount: 0, segIds: [], scores: [],
       peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
+      lastWindowStart: new Date(seg.window_start).getTime(),
     };
   } else {
     if (!state.openEventId) {
@@ -1674,6 +1732,7 @@ async function updateRRPersistence(
     }
   }
 
+  state.lastWindowStart = new Date(seg.window_start).getTime();
   return eventCreated;
 }
 

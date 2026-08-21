@@ -72,7 +72,7 @@ const AnomalyEventSchema = new mongoose.Schema({
   // Status lifecycle (CAPAR extended)
   status: {
     type: String,
-    enum: ['open', 'closed', 'transient', 'unresolved'],
+    enum: ['open', 'paused', 'closed', 'transient', 'unresolved'],
     default: 'open',
   },
 
@@ -80,6 +80,15 @@ const AnomalyEventSchema = new mongoose.Schema({
   auc_score: { type: Number, default: null },      // ∫ S(t) dt trapezoidal integration
   window_count: { type: Number, default: 0 },      // jumlah windows dalam episode
   unresolved_reason: { type: String, default: null }, // alasan UNRESOLVED (e.g. 'duration_exceeded_T_max')
+
+  // ── Pause / Gap Tracking ──────────────────────────────────────────────────
+  total_paused_ms: { type: Number, default: 0 },
+  last_paused_at: { type: Number, default: null },
+  pause_history: [{
+    paused_from: Number,  // epoch ms — window_start terakhir sebelum gap
+    resumed_at:  Number,  // epoch ms — window_start pertama setelah gap
+    gap_ms:      Number,
+  }],
 
   // Anotasi manual dari dokter/user
   annotations: [{

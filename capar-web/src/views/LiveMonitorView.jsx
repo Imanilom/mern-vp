@@ -532,17 +532,7 @@ export const LiveMonitorView = ({
                       </td>
                       <td><EvidenceBadge state={p.evidenceState} /></td>
                       <td>
-                        {(() => {
-                          const isPaused = p.physiologicalState === 'paused' || p.evidenceState === 'QUALITY_WARNING' || p.evidenceState === 'INSUFFICIENT_BASELINE';
-                          let stateKey = p.physiologicalState || 'BASELINE_COMPATIBLE';
-                          if (isPaused) {
-                            if (stateKey.includes('PERSISTENT')) stateKey = 'PERSISTENT_PAUSED';
-                            else if (stateKey.includes('DEVIATION') || stateKey.includes('CANDIDATE')) stateKey = 'DEVIATION_PAUSED';
-                            else if (stateKey.includes('RECOVERY')) stateKey = 'RECOVERY_PAUSED';
-                            else stateKey = 'BASELINE_PAUSED';
-                          }
-                          return <StateBadge state={stateKey} />;
-                        })()}
+                        <StateBadge state={p.physiologicalState || p.rr_status || 'BASELINE_COMPATIBLE'} />
                       </td>
                       <td className="mono">{typeof p.anomalyScore === 'number' ? p.anomalyScore.toFixed(2) : '—'}</td>
                       <td style={{ textTransform: 'capitalize' }}>{p.context || '—'}</td>

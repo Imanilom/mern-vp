@@ -599,10 +599,26 @@ export function computeRRCompositeScore(zScores) {
  * @param {string} maturityLevel
  * @returns {'Normal'|'Caution'|'Alert'}
  */
-export function classifyRR(score, maturityLevel) {
-  const thr = getDynamicThreshold(maturityLevel);
-  if (score >= thr.ALERT) return 'Alert';
-  if (score >= thr.CAUTION) return 'Caution';
+/**
+ * Klasifikasi score terhadap threshold dinamis atau tau personal.
+ *
+ * @param {number} score
+ * @param {string} maturityLevel
+ * @param {object|null} tau - Learned thresholds: { tau_in, tau_out, tau_normal }
+ * @returns {'Normal'|'Caution'|'Alert'}
+ */
+export function classifyRR(score, maturityLevel, tau = null) {
+  let cautionThr, alertThr;
+  if (tau && typeof tau.tau_in === 'number' && tau.tau_in > 0) {
+    cautionThr = tau.tau_in;
+    alertThr = Number((tau.tau_in * 1.5).toFixed(2));
+  } else {
+    const thr = getDynamicThreshold(maturityLevel);
+    cautionThr = thr.CAUTION;
+    alertThr = thr.ALERT;
+  }
+  if (score >= alertThr) return 'Alert';
+  if (score >= cautionThr) return 'Caution';
   return 'Normal';
 }
 
@@ -615,7 +631,7 @@ export function classifyRR(score, maturityLevel) {
  * Perbedaan dari computeRRZScores:
  *  - Tidak ada PENALTY factor (mature: 1.0, cold_start: 0.5, dll.)
  *  - Skor dinormalisasi oleh bobot yang tersedia
- *  - Kembalikan { score: null } jika bobot tersedia < MIN_SCORED_WEIGHT
+ *  - Kembalikan { score: null } jika bobot tersedia < MIN_SCORED_WEIGHT atau tanpa fitur kardiak utama
  *
  * Caller bertanggung jawab memastikan baseline sudah mature sebelum
  * memanggil fungsi ini. Jika belum mature → kembalikan INSUFFICIENT_BASELINE.
@@ -669,7 +685,10 @@ export function computePersonalizedScore(features, baseline) {
     usedWeight += weight;
   }
 
-  if (usedWeight < MIN_SCORED_WEIGHT) {
+  // Enforce mandatory cardiac feature requirement (hr_mean or rmssd)
+  const hasCardiacFeature = z_scores['hr_mean'] !== undefined || z_scores['rmssd'] !== undefined;
+
+  if (usedWeight < MIN_SCORED_WEIGHT || !hasCardiacFeature) {
     return { score: null, z_scores, used_weight: usedWeight };
   }
 
@@ -771,21 +790,44 @@ export function computeProvisionalScore(features, baseline, activityLabel) {
   };
 }
 
+// ── Konfigurasi gap/pause ──────────────────────────────────────────────────
+export const GAP_PAUSE_MS = 5 * 60 * 1000; // 5 menit — device offline / stream terputus
+
 // ── Temporal Status Machine ───────────────────────────────────────────────────
 
 /**
- * Update state temporal dan kembalikan rr_status 9-state.
+ * Update state temporal dan kembalikan rr_status 9(+3)-state.
  *
  * Port dari TemporalTracker.update() Python.
  * CAPAR Section 8 — Physiological Episode State Machine with Hysteresis.
  *
- * @param {object} state - Mutable: { high_count, low_count, episode_active, cooldown }
+ * @param {object} state - Mutable: { high_count, low_count, episode_active, cooldown, last_window_start }
  * @param {number} score
  * @param {string} maturityLevel
  * @param {object|null} tau - Learned thresholds: { tau_in, tau_out, tau_normal } atau null
+ * @param {number|Date|null} windowStart - epoch ms window saat ini, WAJIB untuk deteksi gap
  * @returns {{ rr_status, safe_to_update }}
  */
-export function updateTemporalState(state, score, maturityLevel, tau = null) {
+export function updateTemporalState(state, score, maturityLevel, tau = null, windowStart = null) {
+  const ws = windowStart !== null ? new Date(windowStart).getTime() : null;
+
+  // ── Deteksi gap SEBELUM logic threshold biasa ──────────────────────────
+  if (ws !== null && state.last_window_start !== null) {
+    const elapsed = ws - state.last_window_start;
+    if (elapsed > GAP_PAUSE_MS) {
+      state.last_window_start = ws;
+      // JANGAN reset high_count/low_count/episode_active — cuma tandai paused
+      if (state.episode_active) {
+        return { rr_status: 'PERSISTENT_PAUSED', safe_to_update: false };
+      }
+      if (state.high_count > 0) {
+        return { rr_status: 'DEVIATION_PAUSED', safe_to_update: false };
+      }
+      return { rr_status: 'BASELINE_PAUSED', safe_to_update: false };
+    }
+  }
+  if (ws !== null) state.last_window_start = ws;
+
   const cfg = PERSISTENCE_CONFIG;
   const staticThr = getDynamicThreshold(maturityLevel);
 
@@ -853,9 +895,16 @@ export function updateTemporalState(state, score, maturityLevel, tau = null) {
   return { rr_status: 'NORMAL', safe_to_update: true };
 }
 
+/** Update last_window_start tanpa mengubah counter — dipakai saat window di-skip (quality/insufficient). */
+export function touchTemporalState(state, windowStart) {
+  if (windowStart !== null && windowStart !== undefined) {
+    state.last_window_start = new Date(windowStart).getTime();
+  }
+}
+
 /** Buat state temporal baru. */
 export function createTemporalState() {
-  return { high_count: 0, low_count: 0, episode_active: false, cooldown: 0 };
+  return { high_count: 0, low_count: 0, episode_active: false, cooldown: 0, last_window_start: null };
 }
 
 
