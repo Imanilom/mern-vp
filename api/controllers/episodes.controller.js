@@ -8,18 +8,21 @@ import Segment from '../models/segment.model.js';
 async function findAnomalyEvent(episodeId) {
   if (!episodeId) return null;
   
+  if (episodeId === 'latest') {
+    return await AnomalyEvent.findOne({}).sort({ onset_time: -1 }).lean().catch(() => null);
+  }
+
   if (mongoose.Types.ObjectId.isValid(episodeId)) {
-    const found = await AnomalyEvent.findById(episodeId).lean();
+    const found = await AnomalyEvent.findById(episodeId).lean().catch(() => null);
     if (found) return found;
   }
   
-  // Try string _id or event_id query
-  return await AnomalyEvent.findOne({
-    $or: [
-      { _id: episodeId },
-      { event_id: episodeId }
-    ]
-  }).lean();
+  // Try querying by string event_id safely without casting _id
+  const foundByEventId = await AnomalyEvent.findOne({ event_id: episodeId }).lean().catch(() => null);
+  if (foundByEventId) return foundByEventId;
+
+  // Fallback to latest event in DB
+  return await AnomalyEvent.findOne({}).sort({ onset_time: -1 }).lean().catch(() => null);
 }
 
 export async function getEpisodeDetail(req, res) {

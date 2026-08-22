@@ -13,21 +13,20 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
   const applyFilter = async () => {
     setLoading(true);
     try {
-      // In a real system, you'd pass params to /api/events.
-      // Since this is a placeholder/wrapper, we fetch recent events
-      const data = await api.getRecentEvents(params.participantId || undefined);
-      // Map to expected format
-      const mapped = data.map(ep => ({
+      const res = await api.getRecentEvents(params.participantId || undefined);
+      const events = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const mapped = events.map(ep => ({
         episodeId: ep._id,
         onsetAt: ep.onset_time,
-        peakScore: ep.peak_score,
+        peakScore: typeof ep.peak_score === 'number' ? ep.peak_score : (typeof ep.onset_score === 'number' ? ep.onset_score : 0),
         durationMin: ep.duration_ms ? Math.floor(ep.duration_ms/60000) : 0,
         outcome: ep.physiological_outcome || 'UNRESOLVED',
         reviewerDecision: ep.validation_label || 'None'
       }));
       setRows(mapped);
     } catch (err) {
-      console.error(err);
+      console.error('[EventGeneratorView] Error:', err);
+      setRows([]);
     } finally {
       setLoading(false);
     }

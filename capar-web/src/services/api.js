@@ -464,7 +464,8 @@ export const api = {
     return axios.get(`/analysis/segments/${userId}?limit=${limit}`).then(res => res.data);
   },
   async getRecentEvents(userId, limit = 20) {
-    return axios.get(`/analysis/events/${userId}?limit=${limit}`).then(res => res.data);
+    const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
+    return axios.get(`/analysis/events/${target}?limit=${limit}`).then(res => res.data);
   },
   async getEventDetails(eventId) {
     return axios.get(`/analysis/events/details/${eventId}`).then(res => res.data);
