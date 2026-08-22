@@ -127,7 +127,7 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
                 const SizedBox(height: 14),
 
                 // ── Markov Transition Prediction & Heatmap ────────────────
-                if (markovData != null) ...[
+                if (markovData != null && markovData!['status'] == 'READY') ...[
                   _buildMarkovPredictionCard(),
                   const SizedBox(height: 14),
                   MarkovHeatmapWidget(markovData: markovData!),

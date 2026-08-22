@@ -480,7 +480,7 @@ export async function getMarkovModelHandler(req, res) {
 
     // Fallback seed episodes ONLY for demo global (ALL / P00) when DB is empty.
     // For specific participants with 0 data, return INSUFFICIENT_DATA empty state.
-    if (episodes.length === 0) {
+    if (events.length === 0) {
       if (rawParticipantId !== 'ALL' && rawParticipantId !== 'P00') {
         return res.json({
           status: 'INSUFFICIENT_DATA',
