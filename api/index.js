@@ -25,6 +25,7 @@ import pipelineRouter from './routes/pipeline.route.js';
 import reportRouter from './routes/report.route.js';
 import mlRouter from './routes/ml.route.js';
 import systemRouter from './routes/system.route.js';
+import episodesRouter from './routes/episodes.route.js';
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 
@@ -202,6 +203,9 @@ app.use("/api/patient-user", userpatientRouter);
 app.use("/api/ai", aipipelineRouter);
 app.use("/api/ml", mlRouter);
 app.use("/api/system", systemRouter);
+app.use("/api/episodes", episodesRouter);
+app.use("/api/v1/episodes", episodesRouter); // Alias for compatibility with spec
+app.use("/api/v1/events", analysisRouter); // Alias for event generator
 
 // Role & Auth endpoints
 app.get("/api/me", verifyToken, (req, res) => {

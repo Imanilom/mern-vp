@@ -7,6 +7,8 @@ import { LiveMonitorView } from './views/LiveMonitorView';
 import { SignalQualityView } from './views/SignalQualityView';
 import { BaselineMaturityView } from './views/BaselineMaturityView';
 import { EpisodeView } from './views/EpisodeView';
+import EventGeneratorView from './views/EventGeneratorView';
+import EpisodeDetailView from './views/EpisodeDetailView';
 import { StateTimelineView } from './views/StateTimelineView';
 import { ExperienceView } from './views/ExperienceView';
 import { PredictionEvalView } from './views/PredictionEvalView';
@@ -50,6 +52,7 @@ export function App() {
   const [auditTrail, setAuditTrail] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
+  const [selectedEpisodeId, setSelectedEpisodeId] = useState(null);
   
   // New state to hold raw stream data
   const [liveSensorData, setLiveSensorData] = useState(null);
@@ -317,6 +320,27 @@ export function App() {
               episodes={episodes}
               globalParticipantFilter={globalParticipantFilter}
               globalDateFilter={globalDateFilter}
+              onSelectEpisode={(id) => {
+                setSelectedEpisodeId(id);
+                setActiveTab('episode-detail');
+              }}
+            />
+          )}
+
+          {(activeTab === 'event-generator') && (
+            <EventGeneratorView
+              globalParticipantFilter={globalParticipantFilter}
+              onSelectEpisode={(id) => {
+                setSelectedEpisodeId(id);
+                setActiveTab('episode-detail');
+              }}
+            />
+          )}
+
+          {(activeTab === 'episode-detail') && (
+            <EpisodeDetailView 
+              episodeId={selectedEpisodeId}
+              onBack={() => setActiveTab('event-generator')}
             />
           )}
 

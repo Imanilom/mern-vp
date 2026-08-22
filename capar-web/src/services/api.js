@@ -611,5 +611,22 @@ export const api = {
   async getPersonalExperienceByUser(userId = 'ALL') {
     const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
     return axios.get(`/analysis/experience/${target}`).then(res => res.data).catch(() => null);
+  },
+
+  // --- EPISODE DETAIL (Event Generator) ---
+  async getEpisodeDetail(episodeId) {
+    return axios.get(`/episodes/${episodeId}`).then(res => res.data);
+  },
+  async getEpisodeTrajectory(episodeId) {
+    return axios.get(`/episodes/${episodeId}/trajectory`).then(res => res.data);
+  },
+  async getEpisodeContext(episodeId) {
+    return axios.get(`/episodes/${episodeId}/context`).then(res => res.data);
+  },
+  async getEpisodeAudit(episodeId) {
+    return axios.get(`/episodes/${episodeId}/audit`).then(res => res.data);
+  },
+  async reviewEpisode(episodeId, payload) {
+    return axios.post(`/episodes/${episodeId}/review`, payload).then(res => res.data);
   }
 };

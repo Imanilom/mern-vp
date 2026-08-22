@@ -80,6 +80,16 @@ const AnomalyEventSchema = new mongoose.Schema({
   auc_score: { type: Number, default: null },      // ∫ S(t) dt trapezoidal integration
   window_count: { type: Number, default: 0 },      // jumlah windows dalam episode
   unresolved_reason: { type: String, default: null }, // alasan UNRESOLVED (e.g. 'duration_exceeded_T_max')
+  
+  // Episode Detail & State Machine Extended Fields
+  admin_status: { type: String, enum: ['OPEN', 'CLOSED'], default: 'OPEN' },
+  physiological_outcome: { type: String, enum: ['RECOVERED', 'UNRESOLVED'], default: 'UNRESOLVED' },
+  current_state: { type: String, default: 'BASELINE_COMPATIBLE' },
+  recovery_entry_at: { type: Number, default: null },
+  ttr_min: { type: Number, default: null },
+  peak_count: { type: Number, default: 0 },
+  relapse_count: { type: Number, default: 0 },
+  rule_version: { type: String, default: '1.0.0' },
 
   // ── Pause / Gap Tracking ──────────────────────────────────────────────────
   total_paused_ms: { type: Number, default: 0 },
