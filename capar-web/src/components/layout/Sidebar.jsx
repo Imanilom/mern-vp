@@ -15,7 +15,9 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     { id: 'signal-quality',    label: 'Signal & Quality',   icon: 'fa-tower-broadcast',        roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'baseline-maturity', label: 'Baseline Model',     icon: 'fa-chart-simple',           roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'state-timeline',    label: 'State Timeline',     icon: 'fa-timeline',               roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'episode',           label: 'Episode Review',     icon: 'fa-wave-square',            roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'event-generator',   label: 'Event Generator',    icon: 'fa-filter',                 roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'episode',           label: 'Episode List',       icon: 'fa-wave-square',            roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'episode-detail',    label: 'Episode Detail',     icon: 'fa-chart-line',             roles: ['admin', 'researcher', 'doctor', 'user'] },
 
     // === Analysis & Learning ===
     { id: 'experience',        label: 'Experience Memory',  icon: 'fa-brain',                  roles: ['admin', 'researcher', 'doctor', 'user'] },
@@ -46,7 +48,9 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     'signal-quality':    null,
     'baseline-maturity': null,
     'state-timeline':    null,
+    'event-generator':   null,
     'episode':           null,
+    'episode-detail':    null,
     'experience':        'Analysis',
     'prediction-eval':   null,
     'model-rules':       null,

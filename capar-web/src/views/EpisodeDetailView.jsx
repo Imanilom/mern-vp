@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../services/api';
 import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip,
-  ReferenceLine, ReferenceDot, CartesianGrid
+  ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, Tooltip,
+  ReferenceLine, ReferenceDot, ReferenceArea, CartesianGrid
 } from 'recharts';
 import { ArrowLeft, CheckCircle, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 
@@ -157,7 +157,8 @@ function OutcomeCard({ status, outcome }) {
 
 function ScoreTrajectoryChart({ episode, points }) {
   const markers = points.filter(p => p.eventMarker);
-  
+  const maxScore = Math.max(3.5, ...points.map(p => p.score || 0));
+
   const markerColor = (marker) => {
     return {
       'ONSET': '#EF8D00',
@@ -169,22 +170,110 @@ function ScoreTrajectoryChart({ episode, points }) {
     }[marker] || '#64748B';
   };
 
+  const CustomTooltip = ({ active, payload }) => {
+    if (!active || !payload || !payload.length) return null;
+    const data = payload[0].payload;
+    const color = data.score >= episode.tauIn ? '#D32F2F' : (data.score >= episode.tauOut ? '#EF8D00' : '#1A8F5B');
+
+    return (
+      <div style={{
+        background: 'var(--navy)',
+        color: '#fff',
+        padding: '10px 14px',
+        borderRadius: 10,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        fontSize: 12,
+        minWidth: 180
+      }}>
+        <div style={{ fontSize: 11, color: 'var(--teal)', fontWeight: 700, marginBottom: 4 }}>
+          {data.timeLabel} {data.eventMarker && `• ${data.eventMarker}`}
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 800, color }}>
+          Score: {data.score?.toFixed(2)}
+        </div>
+        <div style={{ marginTop: 4, fontSize: 11, opacity: 0.9 }}>
+          State: <strong>{data.state}</strong>
+        </div>
+        <div style={{ fontSize: 11, opacity: 0.8 }}>
+          Context: <strong>{data.activityContext}</strong> | Quality: <span style={{ color: '#81C784' }}>{data.qualityFlag}</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="card-panel mb-3">
-      <h5 style={{ fontSize: 14, fontWeight: 800 }}>Score Trajectory</h5>
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={points} margin={{ top: 20, right: 20, bottom: 5, left: -20 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="timeLabel" minTickGap={30} tick={{ fontSize: 11 }} />
-          <YAxis domain={[0, 'auto']} tick={{ fontSize: 11 }} />
-          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-          <ReferenceLine y={episode.tauIn} stroke="#C62828" strokeDasharray="5 4" label={{ position: 'insideTopLeft', value: `tau_in = ${episode.tauIn}`, fill: '#C62828', fontSize: 10 }} />
-          <ReferenceLine y={episode.tauOut} stroke="#EF8D00" strokeDasharray="5 4" label={{ position: 'insideTopLeft', value: `tau_out = ${episode.tauOut}`, fill: '#EF8D00', fontSize: 10 }} />
-          <Line dataKey="score" type="monotone" stroke="#087F7A" strokeWidth={2} dot={false} isAnimationActive={false} />
+    <div className="card-panel mb-3" style={{ background: 'linear-gradient(180deg, var(--surface) 0%, #FAFCFD 100%)' }}>
+      <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <div>
+          <div className="mini-label m-0" style={{ color: 'var(--teal)' }}>PHYSIOLOGICAL TRAJECTORY</div>
+          <h5 style={{ fontSize: 16, fontWeight: 800, color: 'var(--navy)', margin: 0 }}>
+            Score vs Time Trajectory & Threshold Markers
+          </h5>
+        </div>
+        <div className="d-flex gap-3 align-items-center" style={{ fontSize: 11, fontWeight: 700 }}>
+          <span className="d-flex align-items-center gap-1">
+            <span style={{ width: 12, height: 3, background: '#C62828', display: 'inline-block', borderRadius: 2 }} />
+            tau_in ({episode.tauIn})
+          </span>
+          <span className="d-flex align-items-center gap-1">
+            <span style={{ width: 12, height: 3, background: '#EF8D00', display: 'inline-block', borderRadius: 2 }} />
+            tau_out ({episode.tauOut})
+          </span>
+        </div>
+      </div>
+
+      <ResponsiveContainer width="100%" height={340}>
+        <ComposedChart data={points} margin={{ top: 25, right: 25, bottom: 5, left: -15 }}>
+          <defs>
+            <linearGradient id="scoreAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#087F7A" stopOpacity={0.4} />
+              <stop offset="95%" stopColor="#087F7A" stopOpacity={0.0} />
+            </linearGradient>
+          </defs>
+
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.06)" />
+          
+          {/* Threshold Zone Background Highlights */}
+          <ReferenceArea y1={0} y2={episode.tauOut} fill="#1A8F5B" fillOpacity={0.05} />
+          <ReferenceArea y1={episode.tauOut} y2={episode.tauIn} fill="#EF8D00" fillOpacity={0.06} />
+          <ReferenceArea y1={episode.tauIn} y2={maxScore + 0.5} fill="#D32F2F" fillOpacity={0.06} />
+
+          <XAxis dataKey="timeLabel" minTickGap={25} tick={{ fontSize: 11, fill: 'var(--gray)' }} axisLine={{ stroke: '#E0E0E0' }} />
+          <YAxis domain={[0, Math.ceil(maxScore + 0.2)]} tick={{ fontSize: 11, fill: 'var(--gray)' }} axisLine={{ stroke: '#E0E0E0' }} />
+          <Tooltip content={<CustomTooltip />} />
+
+          {/* Reference Lines */}
+          <ReferenceLine y={episode.tauIn} stroke="#C62828" strokeDasharray="4 4" strokeWidth={1.5}
+            label={{ position: 'insideTopLeft', value: `tau_in = ${episode.tauIn}`, fill: '#C62828', fontSize: 10, fontWeight: 700 }} />
+          <ReferenceLine y={episode.tauOut} stroke="#EF8D00" strokeDasharray="4 4" strokeWidth={1.5}
+            label={{ position: 'insideTopLeft', value: `tau_out = ${episode.tauOut}`, fill: '#EF8D00', fontSize: 10, fontWeight: 700 }} />
+
+          {/* Score Area & Line */}
+          <Area type="monotone" dataKey="score" fill="url(#scoreAreaGrad)" stroke="none" isAnimationActive={false} />
+          <Line type="monotone" dataKey="score" stroke="#087F7A" strokeWidth={3} dot={false} isAnimationActive={false} />
+
+          {/* Event Markers */}
           {markers.map((m, i) => (
-            <ReferenceDot key={i} x={m.timeLabel} y={m.score} r={5} fill={markerColor(m.eventMarker)} stroke="white" strokeWidth={2} label={{ value: m.eventMarker, position: 'top', fontSize: 9, fill: markerColor(m.eventMarker) }} />
+            <ReferenceDot
+              key={i}
+              x={m.timeLabel}
+              y={m.score}
+              r={6}
+              fill={markerColor(m.eventMarker)}
+              stroke="#ffffff"
+              strokeWidth={2.5}
+              label={{
+                value: m.eventMarker,
+                position: 'top',
+                fontSize: 10,
+                fontWeight: 800,
+                fill: markerColor(m.eventMarker),
+                dy: -4
+              }}
+            />
           ))}
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

@@ -337,7 +337,7 @@ export function App() {
             />
           )}
 
-          {(activeTab === 'episode-detail') && (
+          {(activeTab === 'episode-detail' || activeTab === 'audit') && (
             <EpisodeDetailView 
               episodeId={selectedEpisodeId}
               onBack={() => setActiveTab('event-generator')}
