@@ -461,11 +461,7 @@ export async function getMarkovModelHandler(req, res) {
         episode_id: event._id ? event._id.toString() : 'EP-001',
         verified: event.review_status === 'Validated' || event.status === 'closed' || event.status === 'transient',
         windows: windows.length > 0 ? windows : [
-          { state: 'BASELINE_COMPATIBLE', quality_ok: true },
-          { state: 'DEVIATION_CANDIDATE', quality_ok: true },
-          { state: 'PERSISTENT_DEVIATION', quality_ok: true },
-          { state: 'RECOVERY_START', quality_ok: true },
-          { state: 'RECOVERED', quality_ok: true },
+          { state: markov.normalizeState(event.evidence_state) || 'BASELINE_COMPATIBLE', quality_ok: true }
         ],
       };
     });
@@ -482,8 +478,24 @@ export async function getMarkovModelHandler(req, res) {
       });
     }
 
-    // Fallback seed episodes if DB has limited recorded episodes for demonstration
+    // Fallback seed episodes ONLY for demo global (ALL / P00) when DB is empty.
+    // For specific participants with 0 data, return INSUFFICIENT_DATA empty state.
     if (episodes.length === 0) {
+      if (rawParticipantId !== 'ALL' && rawParticipantId !== 'P00') {
+        return res.json({
+          status: 'INSUFFICIENT_DATA',
+          participant_id: rawParticipantId,
+          episode_count: 0,
+          anomaly_event_count: 0,
+          segment_window_count: 0,
+          alpha: markov.alpha,
+          model: 'Guarded First-Order Personal Markov Model',
+          matrix: [],
+          prediction: null,
+          message: 'Belum ada data episode atau segment sinyal untuk partisipan ini.'
+        });
+      }
+
       episodes = [
         {
           episode_id: 'EP-001',
