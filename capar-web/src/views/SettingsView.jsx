@@ -15,7 +15,7 @@ export const SettingsView = ({ user }) => {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="grid-2col" style={{ marginBottom: 20 }}>
         {/* Left: Role & Permissions */}
         <div className="card-panel">
           <div className="mini-label" style={{ marginBottom: 4 }}>Role &amp; Permissions Governance</div>

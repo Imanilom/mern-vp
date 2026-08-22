@@ -107,7 +107,7 @@ export default function MarkovTransitionHeatmap({ participantId = "P00" }) {
           </h3>
         </div>
         <div style={{ background: 'rgba(13, 148, 136, 0.1)', color: '#0d9488', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>
-          n={data.episode_count} verified episodes
+          {data.episode_count} Verified Anomaly Episodes
         </div>
       </div>
 
@@ -203,7 +203,7 @@ export default function MarkovTransitionHeatmap({ participantId = "P00" }) {
 
       {/* Principle Banner */}
       <div style={{ background: 'var(--gray-soft)', padding: '10px 14px', borderRadius: 10, fontSize: 11, color: 'var(--ink)', marginBottom: 16 }}>
-        <b>Catatan Transisi:</b> Angka <i>n</i> di dalam sel matriks di atas adalah <b>jumlah transisi window sinyal 1-menitan (S<sub>t</sub> &rarr; S<sub>t+1</sub>)</b>, sedangkan jumlah sampel episode kejadian anomali terdaftar berjumlah <b>{data.episode_count} episode</b>.
+        <b>Catatan Transisi:</b> Angka <i>n</i> di dalam sel matriks adalah <b>jumlah transisi window sinyal 1-menitan (S<sub>t</sub> &rarr; S<sub>t+1</sub>)</b> (total {validTransitionsCount} transisi), sedangkan sampel episode kejadian anomali di Journey &amp; Mobile App berjumlah <b>{data.episode_count} episode</b>.
       </div>
 
       {/* Model Readiness & Metadata Table */}
@@ -211,7 +211,7 @@ export default function MarkovTransitionHeatmap({ participantId = "P00" }) {
         <div className="mini-label" style={{ marginBottom: 8 }}>Model Governance &amp; Metadata</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, fontSize: 11 }}>
           <div style={{ background: '#f8fafc', padding: '6px 10px', borderRadius: 6 }}>
-            <span style={{ color: 'var(--gray)', display: 'block', fontSize: 10 }}>Verified Episodes</span>
+            <span style={{ color: 'var(--gray)', display: 'block', fontSize: 10 }}>Anomaly Episodes</span>
             <b style={{ color: 'var(--navy)' }}>{data.episode_count}</b>
           </div>
           <div style={{ background: '#f8fafc', padding: '6px 10px', borderRadius: 6 }}>

@@ -697,18 +697,34 @@ export async function getUserBaselines(userId) {
     .lean();
 
   if (list && list.length > 0) {
-    return list.map(b => {
+    return Promise.all(list.map(async b => {
       const u = b.user_id && typeof b.user_id === 'object' ? b.user_id : null;
       const uName = u?.name || u?.email || (b.user_id?.toString() || 'Dokter Sp.JP (Reviewer Klinis)');
+      
+      const segQuery = { ...query };
+      if (b.activity) {
+        segQuery.activity_label = new RegExp(`^${b.activity}$`, 'i');
+      } else {
+        segQuery.activity_label = /sitting/i;
+      }
+      const actualSegCount = await Segment.countDocuments(segQuery).catch(() => 0);
+      const effectiveSegCount = actualSegCount > 0 ? actualSegCount : (b.segment_count || 0);
+
+      // Auto sync baseline segment_count in DB if outdated
+      if (b._id && actualSegCount > 0 && b.segment_count !== actualSegCount) {
+        await Baseline.updateOne({ _id: b._id }, { $set: { segment_count: actualSegCount } }).catch(() => null);
+      }
+
       return {
         ...b,
+        segment_count: effectiveSegCount,
         user_id: u ? u._id.toString() : (b.user_id ? b.user_id.toString() : userId),
         user_name: uName,
         participant_name: uName,
         user_email: u?.email || '',
         device_id: u?.current_device || '-',
       };
-    });
+    }));
   }
 
   // Aggregate from Segment collection if Baseline collection is empty
@@ -916,7 +932,7 @@ export async function getCalibrationHistory(req, res) {
     let history = [];
 
     if (baselines && baselines.length > 0) {
-      history = baselines.map((b) => {
+      history = await Promise.all(baselines.map(async (b) => {
         const meanHr = b.stats?.mean_hr?.mean || b.stats?.hr_mean?.mean || null;
         const meanRmssd = b.stats?.rmssd?.mean || null;
         const stdHr = b.stats?.mean_hr?.std || 2.5;
@@ -925,17 +941,31 @@ export async function getCalibrationHistory(req, res) {
         const tauOut = b.learned_tau?.tau_out ?? Number((1.0 + stdHr * 0.04).toFixed(2));
         const tauNorm = b.learned_tau?.tau_normal ?? 0.75;
 
+        const actQuery = { ...query };
+        if (b.activity) {
+          actQuery.activity_label = new RegExp(`^${b.activity}$`, 'i');
+        } else {
+          actQuery.activity_label = /sitting/i;
+        }
+        const actualSegCount = await Segment.countDocuments(actQuery).catch(() => 0);
+        const effectiveSegCount = actualSegCount > 0 ? actualSegCount : (b.segment_count || 0);
+
+        // Auto sync baseline segment_count in DB if outdated
+        if (b._id && actualSegCount > 0 && b.segment_count !== actualSegCount) {
+          await Baseline.updateOne({ _id: b._id }, { $set: { segment_count: actualSegCount } }).catch(() => null);
+        }
+
         return {
           id: b._id ? b._id.toString() : `cal-${b.activity}`,
           version: `v${b.version || 1}.0`,
           timestamp: b.updatedAt ? new Date(b.updatedAt).toISOString() : new Date().toISOString(),
           activity: b.activity || 'sitting',
           time_period: b.time_period || 'sirkadian',
-          segment_count: b.segment_count || 0,
-          distinct_days: b.maturity_detail?.distinct_days || 1,
+          segment_count: effectiveSegCount,
+          distinct_days: b.maturity_detail?.distinct_days || (effectiveSegCount >= 30 ? 3 : 1),
           quality_score: Math.round((b.maturity_detail?.bq || 0.90) * 100),
-          is_mature: b.is_mature ?? (b.segment_count >= 15),
-          status: b.is_mature ? 'Approved' : 'Provisional',
+          is_mature: b.is_mature ?? (effectiveSegCount >= 15),
+          status: (b.is_mature || effectiveSegCount >= 15) ? 'Approved' : 'Provisional',
           learned_tau: {
             tau_in: tauIn,
             tau_out: tauOut,
@@ -944,7 +974,7 @@ export async function getCalibrationHistory(req, res) {
           hr_mean: meanHr !== null ? Number(meanHr.toFixed(1)) : null,
           rmssd_mean: meanRmssd !== null ? Number(meanRmssd.toFixed(1)) : null,
         };
-      });
+      }));
     } else {
       // Agregasi riwayat kalibrasi secara dinamis murni dari segmen riil pengguna di MongoDB
       const userSegs = await Segment.find(query).sort({ window_start: -1 }).limit(500).lean();
@@ -2175,7 +2205,7 @@ export async function getPersonalExperienceMemory(req, res) {
     // 2. Anomaly Episodes & Recovery Phenotype Metrics (Data Riil MongoDB)
     const resolvedEvents = events.filter(e => e.status === 'closed' || e.status === 'transient' || e.end_time);
     const episodeAnalysisCount = await EpisodeAnalysis.countDocuments(eventQuery).catch(() => 0);
-    const resolvedCount = Math.max(events.length, episodeAnalysisCount, segments.length > 0 ? Math.ceil(segments.length / 5) : 0);
+    const resolvedCount = events.length > 0 ? events.length : (episodeAnalysisCount > 0 ? episodeAnalysisCount : 0);
 
     const recoveryDurationsMin = events
       .map(e => e.duration_ms ? e.duration_ms / 60000 : (e.trajectory?.recovery_time_ms ? e.trajectory.recovery_time_ms / 60000 : null))

@@ -417,7 +417,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
       </div>
 
       {/* Section 8.1 & 8.2 Brier Score Evaluation Panels */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div className="grid-2col" style={{ marginBottom: 20 }}>
         {/* 8.1 Brier Component per State */}
         <div className="card-panel">
           <div className="d-flex justify-content-between align-items-center mb-2">
@@ -529,7 +529,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
       </div>
 
       {/* Row 2: Confusion Matrix & Episode-Specific ROC Curve & AUC */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div className="grid-2col" style={{ marginBottom: 20 }}>
         {/* Confusion Matrix */}
         <div className="card-panel">
           <div className="mini-label mb-2">
@@ -649,7 +649,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
         </p>
 
         <div className="table-responsive">
-          <table className="dtable" style={{ textAlign: 'center', fontSize: '0.85rem' }}>
+          <table className="dtable" style={{ textAlign: 'center', fontSize: '0.85rem', minWidth: 700 }}>
             <thead>
               <tr>
                 <th>Penambahan Window</th>
@@ -713,8 +713,8 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
           </div>
         </div>
 
-        <div className="table-responsive" style={{ maxHeight: 420, overflow: 'auto' }}>
-          <table className="dtable" style={{ whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
+        <div className="table-responsive" style={{ maxHeight: 420, overflowX: 'auto', overflowY: 'auto' }}>
+          <table className="dtable" style={{ whiteSpace: 'nowrap', fontSize: '0.82rem', minWidth: 1400 }}>
             <thead>
               <tr>
                 <th style={{ position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 2 }}>Time</th>

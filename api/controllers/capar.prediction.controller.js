@@ -528,10 +528,18 @@ export async function getMarkovModelHandler(req, res) {
     const prediction = markov.predict(matrix, currentState, horizon);
     const serializedMatrix = markov.serializeMatrix(matrix, counts);
 
+    // Calculate actual anomaly events count vs segment window transitions
+    const realEventCount = events.length;
+    const reportedEpisodeCount = realEventCount > 0 
+      ? realEventCount 
+      : episodes.filter(e => e.episode_id !== 'EP-DB-SEGMENTS').length;
+
     return res.json({
       status: 'READY',
       participant_id: rawParticipantId,
-      episode_count: episodes.length,
+      episode_count: reportedEpisodeCount,
+      anomaly_event_count: realEventCount,
+      segment_window_count: segs.length,
       alpha: markov.alpha,
       model: 'Guarded First-Order Personal Markov Model',
       matrix: serializedMatrix,

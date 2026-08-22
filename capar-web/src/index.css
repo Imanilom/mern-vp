@@ -21,6 +21,23 @@ body, html, #root {
   font-family:'Inter',sans-serif; 
   color:var(--ink);
 }
+
+/* Responsive table wrapper — ensures horizontal scroll instead of clipping */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Responsive 2-col grid — collapses to 1-col on narrow screens */
+.grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .grid-2col { grid-template-columns: 1fr; }
+}
 .mono{font-family:'JetBrains Mono',monospace;}
 h1,h2,h3,.display-font{font-family:'Plus Jakarta Sans',sans-serif;}
 
@@ -88,7 +105,13 @@ h1,h2,h3,.display-font{font-family:'Plus Jakarta Sans',sans-serif;}
 .role-badge .rt{font-size:11px; line-height:1.2;}
 .role-badge .rt b{display:block; font-size:12px; color:var(--ink);}
 
-.app-main{flex:1; padding:20px 22px; overflow:auto;}
+.app-main{
+  flex:1;
+  min-width:0;          /* prevent flex child from blowing past parent */
+  padding:20px 22px;
+  overflow-x:hidden;    /* no horizontal scroll at layout level */
+  overflow-y:auto;      /* allow vertical scroll inside main */
+}
 .page-title{font-family:'Plus Jakarta Sans'; font-weight:800; font-size:17px; color:var(--navy); margin:0;}
 .page-sub{font-size:11.5px; color:var(--gray); margin-bottom:16px;}
 
