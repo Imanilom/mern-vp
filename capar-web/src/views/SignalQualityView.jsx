@@ -98,7 +98,7 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
       )}
 
       {/* Metric Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginBottom: 20 }}>
         <div className="stat-card">
           <div className="lbl">Data Bagus (Clean %)</div>
           <div className="val" style={{ color: 'var(--green)' }}>{goodDataPct}%</div>

@@ -179,7 +179,7 @@ export const ModelRulesView = ({ modelConfig }) => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20, marginBottom: 24 }}>
         {/* Left: Fixed Active Parameters Table */}
         <div className="card-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -371,7 +371,7 @@ export const ModelRulesView = ({ modelConfig }) => {
         </div>
 
         {/* Clinical Rationale Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12, marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
           <div style={{ background: '#fffbe6', padding: 10, borderRadius: 8, border: '1px solid #ffe58f' }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: '#d48806', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
               <Zap size={12} /> Cold Start Stage (N &lt; 15)
@@ -424,7 +424,7 @@ export const ModelRulesView = ({ modelConfig }) => {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 24 }}>
           {/* Sliders Input Controls */}
           <div>
             <div style={{ marginBottom: 14 }}>

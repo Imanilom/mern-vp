@@ -341,7 +341,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
       {/* Episode Selection Filter Bar */}
       <div className="card-panel mb-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--navy)' }}>📍 Selected Episode Filter:</span>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button
@@ -372,7 +372,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
       </div>
 
       {/* Primary Evaluation Metric Cards (Section 8 Specifications) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginBottom: 20 }}>
         <div className="stat-card" style={{ borderLeft: '4px solid var(--teal)' }}>
           <div className="lbl">Top-1 Accuracy</div>
           <div className="val" style={{ color: 'var(--teal)' }}>
@@ -577,7 +577,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
             </div>
           </div>
 
-          <div style={{ width: '100%', height: 220, marginTop: 8 }}>
+          <div style={{ width: '100%', height: 220, marginTop: 8, minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartRocPoints} margin={{ top: 10, right: 15, bottom: 20, left: -15 }}>
                 <defs>

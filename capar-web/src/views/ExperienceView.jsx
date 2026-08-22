@@ -312,7 +312,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
       </div>
 
       {/* Top KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginBottom: 24 }}>
         <div className="stat-card">
           <div className="lbl">Resolved Episodes Memory</div>
           <div className="val">{experienceApiData?.resolvedEpisodesCount ?? selectedModel?.resolvedEpisodesCount ?? 28}</div>
@@ -410,7 +410,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
       </div>
 
       {/* Middle Grid: Markov Heatmap (Left) & Next State Prediction (Right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 20, marginBottom: 24 }}>
         {/* Left: Learned Markov Transition Matrix Heatmap Component */}
         <div>
           <MarkovTransitionHeatmap participantId={effectiveParticipantId} />

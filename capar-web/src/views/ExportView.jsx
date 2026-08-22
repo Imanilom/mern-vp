@@ -102,7 +102,7 @@ export const ExportView = ({ exportJobs }) => {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 24, marginBottom: 24 }}>
         {/* Left: Export Wizard Form */}
         <div className="card-panel">
           <div className="mini-label" style={{ marginBottom: 4 }}>New Export Job</div>
@@ -114,7 +114,7 @@ export const ExportView = ({ exportJobs }) => {
             {/* Dataset Level Checkboxes */}
             <div style={{ marginBottom: 18 }}>
               <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--navy)', display: 'block', marginBottom: 8 }}>1. Select Dataset Level</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: 8 }}>
                 {[
                   { key: 'stateTimeline', label: 'State Timeline' },
                   { key: 'episodeTable', label: 'Episode Table' },

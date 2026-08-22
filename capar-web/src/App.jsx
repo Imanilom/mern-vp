@@ -249,7 +249,7 @@ export function App() {
       />
 
       {/* Production App Body */}
-      <div className="flex-grow-1 d-flex flex-column">
+      <div className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0 }}>
         {/* Top Header Bar */}
         <Topbar
           cohorts={cohorts}
