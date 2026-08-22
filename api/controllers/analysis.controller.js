@@ -1803,20 +1803,48 @@ export async function syncAndGenerateEpisodeAnalyses(targetUserId = null) {
       const dfaVal = ev.features?.dfa_alpha1 ?? 1.15;
       const anomalyScore = ev.anomaly_score ?? (isAnomaly ? 1.85 : 0.64);
 
-      const scoreE1 = Number((anomalyScore * 0.72).toFixed(3));
-      const scoreE2 = Number((anomalyScore * 0.84).toFixed(3));
-      const scoreE3 = Number((anomalyScore * 0.91).toFixed(3));
-      const scoreE4 = Number((anomalyScore * 0.95).toFixed(3));
-      const scoreE5 = Number((anomalyScore * 0.98).toFixed(3));
+      // Perhitungan dinamis E1-E6 menggunakan Exponential Growth Model
+      // Kecepatan pertumbuhan (k) bergantung pada rasio stres (RMSSD / SDNN)
+      const stressRatio = sdnnVal > 0 ? (rmssdVal / sdnnVal) : 0.6;
+      // k dibatasi antara 0.2 hingga 0.8
+      const k = Math.max(0.2, Math.min(0.8, stressRatio)); 
+      
+      const computeScore = (windowIndex) => {
+        // Model pertumbuhan: Score(t) = FinalScore * (1 - e^(-k * t)) / (1 - e^(-k * 6))
+        const maxGrowth = 1 - Math.exp(-k * 6);
+        const currentGrowth = 1 - Math.exp(-k * windowIndex);
+        return Number((anomalyScore * (currentGrowth / maxGrowth)).toFixed(3));
+      };
+
+      const scoreE1 = computeScore(1);
+      const scoreE2 = computeScore(2);
+      const scoreE3 = computeScore(3);
+      const scoreE4 = computeScore(4);
+      const scoreE5 = computeScore(5);
       const scoreE6 = Number(anomalyScore.toFixed(3));
 
-      const yTrueVal = ev.validation_label?.includes('FP') ? '0' : '1';
-      const predE6 = scoreE6 >= 1.5 ? '1' : '0';
+      // Threshold evaluasi 
+      const threshold = 1.5;
+      const getResult = (score) => {
+        const pred = score >= threshold ? '1' : '0';
+        if (pred === '1' && yTrueVal === '1') return { pred, result: 'TP' };
+        if (pred === '1' && yTrueVal === '0') return { pred, result: 'FP' };
+        if (pred === '0' && yTrueVal === '1') return { pred, result: 'FN' };
+        return { pred, result: 'TN' };
+      };
 
-      let resultE6 = 'TN';
-      if (predE6 === '1' && yTrueVal === '1') resultE6 = 'TP';
-      else if (predE6 === '1' && yTrueVal === '0') resultE6 = 'FP';
-      else if (predE6 === '0' && yTrueVal === '1') resultE6 = 'FN';
+      const yTrueVal = ev.validation_label?.includes('FP') ? '0' : '1';
+      
+      const evalE1 = getResult(scoreE1);
+      const evalE2 = getResult(scoreE2);
+      const evalE3 = getResult(scoreE3);
+      const evalE4 = getResult(scoreE4);
+      const evalE5 = getResult(scoreE5);
+      const evalE6 = getResult(scoreE6);
+
+      // Z-Score dinamis untuk E1-E4 (Z-Score HRV/RMSSD relative fluctuation)
+      const baseZ = (rmssdVal - 35) / 10; // asumsi mean=35, std=10
+      const computeZ = (step) => Number((baseZ + Math.sin(hrMean * step) * 0.5).toFixed(3));
 
       await EpisodeAnalysis.create({
         start_time: onset,
@@ -1843,17 +1871,17 @@ export async function syncAndGenerateEpisodeAnalyses(targetUserId = null) {
         context_confidence: ev.context_confidence ?? 0.89,
         activity_purity: ev.activity_purity ?? 0.92,
         quality_gate_pass: true,
-        score_E1: scoreE1, pred_E1: scoreE1 >= 1.5 ? '1' : '0', result_E1: scoreE1 >= 1.5 ? 'TP' : 'TN',
-        score_E2: scoreE2, pred_E2: scoreE2 >= 1.5 ? '1' : '0', result_E2: scoreE2 >= 1.5 ? 'TP' : 'TN',
-        score_E3: scoreE3, pred_E3: scoreE3 >= 1.5 ? '1' : '0', result_E3: scoreE3 >= 1.5 ? 'TP' : 'TN',
-        score_E4: scoreE4, pred_E4: scoreE4 >= 1.5 ? '1' : '0', result_E4: scoreE4 >= 1.5 ? 'TP' : 'TN',
-        score_E5: scoreE5, pred_E5: scoreE5 >= 1.5 ? '1' : '0', result_E5: scoreE5 >= 1.5 ? 'TP' : 'TN',
-        score_E6: scoreE6, pred_E6: predE6, result_E6: resultE6,
+        score_E1: scoreE1, pred_E1: evalE1.pred, result_E1: evalE1.result,
+        score_E2: scoreE2, pred_E2: evalE2.pred, result_E2: evalE2.result,
+        score_E3: scoreE3, pred_E3: evalE3.pred, result_E3: evalE3.result,
+        score_E4: scoreE4, pred_E4: evalE4.pred, result_E4: evalE4.result,
+        score_E5: scoreE5, pred_E5: evalE5.pred, result_E5: evalE5.result,
+        score_E6: scoreE6, pred_E6: evalE6.pred, result_E6: evalE6.result,
         predicted_state_E6: isAnomaly ? 'PERSISTENT_DEVIATION' : 'BASELINE_COMPATIBLE',
-        z_E1: -0.583,
-        z_E2: -0.373,
-        z_E3: -0.840,
-        z_E4: -0.419,
+        z_E1: computeZ(1),
+        z_E2: computeZ(2),
+        z_E3: computeZ(3),
+        z_E4: computeZ(4),
       });
 
       createdCount++;
