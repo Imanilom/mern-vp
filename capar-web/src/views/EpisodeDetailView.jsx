@@ -12,24 +12,74 @@ export default function EpisodeDetailView({ episodeId, onBack }) {
   const [context, setContext] = useState([]);
   const [audit, setAudit] = useState([]);
   const [activeTab, setActiveTab] = useState('analysis'); // 'analysis' or 'audit'
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!episodeId) return;
-    
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
+
+    // If episodeId is empty, try passing 'latest' or fetch fallback
+    const targetId = episodeId || 'latest';
+
     Promise.all([
-      api.getEpisodeDetail(episodeId),
-      api.getEpisodeTrajectory(episodeId),
-      api.getEpisodeContext(episodeId),
-      api.getEpisodeAudit(episodeId)
+      api.getEpisodeDetail(targetId).catch(err => ({ error: err.message })),
+      api.getEpisodeTrajectory(targetId).catch(() => ({ items: [] })),
+      api.getEpisodeContext(targetId).catch(() => ({ items: [] })),
+      api.getEpisodeAudit(targetId).catch(() => ({ items: [] }))
     ]).then(([d, t, c, a]) => {
-      setDetail(d.data);
-      setTrajectory(t.items);
-      setContext(c.items);
-      setAudit(a.items);
-    }).catch(console.error);
+      if (!isMounted) return;
+
+      if (d?.error || !d?.data) {
+        setError(d?.error || d?.message || 'Detail episode tidak ditemukan.');
+      } else {
+        setDetail(d.data);
+        setTrajectory(Array.isArray(t?.items) ? t.items : []);
+        setContext(Array.isArray(c?.items) ? c.items : []);
+        setAudit(Array.isArray(a?.items) ? a.items : []);
+      }
+    }).catch(err => {
+      if (isMounted) {
+        console.error('[EpisodeDetailView] Error:', err);
+        setError(err.message || 'Gagal memuat detail episode.');
+      }
+    }).finally(() => {
+      if (isMounted) setLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, [episodeId]);
 
-  if (!detail) return <div className="p-4">Loading Episode Detail...</div>;
+  if (loading) {
+    return (
+      <div className="card-panel p-4 text-center my-4" style={{ minHeight: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="spinner-border text-teal mb-3" role="status"></div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)' }}>Memuat Detail Episode...</div>
+        <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 4 }}>Mengambil trajectory, context telemetry, dan audit log...</div>
+      </div>
+    );
+  }
+
+  if (error || !detail) {
+    return (
+      <div className="card-panel p-4 my-3">
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <button className="btn btn-sm btn-outline-navy" onClick={onBack}>
+            <ArrowLeft size={16} className="me-2" /> Kembali ke Event Generator
+          </button>
+        </div>
+        <div className="alert alert-warning d-flex align-items-center gap-2 mb-0" role="alert">
+          <AlertTriangle size={20} className="text-warning flex-shrink-0" />
+          <div>
+            <strong>Episode Tidak Ditemukan:</strong> {error || 'Silakan pilih episode valid dari Event Generator atau Episode List.'}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="episode-detail">
