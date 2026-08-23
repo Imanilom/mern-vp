@@ -20,8 +20,9 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
   const [episodeAnalysis, setEpisodeAnalysis] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedEpId, setSelectedEpId] = useState(null);
-
   const [ablationData, setAblationData] = useState(null);
+
+  const participantId = globalParticipantFilter || 'ALL';
 
   useEffect(() => {
     setLoading(true);
