@@ -47,7 +47,6 @@ const MarkovModelSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Ensure fast lookup per user
-MarkovModelSchema.index({ user_id: 1 });
 
 const MarkovModel = mongoose.model('MarkovModel', MarkovModelSchema);
 export default MarkovModel;

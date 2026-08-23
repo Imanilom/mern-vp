@@ -26,6 +26,7 @@ import reportRouter from './routes/report.route.js';
 import mlRouter from './routes/ml.route.js';
 import systemRouter from './routes/system.route.js';
 import episodesRouter from './routes/episodes.route.js';
+import { syncAllBaselineLearnedTau } from './utils/capar.thresholds.js';
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 
@@ -65,6 +66,7 @@ async function connectMongoDB() {
     const connType = (mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost')) ? 'Local' : 'Cloud Atlas';
     console.log(`Connected to MongoDB (${connType})!`);
     startLogTransportConsumer().catch((err) => console.error("[RabbitMQ Consumer] Launch error:", err.message));
+    syncAllBaselineLearnedTau().catch((err) => console.error("[syncAllBaselineLearnedTau] Error:", err.message));
   } catch (err) {
     console.error(`[MongoDB] Primary connection error (${mongoUri}):`, err.message);
     const isRemote = !mongoUri.includes('127.0.0.1') && !mongoUri.includes('localhost');

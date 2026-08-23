@@ -58,8 +58,8 @@ function round4(v) {
 export function computeTauFromStableScores(stableScores, config = {}) {
   const cfg = { ...DEFAULT_CONFIG, ...config };
 
-  // Jika belum cukup data, gunakan configured defaults
-  if (!stableScores || stableScores.length < cfg.min_stable_scores) {
+  // Jika belum ada stable scores sama sekali atau < 10, gunakan configured defaults (NON-NULL)
+  if (!stableScores || stableScores.length < 10) {
     return {
       tau_in: cfg.default_tau_in,
       tau_out: cfg.default_tau_out,
@@ -69,6 +69,8 @@ export function computeTauFromStableScores(stableScores, config = {}) {
       min_required: cfg.min_stable_scores,
     };
   }
+
+  const isProvisional = stableScores.length < cfg.min_stable_scores;
 
   // Hitung quantiles dari stable scores
   const q99 = quantile(stableScores, 0.99);
@@ -93,7 +95,7 @@ export function computeTauFromStableScores(stableScores, config = {}) {
     tau_in: round4(tau_in),
     tau_out: round4(tau_out_clipped),
     tau_normal: round4(tau_normal_clipped),
-    source: 'learned',
+    source: isProvisional ? 'provisional' : 'learned',
     stable_score_count: stableScores.length,
     min_required: cfg.min_stable_scores,
     hysteresis_valid: validHysteresis,
@@ -197,28 +199,84 @@ export async function computePersonalThresholds(userId, config = {}) {
 // ── Persist Tau ke Baseline (untuk digunakan pipeline) ───────────────────────
 /**
  * Simpan tau_in, tau_out, tau_normal ke dokumen Baseline.
- * Dipanggil setelah komputasi tau saat window count kelipatan 10.
  *
  * @param {string} baselineId - MongoDB ObjectId dari Baseline doc
  * @param {object} tau - { tau_in, tau_out, tau_normal, source, stable_score_count }
  */
 export async function persistTauToBaseline(baselineId, tau) {
   try {
+    const tauIn = (tau && typeof tau.tau_in === 'number') ? tau.tau_in : DEFAULT_CONFIG.default_tau_in;
+    const tauOut = (tau && typeof tau.tau_out === 'number') ? tau.tau_out : DEFAULT_CONFIG.default_tau_out;
+    const tauNorm = (tau && typeof tau.tau_normal === 'number') ? tau.tau_normal : DEFAULT_CONFIG.default_tau_normal;
+    const source = tau?.source || 'configured';
+    const count = tau?.stable_score_count || 0;
+
     await Baseline.updateOne(
       { _id: baselineId },
       {
         $set: {
-          'learned_tau.tau_in':             tau.tau_in,
-          'learned_tau.tau_out':            tau.tau_out,
-          'learned_tau.tau_normal':         tau.tau_normal,
-          'learned_tau.source':             tau.source,
-          'learned_tau.stable_score_count': tau.stable_score_count,
+          'learned_tau.tau_in':             tauIn,
+          'learned_tau.tau_out':            tauOut,
+          'learned_tau.tau_normal':         tauNorm,
+          'learned_tau.source':             source,
+          'learned_tau.stable_score_count': count,
           'learned_tau.computed_at':        new Date(),
         },
       }
     );
   } catch (err) {
     console.error('[persistTauToBaseline] Error:', err.message);
+  }
+}
+
+/**
+ * Auto sync / backfill learned_tau untuk seluruh Baseline di MongoDB
+ * yang learned_tau.tau_in nya masih null / undefined.
+ */
+export async function syncAllBaselineLearnedTau() {
+  try {
+    const baselines = await Baseline.find({
+      $or: [
+        { learned_tau: { $exists: false } },
+        { 'learned_tau.tau_in': null },
+        { 'learned_tau.tau_in': { $exists: false } }
+      ]
+    });
+
+    if (!baselines || baselines.length === 0) {
+      console.log('[syncBaselineLearnedTau] Semua baseline sudah memiliki learned_tau non-null.');
+      return;
+    }
+
+    console.log(`[syncBaselineLearnedTau] Menemukan ${baselines.length} baseline dengan learned_tau null. Memperbaiki...`);
+    let updatedCount = 0;
+
+    for (const b of baselines) {
+      const scoresFromSeg = await getStableScores(b.user_id, b.activity);
+      const combinedScores = (scoresFromSeg && scoresFromSeg.length > 0)
+        ? scoresFromSeg
+        : (b.stable_score_history || []);
+
+      let tau = computeTauFromStableScores(combinedScores);
+
+      // Fallback adaptif via std_hr jika score belum ada/configured
+      if (tau.source === 'configured' && b.stats) {
+        const stdHr = b.stats?.mean_hr?.std || b.stats?.std_hr?.mean || b.stats?.hr_mean?.std || 2.5;
+        if (typeof stdHr === 'number' && stdHr > 0) {
+          tau.tau_in = Number((1.5 + stdHr * 0.08).toFixed(2));
+          tau.tau_out = Number((1.0 + stdHr * 0.04).toFixed(2));
+          tau.tau_normal = 0.75;
+          tau.source = 'provisional';
+        }
+      }
+
+      await persistTauToBaseline(b._id, tau);
+      updatedCount++;
+    }
+
+    console.log(`[syncBaselineLearnedTau] Sukses memperbarui ${updatedCount} baseline learned_tau.`);
+  } catch (err) {
+    console.error('[syncBaselineLearnedTau] Error:', err.message);
   }
 }
 

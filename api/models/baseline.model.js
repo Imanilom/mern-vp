@@ -121,12 +121,12 @@ const BaselineSchema = new mongoose.Schema({
   // Adaptive threshold learned dari Stable Score Memory (CAPAR Section 7.1)
   // Disimpan setelah threshold dipelajari dari cukup BC→BC windows
   learned_tau: {
-    tau_in:             { type: Number, default: null }, // Q_0.99 dari StableScore
-    tau_out:            { type: Number, default: null }, // Q_0.95 dari StableScore
-    tau_normal:         { type: Number, default: null }, // Q_0.90 dari StableScore
-    source:             { type: String, enum: ['learned', 'configured'], default: 'configured' },
+    tau_in:             { type: Number, default: 1.50 }, // Q_0.99 dari StableScore atau default 1.50
+    tau_out:            { type: Number, default: 1.00 }, // Q_0.95 dari StableScore atau default 1.00
+    tau_normal:         { type: Number, default: 0.75 }, // Q_0.90 dari StableScore atau default 0.75
+    source:             { type: String, enum: ['learned', 'provisional', 'configured'], default: 'configured' },
     stable_score_count: { type: Number, default: 0 },   // jumlah stable scores yang dipakai
-    computed_at:        { type: Date, default: null },
+    computed_at:        { type: Date, default: Date.now },
   },
 
   /**

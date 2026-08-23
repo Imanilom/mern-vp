@@ -105,9 +105,9 @@ export function getDynamicThreshold(maturityLevel) {
 export const MAX_ABS_Z = 8.0;
 
 export const PERSISTENCE_CONFIG = {
-  persistence_windows: 3,
-  recovery_windows: 3,
-  cooldown_windows: 3,
+  persistence_windows: 2,
+  recovery_windows: 2,
+  cooldown_windows: 2,
   recovery_threshold_frac: 0.5,
 };
 
@@ -791,7 +791,7 @@ export function computeProvisionalScore(features, baseline, activityLabel) {
 }
 
 // ── Konfigurasi gap/pause ──────────────────────────────────────────────────
-export const GAP_PAUSE_MS = 5 * 60 * 1000; // 5 menit — device offline / stream terputus
+export const GAP_PAUSE_MS = 60 * 60 * 1000; // 60 menit — untuk mengizinkan data 5-menit yang sparse
 
 // ── Temporal Status Machine ───────────────────────────────────────────────────
 
