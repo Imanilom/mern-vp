@@ -5,6 +5,7 @@ import '../../services/api_service.dart';
 import '../../services/ble_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/markov_heatmap_widget.dart';
+import '../../widgets/markov_graph_widget.dart';
 import '../../widgets/personal_experience_heatmap_widget.dart';
 import '../../widgets/calibration_history_widget.dart';
 
@@ -132,6 +133,8 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
                 // ── Markov Transition Prediction & Heatmap ────────────────
                 if (markovData != null && markovData!['status'] == 'READY') ...[
                   _buildMarkovPredictionCard(),
+                  const SizedBox(height: 14),
+                  MarkovGraphWidget(markovData: markovData!),
                   const SizedBox(height: 14),
                   MarkovHeatmapWidget(markovData: markovData!),
                   const SizedBox(height: 14),
