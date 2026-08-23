@@ -40,16 +40,19 @@ class _InsightScreenState extends ConsumerState<InsightScreen> {
         ApiService.fetchForecast(),
         ApiService.fetchMarkovModel(horizon: selectedHorizon),
         ApiService.fetchCalibrationHistory(),
+        ApiService.fetchPersonalExperience(),
       ]);
       final fData = results[0] as Map<String, dynamic>?;
       final mData = results[1] as Map<String, dynamic>?;
       final cData = results[2] as List<Map<String, dynamic>>;
+      final eData = results[3] as Map<String, dynamic>?;
 
       if (mounted) {
         setState(() {
           forecastData = fData;
           markovData = mData;
           calibrationHistory = cData;
+          experienceData = eData;
           isLoading = false;
         });
       }

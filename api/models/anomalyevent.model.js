@@ -43,11 +43,17 @@ const AnomalyEventSchema = new mongoose.Schema({
   device_id: { type: String },
   activity:  { type: String }, // aktivitas saat onset
 
-  // ── Waktu ─────────────────────────────────────────────────────────────────
-  onset_time:       { type: Number, required: true }, // epoch ms — window pertama anomali
+  // ── Waktu Lifecycle Episode ───────────────────────────────────────────────
+  onset_time:       { type: Number, required: true }, // epoch ms — window pertama anomali (sama dengan started_at)
+  started_at:       { type: Number },                 // alias untuk onset_time (standardization)
+  candidate_at:     { type: Number },                 // epoch ms — state menjadi DEVIATION_CANDIDATE
+  persistent_at:    { type: Number },                 // epoch ms — state menjadi PERSISTENT_DEVIATION
   peak_time:        { type: Number },                 // epoch ms — window dengan score tertinggi
-  resolved_time:    { type: Number, default: null },  // epoch ms — kembali ke Normal
-
+  recovery_started_at: { type: Number },              // epoch ms — mulai recovery
+  recovered_at:     { type: Number },                 // epoch ms — benar-benar recovered
+  resolved_time:    { type: Number, default: null },  // alias untuk recovered_at / selesai
+  unresolved_at:    { type: Number },                 // epoch ms — timeout T_max
+  
   // Waktu onset nyata (diisi anotasi klinisi) — untuk menghitung detection delay
   actual_onset_time: { type: Number, default: null },
 
@@ -72,7 +78,7 @@ const AnomalyEventSchema = new mongoose.Schema({
   // Status lifecycle (CAPAR extended)
   status: {
     type: String,
-    enum: ['open', 'paused', 'closed', 'transient', 'unresolved'],
+    enum: ['open', 'paused', 'closed', 'transient', 'unresolved', 'recovered'],
     default: 'open',
   },
 
@@ -89,6 +95,9 @@ const AnomalyEventSchema = new mongoose.Schema({
   ttr_min: { type: Number, default: null },
   peak_count: { type: Number, default: 0 },
   relapse_count: { type: Number, default: 0 },
+  relapse: { type: Boolean, default: false },
+  relapse_at: { type: Number, default: null },
+  parent_episode_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AnomalyEvent', default: null },
   rule_version: { type: String, default: '1.0.0' },
 
   // ── Pause / Gap Tracking ──────────────────────────────────────────────────

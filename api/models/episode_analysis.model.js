@@ -15,6 +15,38 @@ const EpisodeAnalysisSchema = new mongoose.Schema({
   y_true: { type: String },
   latent_severity: { type: Number },
   anomaly_score: { type: Number },
+  
+  // ── Timing & Duration ─────────────────────────────────────────────────────
+  candidate_duration: { type: Number, default: 0 },
+  persistent_duration: { type: Number, default: 0 },
+  recovery_duration: { type: Number, default: 0 },
+  total_duration: { type: Number, default: 0 },
+  ttr: { type: Number, default: null }, // Time To Recovery
+  
+  // ── Deviation Metrics ─────────────────────────────────────────────────────
+  peak_deviation: { type: Number },
+  mean_deviation: { type: Number },
+  deviation_auc: { type: Number },
+  deviation_burden: { type: Number },
+  recovery_slope: { type: Number },
+  
+  // ── Quality Metrics ───────────────────────────────────────────────────────
+  mean_quality: { type: Number },
+  min_quality: { type: Number },
+  valid_fraction: { type: Number },
+  abstention_count: { type: Number, default: 0 },
+  
+  // ── Context Metrics ───────────────────────────────────────────────────────
+  dominant_context: { type: String },
+  context_changes: [{
+    context: String,
+    duration_ms: Number
+  }],
+  
+  // ── Relapse Tracking ──────────────────────────────────────────────────────
+  relapse_detected: { type: Boolean, default: false },
+  relapse_count: { type: Number, default: 0 },
+  time_to_relapse: { type: Number, default: null },
 
   // Thresholds
   tau_in: { type: Number },

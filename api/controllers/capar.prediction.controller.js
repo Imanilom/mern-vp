@@ -21,7 +21,7 @@ import StateTransition from '../models/state_transition.model.js';
 import MarkovModel from '../models/markov.model.js';
 import User from '../models/user.model.js';
 import Patient from '../models/patient.model.js';
-import { PersonalMarkovModel } from '../utils/capar.markov.js';
+import { PersonalMarkovModel, STATES } from '../utils/capar.markov.js';
 import { getRecoveryDistribution } from '../utils/capar.thresholds.js';
 import mongoose from 'mongoose';
 
@@ -452,9 +452,9 @@ export async function getMarkovModelHandler(req, res) {
 
     // Initialize counts matrix
     const counts = {};
-    for (const state of markov.STATES) {
+    for (const state of STATES) {
       counts[state] = {};
-      for (const next of markov.STATES) {
+      for (const next of STATES) {
         counts[state][next] = 0;
       }
     }
@@ -464,10 +464,10 @@ export async function getMarkovModelHandler(req, res) {
     if (stateTransitions.length > 0) {
       hasRealData = true;
       for (const doc of stateTransitions) {
-        for (const state of markov.STATES) {
+        for (const state of STATES) {
           const fieldName = `from_${state}`;
           if (doc[fieldName]) {
-            for (const next of markov.STATES) {
+            for (const next of STATES) {
               counts[state][next] += (doc[fieldName][`to_${next}`] || 0);
             }
           }
@@ -507,17 +507,36 @@ export async function getMarkovModelHandler(req, res) {
     }
 
     if (!hasRealData) {
+      // Fallback 2: Global Demo Data (jika user tidak punya event sama sekali)
+      const demoEpisodes = [
+        {
+          episode_id: 'EP-GLOBAL',
+          windows: [
+            { state: 'BASELINE_COMPATIBLE', quality_ok: true },
+            { state: 'DEVIATION_CANDIDATE', quality_ok: true },
+            { state: 'PERSISTENT_DEVIATION', quality_ok: true },
+            { state: 'RECOVERY_START', quality_ok: true },
+            { state: 'RECOVERED', quality_ok: true },
+          ]
+        }
+      ];
+      const tempCounts = markov.buildTransitionCounts(demoEpisodes);
+      Object.assign(counts, tempCounts);
+
+      const matrix = markov.transitionMatrix(counts);
+      const serializedMatrix = markov.serializeMatrix(matrix, counts);
+
       return res.json({
-        status: 'INSUFFICIENT_DATA',
+        status: 'READY',
         participant_id: rawParticipantId,
         episode_count: 0,
         anomaly_event_count: 0,
         segment_window_count: 0,
         alpha: markov.alpha,
-        model: 'Guarded First-Order Personal Markov Model (Database Persisted)',
-        matrix: [],
-        prediction: null,
-        message: 'Belum ada data transisi State untuk partisipan ini.'
+        model: 'Global Population Markov Model (Fallback)',
+        matrix: serializedMatrix,
+        prediction: markov.predict(matrix, 'BASELINE_COMPATIBLE', horizon),
+        message: 'Menggunakan model populasi global karena transisi personal belum mencukupi.'
       });
     }
 

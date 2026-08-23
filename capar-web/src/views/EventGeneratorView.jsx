@@ -17,6 +17,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
       const events = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       const mapped = events.map(ep => ({
         episodeId: ep._id,
+        participantName: typeof ep.user_id === 'object' && ep.user_id ? (ep.user_id.name || ep.user_id.email || ep.user_id.guid || 'Unknown') : 'Unknown',
         onsetAt: ep.onset_time,
         peakScore: typeof ep.peak_score === 'number' ? ep.peak_score : (typeof ep.onset_score === 'number' ? ep.onset_score : 0),
         durationMin: ep.duration_ms ? Math.floor(ep.duration_ms/60000) : 0,
@@ -53,6 +54,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
           <thead>
             <tr>
               <th>Episode ID</th>
+              <th>Peserta</th>
               <th>Onset</th>
               <th>Peak Score</th>
               <th>Duration (min)</th>
@@ -65,6 +67,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
             {rows.map(r => (
               <tr key={r.episodeId}>
                 <td>{r.episodeId.substring(0, 8)}...</td>
+                <td>{r.participantName}</td>
                 <td>{new Date(r.onsetAt).toLocaleString()}</td>
                 <td>{r.peakScore?.toFixed(2)}</td>
                 <td>{r.durationMin}</td>
@@ -82,7 +85,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
               </tr>
             ))}
             {rows.length === 0 && !loading && (
-              <tr><td colSpan="7" className="text-center py-4">No events found</td></tr>
+              <tr><td colSpan="8" className="text-center py-4">No events found</td></tr>
             )}
           </tbody>
         </table>
