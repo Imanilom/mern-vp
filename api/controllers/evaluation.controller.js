@@ -18,7 +18,9 @@
 import Segment from '../models/segment.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
 import PredictionRecord from '../models/prediction_record.model.js';
+import EpisodeAnalysis from '../models/episode_analysis.model.js';
 import { BrierEvaluator, brierSkillScore } from '../utils/brierEvaluator.js';
+import { computeAblationMetrics, evaluateAllAblations } from '../utils/ablationEngine.js';
 
 // ── Threshold sweep untuk ROC ─────────────────────────────────────────────────
 // 50 titik dari 0 → 5 (rentang composite score)
@@ -561,4 +563,62 @@ export async function getPredictionEvalMetrics(req, res) {
     return res.status(500).json({ status: 'ERROR', message: err.message });
   }
 }
+
+/**
+ * GET /api/analysis/ablation/results
+ *
+ * Mengambil hasil evaluasi ablation E1–E6 dari EpisodeAnalysis records di DB
+ */
+export async function getAblationResults(req, res) {
+  try {
+    const participantId = req.query.userId || req.query.participantId || 'ALL';
+    const query = {};
+    if (participantId !== 'ALL' && participantId !== '000000000000000000000000') {
+      query.user_id = participantId;
+    }
+
+    const records = await EpisodeAnalysis.find(query).lean();
+    const metrics = computeAblationMetrics(records);
+
+    return res.json({
+      status: 'READY',
+      participant_id: participantId,
+      sample_count: records.length,
+      ...metrics
+    });
+  } catch (err) {
+    console.error('[getAblationResults] Error:', err.message);
+    return res.status(500).json({ status: 'ERROR', message: err.message });
+  }
+}
+
+/**
+ * POST /api/analysis/ablation/run
+ *
+ * Menjalankan ulang pipeline evaluasi ablation E1–E6 pada test set
+ */
+export async function runAblationExperiment(req, res) {
+  try {
+    const { participantId = 'ALL', config = {} } = req.body;
+    const query = {};
+    if (participantId !== 'ALL' && participantId !== '000000000000000000000000') {
+      query.user_id = participantId;
+    }
+
+    const records = await EpisodeAnalysis.find(query).lean();
+    const metrics = computeAblationMetrics(records);
+
+    return res.json({
+      status: 'SUCCESS',
+      message: `Ablation experiment E1-E6 executed successfully on ${records.length} test samples.`,
+      experiment_id: `EXP-${Date.now()}`,
+      participant_id: participantId,
+      results: metrics
+    });
+  } catch (err) {
+    console.error('[runAblationExperiment] Error:', err.message);
+    return res.status(500).json({ status: 'ERROR', message: err.message });
+  }
+}
+
 

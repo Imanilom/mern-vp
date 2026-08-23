@@ -38,6 +38,12 @@ class BleService extends ChangeNotifier {
   double _lastAccZ = 0.0;
   double _lastEcg  = 0.0;
 
+  // Auto-Reconnect State
+  bool isReconnecting = false;
+  bool _isManualDisconnect = false;
+  Timer? _autoReconnectTimer;
+  String _savedDeviceId = '';
+
   // RR sliding window untuk RMSSD
   final List<int> _rrList = [];
 
@@ -45,6 +51,39 @@ class BleService extends ChangeNotifier {
 
   BleService() {
     _initPolarListeners();
+    _restoreSavedDeviceAndAutoConnect();
+  }
+
+  void _restoreSavedDeviceAndAutoConnect() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedId = prefs.getString('device_id') ?? '';
+      if (savedId.isNotEmpty) {
+        _savedDeviceId = savedId;
+        debugPrint('[Polar] Found saved device ID: $savedId');
+      }
+    } catch (e) {
+      debugPrint('[Polar] Error loading saved device ID: $e');
+    }
+  }
+
+  void _scheduleAutoReconnect(String targetDeviceId) {
+    if (_isManualDisconnect || isConnected || _isDisposed || targetDeviceId.isEmpty) return;
+    _autoReconnectTimer?.cancel();
+    isReconnecting = true;
+    if (!_isDisposed) notifyListeners();
+
+    debugPrint('[Polar] 🔄 Auto-reconnect scheduled in 3 seconds for $targetDeviceId...');
+    _autoReconnectTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (isConnected || _isManualDisconnect || _isDisposed) {
+        timer.cancel();
+        isReconnecting = false;
+        if (!_isDisposed) notifyListeners();
+        return;
+      }
+      debugPrint('[Polar] 🔄 Retrying connection to $targetDeviceId...');
+      connectToDevice(targetDeviceId);
+    });
   }
 
   // ─── Init global listeners ───────────────────────────────────────────────────
@@ -55,6 +94,10 @@ class BleService extends ChangeNotifier {
       debugPrint('[Polar] Connected: ${info.deviceId} (${info.name})');
       deviceName = info.name.isNotEmpty ? info.name : 'Polar H10';
       _deviceId  = info.deviceId;
+      _savedDeviceId = info.deviceId;
+      _isManualDisconnect = false;
+      isReconnecting = false;
+      _autoReconnectTimer?.cancel();
       SharedPreferences.getInstance().then((prefs) {
         prefs.setString('device_id', info.deviceId);
       });
@@ -68,9 +111,12 @@ class BleService extends ChangeNotifier {
     _disconnectSub = _polar.deviceDisconnected.listen((deviceId) {
       debugPrint('[Polar] Disconnected: $deviceId');
       isConnected = false;
-      _deviceId = '';
       _stopStreams();
       if (!_isDisposed) notifyListeners();
+
+      if (!_isManualDisconnect && _savedDeviceId.isNotEmpty && !_isDisposed) {
+        _scheduleAutoReconnect(_savedDeviceId);
+      }
     });
 
     // SDK Feature ready — mulai streaming setelah online streaming ready
@@ -103,6 +149,8 @@ class BleService extends ChangeNotifier {
   /// Connect to Polar device by deviceId (MAC address / device serial)
   Future<bool> connectToDevice(String deviceId) async {
     try {
+      _isManualDisconnect = false;
+      _savedDeviceId = deviceId;
       debugPrint('[Polar] Connecting to $deviceId ...');
       _polar.connectToDevice(deviceId);
       // Connection result via _connectSub listener
@@ -120,7 +168,7 @@ class BleService extends ChangeNotifier {
       final available = await _polar.getAvailableOnlineStreamDataTypes(identifier);
       debugPrint('[Polar] Available stream types: $available');
 
-      // ── HR + RR ──────────────────────────────────────────────────────────────
+      // ── HR + RR (Critical Stream) ─────────────────────────────────────────────
       if (available.contains(PolarDataType.hr)) {
         _hrSub?.cancel();
         _hrSub = _polar.startHrStreaming(identifier).listen(_onHrData,
@@ -129,18 +177,19 @@ class BleService extends ChangeNotifier {
         debugPrint('[Polar] HR streaming started');
       }
 
-      // ── ECG (130Hz, µV) ──────────────────────────────────────────────────────
+      // ── ECG (130Hz, µV) — Error isolated ──────────────────────────────────────
       if (available.contains(PolarDataType.ecg)) {
         _ecgSub?.cancel();
         _ecgSub = _polar.startEcgStreaming(identifier).listen(_onEcgData,
-          onError: (e) => debugPrint('[Polar] ECG stream error: $e'),
+          onError: (e) => debugPrint('[Polar] ECG stream error isolated: $e'),
+          cancelOnError: false,
         );
         debugPrint('[Polar] ECG streaming started (130Hz)');
       } else {
         debugPrint('[Polar] ECG not available on this device');
       }
 
-      // ── ACC (50Hz, mG) ───────────────────────────────────────────────────────
+      // ── ACC (50Hz, mG) — Error isolated ───────────────────────────────────────
       if (available.contains(PolarDataType.acc)) {
         _accSub?.cancel();
         _accSub = _polar.startAccStreaming(
@@ -151,7 +200,8 @@ class BleService extends ChangeNotifier {
             PolarSettingType.resolution: 16,
           }),
         ).listen(_onAccData,
-          onError: (e) => debugPrint('[Polar] ACC stream error: $e'),
+          onError: (e) => debugPrint('[Polar] ACC stream error isolated: $e'),
+          cancelOnError: false,
         );
         debugPrint('[Polar] ACC streaming started (50Hz, ±8G)');
       } else {
@@ -321,6 +371,9 @@ class BleService extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    _isManualDisconnect = true;
+    _autoReconnectTimer?.cancel();
+    isReconnecting = false;
     if (_deviceId.isNotEmpty) {
       try { _polar.disconnectFromDevice(_deviceId); } catch (_) {}
     }

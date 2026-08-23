@@ -38,8 +38,9 @@ export const createTransportLog = async (req, res) => {
     if (targetUserId && mongoose.Types.ObjectId.isValid(targetUserId) && envelope.readings.length > 0) {
       let baseTs = Math.floor(Date.now() / 1000);
       const docs = envelope.readings.map((r, idx) => {
-        const ts = (r.timestamp && r.timestamp > 100000) ? r.timestamp : (baseTs + idx);
-        const now = new Date(ts * 1000);
+        let rawTs = (r.timestamp && r.timestamp > 100000) ? r.timestamp : (baseTs + idx);
+        let secTs = rawTs > 10000000000 ? Math.floor(rawTs / 1000) : rawTs;
+        const now = new Date(secTs * 1000);
         const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
         const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
@@ -53,7 +54,7 @@ export const createTransportLog = async (req, res) => {
 
         return {
           user_id: targetUserId,
-          timestamp: ts,
+          timestamp: secTs,
           date_created: dateStr,
           time_created: timeStr,
           hr: r.heart_rate || r.hr || 0,

@@ -13,12 +13,16 @@
  */
 
 import { getTransitionMatrix, getAllTransitions } from '../utils/capar.transitions.js';
-import { getRecoveryDistribution } from '../utils/capar.thresholds.js';
-import { PersonalMarkovModel } from '../utils/capar.markov.js';
+import Episode from '../models/episode_analysis.model.js';
 import Segment from '../models/segment.model.js';
+import DataTransformation from '../models/datatransformation.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
+import StateTransition from '../models/state_transition.model.js';
+import MarkovModel from '../models/markov.model.js';
 import User from '../models/user.model.js';
 import Patient from '../models/patient.model.js';
+import { PersonalMarkovModel } from '../utils/capar.markov.js';
+import { getRecoveryDistribution } from '../utils/capar.thresholds.js';
 import mongoose from 'mongoose';
 
 const HORIZON_STEPS = 3; // Default horizon untuk multi-step forecast
@@ -440,82 +444,55 @@ export async function getMarkovModelHandler(req, res) {
       }
     }
 
-    const events = await AnomalyEvent.find(query)
-      .populate('segment_ids')
-      .lean();
+    const events = await AnomalyEvent.find(query).select('_id').lean();
+    
+    // Fetch raw transition counts from the StateTransition database model
+    // This allows the Markov model to be personalized and persistently updated per user.
+    const stateTransitions = await StateTransition.find(query).lean();
 
-    // Fetch continuous segments for user to build real transition sequences
-    const segs = await Segment.find(query)
-      .sort({ window_start: 1 })
-      .select('rr_status classification window_start')
-      .lean();
-
-    // Map DB events to episode objects expected by PersonalMarkovModel
-    let episodes = (events || []).map(event => {
-      const windows = (event.segment_ids || []).map(seg => ({
-        state: seg.rr_status || seg.classification || 'BASELINE_COMPATIBLE',
-        quality_ok: seg.quality_flag !== 'REJECTED' && seg.rr_status !== 'QUALITY_WARNING',
-      }));
-
-      return {
-        episode_id: event._id ? event._id.toString() : 'EP-001',
-        verified: event.review_status === 'Validated' || event.status === 'closed' || event.status === 'transient',
-        windows: windows.length > 0 ? windows : [
-          { state: markov.normalizeState(event.evidence_state) || 'BASELINE_COMPATIBLE', quality_ok: true }
-        ],
-      };
-    });
-
-    if (segs.length > 1) {
-      const segWindows = segs.map(s => ({
-        state: markov.normalizeState(s.rr_status || s.classification) || 'BASELINE_COMPATIBLE',
-        quality_ok: true,
-      }));
-      episodes.push({
-        episode_id: 'EP-DB-SEGMENTS',
-        verified: true,
-        windows: segWindows,
-      });
+    // Initialize counts matrix
+    const counts = {};
+    for (const state of markov.STATES) {
+      counts[state] = {};
+      for (const next of markov.STATES) {
+        counts[state][next] = 0;
+      }
     }
 
-    // Fallback seed episodes ONLY for demo global (ALL / P00) when DB is empty.
-    // For specific participants with 0 data, return INSUFFICIENT_DATA empty state.
-    if (events.length === 0) {
-      if (rawParticipantId !== 'ALL' && rawParticipantId !== 'P00') {
-        return res.json({
-          status: 'INSUFFICIENT_DATA',
-          participant_id: rawParticipantId,
-          episode_count: 0,
-          anomaly_event_count: 0,
-          segment_window_count: 0,
-          alpha: markov.alpha,
-          model: 'Guarded First-Order Personal Markov Model',
-          matrix: [],
-          prediction: null,
-          message: 'Belum ada data episode atau segment sinyal untuk partisipan ini.'
-        });
+    // Aggregate counts from StateTransition documents
+    let hasRealData = false;
+    if (stateTransitions.length > 0) {
+      hasRealData = true;
+      for (const doc of stateTransitions) {
+        for (const state of markov.STATES) {
+          const fieldName = `from_${state}`;
+          if (doc[fieldName]) {
+            for (const next of markov.STATES) {
+              counts[state][next] += (doc[fieldName][`to_${next}`] || 0);
+            }
+          }
+        }
       }
-
-      episodes = [
+    } else if (events.length > 0) {
+      // Fallback 1: If StateTransition is empty but they have AnomalyEvents
+      const episodes = await AnomalyEvent.find(query).populate('segment_ids').lean();
+      const mappedEpisodes = episodes.map(event => ({
+        episode_id: event._id.toString(),
+        verified: true,
+        windows: (event.segment_ids || []).map(seg => ({
+          state: markov.normalizeState(seg.rr_status || seg.classification) || 'BASELINE_COMPATIBLE',
+          quality_ok: true
+        }))
+      }));
+      const tempCounts = markov.buildTransitionCounts(mappedEpisodes);
+      Object.assign(counts, tempCounts);
+      hasRealData = true;
+    } else if (rawParticipantId === 'ALL' || rawParticipantId === 'P00') {
+      // Fallback 2: Global Demo Data
+      hasRealData = true;
+      const demoEpisodes = [
         {
           episode_id: 'EP-001',
-          verified: true,
-          windows: [
-            { state: 'BASELINE_COMPATIBLE', quality_ok: true },
-            { state: 'BASELINE_COMPATIBLE', quality_ok: true },
-            { state: 'DEVIATION_CANDIDATE', quality_ok: true },
-            { state: 'DEVIATION_CANDIDATE', quality_ok: true },
-            { state: 'PERSISTENT_DEVIATION', quality_ok: true },
-            { state: 'PERSISTENT_DEVIATION', quality_ok: true },
-            { state: 'RECOVERY_START', quality_ok: true },
-            { state: 'RECOVERY_START', quality_ok: true },
-            { state: 'RECOVERED', quality_ok: true },
-            { state: 'BASELINE_COMPATIBLE', quality_ok: true },
-          ]
-        },
-        {
-          episode_id: 'EP-002',
-          verified: true,
           windows: [
             { state: 'BASELINE_COMPATIBLE', quality_ok: true },
             { state: 'DEVIATION_CANDIDATE', quality_ok: true },
@@ -525,9 +502,25 @@ export async function getMarkovModelHandler(req, res) {
           ]
         }
       ];
+      const tempCounts = markov.buildTransitionCounts(demoEpisodes);
+      Object.assign(counts, tempCounts);
     }
 
-    const counts = markov.buildTransitionCounts(episodes);
+    if (!hasRealData) {
+      return res.json({
+        status: 'INSUFFICIENT_DATA',
+        participant_id: rawParticipantId,
+        episode_count: 0,
+        anomaly_event_count: 0,
+        segment_window_count: 0,
+        alpha: markov.alpha,
+        model: 'Guarded First-Order Personal Markov Model (Database Persisted)',
+        matrix: [],
+        prediction: null,
+        message: 'Belum ada data transisi State untuk partisipan ini.'
+      });
+    }
+
     const matrix = markov.transitionMatrix(counts);
 
     // Get current state from latest segment or default
@@ -542,18 +535,40 @@ export async function getMarkovModelHandler(req, res) {
 
     // Calculate actual anomaly events count vs segment window transitions
     const realEventCount = events.length;
-    const reportedEpisodeCount = realEventCount > 0 
-      ? realEventCount 
-      : episodes.filter(e => e.episode_id !== 'EP-DB-SEGMENTS').length;
+    const reportedEpisodeCount = realEventCount;
+    const totalTransitionsRecorded = stateTransitions.reduce((acc, doc) => acc + (doc.total_transitions || 0), 0);
+
+    // Save/Update the persistent MarkovModel
+    if (query.user_id) {
+      try {
+        await MarkovModel.findOneAndUpdate(
+          { user_id: query.user_id },
+          {
+            $set: {
+              alpha: markov.alpha,
+              matrix: serializedMatrix,
+              status: 'READY',
+              total_transitions_learned: totalTransitionsRecorded,
+              episode_count: reportedEpisodeCount,
+              anomaly_event_count: realEventCount,
+              last_computed_at: new Date()
+            }
+          },
+          { upsert: true }
+        );
+      } catch (err) {
+        console.error('[MarkovModel Upsert Error]', err);
+      }
+    }
 
     return res.json({
       status: 'READY',
       participant_id: rawParticipantId,
       episode_count: reportedEpisodeCount,
       anomaly_event_count: realEventCount,
-      segment_window_count: segs.length,
+      segment_window_count: totalTransitionsRecorded,
       alpha: markov.alpha,
-      model: 'Guarded First-Order Personal Markov Model',
+      model: 'Guarded First-Order Personal Markov Model (Database Persisted)',
       matrix: serializedMatrix,
       prediction: prediction,
     });

@@ -1,0 +1,109 @@
+{
+  "experiment_id": "EXP-ABLATION-1787457153451",
+  "timestamp": "2026-08-23T03:52:33.452Z",
+  "dataset": {
+    "total_samples": 500,
+    "split": "FINAL_TEST_SET_SHARED"
+  },
+  "parameters": {
+    "sigma_floor": 1,
+    "tau": 1.5,
+    "tau_enter": 1.86,
+    "tau_exit": 1.18,
+    "tau_normal": 0.75,
+    "q_min": 0.75,
+    "m_persistence": 3,
+    "min_dwell": 2,
+    "recovery_dwell": 3,
+    "relapse_window_min": 30
+  },
+  "metrics": {
+    "E1_Global_NonContext": {
+      "TP": 151,
+      "FP": 0,
+      "FN": 0,
+      "TN": 349,
+      "total": 500,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "accuracy": 1,
+      "coverage": 1,
+      "abstention_rate": 0
+    },
+    "E2_Global_Context": {
+      "TP": 108,
+      "FP": 0,
+      "FN": 43,
+      "TN": 349,
+      "total": 500,
+      "precision": 1,
+      "recall": 0.7152,
+      "f1": 0.834,
+      "accuracy": 0.914,
+      "coverage": 1,
+      "abstention_rate": 0
+    },
+    "E3_Personal_NonContext": {
+      "TP": 151,
+      "FP": 0,
+      "FN": 0,
+      "TN": 349,
+      "total": 500,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "accuracy": 1,
+      "coverage": 1,
+      "abstention_rate": 0
+    },
+    "E4_Personal_Context": {
+      "TP": 151,
+      "FP": 0,
+      "FN": 0,
+      "TN": 349,
+      "total": 500,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "accuracy": 1,
+      "coverage": 1,
+      "abstention_rate": 0
+    },
+    "E5_Quality_Gating": {
+      "TP": 151,
+      "FP": 0,
+      "FN": 0,
+      "TN": 328,
+      "total": 479,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "accuracy": 1,
+      "coverage": 0.958,
+      "abstention_rate": 0.042
+    },
+    "E6_Temporal_Governance": {
+      "TP": 151,
+      "FP": 0,
+      "FN": 0,
+      "TN": 349,
+      "total": 500,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "accuracy": 1,
+      "coverage": 1,
+      "abstention_rate": 0,
+      "state_switching": 4,
+      "relapse_count": 0
+    }
+  },
+  "ablation_contributions": {
+    "delta_context": -0.166,
+    "delta_personal": 0,
+    "delta_joint": 0,
+    "delta_quality": 0,
+    "delta_temporal": 0
+  }
+}

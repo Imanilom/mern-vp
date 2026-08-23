@@ -365,6 +365,7 @@ export function App() {
           {(activeTab === 'export') && (
             <ExportView 
               exportJobs={exportJobs}
+              user={userRole}
               onRefresh={async () => {
                 const exports = await api.getExportJobs();
                 setExportJobs(exports);

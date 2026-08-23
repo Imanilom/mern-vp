@@ -629,5 +629,14 @@ export const api = {
   },
   async reviewEpisode(episodeId, payload) {
     return axios.post(`/episodes/${episodeId}/review`, payload).then(res => res.data);
+  },
+
+  // --- ABLATION E1-E6 EXPERIMENT FRAMEWORK ---
+  async getAblationResults(userId = 'ALL') {
+    const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
+    return axios.get(`/analysis/ablation/results?userId=${target}`).then(res => res.data).catch(() => null);
+  },
+  async runAblationExperiment(userId = 'ALL', config = {}) {
+    return axios.post('/analysis/ablation/run', { participantId: userId, config }).then(res => res.data);
   }
 };

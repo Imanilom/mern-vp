@@ -3,8 +3,25 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../theme/app_colors.dart';
 
-class WelcomeScreen extends StatelessWidget {
+import '../../services/background_task.dart';
+
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
+
+  @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      BackgroundTask.initializeService().catchError((e) {
+        debugPrint('[Welcome] BackgroundTask error: $e');
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

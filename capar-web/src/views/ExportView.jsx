@@ -10,7 +10,7 @@ import {
   Plus
 } from 'lucide-react';
 
-export const ExportView = ({ exportJobs }) => {
+export const ExportView = ({ exportJobs, user }) => {
   const [jobs, setJobs] = useState(exportJobs || []);
 
   useEffect(() => {
@@ -40,14 +40,18 @@ export const ExportView = ({ exportJobs }) => {
     e.preventDefault();
     setIsGenerating(true);
     setTimeout(() => {
+      const activeScopes = Object.keys(datasetLevels).filter(k => datasetLevels[k]);
+      const scopeLabel = activeScopes.length > 0 ? activeScopes.join(', ') : 'Custom Dataset Bundle';
+      
       const newJob = {
         id: `EX-${Math.floor(104 + Math.random() * 900)}`,
-        scope: "Custom Dataset Bundle",
+        scope: scopeLabel,
         format: format,
         status: "Ready",
-        requester: "rina.s@capar-research.id",
-        date: "2026-08-08 14:45",
-        checksum: `sha256:${Math.random().toString(36).substring(2, 10)}...`
+        requester: user?.email || user?.name || "admin@capar-research.id",
+        date: new Date().toISOString().replace('T', ' ').substring(0,16),
+        checksum: `sha256:${Math.random().toString(36).substring(2, 10)}...`,
+        levels: { ...datasetLevels }
       };
       setJobs([newJob, ...jobs]);
       setIsGenerating(false);
@@ -59,7 +63,10 @@ export const ExportView = ({ exportJobs }) => {
     let mimeType = "text/csv";
     const rawFmt = (job.format || 'csv').toLowerCase();
     const ext = rawFmt.includes('json') ? 'json' : (rawFmt.includes('pdf') ? 'txt' : 'csv');
-    const filename = `${job.id}_${(job.scope || 'bundle').replace(/\s+/g, '_')}.${ext}`;
+    const filename = `${job.id}_${(job.scope || 'bundle').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
+    
+    const activeLevels = job.levels || datasetLevels;
+    const selectedColumns = Object.keys(activeLevels).filter(k => activeLevels[k]);
 
     if (ext === 'json') {
       mimeType = "application/json";
@@ -70,7 +77,7 @@ export const ExportView = ({ exportJobs }) => {
         created_at: job.date,
         requester: job.requester,
         checksum: job.checksum,
-        dataset_levels: datasetLevels,
+        dataset_levels: activeLevels,
         summary: {
           total_records: 1250,
           status: "VERIFIED"
@@ -78,7 +85,25 @@ export const ExportView = ({ exportJobs }) => {
       }, null, 2);
     } else {
       mimeType = "text/csv";
-      content = `job_id,scope,format,created_at,requester,checksum\n"${job.id}","${job.scope}","${job.format}","${job.date}","${job.requester}","${job.checksum}"\n`;
+      // Generate actual mock dataset rows based on selected columns
+      const headers = ['record_id', 'timestamp', 'participant_id', ...selectedColumns];
+      content = headers.join(',') + '\n';
+      
+      for (let i = 1; i <= 15; i++) {
+        const row = [
+          `REC-${i.toString().padStart(4, '0')}`,
+          `2026-08-08 10:${i.toString().padStart(2, '0')}:00`,
+          `P00${(i % 3) + 1}`
+        ];
+        
+        selectedColumns.forEach(col => {
+          if (col === 'stateTimeline') row.push(i % 2 === 0 ? 'PERSISTENT_DEVIATION' : 'BASELINE_COMPATIBLE');
+          else if (col === 'episodeTable') row.push(`EP-00${i}`);
+          else row.push(`data_${col}_${i}`);
+        });
+        
+        content += row.join(',') + '\n';
+      }
     }
 
     const blob = new Blob([content], { type: mimeType });

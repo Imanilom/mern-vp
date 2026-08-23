@@ -32,7 +32,7 @@ import {
   getPersonalExperienceMemory,
   getSegmentAuditWindows,
 } from '../controllers/analysis.controller.js';
-import { calculateBrierScoreHandler, getPredictionEvalMetrics } from '../controllers/evaluation.controller.js';
+import { calculateBrierScoreHandler, getPredictionEvalMetrics, getAblationResults, runAblationExperiment } from '../controllers/evaluation.controller.js';
 import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions, getRecoveryTimeToRecoveredPrediction, getMarkovModelHandler } from '../controllers/capar.prediction.controller.js';
 import { generateReportData } from '../controllers/report.controller.js';
 import { computePersonalThresholds } from '../utils/capar.thresholds.js';
@@ -484,5 +484,11 @@ router.get('/prediction-eval/brier/:userId', resolveUserIdParam, getPredictionEv
 
 /** GET /api/analysis/experience/:userId — Personal Experience Memory & Gamification Sync */
 router.get('/experience/:userId', resolveUserIdParam, getPersonalExperienceMemory);
+
+/** GET /api/analysis/ablation/results — Evaluasi Ablation E1-E6 */
+router.get('/ablation/results', getAblationResults);
+
+/** POST /api/analysis/ablation/run — Trigger Ablation Experiment E1-E6 */
+router.post('/ablation/run', runAblationExperiment);
 
 export default router;
