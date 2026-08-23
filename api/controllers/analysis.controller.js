@@ -1911,6 +1911,22 @@ export async function generateEpisodeAnalysis(eventId) {
     const evalE5 = getResult(abl.E5.pred);
     const evalE6 = getResult(isAnomaly ? '1' : '0');
 
+    // Ambil threshold tau_in, tau_out, tau_normal aktual dari Baseline user
+    let actualTauIn = 1.5;
+    let actualTauOut = 1.0;
+    let actualTauNormal = 0.75;
+    
+    try {
+      const activeBaseline = await Baseline.findOne({ user_id: ev.user_id, status: 'active' }).sort({ updated_at: -1 }).lean();
+      if (activeBaseline && activeBaseline.thresholds) {
+        actualTauIn = activeBaseline.thresholds.tau_in ?? 1.5;
+        actualTauOut = activeBaseline.thresholds.tau_out ?? 1.0;
+        actualTauNormal = activeBaseline.thresholds.tau_normal ?? 0.75;
+      }
+    } catch (e) {
+      console.warn('[generateEpisodeAnalysis] Failed to fetch active baseline for tau, using default.', e.message);
+    }
+
     await EpisodeAnalysis.findOneAndUpdate(
       { episode_id: ev._id },
       {
@@ -1926,9 +1942,9 @@ export async function generateEpisodeAnalysis(eventId) {
         y_true: yTrueVal,
         latent_severity: ev.latent_severity ?? (isAnomaly ? 1.85 : 0.4),
         anomaly_score: anomalyScore,
-        tau_in: 1.86,
-        tau_out: 1.20,
-        tau_normal: 0.75,
+        tau_in: actualTauIn,
+        tau_out: actualTauOut,
+        tau_normal: actualTauNormal,
         hr_mean: hrMean,
         rmssd: rmssdVal,
         sdnn: sdnnVal,
