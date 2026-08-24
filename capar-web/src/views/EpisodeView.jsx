@@ -53,6 +53,17 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
   const [isSaved, setIsSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('detail');
   const [comparedEpisodeId, setComparedEpisodeId] = useState('');
+  const [episodeAnalyses, setEpisodeAnalyses] = useState([]);
+
+  useEffect(() => {
+    const fetchId = globalParticipantFilter !== 'ALL' ? globalParticipantFilter : undefined;
+    api.getEpisodeAnalysis(fetchId).then(data => {
+      setEpisodeAnalyses(Array.isArray(data) ? data : []);
+    }).catch(e => {
+      console.error(e);
+      setEpisodeAnalyses([]);
+    });
+  }, [globalParticipantFilter]);
 
   useEffect(() => {
     if (selectedEpisode) {
@@ -441,10 +452,16 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
                   Analysis &amp; Review
                 </span>
                 <span 
+                  style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', color: activeTab === 'advanced' ? 'var(--teal)' : 'var(--gray)' }}
+                  onClick={() => setActiveTab('advanced')}
+                >
+                  Advanced Metrics (E1-E6)
+                </span>
+                <span 
                   style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', color: activeTab === 'compare' ? 'var(--teal)' : 'var(--gray)' }}
                   onClick={() => setActiveTab('compare')}
                 >
-                  ⚔️ Compare Episode (Partisipan Sama)
+                  ⚔️ Compare Episode
                 </span>
                 <span 
                   style={{ fontSize: 12, fontWeight: 700, cursor: 'pointer', color: activeTab === 'audit' ? 'var(--teal)' : 'var(--gray)' }}
@@ -453,6 +470,86 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
                   Audit &amp; Provenance
                 </span>
               </div>
+
+              {activeTab === 'advanced' && (() => {
+                const epAnalysis = episodeAnalyses.find(ea => ea.episode_id === selectedEpisode.id || (new Date(ea.start_time).getTime() === selectedEpisode.raw?.onset_time));
+                if (!epAnalysis) {
+                  return (
+                    <div className="alert alert-warning py-2 px-3" style={{ fontSize: 12 }}>
+                      No advanced episode analysis data available for this episode yet.
+                    </div>
+                  );
+                }
+                return (
+                  <div>
+                    <div className="row g-2 mb-3">
+                      <div className="col-4">
+                        <div style={{ background: 'var(--gray-soft)', padding: '8px 10px', borderRadius: 8 }}>
+                          <div className="mini-label">TTR (Recovery)</div>
+                          <div className="mono fw-bold" style={{ color: epAnalysis.ttr > 10 ? 'var(--amber)' : 'var(--teal)' }}>
+                            {epAnalysis.ttr ? `${epAnalysis.ttr} min` : '-'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-4">
+                        <div style={{ background: 'var(--gray-soft)', padding: '8px 10px', borderRadius: 8 }}>
+                          <div className="mini-label">Relapse Detected</div>
+                          <div className="mono fw-bold" style={{ color: epAnalysis.relapse_detected ? 'var(--red)' : 'var(--teal)' }}>
+                            {epAnalysis.relapse_detected ? `Yes (${epAnalysis.relapse_count})` : 'No'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-4">
+                        <div style={{ background: 'var(--gray-soft)', padding: '8px 10px', borderRadius: 8 }}>
+                          <div className="mini-label">Quality Score</div>
+                          <div className="mono fw-bold">{epAnalysis.quality_score?.toFixed(2) || '-'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mini-label mb-2 mt-3" style={{ color: 'var(--navy)' }}>Evaluasi Model Ablation (E1 - E6)</div>
+                    <table className="dtable w-100 mb-3" style={{ fontSize: 11 }}>
+                      <thead>
+                        <tr>
+                          <th>Model</th>
+                          <th>Prediksi</th>
+                          <th>Score</th>
+                          <th>Result</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[1,2,3,4,5,6].map(num => (
+                          <tr key={`E${num}`}>
+                            <td className="fw-bold">E{num}</td>
+                            <td className="mono">{epAnalysis[`pred_E${num}`] || '-'}</td>
+                            <td className="mono">{(epAnalysis[`score_E${num}`] || 0).toFixed(3)}</td>
+                            <td>
+                              <span className={`evidence-chip ${epAnalysis[`result_E${num}`] === 'TN' || epAnalysis[`result_E${num}`] === 'TP' ? 'chip-green' : 'chip-red'}`}>
+                                {epAnalysis[`result_E${num}`] || '-'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    <div className="row g-2">
+                      <div className="col-6">
+                         <div style={{ background: 'var(--gray-soft)', padding: '8px', borderRadius: 6 }}>
+                            <div className="mini-label">Tau Thresholds</div>
+                            <div className="mono mt-1">In: {epAnalysis.tau_in?.toFixed(2)} | Out: {epAnalysis.tau_out?.toFixed(2)}</div>
+                         </div>
+                      </div>
+                      <div className="col-6">
+                         <div style={{ background: 'var(--gray-soft)', padding: '8px', borderRadius: 6 }}>
+                            <div className="mini-label">Latent Severity</div>
+                            <div className="mono mt-1 text-danger fw-bold">{epAnalysis.latent_severity?.toFixed(2) || '0.00'}</div>
+                         </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {activeTab === 'detail' && (
                 <>

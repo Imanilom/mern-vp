@@ -639,6 +639,95 @@ class _HistoryScreenState extends State<HistoryScreen> {
               _buildMetricCard('Recovery Time', '${(recMs / 60000).toStringAsFixed(1)} m'),
             ],
           ),
+          const SizedBox(height: 14),
+
+          // Advanced Analysis Card (E1-E6, TTR, Relapse)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('ANALISIS LANJUTAN & EVALUASI MODEL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.teal)),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Time To Recovery (TTR)', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                          Text(raw['ttr'] != null ? '${raw['ttr']} min' : '-', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Relapse Detected', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                          Text(
+                            raw['relapse_detected'] == true ? 'Yes (${raw['relapse_count'] ?? 0})' : 'No', 
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: raw['relapse_detected'] == true ? AppColors.red : AppColors.teal)
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Quality Score', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                          Text(
+                            raw['quality_score'] != null ? (raw['quality_score'] as num).toStringAsFixed(2) : '-', 
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.navy)
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Text('Ablation Scores (E1 - E6)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navy)),
+                const SizedBox(height: 8),
+                Column(
+                  children: List.generate(6, (index) {
+                    final num = index + 1;
+                    final score = typeofScoreToDouble(raw['score_E$num']);
+                    final pred = raw['pred_E$num'] ?? '-';
+                    final result = raw['result_E$num'] ?? '-';
+                    final isCorrect = result == 'TN' || result == 'TP';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 30, child: Text('E$num', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: AppColors.navy))),
+                          Expanded(child: Text('Pred: $pred', style: const TextStyle(fontSize: 11, color: AppColors.gray))),
+                          Expanded(child: Text('Score: ${score.toStringAsFixed(3)}', style: const TextStyle(fontSize: 11, color: AppColors.navy))),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isCorrect ? AppColors.green.withOpacity(0.15) : AppColors.red.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              result, 
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: isCorrect ? AppColors.green : AppColors.red)
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
