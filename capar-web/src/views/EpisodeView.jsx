@@ -54,25 +54,23 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
 
   const filteredEpisodes = rawEpisodesList.filter(ep => {
     if (!ep || typeof ep !== 'object') return false;
-    
-    // Pastikan episode pernah masuk/melewati threshold tau_in
-    const tauIn = ep.tauIn || ep.raw?.tau_in || 1.5; 
-    const peakScore = ep.peakScore || 0;
-    if (peakScore < tauIn) return false;
 
-    if (globalDateFilter && ep.raw?.onset_time) {
-      const ts = new Date(ep.raw.onset_time).getTime();
-      if (!isNaN(ts)) {
-        const epDate = new Date(ts);
-        const epDateStr = `${epDate.getFullYear()}-${String(epDate.getMonth()+1).padStart(2,'0')}-${String(epDate.getDate()).padStart(2,'0')}`;
-        if (epDateStr !== globalDateFilter) return false;
-      }
+    // Filter by date (jika ada date filter dan onset_time tersedia)
+    if (globalDateFilter && ep.onsetDate) {
+      if (ep.onsetDate !== globalDateFilter) return false;
     }
     if (filterContext !== 'ALL' && ep.context?.toLowerCase() !== filterContext.toLowerCase()) return false;
     if (filterState !== 'ALL' && ep.status?.toLowerCase() !== filterState.toLowerCase()) return false;
-    if (searchQuery && !ep.id.toLowerCase().includes(searchQuery.toLowerCase()) && !ep.participantId.toLowerCase().includes(searchQuery.toLowerCase()) && !(ep.participantName || '').toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchId = ep.id?.toLowerCase().includes(q);
+      const matchPid = ep.participantId?.toLowerCase().includes(q);
+      const matchName = (ep.participantName || '').toLowerCase().includes(q);
+      if (!matchId && !matchPid && !matchName) return false;
+    }
     return true;
   });
+
 
   const [selectedEpisode, setSelectedEpisode] = useState(null);
   const [reviewStatus, setReviewStatus] = useState('Under Review');

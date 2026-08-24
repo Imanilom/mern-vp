@@ -129,6 +129,11 @@ export const api = {
     const userId = typeof ev.user_id === 'object' && ev.user_id ? ev.user_id._id || ev.user_id : ev.user_id;
     const userInfo = userMap[String(userId)] || ev.user_id || {};
     const onsetDate = ev.onset_time ? new Date(ev.onset_time) : null;
+    // ISO format untuk filter (yyyy-mm-dd)
+    const isoDateStr = onsetDate
+      ? `${onsetDate.getFullYear()}-${String(onsetDate.getMonth()+1).padStart(2,'0')}-${String(onsetDate.getDate()).padStart(2,'0')}`
+      : '';
+    // Display format untuk UI
     const dateStr = onsetDate
       ? onsetDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
       : '-';
@@ -144,7 +149,8 @@ export const api = {
       deviceId: ev.device_id || '-',
       context: ev.activity || 'Unknown',
       onset: onsetDate ? `${dateStr} ${timeStr}` : '-',
-      onsetDate: dateStr,
+      onsetDate: isoDateStr,
+      onsetDateDisplay: dateStr,
       onsetTime: timeStr,
       onsetRaw: ev.onset_time,
       onsetScore: typeof ev.onset_score === 'number' ? ev.onset_score : 0,
