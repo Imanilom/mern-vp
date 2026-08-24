@@ -133,8 +133,8 @@ export const api = {
           const userId = user.guid || user._id;
           if (!userId) return [];
           try {
-            // Limit 100 per user untuk memastikan semua episode tampil
-            const { data } = await axios.get(`/analysis/events/${userId}?limit=100`);
+            // Limit 1000 per user untuk memastikan semua episode tampil
+            const { data } = await axios.get(`/analysis/events/${userId}?limit=1000`);
             const events = Array.isArray(data?.data) ? data.data : [];
             return events.map((ev, i) => {
               const onsetDate = ev.onset_time ? new Date(ev.onset_time) : null;

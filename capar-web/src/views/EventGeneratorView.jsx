@@ -13,16 +13,23 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
   const applyFilter = async () => {
     setLoading(true);
     try {
-      const res = await api.getRecentEvents(params.participantId || undefined);
+      const res = await api.getRecentEvents(params.participantId || undefined, 500);
       const events = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      const mapped = events.map(ep => ({
+      
+      const persistentEvents = events.filter(ep => {
+        const status = ep.current_state || ep.status || '';
+        return ['PERSISTENT_DEVIATION', 'Alert', 'Recovered', 'closed', 'unresolved'].includes(status);
+      });
+
+      const mapped = persistentEvents.map(ep => ({
         episodeId: ep._id,
         participantName: typeof ep.user_id === 'object' && ep.user_id ? (ep.user_id.name || ep.user_id.email || ep.user_id.guid || 'Unknown') : 'Unknown',
         onsetAt: ep.onset_time,
         peakScore: typeof ep.peak_score === 'number' ? ep.peak_score : (typeof ep.onset_score === 'number' ? ep.onset_score : 0),
         durationMin: ep.duration_ms ? Math.floor(ep.duration_ms/60000) : 0,
         outcome: ep.physiological_outcome || 'UNRESOLVED',
-        reviewerDecision: ep.validation_label || 'None'
+        reviewerDecision: ep.validation_label || 'None',
+        status: ep.current_state || ep.status || 'open'
       }));
       setRows(mapped);
     } catch (err) {
