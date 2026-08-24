@@ -37,7 +37,7 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
     }
     if (filterContext !== 'ALL' && ep.context?.toLowerCase() !== filterContext.toLowerCase()) return false;
     if (filterState !== 'ALL' && ep.status?.toLowerCase() !== filterState.toLowerCase()) return false;
-    if (searchQuery && !ep.id.toLowerCase().includes(searchQuery.toLowerCase()) && !ep.participantId.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery && !ep.id.toLowerCase().includes(searchQuery.toLowerCase()) && !ep.participantId.toLowerCase().includes(searchQuery.toLowerCase()) && !(ep.participantName || '').toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
@@ -359,23 +359,24 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
                 <thead>
                   <tr>
                     <th>Episode ID</th>
-                    <th>Participant</th>
-                    <th>Context</th>
-                    <th>Onset</th>
+                    <th>Nama Peserta</th>
+                    <th>Tanggal</th>
+                    <th>Waktu Onset</th>
+                    <th>Konteks</th>
                     <th>Peak</th>
-                    <th>Duration</th>
-                    <th>Status</th>
+                    <th>Durasi</th>
+                    <th>State</th>
                     <th>Review</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEpisodes.length === 0 ? (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--gray)' }}>No episodes found.</td></tr>
+                    <tr><td colSpan="9" style={{ textAlign: 'center', padding: '20px', color: 'var(--gray)' }}>No episodes found.</td></tr>
                   ) : (
                     filteredEpisodes.map(ep => {
                       const pName = (ep.participantId || 'p001').toLowerCase().replace(/[^a-z0-9]/g, '');
-                      const onsetParts = (ep.onset || '08:45').replace(/[^0-9]/g, '');
-                      const displayEpId = ep.id?.startsWith('ep-') ? ep.id : `ep-${pName}-${onsetParts || '0845'}`;
+                      const onsetParts = (ep.onsetTime || ep.onset || '08:45').replace(/[^0-9]/g, '');
+                      const displayEpId = ep.id?.startsWith('ep-') ? ep.id : `ep-${pName.substring(0, 6)}-${onsetParts.substring(0, 4) || '0845'}`;
 
                       return (
                         <tr 
@@ -383,11 +384,12 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
                           onClick={() => handleSelectEpisode(ep)}
                           style={{ cursor: 'pointer', background: selectedEpisode?.id === ep.id ? 'var(--gray-soft)' : 'transparent' }}
                         >
-                          <td className="mono fw-bold" style={{ color: 'var(--navy)' }}>{displayEpId}</td>
-                          <td className="mono">{ep.participantId}</td>
+                          <td className="mono fw-bold" style={{ color: 'var(--navy)', fontSize: 11 }}>{displayEpId}</td>
+                          <td style={{ fontWeight: 700, color: 'var(--teal)' }}>{ep.participantName || ep.participantId}</td>
+                          <td className="mono" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{ep.onsetDate || '-'}</td>
+                          <td className="mono" style={{ fontSize: 11 }}>{ep.onsetTime || '-'}</td>
                           <td style={{ textTransform: 'capitalize' }}>{ep.context}</td>
-                          <td className="mono">{ep.onset}</td>
-                          <td className="mono fw-bold" style={{ color: ep.peakScore > 2.5 ? 'var(--red)' : 'var(--ink)' }}>{ep.peakScore.toFixed(2)}</td>
+                          <td className="mono fw-bold" style={{ color: ep.peakScore > 2.5 ? 'var(--red)' : 'var(--ink)' }}>{(ep.peakScore || 0).toFixed(2)}</td>
                           <td>{ep.durationMinutes}m</td>
                           <td><StateBadge state={ep.status} /></td>
                           <td><StateBadge state={ep.reviewStatus} /></td>
@@ -664,39 +666,44 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
           <table className="dtable w-100">
             <thead>
               <tr>
-                <th>Waktu &amp; Tanggal</th>
-                <th>Participant</th>
+                <th>Tanggal</th>
+                <th>Waktu</th>
+                <th>Nama Peserta</th>
                 <th>Konteks</th>
                 <th>HR vs Baseline</th>
                 <th>Z-Score</th>
                 <th>Status Transisi</th>
-                <th style={{ width: '40%' }}>Alasan &amp; Justifikasi Klinis (Trigger Reason)</th>
+                <th style={{ width: '35%' }}>Alasan &amp; Justifikasi Klinis (Trigger Reason)</th>
               </tr>
             </thead>
             <tbody>
               {filteredEpisodes.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center text-muted py-4">
+                  <td colSpan="8" className="text-center text-muted py-4">
                     Belum ada data transisi Candidate / Persistent episode terdeteksi.
                   </td>
                 </tr>
               ) : (
                 filteredEpisodes.map((ep, idx) => {
-                  const isPersistent = ep.status === 'PERSISTENT_DEVIATION' || ep.status === 'Alert' || ep.status === 'Recovered';
+                  const isPersistent = ep.status === 'PERSISTENT_DEVIATION' || ep.status === 'Alert'
+                    || ep.status === 'Recovered' || ep.status === 'closed' || ep.status === 'unresolved';
                   const hrVal = ep.raw?.peak_hr || (ep.peakScore ? Math.round(75 + ep.peakScore * 10) : 108);
                   const baseHr = ep.raw?.baseline_hr || 74.5;
                   const deltaHr = (hrVal - baseHr).toFixed(1);
                   const zVal = (ep.peakScore ? ep.peakScore * 1.15 : 2.85).toFixed(2);
-                  const timeStr = ep.date || '15-08-2026 14:22:15';
+                  const dateStr = ep.onsetDate || '-';
+                  const timeStr = ep.onsetTime || '-';
+                  const participantLabel = ep.participantName || ep.participantId || 'Unknown';
 
                   const reasonText = isPersistent
-                    ? `Persistensi deviasi terdeteksi pada 3 window berturut-turut (${timeStr}). HR loncat +${deltaHr} BPM di atas baseline (${baseHr} BPM, Z=+${zVal} > 2.5). Berubah menjadi Episode Persisten.`
-                    : `HR ${hrVal} BPM loncat +${deltaHr} BPM di atas baseline (${baseHr} BPM, Z=+${zVal} > 2.0). Candidate Onset soliter terdeteksi pada pukul ${timeStr}.`;
+                    ? `Persistensi deviasi terdeteksi (${dateStr} ${timeStr}). HR loncat +${deltaHr} BPM di atas baseline (${baseHr} BPM, Z=+${zVal} > 2.5). Berubah menjadi Episode Persisten.`
+                    : `HR ${hrVal} BPM loncat +${deltaHr} BPM di atas baseline (${baseHr} BPM, Z=+${zVal} > 2.0). Candidate Onset soliter terdeteksi pada ${dateStr} ${timeStr}.`;
 
                   return (
                     <tr key={ep.id || idx}>
-                      <td className="mono fw-bold" style={{ fontSize: 11 }}>{timeStr}</td>
-                      <td className="mono fw-bold" style={{ color: 'var(--teal)' }}>{ep.participantId || 'P-001'}</td>
+                      <td className="mono fw-bold" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{dateStr}</td>
+                      <td className="mono" style={{ fontSize: 11 }}>{timeStr}</td>
+                      <td className="mono fw-bold" style={{ color: 'var(--teal)' }}>{participantLabel}</td>
                       <td>
                         <span className="badge bg-light text-dark border px-2 py-1" style={{ fontSize: 10 }}>
                           {ep.context || 'Duduk'}
@@ -706,7 +713,7 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
                         <div className="mono fw-bold" style={{ fontSize: 12, color: 'var(--red)' }}>
                           {hrVal} BPM
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--gray)' }}>Baseline: {baseHr} BPM ({deltaHr >= 0 ? `+${deltaHr}` : deltaHr})</div>
+                        <div style={{ fontSize: 10, color: 'var(--gray)' }}>Baseline: {baseHr} BPM ({Number(deltaHr) >= 0 ? `+${deltaHr}` : deltaHr})</div>
                       </td>
                       <td className="mono fw-bold" style={{ color: 'var(--purple)' }}>+{zVal}</td>
                       <td>

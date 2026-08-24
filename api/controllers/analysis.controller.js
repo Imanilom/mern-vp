@@ -19,6 +19,7 @@ import AnomalyEvent from '../models/anomalyevent.model.js';
 import EpisodeAnalysis from '../models/episode_analysis.model.js';
 import EmaResponse from '../models/ema.model.js';
 import User from '../models/user.model.js';
+import Patient from '../models/patient.model.js';
 import mongoose from 'mongoose';
 import ProcessingJob from '../models/processingjob.model.js';
 import {
@@ -483,7 +484,7 @@ const round4 = (v) => typeof v === 'number' && !isNaN(v) ? parseFloat(v.toFixed(
 /**
  * Ambil event terbaru untuk satu user (untuk dashboard).
  */
-export async function getRecentEvents(userId, limit = 20) {
+export async function getRecentEvents(userId, limit = 100) {
   const query = (userId && userId !== 'ALL' && userId !== '000000000000000000000000') ? { user_id: userId } : {};
   return AnomalyEvent.find(query)
     .populate('user_id', 'name email guid')
@@ -2291,39 +2292,73 @@ export async function getStreamingSignalQualityStats(userId) {
 export async function getCandidateAndPersistentEpisodes(userId) {
   const query = (userId && userId !== 'ALL' && userId !== '000000000000000000000000') ? { user_id: userId } : {};
 
-  const [events, segments] = await Promise.all([
-    AnomalyEvent.find(query).sort({ onset_time: -1 }).limit(30).lean(),
-    Segment.find({ ...query, classification: { $in: ['Caution', 'Alert', 'Candidate', 'Persistent'] } })
-      .sort({ window_start: -1 })
-      .limit(50)
-      .lean()
-  ]);
+  // Ambil semua AnomalyEvent yang relevan — TANPA limit kecil
+  const events = await AnomalyEvent.find(query)
+    .sort({ onset_time: -1 })
+    .limit(200)
+    .lean();
+
+  // Build user name cache dari User + Patient
+  const userIds = [...new Set(events.map(ev => ev.user_id?.toString()).filter(Boolean))];
+  const nameMap = {};
+  if (userIds.length > 0) {
+    const objIds = userIds.map(id => new mongoose.Types.ObjectId(id));
+    const [users, patients] = await Promise.all([
+      User.find({ _id: { $in: objIds } }).select('_id name email guid').lean().catch(() => []),
+      Patient.find({ _id: { $in: objIds } }).select('_id name email guid').lean().catch(() => []),
+    ]);
+    for (const u of [...users, ...patients]) {
+      if (u._id) nameMap[u._id.toString()] = u.name || u.email || 'Unknown';
+    }
+  }
 
   const list = [];
 
   for (const ev of events) {
-    const onsetStr = ev.onset_time ? new Date(ev.onset_time).toLocaleString('id-ID') : '15-08-2026 14:22:15';
-    const peakScore = ev.max_anomaly_score || ev.peak_score || 2.85;
-    const hrVal = ev.peak_hr || 112;
+    const uid = ev.user_id?.toString();
+    const participantName = (uid && nameMap[uid]) ? nameMap[uid] : (uid ? `User-${uid.slice(-4)}` : 'Unknown');
+
+    const onsetDate = ev.onset_time ? new Date(ev.onset_time) : null;
+    const dateStr = onsetDate
+      ? onsetDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '-';
+    const timeStr = onsetDate
+      ? onsetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      : '-';
+    const datetimeStr = onsetDate ? `${dateStr} ${timeStr}` : '-';
+
+    const peakScore = ev.peak_score || ev.onset_score || 0;
+    const hrVal = ev.peak_hr || Math.round(75 + peakScore * 10);
     const baseHr = ev.baseline_hr || 74.5;
     const hrDelta = (hrVal - baseHr).toFixed(1);
     const zScore = (peakScore * 1.15).toFixed(2);
-    const status = ev.status || (peakScore >= 3.0 ? 'PERSISTENT_DEVIATION' : 'DEVIATION_CANDIDATE');
+    const currentState = ev.current_state || ev.status || 'DEVIATION_CANDIDATE';
+
+    const isPersistent = currentState === 'PERSISTENT_DEVIATION'
+      || currentState === 'RECOVERING'
+      || currentState === 'RECOVERED'
+      || ev.persistent_at != null
+      || ev.status === 'closed'
+      || ev.status === 'unresolved';
 
     let reason = '';
-    if (status.includes('PERSISTENT') || status === 'Alert' || status === 'Recovered') {
-      reason = `Persistensi deviasi terdeteksi pada 3 window berturut-turut (${onsetStr}). HR loncat +${hrDelta} BPM di atas baseline (${baseHr} BPM, Z=+${zScore} > 2.5). Berubah menjadi Episode Persisten.`;
+    if (isPersistent) {
+      reason = `Persistensi deviasi terdeteksi (${datetimeStr}). HR +${hrDelta} BPM di atas baseline (${baseHr} BPM, Z=+${zScore} > 2.5). State: ${currentState}.`;
     } else {
-      reason = `HR ${hrVal} BPM loncat +${hrDelta} BPM di atas baseline (${baseHr} BPM, Z=+${zScore} > 2.0). Soliter Candidate Onset terdeteksi pada pukul ${onsetStr}.`;
+      reason = `HR ${hrVal} BPM loncat +${hrDelta} BPM di atas baseline (${baseHr} BPM, Z=+${zScore} > 2.0). Candidate Onset terdeteksi pada ${datetimeStr}.`;
     }
 
     list.push({
-      id: ev.event_id || (ev._id ? `EV-${ev._id.toString().slice(-4)}` : 'EV-104'),
-      timestamp: onsetStr,
-      window_start: ev.onset_time || new Date().toISOString(),
-      participant_id: ev.user_id ? `P-${ev.user_id.toString().slice(-4)}` : 'P-001',
-      context: ev.activity_label || 'Duduk',
-      state_type: status.includes('PERSISTENT') ? 'PERSISTENT_DEVIATION' : 'DEVIATION_CANDIDATE',
+      id: ev._id ? ev._id.toString() : `EV-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: datetimeStr,
+      date: dateStr,
+      time: timeStr,
+      window_start: ev.onset_time || null,
+      participant_id: uid || '',
+      participant_name: participantName,
+      context: ev.activity || ev.activity_label || 'Unknown',
+      state_type: isPersistent ? 'PERSISTENT_DEVIATION' : 'DEVIATION_CANDIDATE',
+      current_state: currentState,
       hr_value: `${hrVal} BPM`,
       baseline_hr: `${baseHr} BPM`,
       hr_delta: `+${hrDelta} BPM`,
@@ -2331,81 +2366,6 @@ export async function getCandidateAndPersistentEpisodes(userId) {
       anomaly_score: Number(peakScore.toFixed(2)),
       anomaly_reason: reason,
     });
-  }
-
-  if (list.length === 0 && segments.length > 0) {
-    for (const seg of segments) {
-      const tsStr = seg.window_start ? new Date(seg.window_start).toLocaleString('id-ID') : '15-08-2026 14:22:15';
-      const hr = seg.features?.mean_hr || 108;
-      const base = 74.5;
-      const score = seg.anomaly_score || 2.45;
-      const z = (score * 1.1).toFixed(2);
-      const isPersist = seg.classification === 'Alert' || score >= 3.0;
-
-      list.push({
-        id: `SEG-${seg._id ? seg._id.toString().slice(-4) : '901'}`,
-        timestamp: tsStr,
-        window_start: seg.window_start || new Date().toISOString(),
-        participant_id: seg.user_id ? `P-${seg.user_id.toString().slice(-4)}` : 'P-001',
-        context: seg.activity_label || 'Duduk',
-        state_type: isPersist ? 'PERSISTENT_DEVIATION' : 'DEVIATION_CANDIDATE',
-        hr_value: `${hr} BPM`,
-        baseline_hr: `${base} BPM`,
-        hr_delta: `+${(hr - base).toFixed(1)} BPM`,
-        z_score: `+${z}`,
-        anomaly_score: Number(score.toFixed(2)),
-        anomaly_reason: isPersist
-          ? `Persistensi window terdeteksi pada ${tsStr}. HR ${hr} BPM (Z=+${z} > 2.5). Berubah status dari Candidate ke Persistent Episode.`
-          : `HR ${hr} BPM melonjak di atas baseline (${base} BPM, Z=+${z} > 2.0). Diidentifikasi sebagai Candidate Onset.`,
-      });
-    }
-  }
-
-  if (list.length === 0) {
-    list.push(
-      {
-        id: 'EV-104',
-        timestamp: '15-08-2026 14:22:15',
-        window_start: '2026-08-15T14:22:15.000Z',
-        participant_id: 'P-001',
-        context: 'Duduk',
-        state_type: 'PERSISTENT_DEVIATION',
-        hr_value: '112 BPM',
-        baseline_hr: '74.5 BPM',
-        hr_delta: '+37.5 BPM',
-        z_score: '+3.42',
-        anomaly_score: 3.42,
-        anomaly_reason: 'Persistensi deviasi 3 window berturut-turut pada jam 14:22:15. HR 112 BPM loncat +37.5 BPM di atas baseline (74.5 BPM, Z=+3.42 > 2.5). Berubah menjadi Episode Persisten.'
-      },
-      {
-        id: 'EV-103',
-        timestamp: '15-08-2026 10:15:30',
-        window_start: '2026-08-15T10:15:30.000Z',
-        participant_id: 'P-001',
-        context: 'Berdiri',
-        state_type: 'DEVIATION_CANDIDATE',
-        hr_value: '98 BPM',
-        baseline_hr: '84.2 BPM',
-        hr_delta: '+13.8 BPM',
-        z_score: '+2.15',
-        anomaly_score: 2.15,
-        anomaly_reason: 'HR 98 BPM melonjak +13.8 BPM di atas baseline berdiri (84.2 BPM, Z=+2.15 > 2.0). Soliter Candidate Onset terdeteksi pada pukul 10:15:30.'
-      },
-      {
-        id: 'EV-102',
-        timestamp: '14-08-2026 16:40:00',
-        window_start: '2026-08-14T16:40:00.000Z',
-        participant_id: 'P-002',
-        context: 'Duduk',
-        state_type: 'PERSISTENT_DEVIATION',
-        hr_value: '105 BPM',
-        baseline_hr: '71.8 BPM',
-        hr_delta: '+33.2 BPM',
-        z_score: '+3.10',
-        anomaly_score: 3.10,
-        anomaly_reason: 'Persistensi deviasi terdeteksi pada 16:40:00. HR 105 BPM loncat +33.2 BPM di atas baseline (71.8 BPM, Z=+3.10 > 2.5). Berubah dari Candidate ke Episode Persisten.'
-      }
-    );
   }
 
   return list;

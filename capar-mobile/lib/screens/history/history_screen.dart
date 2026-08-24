@@ -48,35 +48,53 @@ class _HistoryScreenState extends State<HistoryScreen> {
             idStr = 'EP-${idStr.substring(idStr.length - 6).toUpperCase()}';
           }
 
-          final startTimeRaw = e['start_time'] ?? e['onset_time'] ?? e['createdAt'];
-          final endTimeRaw = e['end_time'] ?? e['resolution_time'] ?? e['resolved_time'];
+          // Gunakan onset_time atau start_time (epoch ms atau ISO string)
+          final startTimeRaw = e['onset_time'] ?? e['started_at'] ?? e['start_time'] ?? e['createdAt'];
+          final endTimeRaw = e['resolved_time'] ?? e['recovered_at'] ?? e['end_time'] ?? e['resolution_time'];
 
           String dateStr = '-';
-          String onsetStr = '-';
+          String onsetStr = '-'; // HH:MM:SS
           if (startTimeRaw != null) {
-            DateTime? dt = DateTime.tryParse(startTimeRaw.toString());
-            if (dt == null && startTimeRaw is num) {
+            DateTime? dt;
+            if (startTimeRaw is num) {
               dt = DateTime.fromMillisecondsSinceEpoch(startTimeRaw.toInt());
+            } else {
+              dt = DateTime.tryParse(startTimeRaw.toString());
             }
             if (dt != null) {
               final localDt = dt.toLocal();
               dateStr = '${localDt.day.toString().padLeft(2, '0')}-${localDt.month.toString().padLeft(2, '0')}-${localDt.year}';
-              onsetStr = '${localDt.hour.toString().padLeft(2, '0')}:${localDt.minute.toString().padLeft(2, '0')}';
+              onsetStr = '${localDt.hour.toString().padLeft(2, '0')}:${localDt.minute.toString().padLeft(2, '0')}:${localDt.second.toString().padLeft(2, '0')}';
             }
           }
 
-          int durMin = e['duration_minutes'] ?? 0;
-          if (durMin == 0 && startTimeRaw != null && endTimeRaw != null) {
-            final st = DateTime.tryParse(startTimeRaw.toString());
-            final et = DateTime.tryParse(endTimeRaw.toString());
-            if (st != null && et != null) {
-              durMin = et.difference(st).inMinutes;
-            }
+          int durMin = 0;
+          if (e['duration_ms'] is num) {
+            durMin = ((e['duration_ms'] as num) / 60000).round();
+          } else if (e['duration_minutes'] is num) {
+            durMin = (e['duration_minutes'] as num).toInt();
+          } else if (startTimeRaw != null && endTimeRaw != null) {
+            DateTime? st = startTimeRaw is num
+                ? DateTime.fromMillisecondsSinceEpoch((startTimeRaw as num).toInt())
+                : DateTime.tryParse(startTimeRaw.toString());
+            DateTime? et = endTimeRaw is num
+                ? DateTime.fromMillisecondsSinceEpoch((endTimeRaw as num).toInt())
+                : DateTime.tryParse(endTimeRaw.toString());
+            if (st != null && et != null) durMin = et.difference(st).inMinutes;
           }
-          if (durMin <= 0) durMin = 2;
+          if (durMin <= 0) durMin = 1;
 
-          final statusStr = e['physiological_state'] ?? e['status'] ?? 'BASELINE_COMPATIBLE';
+          // Status: gunakan current_state jika ada, fallback ke status / physiological_state
+          final currentState = e['current_state']?.toString() ?? '';
+          final statusRaw = e['physiological_state']?.toString() ?? e['status']?.toString() ?? '';
+          final statusStr = currentState.isNotEmpty ? currentState : (statusRaw.isNotEmpty ? statusRaw : 'BASELINE_COMPATIBLE');
+
           final ctxStr = e['activity'] ?? e['context'] ?? e['activity_label'] ?? 'sitting';
+
+          // Nama peserta dari response populate (jika admin) atau dari profil user sendiri
+          final participantName = e['user_id'] is Map
+              ? (e['user_id']['name'] ?? e['user_id']['email'] ?? '-')
+              : (e['participant_name'] ?? '-');
 
           return {
             'id': idStr,
@@ -87,10 +105,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
             'peakScore': peakVal,
             'context': ctxStr,
             'status': statusStr,
+            'participantName': participantName,
             'emaStatus': e['ema_completed'] == true ? 'EMA Selesai' : 'EMA Diisi',
             'raw': e,
           };
         }).toList();
+        // Urutkan terbaru dulu
+        episodes.sort((a, b) {
+          final ra = (a['raw'] as Map?)?['onset_time'];
+          final rb = (b['raw'] as Map?)?['onset_time'];
+          if (ra == null && rb == null) return 0;
+          if (ra == null) return 1;
+          if (rb == null) return -1;
+          final ta = ra is num ? ra.toDouble() : (DateTime.tryParse(ra.toString())?.millisecondsSinceEpoch.toDouble() ?? 0);
+          final tb = rb is num ? rb.toDouble() : (DateTime.tryParse(rb.toString())?.millisecondsSinceEpoch.toDouble() ?? 0);
+          return tb.compareTo(ta);
+        });
         isLoading = false;
       });
     }
@@ -181,7 +211,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         margin: const EdgeInsets.only(bottom: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
-                          side: const BorderSide(color: AppColors.line),
+                          side: BorderSide(
+                            color: (ep['status'] == 'PERSISTENT_DEVIATION' || ep['status'] == 'closed' || ep['status'] == 'unresolved')
+                                ? AppColors.red.withOpacity(0.4)
+                                : (ep['status'] == 'DEVIATION_CANDIDATE' || ep['status'] == 'open')
+                                    ? AppColors.amber.withOpacity(0.5)
+                                    : AppColors.line,
+                          ),
                         ),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -189,11 +225,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           title: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                '${ep['id']} · ${ep['date']}',
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${ep['id']}',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.navy, fontFamily: 'monospace'),
+                                    ),
+                                    Text(
+                                      '${ep['date']}  ${ep['onset']}',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.gray),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              isRecovered ? EvidenceChip.recovered() : EvidenceChip.qualityWarning(),
+                              _buildStatusChip(ep['status'] ?? ''),
                             ],
                           ),
                           subtitle: Column(
@@ -234,6 +281,46 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatusChip(String status) {
+    Color bg;
+    Color fg;
+    String label;
+    switch (status) {
+      case 'PERSISTENT_DEVIATION':
+      case 'closed':
+      case 'unresolved':
+        bg = AppColors.red.withOpacity(0.12);
+        fg = AppColors.red;
+        label = status == 'unresolved' ? 'Unresolved' : status == 'closed' ? 'Recovered' : 'Persistent';
+        break;
+      case 'DEVIATION_CANDIDATE':
+      case 'open':
+        bg = AppColors.amber.withOpacity(0.15);
+        fg = AppColors.amber;
+        label = 'Candidate';
+        break;
+      case 'RECOVERING':
+        bg = AppColors.purple.withOpacity(0.12);
+        fg = AppColors.purple;
+        label = 'Recovery';
+        break;
+      case 'RECOVERED':
+        bg = AppColors.teal.withOpacity(0.12);
+        fg = AppColors.teal;
+        label = 'Recovered';
+        break;
+      default:
+        bg = AppColors.line;
+        fg = AppColors.gray;
+        label = status.isNotEmpty ? status.substring(0, status.length.clamp(0, 10)) : 'Unknown';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: fg)),
     );
   }
 

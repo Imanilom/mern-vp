@@ -133,31 +133,50 @@ export const api = {
           const userId = user.guid || user._id;
           if (!userId) return [];
           try {
-            const { data } = await axios.get(`/analysis/events/${userId}?limit=20`);
+            // Limit 100 per user untuk memastikan semua episode tampil
+            const { data } = await axios.get(`/analysis/events/${userId}?limit=100`);
             const events = Array.isArray(data?.data) ? data.data : [];
-            return events.map((ev, i) => ({
-              id: ev._id || `E-${userId.substring(0, 4)}-${i}`,
-              participantId: ev.user_id?.guid || user.guid || userId,
-              deviceId: ev.device_id || user.current_device || '-',
-              context: ev.activity || 'Unknown',
-              onset: ev.onset_time ? new Date(ev.onset_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'Unknown',
-              onsetScore: typeof ev.onset_score === 'number' ? ev.onset_score : 0,
-              peakScore: typeof ev.peak_score === 'number' ? ev.peak_score : (typeof ev.onset_score === 'number' ? ev.onset_score : 0),
-              durationMinutes: ev.duration_ms ? Math.round(ev.duration_ms / 60000) : 0,
-              classification: ev.classification || 'Alert',
-              status: ev.status || 'open',
-              reviewStatus: ev.review_status || 'New',
-              validationLabel: ev.validation_label || 'None',
-              reviewerNotes: ev.reviewer_notes || '',
-              raw: ev
-            }));
+            return events.map((ev, i) => {
+              const onsetDate = ev.onset_time ? new Date(ev.onset_time) : null;
+              const dateStr = onsetDate
+                ? onsetDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                : '-';
+              const timeStr = onsetDate
+                ? onsetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                : '-';
+              const datetimeStr = onsetDate ? `${dateStr} ${timeStr}` : '-';
+
+              return {
+                id: ev._id || `E-${userId.substring(0, 4)}-${i}`,
+                participantId: ev.user_id?.guid || user.guid || userId,
+                participantName: user.name || user.username || user.email || 'Unknown',
+                deviceId: ev.device_id || user.current_device || '-',
+                context: ev.activity || 'Unknown',
+                onset: datetimeStr,           // Full tanggal + waktu
+                onsetDate: dateStr,           // Tanggal saja (dd/mm/yyyy)
+                onsetTime: timeStr,           // Waktu saja (HH:MM:SS)
+                onsetRaw: ev.onset_time,      // Epoch ms untuk filtering/sorting
+                onsetScore: typeof ev.onset_score === 'number' ? ev.onset_score : 0,
+                peakScore: typeof ev.peak_score === 'number' ? ev.peak_score : (typeof ev.onset_score === 'number' ? ev.onset_score : 0),
+                durationMinutes: ev.duration_ms ? Math.round(ev.duration_ms / 60000) : 0,
+                classification: ev.classification || 'Alert',
+                status: ev.current_state || ev.status || 'open',
+                reviewStatus: ev.review_status || 'New',
+                validationLabel: ev.validation_label || 'None',
+                reviewerNotes: ev.reviewer_notes || '',
+                tauIn: ev.tau_in || null,
+                tauOut: ev.tau_out || null,
+                raw: ev
+              };
+            });
           } catch {
             return [];
           }
         })
       );
 
-      return results.flat();
+      // Gabungkan semua episode dari semua partisipan, urutkan berdasarkan onset terbaru
+      return results.flat().sort((a, b) => (b.onsetRaw || 0) - (a.onsetRaw || 0));
     } catch (err) {
       console.error('getEpisodes Error:', err);
       return [];

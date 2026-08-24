@@ -116,10 +116,10 @@ class ApiService {
         }
       }
 
-      // Fallback ke endpoint /analysis/events/$uid
+      // Fallback ke endpoint /analysis/events/$uid dengan limit lebih besar
       final evResponse = await http
-          .get(Uri.parse('$baseUrl/analysis/events/$uid'), headers: headers)
-          .timeout(const Duration(seconds: 5));
+          .get(Uri.parse('$baseUrl/analysis/events/$uid?limit=100'), headers: headers)
+          .timeout(const Duration(seconds: 8));
       if (evResponse.statusCode == 200) {
         final data = json.decode(evResponse.body);
         if (data['success'] == true && data['data'] is List) {
