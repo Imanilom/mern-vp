@@ -124,65 +124,67 @@ export const api = {
     }
   },
 
-  async getEpisodes() {
+  // Helper untuk memetakan raw event ke format episode yang dipakai UI
+  _mapEventToEpisode(ev, userMap = {}) {
+    const userId = typeof ev.user_id === 'object' && ev.user_id ? ev.user_id._id || ev.user_id : ev.user_id;
+    const userInfo = userMap[String(userId)] || ev.user_id || {};
+    const onsetDate = ev.onset_time ? new Date(ev.onset_time) : null;
+    const dateStr = onsetDate
+      ? onsetDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '-';
+    const timeStr = onsetDate
+      ? onsetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      : '-';
+    return {
+      id: ev._id || String(Math.random()),
+      participantId: userInfo?.guid || userInfo?.email || String(userId),
+      participantName: typeof ev.user_id === 'object' && ev.user_id
+        ? (ev.user_id.name || ev.user_id.email || ev.user_id.guid || 'Unknown')
+        : (userInfo?.name || userInfo?.email || 'Unknown'),
+      deviceId: ev.device_id || '-',
+      context: ev.activity || 'Unknown',
+      onset: onsetDate ? `${dateStr} ${timeStr}` : '-',
+      onsetDate: dateStr,
+      onsetTime: timeStr,
+      onsetRaw: ev.onset_time,
+      onsetScore: typeof ev.onset_score === 'number' ? ev.onset_score : 0,
+      peakScore: typeof ev.peak_score === 'number' ? ev.peak_score : (typeof ev.onset_score === 'number' ? ev.onset_score : 0),
+      peakHr: ev.peak_hr || null,
+      baselineHr: ev.baseline_hr || null,
+      durationMinutes: ev.duration_ms ? Math.round(ev.duration_ms / 60000) : 0,
+      classification: ev.classification || 'Alert',
+      status: ev.current_state || ev.status || 'open',
+      reviewStatus: ev.review_status || 'New',
+      validationLabel: ev.validation_label || 'None',
+      reviewerNotes: ev.reviewer_notes || '',
+      tauIn: ev.tau_in || null,
+      tauOut: ev.tau_out || null,
+      raw: ev,
+    };
+  },
+
+  // Paginated episode fetch — single API call, no N+1 requests
+  async getEventsPaginated(userId = 'ALL', page = 1, limit = 50) {
     try {
-      const patients = await this.fetchAllPatients();
-
-      const results = await Promise.all(
-        patients.map(async (user) => {
-          const userId = user.guid || user._id;
-          if (!userId) return [];
-          try {
-            // Limit 1000 per user untuk memastikan semua episode tampil
-            const { data } = await axios.get(`/analysis/events/${userId}?limit=1000`);
-            const events = Array.isArray(data?.data) ? data.data : [];
-            return events.map((ev, i) => {
-              const onsetDate = ev.onset_time ? new Date(ev.onset_time) : null;
-              const dateStr = onsetDate
-                ? onsetDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                : '-';
-              const timeStr = onsetDate
-                ? onsetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                : '-';
-              const datetimeStr = onsetDate ? `${dateStr} ${timeStr}` : '-';
-
-              return {
-                id: ev._id || `E-${userId.substring(0, 4)}-${i}`,
-                participantId: ev.user_id?.guid || user.guid || userId,
-                participantName: user.name || user.username || user.email || 'Unknown',
-                deviceId: ev.device_id || user.current_device || '-',
-                context: ev.activity || 'Unknown',
-                onset: datetimeStr,           // Full tanggal + waktu
-                onsetDate: dateStr,           // Tanggal saja (dd/mm/yyyy)
-                onsetTime: timeStr,           // Waktu saja (HH:MM:SS)
-                onsetRaw: ev.onset_time,      // Epoch ms untuk filtering/sorting
-                onsetScore: typeof ev.onset_score === 'number' ? ev.onset_score : 0,
-                peakScore: typeof ev.peak_score === 'number' ? ev.peak_score : (typeof ev.onset_score === 'number' ? ev.onset_score : 0),
-                peakHr: ev.peak_hr || null,
-                baselineHr: ev.baseline_hr || null,
-                durationMinutes: ev.duration_ms ? Math.round(ev.duration_ms / 60000) : 0,
-                classification: ev.classification || 'Alert',
-                status: ev.current_state || ev.status || 'open',
-                reviewStatus: ev.review_status || 'New',
-                validationLabel: ev.validation_label || 'None',
-                reviewerNotes: ev.reviewer_notes || '',
-                tauIn: ev.tau_in || null,
-                tauOut: ev.tau_out || null,
-                raw: ev
-              };
-            });
-          } catch {
-            return [];
-          }
-        })
-      );
-
-      // Gabungkan semua episode dari semua partisipan, urutkan berdasarkan onset terbaru
-      return results.flat().sort((a, b) => (b.onsetRaw || 0) - (a.onsetRaw || 0));
+      const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
+      const { data } = await axios.get(`/analysis/events/${target}?page=${page}&limit=${limit}`);
+      const events = Array.isArray(data?.data) ? data.data : [];
+      return {
+        data: events.map(ev => this._mapEventToEpisode(ev)),
+        totalCount: data.totalCount || events.length,
+        page: data.page || page,
+        totalPages: data.totalPages || 1,
+      };
     } catch (err) {
-      console.error('getEpisodes Error:', err);
-      return [];
+      console.error('getEventsPaginated Error:', err);
+      return { data: [], totalCount: 0, page: 1, totalPages: 1 };
     }
+  },
+
+  // Legacy — dipakai oleh EpisodeView, dimigrasikan ke paginated
+  async getEpisodes(userId = 'ALL', page = 1, limit = 50) {
+    const result = await this.getEventsPaginated(userId, page, limit);
+    return result;
   },
 
   async getSignalQuality(userId) {

@@ -15,24 +15,51 @@ const StateBadge = ({ state }) => {
   return <span className="evidence-chip chip-neutral">{state || '-'}</span>;
 };
 
-export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilter }) => {
+export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
   const [filterContext, setFilterContext] = useState('ALL');
   const [filterState, setFilterState] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const rawEpisodesList = Array.isArray(episodes)
-    ? episodes
-    : (Array.isArray(episodes?.data) ? episodes.data : []);
+  // --- Lazy pagination state ---
+  const [allEpisodes, setAllEpisodes] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const PAGE_SIZE = 50;
+
+  const fetchEpisodes = async (page = 1, userId = 'ALL') => {
+    setIsLoading(true);
+    try {
+      const result = await api.getEventsPaginated(userId, page, PAGE_SIZE);
+      setAllEpisodes(result.data || []);
+      setCurrentPage(result.page || page);
+      setTotalPages(result.totalPages || 1);
+      setTotalCount(result.totalCount || 0);
+    } catch (err) {
+      console.error('[EpisodeView] fetch error:', err);
+      setAllEpisodes([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const userId = globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'ALL';
+    setCurrentPage(1);
+    fetchEpisodes(1, userId);
+  }, [globalParticipantFilter]);
+
+  const rawEpisodesList = allEpisodes;
 
   const filteredEpisodes = rawEpisodesList.filter(ep => {
     if (!ep || typeof ep !== 'object') return false;
     
-    // Pastikan episode pernah masuk/melewati threshold tau_in (deviasi transient atau persisten)
+    // Pastikan episode pernah masuk/melewati threshold tau_in
     const tauIn = ep.tauIn || ep.raw?.tau_in || 1.5; 
     const peakScore = ep.peakScore || 0;
     if (peakScore < tauIn) return false;
 
-    if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && ep.participantId !== globalParticipantFilter) return false;
     if (globalDateFilter && ep.raw?.onset_time) {
       const ts = new Date(ep.raw.onset_time).getTime();
       if (!isNaN(ts)) {
@@ -47,9 +74,9 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
     return true;
   });
 
-  const [selectedEpisode, setSelectedEpisode] = useState(filteredEpisodes?.[0] || null);
-  const [reviewStatus, setReviewStatus] = useState(selectedEpisode?.reviewStatus || 'Under Review');
-  const [reviewerNote, setReviewerNote] = useState(selectedEpisode?.reviewerNote || '');
+  const [selectedEpisode, setSelectedEpisode] = useState(null);
+  const [reviewStatus, setReviewStatus] = useState('Under Review');
+  const [reviewerNote, setReviewerNote] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('detail');
   const [comparedEpisodeId, setComparedEpisodeId] = useState('');
@@ -64,6 +91,7 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
       setEpisodeAnalyses([]);
     });
   }, [globalParticipantFilter]);
+
 
   useEffect(() => {
     if (selectedEpisode) {
@@ -370,7 +398,10 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
           <div className="card-panel" style={{ padding: 0 }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line)', background: '#FAFBFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)' }}>All Recorded Episodes</div>
-              <div style={{ fontSize: 11, color: 'var(--gray)' }}>N={filteredEpisodes.length} episodes</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {isLoading && <span style={{ fontSize: 11, color: 'var(--teal)' }}>Loading...</span>}
+                <span style={{ fontSize: 11, color: 'var(--gray)' }}>Hal {currentPage}/{totalPages} · {totalCount} total</span>
+              </div>
             </div>
             <div className="table-responsive">
               <table className="dtable">
@@ -418,6 +449,23 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
                 </tbody>
               </table>
             </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderTop: '1px solid var(--line)', background: '#FAFBFC' }}>
+                <button
+                  onClick={() => { const newPage = currentPage - 1; setCurrentPage(newPage); fetchEpisodes(newPage, globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'ALL'); }}
+                  disabled={currentPage <= 1 || isLoading}
+                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--line)', background: currentPage <= 1 ? 'var(--gray-soft)' : 'var(--navy)', color: currentPage <= 1 ? 'var(--gray)' : '#fff', cursor: currentPage <= 1 ? 'default' : 'pointer' }}
+                >← Prev</button>
+                <span style={{ fontSize: 11, color: 'var(--gray)' }}>Halaman {currentPage} dari {totalPages}</span>
+                <button
+                  onClick={() => { const newPage = currentPage + 1; setCurrentPage(newPage); fetchEpisodes(newPage, globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'ALL'); }}
+                  disabled={currentPage >= totalPages || isLoading}
+                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--line)', background: currentPage >= totalPages ? 'var(--gray-soft)' : 'var(--navy)', color: currentPage >= totalPages ? 'var(--gray)' : '#fff', cursor: currentPage >= totalPages ? 'default' : 'pointer' }}
+                >Next →</button>
+              </div>
+            )}
+
           </div>
         </div>
 

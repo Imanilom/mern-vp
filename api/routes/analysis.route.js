@@ -109,12 +109,37 @@ router.get('/segments/:userId', verifyToken, resolveUserIdParam, async (req, res
   }
 });
 
-/** GET /api/analysis/events/:userId — event log anomali */
+/** GET /api/analysis/events/:userId — event log anomali (with pagination) */
 router.get('/events/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 20;
-    const events = await getRecentEvents(req.params.userId, limit);
-    res.json({ success: true, data: events, count: events.length });
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const skip = (page - 1) * limit;
+
+    const userId = req.params.userId;
+    const isFiltered = userId && userId !== 'ALL' && userId !== '000000000000000000000000';
+    const query = isFiltered
+      ? (mongoose.Types.ObjectId.isValid(userId) ? { user_id: new mongoose.Types.ObjectId(userId) } : { user_id: userId })
+      : {};
+
+    const [events, totalCount] = await Promise.all([
+      AnomalyEvent.find(query)
+        .populate('user_id', 'name email guid')
+        .sort({ onset_time: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      AnomalyEvent.countDocuments(query)
+    ]);
+
+    res.json({
+      success: true,
+      data: events,
+      count: events.length,
+      totalCount,
+      page,
+      totalPages: Math.ceil(totalCount / limit),
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

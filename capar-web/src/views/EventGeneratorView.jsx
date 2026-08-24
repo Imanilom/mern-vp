@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
 const StateBadge = ({ state }) => {
@@ -15,39 +15,46 @@ const StateBadge = ({ state }) => {
   return <span className="evidence-chip chip-neutral">{state || '-'}</span>;
 };
 
+const PAGE_SIZE = 50;
+
 export default function EventGeneratorView({ globalParticipantFilter, onSelectEpisode }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [params, setParams] = useState({
-    participantId: globalParticipantFilter !== 'ALL' ? globalParticipantFilter : '',
-    adminStatus: '',
-    outcome: '',
-  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const applyFilter = async () => {
+  const loadPage = async (page = 1, userId) => {
     setLoading(true);
     try {
-      const res = await api.getRecentEvents(params.participantId || undefined, 500);
-      const events = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      
+      const target = userId && userId !== 'ALL' ? userId : 'ALL';
+      const result = await api.getEventsPaginated(target, page, PAGE_SIZE);
+      const events = result.data || [];
+
       const persistentEvents = events.filter(ep => {
-        const status = ep.current_state || ep.status || '';
+        const status = ep.status || ep.raw?.current_state || '';
         const isCurrentlyPersistent = ['PERSISTENT_DEVIATION', 'Alert'].includes(status);
-        const reachedPersistent = !!ep.persistent_at || (ep.trajectory && ep.trajectory.persistence >= 2) || ep.classification === 'Alert';
+        const reachedPersistent = !!ep.raw?.persistent_at
+          || (ep.raw?.trajectory?.persistence >= 2)
+          || ep.raw?.classification === 'Alert';
         return isCurrentlyPersistent || reachedPersistent;
       });
 
       const mapped = persistentEvents.map(ep => ({
-        episodeId: ep._id,
-        participantName: typeof ep.user_id === 'object' && ep.user_id ? (ep.user_id.name || ep.user_id.email || ep.user_id.guid || 'Unknown') : 'Unknown',
-        onsetAt: ep.onset_time,
-        peakScore: typeof ep.peak_score === 'number' ? ep.peak_score : (typeof ep.onset_score === 'number' ? ep.onset_score : 0),
-        durationMin: ep.duration_ms ? Math.floor(ep.duration_ms/60000) : 0,
-        outcome: ep.physiological_outcome || 'UNRESOLVED',
-        reviewerDecision: ep.validation_label || 'None',
-        status: ep.current_state || ep.status || 'open'
+        episodeId: ep.id,
+        participantName: ep.participantName || 'Unknown',
+        onsetAt: ep.onsetRaw,
+        peakScore: ep.peakScore || 0,
+        durationMin: ep.durationMinutes || 0,
+        outcome: ep.raw?.physiological_outcome || 'UNRESOLVED',
+        reviewerDecision: ep.validationLabel || 'None',
+        status: ep.status || 'open',
       }));
+
       setRows(mapped);
+      setCurrentPage(result.page || page);
+      setTotalPages(result.totalPages || 1);
+      setTotalCount(result.totalCount || 0);
     } catch (err) {
       console.error('[EventGeneratorView] Error:', err);
       setRows([]);
@@ -57,8 +64,16 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
   };
 
   useEffect(() => {
-    applyFilter();
+    setCurrentPage(1);
+    loadPage(1, globalParticipantFilter);
   }, [globalParticipantFilter]);
+
+  const handlePrev = () => {
+    if (currentPage > 1) loadPage(currentPage - 1, globalParticipantFilter);
+  };
+  const handleNext = () => {
+    if (currentPage < totalPages) loadPage(currentPage + 1, globalParticipantFilter);
+  };
 
   return (
     <div className="card-panel" style={{ minWidth: 0, overflow: 'hidden' }}>
@@ -67,9 +82,13 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
           <div className="mini-label" style={{ color: 'var(--teal)' }}>EVENT GENERATOR</div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--navy)' }}>Filter Results &amp; Episode Candidates</h2>
         </div>
-        <button onClick={applyFilter} className="btn-solid-teal" disabled={loading}>
-          {loading ? 'Loading...' : 'Refresh'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {loading && <span style={{ fontSize: 12, color: 'var(--teal)' }}>Loading...</span>}
+          <span style={{ fontSize: 12, color: 'var(--gray)' }}>{totalCount} total events</span>
+          <button onClick={() => loadPage(currentPage, globalParticipantFilter)} className="btn-solid-teal" disabled={loading}>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="table-responsive">
@@ -91,7 +110,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
               const pName = (r.participantName || 'p001').toLowerCase().replace(/[^a-z0-9]/g, '');
               const onsetDate = new Date(r.onsetAt);
               const onsetParts = onsetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/[^0-9]/g, '');
-              const displayEpId = r.episodeId?.startsWith('ep-') ? r.episodeId : `ep-${pName.substring(0, 6)}-${onsetParts.substring(0, 4) || '0845'}`;
+              const displayEpId = r.episodeId?.startsWith?.('ep-') ? r.episodeId : `ep-${pName.substring(0, 6)}-${onsetParts.substring(0, 4) || '0845'}`;
               
               return (
                 <tr 
@@ -119,9 +138,32 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
             {rows.length === 0 && !loading && (
               <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--gray)' }}>No persistent events found.</td></tr>
             )}
+            {loading && rows.length === 0 && (
+              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--teal)' }}>Memuat data...</td></tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: '1px solid var(--line)', background: '#FAFBFC', marginTop: 0 }}>
+          <button
+            onClick={handlePrev}
+            disabled={currentPage <= 1 || loading}
+            style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 6, border: '1px solid var(--line)', background: currentPage <= 1 ? 'var(--gray-soft)' : 'var(--navy)', color: currentPage <= 1 ? 'var(--gray)' : '#fff', cursor: currentPage <= 1 ? 'default' : 'pointer' }}
+          >← Prev</button>
+          <span style={{ fontSize: 12, color: 'var(--gray)' }}>
+            Halaman <strong>{currentPage}</strong> dari <strong>{totalPages}</strong> &nbsp;·&nbsp; {totalCount} events
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage >= totalPages || loading}
+            style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 6, border: '1px solid var(--line)', background: currentPage >= totalPages ? 'var(--gray-soft)' : 'var(--navy)', color: currentPage >= totalPages ? 'var(--gray)' : '#fff', cursor: currentPage >= totalPages ? 'default' : 'pointer' }}
+          >Next →</button>
+        </div>
+      )}
     </div>
   );
 }
+
