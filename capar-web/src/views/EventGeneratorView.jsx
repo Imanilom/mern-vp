@@ -18,7 +18,9 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
       
       const persistentEvents = events.filter(ep => {
         const status = ep.current_state || ep.status || '';
-        return ['PERSISTENT_DEVIATION', 'Alert', 'Recovered', 'closed', 'unresolved'].includes(status);
+        const isCurrentlyPersistent = ['PERSISTENT_DEVIATION', 'Alert'].includes(status);
+        const reachedPersistent = !!ep.persistent_at || (ep.trajectory && ep.trajectory.persistence >= 2) || ep.classification === 'Alert';
+        return isCurrentlyPersistent || reachedPersistent;
       });
 
       const mapped = persistentEvents.map(ep => ({

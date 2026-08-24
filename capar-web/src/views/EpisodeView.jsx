@@ -26,6 +26,12 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
 
   const filteredEpisodes = rawEpisodesList.filter(ep => {
     if (!ep || typeof ep !== 'object') return false;
+    
+    // Pastikan episode pernah masuk/melewati threshold tau_in (deviasi transient atau persisten)
+    const tauIn = ep.tauIn || ep.raw?.tau_in || 1.5; 
+    const peakScore = ep.peakScore || 0;
+    if (peakScore < tauIn) return false;
+
     if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && ep.participantId !== globalParticipantFilter) return false;
     if (globalDateFilter && ep.raw?.onset_time) {
       const ts = new Date(ep.raw.onset_time).getTime();
@@ -46,6 +52,7 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
   const [reviewerNote, setReviewerNote] = useState(selectedEpisode?.reviewerNote || '');
   const [isSaved, setIsSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('detail');
+  const [comparedEpisodeId, setComparedEpisodeId] = useState('');
 
   useEffect(() => {
     if (selectedEpisode) {
