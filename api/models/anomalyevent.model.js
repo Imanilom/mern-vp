@@ -59,9 +59,11 @@ const AnomalyEventSchema = new mongoose.Schema({
 
   duration_ms: { type: Number, default: null }, // resolved_time - onset_time
 
-  // ── Skor ──────────────────────────────────────────────────────────────────
+  // ── Skor & Fitur Mentah ───────────────────────────────────────────────────
   onset_score:  { type: Number }, // score saat onset
   peak_score:   { type: Number }, // score tertinggi
+  peak_hr:      { type: Number }, // raw HR saat peak
+  baseline_hr:  { type: Number }, // raw baseline HR saat peak
   classification: {
     type: String,
     enum: ['Normal', 'Caution', 'Alert'],

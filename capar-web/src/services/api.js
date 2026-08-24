@@ -158,6 +158,8 @@ export const api = {
                 onsetRaw: ev.onset_time,      // Epoch ms untuk filtering/sorting
                 onsetScore: typeof ev.onset_score === 'number' ? ev.onset_score : 0,
                 peakScore: typeof ev.peak_score === 'number' ? ev.peak_score : (typeof ev.onset_score === 'number' ? ev.onset_score : 0),
+                peakHr: ev.peak_hr || null,
+                baselineHr: ev.baseline_hr || null,
                 durationMinutes: ev.duration_ms ? Math.round(ev.duration_ms / 60000) : 0,
                 classification: ev.classification || 'Alert',
                 status: ev.current_state || ev.status || 'open',

@@ -694,10 +694,11 @@ export const EpisodeView = ({ episodes, globalParticipantFilter, globalDateFilte
                 filteredEpisodes.map((ep, idx) => {
                   const isPersistent = ep.status === 'PERSISTENT_DEVIATION' || ep.status === 'Alert'
                     || ep.status === 'Recovered' || ep.status === 'closed' || ep.status === 'unresolved';
-                  const hrVal = ep.raw?.peak_hr || (ep.peakScore ? Math.round(75 + ep.peakScore * 10) : 108);
-                  const baseHr = ep.raw?.baseline_hr || 74.5;
+                  const hrVal = ep.peakHr || ep.raw?.peak_hr || (ep.peakScore ? Math.round(75 + ep.peakScore * 10) : 108);
+                  const baseHr = ep.baselineHr || ep.raw?.baseline_hr || 74.5;
                   const deltaHr = (hrVal - baseHr).toFixed(1);
-                  const zVal = (ep.peakScore ? ep.peakScore * 1.15 : 2.85).toFixed(2);
+                  const rawZhr = ep.raw?.z_scores_at_peak?.z_hr;
+                  const zVal = (typeof rawZhr === 'number' ? rawZhr : (ep.peakScore ? ep.peakScore * 1.15 : 2.85)).toFixed(2);
                   const dateStr = ep.onsetDate || '-';
                   const timeStr = ep.onsetTime || '-';
                   const participantLabel = ep.participantName || ep.participantId || 'Unknown';

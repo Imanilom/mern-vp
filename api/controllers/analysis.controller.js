@@ -354,7 +354,7 @@ async function analyzeUser(userId) {
       const classification = classifyRR(score, maturityLevel, learnedTau);
       const eventCreated = await updateRRPersistence(
         userId, seg, score, classification, rrZScores, rr_status,
-        persistenceState, activity
+        persistenceState, activity, baseline
       );
       if (eventCreated) totalEvents++;
 
@@ -1606,7 +1606,7 @@ async function analyzeOneMinuteUser(userId) {
       // 9. Persistence → AnomalyEvent
       const eventCreated = await updateRRPersistence(
         userId, seg, score, classification, rrZScores, rr_status,
-        persistenceState, activity
+        persistenceState, activity, baseline
       );
       if (eventCreated) totalEvents++;
 
@@ -1658,7 +1658,7 @@ async function analyzeOneMinuteUser(userId) {
 
 async function updateRRPersistence(
   userId, seg, score, classification, zScores, rr_status,
-  persistenceState, activity
+  persistenceState, activity, baseline
 ) {
   if (!persistenceState[activity]) {
     persistenceState[activity] = {
@@ -1772,6 +1772,8 @@ async function updateRRPersistence(
         onset_score: state.scores[0],
         peak_time: segWinStart,
         peak_score: state.peakScore,
+        peak_hr: state.peakSeg?.features?.mean_hr || seg.features?.mean_hr || null,
+        baseline_hr: baseline?.stats?.mean_hr?.mean || null,
         classification,
         z_scores_at_peak: zScores,
         trajectory: {
@@ -1795,6 +1797,8 @@ async function updateRRPersistence(
       // UPDATE EPISODE
       const updatePayload = {
         peak_score: state.peakScore, 
+        peak_hr: state.peakSeg?.features?.mean_hr || seg.features?.mean_hr || null,
+        baseline_hr: baseline?.stats?.mean_hr?.mean || null,
         classification,
         'trajectory.sequence_of_scores': state.scores,
         'trajectory.persistence': state.count,
