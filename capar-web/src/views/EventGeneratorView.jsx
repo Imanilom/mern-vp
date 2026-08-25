@@ -24,6 +24,9 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+  const [filterName, setFilterName] = useState('');
+  const [filterOutcome, setFilterOutcome] = useState('ALL');
+
   const loadPage = async (page = 1, userId) => {
     setLoading(true);
     try {
@@ -91,6 +94,32 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
         </div>
       </div>
 
+      <div className="row g-2 mb-3">
+        <div className="col-auto">
+          <input 
+            type="text" 
+            className="form-control form-control-sm" 
+            placeholder="Cari Nama Peserta..." 
+            value={filterName}
+            onChange={e => setFilterName(e.target.value)}
+            style={{ width: '200px' }}
+          />
+        </div>
+        <div className="col-auto">
+          <select 
+            className="form-select form-select-sm" 
+            value={filterOutcome}
+            onChange={e => setFilterOutcome(e.target.value)}
+            style={{ width: '150px' }}
+          >
+            <option value="ALL">Semua Outcome</option>
+            <option value="UNRESOLVED">UNRESOLVED</option>
+            <option value="RECOVERED">RECOVERED</option>
+            <option value="PERSISTENT">PERSISTENT</option>
+          </select>
+        </div>
+      </div>
+
       <div className="table-responsive">
         <table className="dtable w-100">
           <thead>
@@ -106,7 +135,11 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
             </tr>
           </thead>
           <tbody>
-            {rows.map(r => {
+            {rows.filter(r => {
+              if (filterName && !r.participantName.toLowerCase().includes(filterName.toLowerCase())) return false;
+              if (filterOutcome !== 'ALL' && r.outcome !== filterOutcome) return false;
+              return true;
+            }).map(r => {
               const pName = (r.participantName || 'p001').toLowerCase().replace(/[^a-z0-9]/g, '');
               const onsetDate = new Date(r.onsetAt);
               const onsetParts = onsetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/[^0-9]/g, '');
@@ -136,7 +169,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
               );
             })}
             {rows.length === 0 && !loading && (
-              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--gray)' }}>No persistent events found.</td></tr>
+              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--gray)' }}>Tidak ada data (atau tidak cocok dengan filter).</td></tr>
             )}
             {loading && rows.length === 0 && (
               <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--teal)' }}>Memuat data...</td></tr>
