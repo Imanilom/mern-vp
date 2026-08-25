@@ -26,8 +26,6 @@ import {
 export const ExperienceView = ({ experienceModels, globalParticipantFilter }) => {
   const [experienceApiData, setExperienceApiData] = useState(null);
   const [isLearningFrozen, setIsLearningFrozen] = useState(false);
-  const [selectedActivityContext, setSelectedActivityContext] = useState('all');
-  const [isCalibrating, setIsCalibrating] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -316,7 +314,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
           </table>
         </div>
         {experienceApiData?.answeredEmaList && (
-          <Pagination 
+          <Pagination
             currentPage={currentPage}
             totalPages={Math.ceil((experienceApiData?.answeredEmaList?.length || 0) / itemsPerPage)}
             onPageChange={setCurrentPage}
@@ -390,7 +388,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
                   {heatmapContexts.map(ctx => {
                     const key = `${period.key}-${ctx}`;
                     const cell = memoryHeatmapMatrix[key] || { count: 0, avgAnomaly: 0.0, state: 'NONE' };
-                    
+
                     let bg = 'var(--gray-soft)';
                     let textCol = 'var(--gray)';
                     if (cell.state === 'BASELINE_COMPATIBLE') {
