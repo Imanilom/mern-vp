@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 const STATE_LABEL = {
   BASELINE_COMPATIBLE: "Baseline Compatible",
@@ -34,11 +35,11 @@ export default function NextStatePrediction({
     if (!participantId) return;
     let isMounted = true;
 
-    fetch(`/api/analysis/forecast/${participantId}?horizon=3`)
-      .then(res => res.json())
-      .then(json => {
-        if (isMounted && json?.success && json?.data) {
-          setForecast(json.data);
+    axios.get(`/analysis/forecast/${participantId}?horizon=3`)
+      .then(res => {
+        const data = res?.data;
+        if (isMounted && data?.success && data?.data) {
+          setForecast(data.data);
         }
       })
       .catch(err => console.error("[NextStatePrediction] fetch error:", err));

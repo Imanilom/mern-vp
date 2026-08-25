@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 const STATE_LABEL = {
   BASELINE_COMPATIBLE: "Baseline",
@@ -20,18 +21,17 @@ export default function MarkovTransitionHeatmap({ participantId = "P00" }) {
         setLoading(true);
         setError(null);
 
-        let res = await fetch(`/api/participants/${participantId}/markov?horizon=3`);
-        if (!res.ok) {
-          res = await fetch(`/api/analysis/markov/${participantId}?horizon=3`);
+        let res = await axios.get(`/analysis/markov/${participantId}?horizon=3`).catch(() => null);
+        if (!res?.data) {
+          res = await axios.get(`/participants/${participantId}/markov?horizon=3`).catch(() => null);
         }
 
-        if (!res.ok) {
+        if (!res?.data) {
           throw new Error("Gagal memuat Markov Transition Model");
         }
 
-        const json = await res.json();
         if (isMounted) {
-          setData(json);
+          setData(res.data);
         }
       } catch (err) {
         if (isMounted) {

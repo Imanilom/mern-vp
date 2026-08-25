@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import Pagination from './Pagination';
 
 export default function CalibrationHistoryCard({ participantId = "P00" }) {
@@ -12,13 +13,13 @@ export default function CalibrationHistoryCard({ participantId = "P00" }) {
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        let res = await fetch(`/api/analysis/calibration-history/${participantId}`);
-        if (!res.ok) {
-          res = await fetch(`/api/analysis/calibration-history/ALL`);
+        let res = await axios.get(`/analysis/calibration-history/${participantId}`).catch(() => null);
+        if (!res?.data?.success) {
+          res = await axios.get(`/analysis/calibration-history/ALL`).catch(() => null);
         }
-        if (res.ok) {
-          const json = await res.json();
-          if (isMounted && json.success && Array.isArray(json.data)) {
+        if (res?.data?.success) {
+          const json = res.data;
+          if (isMounted && Array.isArray(json.data)) {
             let fetchedData = json.data;
             if (participantId && participantId !== "ALL" && participantId !== "undefined" && participantId !== "null") {
               fetchedData = fetchedData.filter(d => d.participantId === participantId || d.participant_id === participantId);
