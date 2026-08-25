@@ -3,6 +3,7 @@ import { EvidenceBadge } from '../components/common/EvidenceBadge';
 import { StateBadge } from '../components/common/StateBadge';
 import { Users, Activity, AlertTriangle, ArrowRight, ShieldCheck, Search, Database, RefreshCw } from 'lucide-react';
 import { api } from '../services/api';
+import Pagination from '../components/Pagination';
 
 export const CohortOverviewView = ({ 
   participants, 
@@ -15,6 +16,10 @@ export const CohortOverviewView = ({
   const [loadingEpAnalysis, setLoadingEpAnalysis] = useState(false);
   // Pasien yang dipilih untuk tabel analisis di bawah (independen dari globalParticipantFilter)
   const [selectedPatientId, setSelectedPatientId] = useState(null);
+
+  const [currentPagePatients, setCurrentPagePatients] = useState(1);
+  const [currentPageEvents, setCurrentPageEvents] = useState(1);
+  const itemsPerPage = 10;
 
   // Fungsi fetch data analisis untuk pasien tertentu
   const fetchAnalysis = (pId) => {
@@ -178,7 +183,7 @@ export const CohortOverviewView = ({
                 type="text" 
                 placeholder="Cari nama pasien..." 
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => { setSearchQuery(e.target.value); setCurrentPagePatients(1); }}
                 style={{ padding: '6px 12px 6px 30px', borderRadius: 20, border: '1px solid var(--line)', fontSize: 12, outline: 'none', minWidth: 220 }}
               />
             </div>
@@ -205,7 +210,7 @@ export const CohortOverviewView = ({
             </thead>
             <tbody>
               {filteredPatients.length > 0 ? (
-                filteredPatients.map((p) => (
+                filteredPatients.slice((currentPagePatients - 1) * itemsPerPage, currentPagePatients * itemsPerPage).map((p) => (
                   <tr
                     key={p.id}
                     style={{
@@ -251,6 +256,7 @@ export const CohortOverviewView = ({
                           onClick={() => {
                             const pid = p.id || p._id;
                             setSelectedPatientId(pid);
+                            setCurrentPageEvents(1);
                             fetchAnalysis(pid);
                           }}
                         >
@@ -270,6 +276,13 @@ export const CohortOverviewView = ({
             </tbody>
           </table>
         </div>
+        <Pagination 
+          currentPage={currentPagePatients}
+          totalPages={Math.ceil(filteredPatients.length / itemsPerPage)}
+          onPageChange={setCurrentPagePatients}
+          totalItems={filteredPatients.length}
+          pageSize={itemsPerPage}
+        />
       </div>
 
       {/* Episode Analysis Data Overview Table */}
@@ -336,7 +349,7 @@ export const CohortOverviewView = ({
                   </td>
                 </tr>
               ) : (
-                episodeAnalysisData.map((row, idx) => (
+                episodeAnalysisData.slice((currentPageEvents - 1) * itemsPerPage, currentPageEvents * itemsPerPage).map((row, idx) => (
                   <tr key={row._id || idx}>
                     <td className="mono" style={{ fontSize: 11, fontWeight: 700 }}>
                       {row.start_time ? new Date(row.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'} - {row.end_time ? new Date(row.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
@@ -381,6 +394,13 @@ export const CohortOverviewView = ({
             </tbody>
           </table>
         </div>
+        <Pagination 
+          currentPage={currentPageEvents}
+          totalPages={Math.ceil(episodeAnalysisData.length / itemsPerPage)}
+          onPageChange={setCurrentPageEvents}
+          totalItems={episodeAnalysisData.length}
+          pageSize={itemsPerPage}
+        />
       </div>
     </div>
   );

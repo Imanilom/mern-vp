@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import Pagination from '../components/Pagination';
 
 const StateBadge = ({ state }) => {
   if (state === 'BASELINE_COMPATIBLE' || state === 'Baseline') return <span className="evidence-chip chip-green">Baseline</span>;
@@ -452,21 +453,16 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
               </table>
             </div>
             {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderTop: '1px solid var(--line)', background: '#FAFBFC' }}>
-                <button
-                  onClick={() => { const newPage = currentPage - 1; setCurrentPage(newPage); fetchEpisodes(newPage, globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'ALL'); }}
-                  disabled={currentPage <= 1 || isLoading}
-                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--line)', background: currentPage <= 1 ? 'var(--gray-soft)' : 'var(--navy)', color: currentPage <= 1 ? 'var(--gray)' : '#fff', cursor: currentPage <= 1 ? 'default' : 'pointer' }}
-                >← Prev</button>
-                <span style={{ fontSize: 11, color: 'var(--gray)' }}>Halaman {currentPage} dari {totalPages}</span>
-                <button
-                  onClick={() => { const newPage = currentPage + 1; setCurrentPage(newPage); fetchEpisodes(newPage, globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'ALL'); }}
-                  disabled={currentPage >= totalPages || isLoading}
-                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--line)', background: currentPage >= totalPages ? 'var(--gray-soft)' : 'var(--navy)', color: currentPage >= totalPages ? 'var(--gray)' : '#fff', cursor: currentPage >= totalPages ? 'default' : 'pointer' }}
-                >Next →</button>
-              </div>
-            )}
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={(newPage) => {
+                setCurrentPage(newPage);
+                fetchEpisodes(newPage, globalParticipantFilter !== 'ALL' ? globalParticipantFilter : 'ALL');
+              }}
+              totalItems={totalCount}
+              pageSize={PAGE_SIZE}
+            />
 
           </div>
         </div>

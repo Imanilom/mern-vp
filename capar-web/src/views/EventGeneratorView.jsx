@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import Pagination from '../components/Pagination';
 
 const StateBadge = ({ state }) => {
   if (state === 'BASELINE_COMPATIBLE' || state === 'Baseline') return <span className="evidence-chip chip-green">Baseline</span>;
@@ -26,6 +27,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
 
   const [filterName, setFilterName] = useState('');
   const [filterOutcome, setFilterOutcome] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL');
 
   const loadPage = async (page = 1, userId) => {
     setLoading(true);
@@ -109,13 +111,28 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
           <select 
             className="form-select form-select-sm" 
             value={filterOutcome}
-            onChange={e => setFilterOutcome(e.target.value)}
+            onChange={e => { setFilterOutcome(e.target.value); setCurrentPage(1); }}
             style={{ width: '150px' }}
           >
             <option value="ALL">Semua Outcome</option>
             <option value="UNRESOLVED">UNRESOLVED</option>
             <option value="RECOVERED">RECOVERED</option>
             <option value="PERSISTENT">PERSISTENT</option>
+          </select>
+        </div>
+        <div className="col-auto">
+          <select 
+            className="form-select form-select-sm" 
+            value={filterStatus}
+            onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+            style={{ width: '150px' }}
+          >
+            <option value="ALL">Semua Status</option>
+            <option value="open">open</option>
+            <option value="closed">closed</option>
+            <option value="resolved">resolved</option>
+            <option value="unresolved">unresolved</option>
+            <option value="PERSISTENT_DEVIATION">PERSISTENT</option>
           </select>
         </div>
       </div>
@@ -138,6 +155,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
             {rows.filter(r => {
               if (filterName && !r.participantName.toLowerCase().includes(filterName.toLowerCase())) return false;
               if (filterOutcome !== 'ALL' && r.outcome !== filterOutcome) return false;
+              if (filterStatus !== 'ALL' && (r.status || '').toLowerCase() !== filterStatus.toLowerCase()) return false;
               return true;
             }).map(r => {
               const pName = (r.participantName || 'p001').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -179,23 +197,16 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
       </div>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: '1px solid var(--line)', background: '#FAFBFC', marginTop: 0 }}>
-          <button
-            onClick={handlePrev}
-            disabled={currentPage <= 1 || loading}
-            style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 6, border: '1px solid var(--line)', background: currentPage <= 1 ? 'var(--gray-soft)' : 'var(--navy)', color: currentPage <= 1 ? 'var(--gray)' : '#fff', cursor: currentPage <= 1 ? 'default' : 'pointer' }}
-          >← Prev</button>
-          <span style={{ fontSize: 12, color: 'var(--gray)' }}>
-            Halaman <strong>{currentPage}</strong> dari <strong>{totalPages}</strong> &nbsp;·&nbsp; {totalCount} events
-          </span>
-          <button
-            onClick={handleNext}
-            disabled={currentPage >= totalPages || loading}
-            style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 6, border: '1px solid var(--line)', background: currentPage >= totalPages ? 'var(--gray-soft)' : 'var(--navy)', color: currentPage >= totalPages ? 'var(--gray)' : '#fff', cursor: currentPage >= totalPages ? 'default' : 'pointer' }}
-          >Next →</button>
-        </div>
-      )}
+      <Pagination 
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={(newPage) => {
+          setCurrentPage(newPage);
+          loadPage(newPage, globalParticipantFilter);
+        }}
+        totalItems={totalCount}
+        pageSize={PAGE_SIZE}
+      />
     </div>
   );
 }

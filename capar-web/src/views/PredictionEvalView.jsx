@@ -11,6 +11,7 @@ import {
   Tooltip,
   ReferenceLine
 } from 'recharts';
+import Pagination from '../components/Pagination';
 
 export const PredictionEvalView = ({ globalParticipantFilter }) => {
   const [horizon, setHorizon] = useState('30 min');
@@ -21,6 +22,11 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
   const [loading, setLoading] = useState(false);
   const [selectedEpId, setSelectedEpId] = useState(null);
   const [ablationData, setAblationData] = useState(null);
+  const [forecastData, setForecastData] = useState(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const participantId = globalParticipantFilter || 'ALL';
 
@@ -34,14 +40,16 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
       api.getRecentEvents(fetchId, 20).catch(() => []),
       api.getEpisodeAnalysis(fetchId).catch(() => []),
       api.getPredictionEvalBrier ? api.getPredictionEvalBrier(fetchId, horizonNum).catch(() => null) : Promise.resolve(null),
-      api.getAblationResults ? api.getAblationResults(fetchId).catch(() => null) : Promise.resolve(null)
-    ]).then(([metricData, eventsData, epAnalysisData, brierData, ablationRes]) => {
+      api.getAblationResults ? api.getAblationResults(fetchId).catch(() => null) : Promise.resolve(null),
+      api.getForecast ? api.getForecast(fetchId).catch(() => null) : Promise.resolve(null)
+    ]).then(([metricData, eventsData, epAnalysisData, brierData, ablationRes, forecastRes]) => {
       setMetrics(metricData);
       setRecentEvents(Array.isArray(eventsData?.data) ? eventsData.data : (Array.isArray(eventsData) ? eventsData : []));
       const epArr = Array.isArray(epAnalysisData) ? epAnalysisData : [];
       setEpisodeAnalysis(epArr);
       if (brierData) setBrierMetrics(brierData);
       if (ablationRes) setAblationData(ablationRes);
+      if (forecastRes) setForecastData(forecastRes);
       if (epArr.length > 0) {
         setSelectedEpId(epArr[0].episode_id !== undefined ? String(epArr[0].episode_id) : '0');
       }
@@ -263,6 +271,31 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
 
   // ── 4. Discrete Markov Window-by-Window Persistence & Recovery Forecast ─────
   const markovDiscreteSteps = useMemo(() => {
+    if (forecastData && forecastData.horizon_forecast && forecastData.horizon_forecast.length > 0) {
+      const steps = [];
+      const initProbs = forecastData.next_state_probabilities || {};
+      steps.push({
+        windowStep: 0,
+        minutes: 0,
+        probPersistent: initProbs.PERSISTENT_DEVIATION || 0,
+        probRecovery: initProbs.RECOVERY || initProbs.RECOVERY_START || 0,
+        probRecovered: initProbs.RECOVERED || 0,
+        probBaseline: initProbs.BASELINE_COMPATIBLE || 0
+      });
+      forecastData.horizon_forecast.forEach((stepItem) => {
+        const probs = stepItem.probabilities || {};
+        steps.push({
+          windowStep: stepItem.step,
+          minutes: stepItem.step * 5,
+          probPersistent: probs.PERSISTENT_DEVIATION || 0,
+          probRecovery: probs.RECOVERY || probs.RECOVERY_START || 0,
+          probRecovered: probs.RECOVERED || 0,
+          probBaseline: probs.BASELINE_COMPATIBLE || 0
+        });
+      });
+      return steps;
+    }
+
     // Transition matrix P for [Baseline, Candidate, Persistent, Recovery, Recovered]
     const P = [
       [0.884, 0.116, 0.000, 0.000, 0.000], // Baseline
@@ -299,7 +332,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
     }
 
     return steps;
-  }, []);
+  }, [forecastData]);
 
   // ── 5. Ablation E1–E6 Dynamic Comparative Evaluation ────────────────────────
   const ablationEval = useMemo(() => {
@@ -395,7 +428,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
               <button
                 className={`btn btn-sm ${!selectedEpId || selectedEpId === 'ALL_EPISODES' ? 'btn-teal' : 'btn-outline-navy'}`}
                 style={{ fontSize: 11, padding: '2px 8px' }}
-                onClick={() => setSelectedEpId('ALL_EPISODES')}
+                onClick={() => { setSelectedEpId('ALL_EPISODES'); setCurrentPage(1); }}
               >
                 All Episodes (n={episodeAnalysis.length})
               </button>
@@ -404,7 +437,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
                   key={group.id}
                   className={`btn btn-sm ${selectedEpId === group.id ? 'btn-teal' : 'btn-outline-navy'}`}
                   style={{ fontSize: 11, padding: '2px 8px' }}
-                  onClick={() => setSelectedEpId(group.id)}
+                  onClick={() => { setSelectedEpId(group.id); setCurrentPage(1); }}
                 >
                   EP-{group.id} ({group.records.length} w)
                 </button>
@@ -844,11 +877,16 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
               Simulasi Perpindahan State per Penambahan Window (+1 Step = +5 Menit)
             </h4>
           </div>
-          <div className="badge bg-teal text-white px-2 py-1" style={{ fontSize: 11 }}>First-Order Discrete Markov Chain</div>
+          <div className="badge bg-teal text-white px-2 py-1" style={{ fontSize: 11 }}>
+            {forecastData ? 'Dynamic Personal Markov Model' : 'First-Order Discrete Markov Chain'}
+          </div>
         </div>
 
         <p style={{ fontSize: 11.5, color: 'var(--gray)', marginBottom: 12 }}>
-          Setiap penambahan window secara diskrit (+1 window = +5 menit) memperbarui matriks $P^h$. Model memprediksi berapa persen kecenderungan deviasi menetap (*Persistence*) versus memasuki fase pemulihan (*Recovery*).
+          {forecastData 
+            ? 'Setiap penambahan window secara diskrit (+1 window = +5 menit) memperbarui matriks berdasarkan data personal historis. Model memprediksi persentase kecenderungan deviasi menetap vs pemulihan.' 
+            : 'Setiap penambahan window secara diskrit (+1 window = +5 menit) memperbarui matriks $P^h$. Model memprediksi berapa persen kecenderungan deviasi menetap (*Persistence*) versus memasuki fase pemulihan (*Recovery*).'
+          }
         </p>
 
         <div className="table-responsive">
@@ -957,7 +995,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
             </thead>
             <tbody>
               {activeEpRecords.length > 0 ? (
-                activeEpRecords.map((ea, idx) => {
+                activeEpRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((ea, idx) => {
                   const epKey = ea.episode_id !== undefined ? String(ea.episode_id) : (ea._id ? ea._id.toString().substring(0, 8) : `EP-${idx}`);
                   const isSelected = selectedEpId === epKey;
 
@@ -1029,6 +1067,13 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
             </tbody>
           </table>
         </div>
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={Math.ceil(activeEpRecords.length / itemsPerPage)}
+          onPageChange={setCurrentPage}
+          totalItems={activeEpRecords.length}
+          pageSize={itemsPerPage}
+        />
       </div>
     </div>
   );

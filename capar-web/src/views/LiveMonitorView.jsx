@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Legend } from 'recharts';
 import { api } from '../services/api';
+import Pagination from '../components/Pagination';
 
 const getTimestamp = (d) => {
   if (d.timestamp) {
@@ -59,6 +60,9 @@ export const LiveMonitorView = ({
   const [loadingRaw, setLoadingRaw] = useState(false);
   const [liveData, setLiveData] = useState([]);
   const [activeStreamTab, setActiveStreamTab] = useState('hr'); // 'hr' | 'acc' | 'ecg' | 'all'
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const parseAcc = (val) => {
     const num = Number(val) || 0;
@@ -349,10 +353,23 @@ export const LiveMonitorView = ({
     );
   };
 
-  const filteredParticipants = participants.filter(p => {
-    if (globalParticipantFilter && globalParticipantFilter !== 'ALL' && p.id !== globalParticipantFilter && p._id !== globalParticipantFilter && p.guid !== globalParticipantFilter) return false;
-    return true;
-  });
+  const filteredParticipants = useMemo(() => {
+    let filtered = [...participants];
+    if (globalParticipantFilter && globalParticipantFilter !== 'ALL') {
+      filtered = filtered.filter(p => p.id === globalParticipantFilter || p.name === globalParticipantFilter || p._id === globalParticipantFilter || p.guid === globalParticipantFilter);
+    }
+    
+    return filtered.sort((a, b) => {
+      const tsA = a.peakTime ? new Date(a.peakTime).getTime() : 0;
+      const tsB = b.peakTime ? new Date(b.peakTime).getTime() : 0;
+      return tsB - tsA;
+    });
+  }, [participants, globalParticipantFilter]);
+
+  // Reset pagination when global filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [globalParticipantFilter]);
 
   // Scope participants for stats: if selectedParticipant is chosen, target scope is [selectedParticipant].
   // If global filter is set (and no local selectedParticipant), target scope is filteredParticipants.
@@ -553,7 +570,7 @@ export const LiveMonitorView = ({
               {filteredParticipants.length === 0 ? (
                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px', color: 'var(--gray)' }}>No participants match the filter.</td></tr>
               ) : (
-                filteredParticipants.map(p => {
+                filteredParticipants.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(p => {
                   const peakVal = p.peakScore || p.anomalyScore || 2.45;
                   const peakHr = p.peakHr || (p.hrMean ? `${p.hrMean} BPM` : '108 BPM');
 
@@ -603,6 +620,13 @@ export const LiveMonitorView = ({
             </tbody>
           </table>
         </div>
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={Math.ceil(filteredParticipants.length / itemsPerPage)}
+          onPageChange={setCurrentPage}
+          totalItems={filteredParticipants.length}
+          pageSize={itemsPerPage}
+        />
       </div>
     </div>
   );
