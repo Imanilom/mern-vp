@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import MarkovTransitionHeatmap from '../components/MarkovTransitionHeatmap';
 import NextStatePrediction from '../components/NextStatePrediction';
 import CalibrationHistoryCard from '../components/CalibrationHistoryCard';
+import Pagination from '../components/Pagination';
 import {
   Brain,
   Sliders,
@@ -25,6 +26,11 @@ import {
 export const ExperienceView = ({ experienceModels, globalParticipantFilter }) => {
   const [experienceApiData, setExperienceApiData] = useState(null);
   const [isLearningFrozen, setIsLearningFrozen] = useState(false);
+  const [selectedActivityContext, setSelectedActivityContext] = useState('all');
+  const [isCalibrating, setIsCalibrating] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const participantId = globalParticipantFilter || 'ALL';
 
@@ -282,7 +288,7 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
                   </td>
                 </tr>
               ) : (
-                experienceApiData.answeredEmaList.map(ema => (
+                experienceApiData.answeredEmaList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(ema => (
                   <tr key={ema.id}>
                     <td className="mono" style={{ fontWeight: 700, fontSize: 11, color: 'var(--navy)' }}>
                       {ema.submittedAtFormatted}
@@ -309,6 +315,15 @@ export const ExperienceView = ({ experienceModels, globalParticipantFilter }) =>
             </tbody>
           </table>
         </div>
+        {experienceApiData?.answeredEmaList && (
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={Math.ceil((experienceApiData?.answeredEmaList?.length || 0) / itemsPerPage)}
+            onPageChange={setCurrentPage}
+            totalItems={experienceApiData?.answeredEmaList?.length || 0}
+            pageSize={itemsPerPage}
+          />
+        )}
       </div>
 
       {/* Top KPI Row */}
