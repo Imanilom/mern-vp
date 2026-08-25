@@ -42,11 +42,11 @@ export const QUALITY_CONFIG = {
  * Konfigurasi maturity baseline.
  */
 export const MATURITY_CONFIG = {
-  provisional_min_windows: 15, // 15 windows @ 2 min = 30 min total per activity
-  mature_min_windows: 30,      // 30 windows @ 2 min = 60 min total per activity
-  min_effective_windows: 45,
-  min_distinct_days: 3,
-  min_windows_per_day: 5,
+  provisional_min_windows: 10, // 10 windows @ 1 min = 10 min total per activity (per hari)
+  mature_min_windows: 20,      // 20 windows @ 1 min = 20 min total per activity
+  min_effective_windows: 20,
+  min_distinct_days: 2,        // Diubah dari 3 hari menjadi 2 hari konsekutif
+  min_windows_per_day: 10,     // 10 menit per hari yang diulang dlm 2 hari
   max_single_day_fraction: 0.60,
   bq_min: 0.70,
   min_stability_score: 0.65,

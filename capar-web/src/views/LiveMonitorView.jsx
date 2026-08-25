@@ -197,7 +197,7 @@ export const LiveMonitorView = ({
         <ResponsiveContainer>
           <LineChart data={liveData} margin={{ top: 5, right: 0, left: -15, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-            <XAxis dataKey="time" hide />
+            <XAxis dataKey="time" tick={{fontSize: 9, fill: 'var(--gray)'}} height={20} minTickGap={30} />
             <YAxis 
               yAxisId="left" 
               domain={[
@@ -239,7 +239,7 @@ export const LiveMonitorView = ({
         <ResponsiveContainer>
           <LineChart data={liveData} margin={{ top: 5, right: 0, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-            <XAxis dataKey="time" hide />
+            <XAxis dataKey="time" tick={{fontSize: 9, fill: 'var(--gray)'}} height={20} minTickGap={30} />
             <YAxis 
               domain={[
                 dataMin => Number((dataMin - 0.1).toFixed(2)),
@@ -267,7 +267,7 @@ export const LiveMonitorView = ({
         <ResponsiveContainer>
           <LineChart data={liveData} margin={{ top: 5, right: 0, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-            <XAxis dataKey="time" hide />
+            <XAxis dataKey="time" tick={{fontSize: 9, fill: 'var(--gray)'}} height={20} minTickGap={30} />
             <YAxis 
               domain={[
                 dataMin => Math.floor(dataMin - 10),

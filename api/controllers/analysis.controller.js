@@ -105,7 +105,7 @@ const PERSISTENCE_MIN = {
  * Minimum sample baseline agar Z-score dipercaya.
  * Sebelum matang, score tetap dihitung tapi dengan confidence rendah.
  */
-const BASELINE_MATURITY = 90; // CAPAR: 90 windows minimal per baseline (updated)
+const BASELINE_MATURITY = 20; // CAPAR: 20 windows minimal per baseline (reduced for faster learning)
 
 /**
  * Referensi DFA α1 yang sehat.
@@ -228,7 +228,7 @@ async function analyzeUser(userId) {
         .skip(skip)
         .limit(BATCH)
         .lean();
-      
+
       if (legacySegments.length === 0) break;
       segments.push(...legacySegments);
     }
@@ -245,7 +245,7 @@ async function analyzeUser(userId) {
       const baseline = await getOrCreateBaseline(userId, activity, timePeriod);
       const maturityLevel = baseline.maturity_detail?.level ||
         (baseline.segment_count >= 30 ? 'maturing' :
-         baseline.segment_count >= 10 ? 'provisional' : 'cold_start');
+          baseline.segment_count >= 10 ? 'provisional' : 'cold_start');
 
       const learnedTau = (baseline.learned_tau && typeof baseline.learned_tau.tau_in === 'number')
         ? baseline.learned_tau
@@ -288,21 +288,23 @@ async function analyzeUser(userId) {
           if (updateFields) {
             await Baseline.updateOne({ _id: baseline._id }, {
               $set: updateFields,
-              $push: { 
+              $push: {
                 window_timestamps: seg.window_start,
                 q_signal_history: 1,
                 q_complete_history: 1,
-                q_context_history: 1 
+                q_context_history: 1
               }
             });
           }
           bulkOps.push({
             updateOne: {
               filter: { _id: seg._id },
-              update: { $set: {
-                analyzed: true, rr_status: 'INSUFFICIENT_BASELINE',
-                'maturity_detail.level': maturityLevel,
-              }},
+              update: {
+                $set: {
+                  analyzed: true, rr_status: 'INSUFFICIENT_BASELINE',
+                  'maturity_detail.level': maturityLevel,
+                }
+              },
             },
           });
           totalAnalyzed++;
@@ -312,7 +314,7 @@ async function analyzeUser(userId) {
 
       // 4. Temporal state machine
       if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
-      
+
       let { rr_status, safe_to_update } = updateTemporalState(
         temporalStates[activity], score, maturityLevel, learnedTau, seg.window_start
       );
@@ -323,7 +325,7 @@ async function analyzeUser(userId) {
       if (isProvisional) {
         if (rr_status === 'NORMAL') rr_status = 'PROVISIONAL_NORMAL';
         else rr_status = 'PROVISIONAL_DEVIATION';
-        safe_to_update = true; 
+        safe_to_update = true;
       }
 
       // 5. Update baseline jika aman
@@ -334,11 +336,11 @@ async function analyzeUser(userId) {
         if (updateFields) {
           await Baseline.updateOne({ _id: baseline._id }, {
             $set: updateFields,
-            $push: { 
+            $push: {
               window_timestamps: seg.window_start,
               q_signal_history: 1,
               q_complete_history: 1,
-              q_context_history: 1 
+              q_context_history: 1
             }
           });
           if (score !== null && isFinite(score)) {
@@ -726,7 +728,7 @@ export async function getUserBaselines(userId) {
     return Promise.all(list.map(async b => {
       const u = b.user_id && typeof b.user_id === 'object' ? b.user_id : null;
       const uName = u?.name || u?.email || (b.user_id?.toString() || 'Dokter Sp.JP (Reviewer Klinis)');
-      
+
       const segQuery = { ...query };
       if (b.activity) {
         segQuery.activity_label = new RegExp(`^${b.activity}$`, 'i');
@@ -1370,7 +1372,7 @@ export async function runRRAnalysisPipeline(triggeredBy = 'CRON') {
     await ProcessingJob.findByIdAndUpdate(job._id, {
       status: 'FAILED', end_time: new Date(),
       duration_ms: Date.now() - job.start_time.getTime(), error: err.message,
-    }).catch(() => {});
+    }).catch(() => { });
     return { success: false, error: err.message };
   }
 }
@@ -1402,9 +1404,9 @@ async function analyzeOneMinuteUser(userId) {
     for (const seg of segments) {
       // YIELD TO EVENT LOOP TO PREVENT BLOCKING
       await new Promise(resolve => setImmediate(resolve));
-      const activity   = seg.activity_label || 'Unknown';
+      const activity = seg.activity_label || 'Unknown';
       const timePeriod = getTimePeriod(seg.window_start);
-      const rrArr      = seg.rr_raw || [];
+      const rrArr = seg.rr_raw || [];
 
       // 1. Baseline
       const baseline = await getOrCreateBaseline(userId, activity, timePeriod);
@@ -1412,7 +1414,7 @@ async function analyzeOneMinuteUser(userId) {
       // 2. Maturity level
       const maturityLevel = baseline.maturity_detail?.level ||
         (baseline.segment_count >= 30 ? 'maturing' :
-         baseline.segment_count >= 10 ? 'provisional' : 'cold_start');
+          baseline.segment_count >= 10 ? 'provisional' : 'cold_start');
 
       // Load learned tau (CAPAR Section 7.1) — gunakan jika tersedia
       const learnedTau = (baseline.learned_tau && typeof baseline.learned_tau.tau_in === 'number')
@@ -1421,7 +1423,7 @@ async function analyzeOneMinuteUser(userId) {
 
       // 3. Quality assessment
       let quality = assessRRQuality(rrArr, 0.85, seg.raw_count);
-      
+
       // BYPASS Q-Gate if segment already has pre-calculated features but missing rr_raw
       if (!quality.accepted && seg.features && seg.features.mean_hr > 0 && seg.features.rmssd > 0) {
         quality.accepted = true;
@@ -1434,11 +1436,11 @@ async function analyzeOneMinuteUser(userId) {
 
       const qualityDetail = {
         artifact_fraction: round2(quality.artifact_fraction),
-        missing_fraction:  round2(quality.missing_fraction),
-        q_signal:          round2(quality.q_signal),
-        q_complete:        round2(quality.q_complete),
-        q_context:         round2(quality.q_context),
-        reasons:           quality.reasons,
+        missing_fraction: round2(quality.missing_fraction),
+        q_signal: round2(quality.q_signal),
+        q_complete: round2(quality.q_complete),
+        q_context: round2(quality.q_context),
+        reasons: quality.reasons,
       };
 
       if (!quality.accepted) {
@@ -1448,11 +1450,13 @@ async function analyzeOneMinuteUser(userId) {
         bulkOps.push({
           updateOne: {
             filter: { _id: seg._id },
-            update: { $set: {
-              analyzed: true, rr_status: 'QUALITY_WARNING',
-              signal_quality_detail: qualityDetail,
-              'maturity_detail.level': maturityLevel,
-            }},
+            update: {
+              $set: {
+                analyzed: true, rr_status: 'QUALITY_WARNING',
+                signal_quality_detail: qualityDetail,
+                'maturity_detail.level': maturityLevel,
+              }
+            },
           },
         });
         totalAnalyzed++;
@@ -1498,26 +1502,28 @@ async function analyzeOneMinuteUser(userId) {
             await Baseline.updateOne({ _id: baseline._id }, {
               $set: updateFields,
               $push: {
-                window_timestamps:  seg.window_start,
-                q_signal_history:   quality.q_signal,
+                window_timestamps: seg.window_start,
+                q_signal_history: quality.q_signal,
                 q_complete_history: quality.q_complete,
-                q_context_history:  quality.q_context,
+                q_context_history: quality.q_context,
               },
             });
           }
           bulkOps.push({
             updateOne: {
               filter: { _id: seg._id },
-              update: { $set: {
-                analyzed: true, rr_status: 'INSUFFICIENT_BASELINE',
-                signal_quality_detail: qualityDetail,
-                'maturity_detail.level': maturityLevel,
-                'features.hr_mean':    features.hr_mean,
-                'features.sdnn':       features.sdnn,
-                'features.rmssd':      features.rmssd,
-                'features.dfa_alpha1': features.dfa_alpha1,
-                'features.pnn50':      features.pnn50,
-              }},
+              update: {
+                $set: {
+                  analyzed: true, rr_status: 'INSUFFICIENT_BASELINE',
+                  signal_quality_detail: qualityDetail,
+                  'maturity_detail.level': maturityLevel,
+                  'features.hr_mean': features.hr_mean,
+                  'features.sdnn': features.sdnn,
+                  'features.rmssd': features.rmssd,
+                  'features.dfa_alpha1': features.dfa_alpha1,
+                  'features.pnn50': features.pnn50,
+                }
+              },
             },
           });
           totalAnalyzed++;
@@ -1530,7 +1536,7 @@ async function analyzeOneMinuteUser(userId) {
 
       // 7. Temporal state machine (9-state) — dengan tau personal (CAPAR Section 8)
       if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
-      
+
       let { rr_status, safe_to_update } = updateTemporalState(
         temporalStates[activity], score, maturityLevel, learnedTau, seg.window_start
       );
@@ -1549,7 +1555,7 @@ async function analyzeOneMinuteUser(userId) {
           rr_status = 'PROVISIONAL_DEVIATION';
         }
         // Pastikan update aman untuk provisional unless cold-start override
-        safe_to_update = true; 
+        safe_to_update = true;
       }
 
       // 8. Update baseline jika temporal tracker menyatakan aman
@@ -1562,10 +1568,10 @@ async function analyzeOneMinuteUser(userId) {
           await Baseline.updateOne({ _id: baseline._id }, {
             $set: updateFields,
             $push: {
-              window_timestamps:  seg.window_start,
-              q_signal_history:   quality.q_signal,
+              window_timestamps: seg.window_start,
+              q_signal_history: quality.q_signal,
               q_complete_history: quality.q_complete,
-              q_context_history:  quality.q_context,
+              q_context_history: quality.q_context,
             },
           });
 
@@ -1617,25 +1623,25 @@ async function analyzeOneMinuteUser(userId) {
           update: {
             $set: {
               analyzed: true,
-              anomaly_score:    round2(score),
+              anomaly_score: round2(score),
               classification,
               rr_status,
               signal_quality_detail: qualityDetail,
               'maturity_detail.level': maturityLevel,
               // Fitur yang tersimpan di segment
-              'features.hr_mean':    features.hr_mean,
-              'features.sdnn':       features.sdnn,
-              'features.rmssd':      features.rmssd,
+              'features.hr_mean': features.hr_mean,
+              'features.sdnn': features.sdnn,
+              'features.rmssd': features.rmssd,
               'features.dfa_alpha1': features.dfa_alpha1,
-              'features.pnn50':      features.pnn50,
+              'features.pnn50': features.pnn50,
               // Z-scores — map dari feature key ke nama field segment
               z_scores: {
-                z_hr:    round2(rrZScores?.hr_mean     ?? null),
-                z_sdnn:  round2(rrZScores?.sdnn        ?? null),
-                z_rmssd: round2(rrZScores?.rmssd       ?? null),
-                z_dfa:   round2(rrZScores?.dfa_alpha1  ?? null),
+                z_hr: round2(rrZScores?.hr_mean ?? null),
+                z_sdnn: round2(rrZScores?.sdnn ?? null),
+                z_rmssd: round2(rrZScores?.rmssd ?? null),
+                z_dfa: round2(rrZScores?.dfa_alpha1 ?? null),
                 z_motion: round2(rrZScores?.motion_index ?? null),
-                z_rr:    null,
+                z_rr: null,
               },
             },
           },
@@ -1693,7 +1699,7 @@ async function updateRRPersistence(
       );
     }
     state.lastWindowStart = segWinStart;
-    return eventCreated; 
+    return eventCreated;
   }
 
   const T_MAX_MS = 2 * 60 * 60 * 1000;
@@ -1706,7 +1712,7 @@ async function updateRRPersistence(
 
     const eventDoc = await AnomalyEvent.findById(state.openEventId).select('total_paused_ms').lean();
     const pausedMs = eventDoc?.total_paused_ms || 0;
-    const effectiveElapsed = rawElapsed - pausedMs; 
+    const effectiveElapsed = rawElapsed - pausedMs;
 
     if (effectiveElapsed > T_MAX_MS && rr_status !== 'RECOVERED') {
       await AnomalyEvent.updateOne(
@@ -1721,7 +1727,7 @@ async function updateRRPersistence(
         }
       );
       console.log(`[Layer3-RR] Event UNRESOLVED user=${userId} act=${activity} activeElapsed=${Math.round(effectiveElapsed / 60000)}m`);
-      
+
       // Trigger Analysis
       generateEpisodeAnalysis(state.openEventId);
 
@@ -1796,7 +1802,7 @@ async function updateRRPersistence(
     } else {
       // UPDATE EPISODE
       const updatePayload = {
-        peak_score: state.peakScore, 
+        peak_score: state.peakScore,
         peak_hr: state.peakSeg?.features?.mean_hr || seg.features?.mean_hr || null,
         baseline_hr: baseline?.stats?.mean_hr?.mean || null,
         classification,
@@ -1817,7 +1823,7 @@ async function updateRRPersistence(
         $push: { segment_ids: seg._id },
       });
     }
-  } 
+  }
   // ── RECOVERING ───────────────────────────────────────────────────────────
   else if (rr_status === 'RECOVERING') {
     if (state.openEventId) {
@@ -1835,7 +1841,7 @@ async function updateRRPersistence(
         $push: { segment_ids: seg._id },
       });
     }
-  } 
+  }
   // ── RECOVERED ────────────────────────────────────────────────────────────
   else if (rr_status === 'RECOVERED') {
     if (state.openEventId) {
@@ -1876,7 +1882,7 @@ async function updateRRPersistence(
       // Trigger Analysis
       generateEpisodeAnalysis(state.openEventId);
     }
-    
+
     const closedId = state.openEventId;
     persistenceState[activity] = {
       count: 0, recoveryCount: 0, segIds: [], scores: [],
@@ -1885,28 +1891,28 @@ async function updateRRPersistence(
       lastClosedEventTime: segWinStart,
       lastClosedEventId: closedId
     };
-  } 
+  }
   // ── NORMAL / TRANSIENT ───────────────────────────────────────────────────
   else {
     if (state.openEventId) {
       const startWinStart = state.startSeg?.window_start ? new Date(state.startSeg.window_start).getTime() : segWinStart;
       const totalDurationMs = segWinStart - startWinStart;
-      
+
       await AnomalyEvent.updateOne({ _id: state.openEventId }, {
         $set: {
           resolved_time: segWinStart,
           duration_ms: totalDurationMs,
-          status: 'transient', 
+          status: 'transient',
           current_state: 'BASELINE_COMPATIBLE',
           window_count: state.segIds.length,
         }
       });
       console.log(`[Layer3-RR] Episode TRANSIENT user=${userId} act=${activity}`);
-      
+
       // Trigger Analysis for Transient Candidates
       generateEpisodeAnalysis(state.openEventId);
     }
-    
+
     const closedId = state.openEventId;
     persistenceState[activity] = {
       count: 0, recoveryCount: 0, segIds: [], scores: [],
@@ -1982,7 +1988,7 @@ export async function generateEpisodeAnalysis(eventId) {
     let actualTauIn = 1.5;
     let actualTauOut = 1.0;
     let actualTauNormal = 0.75;
-    
+
     try {
       const activeBaseline = await Baseline.findOne({ user_id: ev.user_id, status: 'active' }).sort({ updated_at: -1 }).lean();
       if (activeBaseline && activeBaseline.thresholds) {
@@ -2032,7 +2038,7 @@ export async function generateEpisodeAnalysis(eventId) {
         z_E2: abl.E2.zScores.zHR,
         z_E3: abl.E3.zScores.zHR,
         z_E4: abl.E4.zScores.zHR,
-        
+
         // Episodic specific fields
         total_duration: ev.duration_ms || 0,
         peak_deviation: ev.peak_score || 0,
@@ -2058,7 +2064,7 @@ export async function syncAndGenerateEpisodeAnalyses(targetUserId = null) {
   try {
     const isFiltered = targetUserId && targetUserId !== 'ALL' && targetUserId !== '000000000000000000000000' && targetUserId !== 'undefined' && targetUserId !== 'null';
     const eventQuery = isFiltered
-      ? (mongoose.Types.ObjectId.isValid(targetUserId) ? { user_id: new mongoose.Types.ObjectId(targetUserId) } : { user_id: targetUserId }) 
+      ? (mongoose.Types.ObjectId.isValid(targetUserId) ? { user_id: new mongoose.Types.ObjectId(targetUserId) } : { user_id: targetUserId })
       : {};
 
     const events = await AnomalyEvent.find(eventQuery).sort({ onset_time: -1 }).lean();
@@ -2537,7 +2543,7 @@ export async function getPersonalExperienceMemory(req, res) {
 
     // 3. Gamification Metrics Calculation (Berdasarkan Data Riil MongoDB)
     const distinctDaysSet = new Set();
-    
+
     // User creation date
     const targetUserDoc = await User.findById(userId).select('createdAt').lean().catch(() => null);
     if (targetUserDoc && targetUserDoc.createdAt) {

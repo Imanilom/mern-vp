@@ -73,7 +73,7 @@ const BaselineSchema = new mongoose.Schema({
 
   // Model management
   is_frozen: { type: Boolean, default: false },
-  version: { type: Number, default: 1 },
+  version: { type: Number, default: 2 },
   status: { type: String, enum: ['learning', 'approved', 'rejected'], default: 'learning' },
 
   /**
