@@ -127,7 +127,8 @@ export default function EpisodeDetailView({ episodeId, onBack }) {
             <div className="main-chart-area">
               <ScoreTrajectoryChart episode={detail} points={trajectory} />
               <StateTimeline points={trajectory} />
-              <ContextTrack rows={context} />
+              {/* Gunakan trajectory (sama dengan chart) agar waktu selaras */}
+              <ContextTrack rows={trajectory} />
             </div>
             <aside className="side-area">
               <EpisodeMetrics episode={detail} />
@@ -282,15 +283,27 @@ function ScoreTrajectoryChart({ episode, points }) {
             </linearGradient>
           </defs>
 
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.06)" />
-          
+          <CartesianGrid
+            strokeDasharray="3 3"
+            vertical={false}
+            stroke="rgba(0,0,0,0.07)"
+          />
+          {/* Grid tegas di batas state — garis solid merah & oranye */}
           {/* Threshold Zone Background Highlights */}
           <ReferenceArea y1={0} y2={episode.tauOut} fill="#1A8F5B" fillOpacity={0.05} />
           <ReferenceArea y1={episode.tauOut} y2={episode.tauIn} fill="#EF8D00" fillOpacity={0.06} />
           <ReferenceArea y1={episode.tauIn} y2={maxScore + 0.5} fill="#D32F2F" fillOpacity={0.06} />
 
           <XAxis dataKey="timeLabel" minTickGap={25} tick={{ fontSize: 11, fill: 'var(--gray)' }} axisLine={{ stroke: '#E0E0E0' }} />
-          <YAxis domain={[0, Math.ceil(maxScore + 0.2)]} tick={{ fontSize: 11, fill: 'var(--gray)' }} axisLine={{ stroke: '#E0E0E0' }} />
+          <YAxis
+            domain={[0, Math.ceil(maxScore + 0.2)]}
+            tick={{ fontSize: 11, fill: 'var(--gray)' }}
+            axisLine={{ stroke: '#E0E0E0' }}
+            ticks={[
+              0,
+              ...Array.from({ length: Math.ceil(maxScore / 0.5) + 1 }, (_, i) => parseFloat((i * 0.5).toFixed(1)))
+            ]}
+          />
           <Tooltip content={<CustomTooltip />} />
 
           {/* Reference Lines */}
@@ -357,20 +370,24 @@ function StateTimeline({ points }) {
     return '#b54708';
   };
 
+  // Padding kiri/kanan harus sesuai margin chart (YAxis ≈ 30px di kiri, right margin 25px)
+  const CHART_LEFT_PAD = 30;
+  const CHART_RIGHT_PAD = 25;
+
   return (
-    <div className="card-panel mb-3">
-      <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--gray)' }}>STATE TIMELINE</h5>
-      <div className="d-flex mt-2" style={{ overflow: 'hidden', borderRadius: 8 }}>
+    <div className="card-panel mb-3" style={{ padding: '8px 14px' }}>
+      <h5 style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>State Timeline</h5>
+      <div style={{ display: 'flex', overflow: 'hidden', borderRadius: 6, border: '1px solid var(--line)', marginLeft: CHART_LEFT_PAD, marginRight: CHART_RIGHT_PAD }}>
         {collapsed.map((c, i) => (
           <div key={i} style={{ 
             flex: Math.max(c.count, 1), 
             background: stateColor(c.state), 
             color: stateTextColor(c.state),
-            padding: '6px',
+            padding: '4px 6px',
             fontSize: 10,
             fontWeight: 700,
             textAlign: 'center',
-            borderRight: '1px solid #fff',
+            borderRight: i < collapsed.length - 1 ? '1px solid #fff' : 'none',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
@@ -380,47 +397,120 @@ function StateTimeline({ points }) {
         ))}
         {collapsed.length === 0 && <div className="text-muted small">No state data</div>}
       </div>
-    </div>
-  );
-}
-
-function ContextTrack({ rows }) {
-  return (
-    <div className="card-panel">
-      <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--gray)' }}>CONTEXT TRACK</h5>
-      <div className="d-flex gap-2 flex-nowrap" style={{ overflowX: 'auto', paddingBottom: 8 }}>
-        {rows.map((r, i) => (
-          <div key={i} className="d-flex flex-column align-items-center" style={{ minWidth: 60 }}>
-            <span style={{ fontSize: 10, color: '#888' }}>{new Date(r.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-            <span className="badge bg-light text-dark mt-1" style={{ fontSize: 9 }}>{r.activity}</span>
-          </div>
-        ))}
-        {rows.length === 0 && <div className="text-muted small">No context data</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 2, marginLeft: CHART_LEFT_PAD, marginRight: CHART_RIGHT_PAD }}>
+        <span style={{ fontSize: 10, color: 'var(--gray)' }}>{points[0]?.timeLabel || ''}</span>
+        <span style={{ fontSize: 10, color: 'var(--gray)' }}>{points[points.length - 1]?.timeLabel || ''}</span>
       </div>
     </div>
   );
 }
 
+function ContextTrack({ rows }) {
+  // Kelompokkan segmen yang berurutan dengan activity yang sama (sama seperti StateTimeline)
+  const collapsed = useMemo(() => {
+    const res = [];
+    let cur = null;
+    rows.forEach(p => {
+      const act = p.activityContext || p.activity || 'sitting';
+      if (!cur || cur.activity !== act) {
+        if (cur) res.push(cur);
+        cur = { activity: act, start: p.timeLabel, count: 1 };
+      } else {
+        cur.count++;
+        cur.end = p.timeLabel;
+      }
+    });
+    if (cur) res.push(cur);
+    return res;
+  }, [rows]);
+
+  const actColor = (act) => {
+    if (!act) return { bg: '#f1f5f9', text: '#64748b' };
+    const a = act.toLowerCase();
+    if (a.includes('walk')) return { bg: '#dbeafe', text: '#1d4ed8' };
+    if (a.includes('run') || a.includes('exercise')) return { bg: '#fce7f3', text: '#be185d' };
+    if (a.includes('sleep') || a.includes('lie')) return { bg: '#ede9fe', text: '#6d28d9' };
+    if (a.includes('stand')) return { bg: '#d1fae5', text: '#065f46' };
+    return { bg: '#f1f5f9', text: '#475569' }; // sitting / default
+  };
+
+  if (collapsed.length === 0) return null;
+
+  // Padding harus selaras dengan StateTimeline dan chart
+  const CHART_LEFT_PAD = 30;
+  const CHART_RIGHT_PAD = 25;
+
+  return (
+    <div className="card-panel mb-3" style={{ padding: '8px 14px' }}>
+      <h5 style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Context Track</h5>
+      <div style={{ display: 'flex', overflow: 'hidden', borderRadius: 6, border: '1px solid var(--line)', marginLeft: CHART_LEFT_PAD, marginRight: CHART_RIGHT_PAD, marginBottom: 4 }}>
+        {collapsed.map((c, i) => {
+          const { bg, text } = actColor(c.activity);
+          return (
+            <div
+              key={i}
+              style={{
+                flex: Math.max(c.count, 1),
+                background: bg,
+                color: text,
+                padding: '4px 6px',
+                fontSize: 10,
+                fontWeight: 700,
+                textAlign: 'center',
+                borderRight: i < collapsed.length - 1 ? '1px solid #fff' : 'none',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                textTransform: 'capitalize',
+              }}
+              title={`${c.activity} (${c.count} segmen, mulai ${c.start})`}
+            >
+              {c.activity}
+            </div>
+          );
+        })}
+      </div>
+      {/* Label waktu awal dan akhir — pakai timeLabel yang identik dengan chart X-axis */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 2, marginLeft: CHART_LEFT_PAD, marginRight: CHART_RIGHT_PAD }}>
+        <span style={{ fontSize: 10, color: 'var(--gray)' }}>
+          {rows[0]?.timeLabel || ''}
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--gray)' }}>
+          {rows[rows.length - 1]?.timeLabel || ''}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+
 function EpisodeMetrics({ episode }) {
+  const fmt = (val, decimals = 2) => val != null ? Number(val).toFixed(decimals) : 'N/A';
+  const fmtMin = (val) => val != null ? `${val} min` : 'N/A (Belum recovery)';
+
   return (
     <div className="card-panel mb-3">
       <h5 style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Metrics</h5>
       <ul className="list-unstyled mb-0" style={{ fontSize: 12 }}>
         <li className="d-flex justify-content-between mb-2">
           <span className="text-muted">AUC-D (Area):</span>
-          <strong>{episode.aucD ? episode.aucD.toFixed(2) : '-'}</strong>
+          <strong style={{ color: episode.aucD != null ? 'var(--navy)' : 'var(--gray)' }}>
+            {fmt(episode.aucD)}
+          </strong>
         </li>
         <li className="d-flex justify-content-between mb-2">
           <span className="text-muted">TTR (Time to Recovery):</span>
-          <strong>{episode.ttrMin ? `${episode.ttrMin} min` : 'N/A'}</strong>
+          <strong style={{ color: episode.ttrMin != null ? 'var(--teal)' : 'var(--gray)', fontSize: episode.ttrMin != null ? 12 : 10 }}>
+            {fmtMin(episode.ttrMin)}
+          </strong>
         </li>
         <li className="d-flex justify-content-between mb-2">
           <span className="text-muted">Peak Count:</span>
-          <strong>{episode.peakCount}</strong>
+          <strong>{episode.peakCount ?? 0}</strong>
         </li>
         <li className="d-flex justify-content-between mb-0">
           <span className="text-muted">Current State:</span>
-          <strong>{episode.currentState}</strong>
+          <strong style={{ fontSize: 11, textAlign: 'right', maxWidth: 140 }}>{episode.currentState}</strong>
         </li>
       </ul>
     </div>

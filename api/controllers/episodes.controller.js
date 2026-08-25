@@ -41,30 +41,72 @@ export async function getEpisodeDetail(req, res) {
 
     const latestReview = await EpisodeReview.findOne({ episode_id: ep._id.toString() }).sort({ createdAt: -1 }).lean().catch(() => null);
 
-    const tauIn = ep.tau_in || 1.86;
+    const tauIn  = ep.tau_in  || 1.86;
     const tauOut = ep.tau_out || 1.18;
-    const durationMin = ep.duration_ms ? Math.floor(ep.duration_ms / 60000) : (ep.resolved_time && ep.onset_time ? Math.floor((ep.resolved_time - ep.onset_time)/60000) : 15);
-    
+
+    // ── Hitung TTR dari data nyata ────────────────────────────────────────────
+    let ttrMin = null;
+    if (ep.resolved_time && ep.onset_time) {
+      const diffMs = ep.resolved_time - ep.onset_time;
+      if (diffMs > 0) ttrMin = Math.round(diffMs / 60000);
+    } else if (ep.ttr_min != null) {
+      ttrMin = ep.ttr_min;
+    }
+
+    // ── Hitung AUC-D dan Peak Count dari segment_ids ──────────────────────────
+    let aucD = ep.auc_score ?? null;
+    let peakCount = ep.peak_count ?? null;
+
+    if (Array.isArray(ep.segment_ids) && ep.segment_ids.length > 0) {
+      const segs = await Segment
+        .find({ _id: { $in: ep.segment_ids } })
+        .sort({ window_start: 1 })
+        .select('window_start anomaly_score')
+        .lean()
+        .catch(() => []);
+
+      if (segs.length >= 2) {
+        // Hitung AUC-D via trapezoidal rule (∫ S(t) dt)
+        let auc = 0;
+        for (let i = 1; i < segs.length; i++) {
+          const dt = (segs[i].window_start - segs[i-1].window_start) / 60000; // menit
+          const s0 = segs[i-1].anomaly_score || 0;
+          const s1 = segs[i].anomaly_score || 0;
+          auc += 0.5 * (s0 + s1) * dt;
+        }
+        aucD = parseFloat(auc.toFixed(3));
+
+        // Hitung Peak Count: jumlah titik yang melewati tau_in
+        if (peakCount == null) {
+          peakCount = segs.filter(s => (s.anomaly_score || 0) >= tauIn).length;
+        }
+      }
+    }
+
+    const durationMin = ep.duration_ms
+      ? Math.floor(ep.duration_ms / 60000)
+      : (ep.resolved_time && ep.onset_time ? Math.floor((ep.resolved_time - ep.onset_time) / 60000) : null);
+
     const onsetDate = ep.onset_time ? new Date(ep.onset_time) : new Date();
-    const onsetIso = !isNaN(onsetDate.getTime()) ? onsetDate.toISOString() : new Date().toISOString();
+    const onsetIso  = !isNaN(onsetDate.getTime()) ? onsetDate.toISOString() : new Date().toISOString();
 
     const detail = {
-      episodeId: ep._id ? ep._id.toString() : String(episodeId),
-      eventId: ep.event_id || `evt-${(ep._id ? ep._id.toString() : '00000000').substring(0,8)}`,
-      participantId: ep.user_id ? ep.user_id.toString() : (ep.participant_id || 'P01'),
-      adminStatus: ep.admin_status || ep.status || 'OPEN',
-      outcome: ep.physiological_outcome || 'UNRESOLVED',
-      onsetAt: onsetIso,
-      peakScore: typeof ep.peak_score === 'number' ? ep.peak_score : (typeof ep.onset_score === 'number' ? ep.onset_score : 2.5),
-      peakAt: ep.peak_time ? new Date(ep.peak_time).toISOString() : onsetIso,
-      durationMin: durationMin,
-      tauIn: tauIn,
-      tauOut: tauOut,
-      ttrMin: ep.ttr_min || 12,
-      aucD: ep.auc_score || 0.85,
-      peakCount: ep.peak_count || 1,
-      relapseCount: ep.relapse_count || 0,
-      currentState: ep.current_state || ep.evidence_state || 'BASELINE_COMPATIBLE',
+      episodeId:       ep._id ? ep._id.toString() : String(episodeId),
+      eventId:         ep.event_id || `evt-${(ep._id ? ep._id.toString() : '00000000').substring(0,8)}`,
+      participantId:   ep.user_id ? ep.user_id.toString() : (ep.participant_id || 'P01'),
+      adminStatus:     ep.admin_status || ep.status || 'OPEN',
+      outcome:         ep.physiological_outcome || 'UNRESOLVED',
+      onsetAt:         onsetIso,
+      peakScore:       typeof ep.peak_score === 'number' ? ep.peak_score : (typeof ep.onset_score === 'number' ? ep.onset_score : null),
+      peakAt:          ep.peak_time ? new Date(ep.peak_time).toISOString() : onsetIso,
+      durationMin:     durationMin,
+      tauIn,
+      tauOut,
+      ttrMin,           // null jika belum recovery
+      aucD,             // null jika tidak ada segmen
+      peakCount:       peakCount ?? 0,
+      relapseCount:    ep.relapse_count || 0,
+      currentState:    ep.current_state || ep.evidence_state || 'BASELINE_COMPATIBLE',
       reviewerDecision: latestReview ? latestReview.decision : (ep.validation_label || null),
     };
 
@@ -74,6 +116,7 @@ export async function getEpisodeDetail(req, res) {
     return res.status(500).json({ success: false, message: err.message });
   }
 }
+
 
 export async function getEpisodeTrajectory(req, res) {
   try {

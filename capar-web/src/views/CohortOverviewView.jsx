@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { EvidenceBadge } from '../components/common/EvidenceBadge';
 import { StateBadge } from '../components/common/StateBadge';
-import { Users, Activity, AlertTriangle, ArrowRight, ShieldCheck, Search, Database } from 'lucide-react';
+import { Users, Activity, AlertTriangle, ArrowRight, ShieldCheck, Search, Database, RefreshCw } from 'lucide-react';
 import { api } from '../services/api';
 
 export const CohortOverviewView = ({ 
@@ -13,11 +13,14 @@ export const CohortOverviewView = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [episodeAnalysisData, setEpisodeAnalysisData] = useState([]);
   const [loadingEpAnalysis, setLoadingEpAnalysis] = useState(false);
+  // Pasien yang dipilih untuk tabel analisis di bawah (independen dari globalParticipantFilter)
+  const [selectedPatientId, setSelectedPatientId] = useState(null);
 
-  useEffect(() => {
+  // Fungsi fetch data analisis untuk pasien tertentu
+  const fetchAnalysis = (pId) => {
+    const target = (pId && pId !== 'ALL') ? pId : 'ALL';
     setLoadingEpAnalysis(true);
-    const pId = (globalParticipantFilter && globalParticipantFilter !== 'ALL') ? globalParticipantFilter : 'ALL';
-    api.getEpisodeAnalysis(pId)
+    api.getEpisodeAnalysis(target)
       .then(data => {
         setEpisodeAnalysisData(Array.isArray(data) ? data : []);
         setLoadingEpAnalysis(false);
@@ -26,6 +29,13 @@ export const CohortOverviewView = ({
         setEpisodeAnalysisData([]);
         setLoadingEpAnalysis(false);
       });
+  };
+
+  // Load analisis awal berdasarkan global filter
+  useEffect(() => {
+    const pId = (globalParticipantFilter && globalParticipantFilter !== 'ALL') ? globalParticipantFilter : null;
+    setSelectedPatientId(pId);
+    fetchAnalysis(pId || 'ALL');
   }, [globalParticipantFilter]);
 
   const filteredByGlobal = useMemo(() => {
@@ -196,7 +206,13 @@ export const CohortOverviewView = ({
             <tbody>
               {filteredPatients.length > 0 ? (
                 filteredPatients.map((p) => (
-                  <tr key={p.id}>
+                  <tr
+                    key={p.id}
+                    style={{
+                      background: selectedPatientId === p.id ? 'rgba(8,127,122,0.06)' : 'transparent',
+                      cursor: 'pointer'
+                    }}
+                  >
                     <td className="mono" style={{ fontWeight: 700, color: 'var(--navy)' }}>
                       <div>{p.name || p.email || p.id}</div>
                       <div style={{ fontSize: 10, color: 'var(--gray)', fontWeight: 400 }}>{p.id}</div>
@@ -208,17 +224,39 @@ export const CohortOverviewView = ({
                       {p.anomalyScore ? p.anomalyScore.toFixed(2) : '-'}
                     </td>
                     <td style={{ fontSize: 11.5, color: 'var(--purple)', fontWeight: 600 }}>
-                      {p.physiologicalState === 'PERSISTENT_DEVIATION' ? 'RECOVERY 61% (in 20m)' :
-                       p.physiologicalState === 'RECOVERY' ? 'RECOVERED 78%' : 'MONITORING'}
+                      {p.physiologicalState === 'PERSISTENT_DEVIATION' ? 'PERSISTENT' :
+                       p.physiologicalState === 'RECOVERY' ? 'RECOVERING' : 'MONITORING'}
                     </td>
                     <td>
-                      <button
-                        className="btn-outline-navy"
-                        style={{ padding: '4px 10px', fontSize: 11, whiteSpace: 'nowrap' }}
-                        onClick={() => onSelectParticipant(p.id)}
-                      >
-                        Inspect Details
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="btn-outline-navy"
+                          style={{ padding: '4px 10px', fontSize: 11, whiteSpace: 'nowrap' }}
+                          onClick={() => onSelectParticipant(p.id)}
+                        >
+                          Inspect
+                        </button>
+                        <button
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 11,
+                            whiteSpace: 'nowrap',
+                            background: selectedPatientId === p.id ? 'var(--teal)' : 'transparent',
+                            color: selectedPatientId === p.id ? '#fff' : 'var(--teal)',
+                            border: '1px solid var(--teal)',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontWeight: 700
+                          }}
+                          onClick={() => {
+                            const pid = p.id || p._id;
+                            setSelectedPatientId(pid);
+                            fetchAnalysis(pid);
+                          }}
+                        >
+                          {selectedPatientId === (p.id || p._id) ? '✓ Analisis' : 'Lihat Analisis'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -234,7 +272,7 @@ export const CohortOverviewView = ({
         </div>
       </div>
 
-      {/* Episode Analysis Data Overview Table (Candidate & Persistence Detailed Audit) */}
+      {/* Episode Analysis Data Overview Table */}
       <div className="card-panel">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <div>
@@ -242,12 +280,25 @@ export const CohortOverviewView = ({
             <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--navy)' }}>
               Episode Analysis Overview — Candidate &amp; Persistent Detailed Breakdown
             </div>
+            {selectedPatientId && (
+              <div style={{ fontSize: 11, color: 'var(--teal)', marginTop: 3, fontWeight: 600 }}>
+                Menampilkan data untuk: <strong>{participants.find(p => p.id === selectedPatientId || p._id === selectedPatientId)?.name || selectedPatientId}</strong>
+              </div>
+            )}
           </div>
-          <div className="d-flex gap-2">
+          <div className="d-flex gap-2 align-items-center">
             <span className="badge bg-navy text-white px-2 py-1" style={{ fontSize: 11 }}>
               <Database size={12} className="me-1" />
-              {episodeAnalysisData.length} Records Evaluated
+              {episodeAnalysisData.length} Records
             </span>
+            {selectedPatientId && (
+              <button
+                style={{ background: 'transparent', border: '1px solid var(--line)', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                onClick={() => { setSelectedPatientId(null); fetchAnalysis('ALL'); }}
+              >
+                <RefreshCw size={11} /> Tampilkan Semua
+              </button>
+            )}
           </div>
         </div>
 
@@ -269,118 +320,21 @@ export const CohortOverviewView = ({
             <tbody>
               {loadingEpAnalysis ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4 text-muted">Loading Episode Analysis Data...</td>
+                  <td colSpan="9" className="text-center py-4 text-muted">Memuat data analisis...</td>
                 </tr>
               ) : episodeAnalysisData.length === 0 ? (
-                // Sample Fallback matching user document schema if DB returns empty
-                [
-                  {
-                    _id: '6a82a99995303800998b3f10',
-                    start_time: '2026-01-01T08:00:00',
-                    end_time: '2026-01-01T08:02:00',
-                    context: 'sitting',
-                    activity: 'sitting',
-                    evidence_state: 'EVALUABLE',
-                    physiological_state: 'BASELINE_COMPATIBLE',
-                    anomaly_score: 0.642,
-                    tau_in: 1.5,
-                    tau_normal: 0.75,
-                    hr_mean: 67.183,
-                    rmssd: 35.68,
-                    sdnn: 48.186,
-                    dfa_alpha1: 0.9929,
-                    quality_score: 0.914,
-                    artifact_fraction: 0.14,
-                    pred_E6: 0,
-                    result_E6: 'TN',
-                    predicted_state_E6: 'BASELINE_COMPATIBLE',
-                    z_E4: { hr_mean: -0.419, rmssd: -1.807, sdnn: -0.665, dfa_alpha1: -0.259 }
-                  },
-                  {
-                    _id: '6a82a99995303800998b3f11',
-                    start_time: '2026-01-01T08:02:00',
-                    end_time: '2026-01-01T08:04:00',
-                    context: 'sitting',
-                    activity: 'sitting',
-                    evidence_state: 'EVALUABLE',
-                    physiological_state: 'DEVIATION_CANDIDATE',
-                    anomaly_score: 2.15,
-                    tau_in: 1.5,
-                    tau_normal: 0.75,
-                    hr_mean: 98.40,
-                    rmssd: 22.10,
-                    sdnn: 31.50,
-                    dfa_alpha1: 0.621,
-                    quality_score: 0.942,
-                    artifact_fraction: 0.04,
-                    pred_E6: 1,
-                    result_E6: 'TP',
-                    predicted_state_E6: 'DEVIATION_CANDIDATE',
-                    z_E4: { hr_mean: 2.15, rmssd: -2.10, sdnn: -1.45, dfa_alpha1: -0.85 }
-                  },
-                  {
-                    _id: '6a82a99995303800998b3f12',
-                    start_time: '2026-01-01T08:04:00',
-                    end_time: '2026-01-01T08:06:00',
-                    context: 'sitting',
-                    activity: 'sitting',
-                    evidence_state: 'EVALUABLE',
-                    physiological_state: 'PERSISTENT_DEVIATION',
-                    anomaly_score: 3.42,
-                    tau_in: 1.5,
-                    tau_normal: 0.75,
-                    hr_mean: 112.50,
-                    rmssd: 14.20,
-                    sdnn: 24.80,
-                    dfa_alpha1: 0.485,
-                    quality_score: 0.965,
-                    artifact_fraction: 0.02,
-                    pred_E6: 1,
-                    result_E6: 'TP',
-                    predicted_state_E6: 'PERSISTENT_DEVIATION',
-                    z_E4: { hr_mean: 3.42, rmssd: -3.85, sdnn: -2.40, dfa_alpha1: -1.25 }
-                  }
-                ].map((row, idx) => (
-                  <tr key={row._id || idx}>
-                    <td className="mono" style={{ fontSize: 11, fontWeight: 700 }}>
-                      {new Date(row.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} - {new Date(row.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </td>
-                    <td style={{ textTransform: 'capitalize' }}>{row.context || row.activity || 'sitting'}</td>
-                    <td><EvidenceBadge state={row.evidence_state} /></td>
-                    <td><StateBadge state={row.physiological_state} /></td>
-                    <td className="mono" style={{ fontWeight: 800, color: row.anomaly_score >= 2.0 ? 'var(--red)' : 'var(--navy)' }}>
-                      {typeof row.anomaly_score === 'number' ? row.anomaly_score.toFixed(3) : '-'}
-                      <div style={{ fontSize: 9.5, color: 'var(--gray)', fontWeight: 400 }}>τin: {row.tau_in || 1.5}</div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 700 }}>
-                        Clean: {typeof row.quality_score === 'number' ? (row.quality_score * 100).toFixed(1) : 91.4}%
-                      </div>
-                      <div style={{ fontSize: 10, color: '#E53935' }}>
-                        Noise: {typeof row.artifact_fraction === 'number' ? (row.artifact_fraction * 100).toFixed(1) : 14.0}%
-                      </div>
-                    </td>
-                    <td className="mono" style={{ fontSize: 11 }}>
-                      <div>HR: {typeof row.hr_mean === 'number' ? row.hr_mean.toFixed(1) : '-'} BPM</div>
-                      <div style={{ color: 'var(--gray)' }}>RMSSD: {typeof row.rmssd === 'number' ? row.rmssd.toFixed(1) : '-'} ms · SDNN: {typeof row.sdnn === 'number' ? row.sdnn.toFixed(1) : '-'} ms</div>
-                    </td>
-                    <td>
-                      <span className="mono fw-bold me-1" style={{ color: row.result_E6 === 'TP' ? 'var(--red)' : 'var(--green)' }}>
-                        {row.result_E6 || 'TN'}
-                      </span>
-                      <span style={{ fontSize: 10, color: 'var(--purple)', fontWeight: 600 }}>
-                        {row.predicted_state_E6 || row.physiological_state}
-                      </span>
-                    </td>
-                    <td className="mono" style={{ fontSize: 10.5 }}>
-                      {row.z_E4 ? (
-                        <div>
-                          <span>HR:{row.z_E4.hr_mean}</span> · <span style={{ color: row.z_E4.rmssd <= -1.5 ? 'var(--red)' : 'inherit' }}>RMSSD:{row.z_E4.rmssd}</span>
-                        </div>
-                      ) : '-'}
-                    </td>
-                  </tr>
-                ))
+                <tr>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '32px 0' }}>
+                    <div style={{ fontSize: 13, color: 'var(--gray)', fontWeight: 600 }}>
+                      {selectedPatientId
+                        ? 'Belum ada data EpisodeAnalysis untuk pasien ini.'
+                        : 'Pilih pasien dengan klik "Lihat Analisis" untuk melihat data.'}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--gray)', marginTop: 4 }}>
+                      {selectedPatientId && 'Data akan otomatis ter-sync dari AnomalyEvent saat endpoint dipanggil.'}
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 episodeAnalysisData.map((row, idx) => (
                   <tr key={row._id || idx}>
