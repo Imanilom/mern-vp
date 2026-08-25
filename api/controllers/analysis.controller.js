@@ -20,6 +20,7 @@ import EpisodeAnalysis from '../models/episode_analysis.model.js';
 import EmaResponse from '../models/ema.model.js';
 import User from '../models/user.model.js';
 import Patient from '../models/patient.model.js';
+import PolarData from '../models/data.model.js';
 import mongoose from 'mongoose';
 import ProcessingJob from '../models/processingjob.model.js';
 import {
