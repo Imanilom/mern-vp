@@ -485,37 +485,92 @@ function ContextTrack({ rows }) {
 
 
 function EpisodeMetrics({ episode }) {
-  const fmt = (val, decimals = 2) => val != null ? Number(val).toFixed(decimals) : 'N/A';
-  const fmtMin = (val) => val != null ? `${val} min` : 'N/A (Belum recovery)';
+  // ── Null-safe formatters ───────────────────────────────────────────────────
+  const fmtNum  = (val, dec = 2) => (val != null && !isNaN(val)) ? Number(val).toFixed(dec) : null;
+  const fmtMin  = (val)          => (val != null && !isNaN(val)) ? `${val} min` : null;
+
+  // Badge untuk nilai yang tidak tersedia — menjelaskan alasannya
+  const NaTag = ({ reason }) => (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      fontSize: 10, fontWeight: 700,
+      color: '#94a3b8', background: '#f1f5f9',
+      border: '1px dashed #cbd5e1',
+      borderRadius: 4, padding: '2px 6px',
+      cursor: 'default'
+    }} title={reason}>
+      — {reason}
+    </span>
+  );
+
+  const stateColor = (st) => {
+    if (!st) return 'var(--gray)';
+    if (st.includes('PERSISTENT')) return 'var(--red)';
+    if (st.includes('CANDIDATE'))  return 'var(--amber)';
+    if (st.includes('RECOVERY') || st.includes('RECOVERED')) return 'var(--teal)';
+    if (st.includes('BASELINE'))   return 'var(--green)';
+    return 'var(--navy)';
+  };
+
+  const aucVal     = fmtNum(episode.aucD);
+  const ttrVal     = fmtMin(episode.ttrMin);
+  const peakVal    = episode.peakCount ?? null;
 
   return (
     <div className="card-panel mb-3">
-      <h5 style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Metrics</h5>
-      <ul className="list-unstyled mb-0" style={{ fontSize: 12 }}>
-        <li className="d-flex justify-content-between mb-2">
-          <span className="text-muted">AUC-D (Area):</span>
-          <strong style={{ color: episode.aucD != null ? 'var(--navy)' : 'var(--gray)' }}>
-            {fmt(episode.aucD)}
-          </strong>
+      <h5 style={{ fontSize: 14, fontWeight: 800, marginBottom: 14 }}>Metrics</h5>
+      <ul className="list-unstyled mb-0" style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+        {/* AUC-D */}
+        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="text-muted" title="Area Under Curve (Deviation) — integral anomaly score selama episode berlangsung">AUC-D:</span>
+          {aucVal != null
+            ? <strong style={{ color: 'var(--navy)', fontFamily: 'monospace' }}>{aucVal}</strong>
+            : <NaTag reason="Tidak ada segmen terhubung" />
+          }
         </li>
-        <li className="d-flex justify-content-between mb-2">
-          <span className="text-muted">TTR (Time to Recovery):</span>
-          <strong style={{ color: episode.ttrMin != null ? 'var(--teal)' : 'var(--gray)', fontSize: episode.ttrMin != null ? 12 : 10 }}>
-            {fmtMin(episode.ttrMin)}
-          </strong>
+
+        {/* TTR */}
+        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="text-muted" title="Time to Recovery — durasi dari onset sampai kondisi kembali ke baseline">TTR:</span>
+          {ttrVal != null
+            ? <strong style={{ color: 'var(--teal)', fontFamily: 'monospace' }}>{ttrVal}</strong>
+            : <NaTag reason="Episode belum recovery" />
+          }
         </li>
-        <li className="d-flex justify-content-between mb-2">
-          <span className="text-muted">Peak Count:</span>
-          <strong>{episode.peakCount ?? 0}</strong>
+
+        {/* Peak Count */}
+        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="text-muted" title="Jumlah window dengan anomaly score ≥ tau_in">Peak Count:</span>
+          {peakVal != null
+            ? <strong style={{ color: peakVal > 0 ? 'var(--red)' : 'var(--gray)', fontFamily: 'monospace' }}>
+                {peakVal}
+              </strong>
+            : <NaTag reason="Tidak ada segmen terhubung" />
+          }
         </li>
-        <li className="d-flex justify-content-between mb-0">
-          <span className="text-muted">Current State:</span>
-          <strong style={{ fontSize: 11, textAlign: 'right', maxWidth: 140 }}>{episode.currentState}</strong>
+
+        {/* Current State */}
+        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingTop: 4, borderTop: '1px solid var(--line)', marginTop: 2 }}>
+          <span className="text-muted">State Saat Ini:</span>
+          {episode.currentState
+            ? <strong style={{
+                fontSize: 11, textAlign: 'right', maxWidth: 150,
+                color: stateColor(episode.currentState),
+                fontFamily: 'monospace', wordBreak: 'break-word'
+              }}>
+                {episode.currentState}
+              </strong>
+            : <NaTag reason="Tidak ada data state" />
+          }
         </li>
+
       </ul>
     </div>
   );
 }
+
+
 
 function ReviewerValidation({ episodeId, initialDecision, onSaved }) {
   const [decision, setDecision] = useState(initialDecision || 'UNCERTAIN');
