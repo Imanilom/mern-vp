@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
+import Pagination from './Pagination';
 
 export default function CalibrationHistoryCard({ participantId = "P00" }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     let isMounted = true;
@@ -16,7 +19,11 @@ export default function CalibrationHistoryCard({ participantId = "P00" }) {
         if (res.ok) {
           const json = await res.json();
           if (isMounted && json.success && Array.isArray(json.data)) {
-            setHistory(json.data);
+            let fetchedData = json.data;
+            if (participantId && participantId !== "ALL" && participantId !== "undefined" && participantId !== "null") {
+              fetchedData = fetchedData.filter(d => d.participantId === participantId || d.participant_id === participantId);
+            }
+            setHistory(fetchedData);
           }
         }
       } catch (err) {
@@ -66,7 +73,7 @@ export default function CalibrationHistoryCard({ participantId = "P00" }) {
               </tr>
             </thead>
             <tbody>
-              {history.map((item) => (
+              {history.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item) => (
                 <tr key={item.id}>
                   <td>
                     <div style={{ fontWeight: 800, color: 'var(--navy)' }}>{item.version}</div>
@@ -121,6 +128,15 @@ export default function CalibrationHistoryCard({ participantId = "P00" }) {
             </tbody>
           </table>
         </div>
+      )}
+      {!loading && history.length > 0 && (
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={Math.ceil(history.length / itemsPerPage)}
+          onPageChange={setCurrentPage}
+          totalItems={history.length}
+          pageSize={itemsPerPage}
+        />
       )}
     </div>
   );
