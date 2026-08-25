@@ -353,12 +353,18 @@ export const CohortOverviewView = ({
                   <tr key={row._id || idx}>
                     <td className="mono" style={{ fontSize: 11, fontWeight: 700 }}>
                       {(() => {
-                        let st = row.start_time;
+                        let st = row.createdAt || row.start_time;
+                        if (st && typeof st === 'object' && st.$date) st = st.$date;
                         if (typeof st === 'number' && st < 20000000000) st *= 1000;
-                        let et = row.end_time;
+                        if (typeof st === 'string' && st.endsWith('Z')) st = st.replace('Z', '');
+                        
+                        let et = row.updatedAt || row.end_time;
+                        if (et && typeof et === 'object' && et.$date) et = et.$date;
                         if (typeof et === 'number' && et < 20000000000) et *= 1000;
-                        const sStr = st ? new Date(st).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
-                        const eStr = et ? new Date(et).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+                        if (typeof et === 'string' && et.endsWith('Z')) et = et.replace('Z', '');
+                        
+                        const sStr = st ? new Date(st).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') : '-';
+                        const eStr = et ? new Date(et).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') : '-';
                         return `${sStr} - ${eStr}`;
                       })()}
                     </td>

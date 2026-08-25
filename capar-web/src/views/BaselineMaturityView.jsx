@@ -322,10 +322,16 @@ export const BaselineMaturityView = ({ participantId }) => {
                     const sampleStart = i * 60 + 1;
                     const sampleEnd = (i + 1) * 60;
                     const wid = win.id || win._id || `WIN-${String(winNum).padStart(3, '0')}`;
-                    const ts = win.timestamp || win.window_start || win.start_time || win.createdAt;
-                    let parsedTs = ts;
-                    if (typeof ts === 'number' && ts < 20000000000) {
-                      parsedTs = ts * 1000;
+                    let rawTs = win.createdAt || win.timestamp || win.window_start || win.start_time;
+                    if (rawTs && typeof rawTs === 'object' && rawTs.$date) {
+                      rawTs = rawTs.$date;
+                    }
+                    let parsedTs = rawTs;
+                    if (typeof rawTs === 'number' && rawTs < 20000000000) {
+                      parsedTs = rawTs * 1000;
+                    }
+                    if (typeof parsedTs === 'string' && parsedTs.endsWith('Z')) {
+                      parsedTs = parsedTs.replace('Z', '');
                     }
                     const displayTs = parsedTs ? new Date(parsedTs).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB' : 'Unknown';
                     const ctx = win.context || win.activity_label || win.activity || activeBaseline.activity || 'sitting';
