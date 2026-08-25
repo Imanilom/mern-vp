@@ -11,8 +11,7 @@ class ApiService {
   static Future<String> _getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     final uid = prefs.getString('user_id') ?? '';
-    if (uid.isNotEmpty) return uid;
-    return '675ba1e92b8428e4dd641cd0';
+    return uid;
   }
 
   /// Menyiapkan header HTTP termasuk Bearer token jika pengguna sudah login.
