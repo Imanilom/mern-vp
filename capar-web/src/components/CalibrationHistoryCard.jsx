@@ -23,6 +23,7 @@ export default function CalibrationHistoryCard({ participantId = "P00" }) {
             if (participantId && participantId !== "ALL" && participantId !== "undefined" && participantId !== "null") {
               fetchedData = fetchedData.filter(d => d.participantId === participantId || d.participant_id === participantId);
             }
+            fetchedData.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
             setHistory(fetchedData);
           }
         }
@@ -77,7 +78,8 @@ export default function CalibrationHistoryCard({ participantId = "P00" }) {
                 <tr key={item.id}>
                   <td>
                     <div style={{ fontWeight: 800, color: 'var(--navy)' }}>{item.version}</div>
-                    <div style={{ fontSize: 10, color: 'var(--gray)' }}>
+                    <div style={{ fontSize: 10, color: 'var(--teal)', fontWeight: 700 }}>{item.participantId || item.participant_id || participantId}</div>
+                    <div style={{ fontSize: 9.5, color: 'var(--gray)' }}>
                       {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </td>

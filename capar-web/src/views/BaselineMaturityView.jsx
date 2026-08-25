@@ -315,8 +315,20 @@ export const BaselineMaturityView = ({ participantId }) => {
                       Belum ada data window segmen terverifikasi untuk model baseline ini di MongoDB.
                     </td>
                   </tr>
-                ) : (
-                  sourceWindows.slice((currentPageWin - 1) * ITEMS_PER_PAGE, currentPageWin * ITEMS_PER_PAGE).map((win, iRaw) => {
+                ) : (() => {
+                  const sortedWindows = [...sourceWindows].sort((a, b) => {
+                    let tsA = a.createdAt || a.timestamp || a.window_start || a.start_time;
+                    if (tsA && typeof tsA === 'object' && tsA.$date) tsA = tsA.$date;
+                    if (typeof tsA === 'number' && tsA < 20000000000) tsA *= 1000;
+                    
+                    let tsB = b.createdAt || b.timestamp || b.window_start || b.start_time;
+                    if (tsB && typeof tsB === 'object' && tsB.$date) tsB = tsB.$date;
+                    if (typeof tsB === 'number' && tsB < 20000000000) tsB *= 1000;
+
+                    return new Date(tsB || 0).getTime() - new Date(tsA || 0).getTime();
+                  });
+
+                  return sortedWindows.slice((currentPageWin - 1) * ITEMS_PER_PAGE, currentPageWin * ITEMS_PER_PAGE).map((win, iRaw) => {
                     const i = (currentPageWin - 1) * ITEMS_PER_PAGE + iRaw;
                     const winNum = i + 1;
                     const sampleStart = i * 60 + 1;
@@ -343,12 +355,14 @@ export const BaselineMaturityView = ({ participantId }) => {
                     const qSig = Number((cleanPct / 100).toFixed(2));
 
                     const includedInDistribution = win.is_valid !== false && cleanPct >= 85.0;
+                    const pName = win.participantName || userMap[win.user_id] || targetUserId;
 
                     return (
                       <tr key={wid}>
                         <td className="mono" style={{ fontSize: 11, fontWeight: 700, color: 'var(--navy)' }}>
                           <div>Window #{winNum}</div>
-                          <div style={{ fontSize: 9.5, color: 'var(--gray)', fontWeight: 400 }}>{wid}</div>
+                          <div style={{ fontSize: 9.5, color: 'var(--teal)', fontWeight: 700 }}>{pName}</div>
+                          <div style={{ fontSize: 9, color: 'var(--gray)', fontWeight: 400 }}>{wid}</div>
                         </td>
                         <td className="mono" style={{ fontSize: 11, fontWeight: 600 }}>Sampel #{sampleStart} - #{sampleEnd}</td>
                         <td className="mono" style={{ fontSize: 11 }}>{displayTs}</td>
@@ -374,8 +388,8 @@ export const BaselineMaturityView = ({ participantId }) => {
                         </td>
                       </tr>
                     );
-                  })
-                )}
+                  });
+                })()}
             </tbody>
             </table>
           </div>

@@ -56,6 +56,8 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
         status: ep.status || 'open',
       }));
 
+      mapped.sort((a, b) => new Date(b.onsetAt || 0).getTime() - new Date(a.onsetAt || 0).getTime());
+
       setRows(mapped);
       setCurrentPage(result.page || page);
       setTotalPages(result.totalPages || 1);

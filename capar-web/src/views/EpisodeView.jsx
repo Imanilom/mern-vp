@@ -74,6 +74,10 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
       if (!matchId && !matchPid && !matchName) return false;
     }
     return true;
+  }).sort((a, b) => {
+    const tsA = a.onsetRaw ? new Date(a.onsetRaw).getTime() : 0;
+    const tsB = b.onsetRaw ? new Date(b.onsetRaw).getTime() : 0;
+    return tsB - tsA; // Newest first
   });
 
 

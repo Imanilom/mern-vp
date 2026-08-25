@@ -994,19 +994,38 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
               </tr>
             </thead>
             <tbody>
-              {activeEpRecords.length > 0 ? (
-                activeEpRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((ea, idx) => {
+              {activeEpRecords.length > 0 ? (() => {
+                const sortedEpRecords = [...activeEpRecords].sort((a, b) => {
+                  let tsA = a.createdAt || a.start_time;
+                  if (tsA && typeof tsA === 'object' && tsA.$date) tsA = tsA.$date;
+                  if (typeof tsA === 'number' && tsA < 20000000000) tsA *= 1000;
+                  
+                  let tsB = b.createdAt || b.start_time;
+                  if (tsB && typeof tsB === 'object' && tsB.$date) tsB = tsB.$date;
+                  if (typeof tsB === 'number' && tsB < 20000000000) tsB *= 1000;
+
+                  return new Date(tsB || 0).getTime() - new Date(tsA || 0).getTime();
+                });
+
+                return sortedEpRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((ea, idx) => {
                   const epKey = ea.episode_id !== undefined ? String(ea.episode_id) : (ea._id ? ea._id.toString().substring(0, 8) : `EP-${idx}`);
                   const isSelected = selectedEpId === epKey;
+                  const pName = ea.participant_name || ea.participantName || ea.user_id || globalParticipantFilter;
 
                   return (
                     <tr key={ea._id || idx} style={{ background: isSelected ? 'rgba(13, 148, 136, 0.08)' : 'transparent' }}>
-                      <td style={{ position: 'sticky', left: 0, background: isSelected ? '#f0fdf4' : 'var(--surface)', zIndex: 2, fontWeight: 600 }}>
+                      <td style={{ position: 'sticky', left: 0, background: isSelected ? '#f0fdf4' : 'var(--surface)', zIndex: 2, fontWeight: 600, fontSize: 11 }}>
                         {(() => {
                           let st = ea.createdAt || ea.start_time;
                           if (st && typeof st === 'object' && st.$date) st = st.$date;
                           if (typeof st === 'number' && st < 20000000000) st *= 1000;
-                          return st ? new Date(st).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') : `T-${idx}`;
+                          const formattedDate = st ? new Date(st).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') : `T-${idx}`;
+                          return (
+                            <div>
+                              <div style={{ whiteSpace: 'nowrap' }}>{formattedDate}</div>
+                              <div style={{ fontSize: 10, color: 'var(--teal)', fontWeight: 700 }}>{pName}</div>
+                            </div>
+                          );
                         })()}
                       </td>
                       <td style={{ position: 'sticky', left: 80, background: isSelected ? '#f0fdf4' : 'var(--surface)', zIndex: 2 }}>
@@ -1061,8 +1080,8 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
                       <td className="mono" style={{ fontSize: 10 }}>{formatZScore(ea.z_E4)}</td>
                     </tr>
                   );
-                })
-              ) : (
+                });
+              })() : (
                 <tr>
                   <td colSpan="33" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--gray)' }}>
                     Belum ada data episode analysis detail untuk partisipan ini.

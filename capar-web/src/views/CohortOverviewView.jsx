@@ -348,24 +348,44 @@ export const CohortOverviewView = ({
                     </div>
                   </td>
                 </tr>
-              ) : (
-                episodeAnalysisData.slice((currentPageEvents - 1) * itemsPerPage, currentPageEvents * itemsPerPage).map((row, idx) => (
-                  <tr key={row._id || idx}>
-                    <td className="mono" style={{ fontSize: 11, fontWeight: 700 }}>
-                      {(() => {
-                        let st = row.createdAt || row.start_time;
-                        if (st && typeof st === 'object' && st.$date) st = st.$date;
-                        if (typeof st === 'number' && st < 20000000000) st *= 1000;
-                        
-                        let et = row.updatedAt || row.end_time;
-                        if (et && typeof et === 'object' && et.$date) et = et.$date;
-                        if (typeof et === 'number' && et < 20000000000) et *= 1000;
-                        
-                        const sStr = st ? new Date(st).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') : '-';
-                        const eStr = et ? new Date(et).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') : '-';
-                        return `${sStr} - ${eStr}`;
-                      })()}
-                    </td>
+              ) : (() => {
+                const sortedAnalysisData = [...episodeAnalysisData].sort((a, b) => {
+                  let tsA = a.createdAt || a.start_time;
+                  if (tsA && typeof tsA === 'object' && tsA.$date) tsA = tsA.$date;
+                  if (typeof tsA === 'number' && tsA < 20000000000) tsA *= 1000;
+                  
+                  let tsB = b.createdAt || b.start_time;
+                  if (tsB && typeof tsB === 'object' && tsB.$date) tsB = tsB.$date;
+                  if (typeof tsB === 'number' && tsB < 20000000000) tsB *= 1000;
+
+                  return new Date(tsB || 0).getTime() - new Date(tsA || 0).getTime();
+                });
+
+                return sortedAnalysisData.slice((currentPageEvents - 1) * itemsPerPage, currentPageEvents * itemsPerPage).map((row, idx) => {
+                  const pName = row.participant_name || row.participantName || row.user_id || selectedPatientId || 'Participant';
+
+                  return (
+                    <tr key={row._id || idx}>
+                      <td className="mono" style={{ fontSize: 11, fontWeight: 700 }}>
+                        {(() => {
+                          let st = row.createdAt || row.start_time;
+                          if (st && typeof st === 'object' && st.$date) st = st.$date;
+                          if (typeof st === 'number' && st < 20000000000) st *= 1000;
+                          
+                          let et = row.updatedAt || row.end_time;
+                          if (et && typeof et === 'object' && et.$date) et = et.$date;
+                          if (typeof et === 'number' && et < 20000000000) et *= 1000;
+                          
+                          const sStr = st ? new Date(st).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') : '-';
+                          const eStr = et ? new Date(et).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') : '-';
+                          return (
+                            <div>
+                              <div>{sStr} - {eStr}</div>
+                              <div style={{ fontSize: 10, color: 'var(--teal)', fontWeight: 700 }}>{pName}</div>
+                            </div>
+                          );
+                        })()}
+                      </td>
                     <td style={{ textTransform: 'capitalize' }}>{row.context || row.activity || 'sitting'}</td>
                     <td><EvidenceBadge state={row.evidence_state} /></td>
                     <td><StateBadge state={row.physiological_state} /></td>
@@ -401,8 +421,9 @@ export const CohortOverviewView = ({
                       ) : '-'}
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              });
+            })()}
             </tbody>
           </table>
         </div>
