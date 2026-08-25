@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Lock, Unlock, RefreshCw, CheckCircle, Database } from 'lucide-react';
+import Pagination from '../components/Pagination';
 
 export const BaselineMaturityView = ({ participantId }) => {
   const [baselineData, setBaselineData] = useState([]);
@@ -8,6 +9,10 @@ export const BaselineMaturityView = ({ participantId }) => {
   const [selectedBaselineIdx, setSelectedBaselineIdx] = useState(0);
   const [sourceWindows, setSourceWindows] = useState([]);
   const [actionSuccess, setActionSuccess] = useState('');
+
+  const [currentPageBase, setCurrentPageBase] = useState(1);
+  const [currentPageWin, setCurrentPageWin] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   const targetUserId = participantId && participantId !== 'ALL' ? participantId : 'ALL';
 
@@ -140,7 +145,8 @@ export const BaselineMaturityView = ({ participantId }) => {
                   <td colSpan="12" className="text-center py-4 text-muted">Tidak ada data model baseline terdaftar</td>
                 </tr>
               ) : (
-                baselineData.map((b, idx) => {
+                baselineData.slice((currentPageBase - 1) * ITEMS_PER_PAGE, currentPageBase * ITEMS_PER_PAGE).map((b, idxBase) => {
+                  const idx = (currentPageBase - 1) * ITEMS_PER_PAGE + idxBase;
                   const isMature = b.is_mature || b.maturity_detail?.level === 'mature' || b.segment_count >= 30;
                   const isProv = b.maturity_detail?.level === 'provisional' || (b.segment_count >= 15 && b.segment_count < 30);
                   const hrMean = b.stats?.hr_mean?.mean ?? b.stats?.mean_hr?.mean ?? 0.0;
@@ -167,7 +173,7 @@ export const BaselineMaturityView = ({ participantId }) => {
                   return (
                     <tr 
                       key={b._id || idx}
-                      onClick={() => setSelectedBaselineIdx(idx)}
+                      onClick={() => { setSelectedBaselineIdx(idx); setCurrentPageWin(1); }}
                       style={{ cursor: 'pointer', background: selectedBaselineIdx === idx ? 'var(--gray-soft)' : 'transparent' }}
                     >
                       <td className="mono" style={{ fontWeight: 700, fontSize: 11, color: 'var(--navy)' }}>
@@ -266,6 +272,13 @@ export const BaselineMaturityView = ({ participantId }) => {
             </tbody>
           </table>
         </div>
+        <Pagination 
+          currentPage={currentPageBase}
+          totalPages={Math.ceil(baselineData.length / ITEMS_PER_PAGE)}
+          onPageChange={setCurrentPageBase}
+          totalItems={baselineData.length}
+          pageSize={ITEMS_PER_PAGE}
+        />
       </div>
 
          {activeBaseline && (
@@ -303,7 +316,8 @@ export const BaselineMaturityView = ({ participantId }) => {
                     </td>
                   </tr>
                 ) : (
-                  sourceWindows.map((win, i) => {
+                  sourceWindows.slice((currentPageWin - 1) * ITEMS_PER_PAGE, currentPageWin * ITEMS_PER_PAGE).map((win, iRaw) => {
+                    const i = (currentPageWin - 1) * ITEMS_PER_PAGE + iRaw;
                     const winNum = i + 1;
                     const sampleStart = i * 60 + 1;
                     const sampleEnd = (i + 1) * 60;
@@ -355,9 +369,16 @@ export const BaselineMaturityView = ({ participantId }) => {
                     );
                   })
                 )}
-              </tbody>
+            </tbody>
             </table>
           </div>
+          <Pagination 
+            currentPage={currentPageWin}
+            totalPages={Math.ceil(sourceWindows.length / ITEMS_PER_PAGE)}
+            onPageChange={setCurrentPageWin}
+            totalItems={sourceWindows.length}
+            pageSize={ITEMS_PER_PAGE}
+          />
         </div>
       )}
     </div>
