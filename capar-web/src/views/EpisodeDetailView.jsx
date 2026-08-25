@@ -6,6 +6,17 @@ import {
 } from 'recharts';
 import { ArrowLeft, CheckCircle, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 
+const formatTime = (ts) => {
+  if (!ts) return '-';
+  let raw = ts;
+  if (raw && typeof raw === 'object' && raw.$date) raw = raw.$date;
+  if (typeof raw === 'number' && raw < 20000000000) raw *= 1000;
+  if (typeof raw === 'string' && raw.endsWith('Z')) raw = raw.replace('Z', '');
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return String(ts);
+  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
+};
+
 export default function EpisodeDetailView({ episodeId, onBack }) {
   const [detail, setDetail] = useState(null);
   const [trajectory, setTrajectory] = useState([]);
@@ -119,12 +130,16 @@ export default function EpisodeDetailView({ episodeId, onBack }) {
           <section className="summary-grid">
             <MetricCard 
               label="Waktu Onset" 
-              value={new Date(detail.onsetAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} 
+              value={trajectory.length > 0 && trajectory[0].timeLabel ? trajectory[0].timeLabel : formatTime(detail.onsetAt)} 
             />
             <MetricCard 
               label="Waktu & Skor Peak" 
               value={detail.peakScore != null ? detail.peakScore.toFixed(2) : '-'} 
-              subValue={detail.peakAt ? `di ${new Date(detail.peakAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : ''}
+              subValue={(() => {
+                const peakPoint = trajectory.find(p => p.eventMarker === 'PEAK');
+                const tStr = peakPoint?.timeLabel || formatTime(detail.peakAt);
+                return tStr ? `di ${tStr}` : '';
+              })()}
               tone="danger" 
             />
             <MetricCard label="Durasi" value={detail.durationMin != null ? `${detail.durationMin}m` : '-'} />
@@ -315,7 +330,7 @@ function ScoreTrajectoryChart({ episode, points }) {
               ...Array.from({ length: Math.ceil(maxScore / 0.5) + 1 }, (_, i) => parseFloat((i * 0.5).toFixed(1)))
             ]}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip />} cursor={false} />
 
           {/* Reference Lines */}
           <ReferenceLine y={episode.tauIn} stroke="#C62828" strokeDasharray="4 4" strokeWidth={1.5}
@@ -398,7 +413,7 @@ function StateTimeline({ points }) {
             fontSize: 10,
             fontWeight: 700,
             textAlign: 'center',
-            borderRight: i < collapsed.length - 1 ? '1px solid #fff' : 'none',
+            borderRight: 'none',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
@@ -468,7 +483,7 @@ function ContextTrack({ rows }) {
                 fontSize: 10,
                 fontWeight: 700,
                 textAlign: 'center',
-                borderRight: i < collapsed.length - 1 ? '1px solid #fff' : 'none',
+                borderRight: 'none',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',

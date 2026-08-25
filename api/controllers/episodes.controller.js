@@ -160,11 +160,18 @@ export async function getEpisodeTrajectory(req, res) {
       points = segments.map((s, i) => {
         let marker = null;
         if (i === 0) marker = 'ONSET';
-        else if (ep && s.window_start === ep.peak_time) marker = 'PEAK';
+        else if (ep && (s.window_start === ep.peak_time || s.createdAt === ep.peak_time)) marker = 'PEAK';
+        
+        let tsRaw = s.createdAt || s.window_start || Date.now();
+        if (tsRaw && typeof tsRaw === 'object' && tsRaw.$date) tsRaw = tsRaw.$date;
+        if (typeof tsRaw === 'number' && tsRaw < 20000000000) tsRaw *= 1000;
+        if (typeof tsRaw === 'string' && tsRaw.endsWith('Z')) tsRaw = tsRaw.replace('Z', '');
+        const d = new Date(tsRaw);
+        const timeLabel = !isNaN(d.getTime()) ? d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') : '00:00';
         
         return {
-          ts: s.window_start || Date.now(),
-          timeLabel: new Date(s.window_start || Date.now()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          ts: tsRaw,
+          timeLabel,
           score: typeof s.anomaly_score === 'number' ? s.anomaly_score : 0,
           hr: s.features?.mean_hr || s.hr || 75,
           state: s.rr_status || s.classification || 'BASELINE_COMPATIBLE',
