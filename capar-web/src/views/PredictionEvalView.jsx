@@ -1002,7 +1002,11 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
                   return (
                     <tr key={ea._id || idx} style={{ background: isSelected ? 'rgba(13, 148, 136, 0.08)' : 'transparent' }}>
                       <td style={{ position: 'sticky', left: 0, background: isSelected ? '#f0fdf4' : 'var(--surface)', zIndex: 2, fontWeight: 600 }}>
-                        {ea.start_time ? new Date(ea.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : `T-${idx}`}
+                        {(() => {
+                          let st = ea.start_time;
+                          if (typeof st === 'number' && st < 20000000000) st *= 1000;
+                          return st ? new Date(st).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : `T-${idx}`;
+                        })()}
                       </td>
                       <td style={{ position: 'sticky', left: 80, background: isSelected ? '#f0fdf4' : 'var(--surface)', zIndex: 2 }}>
                         <button

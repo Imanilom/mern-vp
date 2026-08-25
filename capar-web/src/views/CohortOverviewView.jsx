@@ -352,7 +352,15 @@ export const CohortOverviewView = ({
                 episodeAnalysisData.slice((currentPageEvents - 1) * itemsPerPage, currentPageEvents * itemsPerPage).map((row, idx) => (
                   <tr key={row._id || idx}>
                     <td className="mono" style={{ fontSize: 11, fontWeight: 700 }}>
-                      {row.start_time ? new Date(row.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'} - {row.end_time ? new Date(row.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
+                      {(() => {
+                        let st = row.start_time;
+                        if (typeof st === 'number' && st < 20000000000) st *= 1000;
+                        let et = row.end_time;
+                        if (typeof et === 'number' && et < 20000000000) et *= 1000;
+                        const sStr = st ? new Date(st).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+                        const eStr = et ? new Date(et).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+                        return `${sStr} - ${eStr}`;
+                      })()}
                     </td>
                     <td style={{ textTransform: 'capitalize' }}>{row.context || row.activity || 'sitting'}</td>
                     <td><EvidenceBadge state={row.evidence_state} /></td>

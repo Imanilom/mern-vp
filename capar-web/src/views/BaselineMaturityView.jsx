@@ -323,7 +323,11 @@ export const BaselineMaturityView = ({ participantId }) => {
                     const sampleEnd = (i + 1) * 60;
                     const wid = win.id || win._id || `WIN-${String(winNum).padStart(3, '0')}`;
                     const ts = win.timestamp || win.window_start || win.start_time || win.createdAt;
-                    const displayTs = ts ? new Date(ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB' : 'Unknown';
+                    let parsedTs = ts;
+                    if (typeof ts === 'number' && ts < 20000000000) {
+                      parsedTs = ts * 1000;
+                    }
+                    const displayTs = parsedTs ? new Date(parsedTs).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB' : 'Unknown';
                     const ctx = win.context || win.activity_label || win.activity || activeBaseline.activity || 'sitting';
                     
                     const q = win.signal_quality_detail || win.features || {};

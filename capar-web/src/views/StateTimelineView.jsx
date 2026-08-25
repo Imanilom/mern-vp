@@ -26,8 +26,15 @@ export const StateTimelineView = ({ participantId, globalDateFilter, onNavigate 
         
         // Build timeline riwayat from real segments
         let riwayat = segments.map(seg => {
-           const startDate = new Date(seg.window_start || seg.createdAt || Date.now());
-           const endDate = seg.window_end ? new Date(seg.window_end) : new Date(startDate.getTime() + 60000);
+           const startRaw = seg.window_start || seg.createdAt || Date.now();
+           let startVal = startRaw;
+           if (typeof startRaw === 'number' && startRaw < 20000000000) startVal *= 1000;
+           const startDate = new Date(startVal);
+           
+           const endRaw = seg.window_end;
+           let endVal = endRaw;
+           if (typeof endRaw === 'number' && endRaw < 20000000000) endVal *= 1000;
+           const endDate = endRaw ? new Date(endVal) : new Date(startDate.getTime() + 60000);
            const startTime = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
            const endTime = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
            const dateStr = `${String(startDate.getDate()).padStart(2, '0')}-${String(startDate.getMonth()+1).padStart(2, '0')}-${startDate.getFullYear()}`;
@@ -69,7 +76,9 @@ export const StateTimelineView = ({ participantId, globalDateFilter, onNavigate 
           .filter(ev => {
             if (!ev.reviewer_notes && !ev.annotation && !ev.validation_label) return false;
             if (globalDateFilter && ev.onset_time) {
-              const ts = new Date(ev.onset_time).getTime();
+              let tsRaw = ev.onset_time;
+              if (typeof tsRaw === 'number' && tsRaw < 20000000000) tsRaw *= 1000;
+              const ts = new Date(tsRaw).getTime();
               if (!isNaN(ts)) {
                 const dt = new Date(ts);
                 const epDateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
@@ -79,7 +88,9 @@ export const StateTimelineView = ({ participantId, globalDateFilter, onNavigate 
             return true;
           })
           .map((ev, idx) => {
-            const timeStr = ev.onset_time ? new Date(ev.onset_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '08:45';
+            let oTs = ev.onset_time;
+            if (typeof oTs === 'number' && oTs < 20000000000) oTs *= 1000;
+            const timeStr = oTs ? new Date(oTs).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '08:45';
             const nameStr = participantId || 'p001';
             return {
               time: timeStr,
