@@ -488,55 +488,24 @@ export async function getMarkovModelHandler(req, res) {
       Object.assign(counts, tempCounts);
       hasRealData = true;
     } else if (rawParticipantId === 'ALL' || rawParticipantId === 'P00') {
-      // Fallback 2: Global Demo Data
-      hasRealData = true;
-      const demoEpisodes = [
-        {
-          episode_id: 'EP-001',
-          windows: [
-            { state: 'BASELINE_COMPATIBLE', quality_ok: true },
-            { state: 'DEVIATION_CANDIDATE', quality_ok: true },
-            { state: 'PERSISTENT_DEVIATION', quality_ok: true },
-            { state: 'RECOVERY_START', quality_ok: true },
-            { state: 'RECOVERED', quality_ok: true },
-          ]
-        }
-      ];
-      const tempCounts = markov.buildTransitionCounts(demoEpisodes);
-      Object.assign(counts, tempCounts);
+      // Global stats query (no mock data, just empty if no real global data found)
+      hasRealData = false;
     }
 
+
     if (!hasRealData) {
-      // Fallback 2: Global Demo Data (jika user tidak punya event sama sekali)
-      const demoEpisodes = [
-        {
-          episode_id: 'EP-GLOBAL',
-          windows: [
-            { state: 'BASELINE_COMPATIBLE', quality_ok: true },
-            { state: 'DEVIATION_CANDIDATE', quality_ok: true },
-            { state: 'PERSISTENT_DEVIATION', quality_ok: true },
-            { state: 'RECOVERY_START', quality_ok: true },
-            { state: 'RECOVERED', quality_ok: true },
-          ]
-        }
-      ];
-      const tempCounts = markov.buildTransitionCounts(demoEpisodes);
-      Object.assign(counts, tempCounts);
-
-      const matrix = markov.transitionMatrix(counts);
-      const serializedMatrix = markov.serializeMatrix(matrix, counts);
-
+      // Return empty state if no transitions found for user
       return res.json({
-        status: 'READY',
+        status: 'INSUFFICIENT_DATA',
         participant_id: rawParticipantId,
         episode_count: 0,
         anomaly_event_count: 0,
         segment_window_count: 0,
         alpha: markov.alpha,
-        model: 'Global Population Markov Model (Fallback)',
-        matrix: serializedMatrix,
-        prediction: markov.predict(matrix, 'BASELINE_COMPATIBLE', horizon),
-        message: 'Menggunakan model populasi global karena transisi personal belum mencukupi.'
+        model: 'Personal Markov Model (Empty)',
+        matrix: markov.serializeMatrix(markov.transitionMatrix(counts), counts), // empty matrix
+        prediction: {},
+        message: 'Belum ada data transisi yang cukup untuk membentuk model Markov personal.'
       });
     }
 

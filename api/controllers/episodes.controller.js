@@ -21,8 +21,34 @@ async function findAnomalyEvent(episodeId) {
   const foundByEventId = await AnomalyEvent.findOne({ event_id: episodeId }).lean().catch(() => null);
   if (foundByEventId) return foundByEventId;
 
-  // Fallback to latest event in DB
-  return await AnomalyEvent.findOne({}).sort({ onset_time: -1 }).lean().catch(() => null);
+  // No fallback to global events anymore to prevent data leaks to new users.
+  return null;
+}
+
+async function fetchEpisodeSegments(ep) {
+  if (!ep) return [];
+  
+  if (Array.isArray(ep.segment_ids) && ep.segment_ids.length > 0) {
+    return await Segment.find({ _id: { $in: ep.segment_ids } })
+      .sort({ window_start: 1 })
+      .lean()
+      .catch(() => []);
+  }
+
+  // Fallback: If segment_ids is empty (e.g. UNRESOLVED or old events), query by user and time range
+  if (ep.user_id && ep.onset_time) {
+    const endTs = ep.resolved_time || Date.now();
+    return await Segment.find({
+      user_id: ep.user_id,
+      window_start: { $gte: ep.onset_time, $lte: endTs }
+    })
+      .sort({ window_start: 1 })
+      .limit(2880) // max 2 days of 1-minute segments to prevent memory overflow
+      .lean()
+      .catch(() => []);
+  }
+
+  return [];
 }
 
 export async function getEpisodeDetail(req, res) {
@@ -30,10 +56,7 @@ export async function getEpisodeDetail(req, res) {
     const { episodeId } = req.params;
     let ep = await findAnomalyEvent(episodeId);
     
-    // Fallback: If no event matches the specific ID, return latest event for observation
-    if (!ep) {
-      ep = await AnomalyEvent.findOne({}).sort({ onset_time: -1 }).lean();
-    }
+    // Removed global fallback to prevent data leak for new users
     
     if (!ep) {
       return res.status(404).json({ success: false, message: 'Episode tidak ditemukan di database.' });
@@ -57,30 +80,34 @@ export async function getEpisodeDetail(req, res) {
     let aucD = ep.auc_score ?? null;
     let peakCount = ep.peak_count ?? null;
 
-    if (Array.isArray(ep.segment_ids) && ep.segment_ids.length > 0) {
-      const segs = await Segment
-        .find({ _id: { $in: ep.segment_ids } })
-        .sort({ window_start: 1 })
-        .select('window_start anomaly_score')
-        .lean()
-        .catch(() => []);
+    const segs = await fetchEpisodeSegments(ep);
 
-      if (segs.length >= 2) {
-        // Hitung AUC-D via trapezoidal rule (∫ S(t) dt)
-        let auc = 0;
-        for (let i = 1; i < segs.length; i++) {
-          const dt = (segs[i].window_start - segs[i-1].window_start) / 60000; // menit
-          const s0 = segs[i-1].anomaly_score || 0;
-          const s1 = segs[i].anomaly_score || 0;
-          auc += 0.5 * (s0 + s1) * dt;
-        }
-        aucD = parseFloat(auc.toFixed(3));
+    if (segs.length >= 2) {
+      // Hitung AUC-D via trapezoidal rule (∫ S(t) dt)
+      let auc = 0;
+      for (let i = 1; i < segs.length; i++) {
+        const dt = (segs[i].window_start - segs[i-1].window_start) / 60000; // menit
+        const s0 = segs[i-1].anomaly_score || 0;
+        const s1 = segs[i].anomaly_score || 0;
+        auc += 0.5 * (s0 + s1) * dt;
+      }
+      aucD = parseFloat(auc.toFixed(3));
 
-        // Hitung Peak Count: jumlah titik yang melewati tau_in
-        if (peakCount == null) {
-          peakCount = segs.filter(s => (s.anomaly_score || 0) >= tauIn).length;
+      // Hitung Peak Count: jumlah ekskursi (continuous block) yang melewati tau_in
+      let excursions = 0;
+      let inPeak = false;
+      for (const s of segs) {
+        if ((s.anomaly_score || 0) >= tauIn) {
+          if (!inPeak) {
+            excursions++;
+            inPeak = true;
+          }
+        } else {
+          inPeak = false;
         }
       }
+      // Selalu override dari kalkulasi riil jika ada segmen
+      peakCount = excursions;
     }
 
     const durationMin = ep.duration_ms
@@ -123,13 +150,10 @@ export async function getEpisodeTrajectory(req, res) {
     const { episodeId } = req.params;
     let ep = await findAnomalyEvent(episodeId);
     if (!ep) {
-      ep = await AnomalyEvent.findOne({}).sort({ onset_time: -1 }).lean();
+      return res.status(404).json({ success: false, message: 'Episode tidak ditemukan.' });
     }
 
-    let segments = [];
-    if (ep && Array.isArray(ep.segment_ids) && ep.segment_ids.length > 0) {
-      segments = await Segment.find({ _id: { $in: ep.segment_ids } }).sort({ window_start: 1 }).lean().catch(() => []);
-    }
+    const segments = await fetchEpisodeSegments(ep);
 
     let points = [];
     if (segments.length > 0) {
@@ -151,13 +175,14 @@ export async function getEpisodeTrajectory(req, res) {
         };
       });
     } else {
-      // Fallback synthetic trajectory curve for visualization
+      // Fallback synthetic trajectory curve for visualization (if literally zero segments found)
       const onsetMs = ep?.onset_time || (Date.now() - 3600000);
       const peakMs = ep?.peak_time || (onsetMs + 1200000);
       const peakVal = ep?.peak_score || 2.85;
       const onsetVal = ep?.onset_score || 1.88;
       const numPoints = 25;
       const stepMs = Math.max(60000, Math.floor((peakMs - onsetMs + 1800000) / numPoints));
+
 
       for (let i = 0; i < numPoints; i++) {
         const curTs = onsetMs + i * stepMs;
@@ -219,13 +244,10 @@ export async function getEpisodeContext(req, res) {
     const { episodeId } = req.params;
     let ep = await findAnomalyEvent(episodeId);
     if (!ep) {
-      ep = await AnomalyEvent.findOne({}).sort({ onset_time: -1 }).lean();
+      return res.status(404).json({ success: false, message: 'Episode tidak ditemukan.' });
     }
 
-    let segments = [];
-    if (ep && Array.isArray(ep.segment_ids) && ep.segment_ids.length > 0) {
-      segments = await Segment.find({ _id: { $in: ep.segment_ids } }).sort({ window_start: 1 }).lean().catch(() => []);
-    }
+    const segments = await fetchEpisodeSegments(ep);
 
     const context = segments.map(s => ({
       ts: s.window_start || Date.now(),
@@ -248,7 +270,8 @@ export async function getEpisodeAudit(req, res) {
     if (mongoose.Types.ObjectId.isValid(episodeId)) {
       audits = await EpisodeAudit.find({ episode_id: episodeId }).sort({ createdAt: -1 }).populate('actor_id', 'name role').lean().catch(() => []);
     } else {
-      audits = await EpisodeAudit.find({}).sort({ createdAt: -1 }).limit(10).lean().catch(() => []);
+      // Avoid global fallback
+      audits = [];
     }
     
     const items = audits.map(a => ({

@@ -117,9 +117,17 @@ export default function EpisodeDetailView({ episodeId, onBack }) {
       {activeTab === 'analysis' && (
         <>
           <section className="summary-grid">
-            <MetricCard label="Onset" value={new Date(detail.onsetAt).toLocaleTimeString()} />
-            <MetricCard label="Peak" value={detail.peakScore.toFixed(2)} tone="danger" />
-            <MetricCard label="Duration" value={`${detail.durationMin}m`} />
+            <MetricCard 
+              label="Waktu Onset" 
+              value={new Date(detail.onsetAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} 
+            />
+            <MetricCard 
+              label="Waktu & Skor Peak" 
+              value={detail.peakScore != null ? detail.peakScore.toFixed(2) : '-'} 
+              subValue={detail.peakAt ? `di ${new Date(detail.peakAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : ''}
+              tone="danger" 
+            />
+            <MetricCard label="Durasi" value={detail.durationMin != null ? `${detail.durationMin}m` : '-'} />
             <MetricCard label="Relapse Count" value={detail.relapseCount} />
           </section>
 
@@ -175,12 +183,15 @@ export default function EpisodeDetailView({ episodeId, onBack }) {
 
 // Subcomponents
 
-function MetricCard({ label, value, tone }) {
+function MetricCard({ label, value, subValue, tone }) {
   const color = tone === 'danger' ? 'var(--red)' : 'var(--navy)';
   return (
-    <div className="card-panel" style={{ padding: '12px 16px' }}>
+    <div className="card-panel" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       <div className="text-muted" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 800, color }}>{value}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
+        <div style={{ fontSize: 20, fontWeight: 800, color, fontFamily: 'monospace' }}>{value}</div>
+        {subValue && <div style={{ fontSize: 11, color: 'var(--gray)', fontWeight: 600 }}>{subValue}</div>}
+      </div>
     </div>
   );
 }

@@ -221,14 +221,18 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
     // Compute X-axis time labels dynamically from real onset timestamp
     let startHour = 8;
     let startMin = 45;
-    const rawTime = selectedEpisode.onset || selectedEpisode.raw?.onset_time || selectedEpisode.time;
+    const rawTime = selectedEpisode.onsetRaw || selectedEpisode.raw?.onset_time || selectedEpisode.onset || selectedEpisode.time;
     if (rawTime) {
-      if (typeof rawTime === 'string' && rawTime.includes('T')) {
-        const dt = new Date(rawTime);
-        if (!isNaN(dt.getTime())) {
-          startHour = dt.getHours();
-          startMin = dt.getMinutes();
-        }
+      let dt;
+      if (typeof rawTime === 'number') {
+        dt = new Date(rawTime);
+      } else if (typeof rawTime === 'string' && rawTime.includes('T')) {
+        dt = new Date(rawTime);
+      }
+      
+      if (dt && !isNaN(dt.getTime())) {
+        startHour = dt.getHours();
+        startMin = dt.getMinutes();
       } else if (typeof rawTime === 'string' && rawTime.includes(':')) {
         const parts = rawTime.split(':');
         startHour = parseInt(parts[0], 10);
