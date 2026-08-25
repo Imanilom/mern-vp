@@ -465,12 +465,22 @@ export async function getOrCreateBaseline(userId, activity, timePeriod) {
   return baseline;
 }
 
+export function extractMs(val) {
+  if (!val) return null;
+  let raw = val;
+  if (raw && typeof raw === 'object' && raw.$date) raw = raw.$date;
+  if (typeof raw === 'number' && raw < 20000000000) raw *= 1000;
+  const d = new Date(raw);
+  return !isNaN(d.getTime()) ? d.getTime() : null;
+}
+
 /**
  * Tentukan periode waktu dari epoch ms.
  * night: 00–06, morning: 06–12, afternoon: 12–18, evening: 18–24
  */
 export function getTimePeriod(timestampMs) {
-  const hour = new Date(timestampMs).getUTCHours() + 7; // WIB offset
+  const ms = extractMs(timestampMs) || Date.now();
+  const hour = new Date(ms).getUTCHours() + 7; // WIB offset
   const h = hour % 24;
   if (h >= 6 && h < 12) return 'morning';
   if (h >= 12 && h < 18) return 'afternoon';
@@ -799,7 +809,10 @@ export async function getUserBaselines(userId) {
     const dfaMean = calcMean(dfas);
     const dfaSd = calcStd(dfas, dfaMean);
 
-    const datesSet = new Set(segs.map(s => s.window_start ? new Date(s.window_start).toISOString().substring(0, 10) : null).filter(Boolean));
+    const datesSet = new Set(segs.map(s => {
+      const ms = extractMs(s.createdAt || s.window_start);
+      return ms ? new Date(ms).toISOString().substring(0, 10) : null;
+    }).filter(Boolean));
     const distinctDays = Math.max(datesSet.size, 1);
 
     const isMature = count >= 30 && distinctDays >= 3;
@@ -1063,14 +1076,17 @@ export async function getCalibrationHistory(req, res) {
           // Count distinct days
           const daysSet = new Set();
           segList.forEach(s => {
-            if (s.window_start) daysSet.add(new Date(s.window_start).toISOString().substring(0, 10));
+            const ms = extractMs(s.createdAt || s.window_start);
+            if (ms) daysSet.add(new Date(ms).toISOString().substring(0, 10));
           });
           const distinctDays = Math.max(1, daysSet.size);
+
+          const firstMs = extractMs(segList[0].createdAt || segList[0].window_start);
 
           return {
             id: `cal-real-${act}`,
             version: 'v1.0',
-            timestamp: segList[0].window_start ? new Date(segList[0].window_start).toISOString() : new Date().toISOString(),
+            timestamp: firstMs ? new Date(firstMs).toISOString() : new Date().toISOString(),
             activity: act,
             time_period: 'Per-Individu (Real Stream)',
             segment_count: count,
@@ -1680,7 +1696,7 @@ async function updateRRPersistence(
 
   const state = persistenceState[activity];
   let eventCreated = false;
-  const segWinStart = new Date(seg.window_start).getTime();
+  const segWinStart = extractMs(seg.createdAt || seg.window_start) || Date.now();
 
   // ── Tangani status PAUSED lebih dulu ────────────────────────────────────
   if (rr_status === 'PERSISTENT_PAUSED' || rr_status === 'DEVIATION_PAUSED' || rr_status === 'BASELINE_PAUSED') {
@@ -1710,7 +1726,7 @@ async function updateRRPersistence(
 
   // ── Cek UNRESOLVED (Timeout) ───────────────────────────────────────────
   if (state.openEventId && state.startSeg) {
-    const startWinStart = new Date(state.startSeg.window_start).getTime();
+    const startWinStart = extractMs(state.startSeg.createdAt || state.startSeg.window_start) || segWinStart;
     const rawElapsed = segWinStart - startWinStart;
 
     const eventDoc = await AnomalyEvent.findById(state.openEventId).select('total_paused_ms').lean();
@@ -1851,9 +1867,9 @@ async function updateRRPersistence(
       state.segIds.push(seg._id);
       state.scores.push(score);
 
-      const segWinEnd = seg.window_end ? new Date(seg.window_end).getTime() : segWinStart + 60000;
-      const peakWinStart = state.peakSeg?.window_start ? new Date(state.peakSeg.window_start).getTime() : segWinStart;
-      const startWinStart = state.startSeg?.window_start ? new Date(state.startSeg.window_start).getTime() : segWinStart;
+      const segWinEnd = extractMs(seg.window_end) || (segWinStart + 300000);
+      const peakWinStart = extractMs(state.peakSeg?.createdAt || state.peakSeg?.window_start) || segWinStart;
+      const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || segWinStart;
 
       const recoveryMs = segWinEnd - peakWinStart;
       const totalDurationMs = segWinStart - startWinStart;
@@ -1898,7 +1914,7 @@ async function updateRRPersistence(
   // ── NORMAL / TRANSIENT ───────────────────────────────────────────────────
   else {
     if (state.openEventId) {
-      const startWinStart = state.startSeg?.window_start ? new Date(state.startSeg.window_start).getTime() : segWinStart;
+      const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || segWinStart;
       const totalDurationMs = segWinStart - startWinStart;
 
       await AnomalyEvent.updateOne({ _id: state.openEventId }, {
@@ -2554,8 +2570,9 @@ export async function getPersonalExperienceMemory(req, res) {
     }
 
     segments.forEach(s => {
-      if (s.window_start) {
-        distinctDaysSet.add(new Date(s.window_start).toISOString().substring(0, 10));
+      const ms = extractMs(s.createdAt || s.window_start);
+      if (ms) {
+        distinctDaysSet.add(new Date(ms).toISOString().substring(0, 10));
       }
     });
     emaResponses.forEach(e => {

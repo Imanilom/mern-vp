@@ -30,7 +30,6 @@ export const StateTimelineView = ({ participantId, globalDateFilter, onNavigate 
            let startVal = startRaw;
            if (startVal && typeof startVal === 'object' && startVal.$date) startVal = startVal.$date;
            if (typeof startVal === 'number' && startVal < 20000000000) startVal *= 1000;
-           if (typeof startVal === 'string' && startVal.endsWith('Z')) startVal = startVal.replace('Z', '');
            const startDate = new Date(startVal);
            
            const endRaw = seg.window_end;
@@ -81,7 +80,6 @@ export const StateTimelineView = ({ participantId, globalDateFilter, onNavigate 
               let tsRaw = ev.createdAt || ev.onset_time;
               if (tsRaw && typeof tsRaw === 'object' && tsRaw.$date) tsRaw = tsRaw.$date;
               if (typeof tsRaw === 'number' && tsRaw < 20000000000) tsRaw *= 1000;
-              if (typeof tsRaw === 'string' && tsRaw.endsWith('Z')) tsRaw = tsRaw.replace('Z', '');
               const ts = new Date(tsRaw).getTime();
               if (!isNaN(ts)) {
                 const dt = new Date(ts);
@@ -95,7 +93,6 @@ export const StateTimelineView = ({ participantId, globalDateFilter, onNavigate 
             let oTs = ev.createdAt || ev.onset_time;
             if (oTs && typeof oTs === 'object' && oTs.$date) oTs = oTs.$date;
             if (typeof oTs === 'number' && oTs < 20000000000) oTs *= 1000;
-            if (typeof oTs === 'string' && oTs.endsWith('Z')) oTs = oTs.replace('Z', '');
             const timeStr = oTs ? new Date(oTs).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '08:45';
             const nameStr = participantId || 'p001';
             return {

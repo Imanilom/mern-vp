@@ -330,9 +330,6 @@ export const BaselineMaturityView = ({ participantId }) => {
                     if (typeof rawTs === 'number' && rawTs < 20000000000) {
                       parsedTs = rawTs * 1000;
                     }
-                    if (typeof parsedTs === 'string' && parsedTs.endsWith('Z')) {
-                      parsedTs = parsedTs.replace('Z', '');
-                    }
                     const displayTs = parsedTs ? new Date(parsedTs).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':') + ' WIB' : 'Unknown';
                     const ctx = win.context || win.activity_label || win.activity || activeBaseline.activity || 'sitting';
                     

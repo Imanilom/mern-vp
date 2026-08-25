@@ -11,7 +11,6 @@ const formatTime = (ts) => {
   let raw = ts;
   if (raw && typeof raw === 'object' && raw.$date) raw = raw.$date;
   if (typeof raw === 'number' && raw < 20000000000) raw *= 1000;
-  if (typeof raw === 'string' && raw.endsWith('Z')) raw = raw.replace('Z', '');
   const d = new Date(raw);
   if (isNaN(d.getTime())) return String(ts);
   return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');

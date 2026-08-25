@@ -4,6 +4,15 @@ import EpisodeReview from '../models/episode_review.model.js';
 import EpisodeAudit from '../models/episode_audit.model.js';
 import Segment from '../models/segment.model.js';
 
+function extractMs(val) {
+  if (!val) return null;
+  let raw = val;
+  if (raw && typeof raw === 'object' && raw.$date) raw = raw.$date;
+  if (typeof raw === 'number' && raw < 20000000000) raw *= 1000;
+  const d = new Date(raw);
+  return !isNaN(d.getTime()) ? d.getTime() : null;
+}
+
 // Helper to find an anomaly event safely without CastError
 async function findAnomalyEvent(episodeId) {
   if (!episodeId) return null;
@@ -86,7 +95,9 @@ export async function getEpisodeDetail(req, res) {
       // Hitung AUC-D via trapezoidal rule (∫ S(t) dt)
       let auc = 0;
       for (let i = 1; i < segs.length; i++) {
-        const dt = (segs[i].window_start - segs[i-1].window_start) / 60000; // menit
+        const t1 = extractMs(segs[i].createdAt || segs[i].window_start);
+        const t0 = extractMs(segs[i-1].createdAt || segs[i-1].window_start);
+        const dt = (t1 && t0 && t1 > t0) ? (t1 - t0) / 60000 : 5; // menit
         const s0 = segs[i-1].anomaly_score || 0;
         const s1 = segs[i].anomaly_score || 0;
         auc += 0.5 * (s0 + s1) * dt;
@@ -114,8 +125,12 @@ export async function getEpisodeDetail(req, res) {
       ? Math.floor(ep.duration_ms / 60000)
       : (ep.resolved_time && ep.onset_time ? Math.floor((ep.resolved_time - ep.onset_time) / 60000) : null);
 
-    const onsetDate = ep.onset_time ? new Date(ep.onset_time) : new Date();
+    const onsetMs = extractMs(ep.onset_time) || extractMs(segs[0]?.createdAt || segs[0]?.window_start);
+    const onsetDate = onsetMs ? new Date(onsetMs) : new Date();
     const onsetIso  = !isNaN(onsetDate.getTime()) ? onsetDate.toISOString() : new Date().toISOString();
+
+    const peakMs = extractMs(ep.peak_time);
+    const peakIso = peakMs ? new Date(peakMs).toISOString() : onsetIso;
 
     const detail = {
       episodeId:       ep._id ? ep._id.toString() : String(episodeId),
@@ -125,7 +140,7 @@ export async function getEpisodeDetail(req, res) {
       outcome:         ep.physiological_outcome || 'UNRESOLVED',
       onsetAt:         onsetIso,
       peakScore:       typeof ep.peak_score === 'number' ? ep.peak_score : (typeof ep.onset_score === 'number' ? ep.onset_score : null),
-      peakAt:          ep.peak_time ? new Date(ep.peak_time).toISOString() : onsetIso,
+      peakAt:          peakIso,
       durationMin:     durationMin,
       tauIn,
       tauOut,
