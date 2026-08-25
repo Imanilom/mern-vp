@@ -29,6 +29,10 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
   const [isLoading, setIsLoading] = useState(false);
   const PAGE_SIZE = 50;
 
+  // Pagination untuk tabel detail di bagian bawah
+  const [currentDetailPage, setCurrentDetailPage] = useState(1);
+  const DETAIL_PAGE_SIZE = 10;
+
   const fetchEpisodes = async (page = 1, userId = 'ALL') => {
     setIsLoading(true);
     try {
@@ -834,7 +838,8 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
                   </td>
                 </tr>
               ) : (
-                filteredEpisodes.map((ep, idx) => {
+                filteredEpisodes.slice((currentDetailPage - 1) * DETAIL_PAGE_SIZE, currentDetailPage * DETAIL_PAGE_SIZE).map((ep, idxBase) => {
+                  const idx = (currentDetailPage - 1) * DETAIL_PAGE_SIZE + idxBase;
                   const isPersistent = ep.status === 'PERSISTENT_DEVIATION' || ep.status === 'Alert'
                     || ep.status === 'Recovered' || ep.status === 'closed' || ep.status === 'unresolved';
                   const hrVal = ep.peakHr || ep.raw?.peak_hr || (ep.peakScore ? Math.round(75 + ep.peakScore * 10) : 108);
@@ -882,6 +887,13 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
             </tbody>
           </table>
         </div>
+        <Pagination 
+          currentPage={currentDetailPage}
+          totalPages={Math.ceil(filteredEpisodes.length / DETAIL_PAGE_SIZE)}
+          onPageChange={setCurrentDetailPage}
+          totalItems={filteredEpisodes.length}
+          pageSize={DETAIL_PAGE_SIZE}
+        />
       </div>
     </div>
   );
