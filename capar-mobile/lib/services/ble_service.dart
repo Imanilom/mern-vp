@@ -25,6 +25,8 @@ class BleService extends ChangeNotifier {
   StreamSubscription<PolarDeviceDisconnectedEvent>? _disconnectSub;
 
   bool isConnected = false;
+  bool isConnecting = false;
+  String connectingDeviceId = '';
   String deviceName = "Tidak Ada Perangkat";
   String _deviceId = '';
   String get deviceId => _deviceId;
@@ -89,6 +91,14 @@ class BleService extends ChangeNotifier {
   // ─── Init global listeners ───────────────────────────────────────────────────
 
   void _initPolarListeners() {
+    // Device connecting event
+    _polar.deviceConnecting.listen((info) {
+      debugPrint('[Polar] Connecting to: ${info.deviceId}');
+      isConnecting = true;
+      connectingDeviceId = info.deviceId;
+      if (!_isDisposed) notifyListeners();
+    });
+
     // Device connected event
     _connectSub = _polar.deviceConnected.listen((info) {
       debugPrint('[Polar] Connected: ${info.deviceId} (${info.name})');
@@ -97,6 +107,8 @@ class BleService extends ChangeNotifier {
       _savedDeviceId = info.deviceId;
       _isManualDisconnect = false;
       isReconnecting = false;
+      isConnecting = false;
+      connectingDeviceId = '';
       _autoReconnectTimer?.cancel();
       SharedPreferences.getInstance().then((prefs) {
         prefs.setString('device_id', info.deviceId);
@@ -111,6 +123,8 @@ class BleService extends ChangeNotifier {
     _disconnectSub = _polar.deviceDisconnected.listen((deviceId) {
       debugPrint('[Polar] Disconnected: $deviceId');
       isConnected = false;
+      isConnecting = false;
+      connectingDeviceId = '';
       _stopStreams();
       if (!_isDisposed) notifyListeners();
 
@@ -129,34 +143,88 @@ class BleService extends ChangeNotifier {
 
   bool _isDisposed = false;
 
-  // ─── Scan ────────────────────────────────────────────────────────────────────
+  // ─── Scan State ──────────────────────────────────────────────────────────────
+
+  final List<PolarDeviceInfo> _discoveredDevices = [];
+  List<PolarDeviceInfo> get discoveredDevices => List.unmodifiable(_discoveredDevices);
+  StreamSubscription<PolarDeviceInfo>? _scanSub;
+  bool isScanning = false;
 
   Stream<PolarDeviceInfo> get scanResults => _polar.searchForDevice();
 
   Future<void> startScan() async {
-    await [
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-      Permission.location,
-    ].request();
-    debugPrint('[Polar] Starting device search...');
+    try {
+      final statuses = await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+        Permission.location,
+      ].request();
+      debugPrint('[Polar] Permissions requested: $statuses');
+
+      _discoveredDevices.clear();
+      isScanning = true;
+      if (!_isDisposed) notifyListeners();
+
+      _scanSub?.cancel();
+      debugPrint('[Polar] Starting device search...');
+
+      _scanSub = _polar.searchForDevice().listen((device) {
+        if (!_discoveredDevices.any((d) => d.deviceId == device.deviceId)) {
+          _discoveredDevices.add(device);
+          debugPrint('[Polar] Discovered: ${device.name} (${device.deviceId})');
+          if (!_isDisposed) notifyListeners();
+        }
+      }, onError: (e) {
+        debugPrint('[Polar] Scan error: $e');
+        isScanning = false;
+        if (!_isDisposed) notifyListeners();
+      }, onDone: () {
+        isScanning = false;
+        if (!_isDisposed) notifyListeners();
+      });
+    } catch (e) {
+      debugPrint('[Polar] startScan exception: $e');
+      isScanning = false;
+      if (!_isDisposed) notifyListeners();
+    }
   }
 
-  Future<void> stopScan() async {}
+  Future<void> stopScan() async {
+    _scanSub?.cancel();
+    isScanning = false;
+    if (!_isDisposed) notifyListeners();
+  }
 
   // ─── Connect ─────────────────────────────────────────────────────────────────
 
   /// Connect to Polar device by deviceId (MAC address / device serial)
-  Future<bool> connectToDevice(String deviceId) async {
+  Future<bool> connectToDevice(String rawDeviceId) async {
     try {
+      final cleanId = rawDeviceId.trim().toUpperCase();
+      if (cleanId.isEmpty) return false;
+
+      await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+        Permission.location,
+      ].request();
+
       _isManualDisconnect = false;
-      _savedDeviceId = deviceId;
-      debugPrint('[Polar] Connecting to $deviceId ...');
-      _polar.connectToDevice(deviceId);
-      // Connection result via _connectSub listener
+      _savedDeviceId = cleanId;
+      isConnecting = true;
+      connectingDeviceId = cleanId;
+      if (!_isDisposed) notifyListeners();
+
+      stopScan();
+
+      debugPrint('[Polar] Connecting to $cleanId ...');
+      _polar.connectToDevice(cleanId);
       return true;
     } catch (e) {
       debugPrint('[Polar] Connect error: $e');
+      isConnecting = false;
+      connectingDeviceId = '';
+      if (!_isDisposed) notifyListeners();
       return false;
     }
   }

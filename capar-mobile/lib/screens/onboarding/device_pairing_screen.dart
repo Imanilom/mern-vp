@@ -219,6 +219,45 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                         style: TextStyle(fontSize: 14, color: AppColors.gray),
                       ),
                       const SizedBox(height: 20),
+
+                      if (bleState.isConnecting) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.teal.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.teal),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(color: AppColors.teal, strokeWidth: 2.5),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Menghubungkan ke ${bleState.connectingDeviceId}...',
+                                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy, fontSize: 13.5),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text(
+                                      'Dekatkan HP ke Polar H10 dan pastikan tali dada terpasang.',
+                                      style: TextStyle(fontSize: 11.5, color: AppColors.gray),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       _buildScanResults(bleState),
                     ] else ...[
                       const Text(
@@ -279,35 +318,138 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
     );
   }
 
+  final TextEditingController _manualIdController = TextEditingController();
+
+  @override
+  void dispose() {
+    _manualIdController.dispose();
+    super.dispose();
+  }
+
   Widget _buildScanResults(BleService bleService) {
-    return StreamBuilder<PolarDeviceInfo>(
-      stream: bleService.scanResults,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return _buildLoadingScan(bleService);
-        }
+    final devices = bleService.discoveredDevices;
 
-        final device = snapshot.data!;
-        final name = device.name.isNotEmpty ? device.name : 'Polar Device';
-
-        return Card(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Manual Direct ID Input Card
+        Card(
           color: AppColors.surface,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: const BorderSide(color: AppColors.line),
           ),
-          child: ListTile(
-            leading: const Icon(Icons.bluetooth, color: AppColors.teal),
-            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy)),
-            subtitle: Text(device.deviceId, style: const TextStyle(fontSize: 12, color: AppColors.gray)),
-            trailing: TextButton(
-              onPressed: () => bleService.connectToDevice(device.deviceId),
-              child: const Text('Hubungkan', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.teal)),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Hubungkan via ID Perangkat (8 Karakter di Pod Polar H10)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.navy),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _manualIdController,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.navy),
+                        decoration: InputDecoration(
+                          hintText: 'Contoh: 1C2A3B4D',
+                          hintStyle: const TextStyle(fontSize: 13, color: AppColors.gray),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.line),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        final inputId = _manualIdController.text.trim();
+                        if (inputId.isNotEmpty) {
+                          bleService.connectToDevice(inputId);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Masukkan ID perangkat Polar terlebih dahulu!')),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.teal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text('Hubungkan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 16),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Perangkat Terdeteksi',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
+            ),
+            TextButton.icon(
+              onPressed: () => bleService.startScan(),
+              icon: Icon(
+                bleService.isScanning ? Icons.sync : Icons.refresh,
+                size: 16,
+                color: AppColors.teal,
+              ),
+              label: Text(
+                bleService.isScanning ? 'Memindai...' : 'Pindai Ulang',
+                style: const TextStyle(fontSize: 12, color: AppColors.teal, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        if (devices.isEmpty)
+          _buildLoadingScan(bleService)
+        else
+          ...devices.map((device) {
+            final name = device.name.isNotEmpty ? device.name : 'Polar Device';
+            return Card(
+              color: AppColors.surface,
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: AppColors.line),
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.bluetooth, color: AppColors.teal),
+                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy)),
+                subtitle: Text(device.deviceId, style: const TextStyle(fontSize: 12, color: AppColors.gray)),
+                trailing: ElevatedButton(
+                  onPressed: () => bleService.connectToDevice(device.deviceId),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                  child: const Text('Hubungkan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            );
+          }),
+      ],
     );
   }
 
@@ -315,14 +457,17 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
     return Center(
       child: Column(
         children: [
-          const SizedBox(height: 40),
+          const SizedBox(height: 20),
           const CircularProgressIndicator(color: AppColors.teal),
-          const SizedBox(height: 16),
-          const Text('Mencari perangkat Polar...', style: TextStyle(color: AppColors.gray)),
-          TextButton(
-            onPressed: () => bleService.startScan(),
-            child: const Text('Pindai Ulang', style: TextStyle(color: AppColors.teal)),
-          )
+          const SizedBox(height: 12),
+          const Text('Mencari perangkat Polar via Bluetooth...', style: TextStyle(color: AppColors.gray, fontSize: 13)),
+          const SizedBox(height: 8),
+          const Text(
+            '💡 Tips: Pastikan chest strap basah & terpasang di dada agar sensor Polar H10 aktif.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, color: AppColors.gray, fontStyle: FontStyle.italic),
+          ),
+          const SizedBox(height: 12),
         ],
       ),
     );
