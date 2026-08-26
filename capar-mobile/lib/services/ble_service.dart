@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math' show sqrt, sin, Random;
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:polar/polar.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../../shared/models/models.dart';
 
 /// BleService — menggunakan Official Polar BLE SDK (package: polar)
@@ -154,7 +156,16 @@ class BleService extends ChangeNotifier {
 
   Future<void> startScan() async {
     try {
+      if (Platform.isAndroid) {
+        try {
+          if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
+            await FlutterBluePlus.turnOn();
+          }
+        } catch (_) {}
+      }
+
       final statuses = await [
+        Permission.bluetooth,
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
         Permission.location,
@@ -165,7 +176,7 @@ class BleService extends ChangeNotifier {
       isScanning = true;
       if (!_isDisposed) notifyListeners();
 
-      _scanSub?.cancel();
+      await _scanSub?.cancel();
       debugPrint('[Polar] Starting device search...');
 
       _scanSub = _polar.searchForDevice().listen((device) {
@@ -190,7 +201,7 @@ class BleService extends ChangeNotifier {
   }
 
   Future<void> stopScan() async {
-    _scanSub?.cancel();
+    await _scanSub?.cancel();
     isScanning = false;
     if (!_isDisposed) notifyListeners();
   }
@@ -203,7 +214,16 @@ class BleService extends ChangeNotifier {
       final cleanId = rawDeviceId.trim().toUpperCase();
       if (cleanId.isEmpty) return false;
 
+      if (Platform.isAndroid) {
+        try {
+          if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
+            await FlutterBluePlus.turnOn();
+          }
+        } catch (_) {}
+      }
+
       await [
+        Permission.bluetooth,
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
         Permission.location,
@@ -215,10 +235,10 @@ class BleService extends ChangeNotifier {
       connectingDeviceId = cleanId;
       if (!_isDisposed) notifyListeners();
 
-      stopScan();
+      await stopScan();
 
       debugPrint('[Polar] Connecting to $cleanId ...');
-      _polar.connectToDevice(cleanId);
+      await _polar.connectToDevice(cleanId);
       return true;
     } catch (e) {
       debugPrint('[Polar] Connect error: $e');
