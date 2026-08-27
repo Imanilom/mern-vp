@@ -12,12 +12,6 @@ import {
 
 export const ExportView = ({ exportJobs, user }) => {
   const [jobs, setJobs] = useState(exportJobs || []);
-
-  useEffect(() => {
-    if (exportJobs && exportJobs.length > 0) {
-      setJobs(exportJobs);
-    }
-  }, [exportJobs]);
   const [datasetLevels, setDatasetLevels] = useState({
     featureWindows: false,
     stateTimeline: true,
@@ -32,89 +26,72 @@ export const ExportView = ({ exportJobs, user }) => {
   const [includePredictions, setIncludePredictions] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  useEffect(() => {
+    import('../services/api').then(({ api }) => {
+      api.getExportJobs().then(res => {
+        if (res && res.data) {
+          setJobs(res.data);
+        }
+      }).catch(err => console.error(err));
+    });
+  }, []);
+
   const toggleLevel = (key) => {
     setDatasetLevels(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleGenerateExport = (e) => {
+  const handleGenerateExport = async (e) => {
     e.preventDefault();
     setIsGenerating(true);
-    setTimeout(() => {
+    try {
+      const { api } = await import('../services/api');
       const activeScopes = Object.keys(datasetLevels).filter(k => datasetLevels[k]);
-      const scopeLabel = activeScopes.length > 0 ? activeScopes.join(', ') : 'Custom Dataset Bundle';
       
-      const newJob = {
-        id: `EX-${Math.floor(104 + Math.random() * 900)}`,
-        scope: scopeLabel,
-        format: format,
-        status: "Ready",
-        requester: user?.email || user?.name || "admin@capar-research.id",
-        date: new Date().toISOString().replace('T', ' ').substring(0,16),
-        checksum: `sha256:${Math.random().toString(36).substring(2, 10)}...`,
-        levels: { ...datasetLevels }
+      const payload = {
+        datasets: activeScopes,
+        participantId: 'ALL',
+        dateRange: 'ALL',
+        contextFilter: {}
       };
-      setJobs([newJob, ...jobs]);
+      
+      const res = await api.generateExportJob(payload);
+      if (res && res.data) {
+        setJobs([res.data, ...jobs]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
       setIsGenerating(false);
-    }, 1000);
+    }
   };
 
-  const handleDownload = (job) => {
-    let content = "";
-    let mimeType = "text/csv";
-    const rawFmt = (job.format || 'csv').toLowerCase();
-    const ext = rawFmt.includes('json') ? 'json' : (rawFmt.includes('pdf') ? 'txt' : 'csv');
-    const filename = `${job.id}_${(job.scope || 'bundle').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
-    
-    const activeLevels = job.levels || datasetLevels;
-    const selectedColumns = Object.keys(activeLevels).filter(k => activeLevels[k]);
-
-    if (ext === 'json') {
-      mimeType = "application/json";
-      content = JSON.stringify({
-        job_id: job.id,
-        scope: job.scope,
-        format: job.format,
-        created_at: job.date,
-        requester: job.requester,
-        checksum: job.checksum,
-        dataset_levels: activeLevels,
-        summary: {
-          total_records: 1250,
-          status: "VERIFIED"
-        }
-      }, null, 2);
-    } else {
-      mimeType = "text/csv";
-      // Generate actual mock dataset rows based on selected columns
-      const headers = ['record_id', 'timestamp', 'participant_id', ...selectedColumns];
-      content = headers.join(',') + '\n';
+  const handleDownload = async (job) => {
+    try {
+      const jobId = job.id || job._id;
+      // Gunakan instance axios yang sudah dikonfigurasi melalui proxy
+      const { data, headers } = await import('../services/api').then(({ axios }) => axios.get(`/system/export-jobs/${jobId}/download`, { responseType: 'blob' }));
       
-      for (let i = 1; i <= 15; i++) {
-        const row = [
-          `REC-${i.toString().padStart(4, '0')}`,
-          `2026-08-08 10:${i.toString().padStart(2, '0')}:00`,
-          `P00${(i % 3) + 1}`
-        ];
-        
-        selectedColumns.forEach(col => {
-          if (col === 'stateTimeline') row.push(i % 2 === 0 ? 'PERSISTENT_DEVIATION' : 'BASELINE_COMPATIBLE');
-          else if (col === 'episodeTable') row.push(`EP-00${i}`);
-          else row.push(`data_${col}_${i}`);
-        });
-        
-        content += row.join(',') + '\n';
+      const blob = new Blob([data], { type: headers['content-type'] });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Ekstrak nama file dari header Content-Disposition jika ada, atau buat nama file default
+      const contentDisposition = headers['content-disposition'];
+      let filename = `export_${jobId}.json`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?(.+)"?/);
+        if (match && match[1]) filename = match[1];
       }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download export job:', err);
+      alert('Gagal mendownload export bundle. Silakan coba lagi.');
     }
-
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   return (

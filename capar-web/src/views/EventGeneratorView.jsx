@@ -51,6 +51,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
         onsetAt: ep.onsetRaw,
         peakScore: ep.peakScore || 0,
         durationMin: ep.durationMinutes || 0,
+        durationFormatted: ep.durationFormatted,
         outcome: ep.raw?.physiological_outcome || 'UNRESOLVED',
         reviewerDecision: ep.validationLabel || 'None',
         status: ep.status || 'open',
@@ -177,7 +178,7 @@ export default function EventGeneratorView({ globalParticipantFilter, onSelectEp
                     {onsetDate.toLocaleDateString('id-ID')} {onsetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td className="mono fw-bold" style={{ color: r.peakScore > 2.5 ? 'var(--red)' : 'var(--ink)' }}>{(r.peakScore || 0).toFixed(2)}</td>
-                  <td>{r.durationMin}m</td>
+                  <td>{r.durationFormatted || `${r.durationMin}m`}</td>
                   <td>
                     <span className={`evidence-chip ${r.outcome === 'RECOVERED' ? 'chip-green' : 'chip-amber'}`}>
                       {r.outcome}

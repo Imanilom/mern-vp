@@ -361,7 +361,7 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
 
           <div style={{ background: 'var(--green-soft)', border: '1px solid var(--green)', padding: '6px 8px', borderRadius: 8 }}>
             <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--green)' }}>4. RESOLVED STATE</div>
-            <div className="mono" style={{ fontSize: 11, fontWeight: 800, color: 'var(--green)' }}>{selectedEpisode.durationMinutes}m</div>
+            <div className="mono" style={{ fontSize: 11, fontWeight: 800, color: 'var(--green)' }}>{selectedEpisode.durationFormatted || `${selectedEpisode.durationMinutes}m`}</div>
             <div style={{ fontSize: 9.5, color: 'var(--gray)' }}>Return Baseline</div>
           </div>
         </div>
@@ -450,7 +450,7 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
                           <td className="mono" style={{ fontSize: 11 }}>{ep.onsetTime || '-'}</td>
                           <td style={{ textTransform: 'capitalize' }}>{ep.context}</td>
                           <td className="mono fw-bold" style={{ color: ep.peakScore > 2.5 ? 'var(--red)' : 'var(--ink)' }}>{(ep.peakScore || 0).toFixed(2)}</td>
-                          <td>{ep.durationMinutes}m</td>
+                          <td>{ep.durationFormatted || `${ep.durationMinutes}m`}</td>
                           <td><StateBadge state={ep.status} /></td>
                           <td><StateBadge state={ep.reviewStatus} /></td>
                         </tr>
@@ -623,7 +623,7 @@ export const EpisodeView = ({ globalParticipantFilter, globalDateFilter }) => {
                     <div className="col-4">
                       <div style={{ background: 'var(--gray-soft)', padding: '6px 8px', borderRadius: 8 }}>
                         <div className="mini-label">Duration</div>
-                        <div className="mono fw-bold">{selectedEpisode.durationMinutes}m</div>
+                        <div className="mono fw-bold">{selectedEpisode.durationFormatted || `${selectedEpisode.durationMinutes}m`}</div>
                       </div>
                     </div>
                   </div>

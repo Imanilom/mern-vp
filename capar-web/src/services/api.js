@@ -125,6 +125,18 @@ export const api = {
   },
 
   // Helper untuk memetakan raw event ke format episode yang dipakai UI
+  formatDurationMs(msVal) {
+    if (!msVal || msVal <= 0) return '0m';
+    const m = Math.floor(msVal / 60000);
+    const s = Math.floor((msVal % 60000) / 1000);
+    const msRem = msVal % 1000;
+    const parts = [];
+    if (m > 0) parts.push(`${m}m`);
+    if (s > 0) parts.push(`${s}s`);
+    if (msRem > 0) parts.push(`${msRem}ms`);
+    return parts.length > 0 ? parts.join(' ') : '0m';
+  },
+
   _mapEventToEpisode(ev, userMap = {}) {
     const userId = typeof ev.user_id === 'object' && ev.user_id ? ev.user_id._id || ev.user_id : ev.user_id;
     const userInfo = userMap[String(userId)] || ev.user_id || {};
@@ -140,6 +152,10 @@ export const api = {
     const timeStr = onsetDate
       ? onsetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       : '-';
+
+    const msVal = ev.duration_ms || 0;
+    const durFormatted = this.formatDurationMs(msVal);
+
     return {
       id: ev._id || String(Math.random()),
       participantId: userInfo?.guid || userInfo?.email || String(userId),
@@ -158,6 +174,7 @@ export const api = {
       peakHr: ev.peak_hr || null,
       baselineHr: ev.baseline_hr || null,
       durationMinutes: ev.duration_ms ? Math.round(ev.duration_ms / 60000) : 0,
+      durationFormatted: durFormatted,
       classification: ev.classification || 'Alert',
       status: ev.current_state || ev.status || 'open',
       reviewStatus: ev.review_status || 'New',

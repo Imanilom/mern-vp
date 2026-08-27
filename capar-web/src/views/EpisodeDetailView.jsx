@@ -141,7 +141,7 @@ export default function EpisodeDetailView({ episodeId, onBack }) {
               })()}
               tone="danger" 
             />
-            <MetricCard label="Durasi" value={detail.durationMin != null ? `${detail.durationMin}m` : '-'} />
+            <MetricCard label="Durasi" value={detail.duration_ms ? api.formatDurationMs(detail.duration_ms) : (detail.durationMin != null ? `${detail.durationMin}m` : '-')} />
             <MetricCard label="Relapse Count" value={detail.relapseCount} />
           </section>
 
