@@ -239,6 +239,16 @@ class BleService extends ChangeNotifier {
 
       debugPrint('[Polar] Connecting to $cleanId ...');
       await _polar.connectToDevice(cleanId);
+
+      // Timeout fallback: Jika dalam 15 detik tidak masuk ke status connected,
+      // batalkan proses agar UI tidak loading selamanya.
+      Future.delayed(const Duration(seconds: 15), () {
+        if (isConnecting && connectingDeviceId == cleanId && !isConnected) {
+          debugPrint('[Polar] Connection timeout for $cleanId');
+          disconnect(); 
+        }
+      });
+
       return true;
     } catch (e) {
       debugPrint('[Polar] Connect error: $e');

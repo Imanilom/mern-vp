@@ -41,8 +41,11 @@ export const createTransportLog = async (req, res) => {
         let rawTs = (r.timestamp && r.timestamp > 100000) ? r.timestamp : (baseTs + idx);
         let secTs = rawTs > 10000000000 ? Math.floor(rawTs / 1000) : rawTs;
         const now = new Date(secTs * 1000);
-        const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
-        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        // Konversi eksplisit ke WIB (UTC+7) agar konsisten
+        const wibTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+        
+        const dateStr = `${String(wibTime.getUTCDate()).padStart(2, '0')}-${String(wibTime.getUTCMonth() + 1).padStart(2, '0')}-${wibTime.getUTCFullYear()}`;
+        const timeStr = `${String(wibTime.getUTCHours()).padStart(2, '0')}:${String(wibTime.getUTCMinutes()).padStart(2, '0')}:${String(wibTime.getUTCSeconds()).padStart(2, '0')}`;
 
         let act = r.activity || r.motion_state || 'Duduk';
         const validActivities = [

@@ -219,8 +219,12 @@ export async function startLogTransportConsumer() {
 
         let docs = envelope.readings.map((r) => {
           const now = new Date(r.timestamp ? r.timestamp * 1000 : Date.now());
-          const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
-          const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+          
+          // Konversi eksplisit ke WIB (UTC+7) agar tidak bergantung pada timezone server/mesin
+          const wibTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+          
+          const dateStr = `${String(wibTime.getUTCDate()).padStart(2, '0')}-${String(wibTime.getUTCMonth() + 1).padStart(2, '0')}-${wibTime.getUTCFullYear()}`;
+          const timeStr = `${String(wibTime.getUTCHours()).padStart(2, '0')}:${String(wibTime.getUTCMinutes()).padStart(2, '0')}:${String(wibTime.getUTCSeconds()).padStart(2, '0')}`;
           
           let act = r.activity || r.motion_state || 'Duduk';
           if (!validActivities.includes(act)) act = 'Lainnya';

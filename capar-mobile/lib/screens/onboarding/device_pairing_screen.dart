@@ -370,10 +370,18 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         final inputId = _manualIdController.text.trim();
                         if (inputId.isNotEmpty) {
-                          bleService.connectToDevice(inputId);
+                          final success = await bleService.connectToDevice(inputId);
+                          if (!success && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Gagal terhubung. Pastikan alat menempel di dada & tidak terkoneksi ke app lain (mis. Polar Flow).'),
+                                backgroundColor: AppColors.rose,
+                              ),
+                            );
+                          }
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Masukkan ID perangkat Polar terlebih dahulu!')),
@@ -437,7 +445,17 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                 title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy)),
                 subtitle: Text(device.deviceId, style: const TextStyle(fontSize: 12, color: AppColors.gray)),
                 trailing: ElevatedButton(
-                  onPressed: () => bleService.connectToDevice(device.deviceId),
+                  onPressed: () async {
+                    final success = await bleService.connectToDevice(device.deviceId);
+                    if (!success && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Gagal terhubung. Pastikan alat dipakai dan tidak terkoneksi ke app lain.'),
+                          backgroundColor: AppColors.rose,
+                        ),
+                      );
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.teal,
                     foregroundColor: Colors.white,

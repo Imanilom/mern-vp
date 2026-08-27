@@ -2447,7 +2447,10 @@ export async function getPersonalExperienceMemory(req, res) {
 
     segments.forEach(seg => {
       const dt = seg.window_start ? new Date(seg.window_start) : new Date();
-      const hour = dt.getHours();
+      
+      // Konversi eksplisit ke WIB (UTC+7)
+      const wibDt = new Date(dt.getTime() + (7 * 60 * 60 * 1000));
+      const hour = wibDt.getUTCHours();
 
       let periodKey = 'morning';
       if (hour >= 12 && hour < 18) periodKey = 'afternoon';
