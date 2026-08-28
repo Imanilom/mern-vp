@@ -126,7 +126,7 @@ export const api = {
 
   // Helper untuk memetakan raw event ke format episode yang dipakai UI
   formatDurationMs(msVal) {
-    if (!msVal || msVal <= 0) return '0m';
+    if (!msVal || msVal <= 0) return '-';
     const m = Math.floor(msVal / 60000);
     const s = Math.floor((msVal % 60000) / 1000);
     const msRem = msVal % 1000;
@@ -134,7 +134,7 @@ export const api = {
     if (m > 0) parts.push(`${m}m`);
     if (s > 0) parts.push(`${s}s`);
     if (msRem > 0) parts.push(`${msRem}ms`);
-    return parts.length > 0 ? parts.join(' ') : '0m';
+    return parts.length > 0 ? parts.join(' ') : '-';
   },
 
   _mapEventToEpisode(ev, userMap = {}) {
