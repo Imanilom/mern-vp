@@ -125,8 +125,13 @@ export const api = {
   },
 
   // Helper untuk memetakan raw event ke format episode yang dipakai UI
-  formatDurationMs(msVal) {
-    if (!msVal || msVal <= 0) return '-';
+  formatDurationMs(msVal, status = null) {
+    if (!msVal || msVal <= 0) {
+      if (status && !['closed', 'transient', 'recovered', 'RECOVERED', 'CLOSED'].includes(status)) {
+        return 'Ongoing';
+      }
+      return '-';
+    }
     const m = Math.floor(msVal / 60000);
     const s = Math.floor((msVal % 60000) / 1000);
     const msRem = msVal % 1000;
@@ -154,7 +159,8 @@ export const api = {
       : '-';
 
     const msVal = ev.duration_ms || 0;
-    const durFormatted = this.formatDurationMs(msVal);
+    const currentStatus = ev.current_state || ev.status || 'open';
+    const durFormatted = this.formatDurationMs(msVal, currentStatus);
 
     return {
       id: ev._id || String(Math.random()),

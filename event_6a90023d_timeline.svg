@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#ffffff" />
+  
+  <!-- Header -->
+  <text x="30" y="40" font-size="18px" font-weight="bold" fill="#1a252f" font-family="Arial, sans-serif">CAPAR 2.0 — Episode Lifecycle &amp; Timeline Trajectory</text>
+  <text x="30" y="62" font-size="12px" fill="#5a6b7c" font-family="Arial, sans-serif">Event ID: 6a90023d74156d89d1dc451b | User ID: 6a7e4fc8a6e8c17678a91e8f | Duduk (Evening)</text>
+  
+  <!-- Grid & Axes -->
+  <!-- Y-Axis ticks & Grid -->
+  <line x1="80" y1="420" x2="840" y2="420" stroke="#e9ecef" stroke-width="1" />
+  <text x="50" y="424" font-size="11px" fill="#7f8c8d" font-family="monospace">0.0</text>
+  
+  <line x1="80" y1="356" x2="840" y2="356" stroke="#e9ecef" stroke-width="1" />
+  <text x="50" y="360" font-size="11px" fill="#7f8c8d" font-family="monospace">1.0</text>
+  
+  <line x1="80" y1="292" x2="840" y2="292" stroke="#e9ecef" stroke-width="1" />
+  <text x="50" y="296" font-size="11px" fill="#7f8c8d" font-family="monospace">2.0</text>
+  
+  <line x1="80" y1="228" x2="840" y2="228" stroke="#e9ecef" stroke-width="1" />
+  <text x="50" y="232" font-size="11px" fill="#7f8c8d" font-family="monospace">3.0</text>
+  
+  <line x1="80" y1="164" x2="840" y2="164" stroke="#e9ecef" stroke-width="1" />
+  <text x="50" y="168" font-size="11px" fill="#7f8c8d" font-family="monospace">4.0</text>
+  
+  <line x1="80" y1="100" x2="840" y2="100" stroke="#e9ecef" stroke-width="1" />
+  <text x="50" y="104" font-size="11px" fill="#7f8c8d" font-family="monospace">5.0</text>
+  
+  <!-- Threshold Lines -->
+  <!-- tau_in = 1.70 -> Y = 420 - (1.70 * 64) = 311.2 -->
+  <line x1="80" y1="311.2" x2="840" y2="311.2" stroke="#e74c3c" stroke-width="1.8" stroke-dasharray="6,4" />
+  <text x="620" y="305" font-size="11px" font-weight="bold" fill="#e74c3c" font-family="Arial, sans-serif">tau_in = 1.70 (Candidate Onset)</text>
+  
+  <!-- tau_out = 0.85 -> Y = 420 - (0.85 * 64) = 365.6 -->
+  <line x1="80" y1="365.6" x2="840" y2="365.6" stroke="#f39c12" stroke-width="1.8" stroke-dasharray="4,4" />
+  <text x="620" y="360" font-size="11px" font-weight="bold" fill="#f39c12" font-family="Arial, sans-serif">tau_out = 0.85 (Recovery Entry)</text>
+  
+  <!-- tau_normal = 0.59 -> Y = 420 - (0.59 * 64) = 382.24 -->
+  <line x1="80" y1="382.24" x2="840" y2="382.24" stroke="#2ecc71" stroke-width="1.8" stroke-dasharray="2,2" />
+  <text x="620" y="396" font-size="11px" font-weight="bold" fill="#2ecc71" font-family="Arial, sans-serif">tau_normal = 0.59 (Baseline Normal)</text>
+  
+  <!-- Trajectory Line Path -->
+  <!-- Points:
+       (0) 16:17:19 -> X=80, Score 0.50 -> Y=388.0
+       (1) 16:22:19 -> X=270, Score 4.63 -> Y=123.68
+       (2) 16:27:19 -> X=460, Score 3.52 -> Y=194.72
+       (3) 16:32:19 -> X=650, Score 3.20 -> Y=215.2
+       (4) 16:57:19 -> X=840, Score 1.40 -> Y=330.4 (DISCONNECT)
+  -->
+  <path d="M 80,388.0 L 270,123.68 L 460,194.72 L 650,215.2 L 840,330.4" fill="none" stroke="#2980b9" stroke-width="3" />
+  
+  <!-- Disconnect gap dashed line between X=650 and X=840 -->
+  <line x1="650" y1="215.2" x2="840" y2="330.4" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="4,4" />
+  
+  <!-- Data Points -->
+  <!-- P0 -->
+  <circle cx="80" cy="388.0" r="6" fill="#2980b9" stroke="#ffffff" stroke-width="2" />
+  <text x="70" y="378.0" font-size="11px" font-weight="bold" fill="#2980b9" font-family="Arial">0.50</text>
+  <text x="58" y="444" font-size="11px" font-weight="bold" fill="#2c3e50" font-family="monospace">16:17:19</text>
+
+  <!-- P1: Candidate Onset -->
+  <circle cx="270" cy="123.68" r="7" fill="#e74c3c" stroke="#ffffff" stroke-width="2" />
+  <text x="256" y="112.0" font-size="11px" font-weight="bold" fill="#e74c3c" font-family="Arial">4.63</text>
+  <text x="248" y="444" font-size="11px" font-weight="bold" fill="#2c3e50" font-family="monospace">16:22:19</text>
+  
+  <!-- Candidate Box -->
+  <rect x="205" y="70" width="130" height="34" rx="5" fill="#fadbd8" stroke="#e74c3c" stroke-width="1.2" />
+  <text x="213" y="86" font-size="10px" font-weight="bold" fill="#78281f" font-family="Arial">1. Candidate Onset</text>
+  <text x="213" y="98" font-size="9px" fill="#78281f" font-family="Arial">Score 4.63 &gt;= 1.70</text>
+
+  <!-- P2: Persistent Deviation -->
+  <circle cx="460" cy="194.72" r="7" fill="#8e44ad" stroke="#ffffff" stroke-width="2" />
+  <text x="448" y="184.0" font-size="11px" font-weight="bold" fill="#8e44ad" font-family="Arial">3.52</text>
+  <text x="438" y="444" font-size="11px" font-weight="bold" fill="#2c3e50" font-family="monospace">16:27:19</text>
+  
+  <!-- Persistent Box -->
+  <rect x="390" y="138" width="140" height="34" rx="5" fill="#ebdef0" stroke="#8e44ad" stroke-width="1.2" />
+  <text x="398" y="154" font-size="10px" font-weight="bold" fill="#4a235a" font-family="Arial">2. PERSISTENT (2 of 3)</text>
+  <text x="398" y="166" font-size="9px" fill="#4a235a" font-family="Arial">2 windows &gt;= 1.70</text>
+
+  <!-- P3: Last Valid Window -->
+  <circle cx="650" cy="215.2" r="6" fill="#34495e" stroke="#ffffff" stroke-width="2" />
+  <text x="638" y="205.0" font-size="11px" font-weight="bold" fill="#34495e" font-family="Arial">3.20</text>
+  <text x="628" y="444" font-size="11px" font-weight="bold" fill="#2c3e50" font-family="monospace">16:32:19</text>
+
+  <!-- P4: Disconnect Trigger -->
+  <circle cx="840" cy="330.4" r="7" fill="#c0392b" stroke="#ffffff" stroke-width="2" />
+  <text x="828" y="320.0" font-size="11px" font-weight="bold" fill="#c0392b" font-family="Arial">1.40</text>
+  <text x="818" y="444" font-size="11px" font-weight="bold" fill="#2c3e50" font-family="monospace">16:57:19</text>
+  
+  <!-- Disconnect Box -->
+  <rect x="670" y="355" width="220" height="42" rx="5" fill="#f9ebea" stroke="#c0392b" stroke-width="1.2" />
+  <text x="678" y="371" font-size="10px" font-weight="bold" fill="#641e16" font-family="Arial">3. DISCONNECT HANDLER</text>
+  <text x="678" y="384" font-size="9px" fill="#641e16" font-family="Arial">Gap &gt; 15m -&gt; Force Closed Tau_Out</text>
+  <text x="678" y="393" font-size="8px" font-weight="bold" fill="#c0392b" font-family="monospace">resolved_time: 16:32:19</text>
+
+  <!-- Axes lines -->
+  <line x1="80" y1="420" x2="840" y2="420" stroke="#2c3e50" stroke-width="2" />
+  <line x1="80" y1="420" x2="80" y2="100" stroke="#2c3e50" stroke-width="2" />
+  
+  <text x="400" y="480" font-size="12px" font-weight="bold" fill="#2c3e50" font-family="Arial">Waktu Deteksi (WIB)</text>
+</svg>

@@ -811,9 +811,21 @@ export const GAP_PAUSE_MS = 60 * 60 * 1000; // 60 menit — untuk mengizinkan da
 export function updateTemporalState(state, score, maturityLevel, tau = null, windowStart = null) {
   const ws = windowStart !== null ? new Date(windowStart).getTime() : null;
 
-  // ── Deteksi gap SEBELUM logic threshold biasa ──────────────────────────
+  const DISCONNECT_TIMEOUT_MS = 15 * 60 * 1000; // 15 menit gap = data terputus / device dilepas
+
+  // ── Deteksi gap / data terputus / device dilepas SEBELUM logic biasa ───
   if (ws !== null && state.last_window_start !== null) {
     const elapsed = ws - state.last_window_start;
+    if (elapsed > DISCONNECT_TIMEOUT_MS && state.episode_active) {
+      state.last_window_start = ws;
+      state.episode_active = false;
+      state.window_history = [];
+      return {
+        rr_status: 'DISCONNECT_TAU_OUT',
+        safe_to_update: false,
+        reason: 'Data terputus / device dilepas sebelum titik tau_out (Force closed at last valid window)'
+      };
+    }
     if (elapsed > GAP_PAUSE_MS) {
       state.last_window_start = ws;
       // JANGAN reset high_count/low_count/episode_active — cuma tandai paused
@@ -846,12 +858,19 @@ export function updateTemporalState(state, score, maturityLevel, tau = null, win
     tau_normal = tau_out * 0.7;
   }
 
-  // Transisi BC → DEVIATION_CANDIDATE
+  // Sliding window history untuk 2-of-3 window persistence check
+  if (!state.window_history) state.window_history = [];
+  state.window_history.push(score >= tau_in);
+  if (state.window_history.length > 3) state.window_history.shift();
+
+  const countInLast3 = state.window_history.filter(Boolean).length;
+
+  // Transisi BC → DEVIATION_CANDIDATE / PERSISTENT_DEVIATION (2 dari 3 window)
   if (score >= tau_in) {
     state.high_count++;
     state.low_count = 0;
-    if (state.high_count >= cfg.persistence_windows) {
-      state.episode_active = true;
+    state.episode_active = true; // Tandai episode aktif sejak candidate onset
+    if (countInLast3 >= 2 || state.high_count >= cfg.persistence_windows) {
       state.cooldown = cfg.cooldown_windows;
       return { rr_status: 'PERSISTENT_DEVIATION', safe_to_update: false };
     }
@@ -861,6 +880,11 @@ export function updateTemporalState(state, score, maturityLevel, tau = null, win
   state.high_count = 0;
 
   if (state.episode_active) {
+    // Dalam episode — jika masih 2 dari 3 window aktif dan score di atas tau_out, pertahankan PERSISTENT_DEVIATION
+    if (countInLast3 >= 2 && score > tau_out) {
+      return { rr_status: 'PERSISTENT_DEVIATION', safe_to_update: false };
+    }
+
     // Dalam episode — cek recovery (score <= tau_out) dan recovered (score <= tau_normal)
     if (score <= tau_normal) {
       // Fast track: langsung cek recovered jika score sangat rendah
@@ -868,6 +892,7 @@ export function updateTemporalState(state, score, maturityLevel, tau = null, win
       if (state.low_count >= cfg.recovery_windows) {
         state.episode_active = false;
         state.low_count = 0;
+        state.window_history = [];
         state.cooldown = cfg.cooldown_windows;
         return { rr_status: 'RECOVERED', safe_to_update: false };
       }
@@ -877,6 +902,7 @@ export function updateTemporalState(state, score, maturityLevel, tau = null, win
       if (state.low_count >= cfg.recovery_windows) {
         state.episode_active = false;
         state.low_count = 0;
+        state.window_history = [];
         state.cooldown = cfg.cooldown_windows;
         return { rr_status: 'RECOVERED', safe_to_update: false };
       }
@@ -904,7 +930,7 @@ export function touchTemporalState(state, windowStart) {
 
 /** Buat state temporal baru. */
 export function createTemporalState() {
-  return { high_count: 0, low_count: 0, episode_active: false, cooldown: 0, last_window_start: null };
+  return { high_count: 0, low_count: 0, episode_active: false, cooldown: 0, last_window_start: null, window_history: [] };
 }
 
 

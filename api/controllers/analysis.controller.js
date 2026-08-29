@@ -17,6 +17,7 @@ import Segment from '../models/segment.model.js';
 import Baseline from '../models/baseline.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
 import EpisodeAnalysis from '../models/episode_analysis.model.js';
+import EpisodeMeta from '../models/episodemeta.model.js';
 import EmaResponse from '../models/ema.model.js';
 import User from '../models/user.model.js';
 import Patient from '../models/patient.model.js';
@@ -404,11 +405,33 @@ async function analyzeUser(userId) {
  */
 async function closeResolvedEvents(userId, persistenceState) {
   for (const [activity, state] of Object.entries(persistenceState)) {
-    if (state.openEventId && state.count === 0) {
-      await AnomalyEvent.updateOne(
-        { _id: state.openEventId, status: 'open' },
-        { $set: { status: 'closed' } }
-      );
+    if (state.openEventId) {
+      const ev = await AnomalyEvent.findById(state.openEventId);
+      if (ev && (ev.status === 'open' || ev.status === 'paused')) {
+        const lastWinStart = state.lastWindowStart || ev.onset_time || Date.now();
+        const startWinStart = ev.onset_time || lastWinStart;
+        const totalDurationMs = Math.max(lastWinStart - startWinStart, 0);
+
+        const updatedEv = await AnomalyEvent.findByIdAndUpdate(
+          ev._id,
+          {
+            $set: {
+              status: 'closed',
+              current_state: ev.current_state === 'DEVIATION_CANDIDATE' ? 'BASELINE_COMPATIBLE' : 'FORCE_CLOSED_TAU_OUT',
+              recovery_entry_at: ev.recovery_entry_at || lastWinStart,
+              recovered_at: ev.recovered_at || lastWinStart,
+              resolved_time: ev.resolved_time || lastWinStart,
+              duration_ms: ev.duration_ms || totalDurationMs,
+              unresolved_reason: ev.unresolved_reason || 'Data stream terputus / device dilepas sebelum recovery tau_out',
+            }
+          },
+          { new: true }
+        );
+        if (updatedEv) {
+          await generateEpisodeAnalysis(updatedEv._id);
+          await syncEpisodeMeta(updatedEv);
+        }
+      }
     }
   }
 }
@@ -1699,6 +1722,46 @@ async function updateRRPersistence(
   let eventCreated = false;
   const segWinStart = extractMs(seg.createdAt || seg.window_start) || Date.now();
 
+  // ── Tangani status DISCONNECT_TAU_OUT (Data terputus / device dilepas) ─
+  if (rr_status === 'DISCONNECT_TAU_OUT') {
+    if (state.openEventId) {
+      const lastWinStart = state.lastWindowStart || segWinStart;
+      const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || lastWinStart;
+      const durationMs = Math.max(lastWinStart - startWinStart, 0);
+
+      const updatedEv = await AnomalyEvent.findByIdAndUpdate(
+        state.openEventId,
+        {
+          $set: {
+            status: 'closed',
+            current_state: 'FORCE_CLOSED_TAU_OUT',
+            recovery_entry_at: lastWinStart,
+            recovered_at: lastWinStart,
+            resolved_time: lastWinStart,
+            duration_ms: durationMs,
+            unresolved_reason: 'Data terputus / device dilepas sebelum titik tau_out (Force closed at last valid window)',
+          }
+        },
+        { new: true }
+      );
+      console.log(`[Layer3-RR] Episode FORCE_CLOSED_TAU_OUT (Data Disconnected) user=${userId} act=${activity}`);
+      if (updatedEv) {
+        await generateEpisodeAnalysis(updatedEv._id);
+        await syncEpisodeMeta(updatedEv);
+      }
+    }
+
+    const closedId = state.openEventId;
+    persistenceState[activity] = {
+      count: 0, recoveryCount: 0, segIds: [], scores: [],
+      peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
+      lastWindowStart: segWinStart,
+      lastClosedEventTime: segWinStart,
+      lastClosedEventId: closedId
+    };
+    return eventCreated;
+  }
+
   // ── Tangani status PAUSED lebih dulu ────────────────────────────────────
   if (rr_status === 'PERSISTENT_PAUSED' || rr_status === 'DEVIATION_PAUSED' || rr_status === 'BASELINE_PAUSED') {
     if (state.openEventId) {
@@ -1779,6 +1842,10 @@ async function updateRRPersistence(
     if (score > state.peakScore) { state.peakScore = score; state.peakSeg = seg; }
     if (!state.startSeg) state.startSeg = seg;
 
+    const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || segWinStart;
+    const segWinEnd = extractMs(seg.window_end) || (segWinStart + 300000);
+    const ongoingDurationMs = Math.max(segWinEnd - startWinStart, 0);
+
     if (!state.openEventId) {
       // Create Event early (at DEVIATION_CANDIDATE)
       let isRelapse = false;
@@ -1795,6 +1862,7 @@ async function updateRRPersistence(
         onset_time: segWinStart,
         started_at: segWinStart,
         candidate_at: segWinStart,
+        duration_ms: ongoingDurationMs,
         onset_score: state.scores[0],
         peak_time: segWinStart,
         peak_score: state.peakScore,
@@ -1826,6 +1894,7 @@ async function updateRRPersistence(
         peak_hr: state.peakSeg?.features?.mean_hr || seg.features?.mean_hr || null,
         baseline_hr: baseline?.stats?.mean_hr?.mean || null,
         classification,
+        duration_ms: ongoingDurationMs,
         'trajectory.sequence_of_scores': state.scores,
         'trajectory.persistence': state.count,
         window_count: state.count,
@@ -1851,10 +1920,15 @@ async function updateRRPersistence(
       state.segIds.push(seg._id);
       state.scores.push(score);
 
+      const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || segWinStart;
+      const segWinEnd = extractMs(seg.window_end) || (segWinStart + 300000);
+      const ongoingDurationMs = Math.max(segWinEnd - startWinStart, 0);
+
       await AnomalyEvent.updateOne({ _id: state.openEventId }, {
         $set: {
           recovery_started_at: segWinStart,
           current_state: 'RECOVERING',
+          duration_ms: ongoingDurationMs,
           'trajectory.sequence_of_scores': state.scores,
           window_count: state.segIds.length,
         },
@@ -1921,6 +1995,7 @@ async function updateRRPersistence(
       await AnomalyEvent.updateOne({ _id: state.openEventId }, {
         $set: {
           resolved_time: segWinStart,
+          recovered_at: segWinStart,
           duration_ms: totalDurationMs,
           status: 'transient',
           current_state: 'BASELINE_COMPATIBLE',
@@ -1945,6 +2020,54 @@ async function updateRRPersistence(
 
   state.lastWindowStart = segWinStart;
   return eventCreated;
+}
+
+export async function syncEpisodeMeta(ev, analysisId = null) {
+  if (!ev || !ev._id) return;
+  try {
+    const onsetDate = ev.onset_time ? new Date(ev.onset_time) : new Date();
+    const dateStr = onsetDate.toISOString().split('T')[0];
+    const timeStr = onsetDate.toTimeString().split(' ')[0];
+
+    let participantId = String(ev.user_id);
+    if (ev.user_id && typeof ev.user_id === 'object') {
+      participantId = ev.user_id.guid || ev.user_id.email || ev.user_id.name || String(ev.user_id._id);
+    } else {
+      const u = await User.findById(ev.user_id).select('guid email name').lean();
+      if (u) participantId = u.guid || u.email || u.name || String(ev.user_id);
+    }
+
+    let metaStatus = 'candidate';
+    const stateStr = String(ev.current_state || ev.status || '').toUpperCase();
+    if (stateStr.includes('PERSISTENT')) metaStatus = 'persistent';
+    else if (stateStr.includes('RECOVERED')) metaStatus = 'recovered';
+    else if (stateStr.includes('RECOVERING')) metaStatus = 'recovering';
+    else if (stateStr.includes('TRANSIENT')) metaStatus = 'transient';
+    else if (stateStr.includes('UNRESOLVED')) metaStatus = 'unresolved';
+
+    const updateDoc = {
+      user_id: typeof ev.user_id === 'object' && ev.user_id._id ? ev.user_id._id : ev.user_id,
+      participant_id: participantId,
+      date: dateStr,
+      time: timeStr,
+      onset_timestamp: ev.onset_time || onsetDate.getTime(),
+      status: metaStatus,
+      current_state: ev.current_state || ev.status || 'DEVIATION_CANDIDATE',
+      activity: ev.activity || 'Unknown',
+      classification: ev.classification || 'Alert',
+      peak_score: ev.peak_score || ev.onset_score || 0,
+      duration_ms: ev.duration_ms || 0,
+    };
+    if (analysisId) updateDoc.analysis_id = analysisId;
+
+    await EpisodeMeta.findOneAndUpdate(
+      { episode_id: ev._id },
+      { $set: updateDoc },
+      { upsert: true, new: true }
+    );
+  } catch (err) {
+    console.warn('[EpisodeMeta] Sync failed for event:', ev._id, err.message);
+  }
 }
 
 export async function generateEpisodeAnalysis(eventId) {
@@ -2020,7 +2143,7 @@ export async function generateEpisodeAnalysis(eventId) {
       console.warn('[generateEpisodeAnalysis] Failed to fetch active baseline for tau, using default.', e.message);
     }
 
-    await EpisodeAnalysis.findOneAndUpdate(
+    const epAnalysis = await EpisodeAnalysis.findOneAndUpdate(
       { episode_id: ev._id },
       {
         start_time: onset,
@@ -2070,6 +2193,11 @@ export async function generateEpisodeAnalysis(eventId) {
       { upsert: true, new: true }
     );
     console.log(`[EpisodeAnalysis] Generated for Event ID: ${eventId}`);
+
+    // Synchronize to EpisodeMeta
+    if (epAnalysis) {
+      await syncEpisodeMeta(ev, epAnalysis._id);
+    }
   } catch (err) {
     console.error('[generateEpisodeAnalysis] Error:', err.message);
   }
