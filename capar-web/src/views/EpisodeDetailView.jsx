@@ -361,7 +361,7 @@ function ScoreTrajectoryChart({ episode, points }) {
           ))}
           {/* Score Area & Line */}
           <Area type="monotone" dataKey="score" fill="url(#scoreAreaGrad)" stroke="none" isAnimationActive={false} />
-          <Line type="monotone" dataKey="score" stroke="#087F7A" strokeWidth={3} dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="score" stroke="#087F7A" strokeWidth={3} dot={points.length <= 1 ? { r: 4, fill: '#087F7A', stroke: '#fff', strokeWidth: 2 } : false} isAnimationActive={false} />
 
           {/* Event Markers */}
           {markers.map((m, i) => (

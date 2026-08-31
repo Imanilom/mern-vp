@@ -157,8 +157,8 @@ export async function getEpisodeDetail(req, res) {
     if (epAnalysis) {
       detail.analysis = {
         latentSeverity: epAnalysis.latent_severity,
-        meanQuality: epAnalysis.mean_quality,
-        validFraction: epAnalysis.valid_fraction,
+        meanQuality: epAnalysis.quality_score ?? epAnalysis.mean_quality,
+        validFraction: epAnalysis.valid_fraction ?? (epAnalysis.artifact_fraction != null ? 1 - epAnalysis.artifact_fraction : null),
         deviationBurden: epAnalysis.deviation_burden,
         recoverySlope: epAnalysis.recovery_slope,
         hrMean: epAnalysis.hr_mean,
