@@ -151,6 +151,7 @@ export default function EpisodeDetailView({ episodeId, onBack }) {
               <StateTimeline points={trajectory} />
               {/* Gunakan trajectory (sama dengan chart) agar waktu selaras */}
               <ContextTrack rows={trajectory} />
+              <SignalQualityTrack rows={trajectory} />
             </div>
             <aside className="side-area">
               <EpisodeMetrics episode={detail} />
@@ -274,6 +275,20 @@ function ScoreTrajectoryChart({ episode, points }) {
         <div style={{ fontSize: 11, opacity: 0.8 }}>
           Context: <strong>{data.activityContext}</strong> | Quality: <span style={{ color: '#81C784' }}>{data.qualityFlag}</span>
         </div>
+        {/* Tambahan multi-model */}
+        {data.hrv && (
+          <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.2)', fontSize: 10 }}>
+            <div>HR: {data.hr} | SDNN: {data.hrv.sdnn?.toFixed(1) || '-'} | RMSSD: {data.hrv.rmssd?.toFixed(1) || '-'} {data.hrv.dfa != null ? `| DFAα1: ${data.hrv.dfa.toFixed(2)}` : ''}</div>
+            {data.zScores && (
+              <div style={{ color: '#90CAF9', marginTop: 2 }}>
+                Z-Score HR: {data.zScores.z_hr?.toFixed(2) || '-'} | RR: {data.zScores.z_rr?.toFixed(2) || '-'}
+              </div>
+            )}
+            <div style={{ color: data.signalQuality === 'Valid' ? '#81C784' : '#E57373', marginTop: 2 }}>
+               Signal Quality: {data.signalQuality} (Q: {data.qSignal?.toFixed(2) || '-'})
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -337,6 +352,13 @@ function ScoreTrajectoryChart({ episode, points }) {
           <ReferenceLine y={episode.tauOut} stroke="#EF8D00" strokeDasharray="4 4" strokeWidth={1.5}
             label={{ position: 'insideTopLeft', value: `tau_out = ${episode.tauOut}`, fill: '#EF8D00', fontSize: 10, fontWeight: 700 }} />
 
+          {/* Vertical Marker Lines for Onset and Recovery */}
+          {markers.filter(m => m.eventMarker === 'ONSET').map((m, i) => (
+            <ReferenceLine key={`onset-line-${i}`} x={m.timeLabel} stroke="#C62828" strokeDasharray="3 3" strokeWidth={1} strokeOpacity={0.7} />
+          ))}
+          {markers.filter(m => m.eventMarker === 'RECOVERED' || m.eventMarker === 'RECOVERY_ENTRY').map((m, i) => (
+            <ReferenceLine key={`rec-line-${i}`} x={m.timeLabel} stroke="#EF8D00" strokeDasharray="3 3" strokeWidth={1} strokeOpacity={0.7} />
+          ))}
           {/* Score Area & Line */}
           <Area type="monotone" dataKey="score" fill="url(#scoreAreaGrad)" stroke="none" isAnimationActive={false} />
           <Line type="monotone" dataKey="score" stroke="#087F7A" strokeWidth={3} dot={false} isAnimationActive={false} />
@@ -509,6 +531,53 @@ function ContextTrack({ rows }) {
 }
 
 
+function SignalQualityTrack({ rows }) {
+  const collapsed = useMemo(() => {
+    const res = [];
+    let cur = null;
+    rows.forEach(p => {
+      const sq = p.signalQuality || 'Valid';
+      if (!cur || cur.sq !== sq) {
+        if (cur) res.push(cur);
+        cur = { sq, start: p.timeLabel, count: 1 };
+      } else {
+        cur.count++;
+      }
+    });
+    if (cur) res.push(cur);
+    return res;
+  }, [rows]);
+
+  const sqColor = (sq) => {
+    if (sq === 'Valid') return { bg: '#e8f6ed', text: '#16764b' };
+    if (sq === 'Artifact') return { bg: '#fde7e7', text: '#b42318' };
+    return { bg: '#f1f5f9', text: '#64748b' };
+  };
+  
+  if (collapsed.length === 0) return null;
+  const CHART_LEFT_PAD = 30;
+  const CHART_RIGHT_PAD = 25;
+
+  return (
+    <div className="card-panel mb-3" style={{ padding: '8px 14px' }}>
+      <h5 style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Signal Quality</h5>
+      <div style={{ display: 'flex', overflow: 'hidden', borderRadius: 6, border: '1px solid var(--line)', marginLeft: CHART_LEFT_PAD, marginRight: CHART_RIGHT_PAD, marginBottom: 4 }}>
+        {collapsed.map((c, i) => {
+          const { bg, text } = sqColor(c.sq);
+          return (
+            <div key={i} style={{ flex: Math.max(c.count, 1), background: bg, color: text, padding: '4px 6px', fontSize: 10, fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={c.sq}>{c.sq}</div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 2, marginLeft: CHART_LEFT_PAD, marginRight: CHART_RIGHT_PAD }}>
+        <span style={{ fontSize: 10, color: 'var(--gray)' }}>{rows[0]?.timeLabel || ''}</span>
+        <span style={{ fontSize: 10, color: 'var(--gray)' }}>{rows[rows.length - 1]?.timeLabel || ''}</span>
+      </div>
+    </div>
+  );
+}
+
+
 function EpisodeMetrics({ episode }) {
   // ── Null-safe formatters ───────────────────────────────────────────────────
   const fmtNum  = (val, dec = 2) => (val != null && !isNaN(val)) ? Number(val).toFixed(dec) : null;
@@ -589,6 +658,57 @@ function EpisodeMetrics({ episode }) {
             : <NaTag reason="Tidak ada data state" />
           }
         </li>
+
+        {/* Multi-model Analysis Data */}
+        {episode.analysis && (
+          <>
+            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4, borderTop: '1px solid var(--line)', marginTop: 2 }}>
+              <span className="text-muted" title="Latent Severity Index">Latent Severity:</span>
+              <strong style={{ color: 'var(--amber)', fontFamily: 'monospace' }}>
+                {fmtNum(episode.analysis.latentSeverity) || <NaTag reason="N/A" />}
+              </strong>
+            </li>
+            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="text-muted" title="Mean Quality Score">Quality Score:</span>
+              <strong style={{ color: 'var(--teal)', fontFamily: 'monospace' }}>
+                {episode.analysis.meanQuality ? (episode.analysis.meanQuality * 100).toFixed(0) + '%' : <NaTag reason="N/A" />}
+              </strong>
+            </li>
+            
+            {episode.totalPausedMs > 0 && (
+            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="text-muted" title="Total waktu di-pause (ms)">Total Paused:</span>
+              <strong style={{ color: 'var(--red)', fontFamily: 'monospace' }}>
+                {(episode.totalPausedMs / 60000).toFixed(1)} min
+              </strong>
+            </li>
+            )}
+
+            {episode.zScoresAtPeak && (
+            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4, borderTop: '1px dashed var(--line)', marginTop: 2 }}>
+              <span className="text-muted" title="Z-Scores at Peak (HR / RR)">Peak Z-Score:</span>
+              <strong style={{ color: 'var(--navy)', fontSize: 10, fontFamily: 'monospace' }}>
+                HR: {episode.zScoresAtPeak.z_hr?.toFixed(1) || '-'} | RR: {episode.zScoresAtPeak.z_rr?.toFixed(1) || '-'}
+              </strong>
+            </li>
+            )}
+
+            {episode.analysis.evaluations && (
+              <li style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)' }}>
+                <span className="text-muted" style={{ display: 'block', marginBottom: 4, fontSize: 11, fontWeight: 700 }}>Clinical Evaluations (E1-E6):</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                   {Object.entries(episode.analysis.evaluations).map(([k, v]) => (
+                     <span key={k} style={{ 
+                        fontSize: 9, fontWeight: 700, padding: '2px 4px', borderRadius: 4,
+                        background: v.result === 'PASS' ? '#e8f6ed' : (v.result === 'FAIL' ? '#fde7e7' : '#f1f5f9'),
+                        color: v.result === 'PASS' ? '#16764b' : (v.result === 'FAIL' ? '#b42318' : '#64748b')
+                     }} title={`Score: ${v.score || '-'}`}>{k}: {v.result || 'N/A'}</span>
+                   ))}
+                </div>
+              </li>
+            )}
+          </>
+        )}
 
       </ul>
     </div>

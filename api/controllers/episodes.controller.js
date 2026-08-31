@@ -3,7 +3,7 @@ import AnomalyEvent from '../models/anomalyevent.model.js';
 import EpisodeReview from '../models/episode_review.model.js';
 import EpisodeAudit from '../models/episode_audit.model.js';
 import Segment from '../models/segment.model.js';
-
+import EpisodeAnalysis from '../models/episode_analysis.model.js';
 function extractMs(val) {
   if (!val) return null;
   let raw = val;
@@ -152,6 +152,37 @@ export async function getEpisodeDetail(req, res) {
       reviewerDecision: latestReview ? latestReview.decision : (ep.validation_label || null),
     };
 
+    // Tambahkan data kaya dari EpisodeAnalysis jika ada (multi-model)
+    const epAnalysis = await EpisodeAnalysis.findOne({ episode_id: ep._id }).lean().catch(() => null);
+    if (epAnalysis) {
+      detail.analysis = {
+        latentSeverity: epAnalysis.latent_severity,
+        meanQuality: epAnalysis.mean_quality,
+        validFraction: epAnalysis.valid_fraction,
+        deviationBurden: epAnalysis.deviation_burden,
+        recoverySlope: epAnalysis.recovery_slope,
+        hrMean: epAnalysis.hr_mean,
+        rmssd: epAnalysis.rmssd,
+        sdnn: epAnalysis.sdnn,
+        evaluations: {
+          E1: { score: epAnalysis.score_E1, result: epAnalysis.result_E1 },
+          E2: { score: epAnalysis.score_E2, result: epAnalysis.result_E2 },
+          E3: { score: epAnalysis.score_E3, result: epAnalysis.result_E3 },
+          E4: { score: epAnalysis.score_E4, result: epAnalysis.result_E4 },
+          E5: { score: epAnalysis.score_E5, result: epAnalysis.result_E5 },
+          E6: { score: epAnalysis.score_E6, result: epAnalysis.result_E6 }
+        }
+      };
+      
+      detail.zScoresAtPeak = ep.z_scores_at_peak || null;
+      detail.totalPausedMs = ep.total_paused_ms || 0;
+      
+      // Jika AUC-D kosong, fallback ke EpisodeAnalysis
+      if (detail.aucD == null && epAnalysis.deviation_auc != null) {
+        detail.aucD = epAnalysis.deviation_auc;
+      }
+    }
+
     return res.json({ success: true, data: detail });
   } catch (err) {
     console.error('[getEpisodeDetail] Error:', err.message);
@@ -193,7 +224,17 @@ export async function getEpisodeTrajectory(req, res) {
           eventMarker: marker,
           qualityFlag: s.quality_flag || 'OK',
           activityContext: s.activity_label || 'sitting',
-          contextConfidence: s.context_confidence || 0.95
+          contextConfidence: s.context_confidence || 0.95,
+          // Tambahan multi-model features dari Segment
+          hrv: {
+            rr: s.features?.mean_rr,
+            sdnn: s.features?.sdnn,
+            rmssd: s.features?.rmssd,
+            dfa: s.features?.dfa_alpha1
+          },
+          zScores: s.z_scores ? { ...s.z_scores } : null,
+          signalQuality: s.signal_quality?.is_artifact ? 'Artifact' : 'Valid',
+          qSignal: s.signal_quality_detail?.q_signal || 1.0
         };
       });
     } else {
