@@ -697,7 +697,14 @@ export const api = {
     const body = useExported
       ? { useExported: true, raw_data: rawData?.raw_data, fsm_states: rawData?.fsm_states, thresholds: rawData?.thresholds }
       : { episodeId };
-    return axios.post('/ai/zero-shot/analyze', body).then(res => res.data);
+    return axios.post('/ai/zero-shot/analyze', body)
+      .then(res => res.data)
+      .catch(err => {
+        if (err.response?.data?.message) {
+          throw new Error(err.response.data.message);
+        }
+        throw err;
+      });
   },
   async listZeroShotEpisodes(userId = 'ALL') {
     const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
