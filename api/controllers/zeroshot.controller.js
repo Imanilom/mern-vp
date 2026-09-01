@@ -502,7 +502,14 @@ export async function listZeroShotEpisodes(req, res) {
   try {
     const userId = req.query.userId;
     const filter = {};
-    if (userId && userId !== 'ALL') filter.user_id = userId;
+    if (userId && userId !== 'ALL') {
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        filter.user_id = new mongoose.Types.ObjectId(userId);
+      } else {
+        // userId is not a valid ObjectId, so no record will match in AnomalyEvent
+        return res.json({ success: true, data: [] });
+      }
+    }
 
     const episodes = await AnomalyEvent
       .find(filter, {
