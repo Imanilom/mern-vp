@@ -36,6 +36,7 @@ import { startLogTransportConsumer } from './utils/logTransport.js';
 import doctorRouter from './routes/doctor.route.js';
 import userpatientRouter from './routes/userpatient.route.js';
 import aipipelineRouter from './routes/aipipeline.route.js';
+import zeroshotRouter from './routes/zeroshot.route.js';
 import { verifyToken } from './utils/verifyUser.js';
 dotenv.config();
 
@@ -203,6 +204,7 @@ app.use("/api/reports", reportRouter);
 app.use("/api/doctor", doctorRouter);
 app.use("/api/patient-user", userpatientRouter);
 app.use("/api/ai", aipipelineRouter);
+app.use("/api/ai/zero-shot", zeroshotRouter);
 app.use("/api/ml", mlRouter);
 app.use("/api/system", systemRouter);
 app.use("/api/episodes", episodesRouter);

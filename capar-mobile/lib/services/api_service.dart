@@ -389,4 +389,59 @@ class ApiService {
     }
     return null;
   }
+
+  // ── Zero-Shot LLM Analysis ────────────────────────────────────────────────
+
+  /// Mengambil daftar episode untuk dianalisis zero-shot
+  static Future<List<Map<String, dynamic>>> fetchZeroShotEpisodes() async {
+    try {
+      final headers = await _getHeaders();
+      final uid = await _getUserId();
+      final query = uid.isNotEmpty ? '?userId=$uid' : '';
+      final response = await http
+          .get(Uri.parse('$baseUrl/ai/zero-shot/episodes$query'),
+              headers: headers)
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] is List) {
+          return List<Map<String, dynamic>>.from(
+            (data['data'] as List).map((e) => Map<String, dynamic>.from(e)),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] fetchZeroShotEpisodes error: $e');
+    }
+    return [];
+  }
+
+  /// Menjalankan analisis zero-shot untuk satu episode
+  static Future<Map<String, dynamic>?> runZeroShotAnalysis(
+      String episodeId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/ai/zero-shot/analyze'),
+            headers: headers,
+            body: json.encode({'episodeId': episodeId}),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      } else {
+        final err = json.decode(response.body);
+        return {
+          'success': false,
+          'message': err['message'] ?? 'Error ${response.statusCode}'
+        };
+      }
+    } catch (e) {
+      debugPrint('[ApiService] runZeroShotAnalysis error: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
 }

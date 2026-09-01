@@ -22,13 +22,14 @@ const AuditView            = lazy(() => import('./views/AuditView').then(m => ({
 const SettingsView         = lazy(() => import('./views/SettingsView').then(m => ({ default: m.SettingsView })));
 const UserManagementView   = lazy(() => import('./views/UserManagementView'));
 const ProfileView          = lazy(() => import('./views/ProfileView').then(m => ({ default: m.ProfileView })));
+const ZeroShotView         = lazy(() => import('./views/ZeroShotView').then(m => ({ default: m.ZeroShotView })));
 
 // ── Valid tab list ────────────────────────────────────────────────────────────
 const VALID_TABS = [
   'overview','live-monitor','signal-quality','baseline-maturity',
   'state-timeline','episode','event-generator','episode-detail',
   'experience','prediction-eval','model-rules','export','audit',
-  'settings','user-management','profile',
+  'settings','user-management','profile','zero-shot',
 ];
 
 // ── Hash routing helpers ──────────────────────────────────────────────────────
@@ -290,6 +291,9 @@ export function App() {
           {tab('settings', <SettingsView user={userRole} />)}
           {tab('user-management', <UserManagementView />)}
           {tab('profile', <ProfileView user={userRole} />)}
+          {tab('zero-shot',
+            <ZeroShotView globalParticipantFilter={globalParticipantFilter} />
+          )}
         </main>
       </div>
 

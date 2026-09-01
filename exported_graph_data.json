@@ -1,0 +1,396 @@
+{
+  "x_ticks": [
+    "0",
+    "W1 (Onset)",
+    "W2 (Pers)",
+    "W3 (Hold)",
+    "W4 (Rec)",
+    "W5 (Res)"
+  ],
+  "y_scores": [
+    0.5,
+    4.630937674944507,
+    3.7047501399556055,
+    1.275,
+    0.7224999999999999,
+    0.476
+  ],
+  "fsm_states": [
+    "BASELINE_COMPATIBLE",
+    "DEVIATION_CANDIDATE",
+    "PERSISTENT_DEVIATION",
+    "PERSISTENT_DEVIATION",
+    "RECOVERY_ENTRY",
+    "BASELINE_COMPATIBLE"
+  ],
+  "thresholds": {
+    "TAU_IN": 1.7,
+    "TAU_OUT": 0.85,
+    "TAU_NORMAL": 0.595
+  },
+  "state_vals": [
+    0,
+    1,
+    2,
+    2,
+    0.5,
+    0
+  ],
+  "raw_data": {
+    "event_doc": {
+      "_id": "6a90023d74156d89d1dc451b",
+      "user_id": "6a7e4fc8a6e8c17678a91e8f",
+      "device_id": "E4F82A29",
+      "activity": "Duduk",
+      "onset_time": 1787822539472.0,
+      "started_at": 1787822539472.0,
+      "candidate_at": 1787822539472.0,
+      "peak_time": 1787822539472.0,
+      "resolved_time": 1787823739472.0,
+      "actual_onset_time": null,
+      "duration_ms": 1200000.0,
+      "onset_score": 4.630937674944507,
+      "peak_score": 4.630937674944507,
+      "peak_hr": 102.65,
+      "baseline_hr": 64.88,
+      "classification": "Alert",
+      "trajectory": {
+        "sequence_of_scores": [
+          4.630937674944507,
+          3.52
+        ],
+        "delta_hr": null,
+        "persistence": 2,
+        "dfa_alpha1": null,
+        "dfa_alpha2": null,
+        "recovery_time_ms": null
+      },
+      "segment_ids": [
+        "6a9001cb8269202384f61737"
+      ],
+      "status": "closed",
+      "auc_score": null,
+      "window_count": 2,
+      "unresolved_reason": null,
+      "admin_status": "CLOSED",
+      "physiological_outcome": "RESOLVED",
+      "current_state": "BASELINE_COMPATIBLE",
+      "recovery_entry_at": 1787822839472.0,
+      "ttr_min": null,
+      "peak_count": 0,
+      "relapse_count": 0,
+      "relapse": false,
+      "relapse_at": null,
+      "parent_episode_id": null,
+      "rule_version": "1.0.0",
+      "total_paused_ms": 0,
+      "last_paused_at": null,
+      "review_status": "New",
+      "validation_label": "None",
+      "reviewer_id": null,
+      "reviewer_notes": "",
+      "escalated": false,
+      "pause_history": [],
+      "annotations": [],
+      "createdAt": "2026-08-27 09:24:13.291000",
+      "updatedAt": "2026-08-30 13:05:12.577000",
+      "__v": 1,
+      "recovered_at": 1787823739472.0
+    },
+    "baseline_doc": {
+      "_id": "6a86dd04887ea5e3990e3894",
+      "user_id": "6a7e4fc8a6e8c17678a91e8f",
+      "activity": "Duduk",
+      "time_period": "evening",
+      "stats": {
+        "mean_hr": {
+          "n": 1,
+          "mean": 91.04,
+          "M2": 0,
+          "std": 0,
+          "min": 91.04,
+          "max": 91.04
+        },
+        "std_hr": {
+          "n": 0,
+          "mean": 0,
+          "M2": 0,
+          "std": 0,
+          "min": null,
+          "max": null
+        },
+        "delta_hr": {
+          "n": 1,
+          "mean": 12,
+          "M2": 0,
+          "std": 0,
+          "min": 12,
+          "max": 12
+        },
+        "slope_hr": {
+          "n": 1,
+          "mean": -0.0115,
+          "M2": 0,
+          "std": 0,
+          "min": -0.0115,
+          "max": -0.0115
+        },
+        "mean_rr": {
+          "n": 0,
+          "mean": 0,
+          "M2": 0,
+          "std": 0,
+          "min": null,
+          "max": null
+        },
+        "sdnn": {
+          "n": 1,
+          "mean": 22.5,
+          "M2": 0,
+          "std": 0,
+          "min": 22.5,
+          "max": 22.5
+        },
+        "rmssd": {
+          "n": 1,
+          "mean": 15.33,
+          "M2": 0,
+          "std": 0,
+          "min": 15.33,
+          "max": 15.33
+        },
+        "rolling_variance": {
+          "n": 0,
+          "mean": 0,
+          "M2": 0,
+          "std": 0,
+          "min": null,
+          "max": null
+        },
+        "motion_intensity": {
+          "n": 1,
+          "mean": 0.98,
+          "M2": 0,
+          "std": 0,
+          "min": 0.98,
+          "max": 0.98
+        },
+        "dfa_alpha1": {
+          "n": 1,
+          "mean": 1.3364,
+          "M2": 0,
+          "std": 0,
+          "min": 1.3364,
+          "max": 1.3364
+        }
+      },
+      "segment_count": 404,
+      "is_mature": false,
+      "MATURITY_THRESHOLD": 20,
+      "is_frozen": false,
+      "version": 1,
+      "status": "learning",
+      "maturity_detail": {
+        "n_effective": 0,
+        "distinct_days": 0,
+        "max_single_day_frac": 1,
+        "q_signal": 0,
+        "q_complete": 0,
+        "q_context": 0,
+        "q_stability": 0,
+        "bq": 0,
+        "level": "cold_start",
+        "failed_gates": [],
+        "last_computed": null
+      },
+      "window_timestamps": [
+        1787100000
+      ],
+      "q_signal_history": [
+        1
+      ],
+      "q_complete_history": [
+        1
+      ],
+      "q_context_history": [
+        1
+      ],
+      "learned_tau": {
+        "tau_in": 1.7,
+        "tau_out": 1.1,
+        "tau_normal": 0.75,
+        "source": "provisional",
+        "stable_score_count": 3,
+        "computed_at": "2026-08-23 09:46:10.415000"
+      },
+      "stable_score_history": [],
+      "last_updated": "2026-08-20 10:55:00.714000",
+      "createdAt": "2026-08-20 10:55:00.708000",
+      "updatedAt": "2026-08-30 18:37:31.644000",
+      "__v": 0
+    },
+    "segment_doc": {
+      "_id": "6a9001cb8269202384f61737",
+      "device_id": "E4F82A29",
+      "user_id": "6a7e4fc8a6e8c17678a91e8f",
+      "window_start": 1787700000,
+      "__v": 0,
+      "activity_label": "Berbaring",
+      "analyzed": true,
+      "anomaly_score": 4.63,
+      "classification": "Alert",
+      "createdAt": "2026-08-27 09:22:19.472000",
+      "doctor_validation": {
+        "doctor_notes": "",
+        "status": "pending",
+        "validated_at": null,
+        "validated_by": null
+      },
+      "dt_prediction": {
+        "predicted_activity": null,
+        "confidence": 0
+      },
+      "features": {
+        "mean_hr": 97,
+        "std_hr": 3.07,
+        "delta_hr": 11,
+        "slope_hr": 0.1822,
+        "mean_rr": 614.53,
+        "sdnn": 22.97,
+        "rmssd": 13.32,
+        "rolling_variance": 9.4,
+        "motion_intensity": 0.98,
+        "step_count": 0,
+        "dfa_alpha1": 1.7912,
+        "dfa_alpha2": null,
+        "adfa_plus": 2.1378,
+        "adfa_minus": 0.2063,
+        "nn50": 0,
+        "pnn50": 0,
+        "lf": 4219.232,
+        "hf": 5635.2344
+      },
+      "ground_truth_label": null,
+      "is_valid": true,
+      "missing_data_info": {
+        "confidence_score": 99.5,
+        "expected_count": 1000,
+        "missing_count": 5,
+        "missing_ratio": 0.005,
+        "received_count": 995
+      },
+      "quality_audit": {
+        "annotation_confidence": 0,
+        "annotation_present": false,
+        "gate_passed": false,
+        "gate_reasons": [],
+        "rr_artifact_count": 0,
+        "rr_artifact_fraction": 0,
+        "rr_corrected_count": 0,
+        "rr_missing_count": 0,
+        "rr_missing_fraction": 0,
+        "rr_normalized_count": 0,
+        "rr_total_received": 0
+      },
+      "raw_count": 30,
+      "rr_status": "DEVIATION_CANDIDATE",
+      "signal_quality": {
+        "artifact_type": null,
+        "is_anomaly": false,
+        "is_artifact": false
+      },
+      "signal_quality_detail": {
+        "artifact_fraction": null,
+        "missing_fraction": null,
+        "q_complete": null,
+        "q_context": null,
+        "q_signal": null
+      },
+      "updatedAt": "2026-08-27 09:55:35.675000",
+      "window_end": 1788000000,
+      "window_type": "5min",
+      "z_scores": {
+        "z_hr": 8,
+        "z_sdnn": 0.4,
+        "z_rmssd": -4.64,
+        "z_dfa": 5.62,
+        "z_motion": null
+      }
+    },
+    "meta_doc": {
+      "_id": "meta_6d89d1dc451b",
+      "episode_id": "6a90023d74156d89d1dc451b",
+      "analysis_id": "6a9002a474156d89d1dc451d",
+      "user_id": "6a7e4fc8a6e8c17678a91e8f",
+      "date": "2026-08-27",
+      "time": "16:22:19",
+      "status": "recovered",
+      "current_state": "BASELINE_COMPATIBLE",
+      "peak_score": 4.630937674944507,
+      "duration_ms": 1200000.0
+    },
+    "analysis_doc": {
+      "_id": "6a9002a474156d89d1dc451d",
+      "start_time": "2026-08-27 09:22:19.472000",
+      "end_time": "2026-08-27 09:24:19.472000",
+      "user_id": "6a7e4fc8a6e8c17678a91e8f",
+      "profile": "Personal",
+      "activity": "Duduk",
+      "context": "Duduk",
+      "episode_id": "6a90023d74156d89d1dc451b",
+      "evidence_state": "ALERT",
+      "physiological_state": "PERSISTENT_DEVIATION",
+      "y_true": "1",
+      "latent_severity": 1.85,
+      "anomaly_score": 1.85,
+      "candidate_duration": 0,
+      "persistent_duration": 0,
+      "recovery_duration": 0,
+      "total_duration": 0,
+      "ttr": null,
+      "abstention_count": 0,
+      "relapse_detected": false,
+      "relapse_count": 0,
+      "time_to_relapse": null,
+      "tau_in": 1.86,
+      "tau_out": 1.2,
+      "tau_normal": 0.75,
+      "hr_mean": 102.65,
+      "rmssd": 24.2,
+      "sdnn": 38.5,
+      "dfa_alpha1": 1.15,
+      "quality_score": 0.94,
+      "artifact_fraction": 0.038,
+      "context_confidence": 0.89,
+      "activity_purity": 0.92,
+      "quality_gate_pass": true,
+      "score_E1": 1.612,
+      "pred_E1": "1",
+      "result_E1": "TP",
+      "score_E2": 2.358,
+      "pred_E2": "1",
+      "result_E2": "TP",
+      "score_E3": 1.612,
+      "pred_E3": "1",
+      "result_E3": "TP",
+      "score_E4": 1.762,
+      "pred_E4": "1",
+      "result_E4": "TP",
+      "score_E5": 1.762,
+      "pred_E5": "1",
+      "result_E5": "TP",
+      "score_E6": 1.85,
+      "pred_E6": "1",
+      "result_E6": "TP",
+      "predicted_state_E6": "PERSISTENT_DEVIATION",
+      "z_E1": 3.606,
+      "z_E2": 5.442,
+      "z_E3": 3.606,
+      "z_E4": 3.606,
+      "context_changes": [],
+      "createdAt": "2026-08-27 09:25:56.507000",
+      "updatedAt": "2026-08-27 09:25:56.507000",
+      "__v": 0
+    }
+  }
+}

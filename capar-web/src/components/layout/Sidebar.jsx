@@ -32,6 +32,9 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     { id: 'user-management',   label: 'User Management',    icon: 'fa-users-gear',             roles: ['admin', 'doctor'] },
     { id: 'profile',           label: 'My Profile',         icon: 'fa-user',                   roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'settings',          label: 'Settings',           icon: 'fa-user-shield',            roles: ['admin', 'doctor', 'researcher', 'user'] },
+
+    // === AI Tools ===
+    { id: 'zero-shot',         label: 'AI Zero-Shot',       icon: 'fa-robot',                  roles: ['admin', 'researcher', 'doctor'] },
   ];
 
   const navItems = allNavItems.filter(item => item.roles.includes(role));
@@ -59,6 +62,7 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     'user-management':   'System',
     'profile':           null,
     'settings':          null,
+    'zero-shot':         'AI Tools',
   };
 
   return (

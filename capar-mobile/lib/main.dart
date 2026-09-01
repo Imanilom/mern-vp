@@ -13,6 +13,7 @@ import 'screens/onboarding/login_screen.dart';
 import 'screens/onboarding/splash_transition_screen.dart';
 import 'screens/onboarding/welcome_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/insight/zero_shot_screen.dart';
 import 'theme/app_colors.dart';
 
 void main() {
@@ -76,6 +77,7 @@ class _MainTabShellState extends State<MainTabShell> {
     const JourneyScreen(),
     const HistoryScreen(),
     const InsightScreen(),
+    const ZeroShotScreen(),
     const ProfileScreen(),
   ];
 
@@ -132,6 +134,11 @@ class _MainTabShellState extends State<MainTabShell> {
                 icon: Icon(Icons.lightbulb_rounded),
                 activeIcon: Icon(Icons.lightbulb_rounded, size: 24),
                 label: 'Insights',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.smart_toy_rounded),
+                activeIcon: Icon(Icons.smart_toy_rounded, size: 24),
+                label: 'AI',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_rounded),

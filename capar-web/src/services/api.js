@@ -690,5 +690,20 @@ export const api = {
   },
   async runAblationExperiment(userId = 'ALL', config = {}) {
     return axios.post('/analysis/ablation/run', { participantId: userId, config }).then(res => res.data);
-  }
+  },
+
+  // --- ZERO-SHOT LLM ANALYSIS ---
+  async zeroShotAnalyze(episodeId, useExported = false, rawData = null) {
+    const body = useExported
+      ? { useExported: true, raw_data: rawData?.raw_data, fsm_states: rawData?.fsm_states, thresholds: rawData?.thresholds }
+      : { episodeId };
+    return axios.post('/ai/zero-shot/analyze', body).then(res => res.data);
+  },
+  async listZeroShotEpisodes(userId = 'ALL') {
+    const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
+    return axios.get(`/ai/zero-shot/episodes?userId=${target}`).then(res => res.data).catch(() => ({ success: false, data: [] }));
+  },
+  async zeroShotPromptPreview(episodeId) {
+    return axios.get(`/ai/zero-shot/prompt-preview?episodeId=${episodeId}`).then(res => res.data);
+  },
 };
