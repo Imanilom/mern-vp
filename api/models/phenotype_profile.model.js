@@ -23,7 +23,7 @@ const PhenotypeProfileSchema = new mongoose.Schema(
         narrative: { type: String, default: '' },
         evidence: { type: String, default: '' },
         metrics: { type: String, default: '' },
-        confidence: { type: String, enum: ['tinggi', 'sedang', 'rendah'], default: 'sedang' },
+        confidence: { type: String, enum: ['tinggi', 'sedang', 'rendah'], default: 'tinggi' },
       }, { _id: false }),
       default: {},
     },

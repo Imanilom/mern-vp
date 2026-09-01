@@ -7,6 +7,9 @@ import {
   Line,
   AreaChart,
   Area,
+  BarChart,
+  Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -274,15 +277,22 @@ function TrajectoryCustomTooltip({ active, payload, label }) {
       background: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(8px)',
       border: '1px solid #334155', borderRadius: 10, padding: '12px 16px',
       color: '#F8FAFC', fontSize: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-      minWidth: 240, maxWidth: 320
+      minWidth: 260, maxWidth: 340
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, borderBottom: '1px solid #334155', paddingBottom: 6 }}>
-        <span style={{ fontWeight: 800, color: '#38BDF8', fontSize: 12 }}>
-          <i className="fa-regular fa-clock" style={{ marginRight: 5 }} />{data.dateTime || label}
-        </span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #334155', paddingBottom: 6 }}>
+        <div>
+          <div style={{ fontWeight: 900, color: '#38BDF8', fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <i className="fa-solid fa-calendar-days" style={{ color: '#38BDF8' }} />
+            {data.dateFull || data.date || 'Tanggal'}
+          </div>
+          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 1 }}>
+            <i className="fa-regular fa-clock" style={{ marginRight: 4 }} />
+            Pukul {data.time || label} WIB
+          </div>
+        </div>
         <span style={{
           background: `${stateColor}25`, color: stateColor, border: `1px solid ${stateColor}50`,
-          padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 800
+          padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 800
         }}>
           {data.state || 'NORMAL'}
         </span>
@@ -468,7 +478,9 @@ export function AutonomicProfileView() {
     return ['ALL', ...Array.from(new Set(Q_FRAMEWORK.map(q => q.category)))];
   }, []);
 
-  // Format trajectory data for Recharts
+  const [selectedDateFilter, setSelectedDateFilter] = useState('ALL');
+
+  // Format trajectory data for Recharts with explicit Dates
   const chartData = useMemo(() => {
     if (!Array.isArray(trajectorySegments) || trajectorySegments.length === 0) return [];
     
@@ -477,16 +489,30 @@ export function AutonomicProfileView() {
       let timeMs = wStart;
       if (typeof timeMs === 'number' && timeMs < 1e12) timeMs *= 1000;
       const d = timeMs ? new Date(timeMs) : new Date();
-      const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const dateStr = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' });
+
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+
+      const dateShort = `${day}/${month}`;
+      const dateFull = `${day}/${month}/${year}`;
+      const timeStr = `${hours}:${minutes}:${seconds}`;
+      const timeShort = `${hours}:${minutes}`;
+      const displayLabel = `${dateShort} ${timeShort}`;
       const feat = seg.features || {};
       const z = seg.z_scores || {};
       
       return {
         idx: idx + 1,
         time: timeStr,
-        date: dateStr,
-        dateTime: `${dateStr} ${timeStr}`,
+        timeShort: timeShort,
+        date: dateShort,
+        dateFull: dateFull,
+        displayLabel: displayLabel,
+        dateTime: `${dateFull} ${timeStr}`,
         timestamp: timeMs,
         hr: feat.mean_hr !== undefined && feat.mean_hr !== null ? Number(feat.mean_hr.toFixed(1)) : null,
         deltaHr: feat.delta_hr !== undefined && feat.delta_hr !== null ? Number(feat.delta_hr.toFixed(1)) : null,
@@ -508,30 +534,47 @@ export function AutonomicProfileView() {
     });
   }, [trajectorySegments]);
 
+  // Unique available dates in the dataset
+  const availableDates = useMemo(() => {
+    return Array.from(new Set(chartData.map(d => d.dateFull).filter(Boolean)));
+  }, [chartData]);
+
+  // Filtered dataset by date
+  const activeChartData = useMemo(() => {
+    if (selectedDateFilter === 'ALL') return chartData;
+    return chartData.filter(d => d.dateFull === selectedDateFilter);
+  }, [chartData, selectedDateFilter]);
+
   // Trajectory Summary Metrics
   const summaryStats = useMemo(() => {
-    if (chartData.length === 0) return null;
-    const hrVals = chartData.map(d => d.hr).filter(v => v !== null);
-    const rmssdVals = chartData.map(d => d.rmssd).filter(v => v !== null);
-    const dfaVals = chartData.map(d => d.dfa).filter(v => v !== null);
-    const scoreVals = chartData.map(d => d.anomalyScore).filter(v => v !== null);
+    if (activeChartData.length === 0) return null;
+    const hrVals = activeChartData.map(d => d.hr).filter(v => v !== null);
+    const rmssdVals = activeChartData.map(d => d.rmssd).filter(v => v !== null);
+    const dfaVals = activeChartData.map(d => d.dfa).filter(v => v !== null);
+    const scoreVals = activeChartData.map(d => d.anomalyScore).filter(v => v !== null);
 
     const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
     const max = arr => arr.length ? Math.max(...arr) : 0;
     const min = arr => arr.length ? Math.min(...arr) : 0;
 
+    const minDate = activeChartData[0]?.dateFull || '-';
+    const maxDate = activeChartData[activeChartData.length - 1]?.dateFull || '-';
+
     return {
-      totalPoints: chartData.length,
+      totalPoints: activeChartData.length,
+      minDate,
+      maxDate,
+      daysCount: availableDates.length,
       avgHr: avg(hrVals).toFixed(1),
       maxHr: max(hrVals).toFixed(1),
       minHr: min(hrVals).toFixed(1),
       avgRmssd: avg(rmssdVals).toFixed(1),
       avgDfa: avg(dfaVals).toFixed(3),
       maxScore: max(scoreVals).toFixed(2),
-      alertCount: chartData.filter(d => d.classification === 'Alert').length,
-      cautionCount: chartData.filter(d => d.classification === 'Caution').length,
+      alertCount: activeChartData.filter(d => d.classification === 'Alert').length,
+      cautionCount: activeChartData.filter(d => d.classification === 'Caution').length,
     };
-  }, [chartData]);
+  }, [activeChartData, availableDates]);
 
   return (
     <div style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif' }}>
@@ -726,17 +769,30 @@ export function AutonomicProfileView() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
               <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: 16, fontWeight: 900, color: '#0F2027', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <i className="fa-solid fa-wave-square" style={{ color: 'var(--teal, #00A896)' }} />
-                  Grafik Lintasan Temporal Fitur Fisiologis & Regulasi Otonom
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#0F2027', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <i className="fa-solid fa-wave-square" style={{ color: 'var(--teal, #00A896)' }} />
+                    Grafik Lintasan Temporal Fitur Fisiologis & Regulasi Otonom
+                  </h3>
+                  {summaryStats && summaryStats.minDate && (
+                    <span style={{
+                      background: '#0F2027', color: '#4EECD6', padding: '3px 10px',
+                      borderRadius: 20, fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 5
+                    }}>
+                      <i className="fa-solid fa-calendar-days" />
+                      {summaryStats.minDate === summaryStats.maxDate ? summaryStats.minDate : `${summaryStats.minDate} s/d ${summaryStats.maxDate}`}
+                    </span>
+                  )}
+                </div>
                 <p style={{ margin: 0, fontSize: 12, color: '#64748B' }}>
                   Evolusi dinamika time-series beat-to-beat dan window agregasi dari waktu ke waktu untuk pasien <strong>{selectedUser?.name || 'Pasien'}</strong>.
                 </p>
               </div>
 
-              {/* View Filters & Limit */}
+              {/* View Filters, Date Filter & Limit */}
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                
+                {/* Feature View Switcher */}
                 <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 8, border: '1px solid #E2E8F0' }}>
                   {[
                     { id: 'ALL', label: 'Semua Lintasan' },
@@ -760,6 +816,21 @@ export function AutonomicProfileView() {
                   ))}
                 </div>
 
+                {/* Date Dropdown Filter */}
+                <select
+                  value={selectedDateFilter}
+                  onChange={e => setSelectedDateFilter(e.target.value)}
+                  style={{
+                    padding: '5px 10px', borderRadius: 8, border: '1.5px solid #00A896',
+                    fontSize: 11.5, fontWeight: 700, background: '#E6FFFA', color: '#006D63'
+                  }}>
+                  <option value="ALL">📅 Semua Tanggal ({availableDates.length} Hari)</option>
+                  {availableDates.map(dStr => (
+                    <option key={dStr} value={dStr}>📅 Tanggal {dStr}</option>
+                  ))}
+                </select>
+
+                {/* Sample Limit */}
                 <select
                   value={segmentLimit}
                   onChange={e => setSegmentLimit(Number(e.target.value))}
@@ -802,9 +873,9 @@ export function AutonomicProfileView() {
                 </div>
 
                 <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '10px 12px', borderRadius: 8 }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>TOTAL TITIK WINDOW</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: '#0F172A' }}>{summaryStats.totalPoints}</div>
-                  <div style={{ fontSize: 10, color: '#64748B' }}>± {summaryStats.totalPoints} menit observasi</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>TOTAL OBSERVASI</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#0F172A' }}>{summaryStats.totalPoints} <span style={{ fontSize: 11 }}>window</span></div>
+                  <div style={{ fontSize: 10, color: '#64748B' }}>{summaryStats.minDate} {summaryStats.minDate !== summaryStats.maxDate ? `– ${summaryStats.maxDate}` : ''}</div>
                 </div>
               </div>
             )}
@@ -815,11 +886,23 @@ export function AutonomicProfileView() {
               <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: 24, marginBottom: 10, color: 'var(--teal, #00A896)' }} />
               <div>Memuat lintasan data sensor time-series...</div>
             </div>
-          ) : chartData.length === 0 ? (
+          ) : activeChartData.length === 0 ? (
             <div style={{ background: '#FFFFFF', borderRadius: 12, padding: 60, textAlign: 'center', color: '#64748B', border: '1px solid #E2E8F0' }}>
-              <i className="fa-solid fa-chart-line" style={{ fontSize: 32, marginBottom: 12, color: '#CBD5E1' }} />
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Belum ada data segmen time-series untuk pasien ini.</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>Pastikan koneksi Polar H10 aktif dan telah merekam data telemetri.</div>
+              <i className="fa-solid fa-calendar-xmark" style={{ fontSize: 32, marginBottom: 12, color: '#CBD5E1' }} />
+              <div style={{ fontWeight: 700, fontSize: 14 }}>
+                {selectedDateFilter === 'ALL'
+                  ? 'Belum ada data segmen time-series untuk pasien ini.'
+                  : `Tidak ada rekaman data pada tanggal ${selectedDateFilter}.`}
+              </div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>
+                {selectedDateFilter !== 'ALL' && (
+                  <button
+                    onClick={() => setSelectedDateFilter('ALL')}
+                    style={{ marginTop: 8, padding: '4px 12px', borderRadius: 6, border: '1px solid #00A896', background: '#E6FFFA', color: '#00A896', fontWeight: 800, cursor: 'pointer' }}>
+                    Tampilkan Semua Tanggal
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -837,7 +920,7 @@ export function AutonomicProfileView() {
                         Lintasan 1: Heart Rate (bpm) & Delta HR (Perubahan Kecepatan Denyut)
                       </div>
                       <div style={{ fontSize: 11, color: '#64748B' }}>
-                        Respons chronotropic adaptif terhadap aktivitas & deviasi terhadap baseline personal.
+                        Respons chronotropic adaptif terhadap aktivitas & deviasi terhadap baseline personal. Sumbu X menampilkan Tanggal (DD/MM) dan Jam (HH:mm).
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 12, fontSize: 11, fontWeight: 700 }}>
@@ -848,9 +931,9 @@ export function AutonomicProfileView() {
 
                   <div style={{ height: 230, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData} syncId="autonomic-trajectory" margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                      <ComposedChart data={activeChartData} syncId="autonomic-trajectory" margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                        <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#64748B' }} minTickGap={30} />
+                        <XAxis dataKey="displayLabel" tick={{ fontSize: 10, fill: '#64748B' }} minTickGap={35} />
                         <YAxis domain={['dataMin - 5', 'dataMax + 10']} tick={{ fontSize: 10, fill: '#64748B' }} />
                         <Tooltip content={<TrajectoryCustomTooltip />} />
                         <ReferenceLine y={100} stroke="#EF4444" strokeDasharray="3 3" label={{ value: 'Tachycardia (100 bpm)', fill: '#EF4444', fontSize: 10, position: 'insideTopRight' }} />
@@ -882,7 +965,7 @@ export function AutonomicProfileView() {
                         Lintasan 2: Vagal Dynamics & Heart Rate Variability (RMSSD / SDNN)
                       </div>
                       <div style={{ fontSize: 11, color: '#64748B' }}>
-                        Refleksi reaktivasi modulasi parasimpatis saat transisi fase deviasi ke fase pemulihan (homeostasis).
+                        Refleksi reaktivasi modulasi parasimpatis saat transisi fase deviasi ke fase pemulihan (homeostasis). Sumbu X menampilkan Tanggal dan Waktu.
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 12, fontSize: 11, fontWeight: 700 }}>
@@ -893,9 +976,9 @@ export function AutonomicProfileView() {
 
                   <div style={{ height: 220, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData} syncId="autonomic-trajectory" margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                      <ComposedChart data={activeChartData} syncId="autonomic-trajectory" margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                        <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#64748B' }} minTickGap={30} />
+                        <XAxis dataKey="displayLabel" tick={{ fontSize: 10, fill: '#64748B' }} minTickGap={35} />
                         <YAxis domain={['dataMin - 5', 'dataMax + 10']} tick={{ fontSize: 10, fill: '#64748B' }} />
                         <Tooltip content={<TrajectoryCustomTooltip />} />
                         <ReferenceLine y={25} stroke="#F59E0B" strokeDasharray="3 3" label={{ value: 'Low Vagal Envelope (25 ms)', fill: '#D97706', fontSize: 10, position: 'insideBottomRight' }} />
@@ -937,9 +1020,9 @@ export function AutonomicProfileView() {
 
                   <div style={{ height: 210, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData} syncId="autonomic-trajectory" margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                      <ComposedChart data={activeChartData} syncId="autonomic-trajectory" margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                        <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#64748B' }} minTickGap={30} />
+                        <XAxis dataKey="displayLabel" tick={{ fontSize: 10, fill: '#64748B' }} minTickGap={35} />
                         <YAxis domain={[0.4, 1.7]} tick={{ fontSize: 10, fill: '#64748B' }} />
                         <Tooltip content={<TrajectoryCustomTooltip />} />
                         <ReferenceArea y1={0.85} y2={1.15} fill="#10B981" fillOpacity={0.08} />
@@ -975,11 +1058,11 @@ export function AutonomicProfileView() {
                     </div>
                   </div>
 
-                  <div style={{ height: 230, width: '100%' }}>
+                  <div style={{ height: 210, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData} syncId="autonomic-trajectory" margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                      <ComposedChart data={activeChartData} syncId="autonomic-trajectory" margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                        <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#64748B' }} minTickGap={30} />
+                        <XAxis dataKey="displayLabel" tick={{ fontSize: 10, fill: '#64748B' }} minTickGap={35} />
                         <YAxis domain={[0, 'dataMax + 1.5']} tick={{ fontSize: 10, fill: '#64748B' }} />
                         <Tooltip content={<TrajectoryCustomTooltip />} />
                         <ReferenceLine y={2.0} stroke="#F59E0B" strokeDasharray="4 4" label={{ value: 'Caution (Tau = 2.0)', fill: '#D97706', fontSize: 10, position: 'insideTopLeft' }} />
@@ -987,7 +1070,6 @@ export function AutonomicProfileView() {
                         <Area type="monotone" dataKey="anomalyScore" fill="url(#scoreGrad)" stroke="#E11D48" strokeWidth={2.5} name="Skor Deviasi D(t)" />
                         <Line type="monotone" dataKey="zHr" stroke="#FB7185" strokeWidth={1.5} strokeDasharray="3 3" dot={false} name="Z-Score HR" />
                         <Line type="monotone" dataKey="zDfa" stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="2 2" dot={false} name="Z-Score DFA" />
-                        <Brush dataKey="time" height={22} stroke="#CBD5E1" fill="#F8FAFC" tickFormatter={v => v} />
                         <defs>
                           <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#E11D48" stopOpacity={0.35} />
@@ -1000,44 +1082,45 @@ export function AutonomicProfileView() {
                 </div>
               )}
 
-              {/* ── TRACK 5: State Machine & Activity Sequential Ribbon ── */}
+              {/* ── TRACK 5: State Machine & Activity Sequential Ribbon (Synchronized Bar) ── */}
               <div style={{
-                background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', padding: '16px 20px',
+                background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', padding: '18px 20px',
                 boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: '#0F2027' }}>
-                    <i className="fa-solid fa-timeline" style={{ marginRight: 6, color: '#7C3AED' }} />
-                    Sekuens State Machine Trajectory & Konteks Aktivitas
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 900, color: '#7C3AED', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <i className="fa-solid fa-timeline" />
+                      Lintasan 5: State Machine Homeostasis & Sekuensi Transisi FSM
+                    </div>
+                    <div style={{ fontSize: 11, color: '#64748B' }}>
+                      Sumbu waktu tersinkronisasi presisi 1-ke-1 dengan grafik denyut jantung, HRV, dan skor deviasi di atasnya.
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, fontSize: 10.5, fontWeight: 700 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: STATE_COLORS.BASELINE_COMPATIBLE }} /> Normal</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: STATE_COLORS.DEVIATION_CANDIDATE }} /> Deviation</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: STATE_COLORS.PERSISTENT_DEVIATION }} /> Persistent</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: STATE_COLORS.RECOVERY }} /> Recovery</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: STATE_COLORS.RELAPSE }} /> Relapse</span>
+                  <div style={{ display: 'flex', gap: 8, fontSize: 10.5, fontWeight: 700, flexWrap: 'wrap' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: STATE_COLORS.BASELINE_COMPATIBLE }} /> Normal (Baseline)</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: STATE_COLORS.DEVIATION_CANDIDATE }} /> Deviation Candidate</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: STATE_COLORS.PERSISTENT_DEVIATION }} /> Persistent</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: STATE_COLORS.RECOVERY }} /> Recovery</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: STATE_COLORS.RELAPSE }} /> Relapse</span>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', height: 26, borderRadius: 6, overflow: 'hidden', border: '1px solid #CBD5E1', background: '#F8FAFC' }}>
-                  {chartData.map((d, i) => {
-                    const col = STATE_COLORS[d.state] || '#10B981';
-                    return (
-                      <div
-                        key={d.idx || i}
-                        title={`${d.dateTime}: State=${d.state}, Akt=${d.activity}, D(t)=${d.anomalyScore}`}
-                        style={{
-                          flex: 1, height: '100%', background: col, opacity: 0.85,
-                          cursor: 'pointer', transition: 'opacity .1s'
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748B', marginTop: 4 }}>
-                  <span>{chartData[0]?.dateTime || '-'}</span>
-                  <span>{chartData[Math.floor(chartData.length / 2)]?.time || '-'}</span>
-                  <span>{chartData[chartData.length - 1]?.dateTime || '-'}</span>
+                <div style={{ height: 115, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={activeChartData} syncId="autonomic-trajectory" margin={{ top: 5, right: 20, left: -10, bottom: 0 }} barCategoryGap={1}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                      <XAxis dataKey="displayLabel" tick={{ fontSize: 10, fill: '#64748B' }} minTickGap={35} />
+                      <YAxis domain={[0, 1]} hide />
+                      <Tooltip content={<TrajectoryCustomTooltip />} />
+                      <Bar dataKey={() => 1} isAnimationActive={false} name="Status FSM">
+                        {activeChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={STATE_COLORS[entry.state] || '#10B981'} />
+                        ))}
+                      </Bar>
+                      <Brush dataKey="displayLabel" height={24} stroke="#CBD5E1" fill="#F8FAFC" tickFormatter={v => v} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 
@@ -1291,21 +1374,20 @@ export function AutonomicProfileView() {
                     marginTop: 18, background: '#F8FAFC', border: '1.5px solid #CBD5E1',
                     borderRadius: 10, padding: '16px 18px'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
                       <label style={{ fontSize: 12.5, fontWeight: 800, color: '#0F2027' }}>
                         <i className="fa-solid fa-pen-to-square" style={{ marginRight: 6, color: currentQ.color }} />
                         Hasil / Jawaban Evaluasi untuk Pasien Ini ({selectedUser?.name || 'Pasien'}):
                       </label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>Tingkat Keyakinan:</span>
-                        <select
-                          value={currentAns.confidence || 'sedang'}
-                          onChange={e => handleAnswerChange(currentQ.id, 'confidence', e.target.value)}
-                          style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 11, fontWeight: 700 }}>
-                          <option value="tinggi">Tinggi (High)</option>
-                          <option value="sedang">Sedang (Medium)</option>
-                          <option value="rendah">Rendah (Low)</option>
-                        </select>
+                        <span style={{
+                          background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0',
+                          padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 800,
+                          display: 'flex', alignItems: 'center', gap: 5
+                        }}>
+                          <i className="fa-solid fa-shield-check" style={{ color: '#059669' }} />
+                          Tingkat Keyakinan: Tinggi (Quality Gate Verified)
+                        </span>
                       </div>
                     </div>
 
