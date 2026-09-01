@@ -378,7 +378,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Gagal terhubung. Pastikan alat menempel di dada & tidak terkoneksi ke app lain (mis. Polar Flow).'),
-                                backgroundColor: AppColors.rose,
+                                backgroundColor: AppColors.red,
                               ),
                             );
                           }
@@ -451,7 +451,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Gagal terhubung. Pastikan alat dipakai dan tidak terkoneksi ke app lain.'),
-                          backgroundColor: AppColors.rose,
+                          backgroundColor: AppColors.red,
                         ),
                       );
                     }

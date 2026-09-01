@@ -44,7 +44,7 @@ class _ZeroShotScreenState extends State<ZeroShotScreen>
   String _searchQ = '';
 
   static const _tabs = [
-    {'id': 'patient',   'label': 'Pasien',    'icon': Icons.person_heart_rounded},
+    {'id': 'patient',   'label': 'Pasien',    'icon': Icons.person_rounded},
     {'id': 'monitor',   'label': 'Monitor',   'icon': Icons.wifi_tethering_rounded},
     {'id': 'baseline',  'label': 'Baseline',  'icon': Icons.bar_chart_rounded},
     {'id': 'state',     'label': 'State',     'icon': Icons.timeline_rounded},
@@ -570,7 +570,7 @@ class _ZeroShotScreenState extends State<ZeroShotScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  Icon(Icons.person_heart_rounded, color: AppColors.teal, size: 18),
+                  Icon(Icons.person_rounded, color: AppColors.teal, size: 18),
                   const SizedBox(width: 8),
                   Text('Ringkasan untuk Pasien', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: AppColors.teal)),
                 ]),
