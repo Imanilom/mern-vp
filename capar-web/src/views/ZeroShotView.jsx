@@ -1,9 +1,12 @@
 /**
- * ZeroShotView.jsx  (v2 — Full Pipeline Context)
+ * ZeroShotView.jsx  (v3 — User-Centric 360° Explain & Longitudinal Grounding)
  * ─────────────────────────────────────────────────────────────────────────────
- * Menu "AI Zero-Shot Analyst" — membaca 6 sumber log CAPAR:
- *   [1] Monitoring  [2] Baseline  [3] State Timeline
- *   [4] Episode List  [5] Experience  [6] Prediksi
+ * Menu "Explain" — Analisis Komprehensif Berpusat pada Pengguna (User-Centric):
+ *   [1] Profil Pasien & Kepatuhan Rekam Wearable
+ *   [2] Portofolio Baseline (Tercapai / Mature vs Belum Tercapai / Gaps)
+ *   [3] Beban Anomali & Riwayat Disregulasi (Anomaly Burden %)
+ *   [4] Autonomic Recovery & Digital Phenotype (Level 2)
+ *   [5] Clinical Risk Stratification & Rekomendasi Uji Konfirmasi (Level 3)
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -11,10 +14,10 @@ import { api } from '../services/api';
 
 // ── Konstanta ─────────────────────────────────────────────────────────────────
 const RISK_COLORS = {
-  rendah:  { bg: '#E7F4E8', text: '#2E7D32', border: '#A5D6A7', icon: 'fa-shield-halved' },
-  sedang:  { bg: '#FBF0DD', text: '#D98800', border: '#FFD54F', icon: 'fa-triangle-exclamation' },
-  tinggi:  { bg: '#FAE6E6', text: '#B52A2A', border: '#EF9A9A', icon: 'fa-circle-exclamation' },
-  kritis:  { bg: '#3D0000', text: '#FF6B6B', border: '#B52A2A', icon: 'fa-skull-crossbones' },
+  rendah: { bg: '#E7F4E8', text: '#2E7D32', border: '#A5D6A7', icon: 'fa-shield-halved' },
+  sedang: { bg: '#FBF0DD', text: '#D98800', border: '#FFD54F', icon: 'fa-triangle-exclamation' },
+  tinggi: { bg: '#FAE6E6', text: '#B52A2A', border: '#EF9A9A', icon: 'fa-circle-exclamation' },
+  kritis: { bg: '#3D0000', text: '#FF6B6B', border: '#B52A2A', icon: 'fa-skull-crossbones' },
 };
 const CONF_COLORS = {
   tinggi: { bg: '#E7F4E8', text: '#2E7D32' },
@@ -76,7 +79,7 @@ function RiskBadge({ level }) {
   );
 }
 
-function DataSourceBadge({ label, active }) {
+function DataSourceBadge({ label, count, active }) {
   return (
     <span style={{
       fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
@@ -86,7 +89,7 @@ function DataSourceBadge({ label, active }) {
       display: 'inline-flex', alignItems: 'center', gap: 4,
     }}>
       <i className={`fa-solid ${active ? 'fa-check-circle' : 'fa-circle-xmark'}`} style={{ fontSize: 9 }} />
-      {label}
+      {label} {count !== undefined && `(${count})`}
     </span>
   );
 }
@@ -95,11 +98,11 @@ function PromptModal({ prompt, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1100 }}>
       <div className="modal-container" onClick={e => e.stopPropagation()}
-        style={{ maxWidth: 800, width: '95vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+        style={{ maxWidth: 840, width: '95vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <i className="fa-solid fa-terminal" style={{ color: 'var(--teal)' }} />
-            <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--navy)' }}>Zero-Shot Prompt Preview (6 Log Sources)</span>
+            <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--navy)' }}>User-Centric 360° Explain Prompt Preview</span>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 17, color: 'var(--gray)' }}>✕</button>
         </div>
@@ -114,23 +117,20 @@ function PromptModal({ prompt, onClose }) {
 }
 
 // ── Result Panel ──────────────────────────────────────────────────────────────
-function ResultPanel({ result, meta }) {
+function ResultPanel({ result, meta, profileSummary, selectedUser }) {
   const r = result || {};
-  const [activeTab, setActiveTab] = useState('patient');
+  const [activeTab, setActiveTab] = useState('overview');
   const riskLevel = r.risk_level?.toLowerCase() || 'sedang';
-  const riskC  = RISK_COLORS[riskLevel]  || RISK_COLORS.sedang;
-  const confC  = CONF_COLORS[r.confidence?.toLowerCase()] || CONF_COLORS.sedang;
+  const riskC = RISK_COLORS[riskLevel] || RISK_COLORS.sedang;
+  const confC = CONF_COLORS[r.confidence?.toLowerCase()] || CONF_COLORS.sedang;
 
   const TABS = [
-    { id: 'patient',   label: 'Pasien',             icon: 'fa-user-heart' },
-    { id: 'monitor',   label: 'Monitoring',         icon: 'fa-satellite-dish' },
-    { id: 'baseline',  label: 'Baseline',           icon: 'fa-chart-simple' },
-    { id: 'state',     label: 'State',              icon: 'fa-timeline' },
+    { id: 'overview', label: 'Overview 360°', icon: 'fa-user-check' },
+    { id: 'baseline', label: 'Portofolio Baseline', icon: 'fa-chart-simple' },
+    { id: 'anomaly', label: 'Beban Anomali', icon: 'fa-wave-square' },
     { id: 'autonomic', label: 'Autonomic Recovery', icon: 'fa-heart-pulse' },
-    { id: 'episode',   label: 'Episode',            icon: 'fa-wave-square' },
-    { id: 'experience',label: 'Experience',         icon: 'fa-brain' },
-    { id: 'predict',   label: 'Prediksi',           icon: 'fa-bullseye' },
-    { id: 'clinical',  label: 'Klinis',             icon: 'fa-stethoscope' },
+    { id: 'patient', label: 'Ringkasan Pasien', icon: 'fa-user-heart' },
+    { id: 'clinical', label: 'Klinis & Diagnosis', icon: 'fa-stethoscope' },
   ];
 
   return (
@@ -139,23 +139,23 @@ function ResultPanel({ result, meta }) {
       {/* Status Bar */}
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12, alignItems: 'center',
-        padding: '12px 16px', borderRadius: 10,
+        padding: '14px 18px', borderRadius: 12,
         background: 'linear-gradient(135deg, var(--navy) 0%, var(--navy-3) 100%)', color: '#fff',
       }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 2 }}>Explain AI — Autonomic & Full Context Grounding</div>
-          <div style={{ fontSize: 10.5, color: '#8FB6C4' }}>
-            Provider: {meta?.provider?.toUpperCase()} · Mode: {meta?.mode} · {meta?.prompt_length} chars
+          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 2 }}>
+            Explain 360° — {selectedUser?.name || 'Profil Pengguna'}
+          </div>
+          <div style={{ fontSize: 11, color: '#8FB6C4' }}>
+            Provider: {meta?.provider?.toUpperCase()} · Perangkat: {selectedUser?.device || 'Wearable'} · {meta?.prompt_length} chars context
           </div>
           {meta?.data_sources && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-              <DataSourceBadge label="Monitoring"   active={meta.data_sources.recent_segments > 0} />
-              <DataSourceBadge label="Baseline"     active={meta.data_sources.has_baseline} />
-              <DataSourceBadge label="State Log"    active={meta.data_sources.state_log_entries > 0} />
-              <DataSourceBadge label="Autonomic"    active={true} />
-              <DataSourceBadge label="Episodes"     active={meta.data_sources.episode_history > 0} />
-              <DataSourceBadge label="Experience"   active={meta.data_sources.has_experience} />
-              <DataSourceBadge label="Prediksi"     active={meta.data_sources.has_forecast} />
+              <DataSourceBadge label="Monitoring" count={meta.data_sources.total_segments} active={meta.data_sources.total_segments > 0} />
+              <DataSourceBadge label="Baseline" count={`${meta.data_sources.mature_baselines}/${meta.data_sources.all_baselines}`} active={meta.data_sources.all_baselines > 0} />
+              <DataSourceBadge label="Anomali" count={meta.data_sources.episode_history} active={meta.data_sources.episode_history > 0} />
+              <DataSourceBadge label="State FSM" count={meta.data_sources.state_log_entries} active={meta.data_sources.state_log_entries > 0} />
+              <DataSourceBadge label="Autonomic Profile" active={true} />
             </div>
           )}
         </div>
@@ -173,61 +173,76 @@ function ResultPanel({ result, meta }) {
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             style={{
-              flex: 'none', padding: '7px 12px', borderRadius: 8, cursor: 'pointer',
+              flex: 'none', padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
               border: activeTab === t.id ? '1.5px solid var(--teal)' : '1.5px solid var(--line)',
               background: activeTab === t.id ? 'var(--teal-soft)' : '#fff',
               color: activeTab === t.id ? 'var(--teal)' : 'var(--gray)',
-              fontWeight: 700, fontSize: 11.5, whiteSpace: 'nowrap',
-              display: 'flex', alignItems: 'center', gap: 5, transition: 'all .12s ease',
+              fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
+              display: 'flex', alignItems: 'center', gap: 6, transition: 'all .12s ease',
             }}>
-            <i className={`fa-solid ${t.icon}`} style={{ fontSize: 11 }} />
+            <i className={`fa-solid ${t.icon}`} style={{ fontSize: 12 }} />
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* Patient */}
-      {activeTab === 'patient' && (
-        <div style={{
-          padding: 20, borderRadius: 12,
-          background: 'linear-gradient(135deg, #E4F3F3, #F0FAF5)',
-          border: '1.5px solid var(--teal)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <i className="fa-solid fa-user-heart" style={{ color: 'var(--teal)', fontSize: 16 }} />
-            <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--teal)' }}>Ringkasan untuk Pasien</span>
-          </div>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: '#17324D' }}>{r.patient_summary || '—'}</p>
-          {r.risk_reason && (
-            <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: riskC.bg, border: `1px solid ${riskC.border}`, fontSize: 12, color: riskC.text, fontWeight: 600 }}>
-              <i className={`fa-solid ${riskC.icon}`} style={{ marginRight: 6 }} />{r.risk_reason}
+      {/* 1. Overview 360° */}
+      {activeTab === 'overview' && (
+        <Card title="Profil Pengguna & Pola Penggunaan Wearable" icon="fa-user-check" accent="var(--blue)" tag="LONGITUDINAL 360°">
+          <AIInsightBlock text={r.user_profile_summary} color="var(--blue)" />
+          {profileSummary && (
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10,
+              marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line)',
+            }}>
+              <div style={{ padding: '10px 12px', background: 'var(--bg)', borderRadius: 8 }}>
+                <div style={{ fontSize: 10, color: 'var(--gray)', fontWeight: 700 }}>TOTAL REKAMAN</div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--navy)' }}>{profileSummary.total_segments} window</div>
+              </div>
+              <div style={{ padding: '10px 12px', background: 'var(--bg)', borderRadius: 8 }}>
+                <div style={{ fontSize: 10, color: 'var(--gray)', fontWeight: 700 }}>BASELINE TERKALIBRASI</div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--teal)' }}>{profileSummary.mature_baselines} / {profileSummary.total_baselines}</div>
+              </div>
+              <div style={{ padding: '10px 12px', background: 'var(--bg)', borderRadius: 8 }}>
+                <div style={{ fontSize: 10, color: 'var(--gray)', fontWeight: 700 }}>TOTAL ANOMALI</div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: profileSummary.total_episodes > 0 ? 'var(--amber)' : 'var(--teal)' }}>
+                  {profileSummary.total_episodes} episode
+                </div>
+              </div>
+              <div style={{ padding: '10px 12px', background: 'var(--bg)', borderRadius: 8 }}>
+                <div style={{ fontSize: 10, color: 'var(--gray)', fontWeight: 700 }}>ANOMALY BURDEN</div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: profileSummary.anomaly_burden_pct > 10 ? 'var(--red)' : 'var(--navy)' }}>
+                  {profileSummary.anomaly_burden_pct?.toFixed(1)}%
+                </div>
+              </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Monitoring */}
-      {activeTab === 'monitor' && (
-        <Card title="Interpretasi Monitoring Real-Time" icon="fa-satellite-dish" accent="var(--blue)" tag="LOG 1">
-          <AIInsightBlock text={r.monitoring_insight} color="var(--blue)" />
         </Card>
       )}
 
-      {/* Baseline */}
+      {/* 2. Baseline Portfolio */}
       {activeTab === 'baseline' && (
-        <Card title="Evaluasi Baseline Personal" icon="fa-chart-simple" accent="var(--teal)" tag="LOG 2">
-          <AIInsightBlock text={r.baseline_evaluation} color="var(--teal)" />
+        <Card title="Evaluasi Portofolio Baseline (Tercapai vs Belum Tercapai)" icon="fa-chart-simple" accent="var(--teal)" tag="BASELINE GAPS">
+          <AIInsightBlock text={r.baseline_portfolio_evaluation} color="var(--teal)" />
+          <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 8, background: 'var(--teal-soft)', fontSize: 12, color: 'var(--navy)', lineHeight: 1.6 }}>
+            <i className="fa-solid fa-circle-check" style={{ marginRight: 6, color: 'var(--teal)' }} />
+            <strong>Rekomendasi Kalibrasi:</strong> Baseline yang masih berstatus <em>cold_start</em> atau <em>missing</em> membutuhkan penambahan rekaman pada aktivitas terkait agar ambang batas $\tau$ terpersonalisasi optimal.
+          </div>
         </Card>
       )}
 
-      {/* State */}
-      {activeTab === 'state' && (
-        <Card title="Penjelasan Transisi FSM" icon="fa-timeline" accent="var(--purple)" tag="LOG 3">
-          <AIInsightBlock text={r.state_transition_explanation} color="var(--purple)" />
+      {/* 3. Anomaly Burden */}
+      {activeTab === 'anomaly' && (
+        <Card title="Analisis Beban Anomali & Riwayat Disregulasi" icon="fa-wave-square" accent="var(--amber)" tag="BURDEN & RELAPSE">
+          <AIInsightBlock text={r.anomaly_burden_analysis} color="var(--amber)" />
+          <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 8, background: '#FFF8E7', border: '1px solid #FFD54F', fontSize: 12, color: '#6A4300', lineHeight: 1.6 }}>
+            <i className="fa-solid fa-clock-rotate-left" style={{ marginRight: 6, color: '#D98800' }} />
+            <strong>Beban Anomali ($AB$):</strong> Mengukur persentase waktu tubuh berada dalam keadaan deviasi fisiologis dibandingkan total durasi pemantauan.
+          </div>
         </Card>
       )}
 
-      {/* Autonomic Recovery */}
+      {/* 4. Autonomic Recovery */}
       {activeTab === 'autonomic' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {r.autonomic_phenotype && (
@@ -266,34 +281,33 @@ function ResultPanel({ result, meta }) {
             <AIInsightBlock text={r.autonomic_recovery_analysis} color="var(--teal)" />
             <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: 'var(--teal-soft)', fontSize: 11.5, color: 'var(--navy)', lineHeight: 1.6 }}>
               <i className="fa-solid fa-circle-info" style={{ marginRight: 6, color: 'var(--teal)' }} />
-              <strong>Kerangka Ilmiah:</strong> Signal → Anomaly → Recovery State → Trajectory → Phenotype → Risk Stratification → Confirmatory Diagnostics. Menghubungkan dinamika transisi FSM dengan kapasitas regulasi simpatis vs pemulihan parasimpatis (vagal tone).
+              <strong>Kerangka Ilmiah:</strong> Signal → Anomaly → Recovery State → Trajectory → Phenotype → Risk Stratification → Confirmatory Diagnostics.
             </div>
           </Card>
         </div>
       )}
 
-      {/* Episode History */}
-      {activeTab === 'episode' && (
-        <Card title="Pola Riwayat Episode" icon="fa-wave-square" accent="var(--amber)" tag="LOG 4">
-          <AIInsightBlock text={r.episode_history_pattern} color="var(--amber)" />
-        </Card>
+      {/* 5. Patient Summary */}
+      {activeTab === 'patient' && (
+        <div style={{
+          padding: 20, borderRadius: 12,
+          background: 'linear-gradient(135deg, #E4F3F3, #F0FAF5)',
+          border: '1.5px solid var(--teal)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <i className="fa-solid fa-user-heart" style={{ color: 'var(--teal)', fontSize: 16 }} />
+            <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--teal)' }}>Ringkasan 360° untuk Pasien</span>
+          </div>
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: '#17324D' }}>{r.patient_summary || '—'}</p>
+          {r.risk_reason && (
+            <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: riskC.bg, border: `1px solid ${riskC.border}`, fontSize: 12.5, color: riskC.text, fontWeight: 600 }}>
+              <i className={`fa-solid ${riskC.icon}`} style={{ marginRight: 6 }} />{r.risk_reason}
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Experience */}
-      {activeTab === 'experience' && (
-        <Card title="Insight Experience Memory" icon="fa-brain" accent="var(--green)" tag="LOG 5">
-          <AIInsightBlock text={r.experience_insight} color="var(--green)" />
-        </Card>
-      )}
-
-      {/* Prediksi */}
-      {activeTab === 'predict' && (
-        <Card title="Interpretasi Prediksi & Recovery" icon="fa-bullseye" accent="var(--red)" tag="LOG 6">
-          <AIInsightBlock text={r.prediction_interpretation} color="var(--red)" />
-        </Card>
-      )}
-
-      {/* Clinical */}
+      {/* 6. Clinical & Confirmatory */}
       {activeTab === 'clinical' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {r.clinical_suspicion && (
@@ -324,7 +338,7 @@ function ResultPanel({ result, meta }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <i className="fa-solid fa-stethoscope" style={{ color: '#0284C7', fontSize: 14 }} />
                 <span style={{ fontWeight: 800, fontSize: 12.5, color: '#0369A1' }}>
-                  Rekomendasi Uji Konfirmasi Klinis
+                  Rekomendasi Uji Konfirmasi Medis
                 </span>
               </div>
               <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.65, color: '#0C4A6E' }}>
@@ -351,58 +365,78 @@ function ResultPanel({ result, meta }) {
 // Main View
 // ═══════════════════════════════════════════════════════════════════════════════
 export function ZeroShotView({ globalParticipantFilter }) {
-  const [episodes,       setEpisodes]       = useState([]);
-  const [selectedEp,     setSelectedEp]     = useState(null);
-  const [loading,        setLoading]        = useState(false);
-  const [fetchingEps,    setFetchingEps]    = useState(false);
-  const [result,         setResult]         = useState(null);
-  const [meta,           setMeta]           = useState(null);
-  const [error,          setError]          = useState(null);
-  const [showPrompt,     setShowPrompt]     = useState(false);
-  const [promptText,     setPromptText]     = useState('');
-  const [promptLoading,  setPromptLoading]  = useState(false);
-  const [activeMode,     setActiveMode]     = useState('episode');
-  const [exportedJson,   setExportedJson]   = useState('');
+  const [participants, setParticipants] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [episodes, setEpisodes] = useState([]);
+  const [selectedEpId, setSelectedEpId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [fetchingUsers, setFetchingUsers] = useState(false);
+  const [result, setResult] = useState(null);
+  const [meta, setMeta] = useState(null);
+  const [profileSummary, setProfileSummary] = useState(null);
+  const [error, setError] = useState(null);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [promptText, setPromptText] = useState('');
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [activeMode, setActiveMode] = useState('user');
+  const [exportedJson, setExportedJson] = useState('');
   const [exportedParsed, setExportedParsed] = useState(null);
-  const [exportedError,  setExportedError]  = useState(null);
-  const [searchQ,        setSearchQ]        = useState('');
+  const [exportedError, setExportedError] = useState(null);
+  const [searchQ, setSearchQ] = useState('');
 
-  // Load episodes
-  const loadEpisodes = useCallback(async () => {
-    setFetchingEps(true);
+  // 1. Load participants list
+  const loadParticipants = useCallback(async () => {
+    setFetchingUsers(true);
     try {
-      const res = await api.listZeroShotEpisodes(globalParticipantFilter);
-      setEpisodes(Array.isArray(res?.data) ? res.data : []);
-    } catch { setEpisodes([]); }
-    finally { setFetchingEps(false); }
+      const res = await api.listZeroShotParticipants();
+      const list = Array.isArray(res?.data) ? res.data : [];
+      setParticipants(list);
+
+      // Auto-select based on globalParticipantFilter or first user
+      if (globalParticipantFilter && globalParticipantFilter !== 'ALL') {
+        const found = list.find(p => p.id === globalParticipantFilter || p._id === globalParticipantFilter);
+        if (found) setSelectedUser(found);
+        else if (list.length > 0) setSelectedUser(list[0]);
+      } else if (list.length > 0 && !selectedUser) {
+        setSelectedUser(list[0]);
+      }
+    } catch {
+      setParticipants([]);
+    } finally {
+      setFetchingUsers(false);
+    }
   }, [globalParticipantFilter]);
 
-  useEffect(() => { loadEpisodes(); }, [loadEpisodes]);
+  useEffect(() => { loadParticipants(); }, [loadParticipants]);
 
-  // Filter episodes
-  const filteredEps = episodes.filter(ep => {
+  // 2. Load episodes for selected user
+  useEffect(() => {
+    if (!selectedUser) { setEpisodes([]); return; }
+    const uid = selectedUser.id || selectedUser._id;
+    api.listZeroShotEpisodes(uid).then(res => {
+      setEpisodes(Array.isArray(res?.data) ? res.data : []);
+    }).catch(() => setEpisodes([]));
+    setSelectedEpId('');
+  }, [selectedUser]);
+
+  // Filter users by search query
+  const filteredUsers = participants.filter(p => {
     if (!searchQ) return true;
     const q = searchQ.toLowerCase();
-    return (ep.activity || '').toLowerCase().includes(q)
-        || (ep.classification || '').toLowerCase().includes(q)
-        || (ep._id || '').toLowerCase().includes(q);
+    return (p.name || '').toLowerCase().includes(q) || (p.email || '').toLowerCase().includes(q);
   });
 
-  // Preview prompt
+  // Prompt preview
   const handlePreviewPrompt = async () => {
-    if (activeMode === 'episode' && !selectedEp) return;
+    if (!selectedUser && activeMode === 'user') return;
     setPromptLoading(true);
     try {
-      if (activeMode === 'exported' && exportedParsed) {
-        setPromptText(JSON.stringify(exportedParsed, null, 2));
-      } else {
-        const res = await api.zeroShotPromptPreview(selectedEp?._id || selectedEp?.id);
-        setPromptText(res?.prompt || 'Prompt tidak tersedia.');
-      }
+      const uid = selectedUser?.id || selectedUser?._id;
+      const res = await api.zeroShotPromptPreview(uid, selectedEpId || null);
+      setPromptText(res?.prompt || 'Prompt tidak tersedia.');
       setShowPrompt(true);
     } catch (e) {
-      setPromptText('Gagal memuat: ' + e.message);
-      setShowPrompt(true);
+      alert('Gagal memuat preview: ' + e.message);
     } finally { setPromptLoading(false); }
   };
 
@@ -412,17 +446,26 @@ export function ZeroShotView({ globalParticipantFilter }) {
     setError(null);
     setResult(null);
     setMeta(null);
+    setProfileSummary(null);
+
     try {
       let res;
       if (activeMode === 'exported' && exportedParsed) {
-        res = await api.zeroShotAnalyze(null, true, exportedParsed);
+        res = await api.zeroShotAnalyze(null, null, true, exportedParsed);
       } else {
-        if (!selectedEp) throw new Error('Pilih episode terlebih dahulu.');
-        res = await api.zeroShotAnalyze(selectedEp?._id || selectedEp?.id);
+        if (!selectedUser) throw new Error('Pilih pengguna/pasien terlebih dahulu.');
+        const uid = selectedUser.id || selectedUser._id;
+        res = await api.zeroShotAnalyze(uid, selectedEpId || null);
       }
       if (!res?.success) throw new Error(res?.message || 'Analisis gagal.');
       setResult(res.result);
-      setMeta({ provider: res.provider, mode: res.mode, prompt_length: res.prompt_length, data_sources: res.data_sources });
+      setProfileSummary(res.profile_summary);
+      setMeta({
+        provider: res.provider,
+        mode: res.mode,
+        prompt_length: res.prompt_length,
+        data_sources: res.data_sources,
+      });
     } catch (e) {
       setError(e.message);
     } finally { setLoading(false); }
@@ -434,7 +477,7 @@ export function ZeroShotView({ globalParticipantFilter }) {
     catch { setExportedParsed(null); setExportedError('JSON tidak valid'); }
   };
 
-  const canAnalyze = activeMode === 'episode' ? !!selectedEp : (!!exportedParsed && !exportedError);
+  const canAnalyze = activeMode === 'user' ? !!selectedUser : (!!exportedParsed && !exportedError);
 
   return (
     <div style={{ padding: '20px 24px', minHeight: '100%', background: 'var(--bg)' }}>
@@ -452,252 +495,219 @@ export function ZeroShotView({ globalParticipantFilter }) {
           <div>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: 'var(--navy)' }}>Explain</h1>
             <div style={{ fontSize: 12, color: 'var(--gray)' }}>
-              AI Multimodal Grounding: 6 Log Sources + Autonomic Nervous System (ANS) Recovery Model
+              Analisis Komprehensif 360°: Profil Pasien · Portofolio Baseline & Gaps · Beban Anomali · Fenotipe Otonom
             </div>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
 
-        {/* ── LEFT: Input Panel ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* ── LEFT: Selector Panel ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {/* Mode selector */}
-          <Card title="Sumber Input" icon="fa-database" style={{ padding: 0 }}>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-              {[
-                { id: 'episode', label: 'Episode DB', icon: 'fa-wave-square' },
-                { id: 'exported', label: 'Paste JSON', icon: 'fa-code' },
-              ].map(m => (
-                <button key={m.id} onClick={() => { setActiveMode(m.id); setResult(null); setError(null); setMeta(null); }}
+          {/* Mode Selector */}
+          <div style={{ display: 'flex', background: '#fff', borderRadius: 8, padding: 3, border: '1px solid var(--line)' }}>
+            <button
+              onClick={() => setActiveMode('user')}
+              style={{
+                flex: 1, padding: '7px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                fontWeight: 700, fontSize: 12,
+                background: activeMode === 'user' ? 'var(--navy)' : 'transparent',
+                color: activeMode === 'user' ? '#fff' : 'var(--gray)',
+              }}>
+              <i className="fa-solid fa-user" style={{ marginRight: 6 }} />Pilih Pasien (360°)
+            </button>
+            <button
+              onClick={() => setActiveMode('exported')}
+              style={{
+                flex: 1, padding: '7px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                fontWeight: 700, fontSize: 12,
+                background: activeMode === 'exported' ? 'var(--navy)' : 'transparent',
+                color: activeMode === 'exported' ? '#fff' : 'var(--gray)',
+              }}>
+              <i className="fa-solid fa-file-code" style={{ marginRight: 6 }} />Manual JSON
+            </button>
+          </div>
+
+          {activeMode === 'user' ? (
+            <Card title="Daftar Pengguna / Pasien" icon="fa-users" accent="var(--navy)">
+              {/* Search */}
+              <div style={{ position: 'relative', marginBottom: 10 }}>
+                <i className="fa-solid fa-search" style={{ position: 'absolute', left: 10, top: 10, color: 'var(--gray)', fontSize: 11 }} />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau email..."
+                  value={searchQ}
+                  onChange={e => setSearchQ(e.target.value)}
                   style={{
-                    flex: 1, padding: '8px 6px', borderRadius: 7, cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                    border: activeMode === m.id ? '1.5px solid var(--teal)' : '1.5px solid var(--line)',
-                    background: activeMode === m.id ? 'var(--teal-soft)' : '#fff',
-                    color: activeMode === m.id ? 'var(--teal)' : 'var(--gray)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                  }}>
-                  <i className={`fa-solid ${m.icon}`} style={{ fontSize: 10 }} />{m.label}
-                </button>
-              ))}
-            </div>
-
-            {activeMode === 'episode' ? (
-              <>
-                {/* Search */}
-                <div style={{ position: 'relative', marginBottom: 8 }}>
-                  <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--gray)', fontSize: 12 }} />
-                  <input
-                    placeholder="Cari aktivitas / klasifikasi..."
-                    value={searchQ}
-                    onChange={e => setSearchQ(e.target.value)}
-                    style={{ width: '100%', padding: '7px 10px 7px 30px', borderRadius: 8, border: '1.5px solid var(--line)', fontSize: 11.5, color: 'var(--ink)', boxSizing: 'border-box' }}
-                  />
-                </div>
-
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gray)', marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                  <span>Episode {fetchingEps && <i className="fa-solid fa-spinner fa-spin" style={{ marginLeft: 4 }} />}</span>
-                  <span style={{ color: 'var(--teal)' }}>{filteredEps.length} item</span>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 310, overflowY: 'auto', paddingRight: 2 }}>
-                  {filteredEps.length === 0 && !fetchingEps && (
-                    <div style={{ padding: 12, textAlign: 'center', color: 'var(--gray)', fontSize: 12 }}>Tidak ada episode</div>
-                  )}
-                  {filteredEps.map(ep => {
-                    const isActive = (selectedEp?._id || selectedEp?.id) === (ep._id || ep.id);
-                    const ts = ep.onset_time ? new Date(ep.onset_time < 1e12 ? ep.onset_time * 1000 : ep.onset_time) : null;
-                    const isAlert = ep.classification === 'Alert';
-                    const col = isAlert ? 'var(--red)' : 'var(--amber)';
-
-                    return (
-                      <button key={ep._id || ep.id} onClick={() => { setSelectedEp(ep); setResult(null); setError(null); setMeta(null); }}
-                        style={{
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left',
-                          padding: '8px 11px', borderRadius: 8, cursor: 'pointer',
-                          border: isActive ? '1.5px solid var(--teal)' : '1.5px solid var(--line)',
-                          background: isActive ? 'var(--teal-soft)' : '#fff',
-                          transition: 'all .12s ease',
-                        }}>
-                        <div>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: col, marginBottom: 2 }}>
-                            {ep.classification || '?'} · {ep.activity || '?'}
-                          </div>
-                          <div style={{ fontSize: 10.5, color: 'var(--gray)' }}>
-                            {ep.duration_ms ? Math.round(ep.duration_ms / 60000) + ' mnt' : '—'} · {ep.admin_status || '—'}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 10, color: 'var(--gray)' }}>
-                            {ts ? ts.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '—'}
-                          </div>
-                          {ep.relapse && (
-                            <span style={{ fontSize: 9.5, color: 'var(--red)', fontWeight: 700 }}>Relapse</span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gray)', marginBottom: 6, textTransform: 'uppercase' }}>
-                  Paste isi exported_graph_data.json
-                </div>
-                <textarea
-                  placeholder='{"raw_data": {...}, "fsm_states": [...], "thresholds": {...}}'
-                  value={exportedJson}
-                  onChange={e => handleExportedChange(e.target.value)}
-                  style={{
-                    width: '100%', minHeight: 180, padding: 10, borderRadius: 8,
-                    border: exportedError ? '1.5px solid var(--red)' : '1.5px solid var(--line)',
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, resize: 'vertical',
-                    color: 'var(--ink)', background: '#FAFBFC', boxSizing: 'border-box',
+                    width: '100%', padding: '7px 10px 7px 28px', borderRadius: 6,
+                    border: '1px solid var(--line)', fontSize: 12, boxSizing: 'border-box',
                   }}
                 />
-                {exportedError && <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 3 }}>{exportedError}</div>}
-                {exportedParsed && <div style={{ fontSize: 11, color: 'var(--green)', marginTop: 3 }}>✓ JSON valid · {exportedJson.length} chars</div>}
-              </>
-            )}
-          </Card>
+              </div>
 
-          {/* Selected Episode Info */}
-          {activeMode === 'episode' && selectedEp && (
-            <Card title="Episode Terpilih" icon="fa-circle-info" accent="var(--blue)">
-              {[
-                ['ID', String(selectedEp._id || selectedEp.id).slice(-12)],
-                ['Aktivitas', selectedEp.activity],
-                ['Klasifikasi', selectedEp.classification],
-                ['Outcome', selectedEp.physiological_outcome],
-                ['State', selectedEp.current_state],
-                ['Durasi', selectedEp.duration_ms ? Math.round(selectedEp.duration_ms / 60000) + ' mnt' : '—'],
-                ['Peak HR', selectedEp.peak_hr ? selectedEp.peak_hr.toFixed(1) + ' bpm' : '—'],
-                ['Admin', selectedEp.admin_status],
-                ['Relapse', selectedEp.relapse ? 'Ya' : 'Tidak'],
-              ].map(([k, v]) => (
-                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid var(--line)', fontSize: 11.5 }}>
-                  <span style={{ color: 'var(--gray)', fontWeight: 600 }}>{k}</span>
-                  <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{v ?? '—'}</span>
+              {/* User list */}
+              <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {fetchingUsers && <div style={{ fontSize: 12, color: 'var(--gray)', textAlign: 'center', padding: 12 }}>Memuat peserta...</div>}
+                {!fetchingUsers && filteredUsers.length === 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--gray)', textAlign: 'center', padding: 12 }}>Tidak ada pengguna ditemukan.</div>
+                )}
+                {filteredUsers.map(u => {
+                  const uid = u.id || u._id;
+                  const isSel = selectedUser && (selectedUser.id === uid || selectedUser._id === uid);
+                  return (
+                    <div key={uid} onClick={() => setSelectedUser(u)}
+                      style={{
+                        padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+                        border: isSel ? '1.5px solid var(--teal)' : '1px solid var(--line)',
+                        background: isSel ? 'var(--teal-soft)' : '#fff',
+                        transition: 'all .12s',
+                      }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 800, fontSize: 12.5, color: isSel ? 'var(--teal)' : 'var(--navy)' }}>
+                          {u.name}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--gray)' }}>{u.role}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, fontSize: 10.5, color: 'var(--gray)' }}>
+                        <span><i className="fa-solid fa-signal" style={{ marginRight: 3 }} />{u.total_segments} win</span>
+                        <span>·</span>
+                        <span><i className="fa-solid fa-chart-simple" style={{ marginRight: 3 }} />{u.mature_baselines}/{u.total_baselines} base</span>
+                        <span>·</span>
+                        <span style={{ color: u.total_episodes > 0 ? 'var(--amber)' : 'inherit' }}>
+                          <i className="fa-solid fa-wave-square" style={{ marginRight: 3 }} />{u.total_episodes} anom
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Optional Episode Focus */}
+              {selectedUser && episodes.length > 0 && (
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--navy)', display: 'block', marginBottom: 5 }}>
+                    Fokus Episode Spesifik (Opsional):
+                  </label>
+                  <select
+                    value={selectedEpId}
+                    onChange={e => setSelectedEpId(e.target.value)}
+                    style={{
+                      width: '100%', padding: '7px 10px', borderRadius: 6,
+                      border: '1px solid var(--line)', fontSize: 11.5, background: '#fff',
+                    }}>
+                    <option value="">Analisis Seluruh Profil Pasien (360° Rekomendasi)</option>
+                    {episodes.map(ep => {
+                      const onsetStr = ep.onset_time ? new Date(ep.onset_time < 1e12 ? ep.onset_time * 1000 : ep.onset_time).toLocaleDateString('id-ID') : '';
+                      return (
+                        <option key={ep._id} value={ep._id}>
+                          [{ep.classification}] {ep.activity || 'Anomali'} - {onsetStr} (HR: {ep.peak_hr?.toFixed(0)} bpm)
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
-              ))}
+              )}
+            </Card>
+          ) : (
+            <Card title="Input JSON Exported" icon="fa-file-code" accent="var(--purple)">
+              <textarea
+                placeholder="Paste JSON dari exported_graph_data.json..."
+                value={exportedJson}
+                onChange={e => handleExportedChange(e.target.value)}
+                style={{
+                  width: '100%', minHeight: 180, borderRadius: 6,
+                  border: `1px solid ${exportedError ? 'var(--red)' : 'var(--line)'}`,
+                  fontSize: 11, fontFamily: 'monospace', padding: 8, boxSizing: 'border-box',
+                }}
+              />
+              {exportedError && <div style={{ color: 'var(--red)', fontSize: 11, marginTop: 4 }}>{exportedError}</div>}
             </Card>
           )}
 
-          {/* 6-source indicator */}
-          <div style={{ padding: 12, borderRadius: 10, background: 'var(--navy)', color: '#8FB6C4' }}>
-            <div style={{ fontSize: 10, fontWeight: 800, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.08em', color: '#fff' }}>
-              <i className="fa-solid fa-robot" style={{ marginRight: 6 }} />Sumber Prompt (6 Log)
-            </div>
-            {[
-              { n: 1, label: 'Monitoring real-time', icon: 'fa-satellite-dish' },
-              { n: 2, label: 'Baseline personal',    icon: 'fa-chart-simple' },
-              { n: 3, label: 'State Timeline FSM',   icon: 'fa-timeline' },
-              { n: 4, label: 'Episode List history', icon: 'fa-wave-square' },
-              { n: 5, label: 'Experience Memory',    icon: 'fa-brain' },
-              { n: 6, label: 'Prediksi Markov',      icon: 'fa-bullseye' },
-            ].map(({ n, label, icon }) => (
-              <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5, fontSize: 11 }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--teal)', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
-                <i className={`fa-solid ${icon}`} style={{ width: 14, textAlign: 'center', fontSize: 11 }} />
-                <span>{label}</span>
-              </div>
-            ))}
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button
+              id="btn-zeroshot-analyze"
+              onClick={handleAnalyze}
+              disabled={!canAnalyze || loading}
+              style={{
+                padding: '12px 16px', borderRadius: 10, border: 'none', cursor: canAnalyze && !loading ? 'pointer' : 'not-allowed',
+                background: canAnalyze && !loading ? 'linear-gradient(135deg, var(--teal) 0%, var(--navy) 100%)' : '#ccc',
+                color: '#fff', fontWeight: 800, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: canAnalyze && !loading ? '0 4px 12px rgba(0,168,150,.3)' : 'none',
+              }}>
+              {loading ? (
+                <>
+                  <i className="fa-solid fa-spinner fa-spin" />
+                  Menganalisis...
+                </>
+              ) : (
+                <>
+                  <i className="fa-solid fa-wand-magic-sparkles" />
+                  Jelaskan
+                </>
+              )}
+            </button>
+
+            {activeMode === 'user' && selectedUser && (
+              <button
+                onClick={handlePreviewPrompt}
+                disabled={promptLoading}
+                style={{
+                  padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)',
+                  background: '#fff', color: 'var(--gray)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}>
+                <i className="fa-solid fa-terminal" />
+                {promptLoading ? 'Memuat Preview...' : 'Lihat Data Prompt yang Dikirim'}
+              </button>
+            )}
           </div>
 
-          {/* Buttons */}
-          <button onClick={handlePreviewPrompt} disabled={!canAnalyze || promptLoading}
-            style={{
-              padding: '9px 14px', borderRadius: 8, cursor: canAnalyze ? 'pointer' : 'not-allowed',
-              border: '1.5px solid var(--line)', background: '#fff',
-              fontWeight: 700, fontSize: 12, color: 'var(--navy)', opacity: canAnalyze ? 1 : .5,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+          {/* Error Alert */}
+          {error && (
+            <div style={{
+              padding: '12px 14px', borderRadius: 8, background: '#FAE6E6', border: '1px solid #EF9A9A',
+              color: '#B52A2A', fontSize: 12, lineHeight: 1.5,
             }}>
-            {promptLoading ? <><i className="fa-solid fa-spinner fa-spin" />Loading...</> : <><i className="fa-solid fa-terminal" />Preview Prompt (6 sumber)</>}
-          </button>
-
-          <button id="btn-zeroshot-analyze" onClick={handleAnalyze} disabled={!canAnalyze || loading}
-            style={{
-              padding: '12px 14px', borderRadius: 8, cursor: canAnalyze ? 'pointer' : 'not-allowed',
-              border: 'none',
-              background: canAnalyze && !loading ? 'linear-gradient(135deg, var(--navy) 0%, var(--teal) 100%)' : 'var(--line)',
-              fontWeight: 800, fontSize: 13, color: canAnalyze && !loading ? '#fff' : 'var(--gray)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all .2s ease',
-              boxShadow: canAnalyze && !loading ? '0 4px 16px rgba(22,124,128,.3)' : 'none',
-            }}>
-            {loading
-              ? <><i className="fa-solid fa-spinner fa-spin" />Menganalisis 6 sumber...</>
-              : <><i className="fa-solid fa-brain" />Jalankan Zero-Shot Analysis</>}
-          </button>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              <div style={{ fontWeight: 800, marginBottom: 3 }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: 6 }} />Analisis Gagal
+              </div>
+              {error}
+            </div>
+          )}
         </div>
 
-        {/* ── RIGHT: Output ── */}
+        {/* ── RIGHT: Results Panel ── */}
         <div>
-          {!result && !error && !loading && (
+          {result ? (
+            <ResultPanel
+              result={result}
+              meta={meta}
+              profileSummary={profileSummary}
+              selectedUser={selectedUser}
+            />
+          ) : (
             <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              minHeight: 480, borderRadius: 16, background: 'linear-gradient(135deg, #F8FBFF, var(--teal-soft))',
-              border: '2px dashed var(--line)', gap: 16, padding: 32,
+              padding: '48px 24px', borderRadius: 12, background: '#fff', border: '1px dashed var(--line)',
+              textAlign: 'center', color: 'var(--gray)',
             }}>
-              <div style={{ width: 76, height: 76, borderRadius: '50%', background: 'linear-gradient(135deg, var(--navy), var(--teal))', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(22,124,128,.25)' }}>
-                <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: 32 }} />
+              <div style={{
+                width: 54, height: 54, borderRadius: '50%', background: 'var(--teal-soft)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
+              }}>
+                <i className="fa-solid fa-lightbulb" style={{ color: 'var(--teal)', fontSize: 24 }} />
               </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--navy)', marginBottom: 6 }}>Siap Menganalisis</div>
-                <div style={{ fontSize: 12.5, color: 'var(--gray)', maxWidth: 380, lineHeight: 1.65 }}>
-                  Pilih episode lalu klik <strong>Jalankan Zero-Shot Analysis</strong>. AI akan membaca <strong>6 sumber log</strong> sekaligus — monitoring, baseline, state, episode history, experience, dan prediksi.
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-                {[
-                  ['fa-satellite-dish','Monitoring','var(--blue)'],
-                  ['fa-chart-simple','Baseline','var(--teal)'],
-                  ['fa-timeline','State','var(--purple)'],
-                  ['fa-wave-square','Episode','var(--amber)'],
-                  ['fa-brain','Experience','var(--green)'],
-                  ['fa-bullseye','Prediksi','var(--red)'],
-                ].map(([icon, label, col]) => (
-                  <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 12px', borderRadius: 8, background: '#fff', border: '1px solid var(--line)' }}>
-                    <i className={`fa-solid ${icon}`} style={{ fontSize: 18, color: col }} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color: col }}>{label}</span>
-                  </div>
-                ))}
-              </div>
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--navy)', fontWeight: 800 }}>
+                Explain AI — Analisis Longitudinal 360°
+              </h3>
+              <p style={{ margin: 0, fontSize: 12.5, maxWidth: 440, marginInline: 'auto', lineHeight: 1.6 }}>
+                Pilih seorang pasien di sebelah kiri dan klik <strong>"Jalankan Explain AI (360°)"</strong> untuk menganalisis portofolio baseline, beban anomali harian, kepatuhan rekam sensor, dan fenotipe otonom secara menyeluruh.
+              </p>
             </div>
           )}
-
-          {loading && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 480, borderRadius: 16, background: 'var(--teal-soft)', border: '1px solid var(--line)', gap: 18 }}>
-              <div style={{ position: 'relative', width: 72, height: 72 }}>
-                <div style={{ width: 72, height: 72, border: '4px solid var(--line)', borderTopColor: 'var(--teal)', borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
-                <i className="fa-solid fa-brain" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'var(--teal)', fontSize: 26 }} />
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--navy)', marginBottom: 6 }}>Menganalisis 6 Sumber Log...</div>
-                <div style={{ fontSize: 12, color: 'var(--gray)', maxWidth: 300 }}>Monitoring → Baseline → State → Episode → Experience → Prediksi</div>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div style={{ padding: 20, borderRadius: 12, background: 'var(--red-soft)', border: '1.5px solid var(--red)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <i className="fa-solid fa-triangle-exclamation" style={{ color: 'var(--red)', fontSize: 15 }} />
-                <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--red)' }}>Analisis Gagal</span>
-              </div>
-              <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ink)', lineHeight: 1.6 }}>{error}</p>
-              {error.includes('GEMINI_API_KEY') && (
-                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 6, background: '#fff', fontSize: 11.5 }}>
-                  💡 Tambahkan <code style={{ color: 'var(--red)' }}>GEMINI_API_KEY</code> ke <code>api/.env</code> → restart server.{' '}
-                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color: 'var(--blue)' }}>Dapatkan API Key</a>
-                </div>
-              )}
-            </div>
-          )}
-
-          {result && <ResultPanel result={result} meta={meta} />}
         </div>
       </div>
 

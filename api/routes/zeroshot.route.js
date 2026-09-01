@@ -7,14 +7,18 @@ import express from 'express';
 import {
   zeroShotAnalyze,
   listZeroShotEpisodes,
+  listZeroShotParticipants,
   promptPreview,
 } from '../controllers/zeroshot.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
 
 const router = express.Router();
 
-// POST /api/ai/zero-shot/analyze — jalankan analisis zero-shot ke LLM
+// POST /api/ai/zero-shot/analyze — jalankan analisis Explain 360° ke LLM
 router.post('/analyze', verifyToken, zeroShotAnalyze);
+
+// GET  /api/ai/zero-shot/participants — daftar user/pasien beserta metrik agregat
+router.get('/participants', verifyToken, listZeroShotParticipants);
 
 // GET  /api/ai/zero-shot/episodes — daftar episode yang bisa dianalisis
 router.get('/episodes', verifyToken, listZeroShotEpisodes);

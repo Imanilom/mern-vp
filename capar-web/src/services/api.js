@@ -692,11 +692,11 @@ export const api = {
     return axios.post('/analysis/ablation/run', { participantId: userId, config }).then(res => res.data);
   },
 
-  // --- ZERO-SHOT LLM ANALYSIS ---
-  async zeroShotAnalyze(episodeId, useExported = false, rawData = null) {
+  // --- EXPLAIN / ZERO-SHOT LLM ANALYSIS ---
+  async zeroShotAnalyze(userId, episodeId = null, useExported = false, rawData = null) {
     const body = useExported
       ? { useExported: true, raw_data: rawData?.raw_data, fsm_states: rawData?.fsm_states, thresholds: rawData?.thresholds }
-      : { episodeId };
+      : { userId, episodeId: episodeId || undefined };
     return axios.post('/ai/zero-shot/analyze', body)
       .then(res => res.data)
       .catch(err => {
@@ -706,11 +706,15 @@ export const api = {
         throw err;
       });
   },
+  async listZeroShotParticipants() {
+    return axios.get('/ai/zero-shot/participants').then(res => res.data).catch(() => ({ success: false, data: [] }));
+  },
   async listZeroShotEpisodes(userId = 'ALL') {
     const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
     return axios.get(`/ai/zero-shot/episodes?userId=${target}`).then(res => res.data).catch(() => ({ success: false, data: [] }));
   },
-  async zeroShotPromptPreview(episodeId) {
-    return axios.get(`/ai/zero-shot/prompt-preview?episodeId=${episodeId}`).then(res => res.data);
+  async zeroShotPromptPreview(userId, episodeId = null) {
+    const query = episodeId ? `userId=${userId}&episodeId=${episodeId}` : `userId=${userId}`;
+    return axios.get(`/ai/zero-shot/prompt-preview?${query}`).then(res => res.data);
   },
 };

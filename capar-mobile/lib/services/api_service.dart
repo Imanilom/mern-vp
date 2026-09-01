@@ -390,13 +390,35 @@ class ApiService {
     return null;
   }
 
-  // ── Zero-Shot LLM Analysis ────────────────────────────────────────────────
+  // ── Explain / Zero-Shot LLM Analysis ─────────────────────────────────────
 
-  /// Mengambil daftar episode untuk dianalisis zero-shot
-  static Future<List<Map<String, dynamic>>> fetchZeroShotEpisodes() async {
+  /// Mengambil daftar partisipan/pengguna untuk analisis Explain 360°
+  static Future<List<Map<String, dynamic>>> fetchZeroShotParticipants() async {
     try {
       final headers = await _getHeaders();
-      final uid = await _getUserId();
+      final response = await http
+          .get(Uri.parse('$baseUrl/ai/zero-shot/participants'), headers: headers)
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] is List) {
+          return List<Map<String, dynamic>>.from(
+            (data['data'] as List).map((e) => Map<String, dynamic>.from(e)),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] fetchZeroShotParticipants error: $e');
+    }
+    return [];
+  }
+
+  /// Mengambil daftar episode untuk dianalisis zero-shot
+  static Future<List<Map<String, dynamic>>> fetchZeroShotEpisodes({String? userId}) async {
+    try {
+      final headers = await _getHeaders();
+      final uid = userId ?? await _getUserId();
       final query = uid.isNotEmpty ? '?userId=$uid' : '';
       final response = await http
           .get(Uri.parse('$baseUrl/ai/zero-shot/episodes$query'),
@@ -417,18 +439,26 @@ class ApiService {
     return [];
   }
 
-  /// Menjalankan analisis zero-shot untuk satu episode
-  static Future<Map<String, dynamic>?> runZeroShotAnalysis(
-      String episodeId) async {
+  /// Menjalankan analisis Explain 360° untuk user (dan episode opsional)
+  static Future<Map<String, dynamic>?> runZeroShotAnalysis({
+    String? userId,
+    String? episodeId,
+  }) async {
     try {
       final headers = await _getHeaders();
+      final uid = userId ?? await _getUserId();
+      final bodyMap = <String, dynamic>{'userId': uid};
+      if (episodeId != null && episodeId.isNotEmpty) {
+        bodyMap['episodeId'] = episodeId;
+      }
+
       final response = await http
           .post(
             Uri.parse('$baseUrl/ai/zero-shot/analyze'),
             headers: headers,
-            body: json.encode({'episodeId': episodeId}),
+            body: json.encode(bodyMap),
           )
-          .timeout(const Duration(seconds: 60));
+          .timeout(const Duration(seconds: 90));
 
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>;
