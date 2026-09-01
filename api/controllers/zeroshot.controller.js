@@ -334,8 +334,13 @@ async function callGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY tidak dikonfigurasi di environment.');
 
-  const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-  const url   = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const requestedModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const candidateModels = Array.from(new Set([
+    requestedModel,
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-2.0-flash-exp'
+  ]));
 
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -352,27 +357,46 @@ async function callGemini(prompt) {
     ],
   };
 
-  const res = await fetch(url, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload),
-    signal:  AbortSignal.timeout(40000),
-  });
+  let lastError = null;
+  for (const model of candidateModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+        signal:  AbortSignal.timeout(40000),
+      });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error ${res.status}: ${errText.slice(0, 300)}`);
+      if (!res.ok) {
+        const errText = await res.text();
+        lastError = new Error(`Gemini API (${model}) error ${res.status}: ${errText.slice(0, 300)}`);
+        // If 404 (model not found), continue to try next fallback model
+        if (res.status === 404) {
+          console.warn(`[ZeroShot] Model ${model} not found (404), mencoba fallback berikutnya...`);
+          continue;
+        }
+        throw lastError;
+      }
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      try {
+        return JSON.parse(text);
+      } catch {
+        const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (m) return JSON.parse(m[1]);
+        throw new Error('Respons LLM bukan JSON yang valid: ' + text.slice(0, 200));
+      }
+    } catch (err) {
+      lastError = err;
+      if (!err.message.includes('404')) {
+        throw err;
+      }
+    }
   }
 
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  try {
-    return JSON.parse(text);
-  } catch {
-    const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (m) return JSON.parse(m[1]);
-    throw new Error('Respons LLM bukan JSON yang valid: ' + text.slice(0, 200));
-  }
+  throw lastError || new Error('Semua model Gemini candidate gagal.');
 }
 
 // ── Call LLM (OpenAI-compatible fallback) ─────────────────────────────────────
