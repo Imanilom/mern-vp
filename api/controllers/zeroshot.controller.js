@@ -24,6 +24,11 @@ import AnomalyEvent    from '../models/anomalyevent.model.js';
 import StateTransition from '../models/state_transition.model.js';
 import mongoose        from 'mongoose';
 import fetch           from 'node-fetch';
+import dns             from 'dns';
+
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (_) {}
 
 // Utility functions untuk prediction — import langsung tanpa memanggil controller
 import { getTransitionMatrix, getAllTransitions } from '../utils/capar.transitions.js';
@@ -329,24 +334,96 @@ Analisis SEMUA sumber data di atas secara terintegrasi. Berikan output JSON beri
 }`;
 }
 
+function safeParseJSON(rawText) {
+  if (!rawText || typeof rawText !== 'string') {
+    throw new Error('Respons LLM kosong.');
+  }
+
+  let text = rawText.trim();
+  // Strip markdown code fences
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    text = fenceMatch[1].trim();
+  }
+
+  // 1. Direct parse attempt
+  try {
+    return JSON.parse(text);
+  } catch (_) {}
+
+  // 2. Try parsing from first { to end
+  const firstBrace = text.indexOf('{');
+  if (firstBrace !== -1) {
+    const candidate = text.slice(firstBrace);
+    try {
+      return JSON.parse(candidate);
+    } catch (_) {}
+
+    // 3. Truncation recovery: fix unclosed strings & close open braces
+    let inString = false;
+    let escaped = false;
+    let openBraces = 0;
+
+    for (let i = 0; i < candidate.length; i++) {
+      const ch = candidate[i];
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (!inString) {
+        if (ch === '{') openBraces++;
+        else if (ch === '}') openBraces--;
+      }
+    }
+
+    let repaired = candidate;
+    if (inString) {
+      repaired += '"';
+    }
+    // Remove any trailing dangling comma before closing braces
+    repaired = repaired.replace(/,\s*$/, '');
+    while (openBraces > 0) {
+      repaired += '}';
+      openBraces--;
+    }
+
+    try {
+      return JSON.parse(repaired);
+    } catch (_) {}
+  }
+
+  throw new Error('Respons LLM bukan JSON yang valid: ' + text.slice(0, 200));
+}
+
 // ── Call LLM (Gemini via REST) ────────────────────────────────────────────────
 async function callGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY tidak dikonfigurasi di environment.');
 
-  const requestedModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const requestedModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
   const candidateModels = Array.from(new Set([
     requestedModel,
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
-    'gemini-2.0-flash-exp'
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-3.7-flash',
+    'gemini-3.5-flash',
+    'gemini-flash-latest',
   ]));
 
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0.2,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 8192,
       responseMimeType: 'application/json',
     },
     safetySettings: [
@@ -365,7 +442,7 @@ async function callGemini(prompt) {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload),
-        signal:  AbortSignal.timeout(40000),
+        signal:  AbortSignal.timeout(90000),
       });
 
       if (!res.ok) {
@@ -381,14 +458,13 @@ async function callGemini(prompt) {
 
       const data = await res.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      try {
-        return JSON.parse(text);
-      } catch {
-        const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-        if (m) return JSON.parse(m[1]);
-        throw new Error('Respons LLM bukan JSON yang valid: ' + text.slice(0, 200));
-      }
+      return safeParseJSON(text);
     } catch (err) {
+      if (err.name === 'AbortError' || err.message?.includes('aborted') || err.message?.includes('timeout')) {
+        lastError = new Error(`Koneksi ke Gemini API timeout setelah 90 detik (${model}). Periksa koneksi internet.`);
+        console.warn(`[ZeroShot] Timeout pada model ${model}, mencoba model fallback...`);
+        continue;
+      }
       lastError = err;
       if (!err.message.includes('404')) {
         throw err;
@@ -414,7 +490,7 @@ async function callOpenAI(prompt) {
       { role: 'user',   content: prompt },
     ],
     temperature:     0.2,
-    max_tokens:      2048,
+    max_tokens:      4096,
     response_format: { type: 'json_object' },
   };
 
@@ -422,7 +498,7 @@ async function callOpenAI(prompt) {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body:    JSON.stringify(payload),
-    signal:  AbortSignal.timeout(40000),
+    signal:  AbortSignal.timeout(60000),
   });
 
   if (!res.ok) {
@@ -431,7 +507,7 @@ async function callOpenAI(prompt) {
   }
 
   const data = await res.json();
-  return JSON.parse(data?.choices?.[0]?.message?.content || '{}');
+  return safeParseJSON(data?.choices?.[0]?.message?.content || '{}');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
