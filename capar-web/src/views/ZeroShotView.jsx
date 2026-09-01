@@ -229,13 +229,47 @@ function ResultPanel({ result, meta }) {
 
       {/* Autonomic Recovery */}
       {activeTab === 'autonomic' && (
-        <Card title="Analisis Fisiologis Pemulihan Otonom (Autonomic Recovery)" icon="fa-heart-pulse" accent="var(--teal)" tag="ANS GROUNDING">
-          <AIInsightBlock text={r.autonomic_recovery_analysis} color="var(--teal)" />
-          <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: 'var(--teal-soft)', fontSize: 11.5, color: 'var(--navy)', lineHeight: 1.6 }}>
-            <i className="fa-solid fa-circle-info" style={{ marginRight: 6, color: 'var(--teal)' }} />
-            <strong>Grounding Medis:</strong> Menghubungkan kinetik deselerasi HR dan reaktivasi tonus vagal parasimpatis (RMSSD) pasca-deviasi dengan kapasitas regulasi otonom.
-          </div>
-        </Card>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {r.autonomic_phenotype && (
+            <div style={{
+              padding: '16px 18px', borderRadius: 12,
+              background: 'linear-gradient(135deg, #0B2545 0%, #134074 100%)',
+              color: '#fff', border: '1.5px solid #8DA9C4',
+              boxShadow: '0 4px 16px rgba(11,37,69,.15)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <i className="fa-solid fa-dna" style={{ color: '#64DFDF', fontSize: 16 }} />
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#8DA9C4', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                    Level 2 — Digital Autonomic Phenotype
+                  </span>
+                </div>
+                <span style={{
+                  fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 999,
+                  background: 'rgba(100,223,223,0.2)', color: '#64DFDF', border: '1px solid #64DFDF',
+                }}>
+                  LONGITUDINAL PROFILE
+                </span>
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 900, color: '#FFFFFF', marginBottom: 6 }}>
+                {r.autonomic_phenotype}
+              </div>
+              {r.phenotype_explanation && (
+                <div style={{ fontSize: 12.5, color: '#EEF4F8', lineHeight: 1.65 }}>
+                  {r.phenotype_explanation}
+                </div>
+              )}
+            </div>
+          )}
+
+          <Card title="Analisis Respons Sistem Saraf Otonom (ANS Dynamics)" icon="fa-heart-pulse" accent="var(--teal)" tag="PHYSIOLOGICAL GROUNDING">
+            <AIInsightBlock text={r.autonomic_recovery_analysis} color="var(--teal)" />
+            <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: 'var(--teal-soft)', fontSize: 11.5, color: 'var(--navy)', lineHeight: 1.6 }}>
+              <i className="fa-solid fa-circle-info" style={{ marginRight: 6, color: 'var(--teal)' }} />
+              <strong>Kerangka Ilmiah:</strong> Signal → Anomaly → Recovery State → Trajectory → Phenotype → Risk Stratification → Confirmatory Diagnostics. Menghubungkan dinamika transisi FSM dengan kapasitas regulasi simpatis vs pemulihan parasimpatis (vagal tone).
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* Episode History */}
@@ -261,14 +295,53 @@ function ResultPanel({ result, meta }) {
 
       {/* Clinical */}
       {activeTab === 'clinical' && (
-        <Card title="Catatan Klinis (Dokter/Peneliti)" icon="fa-stethoscope" accent="var(--navy)">
-          <AIInsightBlock text={r.clinical_notes} color="var(--navy)" />
-          {r.confidence_reason && (
-            <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 6, background: 'var(--gray-soft)', fontSize: 11.5, color: 'var(--gray)' }}>
-              <i className="fa-solid fa-circle-info" style={{ marginRight: 6 }} />{r.confidence_reason}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {r.clinical_suspicion && (
+            <div style={{
+              padding: '14px 16px', borderRadius: 10,
+              background: '#FFF8E7', border: '1.5px solid #FFD54F',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ color: '#D98800', fontSize: 14 }} />
+                <span style={{ fontWeight: 800, fontSize: 12.5, color: '#B26B00', textTransform: 'uppercase' }}>
+                  Level 3 — Clinical Risk Stratification & Suspicion
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.65, color: '#4A3B18' }}>
+                {r.clinical_suspicion}
+              </p>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#8C6D1F', fontStyle: 'italic' }}>
+                *Bukan diagnosis definitif penyakit jantung. Data wearable berfungsi sebagai indikasi penapisan otonom longitudinal.
+              </div>
             </div>
           )}
-        </Card>
+
+          {r.confirmatory_recommendations && (
+            <div style={{
+              padding: '14px 16px', borderRadius: 10,
+              background: '#F0F9FF', border: '1.5px solid #7DD3FC',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <i className="fa-solid fa-stethoscope" style={{ color: '#0284C7', fontSize: 14 }} />
+                <span style={{ fontWeight: 800, fontSize: 12.5, color: '#0369A1' }}>
+                  Rekomendasi Uji Konfirmasi Klinis
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.65, color: '#0C4A6E' }}>
+                {r.confirmatory_recommendations}
+              </p>
+            </div>
+          )}
+
+          <Card title="Catatan Komprehensif Dokter & Peneliti" icon="fa-clipboard-medical" accent="var(--navy)">
+            <AIInsightBlock text={r.clinical_notes} color="var(--navy)" />
+            {r.confidence_reason && (
+              <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 6, background: 'var(--gray-soft)', fontSize: 11.5, color: 'var(--gray)' }}>
+                <i className="fa-solid fa-circle-info" style={{ marginRight: 6 }} />{r.confidence_reason}
+              </div>
+            )}
+          </Card>
+        </div>
       )}
     </div>
   );

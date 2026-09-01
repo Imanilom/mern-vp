@@ -314,38 +314,57 @@ Markov Transition Matrix (ringkasan):
 ${transBlock}
 
 ══════════════════════════════════════════════════════════════
-[MEDICAL KNOWLEDGE GROUNDING] AUTONOMIC RECOVERY & ANS DYNAMICS
+[MEDICAL KNOWLEDGE GROUNDING] AUTONOMIC RECOVERY PHENOTYPES & ANS DYNAMICS
 ══════════════════════════════════════════════════════════════
-Sistem Saraf Otonom (Autonomic Nervous System / ANS) mengatur adaptasi dan pemulihan tubuh:
-1. Respon Stres & Penarikan Vagal (Sympathetic Dominance / Vagal Withdrawal):
-   - Terjadi saat transisi DEVIATION_CANDIDATE → PERSISTENT_DEVIATION.
-   - Ditandai kenaikan HR di atas baseline, penurunan drastis RMSSD (indikator tonus parasimpatis), dan peningkatan skor anomali melampaui ambang adaptif TAU_IN.
-2. Reaktivasi Parasimpatis (Vagal Reactivation & Baroreflex Engagement):
-   - Terjadi saat transisi PERSISTENT_DEVIATION → RECOVERY / RECOVERY_ENTRY.
-   - Ditandai dengan Heart Rate Recovery (HRR) deseleratif, rebound nilai RMSSD/SDNN, dan skor anomali turun di bawah TAU_OUT.
-3. Restorasi Homeostasis Otonom Penuh (Full Autonomic Restoration):
-   - Terjadi saat transisi RECOVERY → RESOLVED / RECOVERED.
-   - Skor anomali kembali di bawah TAU_NORMAL dan envelope fisiologis kembali stabil kompatibel dengan baseline.
-4. Kegagalan Regulasi Otonom (Autonomic Fatigue, Unresolved, & Relapse):
-   - Recovery tertunda atau episode berulang mencerminkan kelelahan regulasi otonom (impaired vagal reactivation) atau paparan stresor berkelanjutan.
+Kerangka Ilmiah Monitoring Kardiovaskular Wearable:
+  Signal → Anomaly → Recovery State → Trajectory → Phenotype → Risk Stratification → Clinical Confirmation
+
+BATASAN KLINIS (CRITICAL RULE):
+Data wearable longitudinal dan pola HRV/HR/State BUKAN diagnosis definitif penyakit jantung. Sistem TIDAK BOLEH menyatakan diagnosis definitif (seperti "Anda menderita Aritmia AFib / PJK / CHF").
+Sistem BERTUGAS mengevaluasi:
+1. "Apakah sistem regulasi otonom mampu mempertahankan atau memperoleh kembali homeostasis secara konsisten sesuai konteks?"
+2. Membentuk "Digital Autonomic Phenotype" dan melakukan "Risk Stratification" untuk menentukan prioritas konfirmasi klinis (12-lead ECG, Holter patch, Exercise Stress Test).
+
+PROFIL VEKTOR PEMULIHAN OTONOM (Autonomic Recovery Vector Re):
+Setiap episode dievaluasi melalui:
+  Re = [ D_peak (deviasi puncak), TTR (time to recovery), AUC_D (beban deviasi), v_rec (laju pemulihan), R_res (residual pasca-recovery), N_relapse (frekuensi kekambuhan), HRV_rec (rebound RMSSD/SDNN), context (aktivitas/posisi), time (sirkadian: pagi/siang/sore/malam) ]
+
+TAKSONOMI DIGITAL AUTONOMIC PHENOTYPE (Pilih yang paling sesuai):
+1. "Efficient Autonomic Recovery": TTR konsisten pendek, rebound vagal kuat, no relapse.
+2. "Delayed Autonomic Recovery": TTR memanjang melampaui envelope personal pada aktivitas serupa.
+3. "Unstable / Relapsing Recovery": Pola osilatif (Recovery → Relapse → Recovery) menunjukkan ketidakstabilan baroreflex/vagal.
+4. "Persistent Autonomic Dysregulation": Skor anomali bertahan lama di atas operating region tanpa tanda resolusi cepat.
+5. "Recurrent Unexplained Tachycardia": Lonjakan HR/anomali berulang pada kondisi istirahat/tidur tanpa penjelasan gerak/motion.
+6. "Orthostatic Regulatory Dysregulation": Pola deviasi persisten/lambat pulih khusus saat transisi posisi (duduk ke berdiri).
+7. "Suspected Rhythm Irregularity": Variabilitas beat-to-beat (RR) ireguler tajam tanpa korelasi aktivitas fisik (perlu konfirmasi ECG).
+8. "Abnormal Activity-Response Coupling": Ketidaksesuaian tajam antara intensitas gerak dan respon chronotropic HR.
+
+TRI-TIER OUTPUT ARCHITECTURE:
+- Level 1: Physiological State (State FSM: Baseline → Candidate → Persistent → Recovery → Resolved/Relapse)
+- Level 2: Autonomic Phenotype (Karakteristik regulasi otonom personal dari agregasi episode)
+- Level 3: Clinical Risk Stratification & Suspicion (Prioritas review klinis & rekomendasi tes konfirmasi)
 
 ══════════════════════════════════════════════════════════════
 INSTRUKSI OUTPUT (PENTING: HANYA JSON, tidak ada teks di luar JSON)
 ══════════════════════════════════════════════════════════════
-Analisis SEMUA sumber data di atas secara terintegrasi dengan menghubungkan log state ke konsep fisiologis Autonomic Recovery. Berikan output JSON berikut:
+Analisis SEMUA sumber data di atas secara terintegrasi dengan kerangka kerja di atas. Berikan output JSON berikut:
 
 {
+  "autonomic_phenotype": "Pilih salah satu dari 8 nama taksonomi fenotipe di atas yang paling tepat",
+  "phenotype_explanation": "Penjelasan ilmiah mendalam mengenai alasan pemilihan fenotipe ini berdasarkan vektor pemulihan [D_peak, TTR, AUC, v_rec, residual, relapse, HRV rebound] dan konsistensi konteks. (3-4 kalimat)",
+  "autonomic_recovery_analysis": "Analisis respons Sistem Saraf Otonom (ANS): jelaskan bagaimana transisi state mencerminkan keseimbangan simpatis vs reaktivasi parasimpatis (vagal tone), kinetik Heart Rate Recovery (HRR), dan efisiensi baroreflex peserta. (3-4 kalimat)",
   "monitoring_insight": "Interpretasi 5 segmen monitoring terbaru: tren HR dan anomaly score dalam beberapa window terakhir. Apakah tren membaik, memburuk, atau stabil? (2-3 kalimat)",
   "baseline_evaluation": "Evaluasi kesiapan baseline: apakah threshold tau sudah cukup terpersonalisasi? Apakah maturitas cukup untuk diagnosis yang andal? (2-3 kalimat)",
   "state_transition_explanation": "Jelaskan urutan transisi FSM episode ini: mengapa sistem pindah ke setiap state, kaitkan dengan nilai TAU_IN/TAU_OUT dan data segmen. (3-4 kalimat)",
-  "autonomic_recovery_analysis": "Analisis fisiologis pemulihan otonom (Autonomic Recovery): jelaskan bagaimana transisi state mencerminkan pergeseran keseimbangan simpatis vs parasimpatis, efisiensi reaktivasi tonus vagal (vagal rebound via RMSSD/HR), serta kualitas recovery peserta secara umum. (3-4 kalimat)",
   "episode_history_pattern": "Pola dari riwayat episode sebelumnya: seberapa sering anomali terjadi, adakah pola aktivitas/waktu, apakah ada relapse, tren membaik atau memburuk? (2-3 kalimat)",
   "experience_insight": "Apa yang sudah dipelajari sistem dari pengguna ini? Apakah tau threshold cukup terpersonalisasi? (1-2 kalimat)",
   "prediction_interpretation": "Interpretasi prediksi next-state dan recovery estimate: berapa lama kemungkinan episode berlanjut, berapa peluang pemulihan? (2-3 kalimat)",
-  "patient_summary": "Ringkasan LENGKAP dan RAMAH untuk pasien dalam bahasa Indonesia sehari-hari. Jelaskan: apa yang terjadi, sudah berapa lama, apakah berbahaya, apa yang harus dilakukan sekarang dan ke depannya. HINDARI jargon medis teknis. (4-5 kalimat)",
+  "patient_summary": "Ringkasan LENGKAP dan RAMAH untuk pasien dalam bahasa Indonesia sehari-hari. Jelaskan: apa yang terjadi, sudah berapa lama, apakah berbahaya, apa yang harus dilakukan sekarang dan ke depannya. HINDARI vonis diagnosis penyakit, gunakan bahasa pemulihan tubuh. (4-5 kalimat)",
+  "clinical_suspicion": "Kecurigaan klinis terukur (Level 3 Risk Flag, BUKAN vonis diagnosis pasti). Jelaskan indikasi fisiologis yang perlu diperhatikan dokter. (2-3 kalimat)",
+  "confirmatory_recommendations": "Rekomendasi pemeriksaan konfirmasi klinis standar medis (misalnya: 12-lead ECG, 24-hr Holter monitoring, orthostatic vitals, exercise stress test, konsultasi kardiologis). (2 kalimat)",
   "clinical_notes": "Catatan komprehensif untuk dokter/peneliti: skor puncak, kualitas data, flag klinis penting, rekomendasi tindakan, evaluasi keandalan prediksi. (3-4 kalimat)",
   "risk_level": "rendah|sedang|tinggi|kritis",
-  "risk_reason": "Alasan singkat level risiko (1 kalimat).",
+  "risk_reason": "Alasan singkat level risiko berdasarkan beban anomali dan karakteristik pemulihan (1 kalimat).",
   "confidence": "tinggi|sedang|rendah",
   "confidence_reason": "Alasan singkat level confidence berdasarkan kualitas dan kuantitas data yang tersedia (1 kalimat)."
 }`;

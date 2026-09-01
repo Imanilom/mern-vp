@@ -501,7 +501,7 @@ class _ZeroShotScreenState extends State<ZeroShotScreen>
               _buildTextTab(r['monitoring_insight'], Icons.wifi_tethering_rounded, AppColors.blue, 'Monitoring Real-Time [LOG 1]'),
               _buildTextTab(r['baseline_evaluation'], Icons.bar_chart_rounded, AppColors.teal, 'Baseline Personal [LOG 2]'),
               _buildTextTab(r['state_transition_explanation'], Icons.timeline_rounded, AppColors.purple, 'State Timeline FSM [LOG 3]'),
-              _buildTextTab(r['autonomic_recovery_analysis'], Icons.favorite_rounded, AppColors.teal, 'Pemulihan Otonom (Autonomic Recovery)'),
+              _buildAutonomicTab(r),
               _buildTextTab(r['episode_history_pattern'], Icons.waves_rounded, AppColors.amber, 'Episode List History [LOG 4]'),
               _buildTextTab(r['experience_insight'], Icons.psychology_rounded, AppColors.green, 'Experience Memory [LOG 5]'),
               _buildTextTab(r['prediction_interpretation'], Icons.track_changes_rounded, AppColors.red, 'Prediksi Markov [LOG 6]'),
@@ -640,12 +640,126 @@ class _ZeroShotScreenState extends State<ZeroShotScreen>
     );
   }
 
-  Widget _buildClinicalTab(Map<String, dynamic> r) {
+  Widget _buildAutonomicTab(Map<String, dynamic> r) {
+    final phenotype = r['autonomic_phenotype'] as String?;
+    final phenotypeExp = r['phenotype_explanation'] as String?;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (phenotype != null && phenotype.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0B2545), Color(0xFF134074)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF8DA9C4), width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(children: [
+                        const Icon(Icons.fingerprint_rounded, color: Color(0xFF64DFDF), size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'LEVEL 2 — DIGITAL PHENOTYPE',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white.withValues(alpha: 0.8)),
+                        ),
+                      ]),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF64DFDF).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0xFF64DFDF)),
+                        ),
+                        child: const Text('PROFILE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF64DFDF))),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(phenotype, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                  if (phenotypeExp != null && phenotypeExp.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(phenotypeExp, style: const TextStyle(fontSize: 12, color: Color(0xFFEEF4F8), height: 1.55)),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+          _buildTextTab(r['autonomic_recovery_analysis'], Icons.favorite_rounded, AppColors.teal, 'Respons Sistem Saraf Otonom (ANS)'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClinicalTab(Map<String, dynamic> r) {
+    final suspicion = r['clinical_suspicion'] as String?;
+    final confirmatory = r['confirmatory_recommendations'] as String?;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (suspicion != null && suspicion.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E7),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFFD54F), width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(children: [
+                    Icon(Icons.warning_amber_rounded, color: Color(0xFFD98800), size: 16),
+                    SizedBox(width: 6),
+                    Text('LEVEL 3 — CLINICAL RISK STRATIFICATION', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5, color: Color(0xFFB26B00))),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text(suspicion, style: const TextStyle(fontSize: 12.5, color: Color(0xFF4A3B18), height: 1.55)),
+                  const SizedBox(height: 6),
+                  const Text('*Bukan diagnosis definitif penyakit jantung. Data wearable berfungsi sebagai penapisan longitudinal.', style: TextStyle(fontSize: 10.5, color: Color(0xFF8C6D1F), fontStyle: FontStyle.italic)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (confirmatory != null && confirmatory.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F9FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF7DD3FC), width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(children: [
+                    Icon(Icons.medical_services_rounded, color: Color(0xFF0284C7), size: 16),
+                    SizedBox(width: 6),
+                    Text('REKOMENDASI UJI KONFIRMASI KLINIS', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5, color: Color(0xFF0369A1))),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text(confirmatory, style: const TextStyle(fontSize: 12.5, color: Color(0xFF0C4A6E), height: 1.55)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -657,9 +771,9 @@ class _ZeroShotScreenState extends State<ZeroShotScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  Icon(Icons.medical_services_rounded, color: AppColors.navy, size: 15),
+                  Icon(Icons.notes_rounded, color: AppColors.navy, size: 15),
                   const SizedBox(width: 7),
-                  Text('Catatan Klinis (Dokter)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.navy)),
+                  Text('Catatan Komprehensif Dokter / Peneliti', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.navy)),
                 ]),
                 const SizedBox(height: 10),
                 Text(r['clinical_notes'] as String? ?? '—',
