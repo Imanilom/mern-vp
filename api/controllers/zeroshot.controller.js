@@ -314,14 +314,31 @@ Markov Transition Matrix (ringkasan):
 ${transBlock}
 
 ══════════════════════════════════════════════════════════════
+[MEDICAL KNOWLEDGE GROUNDING] AUTONOMIC RECOVERY & ANS DYNAMICS
+══════════════════════════════════════════════════════════════
+Sistem Saraf Otonom (Autonomic Nervous System / ANS) mengatur adaptasi dan pemulihan tubuh:
+1. Respon Stres & Penarikan Vagal (Sympathetic Dominance / Vagal Withdrawal):
+   - Terjadi saat transisi DEVIATION_CANDIDATE → PERSISTENT_DEVIATION.
+   - Ditandai kenaikan HR di atas baseline, penurunan drastis RMSSD (indikator tonus parasimpatis), dan peningkatan skor anomali melampaui ambang adaptif TAU_IN.
+2. Reaktivasi Parasimpatis (Vagal Reactivation & Baroreflex Engagement):
+   - Terjadi saat transisi PERSISTENT_DEVIATION → RECOVERY / RECOVERY_ENTRY.
+   - Ditandai dengan Heart Rate Recovery (HRR) deseleratif, rebound nilai RMSSD/SDNN, dan skor anomali turun di bawah TAU_OUT.
+3. Restorasi Homeostasis Otonom Penuh (Full Autonomic Restoration):
+   - Terjadi saat transisi RECOVERY → RESOLVED / RECOVERED.
+   - Skor anomali kembali di bawah TAU_NORMAL dan envelope fisiologis kembali stabil kompatibel dengan baseline.
+4. Kegagalan Regulasi Otonom (Autonomic Fatigue, Unresolved, & Relapse):
+   - Recovery tertunda atau episode berulang mencerminkan kelelahan regulasi otonom (impaired vagal reactivation) atau paparan stresor berkelanjutan.
+
+══════════════════════════════════════════════════════════════
 INSTRUKSI OUTPUT (PENTING: HANYA JSON, tidak ada teks di luar JSON)
 ══════════════════════════════════════════════════════════════
-Analisis SEMUA sumber data di atas secara terintegrasi. Berikan output JSON berikut:
+Analisis SEMUA sumber data di atas secara terintegrasi dengan menghubungkan log state ke konsep fisiologis Autonomic Recovery. Berikan output JSON berikut:
 
 {
   "monitoring_insight": "Interpretasi 5 segmen monitoring terbaru: tren HR dan anomaly score dalam beberapa window terakhir. Apakah tren membaik, memburuk, atau stabil? (2-3 kalimat)",
   "baseline_evaluation": "Evaluasi kesiapan baseline: apakah threshold tau sudah cukup terpersonalisasi? Apakah maturitas cukup untuk diagnosis yang andal? (2-3 kalimat)",
   "state_transition_explanation": "Jelaskan urutan transisi FSM episode ini: mengapa sistem pindah ke setiap state, kaitkan dengan nilai TAU_IN/TAU_OUT dan data segmen. (3-4 kalimat)",
+  "autonomic_recovery_analysis": "Analisis fisiologis pemulihan otonom (Autonomic Recovery): jelaskan bagaimana transisi state mencerminkan pergeseran keseimbangan simpatis vs parasimpatis, efisiensi reaktivasi tonus vagal (vagal rebound via RMSSD/HR), serta kualitas recovery peserta secara umum. (3-4 kalimat)",
   "episode_history_pattern": "Pola dari riwayat episode sebelumnya: seberapa sering anomali terjadi, adakah pola aktivitas/waktu, apakah ada relapse, tren membaik atau memburuk? (2-3 kalimat)",
   "experience_insight": "Apa yang sudah dipelajari sistem dari pengguna ini? Apakah tau threshold cukup terpersonalisasi? (1-2 kalimat)",
   "prediction_interpretation": "Interpretasi prediksi next-state dan recovery estimate: berapa lama kemungkinan episode berlanjut, berapa peluang pemulihan? (2-3 kalimat)",

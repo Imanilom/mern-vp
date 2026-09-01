@@ -8,33 +8,33 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
 
   const allNavItems = [
     // === Cohort & Patient ===
-    { id: 'overview',          label: 'Daftar Pasien',      icon: 'fa-house-medical',         roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'overview', label: 'Daftar Pasien', icon: 'fa-house-medical', roles: ['admin', 'researcher', 'doctor', 'user'] },
 
     // === Per-Participant Monitoring ===
-    { id: 'live-monitor',      label: 'Live Monitoring',    icon: 'fa-satellite-dish',         roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'signal-quality',    label: 'Signal & Quality',   icon: 'fa-tower-broadcast',        roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'baseline-maturity', label: 'Baseline Model',     icon: 'fa-chart-simple',           roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'state-timeline',    label: 'State Timeline',     icon: 'fa-timeline',               roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'event-generator',   label: 'Event Generator',    icon: 'fa-filter',                 roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'episode',           label: 'Episode List',       icon: 'fa-wave-square',            roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'episode-detail',    label: 'Episode Detail',     icon: 'fa-chart-line',             roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'live-monitor', label: 'Live Monitoring', icon: 'fa-satellite-dish', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'signal-quality', label: 'Signal & Quality', icon: 'fa-tower-broadcast', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'baseline-maturity', label: 'Baseline Model', icon: 'fa-chart-simple', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'state-timeline', label: 'State Timeline', icon: 'fa-timeline', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'event-generator', label: 'Event Generator', icon: 'fa-filter', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'episode', label: 'Episode List', icon: 'fa-wave-square', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'episode-detail', label: 'Episode Detail', icon: 'fa-chart-line', roles: ['admin', 'researcher', 'doctor', 'user'] },
 
     // === Analysis & Learning ===
-    { id: 'experience',        label: 'Experience Memory',  icon: 'fa-brain',                  roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'prediction-eval',   label: 'Prediction Eval',    icon: 'fa-bullseye',               roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'model-rules',       label: 'Model & Rules',      icon: 'fa-sliders',                roles: ['admin', 'researcher', 'doctor'] },
+    { id: 'experience', label: 'Experience Memory', icon: 'fa-brain', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'prediction-eval', label: 'Prediction Eval', icon: 'fa-bullseye', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'model-rules', label: 'Model & Rules', icon: 'fa-sliders', roles: ['admin', 'researcher', 'doctor'] },
 
     // === Data & Governance ===
-    { id: 'export',            label: 'Export Data',        icon: 'fa-file-export',            roles: ['admin', 'researcher', 'doctor'] },
-    { id: 'audit',             label: 'Audit Provenance',   icon: 'fa-clipboard-list',         roles: ['admin', 'researcher', 'doctor'] },
+    { id: 'export', label: 'Export Data', icon: 'fa-file-export', roles: ['admin', 'researcher', 'doctor'] },
+    { id: 'audit', label: 'Audit Provenance', icon: 'fa-clipboard-list', roles: ['admin', 'researcher', 'doctor'] },
 
     // === System & Admin ===
-    { id: 'user-management',   label: 'User Management',    icon: 'fa-users-gear',             roles: ['admin', 'doctor'] },
-    { id: 'profile',           label: 'My Profile',         icon: 'fa-user',                   roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'settings',          label: 'Settings',           icon: 'fa-user-shield',            roles: ['admin', 'doctor', 'researcher', 'user'] },
+    { id: 'user-management', label: 'User Management', icon: 'fa-users-gear', roles: ['admin', 'doctor'] },
+    { id: 'profile', label: 'My Profile', icon: 'fa-user', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'settings', label: 'Settings', icon: 'fa-user-shield', roles: ['admin', 'doctor', 'researcher', 'user'] },
 
     // === AI Tools ===
-    { id: 'zero-shot',         label: 'AI Zero-Shot',       icon: 'fa-robot',                  roles: ['admin', 'researcher', 'doctor'] },
+    { id: 'zero-shot', label: 'Explain', icon: 'fa-lightbulb', roles: ['admin', 'researcher', 'doctor', 'user'] },
   ];
 
   const navItems = allNavItems.filter(item => item.roles.includes(role));
@@ -46,23 +46,23 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
 
   // Group labels
   const groupLabels = {
-    'overview':          null,
-    'live-monitor':      'Monitoring',
-    'signal-quality':    null,
+    'overview': null,
+    'live-monitor': 'Monitoring',
+    'signal-quality': null,
     'baseline-maturity': null,
-    'state-timeline':    null,
-    'event-generator':   null,
-    'episode':           null,
-    'episode-detail':    null,
-    'experience':        'Analysis',
-    'prediction-eval':   null,
-    'model-rules':       null,
-    'export':            'Data & Governance',
-    'audit':             null,
-    'user-management':   'System',
-    'profile':           null,
-    'settings':          null,
-    'zero-shot':         'AI Tools',
+    'state-timeline': null,
+    'event-generator': null,
+    'episode': null,
+    'episode-detail': null,
+    'experience': 'Analysis',
+    'prediction-eval': null,
+    'model-rules': null,
+    'export': 'Data & Governance',
+    'audit': null,
+    'user-management': 'System',
+    'profile': null,
+    'settings': null,
+    'zero-shot': 'AI Tools',
   };
 
   return (

@@ -122,14 +122,15 @@ function ResultPanel({ result, meta }) {
   const confC  = CONF_COLORS[r.confidence?.toLowerCase()] || CONF_COLORS.sedang;
 
   const TABS = [
-    { id: 'patient',   label: 'Pasien',      icon: 'fa-user-heart' },
-    { id: 'monitor',   label: 'Monitoring',  icon: 'fa-satellite-dish' },
-    { id: 'baseline',  label: 'Baseline',    icon: 'fa-chart-simple' },
-    { id: 'state',     label: 'State',       icon: 'fa-timeline' },
-    { id: 'episode',   label: 'Episode',     icon: 'fa-wave-square' },
-    { id: 'experience',label: 'Experience',  icon: 'fa-brain' },
-    { id: 'predict',   label: 'Prediksi',    icon: 'fa-bullseye' },
-    { id: 'clinical',  label: 'Klinis',      icon: 'fa-stethoscope' },
+    { id: 'patient',   label: 'Pasien',             icon: 'fa-user-heart' },
+    { id: 'monitor',   label: 'Monitoring',         icon: 'fa-satellite-dish' },
+    { id: 'baseline',  label: 'Baseline',           icon: 'fa-chart-simple' },
+    { id: 'state',     label: 'State',              icon: 'fa-timeline' },
+    { id: 'autonomic', label: 'Autonomic Recovery', icon: 'fa-heart-pulse' },
+    { id: 'episode',   label: 'Episode',            icon: 'fa-wave-square' },
+    { id: 'experience',label: 'Experience',         icon: 'fa-brain' },
+    { id: 'predict',   label: 'Prediksi',           icon: 'fa-bullseye' },
+    { id: 'clinical',  label: 'Klinis',             icon: 'fa-stethoscope' },
   ];
 
   return (
@@ -142,7 +143,7 @@ function ResultPanel({ result, meta }) {
         background: 'linear-gradient(135deg, var(--navy) 0%, var(--navy-3) 100%)', color: '#fff',
       }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 2 }}>Analisis AI Zero-Shot — Full Context</div>
+          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 2 }}>Explain AI — Autonomic & Full Context Grounding</div>
           <div style={{ fontSize: 10.5, color: '#8FB6C4' }}>
             Provider: {meta?.provider?.toUpperCase()} · Mode: {meta?.mode} · {meta?.prompt_length} chars
           </div>
@@ -151,6 +152,7 @@ function ResultPanel({ result, meta }) {
               <DataSourceBadge label="Monitoring"   active={meta.data_sources.recent_segments > 0} />
               <DataSourceBadge label="Baseline"     active={meta.data_sources.has_baseline} />
               <DataSourceBadge label="State Log"    active={meta.data_sources.state_log_entries > 0} />
+              <DataSourceBadge label="Autonomic"    active={true} />
               <DataSourceBadge label="Episodes"     active={meta.data_sources.episode_history > 0} />
               <DataSourceBadge label="Experience"   active={meta.data_sources.has_experience} />
               <DataSourceBadge label="Prediksi"     active={meta.data_sources.has_forecast} />
@@ -222,6 +224,17 @@ function ResultPanel({ result, meta }) {
       {activeTab === 'state' && (
         <Card title="Penjelasan Transisi FSM" icon="fa-timeline" accent="var(--purple)" tag="LOG 3">
           <AIInsightBlock text={r.state_transition_explanation} color="var(--purple)" />
+        </Card>
+      )}
+
+      {/* Autonomic Recovery */}
+      {activeTab === 'autonomic' && (
+        <Card title="Analisis Fisiologis Pemulihan Otonom (Autonomic Recovery)" icon="fa-heart-pulse" accent="var(--teal)" tag="ANS GROUNDING">
+          <AIInsightBlock text={r.autonomic_recovery_analysis} color="var(--teal)" />
+          <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: 'var(--teal-soft)', fontSize: 11.5, color: 'var(--navy)', lineHeight: 1.6 }}>
+            <i className="fa-solid fa-circle-info" style={{ marginRight: 6, color: 'var(--teal)' }} />
+            <strong>Grounding Medis:</strong> Menghubungkan kinetik deselerasi HR dan reaktivasi tonus vagal parasimpatis (RMSSD) pasca-deviasi dengan kapasitas regulasi otonom.
+          </div>
         </Card>
       )}
 
@@ -361,12 +374,12 @@ export function ZeroShotView({ globalParticipantFilter }) {
             background: 'linear-gradient(135deg, var(--navy), var(--teal))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: 17 }} />
+            <i className="fa-solid fa-lightbulb" style={{ color: '#fff', fontSize: 17 }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: 'var(--navy)' }}>AI Zero-Shot Analyst</h1>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: 'var(--navy)' }}>Explain</h1>
             <div style={{ fontSize: 12, color: 'var(--gray)' }}>
-              6 sumber log CAPAR: Monitoring · Baseline · State · Episode List · Experience · Prediksi
+              AI Multimodal Grounding: 6 Log Sources + Autonomic Nervous System (ANS) Recovery Model
             </div>
           </div>
         </div>

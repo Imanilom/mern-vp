@@ -136,9 +136,9 @@ class _MainTabShellState extends State<MainTabShell> {
                 label: 'Insights',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.smart_toy_rounded),
-                activeIcon: Icon(Icons.smart_toy_rounded, size: 24),
-                label: 'AI',
+                icon: Icon(Icons.auto_awesome_rounded),
+                activeIcon: Icon(Icons.auto_awesome_rounded, size: 24),
+                label: 'Explain',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_rounded),
