@@ -216,6 +216,16 @@ export const api = {
     return result;
   },
 
+  async getAnalyzedSegments(userId, limit = 300) {
+    try {
+      const { data } = await axios.get(`/analysis/segments/${userId}?limit=${limit}`);
+      return data;
+    } catch (err) {
+      console.error('getAnalyzedSegments Error:', err);
+      return { success: false, data: [] };
+    }
+  },
+
   async getSignalQuality(userId) {
     try {
       const { data } = await axios.get(`/analysis/signal-quality/${userId}`);
@@ -717,4 +727,16 @@ export const api = {
     const query = episodeId ? `userId=${userId}&episodeId=${episodeId}` : `userId=${userId}`;
     return axios.get(`/ai/zero-shot/prompt-preview?${query}`).then(res => res.data);
   },
+
+  // ── Phenotype Profile (Q1-Q10 Framework) ───────────────────────────────────
+  async savePhenotypeProfile(data) {
+    return axios.post('/phenotype-profile/save', data).then(res => res.data);
+  },
+  async getPhenotypeProfile(userId) {
+    return axios.get(`/phenotype-profile/${userId}`).then(res => res.data);
+  },
+  async getPhenotypeHistory(userId) {
+    return axios.get(`/phenotype-profile/history/${userId}`).then(res => res.data);
+  },
 };
+

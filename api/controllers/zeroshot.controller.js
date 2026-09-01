@@ -21,6 +21,7 @@ import User            from '../models/user.model.js';
 import PolarData       from '../models/data.model.js';
 import EpisodeAnalysis from '../models/episode_analysis.model.js';
 import EmaResponse     from '../models/ema.model.js';
+import PhenotypeProfile from '../models/phenotype_profile.model.js';
 import mongoose        from 'mongoose';
 import fetch           from 'node-fetch';
 import dns             from 'dns';
@@ -273,6 +274,9 @@ async function gatherUser360Context(userId, episodeId = null) {
 
     // 14. Optional: Episode spesifik jika dipilih
     episodeId ? AnomalyEvent.findById(episodeId).lean().catch(() => null) : Promise.resolve(null),
+
+    // 15. Rekam Jejak Profil Fenotipe Otonom (Q1-Q10) Tersimpan
+    PhenotypeProfile.findOne(uidFilter).sort({ updated_at: -1, created_at: -1 }).lean().catch(() => null),
   ]);
 
   const val = (r) => (r.status === 'fulfilled' ? r.value : null);
@@ -284,6 +288,7 @@ async function gatherUser360Context(userId, episodeId = null) {
   const epAnalysisRaw = (val(episodeAnalysisSummary) || [])[0] || {};
   const actDist = val(activityDistribution) || [];
   const polarActDist = val(polarActDistribution) || [];
+  const phenotypeProfileDoc = val(selectedEventDoc !== null && arguments[1] ? arguments[1] : Promise.resolve(null)); // will be mapped by Promise index
 
   // Evaluasi Portofolio Baseline: Mana yang mature/provisional vs gaps
   const recordedActivities = new Set(baselines.map(b => (b.activity || '').toLowerCase()));
@@ -358,6 +363,7 @@ async function gatherUser360Context(userId, episodeId = null) {
     transitions:           val(transitionData),
     recovery:              val(recoveryData),
     selectedEpisode:       val(selectedEventDoc),
+    phenotypeProfile:      await PhenotypeProfile.findOne(uidFilter).sort({ updated_at: -1, created_at: -1 }).lean().catch(() => null),
   };
 }
 
@@ -366,7 +372,7 @@ function buildUser360Prompt(ctx) {
   const {
     user, polarStats, polarActivityDistribution, allBaselines, matureBaselines, provisionalBaselines, missingActivities,
     recentSegments, segmentsStats, activityDistribution, episodeHistory, anomaliesStats,
-    episodeAnalysis, emaHistory, stateLog, transitions, selectedEpisode
+    episodeAnalysis, emaHistory, stateLog, transitions, selectedEpisode, phenotypeProfile
   } = ctx;
 
   const userName = user?.name || user?.email || 'Peserta';
@@ -423,6 +429,33 @@ function buildUser360Prompt(ctx) {
     const timeStr = fmtTimeOnly(s.window_start);
     return `  [${timeStr}] Akt=${s.activity_label || 'N/A'}, State=${fsmLabel(s.rr_status)}, Score=${fmtFloat(s.anomaly_score)}, HR=${fmtFloat(f.mean_hr, 1)} bpm, RMSSD=${fmtFloat(f.rmssd, 1)} ms`;
   }).join('\n') || '  (Tidak ada data segmen)';
+
+  // 6. Saved Phenotype Profile (Q1-Q10 Framework Answers)
+  let phenoSection = '';
+  if (phenotypeProfile) {
+    const vec = phenotypeProfile.phenotype_vector || {};
+    const ansObj = phenotypeProfile.answers instanceof Map
+      ? Object.fromEntries(phenotypeProfile.answers)
+      : (phenotypeProfile.answers || {});
+    const ansEntries = Object.entries(ansObj);
+    const ansLines = ansEntries.length > 0
+      ? ansEntries.map(([k, v]) => `  - [${v.q_id || k}] ${v.title || ''}: ${v.answer_label || v.narrative || 'Tercatat'} (Keyakinan: ${v.confidence || 'sedang'})`).join('\n')
+      : '  (Belum ada rincian butir tersimpan)';
+
+    phenoSection = `
+══════════════════════════════════════════════════════════════
+[BAGIAN 6] REKAM JEJAK PROFIL FENOTIPE & JAWABAN Q1–Q10 TERSIMPAN
+══════════════════════════════════════════════════════════════
+Kandidat Fenotipe Tersimpan : ${phenotypeProfile.candidate_phenotype || 'Pending Evaluation'} (Status: ${phenotypeProfile.status || 'saved'})
+Waktu Evaluasi Terakhir     : ${fmtDateTime(phenotypeProfile.updated_at || phenotypeProfile.created_at)}
+Vektor Fenotipe Phi (F-M-D-R-S-C-T-K-U):
+  F(Freq)=${vec.F || '-'}, M(Mag)=${vec.M || '-'}, D(Dur)=${vec.D || '-'}, R(Rec)=${vec.R || '-'}, S(Stab)=${vec.S || '-'}, C(Ctx)=${vec.C || '-'}, T(Time)=${vec.T || '-'}, K(Cons)=${vec.K || '-'}, U(Unexpl)=${vec.U || '-'}
+Catatan Klinis Evaluator   : ${phenotypeProfile.clinical_notes || '-'}
+
+Ringkasan Bukti Pertanyaan Q1–Q10 Tersimpan:
+${ansLines}
+`;
+  }
 
   return `Anda adalah asisten AI medis ahli sistem CAPAR (Continuous Anomaly Processing and Resolution). Tugas Anda adalah melakukan evaluasi klinis & otonom 360° secara menyeluruh (User-Centric Longitudinal Explain) untuk seorang pengguna/pasien berdasarkan rekam jejak sensor wearable.
 
@@ -483,7 +516,7 @@ Outcome    : ${selectedEpisode.physiological_outcome || 'N/A'}
 [BAGIAN 5] SAMPEL MONITORING REAL-TIME TERAKHIR
 ══════════════════════════════════════════════════════════════
 ${segLines}
-
+${phenoSection}
 ══════════════════════════════════════════════════════════════
 [LANDASAN ILMIAH & BATASAN KLINIS]
 ══════════════════════════════════════════════════════════════

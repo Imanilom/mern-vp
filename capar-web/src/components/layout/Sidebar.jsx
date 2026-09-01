@@ -34,6 +34,7 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     { id: 'settings', label: 'Settings', icon: 'fa-user-shield', roles: ['admin', 'doctor', 'researcher', 'user'] },
 
     // === AI Tools ===
+    { id: 'autonomic-profile', label: 'Profil', icon: 'fa-dna', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'zero-shot', label: 'Explain', icon: 'fa-lightbulb', roles: ['admin', 'researcher', 'doctor', 'user'] },
   ];
 
@@ -62,7 +63,8 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     'user-management': 'System',
     'profile': null,
     'settings': null,
-    'zero-shot': 'AI Tools',
+    'autonomic-profile': 'AI & XAI Tools',
+    'zero-shot': null,
   };
 
   return (

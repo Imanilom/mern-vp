@@ -23,13 +23,14 @@ const SettingsView         = lazy(() => import('./views/SettingsView').then(m =>
 const UserManagementView   = lazy(() => import('./views/UserManagementView'));
 const ProfileView          = lazy(() => import('./views/ProfileView').then(m => ({ default: m.ProfileView })));
 const ZeroShotView         = lazy(() => import('./views/ZeroShotView').then(m => ({ default: m.ZeroShotView })));
+const AutonomicProfileView = lazy(() => import('./views/AutonomicProfileView').then(m => ({ default: m.AutonomicProfileView })));
 
 // ── Valid tab list ────────────────────────────────────────────────────────────
 const VALID_TABS = [
   'overview','live-monitor','signal-quality','baseline-maturity',
   'state-timeline','episode','event-generator','episode-detail',
   'experience','prediction-eval','model-rules','export','audit',
-  'settings','user-management','profile','zero-shot',
+  'settings','user-management','profile','zero-shot','autonomic-profile',
 ];
 
 // ── Hash routing helpers ──────────────────────────────────────────────────────
@@ -293,6 +294,9 @@ export function App() {
           {tab('profile', <ProfileView user={userRole} />)}
           {tab('zero-shot',
             <ZeroShotView globalParticipantFilter={globalParticipantFilter} />
+          )}
+          {tab('autonomic-profile',
+            <AutonomicProfileView />
           )}
         </main>
       </div>

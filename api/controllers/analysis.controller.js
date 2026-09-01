@@ -925,15 +925,25 @@ export async function getSegmentAuditWindows(userId, limit = 50) {
 /**
  * Ambil N segment terbaru beserta score & klasifikasi (untuk grafik dashboard).
  */
-export async function getAnalyzedSegments(userId, limit = 100) {
+export async function getAnalyzedSegments(userId, limit = 150) {
+  const isObjId = mongoose.Types.ObjectId.isValid(userId);
+  const user = await User.findOne(isObjId ? { $or: [{ _id: new mongoose.Types.ObjectId(userId) }, { guid: userId }] } : { guid: userId }).lean().catch(() => null);
+  
+  const validIds = [];
+  if (user?._id) validIds.push(user._id);
+  if (isObjId) validIds.push(new mongoose.Types.ObjectId(userId));
+
+  const query = validIds.length > 0
+    ? { user_id: { $in: validIds } }
+    : { user_id: userId };
+
   return Segment.find({
-    user_id: userId,
-    analyzed: true,
+    ...query,
     is_valid: true,
   })
-    .sort({ window_start: -1 })
+    .sort({ window_start: 1 })
     .limit(limit)
-    .select('window_start window_end activity_label anomaly_score classification z_scores features.mean_hr features.mean_rr features.dfa_alpha1 features.dfa_alpha2 features.slope_hr features.delta_hr')
+    .select('window_start window_end activity_label anomaly_score classification rr_status physiological_state z_scores features')
     .lean();
 }
 

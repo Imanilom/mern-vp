@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../services/ble_service.dart';
 import '../../services/telemetry_controller.dart';
 import '../../theme/app_colors.dart';
+import 'autonomic_profile_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -92,7 +93,68 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
+              // ── Peta Data Log & XAI Phenotype Card ───────────────────────────
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AutonomicProfileScreen()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.teal.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.teal.withValues(alpha: 0.5)),
+                        ),
+                        child: const Icon(Icons.fingerprint_rounded, color: Color(0xFF4EECD6), size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Peta Data Log & XAI (Q1–Q10)',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Autonomic Regulation Phenotype Framework',
+                              style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // ── Akun Peserta ─────────────────────────────────────────────────
               _buildSection(
