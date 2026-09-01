@@ -348,6 +348,8 @@ export function AutonomicProfileView() {
   const [segmentLimit, setSegmentLimit] = useState(100);
   const [featureTrackView, setFeatureTrackView] = useState('ALL'); // 'ALL' | 'HR' | 'HRV' | 'DFA' | 'DEVIATION'
 
+  const [computing, setComputing] = useState(false);
+
   // 1. Load participants list
   useEffect(() => {
     setLoading(true);
@@ -363,14 +365,14 @@ export function AutonomicProfileView() {
       .finally(() => setLoading(false));
   }, []);
 
-  // 2. Load saved profile when user changes
+  // 2. Load saved or dynamically computed profile when user changes
   const loadSavedProfile = useCallback(async (userId) => {
     if (!userId) return;
     try {
       const res = await api.getPhenotypeProfile(userId);
       const data = res?.data;
       if (data) {
-        setSavedProfile(data);
+        setSavedProfile(res.is_saved ? data : null);
         if (data.candidate_phenotype) setCandidatePhenotype(data.candidate_phenotype);
         if (data.clinical_notes) setClinicalNotes(data.clinical_notes);
         if (data.phenotype_vector) setPhenotypeVector(prev => ({ ...prev, ...data.phenotype_vector }));
@@ -378,27 +380,39 @@ export function AutonomicProfileView() {
           const loadedAns = data.answers instanceof Map ? Object.fromEntries(data.answers) : data.answers;
           setAnswers(loadedAns);
         }
-      } else {
-        setSavedProfile(null);
-        // Reset defaults
-        const initialAns = {};
-        Q_FRAMEWORK.forEach(q => {
-          initialAns[q.id] = {
-            q_id: q.id,
-            title: q.title,
-            answer_label: q.defaultAnswer,
-            narrative: q.exampleXAI,
-            evidence: q.evidence,
-            metrics: q.metrics,
-            confidence: 'tinggi',
-          };
-        });
-        setAnswers(initialAns);
       }
     } catch {
       setSavedProfile(null);
     }
   }, []);
+
+  // 2b. Explicitly recompute dynamic inference from raw telemetry logs
+  const handleRecompute = async () => {
+    if (!selectedUser) return;
+    const uid = selectedUser.id || selectedUser._id;
+    setComputing(true);
+    setSaveMessage(null);
+    try {
+      const res = await api.computePhenotypeProfile(uid);
+      if (res?.success && res.data) {
+        const data = res.data;
+        if (data.candidate_phenotype) setCandidatePhenotype(data.candidate_phenotype);
+        if (data.phenotype_vector) setPhenotypeVector(data.phenotype_vector);
+        if (data.answers) {
+          const loadedAns = data.answers instanceof Map ? Object.fromEntries(data.answers) : data.answers;
+          setAnswers(loadedAns);
+        }
+        setSaveMessage({ type: 'success', text: `Berhasil menghitung ulang Q1–Q10 dan Vektor Fenotipe secara dinamis untuk ${selectedUser.name || 'pasien'} dari log telemetri!` });
+      } else {
+        throw new Error(res?.message || 'Gagal menghitung inferensi.');
+      }
+    } catch (err) {
+      setSaveMessage({ type: 'error', text: `Gagal menghitung: ${err.message}` });
+    } finally {
+      setComputing(false);
+      setTimeout(() => setSaveMessage(null), 5000);
+    }
+  };
 
   // 3. Load trajectory segments for feature charts
   useEffect(() => {
@@ -674,8 +688,22 @@ export function AutonomicProfileView() {
           </select>
         </div>
 
-        {/* Action Buttons: Save & Use in Explain AI */}
+        {/* Action Buttons: Compute, Save & Use in Explain AI */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleRecompute}
+            disabled={computing || !selectedUser}
+            title="Hitung ulang evaluasi Q1–Q10 dan vektor fenotipe secara dinamis dari rekaman sensor telemetri pasien ini"
+            style={{
+              padding: '9px 15px', borderRadius: 8, border: '1.5px solid #00A896',
+              background: '#E6FFFA', color: '#00A896', cursor: computing ? 'not-allowed' : 'pointer',
+              fontWeight: 800, fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 7,
+              boxShadow: '0 2px 6px rgba(0, 168, 150, 0.1)', transition: 'all .15s'
+            }}>
+            <i className={computing ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-rotate'} />
+            {computing ? 'Menghitung dari Sensor...' : 'Hitung Otomatis Dari Sensor'}
+          </button>
+
           <button
             onClick={handleSaveProfile}
             disabled={saving || !selectedUser}
@@ -755,6 +783,133 @@ export function AutonomicProfileView() {
           <strong>Prinsip Klinis:</strong> Seluruh grafik lintasan dan inferensi Q1–Q10 membentuk <em>longitudinal autonomic regulation phenotype</em>. Data wearable berfungsi sebagai penapisan dan stratifikasi risiko otonom, dan <strong>bukan diagnosis definitif penyakit jantung</strong>. Konfirmasi diagnosis klinis tetap membutuhkan uji medis standar (12-lead ECG, Holter, atau konsultasi dokter spesialis).
         </span>
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* TAB 1: MATRIKS RINGKAS Q1–Q10 & PETA ARSITEKTUR                       */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'matrix' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          
+          {/* Matrix Card */}
+          <div style={{
+            background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', padding: 20,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#0F2027', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <i className="fa-solid fa-table-cells" style={{ color: 'var(--teal, #00A896)' }} />
+                  Matriks Ringkas Inferensi Regulasi Otonom (Q1–Q10) Pasien
+                </h3>
+                <p style={{ margin: '3px 0 0 0', fontSize: 12, color: '#64748B' }}>
+                  Hasil evaluasi aktual dan metrik turunan yang dihitung spesifik untuk <strong>{selectedUser?.name || 'Pasien'}</strong>.
+                </p>
+              </div>
+
+              {/* Category Filter Pills */}
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedFilterCategory(cat)}
+                    style={{
+                      padding: '4px 9px', borderRadius: 6, border: '1px solid',
+                      fontSize: 11, fontWeight: selectedFilterCategory === cat ? 800 : 600,
+                      cursor: 'pointer',
+                      borderColor: selectedFilterCategory === cat ? 'var(--teal, #00A896)' : '#E2E8F0',
+                      background: selectedFilterCategory === cat ? '#E6FFFA' : '#F8FAFC',
+                      color: selectedFilterCategory === cat ? 'var(--teal, #00A896)' : '#64748B',
+                    }}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#475569', fontWeight: 800 }}>
+                    <th style={{ padding: '12px 16px', width: 55, textAlign: 'center' }}>Q</th>
+                    <th style={{ padding: '12px 16px', minWidth: 200 }}>Pertanyaan Regulasi</th>
+                    <th style={{ padding: '12px 16px', minWidth: 280 }}>Hasil Evaluasi Aktual Pasien ({selectedUser?.name || 'Pasien'})</th>
+                    <th style={{ padding: '12px 16px', minWidth: 180 }}>Metrik Inti Turunan</th>
+                    <th style={{ padding: '12px 16px', minWidth: 120, textAlign: 'center' }}>Keyakinan</th>
+                    <th style={{ padding: '12px 16px', width: 90, textAlign: 'center' }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredQuestions.map((row, idx) => {
+                    const ans = answers[row.id] || {};
+                    const patientAnswer = ans.answer_label || row.defaultAnswer;
+                    const patientMetrics = ans.metrics || row.metrics;
+
+                    return (
+                      <tr
+                        key={row.id}
+                        style={{
+                          borderBottom: '1px solid #F1F5F9',
+                          background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA',
+                          transition: 'background .1s'
+                        }}>
+                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          <span style={{
+                            background: `${row.color}15`, color: row.color,
+                            padding: '3px 8px', borderRadius: 6, fontWeight: 900, fontSize: 11
+                          }}>
+                            {row.id}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1E293B' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <i className={`fa-solid ${row.icon}`} style={{ color: row.color, fontSize: 13 }} />
+                            <span>{row.title}</span>
+                          </div>
+                          <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 3 }}>
+                            Level: {row.level} · Vektor: &Phi;[{row.vectorKey}]
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#0F2027', fontWeight: 600 }}>
+                          <div style={{ background: '#F8FAFC', padding: '6px 10px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 12 }}>
+                            {patientAnswer}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#0284C7', fontFamily: 'monospace', fontSize: 11.5, fontWeight: 700 }}>
+                          {patientMetrics}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          <span style={{
+                            background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0',
+                            padding: '2px 8px', borderRadius: 12, fontSize: 10.5, fontWeight: 800,
+                            display: 'inline-flex', alignItems: 'center', gap: 4
+                          }}>
+                            <i className="fa-solid fa-shield-check" style={{ color: '#059669', fontSize: 10 }} />
+                            Tinggi
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          <button
+                            onClick={() => {
+                              setExpandedQ(row.id);
+                              setActiveTab('q1-q10');
+                            }}
+                            style={{
+                              padding: '4px 10px', borderRadius: 6, border: `1px solid ${row.color}`,
+                              background: '#FFFFFF', color: row.color, fontSize: 11, fontWeight: 700,
+                              cursor: 'pointer', transition: 'all .15s'
+                            }}>
+                            Detail
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* TAB: GRAFIK LINTASAN TIAP FITUR PER WAKTU (TRAJECTORY CHARTS)          */}

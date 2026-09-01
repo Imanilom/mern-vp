@@ -735,6 +735,9 @@ export const api = {
   async getPhenotypeProfile(userId) {
     return axios.get(`/phenotype-profile/${userId}`).then(res => res.data);
   },
+  async computePhenotypeProfile(userId) {
+    return axios.get(`/phenotype-profile/compute/${userId}`).then(res => res.data);
+  },
   async getPhenotypeHistory(userId) {
     return axios.get(`/phenotype-profile/history/${userId}`).then(res => res.data);
   },
