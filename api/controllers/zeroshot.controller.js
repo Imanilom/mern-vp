@@ -38,6 +38,57 @@ const fmt      = (v) => (v !== undefined && v !== null ? v : 'N/A');
 const fmtFloat = (v, d = 3) => (typeof v === 'number' && !isNaN(v) ? v.toFixed(d) : 'N/A');
 const fmtMs    = (ms) => (typeof ms === 'number' && !isNaN(ms) ? Math.round(ms / 60000) + ' menit' : 'N/A');
 
+// Parser cerdas: menangani epoch dalam detik (< 1e12) maupun milidetik, Date object, dan string ISO
+const parseEpochOrIso = (val) => {
+  if (val === undefined || val === null || val === '') return null;
+  let d;
+  if (val instanceof Date) {
+    d = val;
+  } else if (typeof val === 'number') {
+    const ms = val < 1e12 ? val * 1000 : val;
+    d = new Date(ms);
+  } else if (typeof val === 'string') {
+    const num = Number(val);
+    if (!isNaN(num)) {
+      const ms = num < 1e12 ? num * 1000 : num;
+      d = new Date(ms);
+    } else {
+      d = new Date(val);
+    }
+  }
+  return d && !isNaN(d.getTime()) ? d : null;
+};
+
+const fmtDateOnly = (val) => {
+  const d = parseEpochOrIso(val);
+  if (!d) return 'N/A';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const fmtDateTime = (val) => {
+  const d = parseEpochOrIso(val);
+  if (!d) return 'N/A';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds} WIB`;
+};
+
+const fmtTimeOnly = (val) => {
+  const d = parseEpochOrIso(val);
+  if (!d) return 'N/A';
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+};
+
 const FSM_LABELS = {
   BASELINE_COMPATIBLE:   'Normal',
   DEVIATION_CANDIDATE:   'Kandidat Deviasi',
@@ -327,8 +378,10 @@ function buildUser360Prompt(ctx) {
   const docterInfo = user?.docter?.name ? `${user.docter.name} (${user.docter.email || ''})` : 'Belum Ditugaskan';
 
   // 1. App Usage & Activity Summary (Polar Data + Window Segments)
-  const firstDateStr = segmentsStats.first_time ? new Date(segmentsStats.first_time).toLocaleDateString('id-ID') : 'N/A';
-  const lastDateStr = segmentsStats.last_time ? new Date(segmentsStats.last_time).toLocaleDateString('id-ID') : 'N/A';
+  const minTime = segmentsStats.first_time || polarStats.min_timestamp;
+  const maxTime = segmentsStats.last_time || polarStats.max_timestamp;
+  const firstDateStr = fmtDateOnly(minTime);
+  const lastDateStr = fmtDateOnly(maxTime);
   
   const actLines = activityDistribution.map(a =>
     `  - ${a._id || 'Unknown'}: ${a.count} window (${Math.round((a.count / Math.max(1, segmentsStats.total_segments)) * 100)}%), Avg HR: ${fmtFloat(a.avg_hr, 1)} bpm`
@@ -354,20 +407,20 @@ function buildUser360Prompt(ctx) {
 
   // 3. Anomaly & Episodic History
   const epLines = episodeHistory.slice(0, 8).map((ep, i) => {
-    const onsetStr = ep.onset_time ? new Date(ep.onset_time < 1e12 ? ep.onset_time * 1000 : ep.onset_time).toLocaleString('id-ID') : 'N/A';
+    const onsetStr = fmtDateTime(ep.onset_time || ep.started_at);
     return `  #${i + 1} [${ep.classification || 'Anomali'}] ${onsetStr} | Akt: ${ep.activity || 'N/A'} | Durasi: ${fmtMs(ep.duration_ms)} | Peak HR: ${fmtFloat(ep.peak_hr, 1)} bpm | Relapse: ${ep.relapse ? 'Ya' : 'Tidak'}`;
   }).join('\n') || '  (Tidak ada riwayat anomali tercatat — peserta stabil)';
 
   // 4. EMA Diary Surveys (Ecological Momentary Assessment)
   const emaLines = (emaHistory || []).slice(0, 4).map((e, i) => {
-    const timeStr = e.submitted_at ? new Date(e.submitted_at).toLocaleString('id-ID') : 'N/A';
+    const timeStr = fmtDateTime(e.submitted_at);
     return `  #${i + 1} [${timeStr}] Gejala: ${e.ema2?.symptom || 'Tidak ada'} (Intensitas: ${e.ema2?.intensity || 0}/10, Trigger: ${e.ema2?.trigger || 'N/A'}) | Pemulihan: ${e.ema3?.recovery_status || 'N/A'}`;
   }).join('\n') || '  (Belum ada pengisian kuesioner EMA oleh pasien)';
 
   // 5. Recent Segments Sample
   const segLines = recentSegments.slice(0, 5).map(s => {
     const f = s.features || {};
-    const timeStr = s.window_start ? new Date(s.window_start).toLocaleTimeString('id-ID') : 'N/A';
+    const timeStr = fmtTimeOnly(s.window_start);
     return `  [${timeStr}] Akt=${s.activity_label || 'N/A'}, State=${fsmLabel(s.rr_status)}, Score=${fmtFloat(s.anomaly_score)}, HR=${fmtFloat(f.mean_hr, 1)} bpm, RMSSD=${fmtFloat(f.rmssd, 1)} ms`;
   }).join('\n') || '  (Tidak ada data segmen)';
 
@@ -454,13 +507,18 @@ TAKSONOMI DIGITAL AUTONOMIC PHENOTYPE:
 7. "Suspected Rhythm Irregularity": Variabilitas beat-to-beat (RR) ireguler tajam tanpa korelasi aktivitas fisik.
 8. "Abnormal Activity-Response Coupling": Ketidaksesuaian tajam antara intensitas gerak dan respon chronotropic HR.
 
+ATURAN FORMAT WAKTU & TANGGAL (SANGAT PENTING):
+- Jika menuliskan tanggal atau waktu dalam narasi ringkasan atau analisis, WAJIB menggunakan format Indonesia yang bersih dan rapi (contoh: "27/08/2026", "27 Agustus 2026", atau "27/08/2026 09:25 WIB").
+- DILARANG mencantumkan format ISO mentah berakhiran huruf 'Z' atau huruf 'T' (contoh terlarang: "2026-08-27T02:23:39.033Z").
+- Waktu rekaman aktual pasien adalah pada tahun 2026 (JANGAN pernah mencantumkan tahun 1970).
+
 ══════════════════════════════════════════════════════════════
 INSTRUKSI OUTPUT (PENTING: HANYA JSON, tidak ada teks di luar JSON)
 ══════════════════════════════════════════════════════════════
 Berikan analisis komprehensif 360° dalam format JSON berikut:
 
 {
-  "user_profile_summary": "Ringkasan profil dan pola pemakaian aplikasi/wearable oleh user: seberapa aktif merekam, rentang waktu monitoring, kepatuhan, dan rata-rata metrik kardiovaskular harian. (3-4 kalimat)",
+  "user_profile_summary": "Ringkasan profil dan pola pemakaian aplikasi/wearable oleh user: seberapa aktif merekam, rentang waktu monitoring (format tanggal bersih Indonesia), kepatuhan, dan rata-rata metrik kardiovaskular harian. (3-4 kalimat)",
   "baseline_portfolio_evaluation": "Evaluasi portofolio baseline: jelaskan baseline apa saja yang dimiliki dan sudah mature, baseline apa yang masih kurang/belum tercapai (gaps), kecukupan data, serta kesiapan ambang tau personal. (3-4 kalimat)",
   "anomaly_burden_analysis": "Analisis beban anomali (Anomaly Burden): jelaskan apakah user memiliki riwayat anomali, seberapa sering (Caution vs Alert), aktivitas apa yang paling rentan, dan apakah ada kecenderungan relapse atau pemulihan lambat. (3-4 kalimat)",
   "autonomic_phenotype": "Pilih 1 dari 8 nama taksonomi fenotipe otonom di atas yang paling tepat",
