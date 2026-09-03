@@ -38,6 +38,8 @@ import userpatientRouter from './routes/userpatient.route.js';
 import aipipelineRouter from './routes/aipipeline.route.js';
 import zeroshotRouter from './routes/zeroshot.route.js';
 import phenotypeProfileRouter from './routes/phenotype_profile.route.js';
+import clinicalVulnerabilityRouter from './routes/clinical_vulnerability.route.js';
+import resilienceRouter from './routes/resilience.route.js';
 import { verifyToken } from './utils/verifyUser.js';
 dotenv.config();
 
@@ -207,6 +209,8 @@ app.use("/api/patient-user", userpatientRouter);
 app.use("/api/ai", aipipelineRouter);
 app.use("/api/ai/zero-shot", zeroshotRouter);
 app.use("/api/phenotype-profile", phenotypeProfileRouter);
+app.use("/api/clinical-vulnerability", clinicalVulnerabilityRouter);
+app.use("/api/resilience", resilienceRouter);
 app.use("/api/ml", mlRouter);
 app.use("/api/system", systemRouter);
 app.use("/api/episodes", episodesRouter);

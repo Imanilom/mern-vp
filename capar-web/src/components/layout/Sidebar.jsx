@@ -33,7 +33,9 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     { id: 'profile', label: 'My Profile', icon: 'fa-user', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'settings', label: 'Settings', icon: 'fa-user-shield', roles: ['admin', 'doctor', 'researcher', 'user'] },
 
-    // === AI Tools ===
+    // === Resilience & AI Tools ===
+    { id: 'cardiovascular-resilience', label: 'Cardiovascular Resilience', icon: 'fa-heart-circle-bolt', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'clinical-vulnerability', label: 'Clinical Vulnerability', icon: 'fa-shield-heart', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'autonomic-profile', label: 'Profil', icon: 'fa-dna', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'zero-shot', label: 'Explain', icon: 'fa-lightbulb', roles: ['admin', 'researcher', 'doctor', 'user'] },
   ];
@@ -63,7 +65,9 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     'user-management': 'System',
     'profile': null,
     'settings': null,
-    'autonomic-profile': 'AI & XAI Tools',
+    'cardiovascular-resilience': 'Resilience & AI CDSS',
+    'clinical-vulnerability': null,
+    'autonomic-profile': null,
     'zero-shot': null,
   };
 

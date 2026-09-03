@@ -24,6 +24,8 @@ const UserManagementView   = lazy(() => import('./views/UserManagementView'));
 const ProfileView          = lazy(() => import('./views/ProfileView').then(m => ({ default: m.ProfileView })));
 const ZeroShotView         = lazy(() => import('./views/ZeroShotView').then(m => ({ default: m.ZeroShotView })));
 const AutonomicProfileView = lazy(() => import('./views/AutonomicProfileView').then(m => ({ default: m.AutonomicProfileView })));
+const ClinicalVulnerabilityView = lazy(() => import('./views/ClinicalVulnerabilityView').then(m => ({ default: m.ClinicalVulnerabilityView })));
+const CardiovascularResilienceView = lazy(() => import('./views/CardiovascularResilienceView').then(m => ({ default: m.CardiovascularResilienceView })));
 
 // ── Valid tab list ────────────────────────────────────────────────────────────
 const VALID_TABS = [
@@ -31,6 +33,7 @@ const VALID_TABS = [
   'state-timeline','episode','event-generator','episode-detail',
   'experience','prediction-eval','model-rules','export','audit',
   'settings','user-management','profile','zero-shot','autonomic-profile',
+  'clinical-vulnerability','cardiovascular-resilience',
 ];
 
 // ── Hash routing helpers ──────────────────────────────────────────────────────
@@ -297,6 +300,12 @@ export function App() {
           )}
           {tab('autonomic-profile',
             <AutonomicProfileView />
+          )}
+          {tab('clinical-vulnerability',
+            <ClinicalVulnerabilityView targetPatientId={targetPatientId} />
+          )}
+          {tab('cardiovascular-resilience',
+            <CardiovascularResilienceView targetPatientId={targetPatientId} />
           )}
         </main>
       </div>

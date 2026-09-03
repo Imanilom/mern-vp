@@ -741,5 +741,32 @@ export const api = {
   async getPhenotypeHistory(userId) {
     return axios.get(`/phenotype-profile/history/${userId}`).then(res => res.data);
   },
+
+  // ── Clinical Vulnerability & 5-Notebook Simulation Comparison ─────────────────
+  async getClinicalVulnerabilityOverview(userId) {
+    const q = userId ? `?userId=${userId}` : '';
+    return axios.get(`/clinical-vulnerability/overview${q}`).then(res => res.data);
+  },
+  async getNotebooksComparisonMatrix() {
+    return axios.get('/clinical-vulnerability/notebooks-matrix').then(res => res.data);
+  },
+  async getPatientVulnerabilityProfile(userId) {
+    return axios.get(`/clinical-vulnerability/patient/${userId}`).then(res => res.data);
+  },
+  async getRagEvidenceGrounding() {
+    return axios.get('/clinical-vulnerability/rag-evidence').then(res => res.data);
+  },
+  async assessClinicalVulnerability(params) {
+    return axios.post('/clinical-vulnerability/assess', params).then(res => res.data);
+  },
+
+  // ── Cardiovascular Resilience State (CRS) ──────────────────────────────────
+  async getCardiovascularResilienceState(userId) {
+    const q = userId ? `?userId=${userId}` : '';
+    return axios.get(`/resilience/state${q}`).then(res => res.data);
+  },
+  async assessCardiovascularResilience(params) {
+    return axios.post('/resilience/assess', params).then(res => res.data);
+  },
 };
 

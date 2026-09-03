@@ -14,6 +14,8 @@ import 'screens/onboarding/splash_transition_screen.dart';
 import 'screens/onboarding/welcome_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/insight/zero_shot_screen.dart';
+import 'screens/vulnerability/clinical_vulnerability_screen.dart';
+import 'screens/resilience/cardiovascular_resilience_screen.dart';
 import 'theme/app_colors.dart';
 
 void main() {
@@ -56,6 +58,8 @@ class CaparMobileApp extends StatelessWidget {
         '/pairing': (context) => const DevicePairingScreen(),
         '/baseline': (context) => const BaselineReadinessScreen(),
         '/splash_transition': (context) => const SplashTransitionScreen(),
+        '/clinical_vulnerability': (context) => const ClinicalVulnerabilityScreen(),
+        '/cardiovascular_resilience': (context) => const CardiovascularResilienceScreen(),
         '/app': (context) => const MainTabShell(),
       },
     );
@@ -76,6 +80,8 @@ class _MainTabShellState extends State<MainTabShell> {
     const HomeScreen(),
     const JourneyScreen(),
     const HistoryScreen(),
+    const CardiovascularResilienceScreen(),
+    const ClinicalVulnerabilityScreen(),
     const InsightScreen(),
     const ZeroShotScreen(),
     const ProfileScreen(),
@@ -109,40 +115,50 @@ class _MainTabShellState extends State<MainTabShell> {
             backgroundColor: AppColors.surface,
             selectedItemColor: AppColors.teal,
             unselectedItemColor: AppColors.gray,
-            selectedFontSize: 11,
-            unselectedFontSize: 10.5,
+            selectedFontSize: 10,
+            unselectedFontSize: 9.5,
             selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800),
             unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
             elevation: 0,
             items: const [
               BottomNavigationBarItem(
                 icon: Icon(Icons.home_rounded),
-                activeIcon: Icon(Icons.home_rounded, size: 24),
+                activeIcon: Icon(Icons.home_rounded, size: 22),
                 label: 'Home',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.explore_rounded),
-                activeIcon: Icon(Icons.explore_rounded, size: 24),
+                activeIcon: Icon(Icons.explore_rounded, size: 22),
                 label: 'Journey',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.show_chart_rounded),
-                activeIcon: Icon(Icons.show_chart_rounded, size: 24),
+                activeIcon: Icon(Icons.show_chart_rounded, size: 22),
                 label: 'Episode',
               ),
               BottomNavigationBarItem(
+                icon: Icon(Icons.favorite_border_rounded),
+                activeIcon: Icon(Icons.favorite_rounded, size: 22),
+                label: 'Resilience',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.shield_rounded),
+                activeIcon: Icon(Icons.shield_rounded, size: 22),
+                label: 'Vulnerability',
+              ),
+              BottomNavigationBarItem(
                 icon: Icon(Icons.lightbulb_rounded),
-                activeIcon: Icon(Icons.lightbulb_rounded, size: 24),
+                activeIcon: Icon(Icons.lightbulb_rounded, size: 22),
                 label: 'Insights',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.auto_awesome_rounded),
-                activeIcon: Icon(Icons.auto_awesome_rounded, size: 24),
+                activeIcon: Icon(Icons.auto_awesome_rounded, size: 22),
                 label: 'Explain',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_rounded),
-                activeIcon: Icon(Icons.person_rounded, size: 24),
+                activeIcon: Icon(Icons.person_rounded, size: 22),
                 label: 'Profile',
               ),
             ],

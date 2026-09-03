@@ -474,4 +474,141 @@ class ApiService {
       return {'success': false, 'message': e.toString()};
     }
   }
+
+  /// Mengambil overview Clinical Vulnerability & 3-Layer Digital Twin
+  static Future<Map<String, dynamic>?> fetchClinicalVulnerabilityOverview({String? userId}) async {
+    try {
+      final headers = await _getHeaders();
+      final uid = userId ?? '6a6609326bf83196b1d73e97';
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/clinical-vulnerability/overview?userId=$uid'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] fetchClinicalVulnerabilityOverview error: $e');
+    }
+    return null;
+  }
+
+  /// Mengambil matriks perbandingan 5 notebook simulasi
+  static Future<Map<String, dynamic>?> fetchNotebooksComparisonMatrix() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/clinical-vulnerability/notebooks-matrix'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] fetchNotebooksComparisonMatrix error: $e');
+    }
+    return null;
+  }
+
+  /// Mengambil profil kerentanan telemetri pasien
+  static Future<Map<String, dynamic>?> fetchPatientVulnerabilityProfile(String userId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/clinical-vulnerability/patient/$userId'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] fetchPatientVulnerabilityProfile error: $e');
+    }
+    return null;
+  }
+
+  /// Mengambil daftar 10 grounded Q1-Q10 & 12 PDF medis
+  static Future<Map<String, dynamic>?> fetchRagEvidenceGrounding() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/clinical-vulnerability/rag-evidence'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] fetchRagEvidenceGrounding error: $e');
+    }
+    return null;
+  }
+
+  /// Menghitung skor CVI dinamis
+  static Future<Map<String, dynamic>?> assessClinicalVulnerability(Map<String, dynamic> params) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/clinical-vulnerability/assess'),
+            headers: headers,
+            body: json.encode(params),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] assessClinicalVulnerability error: $e');
+    }
+    return null;
+  }
+
+  /// Mengambil Cardiovascular Resilience State (CRS) & 5 Dimensi
+  static Future<Map<String, dynamic>?> fetchCardiovascularResilienceState({String? userId}) async {
+    try {
+      final headers = await _getHeaders();
+      final uid = userId ?? '6a6609326bf83196b1d73e97';
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/resilience/state?userId=$uid'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] fetchCardiovascularResilienceState error: $e');
+    }
+    return null;
+  }
+
+  /// Simulasi What-If Cardiovascular Resilience
+  static Future<Map<String, dynamic>?> assessCardiovascularResilience(Map<String, dynamic> params) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/resilience/assess'),
+            headers: headers,
+            body: json.encode(params),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] assessCardiovascularResilience error: $e');
+    }
+    return null;
+  }
 }
