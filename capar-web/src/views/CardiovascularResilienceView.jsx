@@ -207,9 +207,17 @@ export function CardiovascularResilienceView({ targetPatientId }) {
               <option value="6a6609326bf83196b1d73e97">User 6a660932 (patient 27-30 Mei 2024)</option>
               <option value="67652725d40f2b664e88deb0">User 67652725 (patient - 1003 Segmen)</option>
               <option value="675ba1e92b8428e4dd641cd0">User 675ba1e9 (Dokter / Telemetri 390 Segmen)</option>
-              {participantsList.filter(p => !['6a6609326bf83196b1d73e97', '67652725d40f2b664e88deb0', '675ba1e92b8428e4dd641cd0'].includes(p.userId)).map(p => (
-                <option key={p.userId} value={p.userId}>{p.name} ({p.userId.slice(0, 8)}...)</option>
-              ))}
+              {participantsList.filter(p => {
+                const uid = String(p?.id || p?.userId || p?._id || '');
+                return uid && !['6a6609326bf83196b1d73e97', '67652725d40f2b664e88deb0', '675ba1e92b8428e4dd641cd0'].includes(uid);
+              }).map(p => {
+                const uid = String(p?.id || p?.userId || p?._id || '');
+                const shortId = uid.length > 8 ? `${uid.slice(0, 8)}...` : uid;
+                const name = p?.name || p?.email || 'User';
+                return (
+                  <option key={uid} value={uid}>{name} ({shortId})</option>
+                );
+              })}
             </select>
           </div>
 
