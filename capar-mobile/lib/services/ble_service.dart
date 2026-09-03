@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../../shared/models/models.dart';
 
+import 'background_task.dart';
+
 /// BleService — menggunakan Official Polar BLE SDK (package: polar)
 ///
 /// Alur data Polar H10:
@@ -112,8 +114,17 @@ class BleService extends ChangeNotifier {
       isConnecting = false;
       connectingDeviceId = '';
       _autoReconnectTimer?.cancel();
+
+      // Start Foreground Service to keep connection active 24/7 in background
+      BackgroundTask.startForegroundService(
+        title: '$deviceName Terhubung',
+        content: 'Telemetri latar belakang aktif • CAPAR Digital Twin',
+      );
+
       SharedPreferences.getInstance().then((prefs) {
         prefs.setString('device_id', info.deviceId);
+        prefs.setString('device_name', deviceName);
+        prefs.setBool('polar_is_connected', true);
       });
       isConnected = true;
       batteryLevel = 95;
@@ -130,7 +141,15 @@ class BleService extends ChangeNotifier {
       _stopStreams();
       if (!_isDisposed) notifyListeners();
 
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setBool('polar_is_connected', false);
+      });
+
       if (!_isManualDisconnect && _savedDeviceId.isNotEmpty && !_isDisposed) {
+        BackgroundTask.updateNotification(
+          'Polar H10 Terputus',
+          'Mencoba menyambung kembali secara otomatis...',
+        );
         _scheduleAutoReconnect(_savedDeviceId);
       }
     });
@@ -476,6 +495,7 @@ class BleService extends ChangeNotifier {
       try { _polar.disconnectFromDevice(_deviceId); } catch (_) {}
     }
     _stopStreams();
+    BackgroundTask.stopForegroundService();
     isConnected = false;
     _deviceId = '';
     deviceName = "Tidak Ada Perangkat";

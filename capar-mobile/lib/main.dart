@@ -16,12 +16,18 @@ import 'screens/profile/profile_screen.dart';
 import 'screens/insight/zero_shot_screen.dart';
 import 'screens/vulnerability/clinical_vulnerability_screen.dart';
 import 'screens/resilience/cardiovascular_resilience_screen.dart';
+import 'services/background_task.dart';
 import 'theme/app_colors.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-
+  // Inisialisasi background foreground service untuk menjaga koneksi BLE Polar H10
+  try {
+    await BackgroundTask.initializeService();
+  } catch (e) {
+    debugPrint('[Main] BackgroundTask init warning: $e');
+  }
 
   runApp(
     const ProviderScope(

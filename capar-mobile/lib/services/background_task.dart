@@ -22,6 +22,12 @@ void onStart(ServiceInstance service) async {
     service.on('setAsBackground').listen((event) {
       service.setAsBackgroundService();
     });
+
+    service.on('updateNotification').listen((event) {
+      final title = event?['title']?.toString() ?? 'CAPAR Sensor Active';
+      final content = event?['content']?.toString() ?? 'Monitoring Polar H10 in background...';
+      service.setForegroundNotificationInfo(title: title, content: content);
+    });
   }
 
   service.on('stopService').listen((event) {
@@ -49,12 +55,11 @@ void onStart(ServiceInstance service) async {
         if (await service.isForegroundService()) {
           service.setForegroundNotificationInfo(
             title: "CAPAR Active (Dummy Mode)",
-            content: "Sending simulated RR data to backend...",
+            content: "Mengirim data simulasi RR ke backend...",
           );
         }
       }
 
-      // Generate fake RR around 800ms
       final fakeReadings = [
         {
           "rr": 790 + (DateTime.now().millisecond % 20),
@@ -73,15 +78,30 @@ void onStart(ServiceInstance service) async {
       }
     });
   } else {
-    // REAL BLE MODE is now handled in the main isolate via Riverpod's BleService.
-    // This background service simply keeps the app alive in the foreground to prevent OS from killing it during background execution.
-    Timer.periodic(const Duration(seconds: 15), (timer) async {
+    // REAL BLE MODE: Keeps app alive in foreground to prevent OS from killing it
+    Timer.periodic(const Duration(seconds: 10), (timer) async {
       if (service is AndroidServiceInstance) {
         if (await service.isForegroundService()) {
-          service.setForegroundNotificationInfo(
-            title: "CAPAR Active",
-            content: "Monitoring heart rate in background...",
-          );
+          final isConn = prefs.getBool('polar_is_connected') ?? false;
+          final lastHr = prefs.getInt('polar_last_hr') ?? 0;
+          final devName = prefs.getString('device_name') ?? 'Polar H10';
+          
+          if (isConn && lastHr > 0) {
+            service.setForegroundNotificationInfo(
+              title: "$devName Terhubung ($lastHr BPM)",
+              content: "Telemetri latar belakang aktif • CAPAR Digital Twin",
+            );
+          } else if (isConn) {
+            service.setForegroundNotificationInfo(
+              title: "$devName Terhubung",
+              content: "Menerima aliran telemetri sensor kontinu...",
+            );
+          } else {
+            service.setForegroundNotificationInfo(
+              title: "CAPAR Background Active",
+              content: "Menunggu koneksi sensor Polar H10...",
+            );
+          }
         }
       }
     });
@@ -89,52 +109,108 @@ void onStart(ServiceInstance service) async {
 }
 
 class BackgroundTask {
+  static bool _isInitialized = false;
+
   static Future<void> initializeService() async {
-    if (kIsWeb) return;
+    if (kIsWeb || _isInitialized) return;
     
-    // Request notification permission for Android 13+
-    await Permission.notification.request();
+    try {
+      // Request notification permission for Android 13+
+      await Permission.notification.request();
 
-    if (Platform.isAndroid) {
-      final apiMatch = RegExp(r'API (\d+)').firstMatch(Platform.operatingSystemVersion);
-      final apiLevel = apiMatch != null ? int.tryParse(apiMatch.group(1) ?? '') : null;
-      if (apiLevel != null && apiLevel >= 34) {
-        debugPrint('Skipping background service init on Android 14+ because the current flutter_background_service plugin crashes with MissingForegroundServiceTypeException.');
-        return;
+      // Request ignore battery optimizations so Android won't kill background BLE
+      if (Platform.isAndroid) {
+        if (!await Permission.ignoreBatteryOptimizations.isGranted) {
+          await Permission.ignoreBatteryOptimizations.request();
+        }
       }
+      
+      final service = FlutterBackgroundService();
+
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'capar_foreground',
+        'CAPAR Background Stream',
+        description: 'Digunakan untuk menjaga koneksi Polar H10 tetap berjalan di latar belakang.',
+        importance: Importance.low,
+      );
+
+      final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
+
+      await service.configure(
+        androidConfiguration: AndroidConfiguration(
+          onStart: onStart,
+          autoStart: false,
+          isForegroundMode: true,
+          notificationChannelId: 'capar_foreground',
+          initialNotificationTitle: 'CAPAR Polar Monitor',
+          initialNotificationContent: 'Menjaga koneksi Polar H10 di latar belakang...',
+          foregroundServiceNotificationId: 888,
+        ),
+        iosConfiguration: IosConfiguration(
+          autoStart: false,
+          onForeground: onStart,
+          onBackground: onIosBackground,
+        ),
+      );
+
+      _isInitialized = true;
+      debugPrint('[BackgroundTask] Initialized successfully.');
+    } catch (e) {
+      debugPrint('[BackgroundTask] Init error: $e');
     }
-    
-    final service = FlutterBackgroundService();
+  }
 
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'capar_foreground',
-      'CAPAR Background Stream',
-      description: 'Digunakan untuk menjaga koneksi Polar H10 tetap berjalan.',
-      importance: Importance.low,
-    );
+  /// Start Foreground Service to prevent Android from killing BLE connection
+  static Future<void> startForegroundService({String? title, String? content}) async {
+    if (kIsWeb) return;
+    try {
+      if (!_isInitialized) {
+        await initializeService();
+      }
+      final service = FlutterBackgroundService();
+      final isRunning = await service.isRunning();
+      if (!isRunning) {
+        await service.startService();
+      }
+      if (title != null || content != null) {
+        service.invoke('updateNotification', {
+          'title': title ?? 'CAPAR Sensor Active',
+          'content': content ?? 'Monitoring Polar H10 in background...'
+        });
+      }
+    } catch (e) {
+      debugPrint('[BackgroundTask] startForegroundService error: $e');
+    }
+  }
 
-    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  /// Stop Foreground Service when user manually disconnects
+  static Future<void> stopForegroundService() async {
+    if (kIsWeb) return;
+    try {
+      final service = FlutterBackgroundService();
+      final isRunning = await service.isRunning();
+      if (isRunning) {
+        service.invoke('stopService');
+      }
+    } catch (e) {
+      debugPrint('[BackgroundTask] stopForegroundService error: $e');
+    }
+  }
 
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
-
-    await service.configure(
-      androidConfiguration: AndroidConfiguration(
-        onStart: onStart,
-        autoStart: false,
-        isForegroundMode: true,
-        notificationChannelId: 'capar_foreground',
-        initialNotificationTitle: 'CAPAR Sensor',
-        initialNotificationContent: 'Menunggu koneksi...',
-        foregroundServiceNotificationId: 888,
-      ),
-      iosConfiguration: IosConfiguration(
-        autoStart: false,
-        onForeground: onStart,
-        onBackground: onIosBackground,
-      ),
-    );
+  /// Update notification status dynamically
+  static void updateNotification(String title, String content) {
+    if (kIsWeb) return;
+    try {
+      final service = FlutterBackgroundService();
+      service.invoke('updateNotification', {
+        'title': title,
+        'content': content,
+      });
+    } catch (_) {}
   }
 
   @pragma('vm:entry-point')
