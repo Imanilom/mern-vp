@@ -753,8 +753,9 @@ export const api = {
   async getPatientVulnerabilityProfile(userId) {
     return axios.get(`/clinical-vulnerability/patient/${userId}`).then(res => res.data);
   },
-  async getRagEvidenceGrounding() {
-    return axios.get('/clinical-vulnerability/rag-evidence').then(res => res.data);
+  async getRagEvidenceGrounding(userId) {
+    const q = userId ? `?userId=${userId}` : '';
+    return axios.get(`/clinical-vulnerability/rag-evidence${q}`).then(res => res.data);
   },
   async assessClinicalVulnerability(params) {
     return axios.post('/clinical-vulnerability/assess', params).then(res => res.data);

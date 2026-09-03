@@ -533,13 +533,14 @@ class ApiService {
     return null;
   }
 
-  /// Mengambil daftar 10 grounded Q1-Q10 & 12 PDF medis
-  static Future<Map<String, dynamic>?> fetchRagEvidenceGrounding() async {
+  /// Mengambil data grounding 12 PDF dan penalaran Q1-Q10
+  static Future<Map<String, dynamic>?> fetchRagEvidenceGrounding({String? userId}) async {
     try {
       final headers = await _getHeaders();
+      final q = userId != null && userId.isNotEmpty ? '?userId=$userId' : '';
       final response = await http
           .get(
-            Uri.parse('$baseUrl/clinical-vulnerability/rag-evidence'),
+            Uri.parse('$baseUrl/clinical-vulnerability/rag-evidence$q'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 15));

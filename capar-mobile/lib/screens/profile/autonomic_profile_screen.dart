@@ -304,7 +304,7 @@ class _AutonomicProfileScreenState extends State<AutonomicProfileScreen> with Si
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
-              side: Border.all(color: AppColors.line),
+              side: const BorderSide(color: AppColors.line),
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(10),
