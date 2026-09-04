@@ -675,6 +675,24 @@ export function computeCardiovascularResilience(params) {
 }
 
 /**
+ * POST /api/resilience/assess
+ * Calculates resilience assessment from custom parameters (for what-if / simulation)
+ */
+export async function calculateResilienceAssessment(req, res) {
+  try {
+    const params = req.body || {};
+    const assessment = computeCardiovascularResilience(params);
+    return res.status(200).json({
+      success: true,
+      data: assessment
+    });
+  } catch (error) {
+    console.error('[calculateResilienceAssessment] Error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
  * GET /api/resilience/state
  * Retrieves real CAPAR engine data and calculates Cardiovascular Resilience State
  */
