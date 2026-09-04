@@ -10,6 +10,7 @@ import {
   buildDuplicateKeySet,
 } from '../utils/validateLog.js';
 import { buildTransportEnvelope, publishLogTransport } from '../utils/logTransport.js';
+import { io } from '../index.js';
 
 // Multer: simpan sementara di uploads/
 export const upload = multer({ dest: 'uploads/' });
@@ -93,6 +94,14 @@ export const createTransportLog = async (req, res) => {
           await PolarData.create(doc).catch(() => {});
           insertedCount++;
         }
+      }
+
+      if (io && docs.length > 0) {
+        io.emit('new_sensor_data', {
+          user_id: targetUserId.toString(),
+          device_id: envelope.device_id || 'UNKNOWN',
+          readings: docs
+        });
       }
     }
 

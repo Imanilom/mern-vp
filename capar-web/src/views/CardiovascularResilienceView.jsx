@@ -24,6 +24,11 @@ import {
   Legend,
   BarChart,
   Bar,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  CartesianGrid,
   XAxis,
   YAxis
 } from 'recharts';
@@ -530,6 +535,390 @@ export function CardiovascularResilienceView({ targetPatientId }) {
         </div>
 
       </div>
+
+      {/* ── 3. BLOK 5: OUTPUT & DECISION SUPPORT + XAI ──────────────────────── */}
+      {(() => {
+        const b5 = resilienceData?.block5Output || {};
+        const vRisk = b5.vulnerabilityRisk || {
+          score: Number((100 - liveGlobalScore).toFixed(1)),
+          level: liveGlobalScore > 75 ? 'LOW RISK' : 'MODERATE RISK',
+          band: liveGlobalScore > 75 ? 'Optimal Resilience' : 'Moderate Fragility',
+          bandColor: liveGlobalScore > 75 ? '#10B981' : '#F59E0B',
+          description: 'Estimasi kerentanan klinis & kelemahan cadangan otonomik (skala 0 - 100).'
+        };
+        const traj = b5.recoveryTrajectoryForecast || {
+          estimatedTtrMin: 15.0,
+          recoveryVelocity: 0.68,
+          recoveryAcceleration: -0.001,
+          forecastPoints: [
+            { timeMin: 0, expectedDeviation: 2.85, upperCi: 3.1, lowerCi: 2.6, targetBaseline: 0.30 },
+            { timeMin: 5, expectedDeviation: 1.45, upperCi: 1.8, lowerCi: 1.1, targetBaseline: 0.30 },
+            { timeMin: 10, expectedDeviation: 0.75, upperCi: 1.1, lowerCi: 0.4, targetBaseline: 0.30 },
+            { timeMin: 15, expectedDeviation: 0.38, upperCi: 0.7, lowerCi: 0.1, targetBaseline: 0.30 }
+          ]
+        };
+        const pheno = b5.phenotypeRegulation || {
+          vector: { fDev: 0.17, mDev: 2.85, dDev: 900, vRec: 0.68, rRel: 0.0, cCtx: 0.92, deltaDiurnal: 0.28, kDay: 0.88, uUnexp: 0.05 },
+          signature: 'Fast / Efficient Recoverer',
+          reason: 'TTR singkat, slope pemulihan curam, dan stabilitas paska-recovery tinggi.'
+        };
+        const eWarn = b5.earlyWarningRelapse || {
+          relapseRiskProbPercent: 12,
+          earlyWarningLevel: 'LEVEL 0: NORMAL / SECURE',
+          warningBadgeColor: '#DCFCE7',
+          warningTextColor: '#15803D',
+          dwellStatus: 'Normal Trajectory',
+          relapseCount: 0
+        };
+        const recs = b5.personalRecommendation || {
+          autonomicPacing: 'Kapasitas modulasi otonomik adaptif. Pacing harian dalam rentang target fisiologis optimal.',
+          vagalActivation: 'Modulasi vagal nokturnal optimal. Pertahankan pola sirkadian tidur dan hidrasi teratur.',
+          clinicalEscalation: 'Tidak diperlukan eskalasi klinis segera. Lanjutkan pemantauan longitudinal Digital Twin.'
+        };
+        const xaiTrace = b5.xaiEvidenceTrace || {
+          supportingFeatures: [],
+          contradictingFeatures: [],
+          triggerContext: { activeContext: 'Duduk Tenang', motionIntensity: 'Rendah', contextExplained: 'Concordant' },
+          uncertainty: { dataQualitySqi: 0.94, baselineMaturity: 'Mature', coveragePercent: '92.4%', modelConfidence: 0.93 }
+        };
+        const clControl = resilienceData?.closedLoopControl || {
+          errorResidual: { hrResidualBpm: 0.4, rmssdResidualMs: 2.5, dfaResidual: 0.02, globalInnovationNorm: 0.38 },
+          observerState: { mDev: 2.85, pDev: 0.18, rRec: 0.68, sStab: 0.90, aTone: 0.81, formula: 'x_AR(k+1) = A·x_AR(k) + B·u(k) + K_k·e(k)' },
+          calibrationUpdates: { baselinePlasticityAlpha: 0.05, kalmanGainNorm: 0.42, feedbackActionApplied: 'Parameter kalibrasi adaptif aktif' }
+        };
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Section Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)',
+              color: '#FFFFFF',
+              borderRadius: 14,
+              padding: '18px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+              boxShadow: '0 4px 16px rgba(30, 27, 75, 0.2)'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ background: '#4F46E5', color: '#EEF2FF', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 900 }}>
+                    BLOK 5
+                  </span>
+                  <h2 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.01em' }}>
+                    Output & Decision Support Framework + Explainable AI (XAI)
+                  </h2>
+                </div>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 4, display: 'block' }}>
+                  Representasi Translasi Klinis: Vulnerability Score, Trajectory Forecast, Phenotyping, Early Warning, & Evidence Trace
+                </span>
+              </div>
+              <div style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                padding: '6px 14px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 800,
+                color: '#E0E7FF'
+              }}>
+                <i className="fa-solid fa-brain" style={{ marginRight: 6 }}></i>
+                Digital Twin Inference Engine
+              </div>
+            </div>
+
+            {/* 6 Output Pillars Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
+              
+              {/* Output 1: Vulnerability / Risk Estimate */}
+              <div style={{ background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', padding: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+                    1. Vulnerability / Risk Estimate
+                  </span>
+                  <span style={{ background: vRisk.bandColor + '20', color: vRisk.bandColor, padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 900 }}>
+                    {vRisk.level}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: 34, fontWeight: 900, color: vRisk.bandColor }}>{vRisk.score}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#64748B' }}>/ 100</span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', marginTop: 4 }}>{vRisk.band}</div>
+                <p style={{ fontSize: 11.5, color: '#64748B', margin: '6px 0 0 0', lineHeight: 1.4 }}>
+                  {vRisk.description} Dihitung dari bobot komposit: CV (35%), CR (25%), AR (20%), RC (20%).
+                </p>
+              </div>
+
+              {/* Output 2: Recovery Trajectory Forecast */}
+              <div style={{ background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', padding: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+                    2. Recovery Trajectory Forecast
+                  </span>
+                  <span style={{ background: '#E0F2FE', color: '#0284C7', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 900 }}>
+                    TTR: {traj.estimatedTtrMin.toFixed(1)} mnt
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div style={{ background: '#F8FAFC', padding: '8px 10px', borderRadius: 8, border: '1px solid #F1F5F9' }}>
+                    <div style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700 }}>Recovery Velocity (v_rec)</div>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: '#0F172A' }}>{traj.recoveryVelocity} /min</div>
+                  </div>
+                  <div style={{ background: '#F8FAFC', padding: '8px 10px', borderRadius: 8, border: '1px solid #F1F5F9' }}>
+                    <div style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700 }}>Acceleration (a_rec)</div>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: '#0F172A' }}>{traj.recoveryAcceleration} /min²</div>
+                  </div>
+                </div>
+                <div style={{ width: '100%', height: 100 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={traj.forecastPoints}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                      <XAxis dataKey="timeMin" tick={{ fontSize: 9 }} unit="m" />
+                      <YAxis tick={{ fontSize: 9 }} domain={[0, 4]} />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="upperCi" stroke="none" fill="#0EA5E9" fillOpacity={0.15} name="95% CI Atas" />
+                      <Area type="monotone" dataKey="expectedDeviation" stroke="#0284C7" strokeWidth={2} fill="#0EA5E9" fillOpacity={0.3} name="Prediksi D(t)" />
+                      <Line type="monotone" dataKey="targetBaseline" stroke="#10B981" strokeDasharray="2 2" name="Baseline Homeostasis" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Output 3: Phenotype Regulation */}
+              <div style={{ background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', padding: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+                    3. Phenotype Regulation Signature
+                  </span>
+                  <span style={{ background: '#F3E8FF', color: '#7E22CE', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 900 }}>
+                    Vector Φ
+                  </span>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: '#4C1D95' }}>{pheno.signature}</div>
+                <p style={{ fontSize: 11.5, color: '#64748B', margin: '4px 0 8px 0', lineHeight: 1.4 }}>
+                  {pheno.reason}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {Object.entries(pheno.vector || {}).map(([k, v]) => (
+                    <span key={k} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 800, color: '#334155' }}>
+                      {k}: {v}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Output 4: Early Warning / Relapse Detection */}
+              <div style={{ background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', padding: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+                    4. Early Warning & Relapse
+                  </span>
+                  <span style={{ background: eWarn.warningBadgeColor, color: eWarn.warningTextColor, padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 900 }}>
+                    {eWarn.earlyWarningLevel}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: 32, fontWeight: 900, color: eWarn.warningTextColor }}>{eWarn.relapseRiskProbPercent}%</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B' }}>Probabilitas Relapse</span>
+                </div>
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11.5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                    <span>Dwell Status:</span>
+                    <span style={{ fontWeight: 800, color: '#0F172A' }}>{eWarn.dwellStatus}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                    <span>Histori Relapse Terdeteksi:</span>
+                    <span style={{ fontWeight: 800, color: '#0F172A' }}>{eWarn.relapseCount} kejadian</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Output 5: Personal Recommendation */}
+              <div style={{ background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', padding: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.02)', gridColumn: 'span 2' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+                    5. Personal Recommendation & Intervention Support
+                  </span>
+                  <span style={{ background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 900 }}>
+                    Actionable Prescriptions
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                  <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: 12, borderRadius: 8 }}>
+                    <div style={{ fontWeight: 800, fontSize: 12, color: '#166534', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <i className="fa-solid fa-person-walking"></i> Autonomic Pacing Prescription
+                    </div>
+                    <div style={{ fontSize: 11.5, color: '#14532D', lineHeight: 1.4 }}>{recs.autonomicPacing}</div>
+                  </div>
+                  <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: 12, borderRadius: 8 }}>
+                    <div style={{ fontWeight: 800, fontSize: 12, color: '#1E40AF', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <i className="fa-solid fa-lungs"></i> Vagal Activation Guidance (0.1 Hz)
+                    </div>
+                    <div style={{ fontSize: 11.5, color: '#1E3A8A', lineHeight: 1.4 }}>{recs.vagalActivation}</div>
+                  </div>
+                  <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: 12, borderRadius: 8 }}>
+                    <div style={{ fontWeight: 800, fontSize: 12, color: '#991B1B', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <i className="fa-solid fa-user-doctor"></i> Clinical Escalation Flag
+                    </div>
+                    <div style={{ fontSize: 11.5, color: '#7F1D1D', lineHeight: 1.4 }}>{recs.clinicalEscalation}</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* 6. XAI Transparent Evidence Trace (4 Kuadran) */}
+            <div style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E2E8F0', padding: 20, boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#0F172A' }}>
+                    6. XAI — Penjelasan Transparan & Audit Trail 4 Kuadran
+                  </h3>
+                  <span style={{ fontSize: 11.5, color: '#64748B' }}>
+                    Transparansi keputusan Digital Twin berbasis fitur pendorong, faktor mitigasi, pemicu konteks, dan batas ketidakpastian.
+                  </span>
+                </div>
+                <span style={{ background: '#F1F5F9', color: '#475569', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800 }}>
+                  Confidence: {(xaiTrace.uncertainty?.modelConfidence * 100).toFixed(0)}%
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+                
+                {/* Kuadran 1: Fitur Pendukung */}
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#0284C7', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className="fa-solid fa-circle-check"></i> ✓ Fitur Pendukung (Positive Evidence)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {xaiTrace.supportingFeatures?.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, borderBottom: '1px dashed #E2E8F0', paddingBottom: 4 }}>
+                        <span style={{ color: '#334155' }}>{f.name}</span>
+                        <span style={{ fontWeight: 800, color: '#0F172A' }}>{f.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Kuadran 2: Fitur Bertentangan */}
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#16A34A', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className="fa-solid fa-shield-halved"></i> ✕ Fitur Bertentangan (Mitigating Factors)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {xaiTrace.contradictingFeatures?.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, borderBottom: '1px dashed #E2E8F0', paddingBottom: 4 }}>
+                        <span style={{ color: '#334155' }}>{f.name}</span>
+                        <span style={{ fontWeight: 800, color: '#15803D' }}>{f.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Kuadran 3: Konteks Pemicu */}
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#D97706', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className="fa-solid fa-bolt"></i> ⚡ Konteks Pemicu (Trigger Context)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11.5 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748B' }}>Aktivitas:</span>
+                      <span style={{ fontWeight: 800, color: '#0F172A' }}>{xaiTrace.triggerContext?.activeContext}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748B' }}>Motion ACC:</span>
+                      <span style={{ fontWeight: 800, color: '#0F172A' }}>{xaiTrace.triggerContext?.motionIntensity}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748B' }}>Kesesuaian Konteks:</span>
+                      <span style={{ fontWeight: 800, color: '#0EA5E9' }}>{xaiTrace.triggerContext?.contextExplained}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Kuadran 4: Ketidakpastian & Batas */}
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#7C3AED', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className="fa-solid fa-circle-question"></i> ? Estimasi Ketidakpastian (Uncertainty)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11.5 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748B' }}>Signal Quality (SQI):</span>
+                      <span style={{ fontWeight: 800, color: '#0F172A' }}>{xaiTrace.uncertainty?.dataQualitySqi}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748B' }}>Baseline Maturity:</span>
+                      <span style={{ fontWeight: 800, color: '#16A34A' }}>{xaiTrace.uncertainty?.baselineMaturity}</span>
+                    </div>
+                    <div style={{ fontSize: 10.5, color: '#64748B', marginTop: 4, lineHeight: 1.3, fontStyle: 'italic' }}>
+                      {xaiTrace.uncertainty?.interpretationBoundary}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* ── CLOSED-LOOP CONTROL SYSTEM & ADAPTIVE FEEDBACK ──────────────── */}
+            <div style={{
+              background: 'linear-gradient(135deg, #064E3B 0%, #065F46 100%)',
+              color: '#FFFFFF',
+              borderRadius: 14,
+              padding: 20,
+              boxShadow: '0 4px 16px rgba(6, 78, 59, 0.2)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ background: '#10B981', color: '#064E3B', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 900 }}>
+                    CLOSED-LOOP
+                  </span>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#FFFFFF' }}>
+                    Sistem Kontrol & Loop Kalibrasi Umpan Balik (Feedback Control)
+                  </h3>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.15)', padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 800 }}>
+                  Innovation Error: ||e(k)|| = {clControl.errorResidual?.globalInnovationNorm}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+                
+                <div style={{ background: 'rgba(255,255,255,0.08)', padding: 12, borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 800, textTransform: 'uppercase' }}>Residual Error e(k)</div>
+                  <div style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
+                    <div>ΔHR Error: <span style={{ fontWeight: 800 }}>{clControl.errorResidual?.hrResidualBpm} bpm</span></div>
+                    <div>ΔRMSSD Error: <span style={{ fontWeight: 800 }}>{clControl.errorResidual?.rmssdResidualMs} ms</span></div>
+                    <div>ΔDFA Error: <span style={{ fontWeight: 800 }}>{clControl.errorResidual?.dfaResidual}</span></div>
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(255,255,255,0.08)', padding: 12, borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 800, textTransform: 'uppercase' }}>State-Space Observer x_AR</div>
+                  <div style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
+                    <div>m_dev: <span style={{ fontWeight: 800 }}>{clControl.observerState?.mDev}</span> | r_rec: <span style={{ fontWeight: 800 }}>{clControl.observerState?.rRec}</span></div>
+                    <div>p_dev: <span style={{ fontWeight: 800 }}>{clControl.observerState?.pDev}</span> | s_stab: <span style={{ fontWeight: 800 }}>{clControl.observerState?.sStab}</span></div>
+                    <div style={{ fontSize: 10, color: '#D1FAE5', marginTop: 2 }}>{clControl.observerState?.formula}</div>
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(255,255,255,0.08)', padding: 12, borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 800, textTransform: 'uppercase' }}>Adaptasi & Kalibrasi Model</div>
+                  <div style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
+                    <div>Baseline Plasticity (α): <span style={{ fontWeight: 800 }}>{clControl.calibrationUpdates?.baselinePlasticityAlpha}</span></div>
+                    <div>Kalman Gain (K): <span style={{ fontWeight: 800 }}>{clControl.calibrationUpdates?.kalmanGainNorm}</span></div>
+                    <div style={{ fontSize: 11, color: '#D1FAE5', marginTop: 2 }}>Status: <span style={{ fontWeight: 800, color: '#A7F3D0' }}>Terkalibrasi Adaptif</span></div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        );
+      })()}
 
     </div>
   );

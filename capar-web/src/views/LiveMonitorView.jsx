@@ -61,6 +61,18 @@ export const LiveMonitorView = ({
   const [liveData, setLiveData] = useState([]);
   const [activeStreamTab, setActiveStreamTab] = useState('hr'); // 'hr' | 'acc' | 'ecg' | 'all'
 
+  // ── Live Streaming Engine States ──
+  const [isAutoStreaming, setIsAutoStreaming] = useState(true);
+  const [streamIntervalMs, setStreamIntervalMs] = useState(2000); // 2 seconds
+  const [isPacketReceiving, setIsPacketReceiving] = useState(false);
+  const [lastStreamTime, setLastStreamTime] = useState(null);
+
+  // ── Date & Time/Hour Range Filter States ──
+  const [filterDate, setFilterDate] = useState(globalDateFilter || '');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [timePreset, setTimePreset] = useState('all'); // 'all' | 'morning' | 'afternoon' | 'night' | 'custom'
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -78,30 +90,95 @@ export const LiveMonitorView = ({
   }, [initialSelectedId, participants]);
 
   useEffect(() => {
-    if (selectedParticipant) {
-      setLoadingRaw(true);
-      const targetId = selectedParticipant.guid || selectedParticipant.id || selectedParticipant._id;
-      
-      Promise.all([
-        api.getRawData(targetId, globalDateFilter || undefined).catch(() => null),
-        api.getRRBaseline(targetId).catch(() => null),
-        api.getRecentEvents(targetId).catch(() => null)
-      ]).then(([rawRes, baselineRes, eventsRes]) => {
+    if (globalDateFilter && globalDateFilter !== filterDate) {
+      setFilterDate(globalDateFilter);
+    }
+  }, [globalDateFilter]);
+
+  // Main Data Fetcher with Date & Time Range
+  const fetchParticipantData = async (isBackground = false) => {
+    if (!selectedParticipant) return;
+    const targetId = selectedParticipant.guid || selectedParticipant.id || selectedParticipant._id;
+    if (!isBackground) setLoadingRaw(true);
+
+    try {
+      const [rawRes, baselineRes, eventsRes] = await Promise.all([
+        api.getRawData(targetId, filterDate || undefined, startTime || undefined, endTime || undefined).catch(() => null),
+        !isBackground ? api.getRRBaseline(targetId).catch(() => null) : Promise.resolve(baselineData),
+        !isBackground ? api.getRecentEvents(targetId).catch(() => null) : Promise.resolve(participantEvents)
+      ]);
+
+      if (rawRes) {
         setRawData(rawRes);
+        if (isBackground) {
+          setIsPacketReceiving(true);
+          setTimeout(() => setIsPacketReceiving(false), 450);
+        }
+      }
+
+      if (!isBackground) {
         if (baselineRes && baselineRes.length > 0) {
-           setBaselineData(baselineRes[0]); // Ambil baseline terbaru
+          setBaselineData(baselineRes[0]);
         } else {
-           setBaselineData(null);
+          setBaselineData(null);
         }
         setParticipantEvents(eventsRes);
         setLoadingRaw(false);
-      });
+      }
+      setLastStreamTime(new Date().toLocaleTimeString('id-ID'));
+    } catch (err) {
+      if (!isBackground) setLoadingRaw(false);
+    }
+  };
+
+  // Trigger load on participant or filter change
+  useEffect(() => {
+    if (selectedParticipant) {
+      fetchParticipantData(false);
     } else {
       setRawData(null);
       setBaselineData(null);
       setParticipantEvents(null);
     }
-  }, [selectedParticipant, globalDateFilter]);
+  }, [selectedParticipant, filterDate, startTime, endTime]);
+
+  // ── Real-Time Continuous Streaming Auto-Sync Loop (Only if in live mode / no strict historical time filter) ──
+  useEffect(() => {
+    const isHistoricalFiltered = Boolean(filterDate || startTime || endTime);
+    if (!isAutoStreaming || !selectedParticipant || isHistoricalFiltered) return;
+
+    const intervalTimer = setInterval(() => {
+      fetchParticipantData(true);
+    }, streamIntervalMs);
+
+    return () => clearInterval(intervalTimer);
+  }, [isAutoStreaming, streamIntervalMs, selectedParticipant, filterDate, startTime, endTime]);
+
+  // Handler for Time Presets
+  const applyTimePreset = (preset) => {
+    setTimePreset(preset);
+    if (preset === 'all') {
+      setStartTime('');
+      setEndTime('');
+    } else if (preset === 'morning') {
+      setStartTime('06:00');
+      setEndTime('12:00');
+    } else if (preset === 'afternoon') {
+      setStartTime('12:00');
+      setEndTime('18:00');
+    } else if (preset === 'night') {
+      setStartTime('18:00');
+      setEndTime('23:59');
+    }
+  };
+
+  const resetToLiveMode = () => {
+    setFilterDate('');
+    setStartTime('');
+    setEndTime('');
+    setTimePreset('all');
+    setIsAutoStreaming(true);
+  };
 
   const displayRawData = useMemo(() => {
     if (!rawData || !rawData.data || rawData.data.length === 0) return [];
@@ -126,10 +203,13 @@ export const LiveMonitorView = ({
 
   const [latencySamples, setLatencySamples] = useState([]);
 
+  // Socket.IO real-time direct packet ingestion
   useEffect(() => {
     if (liveSensorData && selectedParticipant) {
-      const pid = selectedParticipant.guid || selectedParticipant.id || selectedParticipant._id;
-      if (liveSensorData.user_id === pid || (liveSensorData.user_id && liveSensorData.user_id.$oid === pid)) {
+      const pid = String(selectedParticipant.guid || selectedParticipant.id || selectedParticipant._id || '');
+      const incomingUid = String(liveSensorData.user_id?.$oid || liveSensorData.user_id || '');
+      
+      if (pid && incomingUid && (incomingUid === pid || pid.includes(incomingUid) || incomingUid.includes(pid))) {
         const payloadToUse = liveSensorData.readings && liveSensorData.readings.length > 0 
           ? liveSensorData.readings[liveSensorData.readings.length - 1] 
           : liveSensorData;
@@ -139,6 +219,10 @@ export const LiveMonitorView = ({
           const latMs = Math.max(18, Math.min(12000, Date.now() - pktTs));
           setLatencySamples(prev => [...prev.slice(-29), latMs]);
         }
+
+        setIsPacketReceiving(true);
+        setLastStreamTime(new Date().toLocaleTimeString('id-ID'));
+        setTimeout(() => setIsPacketReceiving(false), 450);
 
         setLiveData(prev => {
           const newPt = {
@@ -151,7 +235,7 @@ export const LiveMonitorView = ({
             ecg: Number(payloadToUse.ecg) || 0,
           };
           const next = [...prev, newPt];
-          if (next.length > 60) return next.slice(next.length - 60);
+          if (next.length > 100) return next.slice(next.length - 100);
           return next;
         });
       }
@@ -448,6 +532,384 @@ export const LiveMonitorView = ({
 
   return (
     <div>
+      {/* Pulse Animation Style */}
+      <style>{`
+        @keyframes pulseLive {
+          0% { transform: scale(0.95); opacity: 0.8; }
+          50% { transform: scale(1.15); opacity: 1; }
+          100% { transform: scale(0.95); opacity: 0.8; }
+        }
+      `}</style>
+
+      {/* ── LIVE STREAMING CONTROL BAR ── */}
+      <div style={{
+        background: isAutoStreaming 
+          ? (isPacketReceiving ? 'linear-gradient(135deg, #065F46 0%, #047857 100%)' : 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)') 
+          : '#F1F5F9',
+        color: isAutoStreaming ? '#FFFFFF' : '#475569',
+        border: '1px solid',
+        borderColor: isAutoStreaming ? (isPacketReceiving ? '#34D399' : '#334155') : '#CBD5E1',
+        borderRadius: 12,
+        padding: '12px 18px',
+        marginBottom: 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        transition: 'all 0.3s ease',
+        boxShadow: isAutoStreaming ? '0 4px 14px rgba(15, 23, 42, 0.12)' : 'none'
+      }}>
+        {/* Left: Indicator & Status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 14,
+            height: 14,
+            borderRadius: '50%',
+            background: isAutoStreaming ? (isPacketReceiving ? '#34D399' : '#10B981') : '#94A3B8',
+            boxShadow: isAutoStreaming ? '0 0 10px #10B981' : 'none',
+            animation: isAutoStreaming ? 'pulseLive 1.2s infinite' : 'none'
+          }} />
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+              {isAutoStreaming ? 'LIVE STREAMING AKTIF (REAL-TIME TELEMETRI)' : 'LIVE STREAMING DIJEDA (PAUSED)'}
+              {isPacketReceiving && (
+                <span style={{ background: '#34D399', color: '#064E3B', fontSize: 10, fontWeight: 900, padding: '1px 6px', borderRadius: 4 }}>
+                  INCOMING PACKET ⚡
+                </span>
+              )}
+            </div>
+            <span style={{ fontSize: 11, opacity: isAutoStreaming ? 0.75 : 0.9 }}>
+              {isAutoStreaming 
+                ? `Sinkronisasi otomatis interval ${(streamIntervalMs / 1000).toFixed(1)}s · Update terakhir: ${lastStreamTime || 'Menginisialisasi...'}`
+                : 'Streaming otomatis dinonaktifkan. Data tidak diperbarui secara otomatis.'}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Streaming Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Rate Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700 }}>
+            <span>Laju Stream:</span>
+            <select
+              value={streamIntervalMs}
+              onChange={(e) => setStreamIntervalMs(Number(e.target.value))}
+              disabled={!isAutoStreaming}
+              style={{
+                background: isAutoStreaming ? '#334155' : '#FFFFFF',
+                color: isAutoStreaming ? '#FFFFFF' : '#0F172A',
+                border: '1px solid',
+                borderColor: isAutoStreaming ? '#475569' : '#CBD5E1',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: 11.5,
+                fontWeight: 800,
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="1000">1.0 detik (Ultra Cepat)</option>
+              <option value="2000">2.0 detik (Optimal)</option>
+              <option value="5000">5.0 detik (Stabil)</option>
+            </select>
+          </div>
+
+          {/* Toggle Live Stream Button */}
+          <button
+            type="button"
+            onClick={() => setIsAutoStreaming(!isAutoStreaming)}
+            style={{
+              background: isAutoStreaming ? '#EF4444' : '#10B981',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 8,
+              padding: '6px 14px',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+            }}
+          >
+            <i className={`fa-solid ${isAutoStreaming ? 'fa-pause' : 'fa-play'}`}></i>
+            {isAutoStreaming ? 'Jeda Stream' : 'Mulai Live Stream'}
+          </button>
+
+          {/* Manual Ping Now Button */}
+          <button
+            type="button"
+            onClick={() => fetchParticipantData(false)}
+            style={{
+              background: isAutoStreaming ? 'rgba(255,255,255,0.15)' : '#E2E8F0',
+              color: isAutoStreaming ? '#FFFFFF' : '#334155',
+              border: '1px solid',
+              borderColor: isAutoStreaming ? 'rgba(255,255,255,0.25)' : '#CBD5E1',
+              borderRadius: 8,
+              padding: '6px 12px',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <i className="fa-solid fa-arrows-rotate"></i>
+            Tarik Sekarang
+          </button>
+        </div>
+      </div>
+
+      {/* ── FILTER WAKTU & JAM (DATE & TIME RANGE FILTER PANEL) ── */}
+      <div style={{
+        background: '#FFFFFF',
+        border: '1px solid #E2E8F0',
+        borderRadius: 12,
+        padding: '14px 18px',
+        marginBottom: 16,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              background: '#F1F5F9',
+              color: '#0EA5E9',
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 14
+            }}>
+              <i className="fa-regular fa-clock"></i>
+            </div>
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 900, color: '#0F172A' }}>
+                Filter Waktu & Rentang Jam Pengamatan
+              </span>
+              <span style={{ fontSize: 11.5, color: '#64748B', display: 'block' }}>
+                Pilih tanggal dan rentang jam spesifik untuk menginspeksi dinamika sinyal pada jendela waktu tertentu
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Presets Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginRight: 2 }}>Preset Jam:</span>
+            
+            <button
+              type="button"
+              onClick={() => applyTimePreset('all')}
+              style={{
+                background: timePreset === 'all' && !startTime && !endTime ? '#0EA5E9' : '#F1F5F9',
+                color: timePreset === 'all' && !startTime && !endTime ? '#FFFFFF' : '#334155',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: 'pointer'
+              }}
+            >
+              🕒 Semua Jam
+            </button>
+
+            <button
+              type="button"
+              onClick={() => applyTimePreset('morning')}
+              style={{
+                background: timePreset === 'morning' ? '#0EA5E9' : '#F1F5F9',
+                color: timePreset === 'morning' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: 'pointer'
+              }}
+            >
+              🌅 Pagi (06-12)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => applyTimePreset('afternoon')}
+              style={{
+                background: timePreset === 'afternoon' ? '#0EA5E9' : '#F1F5F9',
+                color: timePreset === 'afternoon' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: 'pointer'
+              }}
+            >
+              ☀️ Siang (12-18)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => applyTimePreset('night')}
+              style={{
+                background: timePreset === 'night' ? '#0EA5E9' : '#F1F5F9',
+                color: timePreset === 'night' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: 'pointer'
+              }}
+            >
+              🌙 Malam (18-24)
+            </button>
+
+            {(filterDate || startTime || endTime) && (
+              <button
+                type="button"
+                onClick={resetToLiveMode}
+                style={{
+                  background: '#DCFCE7',
+                  color: '#15803D',
+                  border: '1px solid #86EFAC',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                <i className="fa-solid fa-rotate-left"></i>
+                Reset ke Live
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Inputs Row */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 12,
+          paddingTop: 8,
+          borderTop: '1px solid #F1F5F9',
+          alignItems: 'center'
+        }}>
+          {/* Date Picker */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+              <i className="fa-regular fa-calendar" style={{ marginRight: 4 }}></i> Tanggal:
+            </label>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => {
+                setFilterDate(e.target.value);
+                setTimePreset('custom');
+              }}
+              style={{
+                width: '100%',
+                padding: '6px 10px',
+                borderRadius: 6,
+                border: '1px solid #CBD5E1',
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#0F172A',
+                outline: 'none'
+              }}
+            />
+          </div>
+
+          {/* Start Time */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+              <i className="fa-regular fa-clock" style={{ marginRight: 4 }}></i> Jam Mulai (Start):
+            </label>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => {
+                setStartTime(e.target.value);
+                setTimePreset('custom');
+              }}
+              style={{
+                width: '100%',
+                padding: '6px 10px',
+                borderRadius: 6,
+                border: '1px solid #CBD5E1',
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#0F172A',
+                outline: 'none'
+              }}
+            />
+          </div>
+
+          {/* End Time */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+              <i className="fa-regular fa-clock" style={{ marginRight: 4 }}></i> Jam Selesai (End):
+            </label>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => {
+                setEndTime(e.target.value);
+                setTimePreset('custom');
+              }}
+              style={{
+                width: '100%',
+                padding: '6px 10px',
+                borderRadius: 6,
+                border: '1px solid #CBD5E1',
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#0F172A',
+                outline: 'none'
+              }}
+            />
+          </div>
+
+          {/* Filter Status Badge */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Status Jendela Data:</span>
+            <div style={{
+              background: (filterDate || startTime || endTime) ? '#FEF3C7' : '#DCFCE7',
+              color: (filterDate || startTime || endTime) ? '#92400E' : '#166534',
+              border: '1px solid',
+              borderColor: (filterDate || startTime || endTime) ? '#FCD34D' : '#86EFAC',
+              padding: '6px 10px',
+              borderRadius: 6,
+              fontSize: 11.5,
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span>
+                {(filterDate || startTime || endTime) 
+                  ? `📅 ${filterDate || 'Semua'} (${startTime || '00:00'} - ${endTime || '23:59'})`
+                  : '🔴 Live Mode (Terbaru)'}
+              </span>
+              <span style={{ opacity: 0.8, fontSize: 10.5 }}>
+                {liveData.length} sampel
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Top Stats Row */}
       <div className="row g-2 mb-3">
         <div className="col-3">

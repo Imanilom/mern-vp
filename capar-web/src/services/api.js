@@ -462,10 +462,15 @@ export const api = {
     }
   },
 
-  async getRawData(userId, date) {
+  async getRawData(userId, date, startTime, endTime) {
     if (!userId) return null;
     try {
-      const url = date ? `/data/raw/${userId}?date=${date}` : `/data/raw/${userId}`;
+      const params = new URLSearchParams();
+      if (date) params.append('date', date);
+      if (startTime) params.append('startTime', startTime);
+      if (endTime) params.append('endTime', endTime);
+      const qs = params.toString();
+      const url = qs ? `/data/raw/${userId}?${qs}` : `/data/raw/${userId}`;
       const { data } = await axios.get(url);
       return data || null;
     } catch (err) {
