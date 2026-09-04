@@ -167,6 +167,25 @@ export function computeCardiovascularResilience(params) {
     0.25 * finalAutonomic +
     0.20 * finalRecovery +
     0.15 * finalStability
+  ).toFixed(1));
+
+  let stateClassification = 'HIGH RESILIENCE';
+  let stateColor = '#10B981';
+  let badgeColor = '#DCFCE7';
+  let badgeText = '#15803D';
+
+  if (globalScore < 70) {
+    stateClassification = 'LOW RESILIENCE';
+    stateColor = '#EF4444';
+    badgeColor = '#FEE2E2';
+    badgeText = '#B91C1C';
+  } else if (globalScore < 85) {
+    stateClassification = 'MODERATE RESILIENCE';
+    stateColor = '#F59E0B';
+    badgeColor = '#FEF3C7';
+    badgeText = '#B45309';
+  }
+
   // ── [6] BLOK 5: OUTPUT & DECISION SUPPORT + XAI + CLOSED-LOOP CONTROL ──
   
   // 1. Vulnerability / Risk Estimate (0 - 100)
