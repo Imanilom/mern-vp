@@ -375,11 +375,17 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Apa aktivitas Anda saat ini?',
+          'Apa aktivitas & konteks Anda saat ini?',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy),
         ),
         const SizedBox(height: 10),
-        ...['Duduk / istirahat', 'Berjalan', 'Bekerja / belajar', 'Aktivitas fisik'].map((act) => _buildRadioChoice(
+        ...[
+          'Duduk / istirahat',
+          'Aktivitas fisik / jalan cepat / olahraga',
+          'Bekerja / beban mental & konsentrasi',
+          'Merasakan nyeri / ketidaknyamanan fisik',
+          'Faktor lingkungan (suhu panas/dingin, polusi, bising)',
+        ].map((act) => _buildRadioChoice(
           title: act,
           isSelected: _ema1Activity == act,
           onTap: () => setState(() => _ema1Activity = act),
@@ -408,7 +414,7 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
           maxLines: 2,
           style: const TextStyle(fontSize: 12),
           decoration: InputDecoration(
-            hintText: 'Mis. baru selesai berjalan...',
+            hintText: 'Mis. jogging pagi, stres deadline, nyeri dada ringan...',
             hintStyle: const TextStyle(fontSize: 12, color: Colors.black26),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             filled: true,
@@ -437,7 +443,13 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy),
         ),
         const SizedBox(height: 10),
-        ...['Tidak ada keluhan', 'Berdebar / napas lebih cepat', 'Pusing / tidak nyaman', 'Lelah / mengantuk'].map((smp) => _buildRadioChoice(
+        ...[
+          'Tidak ada keluhan',
+          'Berdebar / denyut cepat',
+          'Nyeri dada / rasa tertekan / pusing',
+          'Nyeri otot / sakit kepala / kram',
+          'Lelah / mengantuk berat'
+        ].map((smp) => _buildRadioChoice(
           title: smp,
           isSelected: _ema2Symptom == smp,
           onTap: () => setState(() => _ema2Symptom = smp),
@@ -445,7 +457,7 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
 
         const SizedBox(height: 16),
         const Text(
-          'Intensitas',
+          'Intensitas Keluhan',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy),
         ),
         const SizedBox(height: 6),
@@ -461,17 +473,24 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: const [
             Text('0 — tidak ada', style: TextStyle(fontSize: 10, color: AppColors.gray)),
-            Text('10 — berat', style: TextStyle(fontSize: 10, color: AppColors.gray)),
+            Text('10 — sangat berat', style: TextStyle(fontSize: 10, color: AppColors.gray)),
           ],
         ),
 
         const SizedBox(height: 16),
         const Text(
-          'Kemungkinan pemicu',
+          'Kemungkinan pemicu utama saat ini:',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy),
         ),
         const SizedBox(height: 10),
-        ...['Kopi / makan / kurang tidur', 'Stres / tugas / emosi'].map((trg) => _buildRadioChoice(
+        ...[
+          '1. Aktivitas fisik / olahraga / tangga',
+          '2. Stres mental / beban kognitif / emosi',
+          '3. Ada nyeri / ketidaknyamanan fisik',
+          '4. Faktor lingkungan (suhu ekstrem, polusi, bising)',
+          '5. Kopi / kafein / rokok / makan besar',
+          '6. Kurang tidur / kelelahan',
+        ].map((trg) => _buildRadioChoice(
           title: trg,
           isSelected: _ema2Trigger == trg,
           onTap: () => setState(() => _ema2Trigger = trg),
@@ -519,7 +538,7 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
           maxLines: 2,
           style: const TextStyle(fontSize: 12),
           decoration: InputDecoration(
-            hintText: 'Mis. duduk, minum, istirahat...',
+            hintText: 'Mis. duduk, minum, istirahat, relaksasi napas...',
             hintStyle: const TextStyle(fontSize: 12, color: Colors.black26),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             filled: true,
@@ -544,11 +563,19 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Menurut Anda, apa pemicu utama?',
+          'Menurut Anda, apa pemicu utama episode ini?',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy),
         ),
         const SizedBox(height: 10),
-        ...['Aktivitas fisik', 'Stres / emosi', 'Kurang tidur / lelah', 'Tidak tahu'].map((trg) => _buildRadioChoice(
+        ...[
+          'Aktivitas fisik / beban gerak',
+          'Stres mental / tekanan emosi',
+          'Ada nyeri / rasa sakit',
+          'Faktor lingkungan (cuaca / polusi / bising)',
+          'Kafein / rokok / pola makan',
+          'Kurang tidur / kelelahan akumulatif',
+          'Tidak tahu / tanpa pemicu jelas'
+        ].map((trg) => _buildRadioChoice(
           title: trg,
           isSelected: _ema4Trigger == trg,
           onTap: () => setState(() => _ema4Trigger = trg),

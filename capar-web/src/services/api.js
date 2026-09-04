@@ -774,5 +774,30 @@ export const api = {
   async assessCardiovascularResilience(params) {
     return axios.post('/resilience/assess', params).then(res => res.data);
   },
+  async addBehaviorEvent(data) {
+    return axios.post('/resilience/behavior', data).then(res => res.data);
+  },
+  async getBehaviorEvents(userId) {
+    return axios.get(`/resilience/behavior/${userId}`).then(res => res.data);
+  },
+  async deleteBehaviorEvent(id) {
+    return axios.delete(`/resilience/behavior/${id}`).then(res => res.data);
+  },
+  async getRagEvidenceMatrix(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const q = query ? `?${query}` : '';
+    return axios.get(`/resilience/rag-evidence${q}`).then(res => res.data);
+  },
+  async retrieveRagMultiAxis(payload) {
+    return axios.post('/resilience/rag/retrieve', payload).then(res => res.data);
+  },
+  async generateTemporalExplanation(payload) {
+    return axios.post('/resilience/explain-temporal', payload).then(res => res.data);
+  },
+  async confirmParticipantContext(payload) {
+    return axios.post('/resilience/confirm-context', payload).then(res => res.data);
+  },
 };
+
+
 

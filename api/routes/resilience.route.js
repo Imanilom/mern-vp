@@ -1,17 +1,27 @@
-/**
- * resilience.route.js
- * Express router for Cardiovascular Resilience State (CRS) module
- */
-
 import express from 'express';
 import {
   getCardiovascularResilienceState,
-  calculateResilienceAssessment
+  calculateResilienceAssessment,
+  createBehaviorEvent,
+  getBehaviorEvents,
+  deleteBehaviorEvent,
+  getRagEvidenceMatrix,
+  generateTemporalExplanation,
+  confirmParticipantContext,
+  retrieveRagEvidenceMultiDimensional
 } from '../controllers/resilience.controller.js';
 
 const router = express.Router();
 
 router.get('/state', getCardiovascularResilienceState);
 router.post('/assess', calculateResilienceAssessment);
+router.post('/behavior', createBehaviorEvent);
+router.get('/behavior/:userId', getBehaviorEvents);
+router.delete('/behavior/:id', deleteBehaviorEvent);
+router.get('/rag-evidence', getRagEvidenceMatrix);
+router.post('/rag/retrieve', retrieveRagEvidenceMultiDimensional);
+router.post('/explain-temporal', generateTemporalExplanation);
+router.post('/confirm-context', confirmParticipantContext);
 
 export default router;
+

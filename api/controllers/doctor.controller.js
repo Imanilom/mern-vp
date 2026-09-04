@@ -15,8 +15,15 @@ async function resolvePatientId(paramId) {
 
 export const getDoctorPatients = async (req, res) => {
   try {
-    const doctorId = req.user ? req.user.id : "675ba1e92b8428e4dd641cd0";
-    const patients = await User.find({ docter: doctorId, role: 'user' }).select('-password');
+    const query = { role: 'user' };
+    if (req.user?.id) {
+      query.docter = req.user.id;
+    }
+    let patients = await User.find(query).select('-password');
+    if (patients.length === 0 && req.user?.id) {
+      // If doctor has no specific assigned patients, fetch all users for review
+      patients = await User.find({ role: 'user' }).select('-password');
+    }
     res.json({ success: true, count: patients.length, data: patients });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

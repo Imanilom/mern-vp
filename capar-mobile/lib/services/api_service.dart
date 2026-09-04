@@ -612,4 +612,45 @@ class ApiService {
     }
     return null;
   }
+
+  /// Mencatat event perilaku b(k) dari Mobile
+  static Future<Map<String, dynamic>?> submitBehaviorEvent(Map<String, dynamic> payload) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/resilience/behavior'),
+            headers: headers,
+            body: json.encode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] submitBehaviorEvent error: $e');
+    }
+    return null;
+  }
+
+  /// Mengonfirmasi pemicu konteks perilaku peserta (Aktivitas Fisik, Stres Mental, Nyeri, Lingkungan)
+  static Future<Map<String, dynamic>?> confirmContextTrigger(Map<String, dynamic> payload) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/resilience/confirm-context'),
+            headers: headers,
+            body: json.encode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] confirmContextTrigger error: $e');
+    }
+    return null;
+  }
 }
+
