@@ -277,7 +277,9 @@ export async function startLogTransportConsumer() {
             const activities = envelope.readings.map(r => r.activity || r.motion_state || 'Unknown');
             const validActivities = activities.filter(a => a && a !== 'Unknown' && a.trim() !== '');
             const activityLabel = validActivities.length > 0 ? validActivities[0] : 'Unknown';
-            const activityConfidence = 0.90; // Default proxy, assuming if provided it's reasonably confident
+            const activityConfidence = activities.length > 0
+              ? Number((validActivities.length / activities.length).toFixed(2))
+              : 0.0;
             
             // Notification logic
             if (activityLabel === 'Unknown') {

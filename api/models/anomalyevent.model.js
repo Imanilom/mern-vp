@@ -95,10 +95,29 @@ const AnomalyEventSchema = new mongoose.Schema({
   current_state: { type: String, default: 'BASELINE_COMPATIBLE' },
   recovery_entry_at: { type: Number, default: null },
   ttr_min: { type: Number, default: null },
+  ttr_tau_out_ms: { type: Number, default: null },
   peak_count: { type: Number, default: 0 },
+  peaks_history: [{
+    peak_time: Number,
+    peak_score: Number,
+    peak_hr: Number,
+    tau_out_time: Number,
+    ttr_to_tau_out_ms: Number,
+  }],
+  multi_ttr_list: [{
+    peak_index: Number,
+    ttr_ms: Number,
+    ttr_min: Number,
+    tau_out_reached_at: Number,
+  }],
   relapse_count: { type: Number, default: 0 },
   relapse: { type: Boolean, default: false },
   relapse_at: { type: Number, default: null },
+  relapse_ascent_velocity: { type: Number, default: null }, // Delta score / Delta t saat kekambuhan (t -> t+1)
+  residual_deviation: { type: Number, default: null }, // Sisa residue overshoot di atas tau_normal setelah puncak
+  confidence: { type: Number, default: 0.95 }, // Signal quality confidence
+  context_tag: { type: String, default: 'General' }, // Konteks perilaku / postur / EMA
+  damping_ratio: { type: Number, default: null }, // Rasio peredaman osilasi suspensi fisiologis (Peak 2 / Peak 1)
   parent_episode_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AnomalyEvent', default: null },
   rule_version: { type: String, default: '1.0.0' },
 

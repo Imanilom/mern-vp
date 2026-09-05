@@ -1,0 +1,5 @@
+Episode ID,Onset,Duration (min),Peaks Count,Max Peak Score,Relapse Count,TTR to tau_out (min),AUC Score
+EP_1,00:40:00,1479.0,1,,0,1479.0,
+EP_2,01:20:00,20.0,1,,0,20.0,
+EP_3,01:45:00,5.0,1,1.78,0,5.0,7.46
+EP_4,01:54:00,10.0,2,3.35,1,1.0,24.23

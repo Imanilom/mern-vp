@@ -188,6 +188,18 @@ export const api = {
       reviewerNotes: ev.reviewer_notes || '',
       tauIn: ev.tau_in || null,
       tauOut: ev.tau_out || null,
+      peaksCount: ev.peaks_count || ev.peak_count || 1,
+      relapseCount: ev.relapse_count ?? 0,
+      maxPeakScore: ev.max_peak_score || ev.peak_score || 0,
+      aucScore: ev.auc_score ?? null,
+      primaryTtrMin: ev.primary_ttr_min ?? null,
+      dampingRatio: ev.damping_ratio ?? null,
+      dynamicsClassification: ev.dynamics_classification || null,
+      relationshipChainStr: ev.relationship_chain_str || null,
+      chainSteps: ev.chain_steps || [],
+      peaksDetail: ev.peaks_detail || [],
+      relapsesDetail: ev.relapses_detail || [],
+      phaseSpaceOrbit: ev.phase_space_orbit || [],
       raw: ev,
     };
   },
@@ -534,6 +546,10 @@ export const api = {
     const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
     return axios.get(`/analysis/events/${target}?limit=${limit}`).then(res => res.data);
   },
+  async getEventsPaginated(userId = 'ALL', page = 1, limit = 50) {
+    const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
+    return axios.get(`/analysis/events/${target}?page=${page}&limit=${limit}`).then(res => res.data);
+  },
   async getEventDetails(eventId) {
     return axios.get(`/analysis/events/details/${eventId}`).then(res => res.data);
   },
@@ -740,6 +756,15 @@ export const api = {
   async getPhenotypeProfile(userId) {
     return axios.get(`/phenotype-profile/${userId}`).then(res => res.data);
   },
+  async getWeeklyPhenotypeProfile(userId) {
+    return axios.get(`/phenotype-profile/weekly/${userId}`).then(res => res.data);
+  },
+  async getCognitiveMemoryHistory(userId) {
+    return axios.get(`/phenotype-profile/cognitive-memory/${userId}`).then(res => res.data);
+  },
+  async confirmPatientBehavior(data) {
+    return axios.post('/phenotype-profile/confirm-behavior', data).then(res => res.data);
+  },
   async computePhenotypeProfile(userId) {
     return axios.get(`/phenotype-profile/compute/${userId}`).then(res => res.data);
   },
@@ -773,6 +798,13 @@ export const api = {
   },
   async assessCardiovascularResilience(params) {
     return axios.post('/resilience/assess', params).then(res => res.data);
+  },
+  async recordResilienceState(payload) {
+    return axios.post('/resilience/record', payload).then(res => res.data);
+  },
+  async getResilienceHistory(userId) {
+    const target = (!userId || userId === 'undefined' || userId === 'null') ? 'ALL' : userId;
+    return axios.get(`/resilience/history/${target}`).then(res => res.data);
   },
   async addBehaviorEvent(data) {
     return axios.post('/resilience/behavior', data).then(res => res.data);

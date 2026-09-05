@@ -23,6 +23,10 @@ const EmaResponseSchema = new mongoose.Schema({
     activity: { type: String, default: null },
     planned: { type: String, default: null },
     note: { type: String, default: null },
+    sleep_status: { type: String, default: null }, // 'Sangat Cukup (>7 jam)', 'Cukup (6-7 jam)', 'Kurang (4-5 jam)', 'Sangat Kurang (<4 jam)'
+    sleep_hours: { type: Number, default: null },
+    medication_intake: { type: String, default: null }, // 'Tidak Ada', 'Obat Jantung / Antihipertensi', 'Obat Flu / Dekongestan', 'Kafein / Suplemen', 'Lainnya'
+    medication_detail: { type: String, default: null },
   },
   ema2: {
     symptom: { type: String, default: null },

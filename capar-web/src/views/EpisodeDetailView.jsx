@@ -644,6 +644,24 @@ function EpisodeMetrics({ episode }) {
           }
         </li>
 
+        {/* Relapse Count */}
+        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="text-muted" title="Jumlah lonjakan kekambuhan saat recovery descent">Relapse Count:</span>
+          <strong style={{ color: (episode.relapseCount > 0) ? '#D97706' : 'var(--gray)', fontFamily: 'monospace' }}>
+            {episode.relapseCount != null ? `${episode.relapseCount} Relapse` : '0 Relapse'}
+          </strong>
+        </li>
+
+        {/* Hubungan Multi-Peak Chain */}
+        {episode.relationshipChainStr && (
+          <li style={{ paddingTop: 4, borderTop: '1px solid var(--line)', marginTop: 2 }}>
+            <span className="text-muted d-block mb-1" style={{ fontSize: 11 }}>Hubungan Multi-Peak &amp; Relapse:</span>
+            <div className="mono fw-bold" style={{ fontSize: 10.5, color: 'var(--navy)', background: 'var(--gray-soft)', padding: '5px 8px', borderRadius: 6, lineHeight: 1.4, wordBreak: 'break-word' }}>
+              {episode.relationshipChainStr}
+            </div>
+          </li>
+        )}
+
         {/* Current State */}
         <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingTop: 4, borderTop: '1px solid var(--line)', marginTop: 2 }}>
           <span className="text-muted">State Saat Ini:</span>

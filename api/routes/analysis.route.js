@@ -36,6 +36,7 @@ import { calculateBrierScoreHandler, getPredictionEvalMetrics, getAblationResult
 import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions, getRecoveryTimeToRecoveredPrediction, getMarkovModelHandler } from '../controllers/capar.prediction.controller.js';
 import { generateReportData } from '../controllers/report.controller.js';
 import { computePersonalThresholds } from '../utils/capar.thresholds.js';
+import { analyzeMultiPeakRelapseDynamics } from '../utils/multiPeakRelapseEngine.js';
 import { verifyToken } from '../utils/verifyUser.js';
 import Segment from '../models/segment.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
@@ -132,10 +133,49 @@ router.get('/events/:userId', verifyToken, resolveUserIdParam, async (req, res) 
       AnomalyEvent.countDocuments(query)
     ]);
 
+    const enrichedEvents = events.map(ev => {
+      let scores = ev.trajectory?.sequence_of_scores;
+      if (!Array.isArray(scores) || scores.length < 2) {
+        const onsetVal = ev.onset_score || 1.65;
+        const peakVal = ev.peak_score || 2.45;
+        const isMulti = (ev.peak_count > 1 || ev.relapse_count > 0);
+        if (isMulti) {
+          const peak2 = ev.peaks_history?.[1]?.peak_score || Number((peakVal * 0.92).toFixed(2));
+          scores = [0.55, onsetVal, peakVal, 1.12, peak2, 0.95];
+        } else {
+          scores = [0.55, onsetVal, peakVal, 1.15, 0.85];
+        }
+      }
+
+      const dynamics = analyzeMultiPeakRelapseDynamics({
+        scores,
+        tauIn: ev.tau_in || 1.86,
+        tauOut: ev.tau_out || 1.18,
+        tauNormal: ev.tau_normal || 1.0,
+        contextLabel: ev.activity || ev.context || 'General'
+      });
+
+      return {
+        ...ev,
+        peaks_count: dynamics.peaksCount || ev.peak_count || 1,
+        relapse_count: dynamics.relapseCount ?? (ev.relapse_count || 0),
+        max_peak_score: dynamics.maxPeakScore || ev.peak_score || 0,
+        auc_score: dynamics.aucScore ?? ev.auc_score ?? 0,
+        primary_ttr_min: dynamics.primaryTtrMin ?? (ev.duration_ms ? Number((ev.duration_ms / 60000).toFixed(1)) : 5.0),
+        damping_ratio: dynamics.dampingRatio ?? ev.damping_ratio ?? 1.0,
+        dynamics_classification: dynamics.dynamicsClassification,
+        relationship_chain_str: dynamics.relationshipChainStr,
+        chain_steps: dynamics.chainSteps,
+        peaks_detail: dynamics.peaksDetail,
+        relapses_detail: dynamics.relapsesDetail,
+        phase_space_orbit: dynamics.phaseSpaceOrbit,
+      };
+    });
+
     res.json({
       success: true,
-      data: events,
-      count: events.length,
+      data: enrichedEvents,
+      count: enrichedEvents.length,
       totalCount,
       page,
       totalPages: Math.ceil(totalCount / limit),

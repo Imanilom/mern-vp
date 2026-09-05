@@ -139,14 +139,33 @@ export const getDoctorPatientConfidence = async (req, res) => {
       .sort({ window_start: -1 })
       .limit(30);
 
-    const confScores = segments.map(s => s.missing_data_info?.confidence_score || 99.5);
-    const avgConfidence = confScores.length ? (confScores.reduce((a, b) => a + b, 0) / confScores.length) : 99.5;
+    const confScores = segments.map(s => {
+      const minfo = s.missing_data_info;
+      if (typeof minfo?.confidence_score === 'number' && !isNaN(minfo.confidence_score)) {
+        return minfo.confidence_score;
+      }
+      if (typeof minfo?.missing_ratio === 'number' && !isNaN(minfo.missing_ratio)) {
+        return Math.max(0, Math.min(100, (1.0 - minfo.missing_ratio) * 100));
+      }
+      if (minfo?.expected_count && minfo?.received_count) {
+        return Math.max(0, Math.min(100, (minfo.received_count / minfo.expected_count) * 100));
+      }
+      return 90.0;
+    });
+
+    const avgConfidence = confScores.length ? (confScores.reduce((a, b) => a + b, 0) / confScores.length) : 0.0;
 
     res.json({
       success: true,
       data: {
         avg_confidence_score: parseFloat(avgConfidence.toFixed(2)),
-        quality_status: avgConfidence < 90 ? 'Warning Low Quality Data' : 'Good Quality Data',
+        quality_status: confScores.length === 0
+          ? 'No Data Recorded'
+          : avgConfidence < 80
+          ? 'Warning Low Quality Data'
+          : avgConfidence < 90
+          ? 'Moderate Quality Data'
+          : 'Good Quality Data',
         recent_windows: segments,
       }
     });

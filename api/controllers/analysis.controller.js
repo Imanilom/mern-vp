@@ -24,6 +24,7 @@ import Patient from '../models/patient.model.js';
 import PolarData from '../models/data.model.js';
 import mongoose from 'mongoose';
 import ProcessingJob from '../models/processingjob.model.js';
+import { io } from '../index.js';
 import {
   computeTauFromStableScores, persistTauToBaseline, appendStableScore,
 } from '../utils/capar.thresholds.js';
@@ -1715,16 +1716,69 @@ async function analyzeOneMinuteUser(userId) {
   return { analyzed: totalAnalyzed, events: totalEvents };
 }
 
+function computeTrapezoidalAUC(scoreArr, timeArr) {
+  if (!scoreArr || scoreArr.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < scoreArr.length; i++) {
+    const dtMin = (timeArr && timeArr[i] && timeArr[i - 1])
+      ? Math.max(0.1, (timeArr[i] - timeArr[i - 1]) / 60000)
+      : 1.0;
+    total += 0.5 * (scoreArr[i - 1] + scoreArr[i]) * dtMin;
+  }
+  return Number(total.toFixed(2));
+}
+
+/**
+ * Menghitung sisa residue deviasi (overshoot residue) di atas tau_normal setelah titik puncak (peak).
+ * Menyimulasikan peredaman osilasi suspensi fisiologis (damped oscillation).
+ */
+function computeResidualDeviation(scoreArr, timeArr, tauNormal = 1.0) {
+  if (!scoreArr || scoreArr.length < 2) return 0;
+  let maxIdx = 0;
+  let maxScore = -Infinity;
+  for (let i = 0; i < scoreArr.length; i++) {
+    if (scoreArr[i] > maxScore) {
+      maxScore = scoreArr[i];
+      maxIdx = i;
+    }
+  }
+
+  let residue = 0;
+  for (let i = maxIdx + 1; i < scoreArr.length; i++) {
+    const sPrev = Math.max(0, scoreArr[i - 1] - tauNormal);
+    const sCurr = Math.max(0, scoreArr[i] - tauNormal);
+    const dtMin = (timeArr && timeArr[i] && timeArr[i - 1])
+      ? Math.max(0.1, (timeArr[i] - timeArr[i - 1]) / 60000)
+      : 1.0;
+    residue += 0.5 * (sPrev + sCurr) * dtMin;
+  }
+  return Number(residue.toFixed(2));
+}
+
 async function updateRRPersistence(
   userId, seg, score, classification, zScores, rr_status,
   persistenceState, activity, baseline
 ) {
   if (!persistenceState[activity]) {
     persistenceState[activity] = {
-      count: 0, recoveryCount: 0, segIds: [], scores: [],
-      peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
+      count: 0,
+      recoveryCount: 0,
+      segIds: [],
+      scores: [],
+      timestamps: [],
+      peaks: [], // [{ peak_time, peak_score, peak_hr, tau_out_time, ttr_to_tau_out_ms }]
+      peakScore: 0,
+      peakSeg: null,
+      startSeg: null,
+      openEventId: null,
       lastWindowStart: null,
-      lastClosedEventTime: null, lastClosedEventId: null
+      lastScore: null,
+      lastState: null,
+      hadRecoveryDescent: false,
+      relapseCount: 0,
+      relapseAscentVelocity: null,
+      lastClosedEventTime: null,
+      lastClosedEventId: null
     };
   }
 
@@ -1732,12 +1786,25 @@ async function updateRRPersistence(
   let eventCreated = false;
   const segWinStart = extractMs(seg.createdAt || seg.window_start) || Date.now();
 
+  const tauIn = baseline?.thresholds?.tau_in ?? baseline?.thresholds?.learned_tau?.tau_in ?? 2.5;
+  const tauOut = baseline?.thresholds?.tau_out ?? baseline?.thresholds?.learned_tau?.tau_out ?? (tauIn * 0.6);
+  const tauNormal = baseline?.thresholds?.learned_tau?.tau_normal ?? (tauOut * 0.75);
+
   // ── Tangani status DISCONNECT_TAU_OUT (Data terputus / device dilepas) ─
   if (rr_status === 'DISCONNECT_TAU_OUT') {
     if (state.openEventId) {
       const lastWinStart = state.lastWindowStart || segWinStart;
       const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || lastWinStart;
       const durationMs = Math.max(lastWinStart - startWinStart, 0);
+
+      const currentAuc = computeTrapezoidalAUC(state.scores, state.timestamps);
+      const multiTtrList = state.peaks.map((p, idx) => ({
+        peak_index: idx + 1,
+        ttr_ms: p.ttr_to_tau_out_ms || Math.max(0, lastWinStart - p.peak_time),
+        ttr_min: Number(((p.ttr_to_tau_out_ms || (lastWinStart - p.peak_time)) / 60000).toFixed(1)),
+        tau_out_reached_at: p.tau_out_time || lastWinStart
+      }));
+      const primaryTtrMs = multiTtrList.length > 0 ? multiTtrList[0].ttr_ms : null;
 
       const updatedEv = await AnomalyEvent.findByIdAndUpdate(
         state.openEventId,
@@ -1749,6 +1816,15 @@ async function updateRRPersistence(
             recovered_at: lastWinStart,
             resolved_time: lastWinStart,
             duration_ms: durationMs,
+            auc_score: currentAuc,
+            peaks_history: state.peaks,
+            multi_ttr_list: multiTtrList,
+            ttr_tau_out_ms: primaryTtrMs,
+            ttr_min: primaryTtrMs !== null ? Number((primaryTtrMs / 60000).toFixed(1)) : null,
+            peak_count: state.peaks.length,
+            relapse_count: state.relapseCount,
+            relapse: state.relapseCount > 0,
+            relapse_ascent_velocity: state.relapseAscentVelocity,
             unresolved_reason: 'Data terputus / device dilepas sebelum titik tau_out (Force closed at last valid window)',
           }
         },
@@ -1763,9 +1839,10 @@ async function updateRRPersistence(
 
     const closedId = state.openEventId;
     persistenceState[activity] = {
-      count: 0, recoveryCount: 0, segIds: [], scores: [],
+      count: 0, recoveryCount: 0, segIds: [], scores: [], timestamps: [], peaks: [],
       peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
-      lastWindowStart: segWinStart,
+      lastWindowStart: segWinStart, lastScore: null, lastState: null,
+      hadRecoveryDescent: false, relapseCount: 0, relapseAscentVelocity: null,
       lastClosedEventTime: segWinStart,
       lastClosedEventId: closedId
     };
@@ -1808,6 +1885,7 @@ async function updateRRPersistence(
     const effectiveElapsed = rawElapsed - pausedMs;
 
     if (effectiveElapsed > T_MAX_MS && rr_status !== 'RECOVERED') {
+      const currentAuc = computeTrapezoidalAUC(state.scores, state.timestamps);
       await AnomalyEvent.updateOne(
         { _id: state.openEventId, status: { $in: ['open', 'paused'] } },
         {
@@ -1816,6 +1894,11 @@ async function updateRRPersistence(
             unresolved_at: segWinStart,
             unresolved_reason: `duration_exceeded_T_max (${Math.round(effectiveElapsed / 60000)} menit aktif, ${Math.round(pausedMs / 60000)} menit paused di-exclude)`,
             window_count: state.segIds.length,
+            auc_score: currentAuc,
+            peaks_history: state.peaks,
+            peak_count: state.peaks.length,
+            relapse_count: state.relapseCount,
+            relapse: state.relapseCount > 0,
           },
         }
       );
@@ -1826,9 +1909,10 @@ async function updateRRPersistence(
 
       const closedId = state.openEventId;
       persistenceState[activity] = {
-        count: 0, recoveryCount: 0, segIds: [], scores: [],
+        count: 0, recoveryCount: 0, segIds: [], scores: [], timestamps: [], peaks: [],
         peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
-        lastWindowStart: segWinStart,
+        lastWindowStart: segWinStart, lastScore: null, lastState: null,
+        hadRecoveryDescent: false, relapseCount: 0, relapseAscentVelocity: null,
         lastClosedEventTime: segWinStart,
         lastClosedEventId: closedId
       };
@@ -1843,18 +1927,99 @@ async function updateRRPersistence(
     );
   }
 
+  // ── [1] RELAPSE TRANSITION & ASCENT VELOCITY CHECK (t -> t+1) ───────────────
+  const prevScore = state.lastScore;
+  const prevWinStart = state.lastWindowStart || segWinStart;
+  const deltaTMin = Math.max(0.5, (segWinStart - prevWinStart) / 60000);
+
+  if (state.openEventId && prevScore !== null && score > prevScore) {
+    const deltaScore = score - prevScore;
+    // Jika score sebelumnya sempat mengalami penurunan setelah peak, atau sedang recovering
+    if (state.hadRecoveryDescent && (score >= tauOut || deltaScore >= 0.15)) {
+      state.hadRecoveryDescent = false;
+      state.relapseCount++;
+      state.relapseAscentVelocity = Number((deltaScore / deltaTMin).toFixed(3));
+      console.log(`[Layer3-RR] Relapse Detected in Episode ${state.openEventId}: Velocity=+${state.relapseAscentVelocity}/min (${prevScore.toFixed(2)} -> ${score.toFixed(2)})`);
+    }
+  }
+
+  if (score <= tauOut || (prevScore !== null && score < prevScore)) {
+    state.hadRecoveryDescent = true;
+  }
+
+  // ── [2] MULTI-PEAK & TTR KE TAU_OUT ENGINE ─────────────────────────────────
+  if (rr_status === 'DEVIATION_CANDIDATE' || rr_status === 'PERSISTENT_DEVIATION') {
+    if (state.peaks.length === 0) {
+      state.peaks.push({
+        peak_time: segWinStart,
+        peak_score: score,
+        peak_hr: seg.features?.mean_hr || null,
+        tau_out_time: null,
+        ttr_to_tau_out_ms: null,
+      });
+    } else {
+      const lastP = state.peaks[state.peaks.length - 1];
+      if (lastP.tau_out_time !== null && score > prevScore && score >= tauOut) {
+        // Puncak baru (relapse peak) setelah puncak sebelumnya telah mencapai tau_out
+        state.peaks.push({
+          peak_time: segWinStart,
+          peak_score: score,
+          peak_hr: seg.features?.mean_hr || null,
+          tau_out_time: null,
+          ttr_to_tau_out_ms: null,
+        });
+      } else if (lastP.tau_out_time === null && score > lastP.peak_score) {
+        lastP.peak_score = score;
+        lastP.peak_time = segWinStart;
+        lastP.peak_hr = seg.features?.mean_hr || lastP.peak_hr;
+      }
+    }
+  }
+
+  // Jika score saat ini turun menyentuh/di bawah tau_out, selesaikan TTR untuk peak yang aktif
+  if (score <= tauOut && state.peaks.length > 0) {
+    state.peaks.forEach(p => {
+      if (p.tau_out_time === null) {
+        p.tau_out_time = segWinStart;
+        p.ttr_to_tau_out_ms = Math.max(0, segWinStart - p.peak_time);
+      }
+    });
+  }
+
+  const multiTtrList = state.peaks.map((p, idx) => ({
+    peak_index: idx + 1,
+    ttr_ms: p.ttr_to_tau_out_ms || Math.max(0, segWinStart - p.peak_time),
+    ttr_min: Number(((p.ttr_to_tau_out_ms || (segWinStart - p.peak_time)) / 60000).toFixed(1)),
+    tau_out_reached_at: p.tau_out_time || segWinStart
+  }));
+  const primaryTtrMs = multiTtrList.length > 0 ? multiTtrList[0].ttr_ms : null;
+  const primaryTtrMin = primaryTtrMs !== null ? Number((primaryTtrMs / 60000).toFixed(1)) : null;
+
   // ── DEVIATION_CANDIDATE / PERSISTENT_DEVIATION ─────────────────────────
   if (rr_status === 'DEVIATION_CANDIDATE' || rr_status === 'PERSISTENT_DEVIATION') {
     state.recoveryCount = 0;
     state.count++;
     state.segIds.push(seg._id);
     state.scores.push(score);
+    state.timestamps.push(segWinStart);
     if (score > state.peakScore) { state.peakScore = score; state.peakSeg = seg; }
     if (!state.startSeg) state.startSeg = seg;
 
     const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || segWinStart;
     const segWinEnd = extractMs(seg.window_end) || (segWinStart + 300000);
     const ongoingDurationMs = Math.max(segWinEnd - startWinStart, 0);
+    const currentAuc = computeTrapezoidalAUC(state.scores, state.timestamps);
+    const residualDeviation = computeResidualDeviation(state.scores, state.timestamps, tauNormal);
+    const dampingRatio = state.peaks.length >= 2 && state.peaks[0].peak_score > 0
+      ? Number((state.peaks[1].peak_score / state.peaks[0].peak_score).toFixed(2))
+      : 1.0;
+    const segmentConfidence = typeof seg.signal_quality === 'number'
+      ? Number(seg.signal_quality.toFixed(2))
+      : (seg.features?.signal_quality || 0.95);
+    const contextTag = `${activity || 'General'} | ${seg.activity_label || 'General'}`;
+
+    // Output Log Terstruktur Blok 1
+    console.log(`[Blok-1 Engine Log] WindowState=${rr_status} | Confidence=${segmentConfidence} | EpId=${state.openEventId || 'NEW'} | Onset=${new Date(startWinStart).toISOString()} | Peak=${state.peakScore} | Dur=${ongoingDurationMs}ms | TTR=${primaryTtrMin}m | RelapseCount=${state.relapseCount} | ResidualDev=${residualDeviation} | ContextTag=${contextTag}`);
 
     if (!state.openEventId) {
       // Create Event early (at DEVIATION_CANDIDATE)
@@ -1883,20 +2048,53 @@ async function updateRRPersistence(
         trajectory: {
           sequence_of_scores: state.scores,
           delta_hr: null, persistence: state.count,
-          dfa_alpha1: null, dfa_alpha2: null, recovery_time_ms: null,
+          dfa_alpha1: null, dfa_alpha2: null,
+          recovery_time_ms: primaryTtrMs,
         },
         segment_ids: state.segIds,
         window_count: state.count,
         status: 'open',
         current_state: rr_status,
         total_paused_ms: 0,
-        relapse: isRelapse,
+        auc_score: currentAuc,
+        residual_deviation: residualDeviation,
+        confidence: segmentConfidence,
+        context_tag: contextTag,
+        damping_ratio: dampingRatio,
+        peaks_history: state.peaks,
+        multi_ttr_list: multiTtrList,
+        ttr_tau_out_ms: primaryTtrMs,
+        ttr_min: primaryTtrMin,
+        peak_count: state.peaks.length,
+        relapse_count: state.relapseCount,
+        relapse: isRelapse || state.relapseCount > 0,
         relapse_at: isRelapse ? segWinStart : null,
+        relapse_ascent_velocity: state.relapseAscentVelocity,
         parent_episode_id: parentEventId,
       });
       state.openEventId = event._id;
       eventCreated = true;
-      console.log(`[Layer3-RR] Episode CREATED (Candidate) user=${userId} act=${activity}`);
+      console.log(`[Layer3-RR] Episode CREATED (Candidate) user=${userId} act=${activity} id=${event._id}`);
+
+      // Emit Real-time WebSocket Alert to Mobile UI
+      try {
+        if (typeof io !== 'undefined' && io) {
+          io.emit('ANOMALY_DEVIATION_ALERT', {
+            userId: String(userId),
+            eventId: String(event._id),
+            activity,
+            score,
+            peakHr: event.peak_hr,
+            onsetTime: segWinStart,
+            classification,
+            rr_status,
+            relapse: isRelapse || state.relapseCount > 0,
+            relapseCount: state.relapseCount,
+          });
+        }
+      } catch (e) {
+        console.warn('[Socket Alert] Deviation alert emit failed:', e.message);
+      }
     } else {
       // UPDATE EPISODE
       const updatePayload = {
@@ -1907,9 +2105,23 @@ async function updateRRPersistence(
         duration_ms: ongoingDurationMs,
         'trajectory.sequence_of_scores': state.scores,
         'trajectory.persistence': state.count,
+        'trajectory.recovery_time_ms': primaryTtrMs,
         window_count: state.count,
         z_scores_at_peak: zScores,
-        current_state: rr_status
+        current_state: rr_status,
+        auc_score: currentAuc,
+        residual_deviation: residualDeviation,
+        confidence: segmentConfidence,
+        context_tag: contextTag,
+        damping_ratio: dampingRatio,
+        peaks_history: state.peaks,
+        multi_ttr_list: multiTtrList,
+        ttr_tau_out_ms: primaryTtrMs,
+        ttr_min: primaryTtrMin,
+        peak_count: state.peaks.length,
+        relapse_count: state.relapseCount,
+        relapse: state.relapseCount > 0,
+        relapse_ascent_velocity: state.relapseAscentVelocity,
       };
       if (state.peakSeg && new Date(state.peakSeg.window_start).getTime() === segWinStart) {
         updatePayload.peak_time = segWinStart;
@@ -1929,10 +2141,22 @@ async function updateRRPersistence(
       state.recoveryCount++;
       state.segIds.push(seg._id);
       state.scores.push(score);
+      state.timestamps.push(segWinStart);
 
       const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || segWinStart;
       const segWinEnd = extractMs(seg.window_end) || (segWinStart + 300000);
       const ongoingDurationMs = Math.max(segWinEnd - startWinStart, 0);
+      const currentAuc = computeTrapezoidalAUC(state.scores, state.timestamps);
+      const residualDeviation = computeResidualDeviation(state.scores, state.timestamps, tauNormal);
+      const dampingRatio = state.peaks.length >= 2 && state.peaks[0].peak_score > 0
+        ? Number((state.peaks[1].peak_score / state.peaks[0].peak_score).toFixed(2))
+        : 1.0;
+      const segmentConfidence = typeof seg.signal_quality === 'number'
+        ? Number(seg.signal_quality.toFixed(2))
+        : (seg.features?.signal_quality || 0.95);
+      const contextTag = `${activity || 'General'} | ${seg.activity_label || 'General'}`;
+
+      console.log(`[Blok-1 Engine Log] WindowState=RECOVERING | Confidence=${segmentConfidence} | EpId=${state.openEventId} | Onset=${new Date(startWinStart).toISOString()} | Peak=${state.peakScore} | Dur=${ongoingDurationMs}ms | TTR=${primaryTtrMin}m | RelapseCount=${state.relapseCount} | ResidualDev=${residualDeviation} | ContextTag=${contextTag}`);
 
       await AnomalyEvent.updateOne({ _id: state.openEventId }, {
         $set: {
@@ -1940,7 +2164,21 @@ async function updateRRPersistence(
           current_state: 'RECOVERING',
           duration_ms: ongoingDurationMs,
           'trajectory.sequence_of_scores': state.scores,
+          'trajectory.recovery_time_ms': primaryTtrMs,
           window_count: state.segIds.length,
+          auc_score: currentAuc,
+          residual_deviation: residualDeviation,
+          confidence: segmentConfidence,
+          context_tag: contextTag,
+          damping_ratio: dampingRatio,
+          peaks_history: state.peaks,
+          multi_ttr_list: multiTtrList,
+          ttr_tau_out_ms: primaryTtrMs,
+          ttr_min: primaryTtrMin,
+          peak_count: state.peaks.length,
+          relapse_count: state.relapseCount,
+          relapse: state.relapseCount > 0,
+          relapse_ascent_velocity: state.relapseAscentVelocity,
         },
         $push: { segment_ids: seg._id },
       });
@@ -1951,37 +2189,49 @@ async function updateRRPersistence(
     if (state.openEventId) {
       state.segIds.push(seg._id);
       state.scores.push(score);
+      state.timestamps.push(segWinStart);
 
-      const segWinEnd = extractMs(seg.window_end) || (segWinStart + 300000);
-      const peakWinStart = extractMs(state.peakSeg?.createdAt || state.peakSeg?.window_start) || segWinStart;
       const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || segWinStart;
-
-      const recoveryMs = segWinEnd - peakWinStart;
       const totalDurationMs = segWinStart - startWinStart;
+      const auc_score = computeTrapezoidalAUC(state.scores, state.timestamps);
+      const residualDeviation = computeResidualDeviation(state.scores, state.timestamps, tauNormal);
+      const dampingRatio = state.peaks.length >= 2 && state.peaks[0].peak_score > 0
+        ? Number((state.peaks[1].peak_score / state.peaks[0].peak_score).toFixed(2))
+        : 1.0;
+      const segmentConfidence = typeof seg.signal_quality === 'number'
+        ? Number(seg.signal_quality.toFixed(2))
+        : (seg.features?.signal_quality || 0.95);
+      const contextTag = `${activity || 'General'} | ${seg.activity_label || 'General'}`;
 
-      const WINDOW_MS = 60000;
-      let auc_score = 0;
-      const scores = state.scores;
-      for (let i = 1; i < scores.length; i++) {
-        auc_score += 0.5 * (scores[i - 1] + scores[i]) * WINDOW_MS;
-      }
-      auc_score = parseFloat(auc_score.toFixed(2));
+      console.log(`[Blok-1 Engine Log] WindowState=RECOVERED | Confidence=${segmentConfidence} | EpId=${state.openEventId} | Onset=${new Date(startWinStart).toISOString()} | Peak=${state.peakScore} | Dur=${totalDurationMs}ms | TTR=${primaryTtrMin}m | RelapseCount=${state.relapseCount} | ResidualDev=${residualDeviation} | ContextTag=${contextTag}`);
 
       await AnomalyEvent.updateOne({ _id: state.openEventId }, {
         $set: {
           resolved_time: segWinStart,
           recovered_at: segWinStart,
           duration_ms: totalDurationMs,
-          status: 'closed', // mapping to RECOVERED conceptually
+          status: 'closed',
           current_state: 'RECOVERED',
           auc_score,
+          residual_deviation: residualDeviation,
+          confidence: segmentConfidence,
+          context_tag: contextTag,
+          damping_ratio: dampingRatio,
           window_count: state.segIds.length,
-          'trajectory.recovery_time_ms': Math.max(recoveryMs, 0),
+          peaks_history: state.peaks,
+          multi_ttr_list: multiTtrList,
+          ttr_tau_out_ms: primaryTtrMs,
+          ttr_min: primaryTtrMin,
+          peak_count: state.peaks.length,
+          relapse_count: state.relapseCount,
+          relapse: state.relapseCount > 0,
+          relapse_ascent_velocity: state.relapseAscentVelocity,
+          'trajectory.recovery_time_ms': primaryTtrMs,
           'trajectory.sequence_of_scores': state.scores,
         },
         $push: { segment_ids: seg._id },
       });
-      console.log(`[Layer3-RR] Episode RECOVERED (Closed) user=${userId} act=${activity} AUC=${auc_score}`);
+      console.log(`[Layer3-RR] Episode RECOVERED (Closed) user=${userId} act=${activity} AUC=${auc_score} Residual=${residualDeviation} Peaks=${state.peaks.length} Relapses=${state.relapseCount} DampingRatio=${dampingRatio} TTR=${primaryTtrMin}m`);
 
       // Trigger Analysis
       generateEpisodeAnalysis(state.openEventId);
@@ -1989,9 +2239,10 @@ async function updateRRPersistence(
 
     const closedId = state.openEventId;
     persistenceState[activity] = {
-      count: 0, recoveryCount: 0, segIds: [], scores: [],
+      count: 0, recoveryCount: 0, segIds: [], scores: [], timestamps: [], peaks: [],
       peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
-      lastWindowStart: segWinStart,
+      lastWindowStart: segWinStart, lastScore: null, lastState: null,
+      hadRecoveryDescent: false, relapseCount: 0, relapseAscentVelocity: null,
       lastClosedEventTime: segWinStart,
       lastClosedEventId: closedId
     };
@@ -2001,6 +2252,7 @@ async function updateRRPersistence(
     if (state.openEventId) {
       const startWinStart = extractMs(state.startSeg?.createdAt || state.startSeg?.window_start) || segWinStart;
       const totalDurationMs = segWinStart - startWinStart;
+      const auc_score = computeTrapezoidalAUC(state.scores, state.timestamps);
 
       await AnomalyEvent.updateOne({ _id: state.openEventId }, {
         $set: {
@@ -2010,6 +2262,14 @@ async function updateRRPersistence(
           status: 'transient',
           current_state: 'BASELINE_COMPATIBLE',
           window_count: state.segIds.length,
+          auc_score,
+          peaks_history: state.peaks,
+          multi_ttr_list: multiTtrList,
+          ttr_tau_out_ms: primaryTtrMs,
+          ttr_min: primaryTtrMin,
+          peak_count: state.peaks.length,
+          relapse_count: state.relapseCount,
+          relapse: state.relapseCount > 0,
         }
       });
       console.log(`[Layer3-RR] Episode TRANSIENT user=${userId} act=${activity}`);
@@ -2020,15 +2280,18 @@ async function updateRRPersistence(
 
     const closedId = state.openEventId;
     persistenceState[activity] = {
-      count: 0, recoveryCount: 0, segIds: [], scores: [],
+      count: 0, recoveryCount: 0, segIds: [], scores: [], timestamps: [], peaks: [],
       peakScore: 0, peakSeg: null, startSeg: null, openEventId: null,
-      lastWindowStart: segWinStart,
+      lastWindowStart: segWinStart, lastScore: null, lastState: null,
+      hadRecoveryDescent: false, relapseCount: 0, relapseAscentVelocity: null,
       lastClosedEventTime: closedId ? segWinStart : state.lastClosedEventTime,
       lastClosedEventId: closedId || state.lastClosedEventId
     };
   }
 
   state.lastWindowStart = segWinStart;
+  state.lastScore = score;
+  state.lastState = rr_status;
   return eventCreated;
 }
 
@@ -2176,7 +2439,7 @@ export async function generateEpisodeAnalysis(eventId) {
         sdnn: sdnnVal,
         dfa_alpha1: dfaVal,
         quality_score: qualityScore,
-        artifact_fraction: ev.artifact_fraction ?? 0.038,
+        artifact_fraction: ev.artifact_fraction ?? 0.0,
         context_confidence: ev.context_confidence ?? 0.89,
         activity_purity: ev.activity_purity ?? 0.92,
         quality_gate_pass: qualityScore >= DEFAULT_ABLATION_CONFIG.q_min,
@@ -2197,8 +2460,9 @@ export async function generateEpisodeAnalysis(eventId) {
         peak_deviation: ev.peak_score || 0,
         mean_deviation: ev.anomaly_score || 0,
         deviation_auc: ev.auc_score || 0,
-        ttr: ev.trajectory?.recovery_time_ms || null,
-        relapse_detected: ev.relapse || false,
+        ttr: ev.ttr_tau_out_ms ?? ev.trajectory?.recovery_time_ms ?? null,
+        relapse_detected: ev.relapse || (ev.relapse_count && ev.relapse_count > 0) || false,
+        relapse_count: ev.relapse_count || 0,
       },
       { upsert: true, new: true }
     );
@@ -2755,13 +3019,22 @@ export async function getPersonalExperienceMemory(req, res) {
       { id: 'b4', name: 'Recovery Master', icon: '🧘', desc: `Pemulihan denyut jantung cepat < ${medianRec} menit` }
     ];
 
+    // Calculate dynamic confidence and prediction reliability
+    const computedConfidenceScore = Number(Math.max(0.50, Math.min(0.99,
+      0.60 + Math.min(0.25, (totalSegmentsCount / 100) * 0.25) + Math.min(0.10, (activeStreakDays / 7) * 0.10) + (answeredEmaCount > 0 ? 0.04 : 0.0)
+    )).toFixed(2));
+
+    const computedPredictionConfidence = Number(Math.max(0.50, Math.min(0.98,
+      0.55 + Math.min(0.25, (resolvedCount / 5) * 0.25) + Math.min(0.15, (totalSegmentsCount / 150) * 0.15) + (medianRec < 20 ? 0.04 : 0.01)
+    )).toFixed(2));
+
     return res.json({
       success: true,
       data: {
         user_id: userId,
         participantId: userId,
-        confidenceScore: 0.94,
-        predictionConfidence: 0.89,
+        confidenceScore: computedConfidenceScore,
+        predictionConfidence: computedPredictionConfidence,
         resolvedEpisodesCount: resolvedCount,
         medianRecoveryMinutes: medianRec,
         p25RecoveryMinutes: p25Rec,

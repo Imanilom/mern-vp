@@ -11,41 +11,40 @@ export const getSignalQuality = async (req, res) => {
       .limit(100)
       .lean();
 
-    let artifactPct = 3.8;
-    let missingnessPct = 2.0;
-    let evaluableTimePct = 96.0;
+    let artifactPct = 0.0;
+    let missingnessPct = 0.0;
+    let evaluableTimePct = 100.0;
     let totalAssessed = 0;
 
     if (segments && segments.length > 0) {
       let totalArtifact = 0;
       let totalMissing = 0;
       let evaluableCount = 0;
-      let validSampleCount = 0;
+      let recordedArtCount = 0;
+      let recordedMissCount = 0;
 
       segments.forEach(seg => {
-        const q = seg.signal_quality_detail || seg.features || seg;
-        const art = q.artifact_fraction ?? q.artifact_ratio ?? q.artifact_fraction_pct ?? null;
-        const miss = q.missing_fraction ?? q.missing_ratio ?? q.missing_fraction_pct ?? null;
+        const q = seg.signal_quality_detail || seg.features || {};
+        const art = q.artifact_fraction ?? seg.artifact_fraction ?? seg.rr_artifact_fraction ?? (seg.is_artifact ? 1.0 : null);
+        const miss = q.missing_fraction ?? seg.missing_fraction ?? seg.missing_rate ?? null;
 
-        if (art !== null) {
+        if (art !== null && !isNaN(art)) {
           totalArtifact += (art > 1 ? art / 100 : art);
-        } else {
-          totalArtifact += 0.038; // 3.8% default realistic noise
+          recordedArtCount++;
         }
 
-        if (miss !== null) {
+        if (miss !== null && !isNaN(miss)) {
           totalMissing += (miss > 1 ? miss / 100 : miss);
-        } else {
-          totalMissing += 0.020; // 2.0% default realistic missing
+          recordedMissCount++;
         }
 
-        validSampleCount++;
         if (seg.is_valid !== false) evaluableCount++;
       });
 
-      const n = validSampleCount || 1;
-      artifactPct = Number(((totalArtifact / n) * 100).toFixed(1));
-      missingnessPct = Number(((totalMissing / n) * 100).toFixed(1));
+      const nArt = recordedArtCount || 1;
+      const nMiss = recordedMissCount || 1;
+      artifactPct = recordedArtCount > 0 ? Number(((totalArtifact / nArt) * 100).toFixed(1)) : 0.0;
+      missingnessPct = recordedMissCount > 0 ? Number(((totalMissing / nMiss) * 100).toFixed(1)) : 0.0;
       evaluableTimePct = Number(((evaluableCount / segments.length) * 100).toFixed(0));
       totalAssessed = segments.length;
     }

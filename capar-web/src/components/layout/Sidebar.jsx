@@ -7,37 +7,38 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
   if (role === 'patient') role = 'user';
 
   const allNavItems = [
-    // === Cohort & Patient ===
-    { id: 'overview', label: 'Daftar Pasien', icon: 'fa-house-medical', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    // === 0. Subjek & Pasien ===
+    { id: 'overview', label: 'Daftar Pasien & Kohort', icon: 'fa-hospital-user', roles: ['admin', 'researcher', 'doctor', 'user'] },
 
-    // === Per-Participant Monitoring ===
-    { id: 'live-monitor', label: 'Live Monitoring', icon: 'fa-satellite-dish', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'signal-quality', label: 'Signal & Quality', icon: 'fa-tower-broadcast', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'baseline-maturity', label: 'Baseline Model', icon: 'fa-chart-simple', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'state-timeline', label: 'State Timeline', icon: 'fa-timeline', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'event-generator', label: 'Event Generator', icon: 'fa-filter', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'episode', label: 'Episode List', icon: 'fa-wave-square', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'episode-detail', label: 'Episode Detail', icon: 'fa-chart-line', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    // === 1. OBSERVASI & VARIABEL MASUKAN (Wearable y(k), Context u(k), Disturbance d(k)) ===
+    { id: 'live-monitor', label: '1. Observasi Wearable y(k)', icon: 'fa-satellite-dish', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'signal-quality', label: 'Signal Quality & Disturbance d(k)', icon: 'fa-tower-broadcast', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'experience', label: 'Input Perilaku & Konteks u(k)', icon: 'fa-clipboard-user', roles: ['admin', 'researcher', 'doctor', 'user'] },
 
-    // === Analysis & Learning ===
-    { id: 'experience', label: 'Experience Memory', icon: 'fa-brain', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'prediction-eval', label: 'Prediction Eval', icon: 'fa-bullseye', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'model-rules', label: 'Model & Rules', icon: 'fa-sliders', roles: ['admin', 'researcher', 'doctor'] },
+    // === 2. MODEL STATE-SPACE & 3. EKSTRAKSI METRIK EPISODE ===
+    { id: 'baseline-maturity', label: '2. Model State-Space & Baseline', icon: 'fa-chart-simple', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'state-timeline', label: 'Event-State Diskrit s(k)', icon: 'fa-timeline', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'episode', label: '3. Ekstraksi Metrik Episode', icon: 'fa-wave-square', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'episode-detail', label: 'Detail Trajektori Episode', icon: 'fa-chart-line', roles: ['admin', 'researcher', 'doctor', 'user'] },
 
-    // === Data & Governance ===
+    // === 4. PROSES FENOTIPING LONGITUDINAL (VEKTOR Φ, Q1–Q10) ===
+    { id: 'weekly-phenotyping', label: '4. Fenotyping Frozen Mingguan (Φ)', icon: 'fa-snowflake', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'autonomic-profile', label: 'Katalog Profil Otonomik', icon: 'fa-dna', roles: ['admin', 'researcher', 'doctor', 'user'] },
+
+    // === 5. CAPAR CRS & 6. PHYSIOLOGICAL DIGITAL TWIN ===
+    { id: 'cardiovascular-resilience', label: '5. Cardiovascular Resilience (CRS)', icon: 'fa-heart-circle-bolt', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'prediction-eval', label: '6. Evaluasi Digital Twin', icon: 'fa-bullseye', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'model-rules', label: 'Aturan FSM & Model Rules', icon: 'fa-sliders', roles: ['admin', 'researcher', 'doctor'] },
+
+    // === 7 & 8. OUTPUT, XAI & DECISION SUPPORT ===
+    { id: 'zero-shot', label: '7 & 8. XAI — Penjelasan Transparan', icon: 'fa-lightbulb', roles: ['admin', 'researcher', 'doctor', 'user'] },
+
+    // === DATA, GOVERNANCE & ADMINISTRASI ===
+    { id: 'audit', label: 'Audit Trail & Governance', icon: 'fa-clipboard-list', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'export', label: 'Export Data', icon: 'fa-file-export', roles: ['admin', 'researcher', 'doctor'] },
-    { id: 'audit', label: 'Audit Provenance', icon: 'fa-clipboard-list', roles: ['admin', 'researcher', 'doctor'] },
-
-    // === System & Admin ===
     { id: 'user-management', label: 'User Management', icon: 'fa-users-gear', roles: ['admin', 'doctor'] },
-    { id: 'profile', label: 'My Profile', icon: 'fa-user', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'settings', label: 'Settings', icon: 'fa-user-shield', roles: ['admin', 'doctor', 'researcher', 'user'] },
-
-    // === Resilience & AI Tools ===
-    { id: 'cardiovascular-resilience', label: 'Cardiovascular Resilience', icon: 'fa-heart-circle-bolt', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'clinical-vulnerability', label: 'Clinical Vulnerability', icon: 'fa-shield-heart', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'autonomic-profile', label: 'Profil', icon: 'fa-dna', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'zero-shot', label: 'Explain', icon: 'fa-lightbulb', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'profile', label: 'Profil Saya', icon: 'fa-user', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'settings', label: 'Pengaturan Sistem', icon: 'fa-gear', roles: ['admin', 'doctor', 'researcher', 'user'] },
   ];
 
   const navItems = allNavItems.filter(item => item.roles.includes(role));
@@ -47,28 +48,16 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     if (onCloseMobile) onCloseMobile();
   };
 
-  // Group labels
+  // Group labels matching the sequential flowchart
   const groupLabels = {
-    'overview': null,
-    'live-monitor': 'Monitoring',
-    'signal-quality': null,
-    'baseline-maturity': null,
-    'state-timeline': null,
-    'event-generator': null,
-    'episode': null,
-    'episode-detail': null,
-    'experience': 'Analysis',
-    'prediction-eval': null,
-    'model-rules': null,
-    'export': 'Data & Governance',
-    'audit': null,
-    'user-management': 'System',
-    'profile': null,
-    'settings': null,
-    'cardiovascular-resilience': 'Resilience & AI CDSS',
-    'clinical-vulnerability': null,
-    'autonomic-profile': null,
-    'zero-shot': null,
+    'overview': 'Subjek & Kohort',
+    'live-monitor': '1. Observasi & Masukan',
+    'baseline-maturity': '2 & 3. State-Space & Episode',
+    'weekly-phenotyping': '4. Fenotyping Longitudinal',
+    'cardiovascular-resilience': '5 & 6. CRS & Digital Twin',
+    'zero-shot': '7 & 8. Output & XAI Transparan',
+    'audit': 'Data & Governance',
+    'user-management': 'Administrasi & Akun',
   };
 
   return (

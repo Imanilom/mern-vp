@@ -35,6 +35,9 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
   // Step 1 State (EMA 1 — Konfirmasi Konteks)
   String _ema1Activity = 'Duduk / istirahat';
   String _ema1Planned = 'Ya';
+  String _ema1SleepStatus = 'Cukup (6-7 jam)';
+  String _ema1Medication = 'Tidak Ada';
+  final TextEditingController _ema1MedDetailController = TextEditingController();
   final TextEditingController _ema1NoteController = TextEditingController();
 
   // Step 2 State (EMA 2 — Gejala / Strain)
@@ -61,6 +64,7 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
 
   @override
   void dispose() {
+    _ema1MedDetailController.dispose();
     _ema1NoteController.dispose();
     _ema3InterventionController.dispose();
     super.dispose();
@@ -92,6 +96,9 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
       'ema1': {
         'activity': _ema1Activity,
         'planned': _ema1Planned,
+        'sleep_status': _ema1SleepStatus,
+        'medication_intake': _ema1Medication,
+        'medication_detail': _ema1MedDetailController.text,
         'note': _ema1NoteController.text,
       },
       'ema2': {
@@ -402,6 +409,64 @@ class _EmaWizardSheetState extends State<_EmaWizardSheet> {
           isSelected: _ema1Planned == plan,
           onTap: () => setState(() => _ema1Planned = plan),
         )),
+
+        const SizedBox(height: 16),
+        const Text(
+          'Kualitas & Durasi Tidur Semalam',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy),
+        ),
+        const SizedBox(height: 10),
+        ...[
+          'Sangat Cukup (>7 jam)',
+          'Cukup (6-7 jam)',
+          'Kurang (4-5 jam)',
+          'Sangat Kurang / Insomnia (<4 jam)',
+        ].map((sleep) => _buildRadioChoice(
+          title: sleep,
+          isSelected: _ema1SleepStatus == sleep,
+          onTap: () => setState(() => _ema1SleepStatus = sleep),
+        )),
+
+        const SizedBox(height: 16),
+        const Text(
+          'Konsumsi Obat / Stimulan Terkini',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy),
+        ),
+        const SizedBox(height: 10),
+        ...[
+          'Tidak Ada',
+          'Obat Jantung / Antihipertensi',
+          'Obat Flu / Dekongestan',
+          'Kafein / Suplemen Tinggi',
+          'Lainnya (Tulis detail di bawah)',
+        ].map((med) => _buildRadioChoice(
+          title: med,
+          isSelected: _ema1Medication == med,
+          onTap: () => setState(() => _ema1Medication = med),
+        )),
+
+        if (_ema1Medication != 'Tidak Ada') ...[
+          const SizedBox(height: 10),
+          TextField(
+            controller: _ema1MedDetailController,
+            style: const TextStyle(fontSize: 12),
+            decoration: InputDecoration(
+              hintText: 'Nama obat / dosis (mis. Bisoprolol 2.5mg, Kopi espresso)...',
+              hintStyle: const TextStyle(fontSize: 12, color: Colors.black26),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+            ),
+          ),
+        ],
 
         const SizedBox(height: 16),
         const Text(
