@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import User from '../models/user.model.js';
+import Patient from '../models/patient.model.js';
 import Log from '../models/data.model.js';
 import Aktivitas from '../models/activity.model.js';
 import { errorHandler } from '../utils/error.js';
@@ -1077,7 +1078,8 @@ export const updateClinicalProfile = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'You are not allowed to update this profile.' });
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
+    const AccountModel = req.user.role === 'patient' ? Patient : User;
+    const updatedUser = await AccountModel.findByIdAndUpdate(
       id,
       {
         $set: {
