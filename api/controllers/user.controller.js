@@ -1068,3 +1068,41 @@ export const dfaActivity = async (req, res, next) => {
     next(error);
   }
 }
+export const updateClinicalProfile = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal } = req.body;
+
+    if (req.user.id !== id && req.user.role !== 'doctor' && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'You are not allowed to update this profile.' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          'cleveland_13_features.cp': cp,
+          'cleveland_13_features.trestbps': trestbps,
+          'cleveland_13_features.chol': chol,
+          'cleveland_13_features.fbs': fbs,
+          'cleveland_13_features.restecg': restecg,
+          'cleveland_13_features.thalach': thalach,
+          'cleveland_13_features.exang': exang,
+          'cleveland_13_features.oldpeak': oldpeak,
+          'cleveland_13_features.slope': slope,
+          'cleveland_13_features.ca': ca,
+          'cleveland_13_features.thal': thal,
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    res.status(200).json({ success: true, user: updatedUser });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -1345,12 +1345,30 @@ export async function getCardiovascularResilienceState(req, res) {
       }
     }
 
-    // Real clinical covariates from patient profile or risk records
-    let trestbps = 120;
+    // Validasi Profil Klinis (Cleveland 13 Features) dari User
+    if (user && (!user.cleveland_13_features || user.cleveland_13_features.trestbps == null || user.cleveland_13_features.chol == null)) {
+      return res.status(400).json({
+        success: false,
+        message: 'MISSING_CLINICAL_PROFILE',
+        reason: 'Mohon lengkapi Profil Klinis (Cleveland 13 Features) Anda terlebih dahulu sebelum sistem dapat menghitung skor Cardiovascular Resilience.'
+      });
+    }
+
+    const cleveland = user?.cleveland_13_features || {};
+
+    // Real clinical covariates from user profile
+    let trestbps = cleveland.trestbps ?? 120;
+    let chol = cleveland.chol ?? 200;
+    let oldpeak = cleveland.oldpeak ?? 0.4;
+    let exang = cleveland.exang ?? 0;
+    let cp = cleveland.cp ?? 0;
+    let fbs = cleveland.fbs ?? 0;
+    let restecg = cleveland.restecg ?? 0;
+    let thalach_cl = cleveland.thalach ?? 116;
+    let slope = cleveland.slope ?? 1;
+    let ca = cleveland.ca ?? 0;
+    let thal = cleveland.thal ?? 1;
     let bmi = 22.8;
-    let chol = 200;
-    let oldpeak = 0.4;
-    let exang = 0;
     let history = 0;
 
     if (patientDoc) {
@@ -1368,21 +1386,15 @@ export async function getCardiovascularResilienceState(req, res) {
       if (patientDoc.history_cardiac) history = 1;
     }
 
-    // Query FaktorResiko if available
+    // Query FaktorResiko if available (untuk fallback history/bmi)
     try {
       const fr = await faktorresiko.findOne({ user: userObjectId }).sort({ Date: -1 }).lean().catch(() => null);
       if (fr && Array.isArray(fr.penilaian)) {
         fr.penilaian.forEach(item => {
           const lbl = (item.label || '').toLowerCase();
           const jwb = (item.jawaban || '').toLowerCase();
-          if (lbl.includes('tekanan darah') || lbl.includes('tensi')) {
-            const m = jwb.match(/^(\d{2,3})/);
-            if (m) trestbps = parseInt(m[1], 10);
-          } else if (lbl.includes('kolesterol')) {
-            const c = parseFloat(jwb);
-            if (!isNaN(c) && c > 50) chol = c;
-          } else if (lbl.includes('merokok') || lbl.includes('angina')) {
-            if (jwb.includes('ya') || jwb.includes('sering')) exang = 1;
+          if (lbl.includes('merokok') || lbl.includes('angina')) {
+            if (jwb.includes('ya') || jwb.includes('sering')) history = 1;
           }
         });
       }
@@ -1509,9 +1521,15 @@ export async function getCardiovascularResilienceState(req, res) {
       bmi: Number(bmi.toFixed(1)),
       trestbps: Number(trestbps.toFixed(0)),
       chol: Number(chol.toFixed(0)),
-      thalach: Number(maxHr.toFixed(0)),
+      thalach: Number(maxHr.toFixed(0)), // Keep telemetry maxHr or thalach_cl? Let's use telemetry maxHr if real data.
       oldpeak: Number(oldpeak.toFixed(1)),
       exang,
+      cp,
+      fbs,
+      restecg,
+      slope,
+      ca,
+      thal,
       history,
 
       meanHr: Number(meanHr.toFixed(1)),

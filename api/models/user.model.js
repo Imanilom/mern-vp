@@ -69,6 +69,20 @@ const UserSchema = new mongoose.Schema(
       type: Number, // cm
       default: null,
     },
+    // ---- Profil Klinis Cleveland 13 Features ----
+    cleveland_13_features: {
+      cp: { type: Number, default: null },
+      trestbps: { type: Number, default: null },
+      chol: { type: Number, default: null },
+      fbs: { type: Number, default: null },
+      restecg: { type: Number, default: null },
+      thalach: { type: Number, default: null },
+      exang: { type: Number, default: null },
+      oldpeak: { type: Number, default: null },
+      slope: { type: Number, default: null },
+      ca: { type: Number, default: null },
+      thal: { type: Number, default: null },
+    },
     // ------------------------------------
     docter: {
       type: mongoose.Schema.Types.ObjectId,

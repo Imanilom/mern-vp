@@ -584,7 +584,7 @@ class ApiService {
             headers: headers,
           )
           .timeout(const Duration(seconds: 15));
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 400) {
         return json.decode(response.body) as Map<String, dynamic>;
       }
     } catch (e) {
@@ -616,7 +616,11 @@ class ApiService {
   /// Mencatat event perilaku b(k) dari Mobile
   static Future<Map<String, dynamic>?> submitBehaviorEvent(Map<String, dynamic> payload) async {
     try {
+      final uid = await _getUserId();
       final headers = await _getHeaders();
+      if (uid.isNotEmpty) {
+        payload['user_id'] = uid;
+      }
       final response = await http
           .post(
             Uri.parse('$baseUrl/resilience/behavior'),
@@ -636,7 +640,11 @@ class ApiService {
   /// Mengonfirmasi pemicu konteks perilaku peserta (Aktivitas Fisik, Stres Mental, Nyeri, Lingkungan)
   static Future<Map<String, dynamic>?> confirmContextTrigger(Map<String, dynamic> payload) async {
     try {
+      final uid = await _getUserId();
       final headers = await _getHeaders();
+      if (uid.isNotEmpty) {
+        payload['userId'] = uid;
+      }
       final response = await http
           .post(
             Uri.parse('$baseUrl/resilience/confirm-context'),
@@ -651,6 +659,27 @@ class ApiService {
       debugPrint('[ApiService] confirmContextTrigger error: $e');
     }
     return null;
+  }
+
+  /// Memperbarui profil klinis Cleveland 13 Features user
+  static Future<bool> updateClinicalProfile(Map<String, dynamic> payload) async {
+    try {
+      final uid = await _getUserId();
+      final headers = await _getHeaders();
+      if (uid.isEmpty) return false;
+      
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/users/clinical-profile/$uid'),
+            headers: headers,
+            body: json.encode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('[ApiService] updateClinicalProfile error: $e');
+    }
+    return false;
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../widgets/clinical_profile_sheet.dart';
 import '../../theme/app_colors.dart';
 
 class CardiovascularResilienceScreen extends StatefulWidget {
@@ -51,8 +52,16 @@ class _CardiovascularResilienceScreenState extends State<CardiovascularResilienc
           _stability = (dims['stability']?['score'] as num?)?.toDouble() ?? 79.0;
           _loading = false;
         });
+      } else if (res?['success'] == false && res?['message'] == 'MISSING_CLINICAL_PROFILE') {
+        setState(() {
+          _error = 'MISSING_CLINICAL_PROFILE';
+          _loading = false;
+        });
       } else {
-        setState(() => _loading = false);
+        setState(() {
+          _error = res?['message'] ?? 'Gagal memuat data CRS dari engine.';
+          _loading = false;
+        });
       }
     } catch (e) {
       setState(() {
@@ -114,27 +123,71 @@ class _CardiovascularResilienceScreenState extends State<CardiovascularResilienc
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
-          : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.error_outline_rounded, color: Colors.red, size: 48),
-                        const SizedBox(height: 12),
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadData,
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal),
-                          child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+              : _error == 'MISSING_CLINICAL_PROFILE'
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.assignment_ind_rounded, color: AppColors.amber, size: 56),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Profil Klinis Belum Lengkap',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.navy),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Sistem Digital Twin memerlukan 11 variabel Cleveland (tekanan darah, kolesterol, dll) untuk dapat menghitung Cardiovascular Resilience State secara akurat.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 13, color: AppColors.gray),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (ctx) => ClinicalProfileSheet(),
+                                ).then((val) {
+                                  if (val == true) _loadData();
+                                });
+                              },
+                              icon: const Icon(Icons.edit_note_rounded),
+                              label: const Text('Lengkapi Profil Klinis'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.navy,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                )
-              : ListView(
+                      ),
+                    )
+                  : _error != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.error_outline_rounded, color: Colors.red, size: 48),
+                                const SizedBox(height: 12),
+                                Text(_error!, textAlign: TextAlign.center),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _loadData,
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal),
+                                  child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
                     // ── 1. MAIN RESILIENCE SCORE BANNER ───────────────────
@@ -210,9 +263,9 @@ class _CardiovascularResilienceScreenState extends State<CardiovascularResilienc
                           const Divider(height: 20),
                           const Text('Simulasi What-If (Geser untuk tes):', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.gray)),
                           Slider(
-                            value: _getCurrentScore(_selectedDimensionKey),
-                            min: 20,
-                            max: 100,
+                            value: _getCurrentScore(_selectedDimensionKey).clamp(0.0, 100.0),
+                            min: 0.0,
+                            max: 100.0,
                             activeColor: AppColors.teal,
                             onChanged: (v) {
                               setState(() {
@@ -251,7 +304,7 @@ class _CardiovascularResilienceScreenState extends State<CardiovascularResilienc
           ),
           const SizedBox(height: 6),
           const Text(
-            'Klarifikasi faktor pemicu: Aktivitas fisik, stres mental, ada/tidaknya nyeri, atau faktor lingkungan untuk mengkalibrasi model Digital Twin ($c_{ctx}$ & $u_{unexp}$).',
+            'Klarifikasi faktor pemicu: Aktivitas fisik, stres mental, ada/tidaknya nyeri, atau faktor lingkungan untuk mengkalibrasi model Digital Twin (c_ctx & u_unexp).',
             style: TextStyle(fontSize: 11.5, color: Color(0xFF78350F), height: 1.35),
           ),
           const SizedBox(height: 12),
@@ -329,9 +382,13 @@ class _CardiovascularResilienceScreenState extends State<CardiovascularResilienc
                   ),
                 ),
               ),
-              const Text(
-                'CRS = 0.2CV+0.2CR+0.25AR+0.2RC+0.15RS',
-                style: TextStyle(color: Colors.white54, fontSize: 9.5),
+              Expanded(
+                child: const Text(
+                  'CRS = 0.2CV+0.2CR+0.25AR+0.2RC+0.15RS',
+                  style: TextStyle(color: Colors.white54, fontSize: 9.5),
+                  textAlign: TextAlign.right,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -582,7 +639,7 @@ class _ParticipantContextBottomSheetState extends State<_ParticipantContextBotto
       if (!mounted) return;
       setState(() => _isSubmitting = false);
 
-      if (ok) {
+      if (ok != null && (ok['success'] == true || ok['success'] == 'true')) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Konteks perilaku berhasil dikonfirmasi ke Digital Twin.'),

@@ -1,5 +1,5 @@
 import express from 'express';
-import { deleteUser, getLogWithActivity, pushActivity, logdfa, dfaActivity, test, Dailymetrics, updateUser, getUser, getRiwayatDeteksiWithDfa, getAllUsers } from '../controllers/user.controller.js';
+import { deleteUser, getLogWithActivity, pushActivity, logdfa, dfaActivity, test, Dailymetrics, updateUser, getUser, getRiwayatDeteksiWithDfa, getAllUsers, updateClinicalProfile } from '../controllers/user.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
 const router = express.Router();
 
@@ -15,6 +15,7 @@ router.get('/metrics/:device', verifyToken, Dailymetrics);
 router.get('/test/:device', verifyToken, test);
 router.get('/riwayatdeteksi/:userId', verifyToken, getRiwayatDeteksiWithDfa);
 router.post('/update/:id', verifyToken, updateUser)
+router.put('/clinical-profile/:id', verifyToken, updateClinicalProfile)
 router.delete('/delete/:id', verifyToken, deleteUser)
 router.get('/:id', verifyToken, getUser)
 
