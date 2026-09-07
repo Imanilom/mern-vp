@@ -670,7 +670,7 @@ class ApiService {
       
       final response = await http
           .put(
-            Uri.parse('$baseUrl/users/clinical-profile/$uid'),
+            Uri.parse('$baseUrl/user/clinical-profile/$uid'),
             headers: headers,
             body: json.encode(payload),
           )
