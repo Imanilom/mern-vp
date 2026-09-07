@@ -577,7 +577,8 @@ class ApiService {
   static Future<Map<String, dynamic>?> fetchCardiovascularResilienceState({String? userId}) async {
     try {
       final headers = await _getHeaders();
-      final uid = userId ?? '6a6609326bf83196b1d73e97';
+      final uid = userId ?? await _getUserId();
+      if (uid.isEmpty) return null;
       final response = await http
           .get(
             Uri.parse('$baseUrl/resilience/state?userId=$uid'),
