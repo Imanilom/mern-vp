@@ -9,6 +9,7 @@ import '../../widgets/realtime_chart_widget.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/evidence_chip.dart';
 import '../ema/ema_dialogs.dart';
+import '../../widgets/behavioral_input_sheet.dart';
 
 enum HomeStateMode {
   evaluable,
@@ -99,6 +100,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => BehavioralInputSheet.show(context),
+        backgroundColor: AppColors.teal,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        icon: const Icon(Icons.add_task_rounded),
+        label: const Text('Input Perilaku', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
