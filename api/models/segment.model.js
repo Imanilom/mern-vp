@@ -72,7 +72,7 @@ const SegmentSchema = new mongoose.Schema({
     // DFA (opsional, dihitung jika RR >= 16 titik)
     dfa_alpha1: { type: Number, default: null }, // short-range (window 4–16)
     dfa_alpha2: { type: Number, default: null }, // long-range  (window 17+)
-    
+
     // ADFA (Asymmetric DFA)
     adfa_plus: { type: Number, default: null },
     adfa_minus: { type: Number, default: null },
@@ -136,12 +136,12 @@ const SegmentSchema = new mongoose.Schema({
 
   // Z-scores per fitur (untuk dashboard)
   z_scores: {
-    z_hr:     { type: Number, default: null },
-    z_rr:     { type: Number, default: null },
-    z_sdnn:   { type: Number, default: null },
-    z_rmssd:  { type: Number, default: null },
+    z_hr: { type: Number, default: null },
+    z_rr: { type: Number, default: null },
+    z_sdnn: { type: Number, default: null },
+    z_rmssd: { type: Number, default: null },
     z_motion: { type: Number, default: null },
-    z_dfa:    { type: Number, default: null },
+    z_dfa: { type: Number, default: null },
   },
 
   // --- Doctor Validation ---
@@ -203,11 +203,11 @@ const SegmentSchema = new mongoose.Schema({
    */
   signal_quality_detail: {
     artifact_fraction: { type: Number, default: null },
-    missing_fraction:  { type: Number, default: null },
-    q_signal:          { type: Number, default: null }, // 1 - artifact_fraction
-    q_complete:        { type: Number, default: null }, // 1 - missing_fraction
-    q_context:         { type: Number, default: null }, // activity_confidence
-    reasons:           { type: [String], default: undefined },
+    missing_fraction: { type: Number, default: null },
+    q_signal: { type: Number, default: null }, // 1 - artifact_fraction
+    q_complete: { type: Number, default: null }, // 1 - missing_fraction
+    q_context: { type: Number, default: null }, // activity_confidence
+    reasons: { type: [String], default: undefined },
   },
 
   /**

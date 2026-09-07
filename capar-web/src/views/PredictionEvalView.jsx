@@ -663,8 +663,8 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
               <ComposedChart data={chartRocPoints} margin={{ top: 10, right: 15, bottom: 20, left: -15 }}>
                 <defs>
                   <linearGradient id="colorRoc" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.45}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.05}/>
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.45} />
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.05} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" opacity={0.6} />
@@ -883,8 +883,8 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
         </div>
 
         <p style={{ fontSize: 11.5, color: 'var(--gray)', marginBottom: 12 }}>
-          {forecastData 
-            ? 'Setiap penambahan window secara diskrit (+1 window = +5 menit) memperbarui matriks berdasarkan data personal historis. Model memprediksi persentase kecenderungan deviasi menetap vs pemulihan.' 
+          {forecastData
+            ? 'Setiap penambahan window secara diskrit (+1 window = +5 menit) memperbarui matriks berdasarkan data personal historis. Model memprediksi persentase kecenderungan deviasi menetap vs pemulihan.'
             : 'Setiap penambahan window secara diskrit (+1 window = +5 menit) memperbarui matriks $P^h$. Model memprediksi berapa persen kecenderungan deviasi menetap (*Persistence*) versus memasuki fase pemulihan (*Recovery*).'
           }
         </p>
@@ -999,7 +999,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
                   let tsA = a.createdAt || a.start_time;
                   if (tsA && typeof tsA === 'object' && tsA.$date) tsA = tsA.$date;
                   if (typeof tsA === 'number' && tsA < 20000000000) tsA *= 1000;
-                  
+
                   let tsB = b.createdAt || b.start_time;
                   if (tsB && typeof tsB === 'object' && tsB.$date) tsB = tsB.$date;
                   if (typeof tsB === 'number' && tsB < 20000000000) tsB *= 1000;
@@ -1091,7 +1091,7 @@ export const PredictionEvalView = ({ globalParticipantFilter }) => {
             </tbody>
           </table>
         </div>
-        <Pagination 
+        <Pagination
           currentPage={currentPage}
           totalPages={Math.ceil(activeEpRecords.length / itemsPerPage)}
           onPageChange={setCurrentPage}

@@ -120,7 +120,9 @@ export function App() {
     loadAuth();
   }, []);
 
-  const targetPatientId = globalParticipantFilter !== 'ALL' ? globalParticipantFilter : selectedParticipantId;
+  const targetPatientId = globalParticipantFilter !== 'ALL'
+    ? globalParticipantFilter
+    : (selectedParticipantId || (participants.length > 0 ? (participants[0].id || participants[0]._id) : null));
 
   useEffect(() => {
     if (!targetPatientId) { setAvailableDates([]); setGlobalDateFilter(''); return; }
@@ -303,13 +305,13 @@ export function App() {
             <AutonomicProfileView />
           )}
           {tab('clinical-vulnerability',
-            <ClinicalVulnerabilityView targetPatientId={targetPatientId} />
+            <ClinicalVulnerabilityView targetPatientId={targetPatientId} participants={participants} />
           )}
           {tab('cardiovascular-resilience',
-            <CardiovascularResilienceView targetPatientId={targetPatientId} />
+            <CardiovascularResilienceView targetPatientId={targetPatientId} participants={participants} />
           )}
           {tab('weekly-phenotyping',
-            <WeeklyPhenotypingView participantId={participantId} targetPatientId={targetPatientId} onNavigate={setActiveTab} />
+            <WeeklyPhenotypingView participantId={participantId} targetPatientId={targetPatientId} participants={participants} onNavigate={setActiveTab} />
           )}
         </main>
       </div>

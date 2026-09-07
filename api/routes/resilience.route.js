@@ -20,6 +20,7 @@ router.post('/assess', calculateResilienceAssessment);
 router.post('/record', recordResilienceState);
 router.get('/history/:userId', getResilienceStateHistory);
 router.post('/behavior', createBehaviorEvent);
+router.get('/behavior', getBehaviorEvents);
 router.get('/behavior/:userId', getBehaviorEvents);
 router.delete('/behavior/:id', deleteBehaviorEvent);
 router.get('/rag-evidence', getRagEvidenceMatrix);

@@ -21,6 +21,7 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     { id: 'experience', label: 'Transisi Markov & Experience', icon: 'fa-brain', roles: ['admin', 'researcher', 'doctor', 'user'] },
     { id: 'model-rules', label: 'Aturan FSM & Model Rules', icon: 'fa-sliders', roles: ['admin', 'researcher', 'doctor'] },
     { id: 'audit', label: 'Audit Trail & Provenance', icon: 'fa-clipboard-list', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'prediction-eval', label: 'Predictive Evaluation (What-if)', icon: 'fa-bullseye', roles: ['admin', 'researcher', 'doctor', 'user'] },
 
     // === BLOK 2: FENOTIPING LONGITUDINAL ===
     { id: 'weekly-phenotyping', label: 'Fenotiping Longitudinal (Φ)', icon: 'fa-snowflake', roles: ['admin', 'researcher', 'doctor', 'user'] },
@@ -28,10 +29,9 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
 
     // === BLOK 3: CAPAR CARDIOVASCULAR RESILIENCE STATE (CRS) ===
     { id: 'cardiovascular-resilience', label: 'Cardiovascular Resilience (CRS)', icon: 'fa-heart-circle-bolt', roles: ['admin', 'researcher', 'doctor', 'user'] },
-    { id: 'clinical-vulnerability', label: 'Clinical Vulnerability (CV)', icon: 'fa-shield-heart', roles: ['admin', 'researcher', 'doctor', 'user'] },
 
     // === BLOK 4: PHYSIOLOGICAL DIGITAL TWIN ===
-    { id: 'prediction-eval', label: 'Simulasi What-If Digital Twin', wwwicon: 'fa-bullseye', roles: ['admin', 'researcher', 'doctor', 'user'] },
+    { id: 'clinical-vulnerability', label: 'Physiological Digital Twin', icon: 'fa-shield-heart', roles: ['admin', 'researcher', 'doctor', 'user'] },
 
     // === BLOK 5: OUTPUT, DECISION SUPPORT & XAI ===
     { id: 'zero-shot', label: 'XAI — Penjelasan Transparan', icon: 'fa-lightbulb', roles: ['admin', 'researcher', 'doctor', 'user'] },
@@ -56,7 +56,7 @@ export const Sidebar = ({ activeTab, setActiveTab, userRole, isOpen, onCloseMobi
     'live-monitor': 'Blok 1 — State-Space & Observasi',
     'weekly-phenotyping': 'Blok 2 — Fenotiping Longitudinal',
     'cardiovascular-resilience': 'Blok 3 — Cardiovascular Resilience (CRS)',
-    'prediction-eval': 'Blok 4 — Physiological Digital Twin',
+    'clinical-vulnerability': 'Blok 4 — Physiological Digital Twin',
     'zero-shot': 'Blok 5 — Output & Decision Support (XAI)',
     'export': 'Administrasi & Sistem',
   };

@@ -71,6 +71,11 @@ const CognitiveMemorySchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    // RAG confirmation gate fields (Blok 2 -> Blok 3)
+    confirmed_factor_ids: [{ type: String }],
+    confirmed_factor_count: { type: Number, default: 0 },
+    block3_gate_open: { type: Boolean, default: false },
+    block3_gate_updated_at: { type: Date, default: Date.now },
   },
   {
     timestamps: true,

@@ -97,10 +97,14 @@ export const api = {
   async getParticipants(cohortId = 'all-patients') {
     try {
       const list = await this.fetchAllPatients();
-      return list.map((user, index) => ({
-        id: user.guid || user._id || `P-${index + 1}`,
-        _id: user._id,
-        name: user.name || user.email,
+      return list.map((user, index) => {
+        const uid = String(user._id || user.guid || `P-${index + 1}`);
+        return {
+          id: uid,
+          _id: String(user._id || uid),
+          userId: String(user._id || uid),
+          guid: user.guid ? String(user.guid) : '',
+          name: user.name || user.email || `Peserta ${index + 1}`,
         email: user.email,
         device: user.current_device,
         baselineMaturity: user.baseline_status || (user.mature_baselines > 0 ? 'mature' : 'learning'),
@@ -117,7 +121,8 @@ export const api = {
         hrMean: user.hrMean,
         lastUpdate: user.updatedAt ? new Date(user.updatedAt).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : undefined,
         ...user,
-      }));
+      };
+    });
     } catch (err) {
       console.error('getParticipants Error:', err);
       return [];
@@ -765,6 +770,22 @@ export const api = {
   async confirmPatientBehavior(data) {
     return axios.post('/phenotype-profile/confirm-behavior', data).then(res => res.data);
   },
+  // Bulk confirm RAG factors — Gate Blok 2 → Blok 3
+  // confirmedFactorIds: array of factor IDs (e.g. ['bf_01', 'bf_03', ...])
+  async confirmBulkFactors(userId, weekId, confirmedFactorIds) {
+    return axios.patch('/phenotype-profile/confirm-factors', {
+      userId, weekId, confirmedFactorIds,
+    }).then(res => res.data);
+  },
+  // Cek status gate Blok 3 untuk user
+  async getBlock3Status(userId) {
+    return axios.get(`/phenotype-profile/block3-status/${userId}`).then(res => res.data);
+  },
+  // Φ Output terstruktur — Q scores + zone per dimensi + CRS impact map
+  // Format siap dikonsumsi Blok 3 sebagai kovariate input
+  async getPhiOutput(userId) {
+    return axios.get(`/phenotype-profile/phi-output/${userId}`).then(res => res.data);
+  },
   async computePhenotypeProfile(userId) {
     return axios.get(`/phenotype-profile/compute/${userId}`).then(res => res.data);
   },
@@ -809,8 +830,13 @@ export const api = {
   async addBehaviorEvent(data) {
     return axios.post('/resilience/behavior', data).then(res => res.data);
   },
+  async createBehaviorEvent(data) {
+    return axios.post('/resilience/behavior', data).then(res => res.data);
+  },
   async getBehaviorEvents(userId) {
-    return axios.get(`/resilience/behavior/${userId}`).then(res => res.data);
+    const target = (!userId || userId === 'undefined' || userId === 'null') ? '' : userId;
+    const url = target ? `/resilience/behavior/${target}` : '/resilience/behavior';
+    return axios.get(url).then(res => res.data).catch(() => ({ success: false, data: [] }));
   },
   async deleteBehaviorEvent(id) {
     return axios.delete(`/resilience/behavior/${id}`).then(res => res.data);

@@ -19,6 +19,9 @@ import Baseline from '../models/baseline.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
 import BehaviorEvent from '../models/behavior_event.model.js';
 import ResilienceState from '../models/resilience_state.model.js';
+import faktorresiko from '../models/factorresiko.model.js';
+import PhenotypeProfile from '../models/phenotype_profile.model.js';
+import CognitiveMemory from '../models/cognitive_memory.model.js';
 import { generate15BehavioralFactors } from './phenotype_profile.controller.js';
 
 /**
@@ -82,94 +85,95 @@ export function computeCardiovascularResilience(params) {
     tauOut = 1.18
   } = params;
 
-  // ── [1] CLINICAL VULNERABILITY SCORE (0 = High Risk, 100 = Low Risk) ──
-  const ageRisk = clampNormalize(age, 30, 75);
-  const bmiRisk = clampNormalize(bmi, 18.5, 35);
-  const bpRisk = clampNormalize(trestbps, 100, 180);
-  const cholRisk = clampNormalize(chol, 150, 320);
-  const ecgRisk = clampNormalize(oldpeak, 0.0, 3.5);
-  const anginaRisk = exang ? 1.0 : 0.0;
-  const historyRisk = history ? 1.0 : 0.0;
+  // ── [0] HELPER FUNCTIONS UNTUK FORMULA CRS BARU ──
+  const sigmoid = (z) => 1 / (1 + Math.exp(-z));
+  const normalize = (x, mu, sigma) => (x - mu) / (sigma + 1e-5); // epsilon untuk mencegah pembagian nol
 
-  const totalRiskFraction = (
-    0.15 * ageRisk +
-    0.15 * bmiRisk +
-    0.15 * bpRisk +
-    0.15 * cholRisk +
-    0.15 * ecgRisk +
-    0.15 * anginaRisk +
-    0.10 * historyRisk
-  );
-  const clinicalScore = Math.min(100, Math.max(0, Number(((1.0 - totalRiskFraction) * 100).toFixed(1))));
+  // ── [1] CLINICAL VULNERABILITY (CV) ──
+  // Z-score approximation untuk clinical parameters (karena phi spesifik belum ada)
+  const z_age = normalize(age, 50, 15);
+  const z_bmi = normalize(bmi, 25, 5);
+  const z_bp = normalize(trestbps, 120, 20);
+  const z_chol = normalize(chol, 200, 40);
+  const z_oldpeak = normalize(oldpeak, 0, 1.0);
+  const z_exang = exang ? 1.0 : -1.0;
+  const z_history = history ? 1.0 : -1.0;
 
-  // ── [2] CARDIAC RESERVE SCORE (0 - 100) ──
-  const hrResponseNorm = clampNormalize(maxHr - minHr, 20, 80);
-  const hrrSlopeNorm = clampNormalize(hrrSlope, 0.1, 1.0);
-  const hrVarNorm = clampNormalize(hrVariability, 15, 70);
-  const actRespNorm = clampNormalize(activityResponse, 0.2, 1.0);
+  // Raw vulnerability (z_CV)
+  const b_CV = -2.0; 
+  const z_CV = b_CV + (0.5 * z_age) + (0.3 * z_bmi) + (0.5 * z_bp) + (0.3 * z_chol) + (0.8 * z_oldpeak) + (0.6 * z_exang) + (0.5 * z_history);
+  
+  // Clinical Vulnerability (0 - 100). Semakin tinggi CV(k), semakin rentan (buruk).
+  const clinicalScore = Number((100 * sigmoid(z_CV)).toFixed(1));
+  const CV_positive = 100 - clinicalScore; // Untuk perhitungan CRI global
 
-  const cardiacReserveScore = Math.min(100, Math.max(0, Number(((
-    0.30 * hrResponseNorm +
-    0.25 * hrrSlopeNorm +
-    0.25 * hrVarNorm +
-    0.20 * actRespNorm
-  ) * 100).toFixed(1))));
+  // ── [2] CARDIAC RESERVE (CR) ──
+  // sv_proxy mencerminkan kapasitas stroke volume dari selisih HR
+  const sv_proxy = maxHr - minHr; 
+  
+  const L_cardiac = (0.6 * normalize(meanHr, 75, 10)) 
+                  - (0.4 * normalize(sv_proxy, 50, 15)) 
+                  + (0.3 * normalize(hrVariability, 30, 15)) 
+                  + (0.2 * normalize(activityResponse, 0.5, 0.2));
+  
+  // Cardiac reserve adalah kebalikan dari load
+  const cardiacReserveScore = Number((100 * (1 - sigmoid(L_cardiac))).toFixed(1));
 
-  // ── [3] AUTONOMIC RESERVE SCORE (0 - 100) ──
-  const rmssdNorm = clampNormalize(rmssd, 15, 65);
-  const sdnnNorm = clampNormalize(sdnn, 20, 75);
-  const dfaNorm = clampNormalize(Math.abs(dfaAlpha1 - 1.0), 0.0, 0.6, true); // ideal 1.0
-  const rrStabilityNorm = clampNormalize(meanRr, 500, 1000);
-  const lfhfRatio = hf > 0 ? (lf / hf) : 2.0;
-  const lfhfNorm = clampNormalize(Math.abs(lfhfRatio - 1.8), 0.0, 3.0, true);
+  // ── [3] AUTONOMIC RESERVE (AR) ──
+  const lfhfRatio_raw = hf > 0 ? (lf / hf) : 2.0;
+  
+  const b_AR = 0.5;
+  const z_AR = b_AR 
+             + (0.4 * normalize(rmssd, 35, 15)) 
+             + (0.3 * normalize(sdnn, 40, 15)) 
+             - (0.2 * normalize(lfhfRatio_raw, 1.5, 1.0)) 
+             + (0.3 * normalize(Math.abs(1.0 - dfaAlpha1), 0, 0.2)); // a_aut proximity to ideal 1.0
 
-  const autonomicReserveScore = Math.min(100, Math.max(0, Number(((
-    0.25 * rmssdNorm +
-    0.20 * sdnnNorm +
-    0.25 * dfaNorm +
-    0.15 * rrStabilityNorm +
-    0.15 * lfhfNorm
-  ) * 100).toFixed(1))));
+  const autonomicReserveScore = Number((100 * sigmoid(z_AR)).toFixed(1));
 
-  // ── [4] RECOVERY CAPACITY SCORE (0 - 100) ──
-  const ttrNorm = clampNormalize(ttrMinutes, 3, 30, true); // shorter TTR = higher score
-  const recSlopeNorm = clampNormalize(recoverySlope, 0.1, 1.0);
-  const residNorm = clampNormalize(residualScore, 0.0, 1.0, true);
-  const relapsePenalty = Math.max(0, 1.0 - (relapseCount * 0.3));
+  // ── [4] RECOVERY CAPACITY (RC) ──
+  const b_RC = 1.0;
+  const z_RC = b_RC 
+             + (0.5 * normalize(recoverySlope, 0.5, 0.2)) 
+             - (0.4 * normalize(ttrMinutes, 10, 5)) 
+             - (0.3 * normalize(residualScore, 0.1, 0.1)) 
+             - (0.3 * normalize(relapseCount, 0, 1));
+             
+  const recoveryCapacityScore = Number((100 * sigmoid(z_RC)).toFixed(1));
 
-  const recoveryCapacityScore = Math.min(100, Math.max(0, Number(((
-    0.35 * ttrNorm +
-    0.30 * recSlopeNorm +
-    0.20 * residNorm +
-    0.15 * relapsePenalty
-  ) * 100).toFixed(1))));
+  // ── [5] REGULATION STABILITY (RS) ──
+  const b_RS = 0.8;
+  const z_RS = b_RS 
+             + (0.4 * normalize(baselineConsistency, 0.7, 0.15)) 
+             + (0.4 * normalize(fsmStability, 0.7, 0.15)) 
+             - (0.3 * normalize(episodeFrequency, 1.5, 1.0));
+             
+  const regulationStabilityScore = Number((100 * sigmoid(z_RS)).toFixed(1));
 
-  // ── [5] REGULATION STABILITY SCORE (0 - 100) ──
-  const fsmNorm = clampNormalize(fsmStability, 0.3, 1.0);
-  const epFreqNorm = clampNormalize(episodeFrequency, 0, 8, true); // fewer episodes = higher score
-  const baseConsNorm = clampNormalize(baselineConsistency, 0.4, 1.0);
-  const ctxAlignNorm = clampNormalize(contextAlignment, 0.4, 1.0);
-  const varNorm = clampNormalize(scoreVariance, 0.0, 0.8, true);
-
-  const regulationStabilityScore = Math.min(100, Math.max(0, Number(((
-    0.30 * fsmNorm +
-    0.25 * epFreqNorm +
-    0.20 * baseConsNorm +
-    0.15 * ctxAlignNorm +
-    0.10 * varNorm
-  ) * 100).toFixed(1))));
+  // ── QUALITY GATE (Q) ──
+  // Asumsi default ideal untuk Completeness jika belum dipassing dari params
+  const dataCompleteness = params.dataCompleteness ?? 0.95;
+  const signalQuality = params.signalQuality ?? 0.85;
+  const observationDuration = params.observationDuration ?? 0.90;
+  
+  const qualityScore = (0.4 * dataCompleteness) + (0.4 * signalQuality) + (0.2 * observationDuration);
+  let crsStatus = 'VALID';
+  if (qualityScore < 0.5) crsStatus = 'NOT ESTIMATED';
+  else if (qualityScore < 0.75) crsStatus = 'LOW CONFIDENCE';
 
   // Support direct score overrides from interactive simulation
   const finalClinical = params.clinical !== undefined ? Number(params.clinical) : clinicalScore;
+  const finalCVPositive = params.clinical !== undefined ? (100 - Number(params.clinical)) : CV_positive;
   const finalCardiac = params.cardiac !== undefined ? Number(params.cardiac) : cardiacReserveScore;
   const finalAutonomic = params.autonomic !== undefined ? Number(params.autonomic) : autonomicReserveScore;
   const finalRecovery = params.recovery !== undefined ? Number(params.recovery) : recoveryCapacityScore;
   const finalStability = params.stability !== undefined ? Number(params.stability) : regulationStabilityScore;
 
-  // ── GLOBAL RESILIENCE SCORE (CRS) ──
+  // ── GLOBAL RESILIENCE SCORE (CRS / CRI) ──
   // Weights: CV 20%, CR 20%, AR 25%, RC 20%, RS 15%
+  // CRI menggunakan (100 - CV) = CV_positive agar arah skor seragam
   const globalScore = Number((
-    0.20 * finalClinical +
+    0.20 * finalCVPositive +
     0.20 * finalCardiac +
     0.25 * finalAutonomic +
     0.20 * finalRecovery +
@@ -284,17 +288,46 @@ export function computeCardiovascularResilience(params) {
     meanHr
   });
 
-  let phenotypeSignature = 'Fast / Efficient Recoverer';
-  let phenotypeReason = 'TTR singkat, slope pemulihan curam, dan stabilitas paska-recovery tinggi.';
-  if (rRel > 0.3 || relapseCount > 0) {
-    phenotypeSignature = 'Unstable / Relapsing Recovery';
-    phenotypeReason = 'Kecenderungan pembalikan deviasi (relapse) terdeteksi setelah inisiasi recovery.';
-  } else if (estTtrMin > 15 || recVelocity < 0.4) {
-    phenotypeSignature = 'Delayed / Sluggish Recovery';
-    phenotypeReason = 'Waktu pemulihan memanjang dengan laju reaktivasi vagal lambat.';
-  } else if (uUnexp > 0.2) {
-    phenotypeSignature = 'Context-Inappropriate / Unexplained Recurrent';
-    phenotypeReason = 'Deviasi berulang tanpa pemicu aktivitas fisik atau transisi kontekstual.';
+  // ── [3.1] PENENTUAN FENOTIPE AUTONOMIC RECOVERY (7 CLASSES) ──
+  let phenotypeSignature = 'Normal Regulator';
+  let phenotypeReason = 'Deviasi jarang, recovery cepat dan stabil, sesuai konteks.';
+
+  // Hitung proxy untuk indeks turunan (DB, RS, PS, CA, CC, LS)
+  const isDBTinggi = episodeFrequency > 3 || peakDev > 2.0 || estTtrMin > 60;
+  const isRSSangatLambat = estTtrMin > 30;
+  const isRSLambat = estTtrMin > 20 || recVelocity < 0.2;
+  const isRelapseTinggi = relapseCount > 1 || residualScore > 0.5;
+  const fragmentationIndex = fDev * 2.0; // Proxy FI dari frekuensi deviasi per jam
+  const isFragmentasiTinggi = fragmentationIndex > 0.3 || (episodeFrequency >= 4 && estTtrMin < 10);
+  const baselineDrift = (1.0 - kDay) * 100; // Drift dalam persentase
+  const isDriftSignifikan = baselineDrift > 10.0;
+  const isContextMismatch = contextAlignment < 0.7 || uUnexp > 0.2;
+
+  // Evaluasi Rule-Based berdasarkan hierarki prioritas
+  if (isDBTinggi || isRSSangatLambat) {
+    // Priority 1: Sustained Dysregulation
+    phenotypeSignature = 'Sustained Dysregulation';
+    phenotypeReason = 'Beban deviasi sangat tinggi dengan recovery tidak memadai atau sangat lambat.';
+  } else if (isRSLambat) {
+    // Priority 2: Slow Recovery
+    phenotypeSignature = 'Slow Recovery';
+    phenotypeReason = 'Kapasitas recovery lambat (TTR memanjang), namun tanpa relapse yang dominan.';
+  } else if (isRelapseTinggi) {
+    // Priority 3: Relapser
+    phenotypeSignature = 'Relapser';
+    phenotypeReason = 'Recovery tidak bertahan lama; deviasi kembali terjadi (relapse) atau residu tinggi.';
+  } else if (isFragmentasiTinggi) {
+    // Priority 4: Fragmented Recovery
+    phenotypeSignature = 'Fragmented Recovery';
+    phenotypeReason = 'Pola recovery terputus-putus dengan banyak pergantian antara deviasi dan pemulihan.';
+  } else if (isDriftSignifikan) {
+    // Priority 5: Drifting Regulator
+    phenotypeSignature = 'Drifting Regulator';
+    phenotypeReason = 'Terjadi pergeseran baseline (set-point fisiologis) secara gradual melampaui batas stabilitas.';
+  } else if (isContextMismatch) {
+    // Priority 6: Context Mismatch
+    phenotypeSignature = 'Context Mismatch';
+    phenotypeReason = 'Respons otonomik sering tidak sesuai dengan konteks aktivitas fisik (unexplained episodes tinggi).';
   }
 
   // 4. Early Warning & Relapse Detection
@@ -630,6 +663,8 @@ export function computeCardiovascularResilience(params) {
       stateColor,
       badgeColor,
       badgeText,
+      crsStatus,
+      qualityScore: Number(qualityScore.toFixed(2)),
       dimensions: {
         clinical: { score: clinicalScore, weight: 20 },
         cardiac: { score: cardiacReserveScore, weight: 20 },
@@ -790,6 +825,8 @@ export function computeCardiovascularResilience(params) {
           regulationStability_RS: { score: regulationStabilityScore, weight: 15 }
         },
         globalScore,
+        crsStatus,
+        qualityScore: Number(qualityScore.toFixed(2)),
         stateClassification,
         stateColor
       },
@@ -1279,25 +1316,108 @@ export async function getResilienceStateHistory(req, res) {
  */
 export async function getCardiovascularResilienceState(req, res) {
   try {
-    const targetUserId = req.query.userId || req.user?.id || '6a6609326bf83196b1d73e97';
+    let targetUserId = req.query.userId || req.user?.id;
+    if (!targetUserId || targetUserId === 'undefined' || targetUserId === 'null') {
+      const firstPatient = await Patient.findOne({ is_active: { $ne: false } }).select('_id user_id').lean().catch(() => null);
+      targetUserId = firstPatient?.user_id?.toString() || firstPatient?._id?.toString() || '6a6609326bf83196b1d73e97';
+    }
 
     let user = null;
     let patientDoc = null;
+    let userObjectId = null;
     let segments = [];
     let baselines = [];
     let events = [];
 
-    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(targetUserId)) {
+    if (mongoose.Types.ObjectId.isValid(targetUserId)) {
+      userObjectId = new mongoose.Types.ObjectId(targetUserId);
+    }
+
+    if (mongoose.connection.readyState === 1 && userObjectId) {
       try {
-        const uId = new mongoose.Types.ObjectId(targetUserId);
-        user = await User.findById(uId).select('-password').maxTimeMS(2000);
-        patientDoc = await Patient.findOne({ user_id: uId }).maxTimeMS(2000);
-        segments = await Segment.find({ user_id: uId }).sort({ window_start: 1 }).limit(1000).maxTimeMS(2000);
-        baselines = await Baseline.find({ user_id: uId }).maxTimeMS(2000);
-        events = await AnomalyEvent.find({ user_id: uId }).sort({ onset_time: -1 }).limit(20).maxTimeMS(2000);
+        user = await User.findById(userObjectId).select('-password').maxTimeMS(2000);
+        patientDoc = await Patient.findOne({ $or: [{ user_id: userObjectId }, { _id: userObjectId }] }).maxTimeMS(2000);
+        segments = await Segment.find({ user_id: userObjectId }).sort({ window_start: 1 }).limit(1000).maxTimeMS(2000);
+        baselines = await Baseline.find({ user_id: userObjectId }).maxTimeMS(2000);
+        events = await AnomalyEvent.find({ user_id: userObjectId }).sort({ onset_time: -1 }).limit(20).maxTimeMS(2000);
       } catch (dbErr) {
         console.warn('[getCardiovascularResilienceState] DB fallback:', dbErr.message);
       }
+    }
+
+    // Real clinical covariates from patient profile or risk records
+    let trestbps = 120;
+    let bmi = 22.8;
+    let chol = 200;
+    let oldpeak = 0.4;
+    let exang = 0;
+    let history = 0;
+
+    if (patientDoc) {
+      if (patientDoc.blood_pressure) {
+        const bpMatch = String(patientDoc.blood_pressure).match(/^(\d{2,3})/);
+        if (bpMatch) trestbps = parseInt(bpMatch[1], 10);
+      }
+      if (patientDoc.height && patientDoc.weight) {
+        const hM = Number(patientDoc.height) / 100;
+        if (hM > 0) bmi = Number((Number(patientDoc.weight) / (hM * hM)).toFixed(1));
+      } else if (patientDoc.bmi) {
+        bmi = Number(Number(patientDoc.bmi).toFixed(1));
+      }
+      if (patientDoc.cholesterol) chol = Number(patientDoc.cholesterol);
+      if (patientDoc.history_cardiac) history = 1;
+    }
+
+    // Query FaktorResiko if available
+    try {
+      const fr = await faktorresiko.findOne({ user: userObjectId }).sort({ Date: -1 }).lean().catch(() => null);
+      if (fr && Array.isArray(fr.penilaian)) {
+        fr.penilaian.forEach(item => {
+          const lbl = (item.label || '').toLowerCase();
+          const jwb = (item.jawaban || '').toLowerCase();
+          if (lbl.includes('tekanan darah') || lbl.includes('tensi')) {
+            const m = jwb.match(/^(\d{2,3})/);
+            if (m) trestbps = parseInt(m[1], 10);
+          } else if (lbl.includes('kolesterol')) {
+            const c = parseFloat(jwb);
+            if (!isNaN(c) && c > 50) chol = c;
+          } else if (lbl.includes('merokok') || lbl.includes('angina')) {
+            if (jwb.includes('ya') || jwb.includes('sering')) exang = 1;
+          }
+        });
+      }
+    } catch (frErr) {
+      // safe fallback
+    }
+
+    // Fetch real Block 2 Phi output and confirmed RAG factors
+    let phiScores = null;
+    let phiVectorData = null;
+    try {
+      const [latestProfile, latestMemory] = await Promise.all([
+        PhenotypeProfile.findOne({ user_id: userObjectId }).sort({ week_start: -1 }).lean().catch(() => null),
+        CognitiveMemory.findOne({ user_id: userObjectId, block3_gate_open: { $exists: true } }).sort({ block3_gate_updated_at: -1 }).lean().catch(() => null),
+      ]);
+      const rawScores = latestProfile?.q_scores || latestMemory?.scores_snapshot || null;
+      if (rawScores) {
+        phiScores = {
+          Q1: rawScores.Q1 ?? rawScores.q1_score ?? 80,
+          Q2: rawScores.Q2 ?? rawScores.q2_score ?? 78,
+          Q3: rawScores.Q3 ?? rawScores.q3_score ?? 80,
+          Q4: rawScores.Q4 ?? rawScores.q4_score ?? 82,
+          Q5: rawScores.Q5 ?? rawScores.q5_score ?? 75,
+          Q6: rawScores.Q6 ?? rawScores.q6_score ?? 88,
+          Q7: rawScores.Q7 ?? rawScores.q7_score ?? 74,
+          Q8: rawScores.Q8 ?? rawScores.q8_score ?? 84,
+          Q9: rawScores.Q9 ?? rawScores.q9_score ?? 79,
+          Q10: rawScores.Q10 ?? rawScores.q10_score ?? 86,
+        };
+      }
+      if (latestProfile?.phenotype_vector) {
+        phiVectorData = latestProfile.phenotype_vector;
+      }
+    } catch (pErr) {
+      console.warn('[getCardiovascularResilienceState] Phenotype fetch warning:', pErr.message);
     }
 
     // Default telemetry extraction
@@ -1362,10 +1482,9 @@ export async function getCardiovascularResilienceState(req, res) {
 
     // Fetch recent behavior events for the user
     let userBehaviors = [];
-    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(targetUserId)) {
+    if (mongoose.connection.readyState === 1 && userObjectId) {
       try {
-        const uId = new mongoose.Types.ObjectId(targetUserId);
-        userBehaviors = await BehaviorEvent.find({ user_id: uId })
+        userBehaviors = await BehaviorEvent.find({ user_id: userObjectId })
           .sort({ timestamp_start: -1 })
           .limit(20)
           .lean()
@@ -1383,17 +1502,17 @@ export async function getCardiovascularResilienceState(req, res) {
     const calculatedContextAlignment = hasRecentPhysicalActivity ? 0.95 : (hasHighStress ? 0.88 : (events.length > 3 ? 0.72 : 0.92));
     const calculatedUnexplained = (events.length > 0 && !hasRecentPhysicalActivity && !hasHighStress) ? 0.28 : 0.05;
 
-    // Run CRS Calculation
+    // Run CRS Calculation with real covariates
     const result = computeCardiovascularResilience({
       age,
       sex,
-      bmi: 24.2,
-      trestbps: 130,
-      chol: 240,
+      bmi: Number(bmi.toFixed(1)),
+      trestbps: Number(trestbps.toFixed(0)),
+      chol: Number(chol.toFixed(0)),
       thalach: Number(maxHr.toFixed(0)),
-      oldpeak: 0.5,
-      exang: 0,
-      history: 0,
+      oldpeak: Number(oldpeak.toFixed(1)),
+      exang,
+      history,
 
       meanHr: Number(meanHr.toFixed(1)),
       minHr: Number(minHr.toFixed(1)),
@@ -1425,10 +1544,20 @@ export async function getCardiovascularResilienceState(req, res) {
       tauOut
     });
 
-    // Attach user behavior events and RAG evidence summaries to response
+    // Attach user behavior events, real Phi scores, and RAG evidence summaries to response
     result.block1Observations.userBehaviorEvents = userBehaviors;
     result.block3Phenotyping.vectorPhi.cCtx = Number(calculatedContextAlignment.toFixed(2));
     result.block3Phenotyping.vectorPhi.uUnexp = Number(calculatedUnexplained.toFixed(2));
+
+    if (phiScores) {
+      result.block3Phenotyping.qScores = phiScores;
+      if (phiVectorData) {
+        result.block3Phenotyping.vectorPhi = {
+          ...result.block3Phenotyping.vectorPhi,
+          ...phiVectorData
+        };
+      }
+    }
 
     return res.status(200).json({
       success: true,
@@ -2185,12 +2314,15 @@ export async function createBehaviorEvent(req, res) {
  */
 export async function getBehaviorEvents(req, res) {
   try {
-    const { userId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ success: false, message: 'Invalid userId.' });
+    const rawUserId = req.params.userId || req.query.userId;
+    let query = {};
+    if (rawUserId && rawUserId !== 'ALL' && rawUserId !== 'undefined' && rawUserId !== 'null') {
+      if (mongoose.Types.ObjectId.isValid(rawUserId)) {
+        query.user_id = new mongoose.Types.ObjectId(rawUserId);
+      }
     }
 
-    const events = await BehaviorEvent.find({ user_id: new mongoose.Types.ObjectId(userId) })
+    const events = await BehaviorEvent.find(query)
       .sort({ timestamp_start: -1 })
       .limit(50)
       .lean();
