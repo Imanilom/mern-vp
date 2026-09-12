@@ -33,6 +33,10 @@ import {
   Line
 } from 'recharts';
 
+const formatLiveValue = (value, suffix = '') => (
+  value === null || value === undefined ? `N/A${suffix}` : `${value}${suffix}`
+);
+
 /**
  * ── RAG SCIENTIFIC EVIDENCE GROUNDING DEFINITIONS PER PERTANYAAN (Q1 - Q10) WITH RICH METADATA ──
  * 12 Landmark Studies from The Lancet, JAMA, BMJ, JACC, & EHJ mapped to each Q
@@ -1577,10 +1581,10 @@ export function CardiovascularResilienceView({ targetPatientId, participants = [
         interpretation: simState.cardiac > 75 ? 'Optimal Dynamic Capacity' : 'Blunted Cardiac Range',
         source: 'Polar H10 Continuous (Heart Rate Response, Dynamic Range, Recovery Slope)',
         attributes: [
-          { label: 'Mean HR (Denyut Rata-rata)', value: `${b1.wearableObservations?.meanHr || '89.9'} bpm`, status: 'Normal' },
-          { label: 'Rentang Denyut Dinamis (Range)', value: `${(b1.wearableObservations?.maxHr || 115.5) - (b1.wearableObservations?.minHr || 56.9)} bpm`, status: 'Optimal' },
-          { label: 'HR Recovery Slope (HRR)', value: '0.48 bpm/s', status: 'Good' },
-          { label: 'Respons Aktivitas (Lear et al. 2017)', value: '0.88 (Adequate)', status: 'Aligned' }
+          { label: 'Mean HR (Denyut Rata-rata)', value: formatLiveValue(b1.wearableObservations?.meanHr, ' bpm'), status: 'Observed' },
+          { label: 'Rentang Denyut Dinamis (Range)', value: formatLiveValue(b1.wearableObservations?.maxHr !== undefined && b1.wearableObservations?.minHr !== undefined ? b1.wearableObservations.maxHr - b1.wearableObservations.minHr : null, ' bpm'), status: 'Observed' },
+          { label: 'HR Recovery Slope (HRR)', value: formatLiveValue(b2.latentVariables?.autonomicResponsiveness, ' bpm/s'), status: 'Observed' },
+          { label: 'Respons Aktivitas', value: formatLiveValue(b1.contextInputs?.activityResponse), status: 'Observed' }
         ]
       },
       autonomic: {
@@ -1591,10 +1595,10 @@ export function CardiovascularResilienceView({ targetPatientId, participants = [
         interpretation: simState.autonomic > 80 ? 'Robust Sympathovagal Modulatory Capacity' : 'Depressed Vagal Tone',
         source: 'Polar H10 Continuous (RMSSD, SDNN, DFA Alpha-1, LF/HF Ratio)',
         attributes: [
-          { label: 'RMSSD (Vagal Parasimpatis)', value: `${b1.wearableObservations?.rmssd || '40.5'} ms`, status: 'Good' },
-          { label: 'SDNN (Variabilitas Total)', value: `${b1.wearableObservations?.sdnn || '46.2'} ms`, status: 'Normal' },
-          { label: 'DFA Alpha-1 (Fraktal Kompleksitas)', value: `${b1.wearableObservations?.dfaAlpha1 || '1.10'}`, status: 'Optimal' },
-          { label: 'Sympathovagal Balance (LF/HF)', value: `${b1.wearableObservations?.lfhfRatio || '2.94'}`, status: 'Normal' }
+          { label: 'RMSSD (Vagal Parasimpatis)', value: formatLiveValue(b1.wearableObservations?.rmssd, ' ms'), status: 'Observed' },
+          { label: 'SDNN (Variabilitas Total)', value: formatLiveValue(b1.wearableObservations?.sdnn, ' ms'), status: 'Observed' },
+          { label: 'DFA Alpha-1 (Fraktal Kompleksitas)', value: formatLiveValue(b1.wearableObservations?.dfaAlpha1), status: 'Observed' },
+          { label: 'Sympathovagal Balance (LF/HF)', value: formatLiveValue(b1.wearableObservations?.lfhfRatio), status: 'Observed' }
         ]
       },
       recovery: {
@@ -1605,10 +1609,10 @@ export function CardiovascularResilienceView({ targetPatientId, participants = [
         interpretation: simState.recovery > 75 ? 'Rapid Post-Load Homeostatic Normalization' : 'Delayed Trajectory',
         source: 'Polar H10 Continuous (Time-to-Recovery, Recovery Velocity, Relapse Counter)',
         attributes: [
-          { label: 'Estimasi TTR (Time-to-Recovery)', value: `${resilienceData?.block5DigitalTwin?.estimatedTtrMin || '15.0'} menit`, status: 'Fast' },
-          { label: 'Laju Pemulihan (v_rec)', value: `${resilienceData?.block5DigitalTwin?.recoveryVelocity || '0.68'} /min`, status: 'Fast' },
-          { label: 'Frekuensi Kekambuhan (Relapse)', value: '0 kejadian', status: 'Optimal' },
-          { label: 'Durasi Tidur Restoratif (Cappuccio 2011)', value: '7.2 jam (Cukup)', status: 'Optimal' }
+          { label: 'Estimasi TTR (Time-to-Recovery)', value: formatLiveValue(resilienceData?.block5DigitalTwin?.estimatedTtrMin, ' menit'), status: 'Observed' },
+          { label: 'Laju Pemulihan (v_rec)', value: formatLiveValue(b3.vectorPhi?.vRec, ' /min'), status: 'Observed' },
+          { label: 'Frekuensi Kekambuhan (Relapse)', value: formatLiveValue(resilienceData?.block6DecisionSupport?.earlyWarningRelapse?.relapseCount, ' kejadian'), status: 'Observed' },
+          { label: 'Durasi Tidur Restoratif', value: formatLiveValue(behaviorEvents.find(event => event.behavior_type === 'sleep_duration')?.value, ' jam'), status: 'Observed' }
         ]
       },
       stability: {
@@ -1619,10 +1623,10 @@ export function CardiovascularResilienceView({ targetPatientId, participants = [
         interpretation: simState.stability > 75 ? 'Resilient Homeostatic Basal Consistency' : 'High State Oscillation',
         source: 'CAPAR FSM State Machine (Dwell State, Consistency Index, Anomaly Frequency)',
         attributes: [
-          { label: 'FSM Thresholds (tau_in / tau_out)', value: `tau_in = ${b2.fsmModel?.tauIn || 1.86}, tau_out = ${b2.fsmModel?.tauOut || 1.18}`, status: 'Stable' },
-          { label: 'Konsistensi Lintas Hari (k_day)', value: `${b3.vectorPhi?.kDay || '0.88'}`, status: 'Consistent' },
-          { label: 'Variasi Sirkadian (Δ_diurnal)', value: `${b3.vectorPhi?.deltaDiurnal || '0.28'}`, status: 'Preserved' },
-          { label: 'Fraksi Anomali Tanpa Penjelasan (u_unexp)', value: `${b3.vectorPhi?.uUnexp || '0.05'}`, status: 'Low' }
+          { label: 'FSM Thresholds (tau_in / tau_out)', value: `tau_in = ${formatLiveValue(b2.fsmModel?.tauIn)}, tau_out = ${formatLiveValue(b2.fsmModel?.tauOut)}`, status: 'Observed' },
+          { label: 'Konsistensi Lintas Hari (k_day)', value: formatLiveValue(b3.vectorPhi?.kDay), status: 'Observed' },
+          { label: 'Variasi Sirkadian (Δ_diurnal)', value: formatLiveValue(b3.vectorPhi?.deltaDiurnal), status: 'Observed' },
+          { label: 'Fraksi Anomali Tanpa Penjelasan (u_unexp)', value: formatLiveValue(b3.vectorPhi?.uUnexp), status: 'Observed' }
         ]
       }
     };
@@ -1902,29 +1906,34 @@ export function CardiovascularResilienceView({ targetPatientId, participants = [
         const b2 = resilienceData?.block2StateSpace || {};
         const b3 = resilienceData?.block3Phenotyping || {};
 
-        // Φ vector dari backend (atau fallback dari phenotypeGateStatus)
+        const hasPhiData = Boolean(resilienceData?.dataAvailability?.phi);
+        const hasTelemetryData = Boolean(resilienceData?.dataAvailability?.telemetry);
+        const hasEpisodeData = Boolean(resilienceData?.dataAvailability?.episodes);
+        const displayValue = (value, available = true) => available && value !== null && value !== undefined ? value : 'N/A';
+
+        // Φ vector dari backend
         const phiConfirmed = phenotypeGateStatus?.ready_for_block3 ?? false;
         const phiCount = phenotypeGateStatus?.confirmed_count ?? 0;
         const phiDims = [
-          { id: 'Q1', key: 'F',   label: 'Freq Deviasi',    val: b3.vectorPhi?.fDev   ?? 0.31,  unit: 'ep/j',  crs: 'RC' },
-          { id: 'Q2', key: 'M',   label: 'Magnitudo',       val: b3.vectorPhi?.mAmp   ?? 2.45,  unit: 'σ',     crs: 'AR' },
-          { id: 'Q3', key: 'D',   label: 'Durasi',          val: b3.vectorPhi?.dDur   ?? 95,    unit: 's',     crs: 'RC' },
-          { id: 'Q4', key: 'R',   label: 'Recovery TTR',    val: b3.vectorPhi?.rRec   ?? 70,    unit: 's',     crs: 'RC' },
-          { id: 'Q5', key: 'S',   label: 'Stabilitas',      val: b3.vectorPhi?.sDamp  ?? 0.85,  unit: 'ξ',     crs: 'RS' },
-          { id: 'Q8', key: 'K',   label: 'Konsistensi CV',  val: b3.vectorPhi?.kDay   ?? 0.88,  unit: '',      crs: 'RS' },
-          { id: 'Q9', key: 'U',   label: 'Anomali',         val: b3.vectorPhi?.uUnexp ?? 0.05,  unit: '',      crs: 'CV' },
-          { id: 'Q10', key: 'Φ', label: 'Sintesis Φ',      val: b3.candidatePhenotype ?? 'Efficient-Stable', unit: '', crs: 'CRS' },
+          { id: 'Q1', key: 'F',   label: 'Freq Deviasi',    val: b3.vectorPhi?.fDev,   unit: 'ep/j',  crs: 'RC' },
+          { id: 'Q2', key: 'M',   label: 'Magnitudo',       val: b3.vectorPhi?.mDev,   unit: 'σ',     crs: 'AR' },
+          { id: 'Q3', key: 'D',   label: 'Durasi',          val: b3.vectorPhi?.dDev,   unit: 's',     crs: 'RC' },
+          { id: 'Q4', key: 'R',   label: 'Recovery TTR',    val: b3.vectorPhi?.vRec,   unit: 'slope', crs: 'RC' },
+          { id: 'Q5', key: 'S',   label: 'Stabilitas',      val: b3.vectorPhi?.sStab,  unit: 'ξ',     crs: 'RS' },
+          { id: 'Q8', key: 'K',   label: 'Konsistensi CV',  val: b3.vectorPhi?.kDay,   unit: '',      crs: 'RS' },
+          { id: 'Q9', key: 'U',   label: 'Anomali',         val: b3.vectorPhi?.uUnexp, unit: '',      crs: 'CV' },
+          { id: 'Q10', key: 'Φ', label: 'Sintesis Φ',      val: b3.signature,         unit: '',      crs: 'CRS' },
         ];
 
         // State Log dari Blok 1
         const stateLog = {
-          episodeCount: b1.episodeMetrics?.episodeCount ?? resilienceData?.episodeCount ?? 26,
-          episodeRate:  b1.episodeMetrics?.episodeRate  ?? resilienceData?.episodeRate  ?? 0.31,
-          angina:       resilienceData?.anginaEpochCount ?? 2,
-          fsmState:     b2.fsmModel?.currentState ?? 'Recovery Phase',
-          tauIn:        b2.fsmModel?.tauIn ?? 1.86,
-          tauOut:       b2.fsmModel?.tauOut ?? 1.18,
-          logEntries:   resilienceData?.fsmLogCount ?? 156,
+          episodeCount: b1.episodeMetrics?.episodeCount ?? resilienceData?.episodeCount,
+          episodeRate:  b1.episodeMetrics?.episodeRate  ?? resilienceData?.episodeRate,
+          angina:       resilienceData?.anginaEpochCount,
+          fsmState:     b2.fsmModel?.currentState,
+          tauIn:        b2.fsmModel?.tauIn,
+          tauOut:       b2.fsmModel?.tauOut,
+          logEntries:   resilienceData?.fsmLogCount,
         };
 
         // RAG Blok 3: Aktivitas → CRS connections (grounded by evidence)
@@ -1976,7 +1985,7 @@ export function CardiovascularResilienceView({ targetPatientId, participants = [
                       <span style={{ color: '#4F46E5', fontWeight: 800, minWidth: 26 }}>{d.id}</span>
                       <span style={{ color: '#374151', flex: 1, paddingLeft: 6 }}>{d.label}</span>
                       <span style={{ fontWeight: 800, color: '#0F172A', minWidth: 55, textAlign: 'right' }}>
-                        {typeof d.val === 'number' ? d.val.toFixed(2) : d.val} <span style={{ color: '#94A3B8', fontSize: 9 }}>{d.unit}</span>
+                        {displayValue(typeof d.val === 'number' ? d.val.toFixed(2) : d.val, hasPhiData)} <span style={{ color: '#94A3B8', fontSize: 9 }}>{d.unit}</span>
                       </span>
                       <span style={{ marginLeft: 6, fontSize: 9.5, color: '#6D28D9', fontWeight: 700, minWidth: 30, textAlign: 'right' }}>→{d.crs}</span>
                     </div>
@@ -2013,7 +2022,7 @@ export function CardiovascularResilienceView({ targetPatientId, participants = [
                         {item.label}
                       </div>
                       <span style={{ fontWeight: 800, color: item.alert ? '#B91C1C' : '#0F172A' }}>
-                        {item.value} <span style={{ fontSize: 9, color: '#94A3B8', fontWeight: 500 }}>{item.unit}</span>
+                        {displayValue(item.value, hasEpisodeData || hasTelemetryData)} <span style={{ fontSize: 9, color: '#94A3B8', fontWeight: 500 }}>{item.unit}</span>
                         {item.alert && <i className="fa-solid fa-triangle-exclamation ms-1 text-danger" style={{ fontSize: 9 }} />}
                       </span>
                     </div>

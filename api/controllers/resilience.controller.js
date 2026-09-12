@@ -229,7 +229,7 @@ export function computeCardiovascularResilience(params) {
   const recVelocity = recoverySlope;
   const recAccel = Number((-0.03 * (recVelocity / Math.max(0.1, estTtrMin))).toFixed(3));
   const trajectoryPoints = [];
-  const peakDev = 2.85;
+  const peakDev = Number.isFinite(params.peakDev) ? params.peakDev : 2.85;
   const decayRate = Math.log(peakDev / 0.35) / Math.max(2, estTtrMin);
 
   for (let t = 0; t <= Math.min(30, Math.ceil(estTtrMin * 1.5)); t += 1) {
@@ -1339,7 +1339,7 @@ export async function getCardiovascularResilienceState(req, res) {
         patientDoc = await Patient.findOne({ $or: [{ user_id: userObjectId }, { _id: userObjectId }] }).maxTimeMS(2000);
         segments = await Segment.find({ user_id: userObjectId }).sort({ window_start: 1 }).limit(1000).maxTimeMS(2000);
         baselines = await Baseline.find({ user_id: userObjectId }).maxTimeMS(2000);
-        events = await AnomalyEvent.find({ user_id: userObjectId }).sort({ onset_time: -1 }).limit(20).maxTimeMS(2000);
+        events = await AnomalyEvent.find({ user_id: userObjectId }).sort({ onset_time: -1 }).maxTimeMS(2000);
       } catch (dbErr) {
         console.warn('[getCardiovascularResilienceState] DB fallback:', dbErr.message);
       }
@@ -1472,6 +1472,14 @@ export async function getCardiovascularResilienceState(req, res) {
       relapseCount = events.filter(e => e.relapse === true || (e.relapse_count && e.relapse_count > 0)).length;
     }
 
+    const peakDeviationValues = events.flatMap(event => [
+      event.z_scores_at_peak?.z_hr,
+      event.peak_score,
+    ]).filter(value => typeof value === 'number' && Number.isFinite(value));
+    const peakDev = peakDeviationValues.length > 0
+      ? Math.max(...peakDeviationValues.map(value => Math.abs(value)))
+      : 0;
+
     const age = patientDoc?.age || user?.age || 55;
     const sex = (user?.gender === 'female' || patientDoc?.gender === 'female') ? 0 : 1;
 
@@ -1559,7 +1567,8 @@ export async function getCardiovascularResilienceState(req, res) {
       scoreVariance: 0.12,
 
       tauIn,
-      tauOut
+      tauOut,
+      peakDev
     });
 
     // Attach user behavior events, real Phi scores, and RAG evidence summaries to response
@@ -1583,14 +1592,26 @@ export async function getCardiovascularResilienceState(req, res) {
         userId: targetUserId,
         patientName: user?.username || user?.name || (patientDoc?.name || `Peserta (${targetUserId.slice(0, 8)}...)`),
         isRealData,
+        dataAvailability: {
+          telemetry: segments.length > 0,
+          episodes: events.length > 0,
+          phi: Boolean(phiScores || phiVectorData),
+          clinical: Boolean(user?.cleveland_13_features || patientDoc),
+        },
+        episodeCount: events.length,
+        episodeRate: segments.length > 0
+          ? Number((events.length / Math.max(segments.length * 5 / 60, 1 / 60)).toFixed(2))
+          : null,
+        anginaEpochCount: events.filter(event => /angina/i.test(`${event.activity || ''} ${event.context_tag || ''}`)).length,
+        fsmLogCount: events.length,
         caparEngineStatus: {
           baseline: baselines.length > 0 ? `Mature (${baselines.length} Baseline Terkalibrasi)` : 'Provisional Learning',
-          currentState: 'Recovery Phase',
-          lastEpisodeTime: events.length > 0 ? (events[0].onset_time ? new Date(events[0].onset_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' : '14:32 WIB') : '14:32 WIB',
+          currentState: events[0]?.current_state || null,
+          lastEpisodeTime: events[0]?.onset_time ? new Date(events[0].onset_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' : null,
           recoveryTimeMin: Number(ttrMinutes.toFixed(1)),
           relapse: relapseCount > 0 ? `${relapseCount}x Relapse` : 'None',
           fsmThresholds: { tauIn, tauOut },
-          totalSegments: segments.length || 269
+          totalSegments: segments.length
         },
         userBehaviorEvents: userBehaviors,
         ...result
