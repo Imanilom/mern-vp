@@ -42,7 +42,7 @@ class BleService extends ChangeNotifier {
   double _lastAccX = 0.0;
   double _lastAccY = 0.0;
   double _lastAccZ = 0.0;
-  double _lastEcg  = 0.0;
+  double _lastEcg = 0.0;
 
   // Auto-Reconnect State
   bool isReconnecting = false;
@@ -74,12 +74,18 @@ class BleService extends ChangeNotifier {
   }
 
   void _scheduleAutoReconnect(String targetDeviceId) {
-    if (_isManualDisconnect || isConnected || _isDisposed || targetDeviceId.isEmpty) return;
+    if (_isManualDisconnect ||
+        isConnected ||
+        _isDisposed ||
+        targetDeviceId.isEmpty)
+      return;
     _autoReconnectTimer?.cancel();
     isReconnecting = true;
     if (!_isDisposed) notifyListeners();
 
-    debugPrint('[Polar] 🔄 Auto-reconnect scheduled in 3 seconds for $targetDeviceId...');
+    debugPrint(
+      '[Polar] 🔄 Auto-reconnect scheduled in 3 seconds for $targetDeviceId...',
+    );
     _autoReconnectTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (isConnected || _isManualDisconnect || _isDisposed) {
         timer.cancel();
@@ -107,7 +113,7 @@ class BleService extends ChangeNotifier {
     _connectSub = _polar.deviceConnected.listen((info) {
       debugPrint('[Polar] Connected: ${info.deviceId} (${info.name})');
       deviceName = info.name.isNotEmpty ? info.name : 'Polar H10';
-      _deviceId  = info.deviceId;
+      _deviceId = info.deviceId;
       _savedDeviceId = info.deviceId;
       _isManualDisconnect = false;
       isReconnecting = false;
@@ -167,7 +173,8 @@ class BleService extends ChangeNotifier {
   // ─── Scan State ──────────────────────────────────────────────────────────────
 
   final List<PolarDeviceInfo> _discoveredDevices = [];
-  List<PolarDeviceInfo> get discoveredDevices => List.unmodifiable(_discoveredDevices);
+  List<PolarDeviceInfo> get discoveredDevices =>
+      List.unmodifiable(_discoveredDevices);
   StreamSubscription<PolarDeviceInfo>? _scanSub;
   bool isScanning = false;
 
@@ -177,7 +184,8 @@ class BleService extends ChangeNotifier {
     try {
       if (Platform.isAndroid) {
         try {
-          if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
+          if (await FlutterBluePlus.adapterState.first !=
+              BluetoothAdapterState.on) {
             await FlutterBluePlus.turnOn();
           }
         } catch (_) {}
@@ -198,20 +206,26 @@ class BleService extends ChangeNotifier {
       await _scanSub?.cancel();
       debugPrint('[Polar] Starting device search...');
 
-      _scanSub = _polar.searchForDevice().listen((device) {
-        if (!_discoveredDevices.any((d) => d.deviceId == device.deviceId)) {
-          _discoveredDevices.add(device);
-          debugPrint('[Polar] Discovered: ${device.name} (${device.deviceId})');
+      _scanSub = _polar.searchForDevice().listen(
+        (device) {
+          if (!_discoveredDevices.any((d) => d.deviceId == device.deviceId)) {
+            _discoveredDevices.add(device);
+            debugPrint(
+              '[Polar] Discovered: ${device.name} (${device.deviceId})',
+            );
+            if (!_isDisposed) notifyListeners();
+          }
+        },
+        onError: (e) {
+          debugPrint('[Polar] Scan error: $e');
+          isScanning = false;
           if (!_isDisposed) notifyListeners();
-        }
-      }, onError: (e) {
-        debugPrint('[Polar] Scan error: $e');
-        isScanning = false;
-        if (!_isDisposed) notifyListeners();
-      }, onDone: () {
-        isScanning = false;
-        if (!_isDisposed) notifyListeners();
-      });
+        },
+        onDone: () {
+          isScanning = false;
+          if (!_isDisposed) notifyListeners();
+        },
+      );
     } catch (e) {
       debugPrint('[Polar] startScan exception: $e');
       isScanning = false;
@@ -235,7 +249,8 @@ class BleService extends ChangeNotifier {
 
       if (Platform.isAndroid) {
         try {
-          if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
+          if (await FlutterBluePlus.adapterState.first !=
+              BluetoothAdapterState.on) {
             await FlutterBluePlus.turnOn();
           }
         } catch (_) {}
@@ -264,7 +279,7 @@ class BleService extends ChangeNotifier {
       Future.delayed(const Duration(seconds: 15), () {
         if (isConnecting && connectingDeviceId == cleanId && !isConnected) {
           debugPrint('[Polar] Connection timeout for $cleanId');
-          disconnect(); 
+          disconnect();
         }
       });
 
@@ -282,25 +297,34 @@ class BleService extends ChangeNotifier {
 
   Future<void> _startPolarStreams(String identifier) async {
     try {
-      final available = await _polar.getAvailableOnlineStreamDataTypes(identifier);
+      final available = await _polar.getAvailableOnlineStreamDataTypes(
+        identifier,
+      );
       debugPrint('[Polar] Available stream types: $available');
 
       // ── HR + RR (Critical Stream) ─────────────────────────────────────────────
       if (available.contains(PolarDataType.hr)) {
         _hrSub?.cancel();
-        _hrSub = _polar.startHrStreaming(identifier).listen(_onHrData,
-          onError: (e) => debugPrint('[Polar] HR stream error: $e'),
-        );
+        _hrSub = _polar
+            .startHrStreaming(identifier)
+            .listen(
+              _onHrData,
+              onError: (e) => debugPrint('[Polar] HR stream error: $e'),
+            );
         debugPrint('[Polar] HR streaming started');
       }
 
       // ── ECG (130Hz, µV) — Error isolated ──────────────────────────────────────
       if (available.contains(PolarDataType.ecg)) {
         _ecgSub?.cancel();
-        _ecgSub = _polar.startEcgStreaming(identifier).listen(_onEcgData,
-          onError: (e) => debugPrint('[Polar] ECG stream error isolated: $e'),
-          cancelOnError: false,
-        );
+        _ecgSub = _polar
+            .startEcgStreaming(identifier)
+            .listen(
+              _onEcgData,
+              onError: (e) =>
+                  debugPrint('[Polar] ECG stream error isolated: $e'),
+              cancelOnError: false,
+            );
         debugPrint('[Polar] ECG streaming started (130Hz)');
       } else {
         debugPrint('[Polar] ECG not available on this device');
@@ -309,17 +333,21 @@ class BleService extends ChangeNotifier {
       // ── ACC (50Hz, mG) — Error isolated ───────────────────────────────────────
       if (available.contains(PolarDataType.acc)) {
         _accSub?.cancel();
-        _accSub = _polar.startAccStreaming(
-          identifier,
-          settings: PolarSensorSetting({
-            PolarSettingType.sampleRate: 50,
-            PolarSettingType.range: 8,
-            PolarSettingType.resolution: 16,
-          }),
-        ).listen(_onAccData,
-          onError: (e) => debugPrint('[Polar] ACC stream error isolated: $e'),
-          cancelOnError: false,
-        );
+        _accSub = _polar
+            .startAccStreaming(
+              identifier,
+              settings: PolarSensorSetting({
+                PolarSettingType.sampleRate: 50,
+                PolarSettingType.range: 8,
+                PolarSettingType.resolution: 16,
+              }),
+            )
+            .listen(
+              _onAccData,
+              onError: (e) =>
+                  debugPrint('[Polar] ACC stream error isolated: $e'),
+              cancelOnError: false,
+            );
         debugPrint('[Polar] ACC streaming started (50Hz, ±8G)');
       } else {
         debugPrint('[Polar] ACC not available on this device');
@@ -344,22 +372,22 @@ class BleService extends ChangeNotifier {
       }
 
       final rmssd = _calculateRmssd();
-      final dfa   = _estimateDfa();
+      final dfa = _estimateDfa();
 
       final reading = SensorReading(
-        timestamp:    DateTime.now(),
-        heartRate:    heartRate,
-        rrInterval:   lastRr,
-        rmssd:        double.parse(rmssd.toStringAsFixed(1)),
-        dfaAlpha1:    double.parse(dfa.toStringAsFixed(3)),
+        timestamp: DateTime.now(),
+        heartRate: heartRate,
+        rrInterval: lastRr,
+        rmssd: double.parse(rmssd.toStringAsFixed(1)),
+        dfaAlpha1: double.parse(dfa.toStringAsFixed(3)),
         signalQuality: signalQuality,
-        battery:      batteryLevel,
-        motionState:  motionState,
+        battery: batteryLevel,
+        motionState: motionState,
         // Real sensor data dari PMD (sudah diisi oleh _onAccData/_onEcgData)
         accX: double.parse(_lastAccX.toStringAsFixed(4)),
         accY: double.parse(_lastAccY.toStringAsFixed(4)),
         accZ: double.parse(_lastAccZ.toStringAsFixed(4)),
-        ecg:  double.parse(_lastEcg.toStringAsFixed(4)),
+        ecg: double.parse(_lastEcg.toStringAsFixed(4)),
         stepCount: 0,
       );
 
@@ -379,7 +407,7 @@ class BleService extends ChangeNotifier {
   void _onEcgData(PolarEcgData data) {
     if (data.samples.isEmpty) return;
     // Ambil sample terakhir, unit µV → mV
-    _lastEcg = data.samples.last.voltage / 1000.0;
+    _lastEcg = (data.samples.last.voltage / 1000.0).clamp(-1.0, 1.0);
   }
 
   // ─── RMSSD & DFA ─────────────────────────────────────────────────────────────
@@ -430,12 +458,16 @@ class BleService extends ChangeNotifier {
     int tickCount = 0;
     final random = Random();
 
-    _simulatedTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+    _simulatedTimer = Timer.periodic(const Duration(milliseconds: 1000), (
+      timer,
+    ) {
       tickCount++;
       // Sine wave oscillation for subtle natural heart rate variability & riak naik turun
-      final hrDelta = (3.5 * sin(tickCount * 0.25)) + ((random.nextDouble() - 0.5) * 1.5);
+      final hrDelta =
+          (3.5 * sin(tickCount * 0.25)) + ((random.nextDouble() - 0.5) * 1.5);
       final currentHr = (hrBase + hrDelta).round().clamp(55, 130);
-      final currentRr = (60000.0 / currentHr + ((random.nextDouble() - 0.5) * 20)).round();
+      final currentRr =
+          (60000.0 / currentHr + ((random.nextDouble() - 0.5) * 20)).round();
 
       _rrList.add(currentRr);
       if (_rrList.length > 30) _rrList.removeAt(0);
@@ -480,11 +512,16 @@ class BleService extends ChangeNotifier {
   void _stopStreams() {
     _simulatedTimer?.cancel();
     _simulatedTimer = null;
-    _hrSub?.cancel();  _hrSub  = null;
-    _ecgSub?.cancel(); _ecgSub = null;
-    _accSub?.cancel(); _accSub = null;
-    _lastAccX = 0.0; _lastAccY = 0.0; _lastAccZ = 0.0;
-    _lastEcg  = 0.0;
+    _hrSub?.cancel();
+    _hrSub = null;
+    _ecgSub?.cancel();
+    _ecgSub = null;
+    _accSub?.cancel();
+    _accSub = null;
+    _lastAccX = 0.0;
+    _lastAccY = 0.0;
+    _lastAccZ = 0.0;
+    _lastEcg = 0.0;
   }
 
   Future<void> disconnect() async {
@@ -492,7 +529,9 @@ class BleService extends ChangeNotifier {
     _autoReconnectTimer?.cancel();
     isReconnecting = false;
     if (_deviceId.isNotEmpty) {
-      try { _polar.disconnectFromDevice(_deviceId); } catch (_) {}
+      try {
+        _polar.disconnectFromDevice(_deviceId);
+      } catch (_) {}
     }
     _stopStreams();
     BackgroundTask.stopForegroundService();

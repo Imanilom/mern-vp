@@ -7,26 +7,31 @@ import '../services/ble_service.dart';
 import '../shared/models/models.dart';
 import '../theme/app_colors.dart';
 
-enum ChartViewMode { hr, rr, dual }
+enum ChartViewMode { hr, rr, ecg, dual }
 
 class RealtimeChartWidget extends ConsumerStatefulWidget {
   const RealtimeChartWidget({super.key});
 
   @override
-  ConsumerState<RealtimeChartWidget> createState() => _RealtimeChartWidgetState();
+  ConsumerState<RealtimeChartWidget> createState() =>
+      _RealtimeChartWidgetState();
 }
 
 class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
   final List<FlSpot> _hrSpots = [];
   final List<FlSpot> _rrSpots = [];
+  final List<FlSpot> _ecgSpots = [];
+  final List<SensorReading> _ecgLog = [];
   double _timeX = 0;
   StreamSubscription<SensorReading>? _subscription;
   ChartViewMode _viewMode = ChartViewMode.hr;
 
   int _latestHr = 0;
   int _latestRr = 0;
+  double _latestEcg = 0;
   int _prevHr = 0;
   int _prevRr = 0;
+  int _ecgWindowSize = 60;
 
   @override
   void initState() {
@@ -41,9 +46,12 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
           _prevRr = _latestRr;
           _latestHr = reading.heartRate;
           _latestRr = reading.rrInterval;
+          _latestEcg = reading.ecg.clamp(-1.0, 1.0);
 
           _hrSpots.add(FlSpot(_timeX, reading.heartRate.toDouble()));
           _rrSpots.add(FlSpot(_timeX, reading.rrInterval.toDouble()));
+          _ecgSpots.add(FlSpot(_timeX, _latestEcg));
+          _ecgLog.add(reading);
 
           // Simpan maksimal 60 titik (sekitar 60 detik)
           if (_hrSpots.length > 60) {
@@ -51,6 +59,12 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
           }
           if (_rrSpots.length > 60) {
             _rrSpots.removeAt(0);
+          }
+          if (_ecgSpots.length > 60) {
+            _ecgSpots.removeAt(0);
+          }
+          if (_ecgLog.length > 20) {
+            _ecgLog.removeAt(0);
           }
         });
       }
@@ -80,12 +94,19 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
             SizedBox(
               width: 24,
               height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.teal),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.teal,
+              ),
             ),
             SizedBox(height: 12),
             Text(
               'Menunggu stream data sensor Polar H10...',
-              style: TextStyle(fontSize: 12, color: AppColors.gray, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.gray,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -120,21 +141,37 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
                 children: [
                   const Text(
                     'STREAMING SINYAL JANTUNG REAL-TIME',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.teal, letterSpacing: 0.5),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.teal,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
                       Text(
-                        _viewMode == ChartViewMode.rr ? '$_latestRr ms' : '$_latestHr BPM',
+                        _viewMode == ChartViewMode.rr
+                            ? '$_latestRr ms'
+                            : (_viewMode == ChartViewMode.ecg
+                                  ? _latestEcg.toStringAsFixed(4)
+                                  : '$_latestHr BPM'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
-                          color: _viewMode == ChartViewMode.rr ? AppColors.teal : AppColors.red,
+                          color: _viewMode == ChartViewMode.rr
+                              ? AppColors.teal
+                              : (_viewMode == ChartViewMode.ecg
+                                    ? AppColors.purple
+                                    : AppColors.red),
                         ),
                       ),
                       const SizedBox(width: 6),
-                      _buildDeltaBadge(_viewMode == ChartViewMode.rr ? rrDelta : hrDelta, _viewMode == ChartViewMode.rr ? 'ms' : 'bpm'),
+                      _buildDeltaBadge(
+                        _viewMode == ChartViewMode.rr ? rrDelta : hrDelta,
+                        _viewMode == ChartViewMode.rr ? 'ms' : 'bpm',
+                      ),
                     ],
                   ),
                 ],
@@ -151,6 +188,7 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
                   children: [
                     _buildModeTab('HR', ChartViewMode.hr),
                     _buildModeTab('RR ms', ChartViewMode.rr),
+                    _buildModeTab('ECG', ChartViewMode.ecg),
                     _buildModeTab('Dual', ChartViewMode.dual),
                   ],
                 ),
@@ -164,8 +202,50 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
             height: 170,
             child: _viewMode == ChartViewMode.rr
                 ? _buildRRChart()
-                : (_viewMode == ChartViewMode.dual ? _buildDualChart() : _buildHRChart()),
+                : (_viewMode == ChartViewMode.ecg
+                      ? _buildECGChart()
+                      : (_viewMode == ChartViewMode.dual
+                            ? _buildDualChart()
+                            : _buildHRChart())),
           ),
+
+          if (_viewMode == ChartViewMode.ecg) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(
+                  Icons.zoom_in_rounded,
+                  size: 15,
+                  color: AppColors.purple,
+                ),
+                const SizedBox(width: 4),
+                const Text(
+                  'Zoom',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.gray,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Expanded(
+                  child: Slider(
+                    value: _ecgWindowSize.toDouble(),
+                    min: 10,
+                    max: 60,
+                    divisions: 10,
+                    activeColor: AppColors.purple,
+                    label: '$_ecgWindowSize titik',
+                    onChanged: (value) =>
+                        setState(() => _ecgWindowSize = value.round()),
+                  ),
+                ),
+                Text(
+                  '$_ecgWindowSize titik',
+                  style: const TextStyle(fontSize: 10, color: AppColors.gray),
+                ),
+              ],
+            ),
+          ],
 
           const SizedBox(height: 8),
           // Subtext Indicator
@@ -173,25 +253,40 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Live Window: ${_hrSpots.length} detik',
-                style: const TextStyle(fontSize: 10, color: AppColors.gray, fontWeight: FontWeight.w600),
+                _viewMode == ChartViewMode.ecg
+                    ? 'ECG range: -1..1 · ${_ecgSpots.length} sampel'
+                    : 'Live Window: ${_hrSpots.length} detik',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.gray,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Row(
                 children: [
                   Container(
                     width: 6,
                     height: 6,
-                    decoration: const BoxDecoration(color: AppColors.green, shape: BoxShape.circle),
+                    decoration: const BoxDecoration(
+                      color: AppColors.green,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                   const SizedBox(width: 4),
                   const Text(
                     'Polar H10 Streaming (1 Hz)',
-                    style: TextStyle(fontSize: 10, color: AppColors.green, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.green,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
             ],
           ),
+
+          if (_viewMode == ChartViewMode.ecg) _buildEcgLogger(),
         ],
       ),
     );
@@ -207,7 +302,12 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
           color: isSelected ? AppColors.surface : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected
-              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                  ),
+                ]
               : null,
         ),
         child: Text(
@@ -235,10 +335,18 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isUp ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded, size: 14, color: color),
+          Icon(
+            isUp ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded,
+            size: 14,
+            color: color,
+          ),
           Text(
             '${isUp ? "+$delta" : delta} $unit',
-            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: color),
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -278,12 +386,13 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
             dotData: FlDotData(
               show: true,
               checkToShowDot: (spot, barData) => spot.x == maxX,
-              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                radius: 4.5,
-                color: AppColors.red,
-                strokeWidth: 2,
-                strokeColor: Colors.white,
-              ),
+              getDotPainter: (spot, percent, barData, index) =>
+                  FlDotCirclePainter(
+                    radius: 4.5,
+                    color: AppColors.red,
+                    strokeWidth: 2,
+                    strokeColor: Colors.white,
+                  ),
             ),
             belowBarData: BarAreaData(
               show: true,
@@ -300,16 +409,26 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
         ],
         titlesData: FlTitlesData(
           show: true,
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 28,
               getTitlesWidget: (val, meta) => Text(
                 val.toInt().toString(),
-                style: const TextStyle(fontSize: 9.5, color: AppColors.gray, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 9.5,
+                  color: AppColors.gray,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -318,11 +437,8 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: gridInterval,
-          getDrawingHorizontalLine: (val) => FlLine(
-            color: AppColors.line,
-            strokeWidth: 1,
-            dashArray: [4, 4],
-          ),
+          getDrawingHorizontalLine: (val) =>
+              FlLine(color: AppColors.line, strokeWidth: 1, dashArray: [4, 4]),
         ),
         borderData: FlBorderData(show: false),
       ),
@@ -362,12 +478,13 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
             dotData: FlDotData(
               show: true,
               checkToShowDot: (spot, barData) => spot.x == maxX,
-              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                radius: 4.5,
-                color: AppColors.teal,
-                strokeWidth: 2,
-                strokeColor: Colors.white,
-              ),
+              getDotPainter: (spot, percent, barData, index) =>
+                  FlDotCirclePainter(
+                    radius: 4.5,
+                    color: AppColors.teal,
+                    strokeWidth: 2,
+                    strokeColor: Colors.white,
+                  ),
             ),
             belowBarData: BarAreaData(
               show: true,
@@ -384,16 +501,26 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
         ],
         titlesData: FlTitlesData(
           show: true,
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 32,
               getTitlesWidget: (val, meta) => Text(
                 val.toInt().toString(),
-                style: const TextStyle(fontSize: 9.5, color: AppColors.gray, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 9.5,
+                  color: AppColors.gray,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -402,13 +529,151 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: gridInterval,
-          getDrawingHorizontalLine: (val) => FlLine(
-            color: AppColors.line,
-            strokeWidth: 1,
-            dashArray: [4, 4],
-          ),
+          getDrawingHorizontalLine: (val) =>
+              FlLine(color: AppColors.line, strokeWidth: 1, dashArray: [4, 4]),
         ),
         borderData: FlBorderData(show: false),
+      ),
+    );
+  }
+
+  Widget _buildECGChart() {
+    final visibleSpots = _ecgSpots.length > _ecgWindowSize
+        ? _ecgSpots.sublist(_ecgSpots.length - _ecgWindowSize)
+        : _ecgSpots;
+    final minX = visibleSpots.first.x;
+    final maxX = visibleSpots.last.x;
+
+    return LineChart(
+      LineChartData(
+        minX: minX,
+        maxX: maxX,
+        minY: -1,
+        maxY: 1,
+        lineBarsData: [
+          LineChartBarData(
+            spots: visibleSpots,
+            isCurved: false,
+            color: AppColors.purple,
+            barWidth: 1.8,
+            dotData: const FlDotData(show: false),
+          ),
+        ],
+        extraLinesData: ExtraLinesData(
+          horizontalLines: [
+            HorizontalLine(
+              y: 1,
+              color: AppColors.red,
+              strokeWidth: 1,
+              dashArray: [4, 4],
+            ),
+            HorizontalLine(
+              y: -1,
+              color: AppColors.red,
+              strokeWidth: 1,
+              dashArray: [4, 4],
+            ),
+          ],
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              interval: 0.5,
+              getTitlesWidget: (value, meta) => Text(
+                value.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 9.5,
+                  color: AppColors.gray,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: 0.5,
+          getDrawingHorizontalLine: (value) =>
+              FlLine(color: AppColors.line, strokeWidth: 1, dashArray: [4, 4]),
+        ),
+        borderData: FlBorderData(show: false),
+      ),
+    );
+  }
+
+  Widget _buildEcgLogger() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.purpleSoft,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.purple.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'ECG LOGGER',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.purple,
+                ),
+              ),
+              Text(
+                '${_ecgLog.length} sampel · range -1..1',
+                style: const TextStyle(fontSize: 9.5, color: AppColors.gray),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ..._ecgLog.reversed
+              .take(5)
+              .map(
+                (reading) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        TimeOfDay.fromDateTime(
+                          reading.timestamp,
+                        ).format(context),
+                        style: const TextStyle(
+                          fontSize: 9.5,
+                          color: AppColors.gray,
+                        ),
+                      ),
+                      Text(
+                        reading.ecg.toStringAsFixed(4),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.purple,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+        ],
       ),
     );
   }
@@ -459,16 +724,26 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
         ],
         titlesData: FlTitlesData(
           show: true,
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 28,
               getTitlesWidget: (val, meta) => Text(
                 val.toInt().toString(),
-                style: const TextStyle(fontSize: 9.5, color: AppColors.gray, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 9.5,
+                  color: AppColors.gray,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -476,11 +751,8 @@ class _RealtimeChartWidgetState extends ConsumerState<RealtimeChartWidget> {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          getDrawingHorizontalLine: (val) => FlLine(
-            color: AppColors.line,
-            strokeWidth: 1,
-            dashArray: [4, 4],
-          ),
+          getDrawingHorizontalLine: (val) =>
+              FlLine(color: AppColors.line, strokeWidth: 1, dashArray: [4, 4]),
         ),
         borderData: FlBorderData(show: false),
       ),

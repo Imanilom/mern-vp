@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Legend, Brush } from 'recharts';
 import { api } from '../services/api';
 import Pagination from '../components/Pagination';
 
@@ -25,6 +25,12 @@ const getTimestamp = (d) => {
   if (d.time) return new Date(d.time).getTime();
   if (d.time_created) return new Date(`1970-01-01T${d.time_created}`).getTime();
   return NaN;
+};
+
+const normalizeEcg = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Number(Math.max(-1, Math.min(1, numericValue)).toFixed(4));
 };
 
 const EvidenceBadge = ({ state }) => {
@@ -194,7 +200,7 @@ export const LiveMonitorView = ({
         acc_x: parseAcc(d.acc_x),
         acc_y: parseAcc(d.acc_y),
         acc_z: parseAcc(d.acc_z),
-        ecg: Number(d.ecg) || 0,
+        ecg: normalizeEcg(d.ecg),
       })));
     } else {
       setLiveData([]);
@@ -232,7 +238,7 @@ export const LiveMonitorView = ({
             acc_x: parseAcc(payloadToUse.acc_x ?? payloadToUse.accX),
             acc_y: parseAcc(payloadToUse.acc_y ?? payloadToUse.accY),
             acc_z: parseAcc(payloadToUse.acc_z ?? payloadToUse.accZ),
-            ecg: Number(payloadToUse.ecg) || 0,
+            ecg: normalizeEcg(payloadToUse.ecg),
           };
           const next = [...prev, newPt];
           if (next.length > 100) return next.slice(next.length - 100);
@@ -357,19 +363,20 @@ export const LiveMonitorView = ({
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
             <XAxis dataKey="time" tick={{fontSize: 9, fill: 'var(--gray)'}} height={20} minTickGap={30} />
             <YAxis 
-              domain={[
-                dataMin => Math.floor(dataMin - 10),
-                dataMax => Math.ceil(dataMax + 10)
-              ]} 
+              domain={[-1, 1]}
+              allowDataOverflow={false}
               tick={{fontSize: 10}} 
               width={45} 
             />
+            <ReferenceLine y={1} stroke="#DC2626" strokeDasharray="3 3" />
+            <ReferenceLine y={-1} stroke="#DC2626" strokeDasharray="3 3" />
             <Tooltip 
               contentStyle={{ borderRadius: 8, border: '1px solid var(--line)', fontSize: 12, backgroundColor: 'rgba(255,255,255,0.9)' }} 
-              formatter={(val, name) => [`${val} µV`, name]}
+              formatter={(val, name) => [Number(val).toFixed(4), name]}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Line type="monotone" dataKey="ecg" name="ECG Signal (µV)" stroke="#9C27B0" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="ecg" name="ECG Signal (normalized)" stroke="#9C27B0" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+            <Brush dataKey="time" height={24} stroke="#9C27B0" fill="#FAF5FF" travellerWidth={10} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -401,7 +408,7 @@ export const LiveMonitorView = ({
               style={{ fontSize: 11, padding: '2px 8px' }}
               onClick={() => setActiveStreamTab('ecg')}
             >
-              ECG (µV)
+              ECG (-1..1)
             </button>
             <button 
               type="button" 
@@ -428,8 +435,35 @@ export const LiveMonitorView = ({
               {renderACCChart()}
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>ECG Waveform Signal (µV)</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>ECG Waveform Signal (-1..1)</div>
               {renderECGChart()}
+            </div>
+          </div>
+        )}
+
+        {(activeStreamTab === 'ecg' || activeStreamTab === 'all') && (
+          <div style={{ marginTop: 12, border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ padding: '8px 10px', background: '#FAF5FF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong style={{ fontSize: 11.5, color: '#581C87' }}>ECG Logger</strong>
+              <span style={{ fontSize: 10.5, color: '#7E22CE' }}>{Math.min(liveData.length, 20)} sampel terakhir · range -1..1</span>
+            </div>
+            <div style={{ maxHeight: 150, overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10.5 }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC', color: '#64748B', textAlign: 'left' }}>
+                    <th style={{ padding: '5px 10px' }}>Waktu</th>
+                    <th style={{ padding: '5px 10px', textAlign: 'right' }}>ECG normalized</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {liveData.slice(-20).reverse().map((point, index) => (
+                    <tr key={`${point.time}-${index}`} style={{ borderTop: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '5px 10px', color: '#475569' }}>{point.time}</td>
+                      <td style={{ padding: '5px 10px', textAlign: 'right', fontFamily: 'monospace', color: '#581C87' }}>{point.ecg.toFixed(4)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
