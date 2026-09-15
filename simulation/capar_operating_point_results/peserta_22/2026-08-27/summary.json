@@ -1,0 +1,17 @@
+{
+  "participant": "Peserta 22",
+  "user_id": "6a8f9fab74156d89d1dc3c47",
+  "date": "2026-08-27",
+  "source": "polardatas",
+  "n_raw_samples": 390,
+  "n_windows": 13,
+  "n_valid_windows": 4,
+  "n_episodes": 0,
+  "phenotype": {
+    "phenotype": [
+      "stable_or_no_detected_episode"
+    ],
+    "n_episodes": 0
+  },
+  "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+}

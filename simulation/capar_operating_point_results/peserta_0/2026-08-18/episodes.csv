@@ -1,0 +1,2 @@
+episode_id,activity_start,start_tau_in,peak_time,end_tau_out,duration_min,TTP_min,TTR_min,Dmax_feature,Dmax_OP,D_residual,recovery_rate_per_min,AUC_D,L_OP_path_length,trajectory_efficiency,C_peak,V_peak,A_peak,L_peak,R_end,relapse
+1,Lainnya,2026-08-18T09:47:00,2026-08-18T09:47:00,2026-08-18T10:18:00,32.0,0.0,31.0,141.4252160115933,2.0640017286506764,2.8514717133479994,4.470120783814365,301.02898412615076,9.275510919841047,0.3148689020031748,1.0,-0.8698593818414334,0.7131301921572256,0.9974432919866766,0.9868152475322157,0

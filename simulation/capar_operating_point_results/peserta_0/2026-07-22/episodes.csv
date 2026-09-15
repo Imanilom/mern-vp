@@ -1,0 +1,2 @@
+episode_id,activity_start,start_tau_in,peak_time,end_tau_out,duration_min,TTP_min,TTR_min,Dmax_feature,Dmax_OP,D_residual,recovery_rate_per_min,AUC_D,L_OP_path_length,trajectory_efficiency,C_peak,V_peak,A_peak,L_peak,R_end,relapse
+1,Makan,2026-07-22T10:50:00,2026-07-22T10:51:00,2026-07-22T10:54:00,5.0,1.0,3.0,1.8079214413756464,1.6030822170294068,0.7940252082651225,0.3379654110368413,5.1944667757817236,7.599272412463139,0.29052309526507364,-0.9351624079277512,-0.4628826787207805,-0.25406528680348117,0.593489972661458,1.0,0

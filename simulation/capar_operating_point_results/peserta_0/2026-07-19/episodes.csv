@@ -1,0 +1,2 @@
+episode_id,activity_start,start_tau_in,peak_time,end_tau_out,duration_min,TTP_min,TTR_min,Dmax_feature,Dmax_OP,D_residual,recovery_rate_per_min,AUC_D,L_OP_path_length,trajectory_efficiency,C_peak,V_peak,A_peak,L_peak,R_end,relapse
+1,Duduk,2026-07-19T13:41:00,2026-07-19T13:42:00,2026-07-19T13:47:00,7.0,1.0,5.0,1.891563549983014,1.4395273450722677,0.434196094024492,0.2914734911917044,7.64260693798536,6.003739663758847,0.24507320234340232,-0.730516347467219,0.20021200423139704,-0.471424725919584,0.525603200567935,1.0,0

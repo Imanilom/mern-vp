@@ -1,0 +1,24 @@
+{
+  "participant": "Peserta 23",
+  "user_id": "6a98264316b1f3634c777f82",
+  "date": "2026-09-14",
+  "source": "polardatas",
+  "n_raw_samples": 38071,
+  "n_windows": 622,
+  "n_valid_windows": 615,
+  "n_episodes": 7,
+  "phenotype": {
+    "phenotype": [
+      "intermediate_recovery",
+      "unstable_relapsing"
+    ],
+    "n_episodes": 7,
+    "median_TTR_min": 8.0,
+    "median_Dmax_feature": 4.093325895550578,
+    "median_duration_min": 14.0,
+    "relapse_rate": 0.2857142857142857,
+    "stability": 0.7142857142857143,
+    "note": "Exploratory phenotype; calibrate thresholds on study data."
+  },
+  "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+}

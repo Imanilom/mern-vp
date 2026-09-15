@@ -1,0 +1,970 @@
+{
+  "config": {
+    "window_seconds": 60,
+    "min_coverage": 0.6,
+    "expected_sampling_hz": 1.0,
+    "hr_min": 35.0,
+    "hr_max": 220.0,
+    "rr_min_ms": 250.0,
+    "rr_max_ms": 2000.0,
+    "baseline_method": "robust",
+    "min_baseline_windows": 8,
+    "covariance_regularization": 0.001,
+    "tau_in": 1.8,
+    "tau_out": 1.0,
+    "enter_persistence_windows": 2,
+    "exit_persistence_windows": 2,
+    "plateau_derivative_tol": 0.08,
+    "relapse_window_minutes": 15,
+    "fast_recovery_min": 5.0,
+    "slow_recovery_min": 10.0,
+    "sustained_episode_min": 15.0,
+    "high_displacement": 2.5
+  },
+  "days": [
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-15",
+      "source": "polardatas",
+      "n_raw_samples": 1679,
+      "n_windows": 420,
+      "n_valid_windows": 420,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-16",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_windows": 1440,
+      "n_valid_windows": 1440,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-17",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_windows": 1440,
+      "n_valid_windows": 1440,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-18",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_windows": 1440,
+      "n_valid_windows": 1440,
+      "n_episodes": 1,
+      "phenotype": {
+        "phenotype": [
+          "adaptive_fast_recovery",
+          "high_displacement_efficient_recovery"
+        ],
+        "n_episodes": 1,
+        "median_TTR_min": 2.0,
+        "median_Dmax_feature": 10.187064435731761,
+        "median_duration_min": 4.0,
+        "relapse_rate": 0.0,
+        "stability": 1.0,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-19",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_windows": 1440,
+      "n_valid_windows": 1440,
+      "n_episodes": 1,
+      "phenotype": {
+        "phenotype": [
+          "adaptive_fast_recovery"
+        ],
+        "n_episodes": 1,
+        "median_TTR_min": 5.0,
+        "median_Dmax_feature": 1.891563549983014,
+        "median_duration_min": 7.0,
+        "relapse_rate": 0.0,
+        "stability": 1.0,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-20",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_windows": 1440,
+      "n_valid_windows": 1440,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-21",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_windows": 1440,
+      "n_valid_windows": 1440,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-22",
+      "source": "polardatas",
+      "n_raw_samples": 4081,
+      "n_windows": 1021,
+      "n_valid_windows": 1020,
+      "n_episodes": 1,
+      "phenotype": {
+        "phenotype": [
+          "adaptive_fast_recovery"
+        ],
+        "n_episodes": 1,
+        "median_TTR_min": 3.0,
+        "median_Dmax_feature": 1.8079214413756464,
+        "median_duration_min": 5.0,
+        "relapse_rate": 0.0,
+        "stability": 1.0,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-18",
+      "source": "polardatas",
+      "n_raw_samples": 385,
+      "n_windows": 7,
+      "n_valid_windows": 7,
+      "n_episodes": 1,
+      "phenotype": {
+        "phenotype": [
+          "slow_recovery",
+          "sustained_operating_shift"
+        ],
+        "n_episodes": 1,
+        "median_TTR_min": 31.0,
+        "median_Dmax_feature": 141.4252160115933,
+        "median_duration_min": 32.0,
+        "relapse_rate": 0.0,
+        "stability": 1.0,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-19",
+      "source": "polardatas",
+      "n_raw_samples": 10,
+      "n_windows": 1,
+      "n_valid_windows": 1,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-20",
+      "source": "polardatas",
+      "n_raw_samples": 117,
+      "n_windows": 3,
+      "n_valid_windows": 3,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-21",
+      "source": "polardatas",
+      "n_raw_samples": 1505,
+      "n_windows": 26,
+      "n_valid_windows": 26,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-23",
+      "source": "polardatas",
+      "n_raw_samples": 877,
+      "n_windows": 11,
+      "n_valid_windows": 10,
+      "n_episodes": 1,
+      "phenotype": {
+        "phenotype": [
+          "slow_recovery",
+          "sustained_operating_shift"
+        ],
+        "n_episodes": 1,
+        "median_TTR_min": 27.0,
+        "median_Dmax_feature": 2.7025567188363206,
+        "median_duration_min": 29.0,
+        "relapse_rate": 0.0,
+        "stability": 1.0,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-09-01",
+      "source": "polardatas",
+      "n_raw_samples": 584,
+      "n_windows": 8,
+      "n_valid_windows": 8,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 22",
+      "user_id": "6a8f9fab74156d89d1dc3c47",
+      "date": "2026-08-27",
+      "source": "polardatas",
+      "n_raw_samples": 390,
+      "n_windows": 13,
+      "n_valid_windows": 4,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 22",
+      "user_id": "6a8f9fab74156d89d1dc3c47",
+      "date": "2026-08-28",
+      "source": "polardatas",
+      "n_raw_samples": 60,
+      "n_windows": 3,
+      "n_valid_windows": 1,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 22",
+      "user_id": "6a8f9fab74156d89d1dc3c47",
+      "date": "2026-09-01",
+      "source": "polardatas",
+      "n_raw_samples": 1705,
+      "n_windows": 29,
+      "n_valid_windows": 17,
+      "n_episodes": 0,
+      "phenotype": {
+        "phenotype": [
+          "stable_or_no_detected_episode"
+        ],
+        "n_episodes": 0
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-04",
+      "source": "polardatas",
+      "n_raw_samples": 44995,
+      "n_windows": 651,
+      "n_valid_windows": 641,
+      "n_episodes": 19,
+      "phenotype": {
+        "phenotype": [
+          "adaptive_fast_recovery",
+          "high_displacement_efficient_recovery",
+          "unstable_relapsing"
+        ],
+        "n_episodes": 19,
+        "median_TTR_min": 3.0,
+        "median_Dmax_feature": 2.9701561123144313,
+        "median_duration_min": 6.0,
+        "relapse_rate": 0.42105263157894735,
+        "stability": 0.5789473684210527,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-05",
+      "source": "polardatas",
+      "n_raw_samples": 91794,
+      "n_windows": 1294,
+      "n_valid_windows": 1276,
+      "n_episodes": 23,
+      "phenotype": {
+        "phenotype": [
+          "intermediate_recovery",
+          "unstable_relapsing"
+        ],
+        "n_episodes": 23,
+        "median_TTR_min": 6.0,
+        "median_Dmax_feature": 3.483326685057989,
+        "median_duration_min": 9.0,
+        "relapse_rate": 0.30434782608695654,
+        "stability": 0.6956521739130435,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-06",
+      "source": "polardatas",
+      "n_raw_samples": 50597,
+      "n_windows": 832,
+      "n_valid_windows": 824,
+      "n_episodes": 15,
+      "phenotype": {
+        "phenotype": [
+          "adaptive_fast_recovery",
+          "high_displacement_efficient_recovery",
+          "unstable_relapsing"
+        ],
+        "n_episodes": 15,
+        "median_TTR_min": 4.0,
+        "median_Dmax_feature": 3.8962994175428305,
+        "median_duration_min": 9.0,
+        "relapse_rate": 0.2,
+        "stability": 0.8,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-07",
+      "source": "polardatas",
+      "n_raw_samples": 25221,
+      "n_windows": 426,
+      "n_valid_windows": 421,
+      "n_episodes": 4,
+      "phenotype": {
+        "phenotype": [
+          "adaptive_fast_recovery",
+          "high_displacement_efficient_recovery",
+          "unstable_relapsing"
+        ],
+        "n_episodes": 4,
+        "median_TTR_min": 2.0,
+        "median_Dmax_feature": 3.5594841935255292,
+        "median_duration_min": 7.0,
+        "relapse_rate": 0.25,
+        "stability": 0.75,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-12",
+      "source": "polardatas",
+      "n_raw_samples": 55976,
+      "n_windows": 939,
+      "n_valid_windows": 932,
+      "n_episodes": 10,
+      "phenotype": {
+        "phenotype": [
+          "adaptive_fast_recovery",
+          "high_displacement_efficient_recovery",
+          "unstable_relapsing"
+        ],
+        "n_episodes": 10,
+        "median_TTR_min": 4.0,
+        "median_Dmax_feature": 2.8404505422889152,
+        "median_duration_min": 8.0,
+        "relapse_rate": 0.1,
+        "stability": 0.9,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-13",
+      "source": "polardatas",
+      "n_raw_samples": 57836,
+      "n_windows": 973,
+      "n_valid_windows": 962,
+      "n_episodes": 20,
+      "phenotype": {
+        "phenotype": [
+          "adaptive_fast_recovery",
+          "high_displacement_efficient_recovery",
+          "unstable_relapsing"
+        ],
+        "n_episodes": 20,
+        "median_TTR_min": 3.0,
+        "median_Dmax_feature": 3.7009303238006517,
+        "median_duration_min": 7.5,
+        "relapse_rate": 0.3,
+        "stability": 0.7,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-14",
+      "source": "polardatas",
+      "n_raw_samples": 38071,
+      "n_windows": 622,
+      "n_valid_windows": 615,
+      "n_episodes": 7,
+      "phenotype": {
+        "phenotype": [
+          "intermediate_recovery",
+          "unstable_relapsing"
+        ],
+        "n_episodes": 7,
+        "median_TTR_min": 8.0,
+        "median_Dmax_feature": 4.093325895550578,
+        "median_duration_min": 14.0,
+        "relapse_rate": 0.2857142857142857,
+        "stability": 0.7142857142857143,
+        "note": "Exploratory phenotype; calibrate thresholds on study data."
+      },
+      "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
+    }
+  ],
+  "comparison": [
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-15",
+      "source": "polardatas",
+      "n_raw_samples": 1679,
+      "n_valid_windows": 420,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-16",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_valid_windows": 1440,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-17",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_valid_windows": 1440,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-18",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_valid_windows": 1440,
+      "n_episodes": 1,
+      "phenotype": [
+        "adaptive_fast_recovery",
+        "high_displacement_efficient_recovery"
+      ],
+      "median_TTR_min": 2.0,
+      "median_Dmax_feature": 10.1870644357,
+      "median_duration_min": 4.0,
+      "relapse_rate": 0.0,
+      "stability": 1.0,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-19",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_valid_windows": 1440,
+      "n_episodes": 1,
+      "phenotype": [
+        "adaptive_fast_recovery"
+      ],
+      "median_TTR_min": 5.0,
+      "median_Dmax_feature": 1.89156355,
+      "median_duration_min": 7.0,
+      "relapse_rate": 0.0,
+      "stability": 1.0,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-20",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_valid_windows": 1440,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-21",
+      "source": "polardatas",
+      "n_raw_samples": 5760,
+      "n_valid_windows": 1440,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-07-22",
+      "source": "polardatas",
+      "n_raw_samples": 4081,
+      "n_valid_windows": 1020,
+      "n_episodes": 1,
+      "phenotype": [
+        "adaptive_fast_recovery"
+      ],
+      "median_TTR_min": 3.0,
+      "median_Dmax_feature": 1.8079214414,
+      "median_duration_min": 5.0,
+      "relapse_rate": 0.0,
+      "stability": 1.0,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-18",
+      "source": "polardatas",
+      "n_raw_samples": 385,
+      "n_valid_windows": 7,
+      "n_episodes": 1,
+      "phenotype": [
+        "slow_recovery",
+        "sustained_operating_shift"
+      ],
+      "median_TTR_min": 31.0,
+      "median_Dmax_feature": 141.4252160116,
+      "median_duration_min": 32.0,
+      "relapse_rate": 0.0,
+      "stability": 1.0,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-19",
+      "source": "polardatas",
+      "n_raw_samples": 10,
+      "n_valid_windows": 1,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-20",
+      "source": "polardatas",
+      "n_raw_samples": 117,
+      "n_valid_windows": 3,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-21",
+      "source": "polardatas",
+      "n_raw_samples": 1505,
+      "n_valid_windows": 26,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-08-23",
+      "source": "polardatas",
+      "n_raw_samples": 877,
+      "n_valid_windows": 10,
+      "n_episodes": 1,
+      "phenotype": [
+        "slow_recovery",
+        "sustained_operating_shift"
+      ],
+      "median_TTR_min": 27.0,
+      "median_Dmax_feature": 2.7025567188,
+      "median_duration_min": 29.0,
+      "relapse_rate": 0.0,
+      "stability": 1.0,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 0",
+      "user_id": "67652725d40f2b664e88deb0",
+      "date": "2026-09-01",
+      "source": "polardatas",
+      "n_raw_samples": 584,
+      "n_valid_windows": 8,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 22",
+      "user_id": "6a8f9fab74156d89d1dc3c47",
+      "date": "2026-08-27",
+      "source": "polardatas",
+      "n_raw_samples": 390,
+      "n_valid_windows": 4,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 22",
+      "user_id": "6a8f9fab74156d89d1dc3c47",
+      "date": "2026-08-28",
+      "source": "polardatas",
+      "n_raw_samples": 60,
+      "n_valid_windows": 1,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 22",
+      "user_id": "6a8f9fab74156d89d1dc3c47",
+      "date": "2026-09-01",
+      "source": "polardatas",
+      "n_raw_samples": 1705,
+      "n_valid_windows": 17,
+      "n_episodes": 0,
+      "phenotype": [
+        "stable_or_no_detected_episode"
+      ],
+      "median_TTR_min": null,
+      "median_Dmax_feature": null,
+      "median_duration_min": null,
+      "relapse_rate": null,
+      "stability": null,
+      "note": null
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-04",
+      "source": "polardatas",
+      "n_raw_samples": 44995,
+      "n_valid_windows": 641,
+      "n_episodes": 19,
+      "phenotype": [
+        "adaptive_fast_recovery",
+        "high_displacement_efficient_recovery",
+        "unstable_relapsing"
+      ],
+      "median_TTR_min": 3.0,
+      "median_Dmax_feature": 2.9701561123,
+      "median_duration_min": 6.0,
+      "relapse_rate": 0.4210526316,
+      "stability": 0.5789473684,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-05",
+      "source": "polardatas",
+      "n_raw_samples": 91794,
+      "n_valid_windows": 1276,
+      "n_episodes": 23,
+      "phenotype": [
+        "intermediate_recovery",
+        "unstable_relapsing"
+      ],
+      "median_TTR_min": 6.0,
+      "median_Dmax_feature": 3.4833266851,
+      "median_duration_min": 9.0,
+      "relapse_rate": 0.3043478261,
+      "stability": 0.6956521739,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-06",
+      "source": "polardatas",
+      "n_raw_samples": 50597,
+      "n_valid_windows": 824,
+      "n_episodes": 15,
+      "phenotype": [
+        "adaptive_fast_recovery",
+        "high_displacement_efficient_recovery",
+        "unstable_relapsing"
+      ],
+      "median_TTR_min": 4.0,
+      "median_Dmax_feature": 3.8962994175,
+      "median_duration_min": 9.0,
+      "relapse_rate": 0.2,
+      "stability": 0.8,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-07",
+      "source": "polardatas",
+      "n_raw_samples": 25221,
+      "n_valid_windows": 421,
+      "n_episodes": 4,
+      "phenotype": [
+        "adaptive_fast_recovery",
+        "high_displacement_efficient_recovery",
+        "unstable_relapsing"
+      ],
+      "median_TTR_min": 2.0,
+      "median_Dmax_feature": 3.5594841935,
+      "median_duration_min": 7.0,
+      "relapse_rate": 0.25,
+      "stability": 0.75,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-12",
+      "source": "polardatas",
+      "n_raw_samples": 55976,
+      "n_valid_windows": 932,
+      "n_episodes": 10,
+      "phenotype": [
+        "adaptive_fast_recovery",
+        "high_displacement_efficient_recovery",
+        "unstable_relapsing"
+      ],
+      "median_TTR_min": 4.0,
+      "median_Dmax_feature": 2.8404505423,
+      "median_duration_min": 8.0,
+      "relapse_rate": 0.1,
+      "stability": 0.9,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-13",
+      "source": "polardatas",
+      "n_raw_samples": 57836,
+      "n_valid_windows": 962,
+      "n_episodes": 20,
+      "phenotype": [
+        "adaptive_fast_recovery",
+        "high_displacement_efficient_recovery",
+        "unstable_relapsing"
+      ],
+      "median_TTR_min": 3.0,
+      "median_Dmax_feature": 3.7009303238,
+      "median_duration_min": 7.5,
+      "relapse_rate": 0.3,
+      "stability": 0.7,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    },
+    {
+      "participant": "Peserta 23",
+      "user_id": "6a98264316b1f3634c777f82",
+      "date": "2026-09-14",
+      "source": "polardatas",
+      "n_raw_samples": 38071,
+      "n_valid_windows": 615,
+      "n_episodes": 7,
+      "phenotype": [
+        "intermediate_recovery",
+        "unstable_relapsing"
+      ],
+      "median_TTR_min": 8.0,
+      "median_Dmax_feature": 4.0933258956,
+      "median_duration_min": 14.0,
+      "relapse_rate": 0.2857142857,
+      "stability": 0.7142857143,
+      "note": "Exploratory phenotype; calibrate thresholds on study data."
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+participant,user_id,date,source,n_raw_samples,n_valid_windows,n_episodes,phenotype,median_TTR_min,median_Dmax_feature,median_duration_min,relapse_rate,stability,note
+Peserta 0,67652725d40f2b664e88deb0,2026-07-15,polardatas,1679,420,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 0,67652725d40f2b664e88deb0,2026-07-16,polardatas,5760,1440,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 0,67652725d40f2b664e88deb0,2026-07-17,polardatas,5760,1440,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 0,67652725d40f2b664e88deb0,2026-07-18,polardatas,5760,1440,1,"['adaptive_fast_recovery', 'high_displacement_efficient_recovery']",2.0,10.187064435731761,4.0,0.0,1.0,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 0,67652725d40f2b664e88deb0,2026-07-19,polardatas,5760,1440,1,['adaptive_fast_recovery'],5.0,1.891563549983014,7.0,0.0,1.0,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 0,67652725d40f2b664e88deb0,2026-07-20,polardatas,5760,1440,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 0,67652725d40f2b664e88deb0,2026-07-21,polardatas,5760,1440,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 0,67652725d40f2b664e88deb0,2026-07-22,polardatas,4081,1020,1,['adaptive_fast_recovery'],3.0,1.8079214413756464,5.0,0.0,1.0,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 0,67652725d40f2b664e88deb0,2026-08-18,polardatas,385,7,1,"['slow_recovery', 'sustained_operating_shift']",31.0,141.4252160115933,32.0,0.0,1.0,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 0,67652725d40f2b664e88deb0,2026-08-19,polardatas,10,1,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 0,67652725d40f2b664e88deb0,2026-08-20,polardatas,117,3,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 0,67652725d40f2b664e88deb0,2026-08-21,polardatas,1505,26,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 0,67652725d40f2b664e88deb0,2026-08-23,polardatas,877,10,1,"['slow_recovery', 'sustained_operating_shift']",27.0,2.7025567188363206,29.0,0.0,1.0,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 0,67652725d40f2b664e88deb0,2026-09-01,polardatas,584,8,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 22,6a8f9fab74156d89d1dc3c47,2026-08-27,polardatas,390,4,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 22,6a8f9fab74156d89d1dc3c47,2026-08-28,polardatas,60,1,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 22,6a8f9fab74156d89d1dc3c47,2026-09-01,polardatas,1705,17,0,['stable_or_no_detected_episode'],,,,,,
+Peserta 23,6a98264316b1f3634c777f82,2026-09-04,polardatas,44995,641,19,"['adaptive_fast_recovery', 'high_displacement_efficient_recovery', 'unstable_relapsing']",3.0,2.9701561123144313,6.0,0.42105263157894735,0.5789473684210527,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 23,6a98264316b1f3634c777f82,2026-09-05,polardatas,91794,1276,23,"['intermediate_recovery', 'unstable_relapsing']",6.0,3.483326685057989,9.0,0.30434782608695654,0.6956521739130435,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 23,6a98264316b1f3634c777f82,2026-09-06,polardatas,50597,824,15,"['adaptive_fast_recovery', 'high_displacement_efficient_recovery', 'unstable_relapsing']",4.0,3.8962994175428305,9.0,0.2,0.8,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 23,6a98264316b1f3634c777f82,2026-09-07,polardatas,25221,421,4,"['adaptive_fast_recovery', 'high_displacement_efficient_recovery', 'unstable_relapsing']",2.0,3.5594841935255292,7.0,0.25,0.75,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 23,6a98264316b1f3634c777f82,2026-09-12,polardatas,55976,932,10,"['adaptive_fast_recovery', 'high_displacement_efficient_recovery', 'unstable_relapsing']",4.0,2.8404505422889152,8.0,0.1,0.9,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 23,6a98264316b1f3634c777f82,2026-09-13,polardatas,57836,962,20,"['adaptive_fast_recovery', 'high_displacement_efficient_recovery', 'unstable_relapsing']",3.0,3.7009303238006517,7.5,0.3,0.7,Exploratory phenotype; calibrate thresholds on study data.
+Peserta 23,6a98264316b1f3634c777f82,2026-09-14,polardatas,38071,615,7,"['intermediate_recovery', 'unstable_relapsing']",8.0,4.093325895550578,14.0,0.2857142857142857,0.7142857142857143,Exploratory phenotype; calibrate thresholds on study data.

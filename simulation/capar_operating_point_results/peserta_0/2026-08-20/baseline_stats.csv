@@ -1,0 +1,2 @@
+activity,baseline_source,n_baseline_windows,hr_mean_center,hr_mean_scale,delta_hr_center,delta_hr_scale,hr_slope_bpm_min_center,hr_slope_bpm_min_scale,rmssd_center,rmssd_scale,sdnn_center,sdnn_scale,dfa_alpha1_center,dfa_alpha1_scale
+Duduk,global_fallback,3,86.95,3.9167871428571286,2.0,1.4826,3.565990552931428,7.855769022347491,17.146428199482248,2.0732863005325584,23.81469778326978,2.315217522733494,1.1835396121577846,0.0004056726399130141

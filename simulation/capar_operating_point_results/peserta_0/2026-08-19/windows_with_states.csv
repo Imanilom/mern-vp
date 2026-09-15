@@ -1,0 +1,2 @@
+window_start,activity,n_samples,coverage,quality_fraction,valid_window,hr_mean,delta_hr,hr_slope_bpm_min,rr_mean_ms,sdnn,rmssd,dfa_alpha1,acc_mean,ecg_mean,z_hr_mean,z_delta_hr,z_hr_slope_bpm_min,z_rmssd,z_sdnn,D_feature,D_mahalanobis,C,V,A,L,D_reg,episode_id,phase,R,dD_dt,D_OP,dDOP_dt,d2DOP_dt2
+2026-08-19 04:37:00,Duduk,10,1.0,1.0,1,84.4,0.0,2.0588235294116477,719.4,27.158792314828727,21.39833846093871,,0.9811605452316148,-0.0379,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,baseline,1.0,,0.0,,
