@@ -322,8 +322,8 @@ function TrajectoryCustomTooltip({ active, payload, label }) {
   );
 }
 
-export function AutonomicProfileView() {
-  const [participants, setParticipants] = useState([]);
+export function AutonomicProfileView({ globalParticipantFilter, globalDateFilter, participants: externalParticipants }) {
+  const [participants, setParticipants] = useState(externalParticipants || []);
   const [selectedUser, setSelectedUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchQ, setSearchQ] = useState('');
@@ -345,7 +345,7 @@ export function AutonomicProfileView() {
   // ── Trajectory Segments State ──
   const [trajectorySegments, setTrajectorySegments] = useState([]);
   const [loadingSegments, setLoadingSegments] = useState(false);
-  const [segmentLimit, setSegmentLimit] = useState(100);
+  const [segmentLimit, setSegmentLimit] = useState(500);
   const [featureTrackView, setFeatureTrackView] = useState('ALL'); // 'ALL' | 'HR' | 'HRV' | 'DFA' | 'DEVIATION'
 
   const [computing, setComputing] = useState(false);
@@ -494,6 +494,21 @@ export function AutonomicProfileView() {
 
   const [selectedDateFilter, setSelectedDateFilter] = useState('ALL');
 
+  // Sync globalDateFilter dari Topbar ke filter lokal view ini
+  useEffect(() => {
+    if (globalDateFilter !== undefined) {
+      // globalDateFilter '' → 'ALL' (semua tanggal)
+      setSelectedDateFilter(globalDateFilter === '' ? 'ALL' : globalDateFilter);
+    }
+  }, [globalDateFilter]);
+
+  // Sync externalParticipants jika di-pass dari App.jsx
+  useEffect(() => {
+    if (externalParticipants && externalParticipants.length > 0) {
+      setParticipants(externalParticipants);
+    }
+  }, [externalParticipants]);
+
   // Format trajectory data for Recharts with explicit Dates
   const chartData = useMemo(() => {
     if (!Array.isArray(trajectorySegments) || trajectorySegments.length === 0) return [];
@@ -555,7 +570,23 @@ export function AutonomicProfileView() {
 
   // Filtered dataset by date
   const activeChartData = useMemo(() => {
-    if (selectedDateFilter === 'ALL') return chartData;
+    // selectedDateFilter bisa berformat:
+    //   'ALL'         → tampilkan semua
+    //   'DD/MM/YYYY'  → dateFull dari chartData lokal (format lokal)
+    //   'YYYY-MM-DD'  → dari globalDateFilter Topbar (ISO format)
+    if (!selectedDateFilter || selectedDateFilter === 'ALL') return chartData;
+
+    // Coba match langsung (DD/MM/YYYY)
+    const directMatch = chartData.filter(d => d.dateFull === selectedDateFilter);
+    if (directMatch.length > 0) return directMatch;
+
+    // Coba konversi dari ISO YYYY-MM-DD → DD/MM/YYYY
+    if (/^\d{4}-\d{2}-\d{2}$/.test(selectedDateFilter)) {
+      const [y, m, d] = selectedDateFilter.split('-');
+      const localFmt = `${d}/${m}/${y}`;
+      return chartData.filter(data => data.dateFull === localFmt);
+    }
+
     return chartData.filter(d => d.dateFull === selectedDateFilter);
   }, [chartData, selectedDateFilter]);
 
@@ -994,8 +1025,10 @@ export function AutonomicProfileView() {
                     fontSize: 11.5, fontWeight: 700, background: '#F8FAFC', color: '#0F2027'
                   }}>
                   <option value={50}>50 Window Terakhir</option>
-                  <option value={100}>100 Window Terakhir</option>
-                  <option value={150}>150 Window Terakhir</option>
+                  <option value={100}>100 Window</option>
+                  <option value={150}>150 Window</option>
+                  <option value={500}>500 Window</option>
+                  <option value={1000}>1000 Window</option>
                 </select>
               </div>
             </div>

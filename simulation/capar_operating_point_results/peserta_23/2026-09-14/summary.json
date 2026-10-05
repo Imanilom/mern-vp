@@ -3,22 +3,34 @@
   "user_id": "6a98264316b1f3634c777f82",
   "date": "2026-09-14",
   "source": "polardatas",
-  "n_raw_samples": 38071,
-  "n_windows": 622,
-  "n_valid_windows": 615,
-  "n_episodes": 7,
+  "n_raw_samples": 47889,
+  "n_windows": 787,
+  "n_valid_windows": 778,
+  "n_episodes": 8,
   "phenotype": {
     "phenotype": [
       "intermediate_recovery",
       "unstable_relapsing"
     ],
-    "n_episodes": 7,
-    "median_TTR_min": 8.0,
-    "median_Dmax_feature": 4.093325895550578,
-    "median_duration_min": 14.0,
-    "relapse_rate": 0.2857142857142857,
-    "stability": 0.7142857142857143,
+    "n_episodes": 8,
+    "median_TTR_min": 6.0,
+    "median_Dmax_feature": 4.541146985522678,
+    "median_duration_min": 13.0,
+    "relapse_rate": 0.25,
+    "stability": 0.75,
     "note": "Exploratory phenotype; calibrate thresholds on study data."
+  },
+  "frequency_domain": {
+    "lf_hz": "0.04-0.15",
+    "hf_hz": "0.15-0.40",
+    "vlf_hz": "0.0033-0.04",
+    "ulf_hz": "0-0.0033",
+    "lf": 14699470.656167306,
+    "hf": 10666628.053666394,
+    "vlf": null,
+    "ulf": null,
+    "duration_seconds": 48799.0,
+    "daily_valid": false
   },
   "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
 }

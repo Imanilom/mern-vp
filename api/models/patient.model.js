@@ -5,6 +5,11 @@ const PatientSchema = mongoose.Schema({
     guid: {
         type: String,
       },
+    user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
       docter : {
         required : true,
         type : mongoose.Schema.Types.ObjectId,
@@ -70,6 +75,11 @@ const PatientSchema = mongoose.Schema({
 }, {
     timestamps: true
 });
+
+PatientSchema.index(
+  { user_id: 1 },
+  { unique: true, partialFilterExpression: { user_id: { $type: 'objectId' } } }
+);
 
 // Create the Patient model
 const Patient = mongoose.model('Patient', PatientSchema);

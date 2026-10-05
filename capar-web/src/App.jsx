@@ -125,41 +125,65 @@ export function App() {
     : (selectedParticipantId || (participants.length > 0 ? (participants[0].id || participants[0]._id) : null));
 
   useEffect(() => {
-    if (!targetPatientId) { setAvailableDates([]); setGlobalDateFilter(''); return; }
-    Promise.all([
-      api.getAnalyzedSegments(targetPatientId, 500).catch(() => null),
-      api.getRawData(targetPatientId).catch(() => null)
-    ]).then(([segmentsRes, rawRes]) => {
-      const dates = new Set();
-      const segments = Array.isArray(segmentsRes?.data) ? segmentsRes.data : (Array.isArray(segmentsRes) ? segmentsRes : []);
-      segments.forEach(seg => {
-        const val = seg.window_start || seg.timestamp || seg.createdAt;
-        if (val) {
-          let ts = NaN;
-          if (typeof val === 'number') ts = val < 10000000000 ? val * 1000 : val;
-          else if (typeof val === 'object' && val.$date) ts = new Date(val.$date).getTime();
-          else ts = new Date(val).getTime();
-          if (!isNaN(ts)) {
-            const dt = new Date(ts);
-            dates.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`);
-          }
+    // Tentukan ID yang akan di-query:
+    //   - Ada filter spesifik → pakai targetPatientId
+    //   - Filter 'ALL' / tidak ada peserta dipilih → pakai 'ALL' (gabungan semua partisipan)
+    const queryId = (globalParticipantFilter !== 'ALL' && targetPatientId)
+      ? targetPatientId
+      : 'ALL';
+
+    // Gunakan endpoint ringan getActiveDates — aggregasi MongoDB tanpa limit.
+    // Ini memastikan semua tanggal aktif (termasuk sebelum baseline mature) tampil.
+    api.getActiveDates(queryId)
+      .then(datesArr => {
+        if (datesArr.length > 0) {
+          setAvailableDates(datesArr);
+          // Default ke tanggal terbaru
+          setGlobalDateFilter(datesArr[datesArr.length - 1]);
+          return;
         }
-      });
-      const rawLogs = Array.isArray(rawRes?.data) ? rawRes.data : (Array.isArray(rawRes) ? rawRes : []);
-      rawLogs.forEach(log => {
-        let ts = NaN;
-        if (log.timestamp) { const n = Number(log.timestamp); ts = n < 10000000000 ? n * 1000 : n; }
-        else if (log.createdAt) ts = new Date(log.createdAt).getTime();
-        if (!isNaN(ts)) {
-          const dt = new Date(ts);
-          dates.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`);
+        // Fallback: ambil dari segments jika endpoint kosong
+        if (queryId !== 'ALL') {
+          return Promise.all([
+            api.getAnalyzedSegments(queryId, 500).catch(() => null),
+            api.getRawData(queryId).catch(() => null)
+          ]).then(([segmentsRes, rawRes]) => {
+            const dates = new Set();
+            const segments = Array.isArray(segmentsRes?.data) ? segmentsRes.data : (Array.isArray(segmentsRes) ? segmentsRes : []);
+            segments.forEach(seg => {
+              const val = seg.window_start || seg.timestamp || seg.createdAt;
+              if (val) {
+                let ts = NaN;
+                if (typeof val === 'number') ts = val < 10000000000 ? val * 1000 : val;
+                else if (typeof val === 'object' && val.$date) ts = new Date(val.$date).getTime();
+                else ts = new Date(val).getTime();
+                if (!isNaN(ts)) {
+                  const dt = new Date(ts);
+                  dates.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`);
+                }
+              }
+            });
+            const rawLogs = Array.isArray(rawRes?.data) ? rawRes.data : (Array.isArray(rawRes) ? rawRes : []);
+            rawLogs.forEach(log => {
+              let ts = NaN;
+              if (log.timestamp) { const n = Number(log.timestamp); ts = n < 10000000000 ? n * 1000 : n; }
+              else if (log.createdAt) ts = new Date(log.createdAt).getTime();
+              if (!isNaN(ts)) {
+                const dt = new Date(ts);
+                dates.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`);
+              }
+            });
+            const fallbackDates = Array.from(dates).sort();
+            setAvailableDates(fallbackDates);
+            setGlobalDateFilter(fallbackDates.length > 0 ? fallbackDates[fallbackDates.length - 1] : '');
+          });
+        } else {
+          setAvailableDates([]);
+          setGlobalDateFilter('');
         }
-      });
-      const datesArr = Array.from(dates).sort();
-      setAvailableDates(datesArr);
-      setGlobalDateFilter(datesArr.length > 0 ? datesArr[datesArr.length - 1] : '');
-    }).catch(() => { setAvailableDates([]); setGlobalDateFilter(''); });
-  }, [targetPatientId]);
+      })
+      .catch(() => { setAvailableDates([]); setGlobalDateFilter(''); });
+  }, [targetPatientId, globalParticipantFilter]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -302,7 +326,11 @@ export function App() {
             <ZeroShotView globalParticipantFilter={globalParticipantFilter} />
           )}
           {tab('autonomic-profile',
-            <AutonomicProfileView />
+            <AutonomicProfileView
+              globalParticipantFilter={globalParticipantFilter}
+              globalDateFilter={globalDateFilter}
+              participants={participants}
+            />
           )}
           {tab('clinical-vulnerability',
             <ClinicalVulnerabilityView targetPatientId={targetPatientId} participants={participants} />

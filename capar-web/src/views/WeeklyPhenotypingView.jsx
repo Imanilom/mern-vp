@@ -29,7 +29,7 @@ const Q_METADATA = [
   { id: 'Q6', title: 'Kesesuaian Konteks Gerak', vectorKey: 'C', icon: 'fa-person-walking', color: '#2563EB' },
   { id: 'Q7', title: 'Pola Sirkadian Diurnal', vectorKey: 'T', icon: 'fa-cloud-sun', color: '#EA580C' },
   { id: 'Q8', title: 'Konsistensi Intra-Minggu (CV)', vectorKey: 'K', icon: 'fa-calendar-check', color: '#0D9488' },
-  { id: 'Q9', title: 'Anomali Istirahat (Unexplained)', vectorKey: 'U', icon: 'fa-triangle-exclamation', color: '#DC2626' },
+  { id: 'Q9', title: 'Lonjakan Denyut Tanpa Aktivitas', vectorKey: 'U', icon: 'fa-triangle-exclamation', color: '#DC2626' },
   { id: 'Q10', title: 'Sintesis Fenotipe Mingguan', vectorKey: 'Phi', icon: 'fa-dna', color: '#4F46E5' },
 ];
 
@@ -45,7 +45,7 @@ const Q_ZONES = {
   Q6:  { critical: 50, risk: 68, borderline: 82, crsLink: 'CR' }, // Konteks → Cardiac Reserve
   Q7:  { critical: 45, risk: 65, borderline: 80, crsLink: 'AR' }, // Sirkadian → Autonomic Reserve
   Q8:  { critical: 50, risk: 70, borderline: 83, crsLink: 'RS' }, // Konsistensi → Regulation Stability
-  Q9:  { critical: 35, risk: 55, borderline: 72, crsLink: 'CV' }, // Anomali Istirahat → Clinical Vulnerability
+  Q9:  { critical: 35, risk: 55, borderline: 72, crsLink: 'CV' }, // Lonjakan Tanpa Aktivitas → Clinical Vulnerability
   Q10: { critical: 45, risk: 65, borderline: 80, crsLink: 'CRS' }, // Sintesis → Global CRS
 };
 
@@ -404,7 +404,7 @@ export const WeeklyPhenotypingView = ({ participantId, targetPatientId, particip
         id: 'Q9',
         code: 'N_unexp',
         vectorKey: 'U',
-        title: 'Q9 • Deviasi Istirahat Tak-Terjelaskan',
+        title: 'Q9 • Lonjakan Denyut Tanpa Aktivitas Terukur',
         color: '#8B5CF6',
         actual_population: '0.05 ep/hari kandidat unexplained kohor',
         actual_personal: '0.02 ep/hari (2 kandidat lolos eksklusi)',

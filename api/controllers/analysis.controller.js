@@ -948,6 +948,70 @@ export async function getAnalyzedSegments(userId, limit = 150) {
     .lean();
 }
 
+/**
+ * Kembalikan semua tanggal unik (format 'YYYY-MM-DD') yang punya segment valid
+ * untuk user tertentu, tanpa limit — ringan karena hanya aggregasi distinct date.
+ * Digunakan oleh Topbar agar semua hari aktif bisa dipilih, termasuk hari saat
+ * baseline belum mature / belum ter-analisis.
+ *
+ * userId = 'ALL' → tanggal gabungan dari SEMUA partisipan.
+ */
+export async function getActiveDates(userId) {
+  let matchQuery = { is_valid: true };
+
+  if (userId && userId !== 'ALL' && userId !== '000000000000000000000000') {
+    const isObjId = mongoose.Types.ObjectId.isValid(userId);
+    const user = await User.findOne(
+      isObjId
+        ? { $or: [{ _id: new mongoose.Types.ObjectId(userId) }, { guid: userId }] }
+        : { guid: userId }
+    ).lean().catch(() => null);
+
+    const validIds = [];
+    if (user?._id) validIds.push(user._id);
+    if (isObjId) validIds.push(new mongoose.Types.ObjectId(userId));
+
+    if (validIds.length > 0) {
+      matchQuery.user_id = { $in: validIds };
+    } else {
+      // userId diberikan tapi user tidak ditemukan — kembalikan array kosong
+      return [];
+    }
+  }
+  // userId === 'ALL' → matchQuery hanya { is_valid: true }, no user_id filter
+
+  const result = await Segment.aggregate([
+    { $match: matchQuery },
+    {
+      $addFields: {
+        // Normalkan window_start ke epoch ms (handle detik atau ms)
+        ts_ms: {
+          $cond: [
+            { $lt: ['$window_start', 10000000000] },   // < 10^10 → satuan detik
+            { $multiply: ['$window_start', 1000] },
+            '$window_start'
+          ]
+        }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: '%Y-%m-%d',
+            date: { $toDate: '$ts_ms' },
+            timezone: '+07:00'   // WIB
+          }
+        }
+      }
+    },
+    { $sort: { _id: 1 } },
+    { $project: { _id: 0, date: '$_id' } }
+  ]);
+
+  return result.map(r => r.date).filter(Boolean);
+}
+
 // ── Baseline Management ───────────────────────────────────────────────────────
 
 export async function freezeBaseline(baselineId, isFrozen) {

@@ -75,7 +75,8 @@ export const Topbar = ({
           </>
         )}
 
-        {activeParticipantId && availableDates.length > 0 && (
+        {/* Tampilkan date picker jika ada peserta spesifik ATAU mode ALL dengan data tanggal */}
+        {(activeParticipantId || globalParticipantFilter === 'ALL') && (
           <label className="topbar-search m-0" style={{ background: 'var(--surface)' }}>
             <i className="fa-regular fa-calendar" style={{ color: 'var(--teal)' }}></i>
             <select
@@ -86,7 +87,9 @@ export const Topbar = ({
                 color: 'var(--ink)', fontSize: 12, cursor: 'pointer'
               }}
             >
-              <option value="" disabled>Pilih Tanggal</option>
+              <option value="">
+                📅 Semua Tanggal{availableDates.length > 0 ? ` (${availableDates.length} hari)` : ''}
+              </option>
               {availableDates.map(dateStr => (
                 <option key={dateStr} value={dateStr}>{dateStr}</option>
               ))}

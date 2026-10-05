@@ -6,19 +6,31 @@
   "n_raw_samples": 91794,
   "n_windows": 1294,
   "n_valid_windows": 1276,
-  "n_episodes": 23,
+  "n_episodes": 22,
   "phenotype": {
     "phenotype": [
       "intermediate_recovery",
       "unstable_relapsing"
     ],
-    "n_episodes": 23,
+    "n_episodes": 22,
     "median_TTR_min": 6.0,
-    "median_Dmax_feature": 3.483326685057989,
-    "median_duration_min": 9.0,
-    "relapse_rate": 0.30434782608695654,
-    "stability": 0.6956521739130435,
+    "median_Dmax_feature": 3.514100867081721,
+    "median_duration_min": 9.5,
+    "relapse_rate": 0.3181818181818182,
+    "stability": 0.6818181818181819,
     "note": "Exploratory phenotype; calibrate thresholds on study data."
+  },
+  "frequency_domain": {
+    "lf_hz": "0.04-0.15",
+    "hf_hz": "0.15-0.40",
+    "vlf_hz": "0.0033-0.04",
+    "ulf_hz": "0-0.0033",
+    "lf": 27597324.84950518,
+    "hf": 11468928.531270167,
+    "vlf": null,
+    "ulf": null,
+    "duration_seconds": 81033.0,
+    "daily_valid": false
   },
   "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
 }

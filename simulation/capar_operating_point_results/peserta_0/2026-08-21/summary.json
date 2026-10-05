@@ -13,5 +13,17 @@
     ],
     "n_episodes": 0
   },
+  "frequency_domain": {
+    "lf_hz": "0.04-0.15",
+    "hf_hz": "0.15-0.40",
+    "vlf_hz": "0.0033-0.04",
+    "ulf_hz": "0-0.0033",
+    "lf": 321162.9852624055,
+    "hf": 102981.12655855108,
+    "vlf": null,
+    "ulf": null,
+    "duration_seconds": 1504.0,
+    "daily_valid": false
+  },
   "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
 }

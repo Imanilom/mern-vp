@@ -21,6 +21,12 @@ const SegmentSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  patient_app_sample_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PatientAppWearableSample',
+    default: null,
+    index: true,
+  },
 
   /**
    * Tipe pipeline:

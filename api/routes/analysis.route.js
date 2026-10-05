@@ -31,6 +31,7 @@ import {
   getCalibrationHistory,
   getPersonalExperienceMemory,
   getSegmentAuditWindows,
+  getActiveDates,
 } from '../controllers/analysis.controller.js';
 import { calculateBrierScoreHandler, getPredictionEvalMetrics, getAblationResults, runAblationExperiment } from '../controllers/evaluation.controller.js';
 import { getNextStateForecast, getRecoveryEstimate, getPersonalTransitions, getRecoveryTimeToRecoveredPrediction, getMarkovModelHandler } from '../controllers/capar.prediction.controller.js';
@@ -105,6 +106,16 @@ router.get('/segments/:userId', verifyToken, resolveUserIdParam, async (req, res
     const limit = parseInt(req.query.limit) || 100;
     const data = await getAnalyzedSegments(req.params.userId, limit);
     res.json({ success: true, data, count: data.length });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** GET /api/analysis/active-dates/:userId — semua tanggal unik aktif (no limit) */
+router.get('/active-dates/:userId', verifyToken, resolveUserIdParam, async (req, res) => {
+  try {
+    const dates = await getActiveDates(req.params.userId);
+    res.json({ success: true, data: dates, count: dates.length });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

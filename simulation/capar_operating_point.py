@@ -110,6 +110,117 @@ def slope_per_minute(values: np.ndarray, timestamps: pd.Series) -> float:
     return float(np.polyfit(seconds[mask], numeric[mask], 1)[0] * 60.0)
 
 
+def rr_frequency_metrics(rr_ms: np.ndarray, timestamps: pd.Series) -> dict[str, Any]:
+    """Calculate RR power bands from a uniformly sampled 4 Hz tachogram.
+
+    VLF and ULF are deliberately withheld unless the valid RR record spans a
+    complete 24 hours, because shorter records cannot resolve those bands.
+    """
+    frame = pd.DataFrame({
+        "timestamp": pd.to_datetime(timestamps, errors="coerce"),
+        "rr_ms": pd.to_numeric(rr_ms, errors="coerce"),
+    }).dropna().sort_values("timestamp")
+    frame = frame[frame.rr_ms.between(250.0, 2000.0)]
+    if len(frame) < 4:
+        return {"lf": None, "hf": None, "vlf": None, "ulf": None, "duration_seconds": 0.0, "daily_valid": False}
+
+    elapsed = (frame.timestamp - frame.timestamp.iloc[0]).dt.total_seconds().to_numpy(float)
+    rr_values = frame.rr_ms.to_numpy(float)
+    duration_seconds = float(elapsed[-1])
+    if duration_seconds <= 0:
+        return {"lf": None, "hf": None, "vlf": None, "ulf": None, "duration_seconds": 0.0, "daily_valid": False}
+
+    sample_rate = 4.0
+    sample_count = max(16, 2 ** int(np.floor(np.log2(duration_seconds * sample_rate))))
+    grid = np.arange(sample_count, dtype=float) / sample_rate
+    tachogram = np.interp(grid, elapsed, rr_values)
+    tachogram -= np.mean(tachogram)
+    spectrum = np.fft.rfft(tachogram)
+    frequencies = np.fft.rfftfreq(sample_count, d=1.0 / sample_rate)
+    power = (np.abs(spectrum) ** 2) / (sample_count * sample_rate)
+
+    def band_power(low: float, high: float) -> float:
+        mask = (frequencies >= low) & (frequencies < high)
+        return float(np.sum(power[mask]))
+
+    daily_valid = duration_seconds >= 24 * 60 * 60
+    return {
+        "lf": band_power(0.04, 0.15),
+        "hf": band_power(0.15, 0.40),
+        "vlf": band_power(0.0033, 0.04) if daily_valid else None,
+        "ulf": band_power(0.0, 0.0033) if daily_valid else None,
+        "duration_seconds": duration_seconds,
+        "daily_valid": daily_valid,
+    }
+
+
+def raw_docs_to_frame(docs: list[dict[str, Any]]) -> pd.DataFrame:
+    rows = []
+    for doc in docs:
+        timestamp = timestamp_from_mongo(doc.get("timestamp"))
+        if pd.isna(timestamp):
+            timestamp = pd.to_datetime(
+                f"{doc.get('date_created') or ''} {doc.get('time_created') or '00:00:00'}",
+                dayfirst=True,
+                errors="coerce",
+            )
+        rr = as_float(doc.get("rr"))
+        if not np.isfinite(rr):
+            rr = as_float(doc.get("rrms"))
+        rows.append({"timestamp": timestamp, "rr_ms": rr})
+    return pd.DataFrame(rows).dropna(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
+
+
+def find_users_with_vlf_ulf(db, participant_names: list[str] | None = None) -> list[dict[str, Any]]:
+    if participant_names:
+        targets = resolve_targets(db, participant_names)
+    else:
+        targets = list(db.users.find({}, {"_id": 1, "name": 1, "email": 1, "guid": 1}).sort("_id", 1))
+
+    results = []
+    raw_projection = {
+        "timestamp": 1, "date_created": 1, "time_created": 1,
+        "rr": 1, "rrms": 1,
+    }
+    for user in targets:
+        user_id = user["_id"]
+        label = str(user.get("name") or user.get("email") or user_id)
+        docs = list(db.polardatas.find({"user_id": user_id}, raw_projection).sort("timestamp", 1))
+        raw_frame = raw_docs_to_frame(docs)
+        if raw_frame.empty:
+            continue
+
+        raw_frame["date"] = raw_frame["timestamp"].dt.strftime("%Y-%m-%d")
+        valid_dates = []
+        for date, day_raw in raw_frame.groupby("date", sort=True):
+            if day_raw["timestamp"].dt.tz is not None:
+                start_ts = day_raw["timestamp"].min().tz_localize(None)
+                end_ts = day_raw["timestamp"].max().tz_localize(None)
+            else:
+                start_ts = day_raw["timestamp"].min()
+                end_ts = day_raw["timestamp"].max()
+            if (end_ts - start_ts).total_seconds() < 24 * 60 * 60:
+                continue
+            metrics = rr_frequency_metrics(day_raw["rr_ms"].to_numpy(), day_raw["timestamp"])
+            if metrics.get("daily_valid") and metrics.get("vlf") is not None and metrics.get("ulf") is not None:
+                valid_dates.append({
+                    "date": date,
+                    "lf": metrics.get("lf"),
+                    "hf": metrics.get("hf"),
+                    "vlf": metrics.get("vlf"),
+                    "ulf": metrics.get("ulf"),
+                    "duration_seconds": metrics.get("duration_seconds"),
+                })
+
+        if valid_dates:
+            results.append({
+                "participant": label,
+                "user_id": str(user_id),
+                "dates_with_vlf_ulf": valid_dates,
+            })
+    return results
+
+
 def resolve_targets(db, requested: list[str]) -> list[dict[str, Any]]:
     users = list(db.users.find({}, {"_id": 1, "name": 1, "email": 1, "guid": 1}).sort("_id", 1))
     targets = []
@@ -502,6 +613,84 @@ def save_plots(windows: pd.DataFrame, episodes: pd.DataFrame, outdir: Path, labe
     fig.savefig(figures / f"{safe_label}_cvalr.png", dpi=160)
     plt.close(fig)
 
+def save_frequency_plot(metrics: dict[str, Any], outdir: Path, label: str) -> None:
+    figures = outdir / "figures"
+    figures.mkdir(parents=True, exist_ok=True)
+    bands = ["LF", "HF", "VLF", "ULF"]
+    values = [metrics.get("lf"), metrics.get("hf"), metrics.get("vlf"), metrics.get("ulf")]
+    plotted_values = [np.nan if value is None else value for value in values]
+    duration_seconds = float(metrics.get("duration_seconds") or 0.0)
+    duration_label = f"{duration_seconds / 3600.0:.1f} jam" if duration_seconds > 0 else "RR tidak tersedia"
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(bands, plotted_values, color="#2563EB", marker="o", linewidth=2.5, markersize=7)
+    for band, value in zip(bands, values):
+        if value is None:
+            if band in {"VLF", "ULF"}:
+                ax.annotate(f"N/A\n({duration_label})", (band, 0), textcoords="offset points", xytext=(0, 8),
+                            ha="center", fontsize=8, color="#B91C1C")
+            continue
+        ax.annotate(f"{value:.2f}", (band, value), textcoords="offset points", xytext=(0, 8),
+                    ha="center", fontsize=9, color="#1E293B")
+    if not metrics.get("daily_valid"):
+        ax.text(0.5, 0.02, f"VLF/ULF tidak valid: durasi RR = {duration_label}", transform=ax.transAxes,
+                ha="center", va="bottom", fontsize=9, color="#B91C1C", weight="bold")
+    ax.set_title(f"HRV Frequency-Domain Bands - {label}")
+    ax.set_ylabel("Power (ms^2)")
+    ax.grid(True, linestyle="--", alpha=0.3)
+    ax.text(0.01, 0.98, "RR tachogram, 4 Hz resampling | LF 0.04-0.15 | HF 0.15-0.40 | VLF 0.0033-0.04 | ULF 0-0.0033 Hz",
+            transform=ax.transAxes, va="top", fontsize=8, color="#475569")
+    fig.tight_layout()
+    fig.savefig(figures / "frequency_domain.png", dpi=160)
+    plt.close(fig)
+
+
+def save_autonomic_balance_timeline(daily_summaries: list[dict[str, Any]], outdir: Path, participant_names: list[str]) -> None:
+    if not daily_summaries:
+        return
+    records = []
+    for entry in daily_summaries:
+        freq = entry.get("frequency_domain") or {}
+        participant = entry.get("participant")
+        if participant not in participant_names:
+            continue
+        records.append({
+            "participant": participant,
+            "time": pd.to_datetime(entry.get("date")),
+            "lf": freq.get("lf"),
+            "hf": freq.get("hf"),
+            "vlf": freq.get("vlf"),
+            "ulf": freq.get("ulf"),
+            "daily_valid": bool(freq.get("daily_valid", False)),
+            "duration_seconds": float(freq.get("duration_seconds") or 0.0),
+        })
+    if not records:
+        return
+
+    df = pd.DataFrame(records).sort_values(["participant", "time"]).reset_index(drop=True)
+    colors = {name: color for name, color in zip(participant_names, ["#2563EB", "#059669", "#7C3AED"]) }
+    fig, ax = plt.subplots(figsize=(14, 7))
+    for participant in participant_names:
+        subset = df[df["participant"] == participant].sort_values("time")
+        if subset.empty:
+            continue
+        color = colors.get(participant, "#475569")
+        ax.plot(subset["time"], subset["lf"], label=f"{participant} - LF", color=color, marker="o", linewidth=2.0)
+        ax.plot(subset["time"], subset["hf"], label=f"{participant} - HF", color=color, linestyle="--", marker="s", linewidth=2.0)
+        for _, row in subset.iterrows():
+            if not row["daily_valid"]:
+                hours = row["duration_seconds"] / 3600.0
+                ax.annotate(f"VLF/ULF\n{hours:.1f} jam", (row["time"], row["lf"]), textcoords="offset points", xytext=(8, 6),
+                            fontsize=7, color="#B91C1C", ha="left")
+    ax.set_title("Dinamika Autonomic Balance dari Waktu ke Waktu")
+    ax.set_xlabel("Waktu")
+    ax.set_ylabel("Power (ms^2)")
+    ax.grid(True, linestyle="--", alpha=0.3)
+    ax.legend(ncol=2, fontsize=9)
+    fig.autofmt_xdate(rotation=30)
+    fig.tight_layout()
+    fig.savefig(outdir / "figures" / "autonomic_balance_timeline.png", dpi=180)
+    plt.close(fig)
+
 
 def load_from_mongo(uri: str, database: str, participant_names: list[str], cfg: Config, outdir: Path) -> dict[str, Any]:
     try:
@@ -512,9 +701,10 @@ def load_from_mongo(uri: str, database: str, participant_names: list[str], cfg: 
     client.admin.command("ping")
     db = client[database]
     (outdir / "figures").mkdir(parents=True, exist_ok=True)
-    targets = resolve_targets(db, participant_names)
+    targets = resolve_targets(db, participant_names) if participant_names else list(db.users.find({}, {"_id": 1, "name": 1, "email": 1, "guid": 1}).sort("_id", 1))
     daily_summaries = []
     comparison_rows = []
+    users_with_vlf_ulf = find_users_with_vlf_ulf(db)
     for user in targets:
         user_id = user["_id"]
         label = str(user.get("name") or user.get("email") or user_id)
@@ -525,12 +715,14 @@ def load_from_mongo(uri: str, database: str, participant_names: list[str], cfg: 
             "activity": 1,
         }
         docs = list(db.polardatas.find({"user_id": user_id}, raw_projection).sort("timestamp", 1))
+        raw_frame = raw_docs_to_frame(docs)
         all_windows = polar_data_to_windows(docs, cfg)
         if all_windows.empty:
             raise ValueError(f"Tidak ada segmen untuk {label}")
         participant_dir = outdir / label.lower().replace(" ", "_")
         participant_dir.mkdir(parents=True, exist_ok=True)
         all_windows["date"] = pd.to_datetime(all_windows["window_start"]).dt.strftime("%Y-%m-%d")
+        raw_frame["date"] = raw_frame["timestamp"].dt.strftime("%Y-%m-%d")
         for date, day_input in all_windows.groupby("date", sort=True):
             windows, baseline, covariances, features = build_baseline(day_input.drop(columns=["date"]), cfg)
             windows = add_states(windows, covariances, features)
@@ -541,6 +733,9 @@ def load_from_mongo(uri: str, database: str, participant_names: list[str], cfg: 
             windows.to_csv(day_dir / "windows_with_states.csv", index=False)
             baseline.to_csv(day_dir / "baseline_stats.csv", index=False)
             episodes.to_csv(day_dir / "episodes.csv", index=False)
+            day_raw = raw_frame[raw_frame["date"] == date]
+            frequency_metrics = rr_frequency_metrics(day_raw["rr_ms"].to_numpy(), day_raw["timestamp"])
+            save_frequency_plot(frequency_metrics, day_dir, f"{label} {date}")
             summary = {
                 "participant": label,
                 "user_id": str(user_id),
@@ -551,6 +746,13 @@ def load_from_mongo(uri: str, database: str, participant_names: list[str], cfg: 
                 "n_valid_windows": int(windows.valid_window.sum()),
                 "n_episodes": len(episodes),
                 "phenotype": phenotype(episodes, cfg),
+                "frequency_domain": {
+                    "lf_hz": "0.04-0.15",
+                    "hf_hz": "0.15-0.40",
+                    "vlf_hz": "0.0033-0.04",
+                    "ulf_hz": "0-0.0033",
+                    **frequency_metrics,
+                },
                 "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds.",
             }
             (day_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -580,7 +782,14 @@ def load_from_mongo(uri: str, database: str, participant_names: list[str], cfg: 
     comparison = pd.DataFrame(comparison_rows)
     comparison.to_csv(outdir / "participant_comparison.csv", index=False)
     comparison_records = json.loads(comparison.to_json(orient="records"))
-    (outdir / "daily_summary.json").write_text(json.dumps({"config": asdict(cfg), "days": daily_summaries, "comparison": comparison_records}, indent=2, ensure_ascii=False), encoding="utf-8")
+    output_payload = {
+        "config": asdict(cfg),
+        "days": daily_summaries,
+        "comparison": comparison_records,
+        "users_with_vlf_ulf": users_with_vlf_ulf,
+    }
+    (outdir / "daily_summary.json").write_text(json.dumps(output_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    save_autonomic_balance_timeline(daily_summaries, outdir, participant_names)
     if len(comparison_rows) > 0:
         fig, ax = plt.subplots(figsize=(max(10, len(comparison) * 0.85), 6))
         labels = comparison["participant"] + "\n" + comparison["date"]
@@ -604,7 +813,7 @@ def load_from_mongo(uri: str, database: str, participant_names: list[str], cfg: 
         fig.savefig(outdir / "figures" / "participant_episode_comparison.png", dpi=160)
         plt.close(fig)
     client.close()
-    return {"days": daily_summaries, "comparison": comparison_records}
+    return {"days": daily_summaries, "comparison": comparison_records, "users_with_vlf_ulf": users_with_vlf_ulf}
 
 
 def main() -> None:
@@ -623,7 +832,11 @@ def main() -> None:
     if not args.mongo:
         raise ValueError("Gunakan --mongo untuk mengambil data peserta dari MongoDB")
     result = load_from_mongo(args.mongo_uri, args.database, args.participants, cfg, args.outdir)
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    print(json.dumps({
+        "days": result["days"],
+        "comparison": result["comparison"],
+        "users_with_vlf_ulf": result.get("users_with_vlf_ulf", []),
+    }, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

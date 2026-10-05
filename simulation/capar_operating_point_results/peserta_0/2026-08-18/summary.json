@@ -20,5 +20,17 @@
     "stability": 1.0,
     "note": "Exploratory phenotype; calibrate thresholds on study data."
   },
+  "frequency_domain": {
+    "lf_hz": "0.04-0.15",
+    "hf_hz": "0.15-0.40",
+    "vlf_hz": "0.0033-0.04",
+    "ulf_hz": "0-0.0033",
+    "lf": 113875.99794474662,
+    "hf": 80842.03589188361,
+    "vlf": null,
+    "ulf": null,
+    "duration_seconds": 3302.0,
+    "daily_valid": false
+  },
   "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
 }

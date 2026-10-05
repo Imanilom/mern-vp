@@ -98,6 +98,14 @@ const UserSchema = new mongoose.Schema(
   }
 );
 
+UserSchema.virtual('patient_profile', {
+  ref: 'PatientAppProfile',
+  localField: '_id',
+  foreignField: 'account_id',
+  justOne: true,
+  match: { account_type: 'user' },
+});
+
 const User = mongoose.model("User", UserSchema); // Capitalized the model name
 
 export default User;

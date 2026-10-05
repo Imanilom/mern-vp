@@ -15,11 +15,23 @@
     ],
     "n_episodes": 10,
     "median_TTR_min": 4.0,
-    "median_Dmax_feature": 2.8404505422889152,
+    "median_Dmax_feature": 2.840453716485724,
     "median_duration_min": 8.0,
     "relapse_rate": 0.1,
     "stability": 0.9,
     "note": "Exploratory phenotype; calibrate thresholds on study data."
+  },
+  "frequency_domain": {
+    "lf_hz": "0.04-0.15",
+    "hf_hz": "0.15-0.40",
+    "vlf_hz": "0.0033-0.04",
+    "ulf_hz": "0-0.0033",
+    "lf": 14322925.241780512,
+    "hf": 6436008.44275878,
+    "vlf": null,
+    "ulf": null,
+    "duration_seconds": 65557.0,
+    "daily_valid": false
   },
   "warning": "Daily CVALR are model-derived proxies; validate weights and thresholds."
 }

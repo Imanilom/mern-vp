@@ -496,6 +496,23 @@ export const api = {
     }
   },
 
+  /**
+   * Ambil semua tanggal unik aktif (format 'YYYY-MM-DD') untuk satu user,
+   * tanpa limit — menggunakan MongoDB aggregation di backend.
+   * Digunakan oleh Topbar agar semua hari aktif tampil di dropdown,
+   * termasuk hari sebelum baseline mature.
+   */
+  async getActiveDates(userId) {
+    if (!userId) return [];
+    try {
+      const { data } = await axios.get(`/analysis/active-dates/${userId}`);
+      return Array.isArray(data?.data) ? data.data : [];
+    } catch (err) {
+      console.error('getActiveDates Error:', err);
+      return [];
+    }
+  },
+
   // --- ACTIVITY ROUTES ---
   async getActivity() {
     return axios.get('/activity/getActivity').then(res => res.data);
