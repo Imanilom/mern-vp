@@ -106,6 +106,11 @@ const checkInSymptoms = [
   'other',
 ];
 
+export function registrationEmailPattern(email) {
+  const escapedEmail = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escapedEmail}$`, 'i');
+}
+
 export function validateRegistration(body) {
   requireObject(body, 'Data pendaftaran');
   rejectUnknownFields(body, new Set(['name', 'email', 'password', 'phone_number']), 'Field');

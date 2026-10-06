@@ -8,6 +8,7 @@ import {
   validateRegistration,
   validateWearableStream,
   validateWearableSample,
+  registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
 
 test('registration normalizes email and requires account fields', () => {
@@ -27,6 +28,13 @@ test('registration normalizes email and requires account fields', () => {
     }),
     { statusCode: 400 }
   );
+});
+
+test('registration duplicate lookup is exact and case-insensitive', () => {
+  const pattern = registrationEmailPattern('person+tag@example.com');
+  assert.equal(pattern.test('PERSON+TAG@EXAMPLE.COM'), true);
+  assert.equal(pattern.test('other-person+tag@example.com'), false);
+  assert.equal(pattern.test('person+tag@example.net'), false);
 });
 
 test('profile only accepts known and bounded patient fields', () => {

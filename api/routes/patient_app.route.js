@@ -48,3 +48,4 @@ router.post('/wearable/stream', verifyToken, streamPatientAppWearableData);
 router.get('/wearable/samples', verifyToken, listPatientAppWearableSamples);
 
 export default router;
+

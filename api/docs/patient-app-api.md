@@ -12,6 +12,9 @@ supported by the same patient APIs and can be linked to a same-email `User`
 account to share CAPAR analysis data.
 Patient-app accounts use the existing `POST /api/auth/signin` endpoint for
 subsequent logins.
+Registration checks for an exact email match in both `User` and legacy
+`Patient` collections without regard to letter case before creating either
+account or profile document.
 
 ## Register
 

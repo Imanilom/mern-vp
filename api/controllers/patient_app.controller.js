@@ -47,6 +47,7 @@ import {
   validatePatientEvent,
   validateWearableStream,
   validateWearableSample,
+  registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
 
 async function getAccount(req) {
@@ -135,11 +136,16 @@ function publicAccount(account, accountType) {
 
 export async function registerPatientAppAccount(req, res) {
   const input = validateRegistration(req.body);
+  const emailPattern = registrationEmailPattern(input.email);
   const [existingUser, existingPatient] = await Promise.all([
-    User.findOne({ email: input.email }).select('_id'),
-    Patient.findOne({ email: input.email }).select('_id'),
+    User.findOne({ email: emailPattern }).select('_id'),
+    Patient.findOne({ email: emailPattern }).select('_id'),
   ]);
   if (existingUser || existingPatient) {
+    console.warn('[PatientApp] Registration rejected for an existing account.', {
+      collection: existingUser ? 'users' : 'patients',
+      accountId: String((existingUser || existingPatient)._id),
+    });
     throw errorHandler(409, 'Email sudah terdaftar.');
   }
 
@@ -154,7 +160,15 @@ export async function registerPatientAppAccount(req, res) {
       role: 'user',
     });
   } catch (error) {
-    if (error?.code === 11000) throw errorHandler(409, 'Email sudah terdaftar.');
+    if (error?.code === 11000 && (
+      error.keyPattern?.email ||
+      Object.hasOwn(error.keyValue ?? {}, 'email')
+    )) {
+      console.warn('[PatientApp] Registration hit the unique email index after lookup.', {
+        index: error.keyPattern ?? null,
+      });
+      throw errorHandler(409, 'Email sudah terdaftar.');
+    }
     throw error;
   }
 
