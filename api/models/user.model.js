@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
+import { randomUUID } from "node:crypto";
 
 const UserSchema = new mongoose.Schema(
   {
     guid: {
-      // required: true,
       type: String,
-      unique: false// Added unique constraint for guid
+      default: randomUUID,
     },
     name: {
       required: true,

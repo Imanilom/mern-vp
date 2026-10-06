@@ -25,6 +25,25 @@ test('User exposes the one-to-one patient profile extension', () => {
   assert.deepEqual(virtual.options.match, { account_type: 'user' });
 });
 
+test('User generates a non-null unique GUID when one is omitted', () => {
+  const first = new User({
+    name: 'First User',
+    email: 'first@example.com',
+    password: 'hashed-password',
+    phone_number: '000000',
+  });
+  const second = new User({
+    name: 'Second User',
+    email: 'second@example.com',
+    password: 'hashed-password',
+    phone_number: '000000',
+  });
+
+  assert.match(first.guid, /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  assert.match(second.guid, /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  assert.notEqual(first.guid, second.guid);
+});
+
 test('patient check-in, events, and wearable schemas retain patient provenance', () => {
   for (const model of [PatientAppProfile, PatientAppCheckIn, PatientAppEvent, PatientAppWearableSample]) {
     assert.ok(model.schema.path('account_id'));
