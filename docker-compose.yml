@@ -32,6 +32,7 @@ services:
       - ./api/.env
     environment:
       - PORT=3030
+      - TRUST_PROXY=loopback,linklocal,uniquelocal
       - ALLOWED_ORIGINS=https://healthtrajectory.cloud,https://api.healthtrajectory.cloud
     depends_on:
       - rabbitmq

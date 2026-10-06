@@ -15,6 +15,9 @@ subsequent logins.
 Registration checks for an exact email match in both `User` and legacy
 `Patient` collections without regard to letter case before creating either
 account or profile document.
+When deployed behind the VPS Nginx reverse proxy and Docker bridge, the API
+trusts only loopback, link-local, and private-network proxy addresses for
+`X-Forwarded-For`; do not replace this with unrestricted `trust proxy: true`.
 
 ## Register
 

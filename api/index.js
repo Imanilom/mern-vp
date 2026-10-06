@@ -95,6 +95,13 @@ const __dirname = path.resolve();
 const app = express();
 const httpServer = http.createServer(app);
 
+// Nginx proxies requests through the Docker bridge; trust only private proxy
+// addresses so public clients cannot spoof X-Forwarded-For.
+app.set(
+  'trust proxy',
+  process.env.TRUST_PROXY || 'loopback,linklocal,uniquelocal'
+);
+
 // Initialize Socket.io
 export const io = new SocketIOServer(httpServer, {
   cors: {
