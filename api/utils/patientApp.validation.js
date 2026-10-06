@@ -6,6 +6,9 @@ const profileFields = new Set([
   'sex',
   'height_cm',
   'weight_kg',
+  'blood_type',
+  'emergency_contact_name',
+  'emergency_contact_phone',
   'conditions',
   'allergies',
   'allergies_reviewed',
@@ -27,6 +30,7 @@ const checkInFields = new Set([
   'sleep',
   'symptoms',
   'symptom_severity',
+  'deviation_follow_up',
   'stress_level',
   'hydration_ml',
   'lifestyle',
@@ -97,6 +101,8 @@ const checkInSymptoms = [
   'headache',
   'pain',
   'nausea',
+  'weakness',
+  'fever',
   'other',
 ];
 
@@ -155,6 +161,19 @@ export function validateProfileUpdate(body) {
   }
   if ('height_cm' in body) result.height_cm = optionalNumber(body.height_cm, 'height_cm', 50, 250);
   if ('weight_kg' in body) result.weight_kg = optionalNumber(body.weight_kg, 'weight_kg', 2, 350);
+  if ('blood_type' in body) {
+    const bloodType = optionalString(body.blood_type, 'blood_type', 3);
+    if (bloodType && !/^(?:A|B|AB|O)[+-]$/.test(bloodType)) {
+      throw errorHandler(400, 'blood_type harus berupa golongan darah yang valid.');
+    }
+    result.blood_type = bloodType;
+  }
+  if ('emergency_contact_name' in body) {
+    result.emergency_contact_name = optionalString(body.emergency_contact_name, 'emergency_contact_name', 120);
+  }
+  if ('emergency_contact_phone' in body) {
+    result.emergency_contact_phone = optionalString(body.emergency_contact_phone, 'emergency_contact_phone', 30);
+  }
   if ('conditions' in body) result.conditions = validateStringList(body.conditions, 'conditions', 30, 120);
   if ('allergies' in body) result.allergies = validateStringList(body.allergies, 'allergies', 30, 120);
   for (const key of ['allergies_reviewed', 'medication_reviewed']) {
@@ -409,6 +428,69 @@ export function validateWearableSample(body) {
   return result;
 }
 
+export function validateWearableStream(body) {
+  requireObject(body, 'Wearable stream');
+  rejectUnknownFields(body, new Set(['provider', 'device_id', 'activity', 'readings']), 'Field wearable stream');
+  if (body.provider !== 'polar_h10') {
+    throw errorHandler(400, 'provider untuk streaming BLE saat ini harus polar_h10.');
+  }
+  const deviceId = optionalString(body.device_id, 'device_id', 120);
+  if (!deviceId) throw errorHandler(400, 'device_id wajib diisi.');
+  if (!wearableActivities.has(body.activity)) {
+    throw errorHandler(400, `activity wajib salah satu dari: ${[...wearableActivities].join(', ')}.`);
+  }
+  if (!Array.isArray(body.readings) || body.readings.length < 1 || body.readings.length > 100) {
+    throw errorHandler(400, 'readings harus berisi 1-100 pengukuran.');
+  }
+
+  const readings = body.readings.map((reading, index) => {
+    requireObject(reading, `readings[${index}]`);
+    rejectUnknownFields(
+      reading,
+      new Set(['recorded_at', 'heart_rate_bpm', 'rr_interval_ms', 'acceleration_g', 'sensor_contact', 'signal_confidence']),
+      `Field readings[${index}]`
+    );
+    const heartRate = optionalNumber(reading.heart_rate_bpm, `readings[${index}].heart_rate_bpm`, 20, 250);
+    if (!Number.isInteger(heartRate)) {
+      throw errorHandler(400, `readings[${index}].heart_rate_bpm harus bilangan bulat.`);
+    }
+    const rrInterval = optionalNumber(reading.rr_interval_ms, `readings[${index}].rr_interval_ms`, 300, 2000);
+    if (!Number.isInteger(rrInterval)) {
+      throw errorHandler(400, `readings[${index}].rr_interval_ms harus bilangan bulat.`);
+    }
+    if (reading.sensor_contact !== true) {
+      throw errorHandler(400, `readings[${index}].sensor_contact harus true untuk streaming.`);
+    }
+    const signalConfidence = optionalNumber(
+      reading.signal_confidence,
+      `readings[${index}].signal_confidence`,
+      0,
+      1
+    );
+    if (!Array.isArray(reading.acceleration_g) || reading.acceleration_g.length !== 3) {
+      throw errorHandler(400, `readings[${index}].acceleration_g harus berisi [x, y, z].`);
+    }
+    const acceleration = reading.acceleration_g.map((value, axis) =>
+      optionalNumber(value, `readings[${index}].acceleration_g[${axis}]`, -16, 16)
+    );
+    return {
+      recorded_at: parseDate(reading.recorded_at, `readings[${index}].recorded_at`),
+      heart_rate_bpm: heartRate,
+      rr_interval_ms: rrInterval,
+      acceleration_g: acceleration,
+      sensor_contact: true,
+      signal_confidence: signalConfidence,
+    };
+  });
+
+  return {
+    provider: 'polar_h10',
+    device_id: deviceId,
+    activity: body.activity,
+    readings,
+  };
+}
+
 export function validateCheckIn(body) {
   requireObject(body, 'Catatan harian');
   rejectUnknownFields(body, checkInFields, 'Field catatan');
@@ -510,6 +592,57 @@ export function validateCheckIn(body) {
       throw errorHandler(400, 'symptom_severity harus berupa bilangan bulat 1-10.');
     }
   }
+  if ('deviation_follow_up' in body) {
+    requireObject(body.deviation_follow_up, 'deviation_follow_up');
+    const allowed = new Set(['segment_id', 'perceived_factors', 'symptom_onset', 'note']);
+    rejectUnknownFields(body.deviation_follow_up, allowed, 'Field deviation_follow_up');
+    const followUp = body.deviation_follow_up;
+    if (
+      typeof followUp.segment_id !== 'string'
+      || !/^[a-f\d]{24}$/i.test(followUp.segment_id)
+    ) {
+      throw errorHandler(400, 'deviation_follow_up.segment_id harus berupa ID segment yang valid.');
+    }
+    const perceivedFactors = followUp.perceived_factors === undefined
+      ? []
+      : validateStringList(followUp.perceived_factors, 'deviation_follow_up.perceived_factors', 10, 40);
+    const allowedFactors = [
+      'physical_activity',
+      'stress',
+      'poor_sleep',
+      'medication',
+      'food_or_caffeine',
+      'illness',
+      'pain',
+      'other',
+      'no_known_factor',
+      'prefer_not_to_say',
+    ];
+    if (perceivedFactors.some((factor) => !allowedFactors.includes(factor))) {
+      throw errorHandler(400, 'deviation_follow_up.perceived_factors berisi pilihan yang tidak valid.');
+    }
+    if (
+      perceivedFactors.includes('no_known_factor')
+      && perceivedFactors.length > 1
+    ) {
+      throw errorHandler(400, 'no_known_factor tidak dapat digabung dengan faktor lain.');
+    }
+    const resultFollowUp = {
+      segment_id: followUp.segment_id,
+      perceived_factors: perceivedFactors,
+    };
+    if ('symptom_onset' in followUp) {
+      const validOnset = ['before_deviation', 'around_deviation', 'after_deviation', 'unknown'];
+      if (!validOnset.includes(followUp.symptom_onset)) {
+        throw errorHandler(400, 'deviation_follow_up.symptom_onset tidak valid.');
+      }
+      resultFollowUp.symptom_onset = followUp.symptom_onset;
+    }
+    if ('note' in followUp) {
+      resultFollowUp.note = optionalString(followUp.note, 'deviation_follow_up.note', 500);
+    }
+    result.deviation_follow_up = resultFollowUp;
+  }
   if ('lifestyle' in body) {
     requireObject(body.lifestyle, 'lifestyle');
     const allowed = new Set(['meal', 'caffeine', 'alcohol', 'smoking']);
@@ -551,6 +684,7 @@ export function validateCheckIn(body) {
       'weight_kg',
       'spo2_pct',
       'glucose_mg_dl',
+      'additional',
     ]);
     rejectUnknownFields(body.measurements, allowed, 'Field measurements');
     const measurements = {};
@@ -564,6 +698,25 @@ export function validateCheckIn(body) {
     };
     for (const [key, [min, max]] of Object.entries(limits)) {
       if (key in body.measurements) measurements[key] = optionalNumber(body.measurements[key], `measurements.${key}`, min, max);
+    }
+    if ('additional' in body.measurements) {
+      if (!Array.isArray(body.measurements.additional) || body.measurements.additional.length > 20) {
+        throw errorHandler(400, 'measurements.additional harus berupa daftar maksimal 20 item.');
+      }
+      measurements.additional = body.measurements.additional.map((item) => {
+        requireObject(item, 'measurements.additional item');
+        rejectUnknownFields(item, new Set(['name', 'unit', 'value']), 'Field measurements.additional');
+        const name = optionalString(item.name, 'measurements.additional.name', 80);
+        const value = optionalString(item.value, 'measurements.additional.value', 80);
+        if (!name || !value) {
+          throw errorHandler(400, 'Nama dan nilai measurements.additional wajib diisi.');
+        }
+        return {
+          name,
+          unit: optionalString(item.unit, 'measurements.additional.unit', 24),
+          value,
+        };
+      });
     }
     const systolic = measurements.systolic_bp;
     const diastolic = measurements.diastolic_bp;

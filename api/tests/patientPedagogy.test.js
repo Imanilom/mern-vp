@@ -1,11 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildPatientDeviationFollowUpPrompt,
   identifyPatientRedFlags,
   recommendPatientAction,
+  summarizePatientEpisodeOutcomes,
   summarizePatientPersistence,
   summarizePatientRecovery,
 } from '../utils/patientPedagogy.js';
+
+test('deviation follow-up asks more contextual questions as personal deviation increases', () => {
+  assert.deepEqual(buildPatientDeviationFollowUpPrompt({
+    deviation: { available: true, state: 'within_personal_region' },
+  }), { status: 'not_required' });
+
+  const moderate = buildPatientDeviationFollowUpPrompt({
+    deviation: { available: true, state: 'moderately_displaced' },
+    segmentId: 'segment-1',
+  });
+  assert.equal(moderate.status, 'requested');
+  assert.equal(moderate.deviation_level, 'moderate');
+  assert.ok(moderate.questions.some((question) => question.id === 'current_symptoms'));
+  assert.ok(!moderate.questions.some((question) => question.id === 'symptom_timing'));
+
+  const high = buildPatientDeviationFollowUpPrompt({
+    deviation: { available: true, state: 'strongly_displaced' },
+    segmentId: 'segment-2',
+  });
+  assert.equal(high.deviation_level, 'high');
+  assert.ok(high.questions.some((question) => question.id === 'possible_factors'));
+  assert.ok(high.questions.some((question) => question.id === 'symptom_timing'));
+  assert.equal(high.questions.find((question) => question.id === 'current_symptoms').allow_empty, true);
+  assert.match(high.safety_notice, /tidak membuktikan penyebab/);
+
+  assert.equal(buildPatientDeviationFollowUpPrompt({
+    deviation: { available: true, state: 'strongly_displaced' },
+    segmentId: 'segment-2',
+    alreadyAnswered: true,
+  }).status, 'already_answered');
+});
 
 test('red flag action bypasses quality and sensor status', () => {
   const action = recommendPatientAction({
@@ -150,6 +183,60 @@ test('recovery uses Mahalanobis distance trend and marks return inside baseline 
   assert.equal(result.score_trend, 'decreasing');
   assert.equal(result.recovery_progress, 75);
   assert.equal(result.time_to_recovery_minutes, null);
+});
+
+test('recovery percentage is absent for baseline-only data and stale deviation observations', () => {
+  const now = Date.parse('2026-10-05T10:00:00Z');
+  const baselineOnly = summarizePatientRecovery([{
+    window_start: now,
+    distance: 1,
+    squared_distance: 1,
+    thresholds: { mild: 5.9 },
+    rr_status: 'NORMAL',
+  }], [], now);
+  assert.equal(baselineOnly.recovery_progress, null);
+  assert.equal(baselineOnly.status, 'baseline_compatible');
+
+  const staleDeviation = summarizePatientRecovery([
+    {
+      window_start: now - 24 * 60 * 60000,
+      distance: 4,
+      squared_distance: 16,
+      thresholds: { mild: 5.9 },
+      rr_status: 'DEVIATION_CANDIDATE',
+    },
+    {
+      window_start: now,
+      distance: 1,
+      squared_distance: 1,
+      thresholds: { mild: 5.9 },
+      rr_status: 'NORMAL',
+    },
+  ], [], now);
+  assert.equal(staleDeviation.recovery_progress, null);
+  assert.equal(staleDeviation.status, 'baseline_compatible');
+});
+
+test('episode recovery rate uses documented outcomes and returns its denominator', () => {
+  assert.deepEqual(summarizePatientEpisodeOutcomes([
+    { outcome: 'recovered' },
+    { outcome: 'recovered' },
+    { outcome: 'unresolved' },
+    { outcome: 'in_progress_or_unverified' },
+  ]), {
+    recovered: 2,
+    unresolved: 1,
+    denominator: 3,
+    recovery_rate_pct: 66.7,
+  });
+  assert.deepEqual(summarizePatientEpisodeOutcomes([
+    { outcome: 'in_progress_or_unverified' },
+  ]), {
+    recovered: 0,
+    unresolved: 0,
+    denominator: 0,
+    recovery_rate_pct: null,
+  });
 });
 
 test('recovery trajectory detects a deviation after return to personal baseline', () => {

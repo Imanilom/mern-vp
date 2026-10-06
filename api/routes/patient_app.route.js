@@ -15,6 +15,7 @@ import {
   listPatientAppWearableSamples,
   linkPatientAppToCaparUser,
   registerPatientAppAccount,
+  streamPatientAppWearableData,
   updatePatientAppProfile,
 } from '../controllers/patient_app.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
@@ -43,6 +44,7 @@ router.delete('/check-ins/:checkInId', verifyToken, deletePatientAppCheckIn);
 router.post('/events', verifyToken, createPatientAppEvent);
 router.get('/events', verifyToken, listPatientAppEvents);
 router.post('/wearable/samples', verifyToken, createPatientAppWearableSample);
+router.post('/wearable/stream', verifyToken, streamPatientAppWearableData);
 router.get('/wearable/samples', verifyToken, listPatientAppWearableSamples);
 
 export default router;

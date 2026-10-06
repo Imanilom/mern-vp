@@ -6,6 +6,7 @@ import {
   validatePatientEvent,
   validateProfileUpdate,
   validateRegistration,
+  validateWearableStream,
   validateWearableSample,
 } from '../utils/patientApp.validation.js';
 
@@ -121,6 +122,45 @@ test('daily check-in validates input and does not accept account identifiers', (
   );
 });
 
+test('deviation follow-up answers require a segment reference and known patient-reported factors', () => {
+  const base = {
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    feeling: 'fair',
+    activity: 'rest',
+    symptoms: [],
+    sleep: {},
+  };
+  const result = validateCheckIn({
+    ...base,
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      perceived_factors: ['stress', 'poor_sleep'],
+      symptom_onset: 'around_deviation',
+      note: 'Kurang tidur semalam',
+    },
+  });
+  assert.deepEqual(result.deviation_follow_up, {
+    segment_id: '507f1f77bcf86cd799439011',
+    perceived_factors: ['stress', 'poor_sleep'],
+    symptom_onset: 'around_deviation',
+    note: 'Kurang tidur semalam',
+  });
+  assert.throws(() => validateCheckIn({
+    ...base,
+    deviation_follow_up: {
+      segment_id: 'not-a-valid-id',
+      perceived_factors: [],
+    },
+  }), { statusCode: 400 });
+  assert.throws(() => validateCheckIn({
+    ...base,
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      perceived_factors: ['no_known_factor', 'stress'],
+    },
+  }), { statusCode: 400 });
+});
+
 test('patient event markers and wearable samples validate their source values', () => {
   const event = validatePatientEvent({
     event_type: 'medication',
@@ -178,6 +218,52 @@ test('patient event markers and wearable samples validate their source values', 
     () => validateWearableSample({ provider: 'unknown', heart_rate_bpm: 72 }),
     { statusCode: 400 }
   );
+});
+
+test('Polar H10 streaming batches require authenticated-safe sensor provenance and valid readings', () => {
+  const reading = {
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    heart_rate_bpm: 72,
+    rr_interval_ms: 830,
+    acceleration_g: [0.02, -0.01, 0.98],
+    sensor_contact: true,
+    signal_confidence: 1,
+  };
+  const payload = {
+    provider: 'polar_h10',
+    device_id: 'polar-h10-01',
+    activity: 'sitting',
+    readings: [reading],
+  };
+  const result = validateWearableStream(payload);
+  assert.equal(result.provider, 'polar_h10');
+  assert.equal(result.device_id, 'polar-h10-01');
+  assert.equal(result.readings[0].recorded_at.toISOString(), '2026-10-05T08:15:00.000Z');
+  assert.equal(result.readings[0].rr_interval_ms, 830);
+  assert.deepEqual(result.readings[0].acceleration_g, [0.02, -0.01, 0.98]);
+  assert.throws(() => validateWearableStream({ ...payload, user_id: 'another-user' }), { statusCode: 400 });
+  assert.throws(() => validateWearableStream({ ...payload, readings: [] }), { statusCode: 400 });
+  assert.throws(() => validateWearableStream({ ...payload, readings: Array(101).fill(reading) }), { statusCode: 400 });
+  assert.throws(() => validateWearableStream({
+    ...payload,
+    readings: [{ ...reading, recorded_at: 'invalid-time' }],
+  }), { statusCode: 400 });
+  assert.throws(() => validateWearableStream({
+    ...payload,
+    readings: [{ ...reading, heart_rate_bpm: 251 }],
+  }), { statusCode: 400 });
+  assert.throws(() => validateWearableStream({
+    ...payload,
+    readings: [{ ...reading, rr_interval_ms: 2200 }],
+  }), { statusCode: 400 });
+  assert.throws(() => validateWearableStream({
+    ...payload,
+    readings: [{ ...reading, acceleration_g: [0, 0, 17] }],
+  }), { statusCode: 400 });
+  assert.throws(() => validateWearableStream({
+    ...payload,
+    readings: [{ ...reading, sensor_contact: false }],
+  }), { statusCode: 400 });
 });
 
 test('check-in query bounds pagination and validates date ranges', () => {

@@ -15,13 +15,13 @@ const PatientAppCheckInSchema = new mongoose.Schema(
     recorded_at: { type: Date, required: true, default: Date.now },
     feeling: {
       type: String,
-      required: true,
-      enum: ['good', 'fair', 'poor', 'very_poor'],
+      enum: ['good', 'fair', 'poor', 'very_poor', null],
+      default: null,
     },
     activity: {
       type: String,
-      required: true,
-      enum: ['rest', 'sitting', 'standing', 'walking', 'exercise', 'work', 'meal', 'other'],
+      enum: ['rest', 'sitting', 'standing', 'walking', 'exercise', 'work', 'meal', 'other', null],
+      default: null,
     },
     posture: {
       type: String,
@@ -48,6 +48,37 @@ const PatientAppCheckInSchema = new mongoose.Schema(
       default: [],
     },
     symptom_severity: { type: Number, min: 1, max: 10, default: null },
+    deviation_follow_up: {
+      segment_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Segment',
+        default: null,
+      },
+      perceived_factors: {
+        type: [{
+          type: String,
+          enum: [
+            'physical_activity',
+            'stress',
+            'poor_sleep',
+            'medication',
+            'food_or_caffeine',
+            'illness',
+            'pain',
+            'other',
+            'no_known_factor',
+            'prefer_not_to_say',
+          ],
+        }],
+        default: [],
+      },
+      symptom_onset: {
+        type: String,
+        enum: ['before_deviation', 'around_deviation', 'after_deviation', 'unknown', null],
+        default: null,
+      },
+      note: { type: String, trim: true, maxlength: 500, default: '' },
+    },
     stress_level: { type: Number, min: 1, max: 3, default: null },
     hydration_ml: { type: Number, min: 0, max: 10000, default: null },
     lifestyle: {
@@ -83,6 +114,14 @@ const PatientAppCheckInSchema = new mongoose.Schema(
       weight_kg: { type: Number, min: 2, max: 350, default: null },
       spo2_pct: { type: Number, min: 50, max: 100, default: null },
       glucose_mg_dl: { type: Number, min: 20, max: 1000, default: null },
+      additional: {
+        type: [{
+          name: { type: String, trim: true, maxlength: 80, required: true },
+          unit: { type: String, trim: true, maxlength: 24, default: '' },
+          value: { type: String, trim: true, maxlength: 80, required: true },
+        }],
+        default: [],
+      },
     },
     note: { type: String, trim: true, maxlength: 500, default: '' },
   },

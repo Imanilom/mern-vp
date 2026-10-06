@@ -30,6 +30,9 @@ const PatientAppProfileSchema = new mongoose.Schema(
     },
     height_cm: { type: Number, min: 50, max: 250, default: null },
     weight_kg: { type: Number, min: 2, max: 350, default: null },
+    blood_type: { type: String, trim: true, maxlength: 3, default: '' },
+    emergency_contact_name: { type: String, trim: true, maxlength: 120, default: '' },
+    emergency_contact_phone: { type: String, trim: true, maxlength: 30, default: '' },
     conditions: {
       type: [{ type: String, trim: true, maxlength: 120 }],
       default: [],

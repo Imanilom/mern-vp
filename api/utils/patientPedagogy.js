@@ -6,6 +6,107 @@ export const PATIENT_ACTIONS = {
   QUALITY_WARNING: 'quality_warning',
 };
 
+export function buildPatientDeviationFollowUpPrompt({
+  deviation,
+  segmentId = null,
+  alreadyAnswered = false,
+} = {}) {
+  if (!deviation?.available || deviation.state === 'within_personal_region') {
+    return { status: 'not_required' };
+  }
+
+  const highDeviation = deviation.state === 'strongly_displaced';
+  if (alreadyAnswered) {
+    return {
+      status: 'already_answered',
+      triggered_by_segment_id: segmentId,
+      deviation_level: highDeviation ? 'high' : 'moderate',
+    };
+  }
+
+  const questions = [
+    {
+      id: 'current_symptoms',
+      question: 'Apa yang Anda rasakan sekarang?',
+      response_field: 'symptoms',
+      input_type: 'multi_select',
+      allow_empty: true,
+      options: [
+        'fatigue',
+        'dizziness',
+        'palpitations',
+        'breathlessness',
+        'chest_pain',
+        'headache',
+        'pain',
+        'nausea',
+        'weakness',
+        'fever',
+      ],
+    },
+    {
+      id: 'recent_context',
+      question: 'Apa yang sedang atau baru saja Anda lakukan?',
+      response_field: 'activity',
+      input_type: 'single_select',
+      options: ['rest', 'sitting', 'standing', 'walking', 'exercise', 'work', 'meal', 'other'],
+    },
+    {
+      id: 'possible_factors',
+      question: highDeviation
+        ? 'Menurut Anda, adakah hal yang mungkin berkaitan dengan perubahan ini?'
+        : 'Apakah ada perubahan aktivitas atau kondisi yang ingin dicatat?',
+      response_field: 'deviation_follow_up.perceived_factors',
+      input_type: 'multi_select',
+      options: [
+        'physical_activity',
+        'stress',
+        'poor_sleep',
+        'medication',
+        'food_or_caffeine',
+        'illness',
+        'pain',
+        'other',
+        'no_known_factor',
+        'prefer_not_to_say',
+      ],
+      optional: true,
+    },
+  ];
+
+  if (highDeviation) {
+    questions.push(
+      {
+        id: 'symptom_timing',
+        question: 'Kapan gejala mulai dirasakan dibandingkan perubahan yang terdeteksi?',
+        response_field: 'deviation_follow_up.symptom_onset',
+        input_type: 'single_select',
+        options: ['before_deviation', 'around_deviation', 'after_deviation', 'unknown'],
+        optional: true,
+      },
+      {
+        id: 'additional_context',
+        question: 'Adakah hal lain yang ingin Anda ceritakan?',
+        response_field: 'deviation_follow_up.note',
+        input_type: 'text',
+        optional: true,
+      }
+    );
+  }
+
+  return {
+    status: 'requested',
+    trigger: highDeviation ? 'high_personal_deviation' : 'personal_deviation',
+    triggered_by_segment_id: segmentId,
+    deviation_level: highDeviation ? 'high' : 'moderate',
+    deviation_state: deviation.state,
+    questions,
+    response_endpoint: 'POST /api/patient-app/check-ins',
+    response_field: 'deviation_follow_up',
+    safety_notice: 'Jawaban membantu mencatat konteks dan tidak membuktikan penyebab deviasi. Gejala berat atau tanda bahaya harus ditangani tanpa menunggu analisis.',
+  };
+}
+
 export function recommendPatientAction({
   dataQualityAvailable,
   redFlag = false,
@@ -180,6 +281,22 @@ export function summarizePatientPersistence(observations, { k = 4, m = 5 } = {})
   };
 }
 
+export function summarizePatientEpisodeOutcomes(episodes) {
+  const outcomes = episodes.filter(
+    (episode) => episode.outcome === 'recovered' || episode.outcome === 'unresolved'
+  );
+  const recovered = outcomes.filter((episode) => episode.outcome === 'recovered').length;
+  const unresolved = outcomes.length - recovered;
+  return {
+    recovered,
+    unresolved,
+    denominator: outcomes.length,
+    recovery_rate_pct: outcomes.length
+      ? Number((recovered / outcomes.length * 100).toFixed(1))
+      : null,
+  };
+}
+
 export function summarizePatientRecovery(segments, events, now = Date.now()) {
   const ordered = [...segments]
     .filter((segment) => Number.isFinite(segment.distance)
@@ -194,7 +311,7 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
   const scoreChange = first && latest ? latestScore - firstScore : null;
   const currentScore = latestScore ?? null;
   const currentState = latest?.rr_status || latest?.classification || null;
-  const wasDeviating = ordered.some((segment) => (
+  const deviationFlags = ordered.map((segment) => (
     (Number.isFinite(segment.squared_distance)
       && Number.isFinite(segment.thresholds?.mild)
       && segment.squared_distance >= segment.thresholds.mild)
@@ -205,13 +322,21 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
       'Alert',
     ].includes(segment.rr_status || segment.classification)
   ));
+  const lastDeviationIndex = deviationFlags.lastIndexOf(true);
+  const wasDeviating = lastDeviationIndex >= 0;
+  const contiguousSinceDeviation = wasDeviating
+    && ordered.slice(lastDeviationIndex + 1).every((segment, index, tail) => {
+      const previous = ordered[lastDeviationIndex + index];
+      return segment.window_start - previous.window_start <= 10 * 60000;
+    });
   const atPersonalBaseline = Number.isFinite(latest?.squared_distance)
     && Number.isFinite(latest?.thresholds?.mild)
     && latest.squared_distance < latest.thresholds.mild;
-  const recovered = currentState === 'RECOVERED' || (wasDeviating && atPersonalBaseline);
+  const recovered = currentState === 'RECOVERED'
+    || (wasDeviating && contiguousSinceDeviation && atPersonalBaseline);
   const recovering = !recovered && (
     currentState === 'RECOVERING'
-    || (wasDeviating && scoreChange != null && scoreChange < -0.1)
+    || (wasDeviating && contiguousSinceDeviation && scoreChange != null && scoreChange < -0.1)
   );
   const activeEvent = events.find((event) => ['open', 'paused'].includes(event.status));
   const latestEvent = events[0] || null;
@@ -256,12 +381,28 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
     );
   });
   const relapse = eventRelapse || trajectoryRelapse;
-  const peakDistance = ordered.reduce(
-    (peak, item) => Math.max(peak, Number.isFinite(item.distance) ? item.distance : 0),
-    0
-  );
-  const recoveryProgress = peakDistance > 0 && Number.isFinite(latest?.distance)
-    ? Math.max(0, Math.min(1, 1 - latest.distance / peakDistance))
+  let episodeStartIndex = lastDeviationIndex;
+  while (episodeStartIndex > 0) {
+    const previous = ordered[episodeStartIndex - 1];
+    const current = ordered[episodeStartIndex];
+    const previousState = previous.rr_status || previous.classification;
+    if (
+      current.window_start - previous.window_start > 10 * 60000
+      || (!deviationFlags[episodeStartIndex - 1]
+        && !['RECOVERING', 'RECOVERY', 'PERSISTENT_DEVIATION', 'DEVIATION_CANDIDATE'].includes(previousState))
+    ) break;
+    episodeStartIndex -= 1;
+  }
+  const episodePeakDistance = wasDeviating
+    ? ordered.slice(episodeStartIndex).reduce(
+      (peak, item) => Math.max(peak, Number.isFinite(item.distance) ? item.distance : 0),
+      0
+    )
+    : 0;
+  const recoveryProgress = episodePeakDistance > 0
+    && (recovering || recovered)
+    && Number.isFinite(latest?.distance)
+    ? Math.max(0, Math.min(1, 1 - latest.distance / episodePeakDistance))
     : null;
   const elapsedFromPeak = latestEvent?.peak_time && Number.isFinite(latestEvent.peak_time)
     ? Math.max(0, Number(((now - latestEvent.peak_time) / 60000).toFixed(1)))

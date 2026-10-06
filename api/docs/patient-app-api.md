@@ -36,6 +36,8 @@ returns a bearer token. Five registration attempts are allowed per 15 minutes.
 Profile patch fields: `date_of_birth` (ISO date or null), `timezone` (IANA, e.g.
 `Asia/Jakarta`), `sex` (`female`, `male`, `other`, or null), `height_cm`,
 `weight_kg`, `conditions`, `allergies`, `special_conditions` (string lists),
+`blood_type` (`A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-`, or empty),
+`emergency_contact_name`, `emergency_contact_phone`,
 `clinical_note`, `medications` (`[{ "name", "dosage", "schedule" }]`),
 `medication_reviewed`, `allergies_reviewed`, `goal`
 (`daily_monitoring`, `early_awareness`, `fitness`, `other`),
@@ -105,6 +107,7 @@ symptoms. `feeling` accepts `good`, `fair`, `poor`, or `very_poor`. `activity` a
 `rest`, `sitting`, `standing`, `walking`, `exercise`, `work`, `meal`, or `other`.
 Symptoms accept `fatigue`, `dizziness`, `palpitations`, `breathlessness`,
 `chest_pain`, `headache`, `pain`, `nausea`, `weakness`, `fever`, or `other`.
+When no symptom is present, send `symptoms: []`.
 The list endpoint is newest-first and caps `limit` at 100; its `pagination.next_before` can be passed
 as the next `before` value. `daily-summary` returns patient check-ins, event
 markers, and wearable samples recorded on the requested UTC calendar day.
@@ -124,6 +127,7 @@ characters), and optional scalar `value`, `intensity`, and `unit`.
 
 - `POST /api/patient-app/wearable/samples`
 - `GET /api/patient-app/wearable/samples?from=<ISO>&to=<ISO>&limit=30&before=<ISO>`
+- `POST /api/patient-app/wearable/stream`
 
 The mobile app submits `provider`, `device_id`, `recorded_at`, `heart_rate_bpm`,
 10-256 `rr_intervals_ms`, `activity`, 10-512 `acceleration_g` triplets
@@ -134,16 +138,28 @@ are mandatory. Optional values include `expected_rr_count`, `activity_intensity`
 `skin_temperature_c`. Client-supplied SDNN, RMSSD, pNN50, HR delta/slope, and
 DFA are not accepted as derived truth: the backend derives them from RR/IBI and
 tri-axial acceleration. DFA alpha1 is only available with at least 64 RR
-intervals. The provider and timestamp are retained as provenance. These
-endpoints ingest readings from a trusted mobile bridge; they do not implement
-vendor OAuth or directly connect to a watch.
+intervals. The provider and timestamp are retained as provenance. Vidyamedic
+pairs with a Polar H10 over BLE and submits real HR/RR and accelerometer
+windows through these authenticated endpoints. No simulator readings or
+client-side broker credentials are used.
+
+`POST /wearable/stream` accepts authenticated Polar H10 reading batches (up to
+100 readings per request), validates contact, timestamp, HR, RR/IBI, activity,
+and measured acceleration, then publishes them to the configured RabbitMQ
+`Sensor` queue. Vidyamedic flushes this stream every 10 seconds. The response
+is `202` with `published` and `reading_count`; if RabbitMQ is unavailable the
+endpoint returns `503` without claiming success. The CAPAR consumer stores
+accepted readings in the shared CAPAR data collection.
 
 Accepted samples are converted into CAPAR `Segment` records with
 `window_type: "1min"` and left for the existing CAPAR Layer 3-RR pipeline to
 analyze. The response indicates `pending_layer3_analysis`; samples failing
 signal/contact/quality checks are retained as a quality warning and are not
 fed into the baseline. Sensor contact, signal confidence, RR artifacts and
-missingness are included in the quality audit.
+missingness are included in the quality audit. These 1-minute feature windows
+are stored as patient-app samples and CAPAR segments; the separate stream
+endpoint carries the live per-reading messages. RabbitMQ credentials remain
+server-side in `RABBITMQ_URI`.
 
 The overview also reports `input_readiness` for demographic profile,
 medication/allergy review, the minimum wearable record, and patient context.
@@ -187,17 +203,30 @@ For a User account linked to a legacy Patient, the same combined CAPAR data is
 used. An unlinked User account uses its own User ID.
 It returns:
 
-- The last 24 hours of valid, analyzed CAPAR segment states that passed the
-  CAPAR quality gate (or have both signal and completeness quality at least
-  `0.7`), with their available signal-quality values.
+- Baseline contexts and feature statistics stored for the authenticated
+  CAPAR user. A legacy baseline marked mature with at least 20 segments remains
+  usable when its newer maturity-quality fields were never computed.
+- Valid, analyzed CAPAR segments that passed the quality gate (or have both
+  signal and completeness quality at least `0.7`): a 24-hour current-state
+  trajectory and up to 500 historical windows from the last 30 days.
 - Multivariate Mahalanobis distance over the CAPAR features available in both
   a quality-gated sample and its mature, matching activity/time-of-day
   baseline. The candidate features are mean HR, mean RR, HR delta/slope, SDNN,
   RMSSD, DFA alpha1, and motion intensity. Only features with at least 30
   baseline observations and at least 30 complete multivariate samples are used.
   Otherwise the result is `insufficient_data`.
-- A median time-to-recovery from resolved CAPAR episodes in the last 30 days,
-  only when recovery observations exist.
+- The latest 100 raw `PolarData` readings across the user's history, up to 100
+  `EpisodeAnalysis`/`AnomalyEvent`/`EpisodeMeta` episode records, and up to 20
+  `CognitiveMemory` records, all scoped to the authenticated CAPAR user.
+- Episode recovery outcomes from the last 30 days. The observed recovery
+  percentage is `recovered / (recovered + unresolved) * 100`; episodes without
+  a documented outcome are excluded. The response includes its denominator
+  and is `null` if no episode outcome is known. This is a historical observed
+  proportion, not a predicted chance of recovery.
+- Recovery progress only when a recent, contiguous, measured deviation
+  trajectory is recovering or has returned to baseline. Gaps longer than ten
+  minutes break trajectory continuity; baseline-only data does not produce a
+  recovery percentage.
 - Up to 20 recent CAPAR deviation events (last 30 days) with personalized
   signed z-scores, absolute change from baseline, direction, and Mahalanobis
   contribution decomposition. Feature contributions use
@@ -208,7 +237,10 @@ It returns:
   A rule-based context-attribution summary ranks associations, not established
   causes.
 - Up to five citations retrieved by CAPAR's local multi-axis scientific RAG
-  knowledge base from recent self-reported behavior and available physiology.
+  knowledge base from recent self-reported behavior, available physiology, and
+  observed recovery evidence. RAG citations explain relevant population-level
+  literature; recovery percentages are computed from recorded CAPAR episode
+  outcomes and are not generated by RAG.
 
 Mahalanobis distance is a statistical difference from the patient's own
 baseline; it is not a CAPAR anomaly score, diagnosis, or clinical-risk score.
@@ -256,6 +288,18 @@ context", not as a definitive cause.
    progress, time-to-recovery when available, and recorded relapse indicators.
 6. `action`: rule-based `green`, `yellow`, `orange`, or `red` patient guidance,
    with reasons and the evidence-quality state.
+7. `follow_up`: a structured prompt for the app to ask after a personal
+   deviation. Moderate displacement asks about current symptoms and recent
+   activity/context; strong displacement additionally asks which factors the
+   patient thinks may be related, symptom timing, and optional notes. This is
+   identified by CAPAR segment; the status changes to `already_answered` after
+   the patient submits a response. Clients should show it when
+   `status: "requested"` and submit the answers with the regular
+   `POST /api/patient-app/check-ins` payload. The response's segment ID is
+   verified against the authenticated patient's CAPAR data before saving.
+   Patient-selected factors are subjective context, not algorithmically
+   established causes. The strong-displacement threshold is a statistical
+   reference, not a clinical severity or emergency threshold.
 
 Patient-reported chest pain, severe breathlessness (severity >= 7), or any
 symptom severity >= 9 bypasses wearable scoring and returns a red emergency

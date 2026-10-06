@@ -9,11 +9,15 @@ import PatientAppWearableSample from '../models/patient_app_wearable_sample.mode
 import AnomalyEvent from '../models/anomalyevent.model.js';
 import Baseline from '../models/baseline.model.js';
 import BehaviorEvent from '../models/behavior_event.model.js';
+import CognitiveMemory from '../models/cognitive_memory.model.js';
+import EpisodeMeta from '../models/episodemeta.model.js';
 import EpisodeAnalysis from '../models/episode_analysis.model.js';
+import PolarData from '../models/data.model.js';
 import Segment from '../models/segment.model.js';
 import StateTransition from '../models/state_transition.model.js';
 import User from '../models/user.model.js';
 import { errorHandler } from '../utils/error.js';
+import { publishLogTransport } from '../utils/logTransport.js';
 import { retrieveMultiAxisRag } from './resilience.controller.js';
 import {
   fitPatientMahalanobisModel,
@@ -27,8 +31,10 @@ import {
   patientCaparTimePeriod,
 } from '../utils/patientDeviationExplanation.js';
 import {
+  buildPatientDeviationFollowUpPrompt,
   identifyPatientRedFlags,
   recommendPatientAction,
+  summarizePatientEpisodeOutcomes,
   summarizePatientPersistence,
   summarizePatientRecovery,
 } from '../utils/patientPedagogy.js';
@@ -39,6 +45,7 @@ import {
   validateProfileUpdate,
   validateRegistration,
   validatePatientEvent,
+  validateWearableStream,
   validateWearableSample,
 } from '../utils/patientApp.validation.js';
 
@@ -329,8 +336,21 @@ export async function getPatientAppOverview(req, res) {
 export async function createPatientAppCheckIn(req, res) {
   const accountData = await getAccount(req);
   const { dataOwnerId, dataOwnerType } = accountData;
+  const input = validateCheckIn(req.body);
+  if (input.deviation_follow_up) {
+    const caparDataIds = accountData.accountScopes.map((scope) => scope.account_id);
+    const referencedSegment = await Segment.findOne({
+      _id: input.deviation_follow_up.segment_id,
+      user_id: { $in: caparDataIds },
+      analyzed: true,
+      is_valid: true,
+    }).select('_id');
+    if (!referencedSegment) {
+      throw errorHandler(404, 'Segment CAPAR untuk tindak lanjut tidak ditemukan.');
+    }
+  }
   const checkIn = await PatientAppCheckIn.create({
-    ...validateCheckIn(req.body),
+    ...input,
     account_id: dataOwnerId,
     account_type: dataOwnerType,
   });
@@ -557,25 +577,58 @@ export async function getPatientAppCaparInsights(req, res) {
       : 'insufficient_data',
     source: 'CAPAR analyzed segments',
     trajectory_24h: [],
+    trajectory_30d: [],
     mahalanobis: [],
-    recovery: { resolved_episodes_30d: 0, median_recovery_minutes: null },
+    baseline_contexts: [],
+    polar_data: [],
+    episode_history: [],
+    cognitive_memories: [],
+    data_inventory: {
+      baselines: 0,
+      segments_returned: 0,
+      polar_records_returned: 0,
+      episode_analyses_returned: 0,
+      anomaly_events_returned: 0,
+      cognitive_memories_returned: 0,
+    },
+    recovery: {
+      resolved_episodes_30d: 0,
+      median_recovery_minutes: null,
+      observed_episode_recovery_rate_pct: null,
+      recovery_rate_denominator: 0,
+    },
   };
 
   if (caparUserId) {
-    const [baselines, recentSegments, episodes, transitionDocs, anomalyEvents,
-      behaviorEvents, historicalCheckIns, historicalPatientEvents] = await Promise.all([
+    const monthStartMs = monthAgo.getTime();
+    const [baselines, recentSegments, polarData, episodes, episodeMetadata,
+      transitionDocs, anomalyEvents, cognitiveMemories, behaviorEvents,
+      historicalCheckIns, historicalPatientEvents] = await Promise.all([
       Baseline.find({ user_id: { $in: caparDataIds } }).lean(),
       Segment.find({
         user_id: { $in: caparDataIds },
         analyzed: true,
         is_valid: true,
-        window_start: { $gte: dayAgo.getTime(), $lte: now.getTime() },
-      }).sort({ window_start: -1 }).limit(500).lean(),
+        window_start: { $gte: monthStartMs, $lte: now.getTime() },
+      }).sort({ window_start: -1 }).limit(2000).lean(),
+      PolarData.find({
+        user_id: { $in: caparDataIds },
+        timestamp: { $lte: Math.floor(now.getTime() / 1000) },
+      }).sort({ timestamp: -1 }).limit(100).select(
+        'timestamp hr rr rrms acc_x acc_y acc_z step_count activity device_id processStatus'
+      ).lean(),
       EpisodeAnalysis.find({
         user_id: { $in: caparDataIds },
         start_time: { $gte: monthAgo, $lte: now },
-        ttr: { $gt: 0 },
-      }).sort({ start_time: -1 }).limit(100).select('start_time end_time ttr recovery_duration relapse_count').lean(),
+      }).sort({ start_time: -1 }).limit(100).select(
+        'start_time end_time episode_id activity context physiological_state evidence_state ttr recovery_duration total_duration peak_deviation mean_deviation deviation_auc recovery_slope relapse_detected relapse_count quality_score quality_gate_pass hr_mean rmssd sdnn dfa_alpha1'
+      ).lean(),
+      EpisodeMeta.find({
+        user_id: { $in: caparDataIds },
+        onset_timestamp: { $gte: monthStartMs, $lte: now.getTime() },
+      }).sort({ onset_timestamp: -1 }).limit(100).select(
+        'episode_id analysis_id onset_timestamp status current_state activity classification peak_score duration_ms'
+      ).lean(),
       StateTransition.find({ user_id: { $in: caparDataIds } })
         .select('total_transitions')
         .lean(),
@@ -583,7 +636,14 @@ export async function getPatientAppCaparInsights(req, res) {
         user_id: { $in: caparDataIds },
         onset_time: { $gte: monthAgo.getTime(), $lte: now.getTime() },
         classification: { $in: ['Caution', 'Alert'] },
-      }).sort({ onset_time: -1 }).limit(20).lean(),
+      }).sort({ onset_time: -1 }).limit(100).lean(),
+      CognitiveMemory.find({ user_id: { $in: caparDataIds } })
+        .sort({ epoch_timestamp: -1 })
+        .limit(20)
+        .select(
+          'week_id week_number epoch_timestamp scores_snapshot behavioral_factors_snapshot average_behavioral_correlation physical_factor_verdict next_week_feedback confirmed_factor_ids confirmed_factor_count block3_gate_open'
+        )
+        .lean(),
       BehaviorEvent.find({
         user_id: { $in: caparDataIds },
         timestamp_start: { $gte: monthAgo.getTime(), $lte: now.getTime() },
@@ -599,7 +659,10 @@ export async function getPatientAppCaparInsights(req, res) {
     ]);
 
     const eligibleSegments = recentSegments.filter(isPatientAnalyticsSegment);
-    const latestStatus = eligibleSegments[0]?.rr_status || eligibleSegments[0]?.classification || null;
+    const currentSegments = eligibleSegments.filter(
+      (segment) => segment.window_start >= dayAgo.getTime()
+    );
+    const latestStatus = currentSegments[0]?.rr_status || currentSegments[0]?.classification || null;
     const physiology = [];
     if (eligibleSegments.some((segment) => Number.isFinite(segment.features?.mean_hr))) {
       physiology.push('heart_rate');
@@ -686,13 +749,17 @@ export async function getPatientAppCaparInsights(req, res) {
           state: segment.rr_status || segment.classification,
           baseline_level: baseline?.maturity_detail?.level || 'mature',
           window_start: segment.window_start,
+          segment_id: segment._id,
           ...result,
         };
       });
     const mahalanobisByWindow = new Map(
       mahalanobis.map((item) => [item.window_start, item])
     );
-    const latestMahalanobis = mahalanobis[0] || null;
+    const recentMahalanobis = mahalanobis.filter(
+      (item) => item.window_start >= dayAgo.getTime()
+    );
+    const latestMahalanobis = recentMahalanobis[0] || null;
     const comparableMahalanobis = latestMahalanobis?.available
       ? mahalanobis.filter((item) => (
         item.available
@@ -702,8 +769,14 @@ export async function getPatientAppCaparInsights(req, res) {
       ))
       : [];
 
-    const recoveryTimes = episodes
-      .map((episode) => Number(episode.ttr))
+    const episodeHistory = buildPatientEpisodeHistory({
+      episodes,
+      episodeMetadata,
+      anomalyEvents,
+    });
+    const recoveryTimes = episodeHistory
+      .filter((episode) => episode.outcome === 'recovered')
+      .map((episode) => Number(episode.recovery_time_ms))
       .filter((value) => Number.isFinite(value) && value > 0)
       .sort((a, b) => a - b);
     const middle = Math.floor(recoveryTimes.length / 2);
@@ -722,9 +795,24 @@ export async function getPatientAppCaparInsights(req, res) {
       anomalyEvents,
       now.getTime()
     );
+    if (recoverySummary.status === 'recovered' && recoverySummary.recovery_progress == null) {
+      recoverySummary.recovery_progress = 100;
+    }
+    const episodeOutcomes = summarizePatientEpisodeOutcomes(episodeHistory);
     const recentPatientCheckIn = historicalCheckIns.find((checkIn) => (
       new Date(checkIn.recorded_at).getTime() >= dayAgo.getTime()
     )) || null;
+    const followUpAlreadyAnswered = latestMahalanobis?.available
+      ? Boolean(await PatientAppCheckIn.exists({
+        ...accountScopeFilter(accountScopes),
+        'deviation_follow_up.segment_id': latestMahalanobis.segment_id,
+      }))
+      : false;
+    const deviationFollowUp = buildPatientDeviationFollowUpPrompt({
+      deviation: latestMahalanobis,
+      segmentId: latestMahalanobis?.segment_id?.toString() || null,
+      alreadyAnswered: followUpAlreadyAnswered,
+    });
     const patientRedFlags = identifyPatientRedFlags(recentPatientCheckIn);
     const mahalanobisAvailable = Boolean(latestMahalanobis?.available);
     const currentBaselineRelation = !mahalanobisAvailable
@@ -872,20 +960,55 @@ export async function getPatientAppCaparInsights(req, res) {
     const latestDeviationExplanation = deviationExplanations[0] || null;
 
     capar = {
-      status: eligibleSegments.length ? 'available' : 'insufficient_data',
-      source: 'CAPAR analyzed segments',
+      status: eligibleSegments.length
+        || baselines.length
+        || polarData.length
+        || episodes.length
+        || anomalyEvents.length
+        || cognitiveMemories.length
+        ? 'available'
+        : 'insufficient_data',
+      source: 'MongoDB CAPAR collections with patient-scoped access',
       physiology_axes: physiology,
       baseline: {
         mature_contexts: matureBaselines.length,
-        contexts: matureBaselines.map((baseline) => ({
+        total_contexts: baselines.length,
+        contexts: baselines.map((baseline) => ({
           activity: baseline.activity,
           time_period: baseline.time_period,
-          level: baseline.maturity_detail?.level || 'mature',
+          level: isMaturePatientBaseline(baseline)
+            ? baseline.maturity_detail?.level === 'mature'
+              ? 'mature'
+              : 'mature_legacy'
+            : baseline.maturity_detail?.level || 'provisional',
           quality: baseline.maturity_detail?.bq ?? null,
           segment_count: baseline.segment_count,
+          last_updated: baseline.last_updated,
+          feature_stats: Object.fromEntries(
+            [
+              'mean_hr',
+              'mean_rr',
+              'delta_hr',
+              'slope_hr',
+              'sdnn',
+              'rmssd',
+              'motion_intensity',
+              'dfa_alpha1',
+            ]
+              .filter((key) => baseline.stats?.[key]?.n > 0)
+              .map((key) => [key, {
+                count: baseline.stats[key].n,
+                mean: baseline.stats[key].mean,
+                standard_deviation: baseline.stats[key].std,
+              }])
+          ),
         })),
       },
-      trajectory_24h: eligibleSegments.slice(0, 100).reverse().map((segment) => {
+      trajectory_24h: eligibleSegments
+        .filter((segment) => segment.window_start >= dayAgo.getTime())
+        .slice(0, 100)
+        .reverse()
+        .map((segment) => {
         const personalDeviation = mahalanobisByWindow.get(segment.window_start);
         return {
           recorded_at: new Date(segment.window_start),
@@ -902,9 +1025,52 @@ export async function getPatientAppCaparInsights(req, res) {
           quality: segment.signal_quality_detail?.q_signal ?? null,
         };
       }),
+      trajectory_30d: eligibleSegments.slice(0, 500).reverse().map((segment) => {
+        const personalDeviation = mahalanobisByWindow.get(segment.window_start);
+        return {
+          recorded_at: new Date(segment.window_start),
+          activity: segment.activity_label,
+          state: segment.rr_status || segment.classification,
+          classification: segment.classification,
+          anomaly_score: segment.anomaly_score,
+          personal_state: personalDeviation?.state || 'insufficient_data',
+          mahalanobis_distance: personalDeviation?.distance ?? null,
+          mahalanobis_distance_squared: personalDeviation?.squared_distance ?? null,
+          feature_contributions: personalDeviation?.features || [],
+          features: toPatientAnalysisFeatures(segment),
+          quality: segment.signal_quality_detail?.q_signal ?? null,
+        };
+      }),
       mahalanobis: mahalanobis.slice(0, 100),
+      polar_data: polarData.map((reading) => ({
+        ...reading,
+        recorded_at: new Date(reading.timestamp * 1000),
+      })),
+      episode_history: episodeHistory.slice(0, 100),
+      cognitive_memories: cognitiveMemories.map((memory) => ({
+        ...memory,
+        behavioral_factors_snapshot: memory.behavioral_factors_snapshot
+          ?.filter((factor) => factor.patient_confirmed)
+          || [],
+      })),
+      data_inventory: {
+        baselines: baselines.length,
+        segments_returned: recentSegments.length,
+        segments_window_days: 30,
+        segments_truncated: recentSegments.length === 2000,
+        polar_records_returned: polarData.length,
+        polar_data_is_all_time: true,
+        polar_records_truncated: polarData.length === 100,
+        episode_analyses_returned: episodes.length,
+        anomaly_events_returned: anomalyEvents.length,
+        cognitive_memories_returned: cognitiveMemories.length,
+      },
       recovery: {
-        resolved_episodes_30d: recoveryTimes.length,
+        resolved_episodes_30d: episodeOutcomes.recovered,
+        unresolved_episodes_30d: episodeOutcomes.unresolved,
+        recovery_rate_denominator: episodeOutcomes.denominator,
+        observed_episode_recovery_rate_pct: episodeOutcomes.recovery_rate_pct,
+        recovery_rate_definition: 'Recovered CAPAR episodes divided by episodes with a documented recovered or unresolved outcome in the last 30 days; this is an observed historical proportion, not a prediction.',
         median_recovery_minutes: medianRecovery == null
           ? null
           : Number((medianRecovery / 60000).toFixed(1)),
@@ -945,6 +1111,7 @@ export async function getPatientAppCaparInsights(req, res) {
         recovery: recoverySummary,
         action: patientAction,
         red_flags: patientRedFlags,
+        follow_up: deviationFollowUp,
       },
       transition_learning: {
         observed_transitions: transitionDocs.reduce(
@@ -962,19 +1129,38 @@ export async function getPatientAppCaparInsights(req, res) {
   }
 
   const ragAxes = {
-    behavior: [...new Set(behavior)],
-    physiology: caparUserId ? capar.physiology_axes : [],
+    behavior: [...new Set([
+      ...behavior,
+      ...mapPatientContextToRagAxes(
+        (capar.cognitive_memories || []).flatMap((memory) =>
+          (memory.behavioral_factors_snapshot || []).map((factor) => ({
+            type: factor.factor_name || factor.category,
+          }))
+        )
+      ).behavior,
+    ])],
+    physiology: caparUserId
+      ? [...new Set([
+        ...capar.physiology_axes,
+        ...((capar.recovery?.recovery_rate_denominator || 0) > 0 ? ['recovery'] : []),
+      ])]
+      : [],
     caparDimension: caparUserId
       ? [
         ...(capar.physiology_axes.includes('dfa_alpha1') || capar.physiology_axes.includes('rmssd') ? ['AR'] : []),
-        ...(capar.physiology_axes.includes('recovery') ? ['RC'] : []),
+        ...(capar.physiology_axes.includes('recovery')
+          || (capar.recovery?.recovery_rate_denominator || 0) > 0
+          ? ['RC']
+          : []),
       ]
+      : [],
+    outcome: caparUserId && (capar.recovery?.recovery_rate_denominator || 0) > 0
+      ? ['recovery']
       : [],
     timeContext: latestCheckIn?.sleep
       && isPatientCaparNocturnalTime(latestCheckIn.recorded_at)
       ? ['nocturnal_sleep']
       : [],
-    outcome: [],
   };
   const ragResults = Object.values(ragAxes).some((axis) => axis.length > 0)
     ? retrieveMultiAxisRag({ ...ragAxes, minScore: 0.05 }).slice(0, 5)
@@ -990,6 +1176,7 @@ export async function getPatientAppCaparInsights(req, res) {
       scientific_evidence: {
         type: 'local_multi_axis_retrieval',
         personalized_causality: false,
+        axes_used: ragAxes,
         items: ragResults.map(({ paper, score, matchedDimensions }) => ({
           paper_id: paper.paperId,
           title: paper.title,
@@ -1007,7 +1194,11 @@ export async function getPatientAppCaparInsights(req, res) {
       patient_context: {
         latest_check_in_at: latestCheckIn?.recorded_at ?? null,
         recent_event_count: recentEvents.length,
-        wearable_bridge_samples_used_by_capar: false,
+        patient_app_wearable_samples_used_by_capar: false,
+        polar_records_loaded_for_patient_app: Boolean(
+          caparUserId && capar.data_inventory.polar_records_returned
+        ),
+        polar_records_used_for_current_mahalanobis: false,
       },
     },
   });
@@ -1217,6 +1408,201 @@ export async function createPatientAppWearableSample(req, res) {
   });
 }
 
+export async function streamPatientAppWearableData(req, res) {
+  const { dataOwnerId } = await getAccount(req);
+  const stream = validateWearableStream(req.body);
+  const streamActivity = {
+    rest: 'Istirahat',
+    sitting: 'Duduk',
+    standing: 'Berdiri',
+    walking: 'Berjalan',
+    exercise: 'Olahraga Berat',
+    sleep: 'Tidur',
+    other: 'Lainnya',
+  }[stream.activity] ?? 'Lainnya';
+  try {
+    const result = await publishLogTransport({
+      user_id: dataOwnerId.toString(),
+      source: 'vidyamedic_polar_ble',
+      device_id: stream.device_id,
+      received_at: new Date().toISOString(),
+      readings: stream.readings.map((reading) => ({
+        timestamp: Math.floor(reading.recorded_at.getTime() / 1000),
+        heart_rate: reading.heart_rate_bpm,
+        rr_interval: reading.rr_interval_ms,
+        activity: streamActivity,
+        signal_quality: reading.signal_confidence,
+        acc_x: reading.acceleration_g[0],
+        acc_y: reading.acceleration_g[1],
+        acc_z: reading.acceleration_g[2],
+      })),
+    });
+    if (!result.published) {
+      console.warn(`[PatientAppWearable] RabbitMQ did not accept stream for account ${dataOwnerId}: ${result.reason}`);
+      return res.status(503).json({
+        success: false,
+        message: 'RabbitMQ tidak menerima batch streaming. Periksa koneksi server.',
+      });
+    }
+    return res.status(202).json({
+      success: true,
+      data: {
+        published: true,
+        reading_count: result.envelope.readings.length,
+        device_id: stream.device_id,
+      },
+    });
+  } catch (error) {
+    console.error(`[PatientAppWearable] RabbitMQ stream failed for account ${dataOwnerId}: ${error.message}`);
+    return res.status(503).json({
+      success: false,
+      message: 'Streaming wearable gagal diteruskan ke RabbitMQ.',
+    });
+  }
+}
+
+function buildPatientEpisodeHistory({ episodes, episodeMetadata, anomalyEvents }) {
+  const metadataByEpisode = new Map(
+    episodeMetadata.map((metadata) => [metadata.episode_id?.toString(), metadata])
+  );
+  const eventsByEpisode = new Map(
+    anomalyEvents.map((event) => [event._id.toString(), event])
+  );
+  const historyByEpisode = new Map();
+  const toDate = (value) => {
+    if (value == null) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isFinite(date.getTime()) ? date : null;
+  };
+
+  for (const analysis of episodes) {
+    const episodeId = analysis.episode_id?.toString();
+    const event = episodeId ? eventsByEpisode.get(episodeId) : null;
+    const metadata = episodeId ? metadataByEpisode.get(episodeId) : null;
+    const recoveryTime = Number(analysis.ttr)
+      || Number(analysis.recovery_duration)
+      || Number(event?.trajectory?.recovery_time_ms)
+      || null;
+    const recovered = (Number.isFinite(recoveryTime) && recoveryTime > 0)
+      || analysis.physiological_state === 'RECOVERED'
+      || event?.physiological_outcome === 'RECOVERED'
+      || event?.recovered_at != null
+      || metadata?.status === 'recovered';
+    const unresolved = !recovered && (
+      event?.status === 'unresolved'
+      || event?.unresolved_at != null
+      || metadata?.status === 'unresolved'
+    );
+    const startAt = toDate(analysis.start_time)
+      || toDate(event?.onset_time || event?.started_at)
+      || toDate(metadata?.onset_timestamp);
+    const endAt = toDate(analysis.end_time)
+      || toDate(event?.recovered_at || event?.resolved_time)
+      || null;
+
+    historyByEpisode.set(episodeId || `analysis:${analysis._id}`, {
+      episode_id: episodeId || null,
+      start_at: startAt,
+      end_at: endAt,
+      status: event?.current_state || metadata?.current_state
+        || analysis.physiological_state || metadata?.status || event?.status || 'unknown',
+      outcome: recovered ? 'recovered' : unresolved ? 'unresolved' : 'in_progress_or_unverified',
+      activity: analysis.activity || event?.activity || metadata?.activity || null,
+      context: analysis.context || event?.context_tag || null,
+      classification: event?.classification || metadata?.classification || null,
+      peak_deviation: analysis.peak_deviation ?? event?.peak_score ?? null,
+      mean_deviation: analysis.mean_deviation ?? analysis.anomaly_score ?? null,
+      deviation_auc: analysis.deviation_auc ?? event?.auc_score ?? null,
+      recovery_time_ms: Number.isFinite(recoveryTime) && recoveryTime > 0 ? recoveryTime : null,
+      duration_ms: analysis.total_duration || event?.duration_ms || metadata?.duration_ms || null,
+      relapse_detected: analysis.relapse_detected === true
+        || event?.relapse === true
+        || (event?.relapse_count || analysis.relapse_count || 0) > 0,
+      relapse_count: Math.max(analysis.relapse_count || 0, event?.relapse_count || 0),
+      quality_score: analysis.quality_score ?? event?.confidence ?? null,
+      quality_gate_pass: analysis.quality_gate_pass ?? null,
+      features: {
+        heart_rate_mean: analysis.hr_mean ?? event?.peak_hr ?? null,
+        rmssd: analysis.rmssd ?? null,
+        sdnn: analysis.sdnn ?? null,
+        dfa_alpha1: analysis.dfa_alpha1 ?? null,
+      },
+    });
+  }
+
+  for (const event of anomalyEvents) {
+    const key = event._id.toString();
+    if (historyByEpisode.has(key)) continue;
+    const metadata = metadataByEpisode.get(key);
+    const recoveryTime = Number(event.trajectory?.recovery_time_ms)
+      || Number(event.ttr_tau_out_ms)
+      || null;
+    const recovered = event.physiological_outcome === 'RECOVERED'
+      || event.recovered_at != null
+      || metadata?.status === 'recovered';
+    const unresolved = !recovered && (
+      event.status === 'unresolved'
+      || event.unresolved_at != null
+      || metadata?.status === 'unresolved'
+    );
+    historyByEpisode.set(key, {
+      episode_id: key,
+      start_at: toDate(event.onset_time || event.started_at || metadata?.onset_timestamp),
+      end_at: toDate(event.recovered_at || event.resolved_time),
+      status: event.current_state || metadata?.current_state || event.status,
+      outcome: recovered ? 'recovered' : unresolved ? 'unresolved' : 'in_progress_or_unverified',
+      activity: event.activity || metadata?.activity || null,
+      context: event.context_tag || null,
+      classification: event.classification || metadata?.classification || null,
+      peak_deviation: event.peak_score ?? null,
+      mean_deviation: event.onset_score ?? null,
+      deviation_auc: event.auc_score ?? null,
+      recovery_time_ms: Number.isFinite(recoveryTime) && recoveryTime > 0 ? recoveryTime : null,
+      duration_ms: event.duration_ms ?? metadata?.duration_ms ?? null,
+      relapse_detected: event.relapse === true || (event.relapse_count || 0) > 0,
+      relapse_count: event.relapse_count || 0,
+      quality_score: event.confidence ?? null,
+      quality_gate_pass: null,
+      features: {
+        heart_rate_mean: event.peak_hr ?? null,
+        rmssd: event.features?.rmssd ?? null,
+        sdnn: event.features?.sdnn ?? null,
+        dfa_alpha1: event.trajectory?.dfa_alpha1 ?? null,
+      },
+    });
+  }
+
+  for (const metadata of episodeMetadata) {
+    const key = metadata.episode_id.toString();
+    if (historyByEpisode.has(key)) continue;
+    const recovered = metadata.status === 'recovered';
+    const unresolved = metadata.status === 'unresolved';
+    historyByEpisode.set(key, {
+      episode_id: key,
+      start_at: toDate(metadata.onset_timestamp),
+      end_at: null,
+      status: metadata.current_state || metadata.status,
+      outcome: recovered ? 'recovered' : unresolved ? 'unresolved' : 'in_progress_or_unverified',
+      activity: metadata.activity || null,
+      context: null,
+      classification: metadata.classification || null,
+      peak_deviation: metadata.peak_score ?? null,
+      mean_deviation: null,
+      deviation_auc: null,
+      recovery_time_ms: null,
+      duration_ms: metadata.duration_ms ?? null,
+      relapse_detected: false,
+      relapse_count: 0,
+      quality_score: null,
+      quality_gate_pass: null,
+      features: {},
+    });
+  }
+
+  return [...historyByEpisode.values()]
+    .sort((a, b) => (b.start_at?.getTime() || 0) - (a.start_at?.getTime() || 0));
+}
+
 function isPatientAnalyticsSegment(segment) {
   if (segment.signal_quality?.is_artifact) return false;
   if (['QUALITY_WARNING', 'INSUFFICIENT_BASELINE'].includes(segment.rr_status)) return false;
@@ -1237,7 +1623,23 @@ function isMaturePatientBaseline(baseline) {
   const matureByLevel = baseline.maturity_detail?.level === 'mature';
   const matureByLegacyFlag = baseline.is_mature && baseline.segment_count >= 20;
   if (!matureByLevel && !matureByLegacyFlag) return false;
-  if (baseline.maturity_detail?.bq != null && baseline.maturity_detail.bq < 0.7) return false;
+  const maturity = baseline.maturity_detail;
+  const qualityWasComputed = Boolean(
+    maturity?.last_computed
+    || maturity?.bq > 0
+    || maturity?.q_signal > 0
+    || maturity?.q_complete > 0
+    || maturity?.q_context > 0
+    || maturity?.q_stability > 0
+    || maturity?.failed_gates?.length
+  );
+  if (
+    (matureByLevel || (matureByLegacyFlag && qualityWasComputed))
+    && maturity?.bq != null
+    && maturity.bq < 0.7
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -1423,6 +1825,9 @@ function profileData(profile) {
     sex: profile.sex,
     height_cm: profile.height_cm,
     weight_kg: profile.weight_kg,
+    blood_type: profile.blood_type,
+    emergency_contact_name: profile.emergency_contact_name,
+    emergency_contact_phone: profile.emergency_contact_phone,
     conditions: profile.conditions,
     allergies: profile.allergies,
     allergies_reviewed: profile.allergies_reviewed,
