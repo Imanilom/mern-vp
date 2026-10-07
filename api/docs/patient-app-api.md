@@ -214,6 +214,36 @@ visible to both account sessions; new patient-app records are stored under the
 canonical User owner. Older records under either account ID remain readable
 without rewriting their provenance.
 
+### Longitudinal reasoning pipeline
+
+`capar.reasoning_pipeline` makes the MVP processing sequence explicit:
+`sensing` → `quality_gate` → `feature_engine` → `personal_baseline` →
+`evidence_fusion` → `latent_state_estimation` → `temporal_reasoning` →
+`resilience` → `decision_policy` → `patient_pedagogy` → `feedback`. Each stage
+reports its availability/status and the evidence counts or outputs actually
+used by the existing CAPAR/statistical pipeline. `evidence_fusion.sources`
+separates wearable, patient-reported symptoms, patient context, and clinical
+records. `clinical_records.status` is `not_integrated` until a governed
+clinical/laboratory source is connected; missing evidence is never synthesized.
+
+The `latent_state_estimation` stage exposes an available personal-baseline
+wearable statistical state (and its distance) only when a matching
+quality-gated Mahalanobis result exists. Patient context may inform explanation
+and safety/action policy, but is not represented as an input to this state
+estimate. The requested notation `P(X_t | T(t))` is included
+under `probabilistic_posterior` as a design target, but its `distribution` is
+`null` and its status is `not_calibrated`. Feature contributions, literature,
+or context proximity are not converted into probabilities or diagnostic
+confidence. State references and decisions retain their existing
+`NON-CLINICAL / PLACEHOLDER` policy metadata. The feedback stage distinguishes
+a completed patient follow-up from optional patient-reported `action_taken` and
+`response_after_action` fields. These fields describe what the patient says they
+did and felt afterward; they do not establish intervention effectiveness or
+causality. The API makes no treatment recommendation from these free-text
+responses. Each is optional (`action_taken`: up to 300 characters;
+`response_after_action`: up to 500 characters), stored with the check-in
+timestamp, and scoped to the authenticated patient.
+
 User-authenticated link request:
 
 ```json

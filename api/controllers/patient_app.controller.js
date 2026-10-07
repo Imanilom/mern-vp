@@ -43,6 +43,7 @@ import {
   summarizePatientPersistence,
   summarizePatientRecovery,
 } from '../utils/patientPedagogy.js';
+import { buildPatientReasoningPipeline } from '../utils/patientReasoningPipeline.js';
 import { assessRRQuality, extractRRFeatures } from '../utils/rrBaselinePipeline.js';
 import {
   validateCheckIn,
@@ -859,6 +860,12 @@ export async function getPatientAppCaparInsights(req, res) {
       segmentId: latestMahalanobis?.segment_id?.toString() || null,
       alreadyAnswered: followUpAlreadyAnswered,
     });
+    const feedbackCheckIn = latestMahalanobis?.segment_id
+      ? historicalCheckIns.find((checkIn) => (
+        checkIn.deviation_follow_up?.segment_id?.toString()
+        === latestMahalanobis.segment_id.toString()
+      )) || null
+      : null;
     const patientRedFlags = identifyPatientRedFlags(recentPatientCheckIn);
     const mahalanobisAvailable = Boolean(latestMahalanobis?.available);
     const currentBaselineRelation = !mahalanobisAvailable
@@ -1070,6 +1077,31 @@ export async function getPatientAppCaparInsights(req, res) {
       };
     }
 
+    const latestPipelineSegment = currentSegments[0] || null;
+    const latestPipelineContextKey = latestMahalanobis
+      ? `${latestMahalanobis.activity}:${latestMahalanobis.time_period}`
+      : null;
+    const reasoningPipeline = buildPatientReasoningPipeline({
+      recentSegments,
+      acceptedSegments: eligibleSegments,
+      latestSegment: latestPipelineSegment,
+      latestMahalanobis,
+      matchingBaseline: latestPipelineContextKey
+        ? baselineByContext.get(latestPipelineContextKey) ?? null
+        : null,
+      polarData,
+      checkIns: historicalCheckIns,
+      patientEvents: historicalPatientEvents,
+      behaviorEvents,
+      persistence: persistenceSummary,
+      recovery: recoverySummary,
+      episodeHistory,
+      decision: patientAction,
+      followUp: deviationFollowUp,
+      feedbackCheckIn,
+      evidenceConflicts: latestDeviationExplanation?.evidence_conflicts || [],
+    });
+
     capar = {
       status: eligibleSegments.length
         || baselines.length
@@ -1201,6 +1233,7 @@ export async function getPatientAppCaparInsights(req, res) {
         relapse_detected: recoverySummary.relapse_detected,
       },
       persistence: persistenceSummary,
+      reasoning_pipeline: reasoningPipeline,
       deviation_explanations: deviationExplanations,
       pedagogy: {
         where_am_i: {

@@ -157,6 +157,33 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
             ],
             const SizedBox(height: 12),
             ...questions.map(_buildQuestion),
+            const SizedBox(height: 8),
+            _messageCard(
+              'Opsional: jika Anda sudah melakukan suatu langkah atas keputusan sendiri, catat apa yang dilakukan dan bagaimana Anda merasakannya setelah itu. Ini adalah laporan pribadi, bukan penilaian efektivitas atau anjuran tindakan.',
+            ),
+            _questionCard(
+              'Langkah yang saya lakukan (opsional)',
+              TextField(
+                controller: _textAnswers.putIfAbsent(
+                    'action_taken_feedback', TextEditingController.new),
+                maxLines: 2,
+                maxLength: 300,
+                decoration: const InputDecoration(
+                    hintText: 'Catat langkah yang sudah dilakukan'),
+              ),
+            ),
+            _questionCard(
+              'Respons yang saya rasakan setelahnya (opsional)',
+              TextField(
+                controller: _textAnswers.putIfAbsent(
+                    'response_after_action_feedback',
+                    TextEditingController.new),
+                maxLines: 2,
+                maxLength: 500,
+                decoration: const InputDecoration(
+                    hintText: 'Catat perubahan yang Anda rasakan'),
+              ),
+            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -364,6 +391,10 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
     final activity = _singleAnswers['recent_context'];
     final onset = _singleAnswers['symptom_timing'] ?? '';
     final note = _textAnswers['additional_context']?.text.trim() ?? '';
+    final actionTaken =
+        _textAnswers['action_taken_feedback']?.text.trim() ?? '';
+    final responseAfterAction =
+        _textAnswers['response_after_action_feedback']?.text.trim() ?? '';
 
     setState(() => _isSubmitting = true);
     final saved = await state.submitFollowUpResponse(
@@ -371,6 +402,8 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
       factors: factors,
       symptomOnset: onset,
       notes: note,
+      actionTaken: actionTaken,
+      responseAfterAction: responseAfterAction,
       contextActivity: activity,
     );
     if (!mounted) return;

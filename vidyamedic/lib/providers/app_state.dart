@@ -199,6 +199,12 @@ class AppState extends ChangeNotifier {
   Map<String, dynamic>? overviewData;
   Map<String, dynamic>? dailySummaryData;
   List<Map<String, dynamic>> wearableSamples = [];
+  Map<String, dynamic>? get reasoningPipeline {
+    final capar = rawCaparInsights?['capar'];
+    final pipeline = capar is Map ? capar['reasoning_pipeline'] : null;
+    return pipeline is Map ? Map<String, dynamic>.from(pipeline) : null;
+  }
+
   final Set<String> confirmedDailySections = {};
   bool isDailyDraftDirty = false;
   List<ScientificCitation> scientificCitations = [];
@@ -1212,6 +1218,8 @@ class AppState extends ChangeNotifier {
     required List<String> factors,
     required String symptomOnset,
     required String notes,
+    String actionTaken = '',
+    String responseAfterAction = '',
     String? contextActivity,
   }) async {
     final segmentId = followUpPrompt.segmentId;
@@ -1232,6 +1240,9 @@ class AppState extends ChangeNotifier {
         'perceived_factors': factors,
         if (symptomOnset.isNotEmpty) 'symptom_onset': symptomOnset,
         if (notes.trim().isNotEmpty) 'note': notes.trim(),
+        if (actionTaken.trim().isNotEmpty) 'action_taken': actionTaken.trim(),
+        if (responseAfterAction.trim().isNotEmpty)
+          'response_after_action': responseAfterAction.trim(),
       },
     };
     final res = await ApiService.createCheckIn(payload);

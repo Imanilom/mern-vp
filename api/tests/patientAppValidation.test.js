@@ -146,6 +146,8 @@ test('deviation follow-up answers require a segment reference and known patient-
       perceived_factors: ['stress', 'poor_sleep'],
       symptom_onset: 'around_deviation',
       note: 'Kurang tidur semalam',
+      action_taken: 'Beristirahat',
+      response_after_action: 'Merasa lebih nyaman setelah beberapa waktu',
     },
   });
   assert.deepEqual(result.deviation_follow_up, {
@@ -153,7 +155,16 @@ test('deviation follow-up answers require a segment reference and known patient-
     perceived_factors: ['stress', 'poor_sleep'],
     symptom_onset: 'around_deviation',
     note: 'Kurang tidur semalam',
+    action_taken: 'Beristirahat',
+    response_after_action: 'Merasa lebih nyaman setelah beberapa waktu',
   });
+  assert.throws(() => validateCheckIn({
+    ...base,
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      action_taken: 'x'.repeat(301),
+    },
+  }), { statusCode: 400 });
   assert.throws(() => validateCheckIn({
     ...base,
     deviation_follow_up: {

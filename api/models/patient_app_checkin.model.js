@@ -78,6 +78,8 @@ const PatientAppCheckInSchema = new mongoose.Schema(
         default: null,
       },
       note: { type: String, trim: true, maxlength: 500, default: '' },
+      action_taken: { type: String, trim: true, maxlength: 300, default: '' },
+      response_after_action: { type: String, trim: true, maxlength: 500, default: '' },
     },
     stress_level: { type: Number, min: 1, max: 3, default: null },
     hydration_ml: { type: Number, min: 0, max: 10000, default: null },

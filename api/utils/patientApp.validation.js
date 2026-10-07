@@ -599,7 +599,14 @@ export function validateCheckIn(body) {
   }
   if ('deviation_follow_up' in body) {
     requireObject(body.deviation_follow_up, 'deviation_follow_up');
-    const allowed = new Set(['segment_id', 'perceived_factors', 'symptom_onset', 'note']);
+    const allowed = new Set([
+      'segment_id',
+      'perceived_factors',
+      'symptom_onset',
+      'note',
+      'action_taken',
+      'response_after_action',
+    ]);
     rejectUnknownFields(body.deviation_follow_up, allowed, 'Field deviation_follow_up');
     const followUp = body.deviation_follow_up;
     if (
@@ -645,6 +652,20 @@ export function validateCheckIn(body) {
     }
     if ('note' in followUp) {
       resultFollowUp.note = optionalString(followUp.note, 'deviation_follow_up.note', 500);
+    }
+    if ('action_taken' in followUp) {
+      resultFollowUp.action_taken = optionalString(
+        followUp.action_taken,
+        'deviation_follow_up.action_taken',
+        300
+      );
+    }
+    if ('response_after_action' in followUp) {
+      resultFollowUp.response_after_action = optionalString(
+        followUp.response_after_action,
+        'deviation_follow_up.response_after_action',
+        500
+      );
     }
     result.deviation_follow_up = resultFollowUp;
   }

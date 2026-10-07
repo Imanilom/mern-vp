@@ -113,6 +113,13 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
     final recovery = capar is Map && capar['recovery'] is Map
         ? Map<String, dynamic>.from(capar['recovery'] as Map)
         : <String, dynamic>{};
+    final reasoningPipeline = s.reasoningPipeline;
+    final pipelineStages = reasoningPipeline?['stages'] is List
+        ? (reasoningPipeline!['stages'] as List)
+            .whereType<Map>()
+            .map((stage) => Map<String, dynamic>.from(stage))
+            .toList()
+        : <Map<String, dynamic>>[];
     final inventory = capar is Map && capar['data_inventory'] is Map
         ? Map<String, dynamic>.from(capar['data_inventory'] as Map)
         : <String, dynamic>{};
@@ -182,6 +189,10 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          if (reasoningPipeline != null) ...[
+            _reasoningPipelineCard(reasoningPipeline, pipelineStages),
+            const SizedBox(height: 16),
+          ],
           if (inventory.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.all(14),
@@ -777,6 +788,181 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
               style: AppTheme.font(
                   size: 10, color: AppTheme.textMuted, height: 1.3),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _reasoningPipelineCard(
+    Map<String, dynamic> pipeline,
+    List<Map<String, dynamic>> stages,
+  ) {
+    const stageLabels = {
+      'sensing': 'Penginderaan',
+      'quality_gate': 'Gerbang kualitas',
+      'feature_engine': 'Ekstraksi fitur',
+      'personal_baseline': 'Baseline personal',
+      'evidence_fusion': 'Fusi bukti',
+      'latent_state_estimation': 'Estimasi state',
+      'temporal_reasoning': 'Analisis temporal',
+      'resilience': 'Pemulihan / resiliensi',
+      'decision_policy': 'Kebijakan tindakan',
+      'patient_pedagogy': 'Panduan pasien',
+      'feedback': 'Umpan balik',
+    };
+    String statusLabel(String? status) => switch (status) {
+          'available' || 'passed' || 'mature' => 'Tersedia',
+          'available_with_limits' => 'Tersedia dengan batasan',
+          'single_source' => 'Satu sumber bukti',
+          'historical_only' => 'Riwayat saja, belum ada data terkini',
+          'conflicting_evidence' => 'Bukti berbeda',
+          'insufficient_data' => 'Data belum cukup',
+          'awaiting_patient_context' => 'Menunggu konteks Anda',
+          'patient_feedback_recorded' => 'Konteks pasien tercatat',
+          'no_feedback_recorded' => 'Belum ada umpan balik',
+          'not_required' => 'Tidak diperlukan saat ini',
+          'not_calibrated' => 'Belum tervalidasi / terkalibrasi',
+          'not_integrated' => 'Belum terintegrasi',
+          'not_collected' => 'Belum dikumpulkan',
+          _ => status?.replaceAll('_', ' ') ?? 'Belum tersedia',
+        };
+    String stageDetail(Map<String, dynamic> stage) {
+      switch (stage['stage_id']) {
+        case 'sensing':
+          return '${stage['accepted_feature_windows'] ?? 0} jendela sensor diterima • '
+              '${stage['symptom_records'] ?? 0} gejala • '
+              '${stage['context_check_ins'] ?? 0} check-in';
+        case 'quality_gate':
+          return '${stage['accepted_windows'] ?? 0} lolos • '
+              '${stage['rejected_windows'] ?? 0} tidak digunakan';
+        case 'feature_engine':
+          return '${stage['feature_count'] ?? 0} fitur tersedia';
+        case 'personal_baseline':
+          final activity = stage['activity']?.toString();
+          final period = stage['time_period']?.toString();
+          final context = [activity, period]
+              .where((value) => value != null && value.isNotEmpty)
+              .join(' • ');
+          return context.isEmpty
+              ? 'Baseline konteks yang sesuai belum tersedia'
+              : '$context • ${stage['segment_count'] ?? 0} segmen';
+        case 'evidence_fusion':
+          final sources = stage['available_source_count'] ?? 0;
+          final conflicts = stage['conflicts'] is List
+              ? (stage['conflicts'] as List).length
+              : 0;
+          return '$sources sumber bukti tersedia • $conflicts konflik tercatat';
+        case 'latent_state_estimation':
+          return stage['state']?.toString().replaceAll('_', ' ') ??
+              'State statistik personal belum tersedia';
+        case 'temporal_reasoning':
+          return '${stage['evaluated_windows'] ?? 0} jendela • '
+              '${stage['episode_count'] ?? 0} episode';
+        case 'resilience':
+          final progress = stage['recovery_progress_pct'];
+          return progress is num
+              ? 'Progres pemulihan tercatat: ${progress.toStringAsFixed(0)}%'
+              : statusLabel(stage['status']?.toString());
+        case 'decision_policy':
+          return stage['action']?.toString().replaceAll('_', ' ') ??
+              'Panduan tindakan belum tersedia';
+        case 'patient_pedagogy':
+          final sections = stage['sections'] is List
+              ? (stage['sections'] as List).length
+              : 0;
+          return '$sections pertanyaan panduan';
+        case 'feedback':
+          return 'Langkah tercatat: ${stage['patient_reported_action_recorded'] == true ? 'ya' : 'belum'} • '
+              'Respons pribadi: ${stage['patient_reported_response_recorded'] == true ? 'tercatat' : 'belum tercatat'}';
+        default:
+          return '';
+      }
+    }
+
+    final posterior = pipeline['probabilistic_posterior'] is Map
+        ? Map<String, dynamic>.from(pipeline['probabilistic_posterior'] as Map)
+        : <String, dynamic>{};
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.shadowSoft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Alur penalaran NadiKu',
+              style: AppTheme.font(size: 14, weight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(
+            'Sensor → fusi bukti → state → waktu/pemulihan → tindakan → edukasi → umpan balik',
+            style: AppTheme.font(
+                size: 11.5, color: AppTheme.textSecondary, height: 1.35),
+          ),
+          const SizedBox(height: 10),
+          ...stages.map((stage) {
+            final stageId = stage['stage_id']?.toString() ?? '';
+            final status = stage['status']?.toString();
+            final color = status == 'conflicting_evidence'
+                ? AppTheme.statusOrange
+                : status == 'insufficient_data' ||
+                        status == 'awaiting_patient_context'
+                    ? AppTheme.statusYellow
+                    : AppTheme.primary;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    status == 'conflicting_evidence'
+                        ? Icons.warning_amber_rounded
+                        : status == 'insufficient_data'
+                            ? Icons.remove_circle_outline
+                            : Icons.check_circle_outline,
+                    size: 16,
+                    color: color,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${stageLabels[stageId] ?? stageId}: ${statusLabel(status)}',
+                          style: AppTheme.font(
+                              size: 11.5,
+                              weight: FontWeight.w700,
+                              color: AppTheme.textPrimary),
+                        ),
+                        Text(
+                          stageDetail(stage),
+                          style: AppTheme.font(
+                              size: 10.5,
+                              color: AppTheme.textMuted,
+                              height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
+          Text(
+            'P(X_t | T(t)): ${statusLabel(posterior['status']?.toString())}. '
+            'Distribusi probabilitas tidak ditampilkan karena belum tervalidasi dan terkalibrasi. '
+            'Estimasi state yang tersedia hanya perbandingan statistik terhadap baseline personal, bukan diagnosis.',
+            style: AppTheme.font(
+                size: 11,
+                color: AppTheme.textSecondary,
+                height: 1.35,
+                weight: FontWeight.w600),
+          ),
         ],
       ),
     );
