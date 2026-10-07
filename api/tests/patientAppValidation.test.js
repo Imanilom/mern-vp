@@ -131,6 +131,75 @@ test('daily check-in validates input and does not accept account identifiers', (
   );
 });
 
+test('individual VidyaMedic input screens can save partial check-ins', () => {
+  const recorded_at = '2026-10-07T08:15:00.000Z';
+  const activityAndLifestyle = validateCheckIn({
+    recorded_at,
+    activity: 'walking',
+    sleep: {},
+    symptoms: [],
+    stress_level: 3,
+    lifestyle: { meal: false, caffeine: true, alcohol: false, smoking: false },
+    medication_taken: false,
+  });
+  assert.equal(activityAndLifestyle.activity, 'walking');
+  assert.equal('feeling' in activityAndLifestyle, false);
+  assert.equal(activityAndLifestyle.stress_level, 3);
+
+  const running = validateCheckIn({
+    recorded_at,
+    activity: 'running',
+  });
+  assert.equal(running.activity, 'running');
+
+  const sleep = validateCheckIn({
+    recorded_at,
+    sleep: {
+      duration_minutes: 420,
+      quality: 'good',
+      disturbances: {
+        woke_frequently: false,
+        difficulty_falling_asleep: true,
+        nightmares: false,
+      },
+    },
+    symptoms: [],
+  });
+  assert.equal(sleep.sleep.duration_minutes, 420);
+  assert.equal('activity' in sleep, false);
+
+  const measurements = validateCheckIn({
+    recorded_at,
+    measurements: { systolic_bp: 120, diastolic_bp: 80 },
+  });
+  assert.equal(measurements.measurements.systolic_bp, 120);
+
+  const note = validateCheckIn({ recorded_at, note: 'Catatan harian pasien.' });
+  assert.equal(note.note, 'Catatan harian pasien.');
+
+  const followUp = validateCheckIn({
+    recorded_at,
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      perceived_factors: [],
+    },
+  });
+  assert.equal(followUp.deviation_follow_up.segment_id, '507f1f77bcf86cd799439011');
+
+  assert.throws(
+    () => validateCheckIn({ recorded_at, sleep: {}, symptoms: [] }),
+    { statusCode: 400, message: 'Catatan kosong. Isi minimal satu bagian sebelum menyimpan.' }
+  );
+  assert.throws(
+    () => validateCheckIn({
+      recorded_at,
+      feeling: 'okay',
+      symptoms: [],
+    }),
+    { statusCode: 400 }
+  );
+});
+
 test('deviation follow-up answers require a segment reference and known patient-reported factors', () => {
   const base = {
     recorded_at: '2026-10-05T08:15:00.000Z',
@@ -217,6 +286,18 @@ test('patient event markers and wearable samples validate their source values', 
   assert.equal(sample.acceleration_g.length, 10);
   assert.equal(sample.activity, 'walking');
   assert.equal(sample.device_id, 'watch-01');
+  const runningSample = validateWearableSample({
+    provider: 'polar_h10',
+    device_id: 'polar-01',
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    heart_rate_bpm: 150,
+    rr_intervals_ms: Array(64).fill(400),
+    acceleration_g: Array.from({ length: 10 }, () => [0, 0, 1]),
+    sensor_contact: true,
+    signal_confidence: 0.95,
+    activity: 'running',
+  });
+  assert.equal(runningSample.activity, 'running');
   assert.throws(
     () => validateWearableSample({
       provider: 'polar_h10',

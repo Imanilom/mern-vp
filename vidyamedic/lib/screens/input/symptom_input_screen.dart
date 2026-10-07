@@ -150,8 +150,14 @@ class _SymptomInputScreenState extends State<SymptomInputScreen> {
         ],
       ),
       bottom: ElevatedButton(
-        onPressed: _save,
-        child: const Text('Simpan'),
+        onPressed: s.isSubmittingDaily ? null : _save,
+        child: s.isSubmittingDaily
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Simpan'),
       ),
     );
   }

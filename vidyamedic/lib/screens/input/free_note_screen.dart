@@ -48,6 +48,7 @@ class _FreeNoteScreenState extends State<FreeNoteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
     return MockupScaffold(
       title: 'Catatan Saya',
       body: Column(
@@ -101,8 +102,14 @@ class _FreeNoteScreenState extends State<FreeNoteScreen> {
         ],
       ),
       bottom: ElevatedButton(
-        onPressed: _save,
-        child: const Text('Simpan'),
+        onPressed: s.isSubmittingDaily ? null : _save,
+        child: s.isSubmittingDaily
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Simpan'),
       ),
     );
   }

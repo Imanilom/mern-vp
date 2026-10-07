@@ -60,6 +60,7 @@ class _ActivityInputScreenState extends State<ActivityInputScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isSaving = context.watch<AppState>().isSubmittingDaily;
     return MockupScaffold(
       title: 'Aktivitas & Gaya Hidup',
       body: Column(
@@ -140,8 +141,14 @@ class _ActivityInputScreenState extends State<ActivityInputScreen> {
         ],
       ),
       bottom: ElevatedButton(
-        onPressed: _save,
-        child: const Text('Simpan'),
+        onPressed: isSaving ? null : _save,
+        child: isSaving
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Simpan'),
       ),
     );
   }

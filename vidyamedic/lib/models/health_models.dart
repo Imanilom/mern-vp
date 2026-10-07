@@ -14,7 +14,8 @@ enum Gender {
   static Gender fromString(String? val) {
     if (val == null || val.isEmpty) return Gender.other;
     final lower = val.toLowerCase();
-    if (lower == 'male' || lower == 'laki-laki' || lower == 'pria') return Gender.male;
+    if (lower == 'male' || lower == 'laki-laki' || lower == 'pria')
+      return Gender.male;
     if (lower == 'other' || lower == 'lainnya') return Gender.other;
     return Gender.female;
   }
@@ -27,7 +28,8 @@ enum MoodRating {
   baik('Baik', 'good', AppTheme.faceGreen, FaceExpression.happy),
   cukup('Cukup', 'fair', AppTheme.faceYellow, FaceExpression.neutral),
   kurangBaik('Kurang baik', 'poor', AppTheme.faceOrange, FaceExpression.sad),
-  tidakBaik('Tidak baik', 'very_poor', AppTheme.faceRed, FaceExpression.verySad);
+  tidakBaik(
+      'Tidak baik', 'very_poor', AppTheme.faceRed, FaceExpression.verySad);
 
   final String label;
   final String apiValue;
@@ -54,8 +56,8 @@ enum MoodRating {
 
 enum StressLevel {
   rendah('Rendah', 1, AppTheme.faceGreen, FaceExpression.happy),
-  sedang('Sedang', 3, AppTheme.faceYellow, FaceExpression.neutral),
-  tinggi('Tinggi', 5, AppTheme.faceRed, FaceExpression.verySad);
+  sedang('Sedang', 2, AppTheme.faceYellow, FaceExpression.neutral),
+  tinggi('Tinggi', 3, AppTheme.faceRed, FaceExpression.verySad);
 
   final String label;
   final int apiValue;
@@ -73,7 +75,8 @@ enum StressLevel {
 }
 
 enum SleepQuality {
-  sangatBaik('Sangat baik', 'excellent', Color(0xFF4CC9A0), FaceExpression.veryHappy),
+  sangatBaik(
+      'Sangat baik', 'very_good', Color(0xFF4CC9A0), FaceExpression.veryHappy),
   baik('Baik', 'good', AppTheme.faceGreen, FaceExpression.happy),
   cukup('Cukup', 'fair', AppTheme.faceYellow, FaceExpression.neutral),
   buruk('Buruk', 'poor', AppTheme.faceRed, FaceExpression.verySad);
@@ -88,6 +91,7 @@ enum SleepQuality {
     if (val == null) return SleepQuality.baik;
     switch (val.toLowerCase()) {
       case 'excellent':
+      case 'very_good':
         return SleepQuality.sangatBaik;
       case 'good':
         return SleepQuality.baik;
@@ -109,29 +113,42 @@ class SymptomOption {
   final IconData icon;
   final Color color;
   final bool redFlag;
-  const SymptomOption(this.label, this.icon, this.color, {this.apiCode = 'other', this.redFlag = false});
+  const SymptomOption(this.label, this.icon, this.color,
+      {this.apiCode = 'other', this.redFlag = false});
 }
 
 const String kNoSymptom = 'Tidak ada';
 
 const List<SymptomOption> kSymptoms = [
-  SymptomOption(kNoSymptom, Icons.check_circle_outline, Color(0xFF14A38B), apiCode: 'none'),
-  SymptomOption('Nyeri dada', Icons.favorite, Color(0xFFEB5757), apiCode: 'chest_pain', redFlag: true),
-  SymptomOption('Sesak napas', Icons.air, Color(0xFFF2994A), apiCode: 'breathlessness', redFlag: true),
+  SymptomOption(kNoSymptom, Icons.check_circle_outline, Color(0xFF14A38B),
+      apiCode: 'none'),
+  SymptomOption('Nyeri dada', Icons.favorite, Color(0xFFEB5757),
+      apiCode: 'chest_pain', redFlag: true),
+  SymptomOption('Sesak napas', Icons.air, Color(0xFFF2994A),
+      apiCode: 'breathlessness', redFlag: true),
   SymptomOption('Pusing', Icons.sync, Color(0xFFF2994A), apiCode: 'dizziness'),
-  SymptomOption('Jantung terasa berdebar/tidak teratur', Icons.favorite_border, Color(0xFFEB5757), apiCode: 'palpitations'),
-  SymptomOption('Lelah', Icons.accessibility_new, Color(0xFF3B82F6), apiCode: 'fatigue'),
-  SymptomOption('Mual', Icons.sick_outlined, Color(0xFF14A38B), apiCode: 'nausea'),
-  SymptomOption('Lainnya', Icons.more_horiz, Color(0xFF6B7280), apiCode: 'other'),
+  SymptomOption('Jantung terasa berdebar/tidak teratur', Icons.favorite_border,
+      Color(0xFFEB5757),
+      apiCode: 'palpitations'),
+  SymptomOption('Lelah', Icons.accessibility_new, Color(0xFF3B82F6),
+      apiCode: 'fatigue'),
+  SymptomOption('Mual', Icons.sick_outlined, Color(0xFF14A38B),
+      apiCode: 'nausea'),
+  SymptomOption('Lainnya', Icons.more_horiz, Color(0xFF6B7280),
+      apiCode: 'other'),
 ];
 
 String mapSymptomLabelToApi(String label) {
-  final match = kSymptoms.firstWhere((s) => s.label == label, orElse: () => const SymptomOption('other', Icons.help, Colors.grey, apiCode: 'other'));
+  final match = kSymptoms.firstWhere((s) => s.label == label,
+      orElse: () => const SymptomOption('other', Icons.help, Colors.grey,
+          apiCode: 'other'));
   return match.apiCode;
 }
 
 String mapApiToSymptomLabel(String apiCode) {
-  final match = kSymptoms.firstWhere((s) => s.apiCode == apiCode, orElse: () => const SymptomOption('Lainnya', Icons.help, Colors.grey, apiCode: 'other'));
+  final match = kSymptoms.firstWhere((s) => s.apiCode == apiCode,
+      orElse: () => const SymptomOption('Lainnya', Icons.help, Colors.grey,
+          apiCode: 'other'));
   return match.label;
 }
 
@@ -141,6 +158,7 @@ const List<(String, IconData)> kActivities = [
   ('Duduk', Icons.chair_alt_outlined),
   ('Berdiri', Icons.man),
   ('Berjalan', Icons.directions_walk),
+  ('Berlari', Icons.directions_run),
   ('Olahraga', Icons.directions_run),
   ('Bekerja', Icons.work_outline),
   ('Makan', Icons.restaurant),
@@ -153,6 +171,7 @@ const Map<String, String> _activityToApiMap = {
   'Berdiri': 'standing',
   'Berjalan': 'walking',
   'Olahraga': 'exercise',
+  'Berlari': 'running',
   'Bekerja': 'work',
   'Makan': 'meal',
   'Lainnya': 'other',
@@ -165,6 +184,59 @@ String mapApiToActivity(String apiCode) {
     if (entry.value == apiCode) return entry.key;
   }
   return 'Lainnya';
+}
+
+class ActivityMotionPolicy {
+  const ActivityMotionPolicy({
+    required this.policyId,
+    required this.ruleId,
+    required this.version,
+    required this.source,
+    required this.rationale,
+    required this.effectiveDate,
+    required this.confidence,
+    required this.status,
+    required this.minimumCadenceHz,
+    required this.runningCadenceHz,
+    required this.maximumCadenceHz,
+    required this.minimumPeakProminenceG,
+    required this.maximumIntervalVariation,
+    required this.minimumSampleSeconds,
+  });
+
+  static const demo = ActivityMotionPolicy(
+    policyId: 'nadiku_acc_activity_demo',
+    ruleId: 'periodic_acc_cadence',
+    version: '1.0.0',
+    source:
+        'Application-defined accelerometer heuristic; not clinically validated.',
+    rationale:
+        'Use repeated acceleration-magnitude peaks to suggest walking or running for patient confirmation.',
+    effectiveDate: '2026-10-07',
+    confidence: 0,
+    status: 'NON-CLINICAL / PLACEHOLDER',
+    minimumCadenceHz: 0.8,
+    runningCadenceHz: 2.2,
+    maximumCadenceHz: 3.5,
+    minimumPeakProminenceG: 0.06,
+    maximumIntervalVariation: 0.35,
+    minimumSampleSeconds: 3,
+  );
+
+  final String policyId;
+  final String ruleId;
+  final String version;
+  final String source;
+  final String rationale;
+  final String effectiveDate;
+  final double confidence;
+  final String status;
+  final double minimumCadenceHz;
+  final double runningCadenceHz;
+  final double maximumCadenceHz;
+  final double minimumPeakProminenceG;
+  final double maximumIntervalVariation;
+  final double minimumSampleSeconds;
 }
 
 /// Event marker options (mockup halaman 5 – "Tambah Event").
@@ -206,21 +278,46 @@ String mapApiToEventTitle(String apiCode) {
 }
 
 enum ActionTriageLevel {
-  unknown('DATA TERBATAS', 'unknown', 'Data belum cukup',
+  unknown(
+      'DATA TERBATAS',
+      'unknown',
+      'Data belum cukup',
       'Data belum cukup untuk menentukan status. Ini bukan berarti ada deviasi; lanjutkan pengumpulan data.',
-      AppTheme.textMuted, AppTheme.fieldFill, Icons.help_outline),
-  green('HIJAU', 'green', 'Lanjutkan aktivitas',
+      AppTheme.textMuted,
+      AppTheme.fieldFill,
+      Icons.help_outline),
+  green(
+      'HIJAU',
+      'green',
+      'Lanjutkan aktivitas',
       'Stabil sesuai baseline; tidak ada red flag; recovery baik.',
-      AppTheme.statusGreen, AppTheme.statusGreenBg, Icons.check_circle),
-  yellow('KUNING', 'yellow', 'Observasi & catat',
+      AppTheme.statusGreen,
+      AppTheme.statusGreenBg,
+      Icons.check_circle),
+  yellow(
+      'KUNING',
+      'yellow',
+      'Observasi & catat',
       'Perubahan ringan atau baru; pantau tren dan gejala.',
-      AppTheme.statusYellow, AppTheme.statusYellowBg, Icons.visibility),
-  orange('ORANYE', 'orange', 'Hubungi tenaga kesehatan',
+      AppTheme.statusYellow,
+      AppTheme.statusYellowBg,
+      Icons.visibility),
+  orange(
+      'ORANYE',
+      'orange',
+      'Hubungi tenaga kesehatan',
       'Deviasi menetap/tidak pulih atau gejala yang memerlukan konsultasi.',
-      AppTheme.statusOrange, AppTheme.statusOrangeBg, Icons.call),
-  red('MERAH', 'red', 'Ke IGD / layanan darurat',
+      AppTheme.statusOrange,
+      AppTheme.statusOrangeBg,
+      Icons.call),
+  red(
+      'MERAH',
+      'red',
+      'Ke IGD / layanan darurat',
       'Red flag, gejala berat, atau kondisi memburuk cepat.',
-      AppTheme.statusRed, AppTheme.statusRedBg, Icons.emergency);
+      AppTheme.statusRed,
+      AppTheme.statusRedBg,
+      Icons.emergency);
 
   final String code;
   final String apiValue;
@@ -229,8 +326,8 @@ enum ActionTriageLevel {
   final Color color;
   final Color bgColor;
   final IconData icon;
-  const ActionTriageLevel(
-      this.code, this.apiValue, this.title, this.description, this.color, this.bgColor, this.icon);
+  const ActionTriageLevel(this.code, this.apiValue, this.title,
+      this.description, this.color, this.bgColor, this.icon);
 
   static ActionTriageLevel fromString(String? val) {
     if (val == null) return ActionTriageLevel.unknown;
@@ -268,10 +365,10 @@ class Medication {
   });
 
   Map<String, dynamic> toJson() => {
-    'name': name,
-    'dosage': dosage,
-    'schedule': schedule.isNotEmpty ? schedule : frequency,
-  };
+        'name': name,
+        'dosage': dosage,
+        'schedule': schedule.isNotEmpty ? schedule : frequency,
+      };
 
   factory Medication.fromJson(Map<String, dynamic> json) {
     return Medication(
@@ -301,7 +398,8 @@ class UserProfile {
   bool medicationReviewed;
   bool allergiesReviewed;
   String goal; // 'daily_monitoring', 'early_awareness', 'fitness', 'other'
-  String wearableProvider; // 'none', 'polar_h10', 'apple_watch', 'garmin', 'fitbit', 'other'
+  String
+      wearableProvider; // 'none', 'polar_h10', 'apple_watch', 'garmin', 'fitbit', 'other'
   bool notifMorningSummary;
   bool notifImportantAlerts;
   bool notifHealthEducation;
@@ -361,7 +459,11 @@ class UserProfile {
       'emergency_contact_name': emergencyContactName,
       'emergency_contact_phone': emergencyContactPhone,
       'conditions': conditions,
-      'allergies': allergies.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+      'allergies': allergies
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList(),
       'special_conditions': specialConditions,
       'clinical_note': clinicalNote,
       'medications': medications.map((m) => m.toJson()).toList(),
@@ -383,15 +485,19 @@ class UserProfile {
     };
   }
 
-  factory UserProfile.fromJson(Map<String, dynamic> json, {String defaultName = ''}) {
+  factory UserProfile.fromJson(Map<String, dynamic> json,
+      {String defaultName = ''}) {
     final bDate = DateTime.tryParse(json['date_of_birth']?.toString() ?? '');
 
-    final notif = json['notification_preferences'] as Map<String, dynamic>? ?? {};
+    final notif =
+        json['notification_preferences'] as Map<String, dynamic>? ?? {};
     final sharing = json['data_sharing'] as Map<String, dynamic>? ?? {};
-    
+
     List<Medication> meds = [];
     if (json['medications'] is List) {
-      meds = (json['medications'] as List).map((m) => Medication.fromJson(m as Map<String, dynamic>)).toList();
+      meds = (json['medications'] as List)
+          .map((m) => Medication.fromJson(m as Map<String, dynamic>))
+          .toList();
     }
 
     List<String> conds = [];
@@ -409,13 +515,18 @@ class UserProfile {
     return UserProfile(
       name: json['name']?.toString() ?? defaultName,
       birthDate: bDate,
-      gender: json['sex'] == null ? null : Gender.fromString(json['sex']?.toString()),
+      gender: json['sex'] == null
+          ? null
+          : Gender.fromString(json['sex']?.toString()),
       heightCm: (json['height_cm'] as num?)?.toDouble(),
       weightKg: (json['weight_kg'] as num?)?.toDouble(),
       timeZone: json['timezone']?.toString() ?? '',
       conditions: conds,
       allergies: algText,
-      specialConditions: (json['special_conditions'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      specialConditions: (json['special_conditions'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       clinicalNote: json['clinical_note']?.toString() ?? '',
       medications: meds,
       medicationReviewed: json['medication_reviewed'] == true,
@@ -466,7 +577,8 @@ class WearableData {
   }) : recentAcceleration = recentAcceleration ?? [];
 
   /// Calculate estimated steps from tri-axial accelerometer magnitude peak detection
-  static int calculateStepsFromAcc(List<List<double>> accSamples, {double peakThreshold = 1.15}) {
+  static int calculateStepsFromAcc(List<List<double>> accSamples,
+      {double peakThreshold = 1.15}) {
     if (accSamples.isEmpty) return 0;
     int stepCount = 0;
     bool isPeak = false;
@@ -488,6 +600,80 @@ class WearableData {
       }
     }
     return stepCount;
+  }
+
+  static String? inferLocomotionActivity(
+    List<List<double>> accSamples, {
+    double sampleRateHz = 50,
+    ActivityMotionPolicy policy = ActivityMotionPolicy.demo,
+  }) {
+    const movingAverageSeconds = 0.6;
+
+    if (sampleRateHz <= 0 ||
+        accSamples.length < sampleRateHz * policy.minimumSampleSeconds) {
+      return null;
+    }
+    final magnitudes = <double>[];
+    for (final sample in accSamples) {
+      if (sample.length < 3 || !sample.take(3).every((axis) => axis.isFinite)) {
+        return null;
+      }
+      magnitudes.add(math.sqrt(
+        sample[0] * sample[0] + sample[1] * sample[1] + sample[2] * sample[2],
+      ));
+    }
+
+    final window = (sampleRateHz * movingAverageSeconds).round().clamp(3, 100);
+    final prefix = List<double>.filled(magnitudes.length + 1, 0);
+    for (var index = 0; index < magnitudes.length; index++) {
+      prefix[index + 1] = prefix[index] + magnitudes[index];
+    }
+    final dynamicMagnitude = List<double>.generate(magnitudes.length, (index) {
+      final start = math.max(0, index - window ~/ 2);
+      final end = math.min(magnitudes.length, index + window ~/ 2 + 1);
+      return magnitudes[index] - (prefix[end] - prefix[start]) / (end - start);
+    });
+
+    final minimumPeakDistance = (sampleRateHz * 0.28).round();
+    final peakIndices = <int>[];
+    for (var index = 1; index < dynamicMagnitude.length - 1; index++) {
+      final isPeak = dynamicMagnitude[index] > dynamicMagnitude[index - 1] &&
+          dynamicMagnitude[index] >= dynamicMagnitude[index + 1] &&
+          dynamicMagnitude[index] >= policy.minimumPeakProminenceG;
+      if (!isPeak ||
+          (peakIndices.isNotEmpty &&
+              index - peakIndices.last < minimumPeakDistance)) {
+        continue;
+      }
+      peakIndices.add(index);
+    }
+    if (peakIndices.length < 4) return null;
+
+    final intervals = <int>[
+      for (var index = 1; index < peakIndices.length; index++)
+        peakIndices[index] - peakIndices[index - 1],
+    ];
+    final sortedIntervals = List<int>.from(intervals)..sort();
+    final medianInterval = sortedIntervals[sortedIntervals.length ~/ 2];
+    if (medianInterval <= 0) return null;
+    final cadenceHz = sampleRateHz / medianInterval;
+    final meanInterval =
+        intervals.reduce((sum, interval) => sum + interval) / intervals.length;
+    final intervalVariation = math.sqrt(
+          intervals
+                  .map((interval) =>
+                      (interval - meanInterval) * (interval - meanInterval))
+                  .reduce((sum, squaredDifference) => sum + squaredDifference) /
+              intervals.length,
+        ) /
+        meanInterval;
+
+    if (cadenceHz < policy.minimumCadenceHz ||
+        cadenceHz > policy.maximumCadenceHz ||
+        intervalVariation > policy.maximumIntervalVariation) {
+      return null;
+    }
+    return cadenceHz >= policy.runningCadenceHz ? 'Berlari' : 'Berjalan';
   }
 
   /// Calculates current motion intensity from tri-axial acceleration variance
@@ -560,19 +746,21 @@ class EventItem {
   });
 
   Map<String, dynamic> toJson() => {
-    'event_type': eventType,
-    'occurred_at': timestamp.toIso8601String(),
-    'details': details.isNotEmpty ? details : title,
-    if (value != null) 'value': value,
-    if (unit != null) 'unit': unit,
-  };
+        'event_type': eventType,
+        'occurred_at': timestamp.toIso8601String(),
+        'details': details.isNotEmpty ? details : title,
+        if (value != null) 'value': value,
+        if (unit != null) 'unit': unit,
+      };
 
   factory EventItem.fromJson(Map<String, dynamic> json) {
     final type = json['event_type']?.toString() ?? 'other';
     final title = mapApiToEventTitle(type);
-    final match = kEvents.firstWhere((e) => e.$1 == title, orElse: () => (title, Icons.event_note, Colors.teal));
-    
-    final time = DateTime.tryParse(json['occurred_at']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final match = kEvents.firstWhere((e) => e.$1 == title,
+        orElse: () => (title, Icons.event_note, Colors.teal));
+
+    final time = DateTime.tryParse(json['occurred_at']?.toString() ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0);
 
     return EventItem(
       id: json['_id']?.toString() ?? '',
@@ -628,7 +816,8 @@ class ScientificCitation {
 
   factory ScientificCitation.fromJson(Map<String, dynamic> json) {
     return ScientificCitation(
-      title: json['title']?.toString() ?? json['document_title']?.toString() ?? '',
+      title:
+          json['title']?.toString() ?? json['document_title']?.toString() ?? '',
       summary: json['evidence_summary']?.toString() ??
           json['summary']?.toString() ??
           json['snippet']?.toString() ??
@@ -661,7 +850,8 @@ class CaparFollowUpPrompt {
     if (json == null) return const CaparFollowUpPrompt();
     return CaparFollowUpPrompt(
       status: json['status']?.toString() ?? 'none',
-      segmentId: json['triggered_by_segment_id']?.toString() ?? json['segment_id']?.toString(),
+      segmentId: json['triggered_by_segment_id']?.toString() ??
+          json['segment_id']?.toString(),
       message: json['message']?.toString(),
       questions: (json['questions'] as List?)
               ?.whereType<Map>()

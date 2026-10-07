@@ -42,7 +42,7 @@ class ManualMeasurementScreen extends StatelessWidget {
         ],
       ),
       bottom: ElevatedButton(
-        onPressed: () async {
+        onPressed: s.isSubmittingDaily ? null : () async {
           s.confirmDailySection('measurements');
           final saved = await s.submitDaily();
           if (!context.mounted) return;
@@ -55,7 +55,13 @@ class ManualMeasurementScreen extends StatelessWidget {
           showSaved(context, 'Pengukuran tersimpan di server');
           Navigator.pop(context);
         },
-        child: const Text('Simpan'),
+        child: s.isSubmittingDaily
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Simpan'),
       ),
     );
   }

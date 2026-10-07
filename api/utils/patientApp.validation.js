@@ -291,7 +291,7 @@ const patientEventTypes = new Set([
   'other',
 ]);
 const wearableProviders = new Set(['polar_h10', 'apple_watch', 'garmin', 'fitbit', 'other']);
-const wearableActivities = new Set(['rest', 'sitting', 'standing', 'walking', 'exercise', 'sleep', 'other']);
+const wearableActivities = new Set(['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'sleep', 'other']);
 
 export function validatePatientEvent(body) {
   requireObject(body, 'Event');
@@ -499,14 +499,12 @@ export function validateWearableStream(body) {
 export function validateCheckIn(body) {
   requireObject(body, 'Catatan harian');
   rejectUnknownFields(body, checkInFields, 'Field catatan');
-  for (const field of ['recorded_at', 'sleep', 'symptoms']) {
-    if (!(field in body)) {
-      throw errorHandler(400, `${field} wajib diisi agar konteks pasien dan timestamp dapat dianalisis.`);
-    }
+  if (!('recorded_at' in body)) {
+    throw errorHandler(400, 'recorded_at wajib diisi agar waktu catatan dapat dianalisis.');
   }
 
   const feelings = ['good', 'fair', 'poor', 'very_poor'];
-  const activities = ['rest', 'sitting', 'standing', 'walking', 'exercise', 'work', 'meal', 'other'];
+  const activities = ['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'work', 'meal', 'other'];
   const symptoms = [
     'fatigue',
     'dizziness',
@@ -520,13 +518,16 @@ export function validateCheckIn(body) {
     'fever',
     'other',
   ];
-  if (!feelings.includes(body.feeling)) throw errorHandler(400, `feeling harus salah satu dari: ${feelings.join(', ')}.`);
-  if (!activities.includes(body.activity)) throw errorHandler(400, `activity harus salah satu dari: ${activities.join(', ')}.`);
+  if ('feeling' in body && body.feeling !== null && !feelings.includes(body.feeling)) {
+    throw errorHandler(400, `feeling harus salah satu dari: ${feelings.join(', ')} atau null.`);
+  }
+  if ('activity' in body && body.activity !== null && !activities.includes(body.activity)) {
+    throw errorHandler(400, `activity harus salah satu dari: ${activities.join(', ')} atau null.`);
+  }
 
-  const result = {
-    feeling: body.feeling,
-    activity: body.activity,
-  };
+  const result = {};
+  if ('feeling' in body) result.feeling = body.feeling;
+  if ('activity' in body) result.activity = body.activity;
   result.recorded_at = parseDate(body.recorded_at, 'recorded_at');
   if ('posture' in body) {
     if (![null, 'lying', 'sitting', 'standing', 'unknown'].includes(body.posture)) {
@@ -580,8 +581,10 @@ export function validateCheckIn(body) {
     }
     result.sleep = sleep;
   }
-  result.symptoms = validateStringList(body.symptoms, 'symptoms', 11, 40);
-  if (result.symptoms.some((symptom) => !checkInSymptoms.includes(symptom))) {
+  if ('symptoms' in body) {
+    result.symptoms = validateStringList(body.symptoms, 'symptoms', 11, 40);
+  }
+  if (result.symptoms?.some((symptom) => !checkInSymptoms.includes(symptom))) {
     throw errorHandler(400, `symptoms harus dipilih dari: ${checkInSymptoms.join(', ')}.`);
   }
   if ('stress_level' in body) {
@@ -750,6 +753,35 @@ export function validateCheckIn(body) {
       throw errorHandler(400, 'measurements.systolic_bp harus lebih besar dari diastolic_bp.');
     }
     result.measurements = measurements;
+  }
+  const hasSleepData = Boolean(result.sleep && Object.entries(result.sleep).some(
+    ([key, value]) => key === 'disturbances'
+      ? Object.values(value).some((disturbance) => typeof disturbance === 'boolean')
+      : value !== null && value !== undefined && value !== ''
+  ));
+  const hasMeasurementData = Boolean(result.measurements && Object.values(result.measurements).some(
+    (value) => Array.isArray(value) ? value.length > 0 : value !== null && value !== undefined
+  ));
+  const hasPatientInput = (
+    (result.feeling != null)
+    || (result.activity != null)
+    || (result.posture != null)
+    || Boolean(result.symptoms?.length)
+    || (result.stress_level != null)
+    || (result.hydration_ml != null)
+    || (result.symptom_severity != null)
+    || hasSleepData
+    || hasMeasurementData
+    || Boolean(result.lifestyle && Object.keys(result.lifestyle).length)
+    || (typeof result.medication_taken === 'boolean')
+    || Boolean(result.medication_name?.trim())
+    || Boolean(result.medication_dosage?.trim())
+    || Boolean(result.medication_note?.trim())
+    || Boolean(result.deviation_follow_up)
+    || Boolean(result.note?.trim())
+  );
+  if (!hasPatientInput) {
+    throw errorHandler(400, 'Catatan kosong. Isi minimal satu bagian sebelum menyimpan.');
   }
   return result;
 }

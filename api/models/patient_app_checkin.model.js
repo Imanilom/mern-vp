@@ -20,7 +20,7 @@ const PatientAppCheckInSchema = new mongoose.Schema(
     },
     activity: {
       type: String,
-      enum: ['rest', 'sitting', 'standing', 'walking', 'exercise', 'work', 'meal', 'other', null],
+      enum: ['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'work', 'meal', 'other', null],
       default: null,
     },
     posture: {

@@ -39,6 +39,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   final List<PolarDeviceInfo> _devices = [];
   final List<int> _rrIntervals = [];
   final List<List<double>> _acceleration = [];
+  final List<List<double>> _recentAcceleration = [];
   final List<Map<String, dynamic>> _pendingSamples = [];
   final List<Map<String, dynamic>> _streamReadings = [];
   final List<Map<String, dynamic>> _recentStreamReadings = [];
@@ -83,7 +84,10 @@ class PolarWearablePairingService extends ChangeNotifier {
       List.unmodifiable(_recentStreamReadings);
   String get deviceId => _deviceId;
   String get deviceName => _deviceName;
+  String get activity => _activity;
   int? get heartRateBpm => _heartRateBpm;
+  List<List<double>> get recentAcceleration =>
+      _recentAcceleration.map(List<double>.from).toList();
   int get pendingCount =>
       _pendingSamples.length +
       _pendingStreamBatches.length +
@@ -311,6 +315,10 @@ class PolarWearablePairingService extends ChangeNotifier {
       ];
       _latestAcceleration = vector;
       _acceleration.add(vector);
+      _recentAcceleration.add(vector);
+      if (_recentAcceleration.length > 500) {
+        _recentAcceleration.removeRange(0, _recentAcceleration.length - 500);
+      }
     }
   }
 
@@ -335,6 +343,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     _clearWindow();
     _streamReadings.clear();
     _recentStreamReadings.clear();
+    _recentAcceleration.clear();
     isStreaming = true;
     sampleError = null;
     streamError = null;
@@ -486,6 +495,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     isConnecting = false;
     _deviceId = '';
     _deviceName = '';
+    _recentAcceleration.clear();
     _notify();
   }
 

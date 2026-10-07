@@ -38,13 +38,14 @@ class AppState extends ChangeNotifier {
         .toList();
   }
 
-  void _maybePromptForMovement([Map<String, dynamic>? latestSample]) {
-    if (!confirmedDailySections.contains('activity') ||
-        !['Duduk', 'Istirahat'].contains(activity) ||
-        wearable.recentAcceleration.length < 10 ||
-        wearable.motionIntensity < 0.12) {
-      return;
-    }
+  void _maybePromptForMovement([
+    Map<String, dynamic>? latestSample,
+    bool isLiveStream = false,
+  ]) {
+    final detectedActivity =
+        WearableData.inferLocomotionActivity(wearable.recentAcceleration);
+    if (detectedActivity == null) return;
+    if (detectedActivity == activity) return;
     final recordedAt = DateTime.tryParse(
       latestSample?['recorded_at']?.toString() ??
           wearable.lastSync?.toIso8601String() ??
@@ -52,18 +53,20 @@ class AppState extends ChangeNotifier {
     );
     final sampleAge =
         recordedAt == null ? null : DateTime.now().difference(recordedAt);
-    if (sampleAge == null ||
-        sampleAge > const Duration(minutes: 10) ||
-        sampleAge < const Duration(minutes: -10)) {
+    if (!isLiveStream &&
+        (sampleAge == null ||
+            sampleAge > const Duration(minutes: 10) ||
+            sampleAge < const Duration(minutes: -10))) {
       return;
     }
+    if (showActivityMovementPrompt) return;
     final lastPrompt = _lastMovementPromptAt;
     if (lastPrompt != null &&
         DateTime.now().difference(lastPrompt) < _movementPromptCooldown) {
       return;
     }
     _lastMovementPromptAt = DateTime.now();
-    suggestedActivity = 'Berjalan';
+    suggestedActivity = detectedActivity;
     showActivityMovementPrompt = true;
     notifyListeners();
   }
@@ -71,6 +74,10 @@ class AppState extends ChangeNotifier {
   late final PolarWearablePairingService wearableBridge;
 
   void _notifyWearableChange() {
+    if (wearableBridge.isStreaming) {
+      wearable.recentAcceleration = wearableBridge.recentAcceleration;
+      _maybePromptForMovement(null, true);
+    }
     notifyListeners();
   }
 
@@ -207,6 +214,8 @@ class AppState extends ChangeNotifier {
 
   final Set<String> confirmedDailySections = {};
   bool isDailyDraftDirty = false;
+  bool isSubmittingDaily = false;
+  bool _isConfirmingActivity = false;
   List<ScientificCitation> scientificCitations = [];
   List<ScientificCitation> recoveryScientificCitations = [];
   CaparFollowUpPrompt followUpPrompt = const CaparFollowUpPrompt();
@@ -376,78 +385,191 @@ class AppState extends ChangeNotifier {
     if (res.success && res.data != null) {
       dailySummaryData = res.data;
       final checkIns = dailySummaryData!['check_ins'];
-      stress = null;
-      if (checkIns is List && checkIns.isNotEmpty && checkIns.last is Map) {
-        final latest = Map<String, dynamic>.from(checkIns.last as Map);
-        final sleep = latest['sleep'] is Map
-            ? Map<String, dynamic>.from(latest['sleep'] as Map)
+      if (checkIns is List && checkIns.any((item) => item is Map)) {
+        final records = checkIns
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+        final latest = records.last;
+        Map<String, dynamic> latestRecordWith(
+          bool Function(Map<String, dynamic>) hasData,
+        ) {
+          for (final record in records.reversed) {
+            if (hasData(record)) return record;
+          }
+          return <String, dynamic>{};
+        }
+
+        final symptomRecord = latestRecordWith((record) =>
+            record['feeling'] != null ||
+            (record['symptoms'] is List &&
+                (record['symptoms'] as List).isNotEmpty) ||
+            record['symptom_severity'] is num);
+        final activityRecord = latestRecordWith((record) {
+          final lifestyle = record['lifestyle'];
+          return record['activity'] != null ||
+              record['stress_level'] != null ||
+              (lifestyle is Map && lifestyle.values.any((v) => v is bool)) ||
+              record['medication_taken'] is bool;
+        });
+        final sleepRecord = latestRecordWith((record) {
+          final sleepData = record['sleep'];
+          if (sleepData is! Map) return false;
+          final disturbances = sleepData['disturbances'];
+          return sleepData['duration_minutes'] != null ||
+              sleepData['quality'] != null ||
+              sleepData['bedtime'] != null ||
+              sleepData['wake_time'] != null ||
+              (disturbances is Map &&
+                  disturbances.values.any((v) => v is bool));
+        });
+        final measurementRecord = latestRecordWith((record) {
+          final measurements = record['measurements'];
+          if (measurements is! Map) return false;
+          final additional = measurements['additional'];
+          return measurements.values.any((value) => value != null) ||
+              (additional is List && additional.isNotEmpty);
+        });
+        final noteRecord = latestRecordWith((record) =>
+            record['note'] is String &&
+            (record['note'] as String).trim().isNotEmpty);
+        final sleep = sleepRecord['sleep'] is Map
+            ? Map<String, dynamic>.from(sleepRecord['sleep'] as Map)
             : <String, dynamic>{};
-        final lifestyle = latest['lifestyle'] is Map
-            ? Map<String, dynamic>.from(latest['lifestyle'] as Map)
+        final lifestyle = activityRecord['lifestyle'] is Map
+            ? Map<String, dynamic>.from(activityRecord['lifestyle'] as Map)
             : <String, dynamic>{};
-        final measurementsData = latest['measurements'] is Map
-            ? Map<String, dynamic>.from(latest['measurements'] as Map)
+        final measurementsData = measurementRecord['measurements'] is Map
+            ? Map<String, dynamic>.from(
+                measurementRecord['measurements'] as Map)
             : <String, dynamic>{};
+        final symptomsData = symptomRecord['symptoms'] is List
+            ? symptomRecord['symptoms'] as List
+            : const <dynamic>[];
+        final disturbances = sleep['disturbances'] is Map
+            ? Map<String, dynamic>.from(sleep['disturbances'] as Map)
+            : <String, dynamic>{};
+        final hasSymptomsData = symptomRecord.isNotEmpty;
+        final hasActivityData = activityRecord.isNotEmpty;
+        final hasSleepData = sleepRecord.isNotEmpty;
+        final additionalMeasurements = measurementsData['additional'];
+        final hasMeasurementsData = measurementRecord.isNotEmpty;
+        final hasNoteData = noteRecord.isNotEmpty;
+
         logDate = DateTime.tryParse(latest['recorded_at']?.toString() ?? '') ??
             logDate;
-        mood = MoodRating.fromApiValue(latest['feeling']?.toString());
-        activity = mapApiToActivity(latest['activity']?.toString() ?? '');
-        symptoms = (latest['symptoms'] as List?)
-                ?.map((e) => mapApiToSymptomLabel(e.toString()))
-                .toList() ??
-            [];
-        final stressValue = latest['stress_level'];
-        stress = StressLevel.fromApiValue(stressValue is num
-            ? stressValue
-            : num.tryParse(stressValue?.toString() ?? ''));
-        sleepMinutes = (sleep['duration_minutes'] as num?)?.round() ?? 0;
-        sleepQuality = SleepQuality.fromApiValue(sleep['quality']?.toString());
-        habitMeal = lifestyle['meal'] == true;
-        habitCaffeine = lifestyle['caffeine'] == true;
-        habitAlcohol = lifestyle['alcohol'] == true;
-        habitSmoking = lifestyle['smoking'] == true;
-        habitMedication = latest['medication_taken'] == true;
-        note = latest['note']?.toString() ?? '';
+        if (hasSymptomsData) {
+          if (symptomRecord['feeling'] is String) {
+            mood = MoodRating.fromApiValue(symptomRecord['feeling'] as String);
+          }
+          symptoms = symptomsData
+              .map((e) => mapApiToSymptomLabel(e.toString()))
+              .toList();
+        }
+        if (hasActivityData) {
+          if (activityRecord['activity'] is String) {
+            activity = mapApiToActivity(activityRecord['activity'] as String);
+          }
+          final stressValue = activityRecord['stress_level'];
+          stress = StressLevel.fromApiValue(stressValue is num
+              ? stressValue
+              : num.tryParse(stressValue?.toString() ?? ''));
+          if (lifestyle['meal'] is bool) habitMeal = lifestyle['meal'] as bool;
+          if (lifestyle['caffeine'] is bool) {
+            habitCaffeine = lifestyle['caffeine'] as bool;
+          }
+          if (lifestyle['alcohol'] is bool) {
+            habitAlcohol = lifestyle['alcohol'] as bool;
+          }
+          if (lifestyle['smoking'] is bool) {
+            habitSmoking = lifestyle['smoking'] as bool;
+          }
+          if (activityRecord['medication_taken'] is bool) {
+            habitMedication = activityRecord['medication_taken'] as bool;
+          }
+        }
+        if (hasSleepData) {
+          final duration = sleep['duration_minutes'];
+          if (duration is num) sleepMinutes = duration.round();
+          final quality = sleep['quality'];
+          if (quality is String &&
+              SleepQuality.values.any((item) => item.apiValue == quality)) {
+            sleepQuality = SleepQuality.fromApiValue(quality);
+          }
+          if (sleep['bedtime'] is String) {
+            final parts = (sleep['bedtime'] as String).split(':');
+            if (parts.length == 2) {
+              final hour = int.tryParse(parts[0]);
+              final minute = int.tryParse(parts[1]);
+              if (hour != null && minute != null) {
+                bedTime = TimeOfDay(hour: hour, minute: minute);
+              }
+            }
+          }
+          if (sleep['wake_time'] is String) {
+            final parts = (sleep['wake_time'] as String).split(':');
+            if (parts.length == 2) {
+              final hour = int.tryParse(parts[0]);
+              final minute = int.tryParse(parts[1]);
+              if (hour != null && minute != null) {
+                wakeTime = TimeOfDay(hour: hour, minute: minute);
+              }
+            }
+          }
+          if (disturbances['woke_frequently'] is bool) {
+            sleepWakeOften = disturbances['woke_frequently'] as bool;
+          }
+          if (disturbances['difficulty_falling_asleep'] is bool) {
+            sleepHardToSleep =
+                disturbances['difficulty_falling_asleep'] as bool;
+          }
+          if (disturbances['nightmares'] is bool) {
+            sleepNightmare = disturbances['nightmares'] as bool;
+          }
+        }
+        if (hasNoteData) note = noteRecord['note'] as String;
         confirmedDailySections
           ..clear()
           ..addAll([
-            if (latest.containsKey('feeling') || latest.containsKey('symptoms'))
-              'symptoms',
-            if (latest.containsKey('activity') ||
-                latest.containsKey('lifestyle'))
-              'activity',
-            if (latest.containsKey('sleep')) 'sleep',
-            if (latest.containsKey('measurements')) 'measurements',
-            if (latest.containsKey('note')) 'note',
+            if (hasSymptomsData) 'symptoms',
+            if (hasActivityData) 'activity',
+            if (hasSleepData) 'sleep',
+            if (hasMeasurementsData) 'measurements',
+            if (hasNoteData) 'note',
           ]);
         isDailyDraftDirty = false;
         _maybePromptForMovement();
-        final systolic = measurementsData['systolic_bp'];
-        final diastolic = measurementsData['diastolic_bp'];
-        measurement('bp').value = systolic == null || diastolic == null
-            ? null
-            : '$systolic/$diastolic';
-        measurement('temp').value =
-            measurementsData['temperature_c']?.toString();
-        measurement('weight').value = measurementsData['weight_kg']?.toString();
-        measurement('spo2').value = measurementsData['spo2_pct']?.toString();
-        measurement('glucose').value =
-            measurementsData['glucose_mg_dl']?.toString();
-        final additionalMeasurements = measurementsData['additional'];
-        if (additionalMeasurements is List) {
-          for (final item in additionalMeasurements.whereType<Map>()) {
-            final measurementData = Map<String, dynamic>.from(item);
-            final key = 'custom_${measurementData['name']}';
-            final existing = measurements.where((entry) => entry.key == key);
-            if (existing.isEmpty) {
-              measurements.add(MeasurementEntry(
-                key: key,
-                label: measurementData['name']?.toString() ?? '',
-                unit: measurementData['unit']?.toString() ?? '',
-                icon: Icons.science_outlined,
-                color: AppTheme.primary,
-                value: measurementData['value']?.toString(),
-              ));
+        if (hasMeasurementsData) {
+          final systolic = measurementsData['systolic_bp'];
+          final diastolic = measurementsData['diastolic_bp'];
+          measurement('bp').value = systolic == null || diastolic == null
+              ? null
+              : '$systolic/$diastolic';
+          measurement('temp').value =
+              measurementsData['temperature_c']?.toString();
+          measurement('weight').value =
+              measurementsData['weight_kg']?.toString();
+          measurement('spo2').value = measurementsData['spo2_pct']?.toString();
+          measurement('glucose').value =
+              measurementsData['glucose_mg_dl']?.toString();
+          if (additionalMeasurements is List) {
+            for (final item in additionalMeasurements.whereType<Map>()) {
+              final measurementData = Map<String, dynamic>.from(item);
+              final key = 'custom_${measurementData['name']}';
+              final existing =
+                  measurements.where((entry) => entry.key == key).toList();
+              if (existing.isEmpty) {
+                measurements.add(MeasurementEntry(
+                  key: key,
+                  label: measurementData['name']?.toString() ?? '',
+                  unit: measurementData['unit']?.toString() ?? '',
+                  icon: Icons.science_outlined,
+                  color: AppTheme.primary,
+                  value: measurementData['value']?.toString(),
+                ));
+              } else {
+                existing.first.value = measurementData['value']?.toString();
+              }
             }
           }
         }
@@ -1173,17 +1295,14 @@ class AppState extends ChangeNotifier {
   }
 
   Future<bool> confirmActivityTransition(String newActivity) async {
+    if (_isConfirmingActivity) return false;
     final activityCode = mapActivityToApi(newActivity);
-    activity = newActivity;
-    showActivityMovementPrompt = false;
-    wearableBridge.setActivity(activityCode);
-    notifyListeners();
-
     if (!isAuthenticated) {
       dataError = 'Silakan masuk kembali untuk menyimpan konfirmasi aktivitas.';
       notifyListeners();
       return false;
     }
+    _isConfirmingActivity = true;
     final res = await ApiService.createCheckIn({
       'recorded_at': DateTime.now().toUtc().toIso8601String(),
       'activity': activityCode,
@@ -1196,13 +1315,18 @@ class AppState extends ChangeNotifier {
       'symptoms': <String>[],
       'note': 'Aktivitas dikonfirmasi setelah deteksi gerak accelerometer.',
     });
+    _isConfirmingActivity = false;
     if (!res.success) {
       dataError = res.message ?? 'Konfirmasi aktivitas gagal disimpan.';
       notifyListeners();
       return false;
     }
+    activity = newActivity;
+    showActivityMovementPrompt = false;
+    wearableBridge.setActivity(activityCode);
     confirmedDailySections.add('activity');
     dataError = null;
+    notifyListeners();
     await Future.wait([fetchDailySummary(), fetchCaparInsights()]);
     return true;
   }
@@ -1211,6 +1335,12 @@ class AppState extends ChangeNotifier {
     update(() {
       showActivityMovementPrompt = false;
     });
+  }
+
+  void setWearableActivityContext(String activityCode) {
+    final selectedActivity = mapApiToActivity(activityCode);
+    if (selectedActivity != 'Lainnya') activity = selectedActivity;
+    wearableBridge.setActivity(activityCode);
   }
 
   Future<bool> submitFollowUpResponse({
@@ -1287,6 +1417,7 @@ class AppState extends ChangeNotifier {
 
   /// Submit daily check-in matching patient-app-api.md contract
   Future<bool> submitDaily() async {
+    if (isSubmittingDaily) return false;
     if (!isAuthenticated) {
       dataError = 'Silakan masuk kembali sebelum mengirim catatan harian.';
       notifyListeners();
@@ -1301,22 +1432,47 @@ class AppState extends ChangeNotifier {
 
     // Parse measurement values
     num? bpSys, bpDia, tempVal, weightVal, spo2Val, glucVal;
+    num? parseMeasurement(String? value, String label) {
+      if (value == null || value.trim().isEmpty) return null;
+      final parsed = num.tryParse(value.trim());
+      if (parsed == null || !parsed.isFinite) {
+        throw FormatException('$label harus berupa angka yang valid.');
+      }
+      return parsed;
+    }
+
     try {
       final bpVal = measurement('bp').value;
-      if (bpVal != null && bpVal.contains('/')) {
+      if (bpVal != null && bpVal.trim().isNotEmpty) {
         final parts = bpVal.split('/');
+        if (parts.length != 2) {
+          throw const FormatException(
+              'Tekanan darah harus ditulis dengan format sistolik/diastolik, contoh 120/80.');
+        }
         bpSys = num.tryParse(parts[0].trim());
         bpDia = num.tryParse(parts[1].trim());
+        if (bpSys == null || bpDia == null) {
+          throw const FormatException(
+              'Tekanan darah harus berisi dua angka, contoh 120/80.');
+        }
       }
     } catch (e) {
-      dataError = 'Pengukuran tekanan darah tidak valid: $e';
+      dataError = e is FormatException
+          ? e.message
+          : 'Pengukuran tekanan darah tidak valid.';
       notifyListeners();
       return false;
     }
-    tempVal = num.tryParse(measurement('temp').value ?? '');
-    weightVal = num.tryParse(measurement('weight').value ?? '');
-    spo2Val = num.tryParse(measurement('spo2').value ?? '');
-    glucVal = num.tryParse(measurement('glucose').value ?? '');
+    try {
+      tempVal = parseMeasurement(measurement('temp').value, 'Suhu');
+      weightVal = parseMeasurement(measurement('weight').value, 'Berat badan');
+      spo2Val = parseMeasurement(measurement('spo2').value, 'SpO2');
+      glucVal = parseMeasurement(measurement('glucose').value, 'Glukosa');
+    } on FormatException catch (e) {
+      dataError = e.message;
+      notifyListeners();
+      return false;
+    }
 
     final hasSymptomsSection = hasDailySection('symptoms');
     final hasActivitySection = hasDailySection('activity');
@@ -1387,10 +1543,15 @@ class AppState extends ChangeNotifier {
       if (hasDailySection('note') && note.isNotEmpty) 'note': note,
     };
 
+    isSubmittingDaily = true;
+    notifyListeners();
     final res = await ApiService.createCheckIn(payload);
+    isSubmittingDaily = false;
     if (res.success) {
       lastSubmitted = DateTime.now();
       isDailyDraftDirty = false;
+      dataError = null;
+      notifyListeners();
       await Future.wait(
           [fetchDailySummary(), fetchCaparInsights(), fetchOverview()]);
       return true;

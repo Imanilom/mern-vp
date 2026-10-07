@@ -107,13 +107,17 @@ Example request:
 }
 ```
 
-`recorded_at`, `sleep` (an empty object is valid when no sleep data is known),
-and `symptoms` are required; send `symptoms: []` to explicitly report no
-symptoms. `feeling` accepts `good`, `fair`, `poor`, or `very_poor`. `activity` accepts
-`rest`, `sitting`, `standing`, `walking`, `exercise`, `work`, `meal`, or `other`.
+`recorded_at` is required. The other input sections are optional and can be
+submitted independently, so a screen only needs to send the fields it collects.
+The request must contain at least one meaningful patient input in addition to
+the timestamp; empty containers such as `sleep: {}` do not count. Send
+`symptoms: []` alongside another input to explicitly report no symptoms.
+`feeling` accepts `good`, `fair`, `poor`, or `very_poor`. `activity` accepts
+`rest`, `sitting`, `standing`, `walking`, `running`, `exercise`, `work`, `meal`,
+or `other`.
 Symptoms accept `fatigue`, `dizziness`, `palpitations`, `breathlessness`,
 `chest_pain`, `headache`, `pain`, `nausea`, `weakness`, `fever`, or `other`.
-When no symptom is present, send `symptoms: []`.
+Sleep quality accepts `very_good`, `good`, `fair`, or `poor`.
 The list endpoint is newest-first and caps `limit` at 100; its `pagination.next_before` can be passed
 as the next `before` value. `daily-summary` returns patient check-ins, event
 markers, and wearable samples recorded on the requested UTC calendar day.
@@ -157,6 +161,15 @@ pairs with a Polar H10 over BLE and submits real HR/RR and accelerometer
 windows through these authenticated endpoints. No simulator readings or
 client-side broker credentials are used.
 
+While streaming, VidyaMedic uses a local, cadence-based accelerometer heuristic
+to suggest `Berjalan` or `Berlari` and asks the patient to confirm or correct
+the activity; sensor classification alone never saves a confirmed activity.
+Its cadence/prominence settings are configurable demo policy
+`nadiku_acc_activity_demo` / `periodic_acc_cadence`, version `1.0.0`,
+effective `2026-10-07`, confidence `0`, status `NON-CLINICAL / PLACEHOLDER`.
+The heuristic is not clinically validated and must not be used to infer a
+diagnosis or prescribe activity.
+
 `POST /wearable/stream` accepts authenticated Polar H10 reading batches (up to
 100 readings per request), validates contact, timestamp, HR, RR/IBI, activity,
 and measured acceleration, then publishes them to the configured RabbitMQ
@@ -182,6 +195,14 @@ context minimums are present. It does not diagnose, classify emergencies, or
 claim a wearable is connected just because a provider has been selected.
 `capar-insights` uses only CAPAR segments that have been analyzed and passed
 its quality gate.
+
+`POST /api/patient-app/check-ins` accepts partial check-ins so each VidyaMedic
+input screen can save independently. `recorded_at` is required; `feeling`,
+`activity`, `sleep`, and `symptoms` are optional and validated when present.
+The request must contain at least one non-empty patient input (for example
+activity/lifestyle, symptoms/feeling, sleep, a measurement, or a note); a
+timestamp with only empty containers is rejected. Omitted fields remain
+unrecorded rather than being filled with a default feeling or activity.
 
 ## CAPAR insights and scientific evidence
 

@@ -574,7 +574,7 @@ export async function getPatientAppCaparInsights(req, res) {
   ]);
 
   const behavior = [];
-  if (latestCheckIn?.activity === 'walking' || latestCheckIn?.activity === 'exercise') {
+  if (['walking', 'running', 'exercise'].includes(latestCheckIn?.activity)) {
     behavior.push('physical_activity');
   }
   if (latestCheckIn?.sleep?.duration_minutes != null) behavior.push('sleep_duration');
@@ -1881,7 +1881,7 @@ function toPatientAnalysisFeatures(segment) {
 function patientActivityLabel(activity, intensity = 'unknown') {
   if (['rest', 'sitting', 'standing', 'sleep'].includes(activity)) return 'Rest';
   if (activity === 'walking') return intensity === 'vigorous' ? 'Moderate' : 'Light';
-  if (activity === 'exercise') {
+  if (activity === 'running' || activity === 'exercise') {
     if (intensity === 'vigorous') return 'Intense';
     if (intensity === 'low') return 'Light';
     return 'Moderate';
@@ -1927,7 +1927,7 @@ function collectPatientContextBeforeEvent({
 
   for (const checkIn of checkIns) {
     const recordedAt = checkIn.recorded_at;
-    if (checkIn.activity === 'walking' || checkIn.activity === 'exercise') {
+    if (['walking', 'running', 'exercise'].includes(checkIn.activity)) {
       add('physical_activity', recordedAt, 'patient_check_in');
     }
     if (checkIn.stress_level >= 2) add('stress', recordedAt, 'patient_check_in');

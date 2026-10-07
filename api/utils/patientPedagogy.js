@@ -54,7 +54,7 @@ export function buildPatientDeviationFollowUpPrompt({
       question: 'Apa yang sedang atau baru saja Anda lakukan?',
       response_field: 'activity',
       input_type: 'single_select',
-      options: ['rest', 'sitting', 'standing', 'walking', 'exercise', 'work', 'meal', 'other'],
+      options: ['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'work', 'meal', 'other'],
     },
     {
       id: 'possible_factors',

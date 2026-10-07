@@ -68,7 +68,7 @@ const PatientAppWearableSampleSchema = new mongoose.Schema(
     steps: { type: Number, min: 0, max: 100000, default: null },
     activity: {
       type: String,
-      enum: ['rest', 'sitting', 'standing', 'walking', 'exercise', 'sleep', 'other', null],
+      enum: ['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'sleep', 'other', null],
       default: null,
     },
     sleep_duration_minutes: { type: Number, min: 0, max: 1440, default: null },

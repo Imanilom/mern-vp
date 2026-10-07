@@ -20,6 +20,7 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
     ('Duduk', 'sitting'),
     ('Berdiri', 'standing'),
     ('Berjalan', 'walking'),
+    ('Berlari', 'running'),
     ('Olahraga', 'exercise'),
     ('Tidur', 'sleep'),
     ('Lainnya', 'other'),
@@ -57,6 +58,7 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
       return;
     }
 
+    state.setWearableActivityContext(_activity);
     if (!bridge.startStreaming(_activity)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -158,7 +160,8 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                       const SizedBox(height: 8),
                       Text(
                         'Batch terakhir diterima RabbitMQ: ${bridge.lastStreamPublishedAt!.toLocal()}',
-                        style: AppTheme.font(size: 11, color: AppTheme.textMuted),
+                        style:
+                            AppTheme.font(size: 11, color: AppTheme.textMuted),
                       ),
                     ],
                     if (bridge.error != null) ...[
@@ -183,7 +186,9 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                       onChanged: (value) {
                         if (value != null) {
                           setState(() => _activity = value);
-                          bridge.setActivity(value);
+                          context
+                              .read<AppState>()
+                              .setWearableActivityContext(value);
                         }
                       },
                     ),

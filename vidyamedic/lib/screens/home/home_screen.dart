@@ -111,8 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, 'continue'),
+              onPressed: () => Navigator.pop(dialogContext, 'continue'),
               child: const Text('Lanjutkan penggunaan'),
             ),
             OutlinedButton(
@@ -183,12 +182,11 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Aktivitas terakhir tercatat ${appState.activity.toLowerCase()}, tetapi accelerometer mendeteksi gerakan. Apa yang sedang Anda lakukan?',
+                'Pola akselerometer menyerupai ${appState.suggestedActivity.toLowerCase()}. Apakah Anda sedang ${appState.suggestedActivity.toLowerCase()}? Ini perkiraan sensor; konfirmasi Anda yang menentukan.',
               ),
               const SizedBox(height: 10),
               ...kActivities
-                  .where((item) =>
-                      item.$1 != 'Duduk' && item.$1 != 'Istirahat')
+                  .where((item) => item.$1 != 'Duduk' && item.$1 != 'Istirahat')
                   .map(
                     (item) => ListTile(
                       dense: true,
@@ -203,15 +201,15 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () =>
-                  Navigator.pop(dialogContext, '__still_sitting__'),
-              child: const Text('Saya masih duduk/istirahat'),
+                  Navigator.pop(dialogContext, '__keep_activity__'),
+              child: Text('Saya tetap ${appState.activity.toLowerCase()}'),
             ),
           ],
         ),
       );
       _movementDialogVisible = false;
       if (!mounted) return;
-      if (selectedActivity == null || selectedActivity == '__still_sitting__') {
+      if (selectedActivity == null || selectedActivity == '__keep_activity__') {
         appState.dismissActivityMovementPrompt();
         return;
       }
@@ -1145,7 +1143,8 @@ void _showActivitySelectionModal(BuildContext context, AppState s) {
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) {
+    builder: (sheetContext) {
+      var isSaving = false;
       return Container(
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -1181,9 +1180,22 @@ void _showActivitySelectionModal(BuildContext context, AppState s) {
               children: kActivities.map((act) {
                 final isSelected = s.activity == act.$1;
                 return GestureDetector(
-                  onTap: () {
-                    s.confirmActivityTransition(act.$1);
-                    Navigator.pop(context);
+                  onTap: () async {
+                    if (isSaving) return;
+                    isSaving = true;
+                    final saved = await s.confirmActivityTransition(act.$1);
+                    if (!sheetContext.mounted) return;
+                    if (saved) {
+                      Navigator.pop(sheetContext);
+                    } else {
+                      isSaving = false;
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        SnackBar(
+                          content: Text(s.dataError ??
+                              'Konfirmasi aktivitas gagal disimpan.'),
+                        ),
+                      );
+                    }
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
@@ -1246,7 +1258,7 @@ void _showActivitySelectionModal(BuildContext context, AppState s) {
 class _AccMovementAlertBanner extends StatelessWidget {
   final String currentActivity;
   final String suggestedActivity;
-  final VoidCallback onConfirm;
+  final Future<bool> Function() onConfirm;
   final VoidCallback onDismiss;
   final VoidCallback onSelectOther;
 
@@ -1297,7 +1309,7 @@ class _AccMovementAlertBanner extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Anda tercatat sedang "$currentActivity", tapi sensor mendeteksi gerakan. Apakah Anda sedang berjalan?',
+                      'Pola akselerometer menyerupai $suggestedActivity. Apakah Anda sedang $suggestedActivity? Ini perkiraan sensor, bukan kepastian.',
                       style: AppTheme.font(
                           size: 11.5,
                           color: const Color(0xFF7A5C00),
@@ -1318,7 +1330,17 @@ class _AccMovementAlertBanner extends StatelessWidget {
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: onConfirm,
+                  onPressed: () async {
+                    final saved = await onConfirm();
+                    if (!saved && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Konfirmasi aktivitas gagal disimpan. Periksa koneksi lalu coba lagi.'),
+                        ),
+                      );
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFCC02),
                     foregroundColor: const Color(0xFF4A3800),
