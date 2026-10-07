@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state.dart';
+import '../../services/deviation_location_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
 import 'pedagogy_screen_why.dart';
@@ -16,6 +17,13 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
   final Map<String, Set<String>> _multipleAnswers = {};
   final Map<String, String> _singleAnswers = {};
   final Map<String, TextEditingController> _textAnswers = {};
+  final TextEditingController _mealCountController = TextEditingController();
+  final DeviationLocationService _locationService =
+      const DeviationLocationService();
+  DeviationLocation? _location;
+  String? _locationMessage;
+  String? _locationAttemptedForSegment;
+  bool _isCapturingLocation = false;
   bool _isSubmitting = false;
 
   @override
@@ -23,84 +31,48 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
     super.didChangeDependencies();
     final appState = context.watch<AppState>();
     final prompt = appState.followUpPrompt;
-    final rawFollowUp =
-        (appState.rawCaparInsights?['capar']?['pedagogy']?['follow_up']);
-    final uncertainty = rawFollowUp is Map &&
-            rawFollowUp['reasoning_uncertainty'] is Map
-        ? Map<String, dynamic>.from(rawFollowUp['reasoning_uncertainty'] as Map)
-        : null;
     final segmentId = prompt.segmentId;
-    if (prompt.status != 'requested' ||
-        segmentId == null ||
-        prompt.questions.isEmpty ||
-        !context.read<AppState>().markFollowUpPromptShown(segmentId)) {
-      return;
+    if (prompt.status == 'requested' &&
+        segmentId != null &&
+        _locationAttemptedForSegment != segmentId) {
+      _locationAttemptedForSegment = segmentId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _captureLocation();
+      });
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('CAPAR mendeteksi perubahan'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 320),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Bantu beri konteks. Pertanyaan ini mencatat pengalaman Anda dan tidak menetapkan penyebab medis.',
-                  ),
-                  if (uncertainty != null) ...[
-                    const SizedBox(height: 10),
-                    _uncertaintyMessage(uncertainty),
-                  ],
-                  const SizedBox(height: 12),
-                  ...prompt.questions.map((question) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.help_outline,
-                                size: 17, color: AppTheme.primary),
-                            const SizedBox(width: 7),
-                            Expanded(
-                              child: Text(
-                                question['question']?.toString() ??
-                                    'Konteks apa yang mungkin berkaitan?',
-                                style: AppTheme.font(
-                                    size: 12.5, weight: FontWeight.w600),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Nanti'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Jawab sekarang'),
-            ),
-          ],
-        ),
-      );
-    });
   }
 
   @override
   void dispose() {
+    _mealCountController.dispose();
     for (final controller in _textAnswers.values) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _captureLocation() async {
+    if (_isCapturingLocation) return;
+    setState(() {
+      _isCapturingLocation = true;
+      _locationMessage = null;
+    });
+    final result = await _locationService.capture();
+    if (!mounted) return;
+    setState(() {
+      _isCapturingLocation = false;
+      _location = result.location;
+      _locationMessage = result.error;
+    });
+  }
+
+  bool _hasRequiredContext() {
+    final mealCount = int.tryParse(_mealCountController.text.trim());
+    return (_singleAnswers['recent_context']?.isNotEmpty ?? false) &&
+        (_multipleAnswers['possible_factors']?.isNotEmpty ?? false) &&
+        mealCount != null &&
+        mealCount >= 0 &&
+        mealCount <= 20;
   }
 
   @override
@@ -117,9 +89,11 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
     final isRequested = state.followUpPrompt.status == 'requested' &&
         state.followUpPrompt.segmentId != null;
 
-    return MockupScaffold(
-      title: 'Apa yang Berubah?',
-      body: Column(
+    return PopScope(
+      canPop: !isRequested,
+      child: MockupScaffold(
+        title: 'Apa yang Berubah?',
+        body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _serverCard(
@@ -129,6 +103,12 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
               _detail('Jarak Mahalanobis', deviation?['distance']),
               _detail('Aktivitas', deviation?['activity']),
               _detail('Kualitas sinyal', deviation?['signal_quality']),
+              if (state.followUpPrompt.onsetTime != null)
+                'Onset: ${state.followUpPrompt.onsetTime!.toLocal()}',
+              if (state.followUpPrompt.peakTime != null)
+                'Puncak: ${state.followUpPrompt.peakTime!.toLocal()}',
+              if (state.followUpPrompt.mainFactors.isNotEmpty)
+                'Fitur berkontribusi terbesar: ${_factorLabel(state.followUpPrompt.mainFactors.first)}',
             ],
           ),
           const SizedBox(height: 14),
@@ -157,6 +137,58 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
             ],
             const SizedBox(height: 12),
             ...questions.map(_buildQuestion),
+            _questionCard(
+              'Jumlah makan hari ini (wajib)',
+              TextField(
+                controller: _mealCountController,
+                keyboardType: TextInputType.number,
+                maxLength: 2,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  hintText: 'Masukkan 0 sampai 20',
+                  suffixText: 'kali',
+                  counterText: '',
+                ),
+              ),
+            ),
+            _questionCard(
+              'Lokasi saat mengisi konteks (opsional)',
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _location?.placeName ??
+                        (_isCapturingLocation
+                            ? 'Mengambil lokasi perangkat...'
+                            : _locationMessage ??
+                                'Lokasi belum disertakan. Izin lokasi diperlukan untuk mengambil koordinat dan nama tempat.'),
+                    style:
+                        AppTheme.font(size: 12, color: AppTheme.textSecondary),
+                  ),
+                  if (_location != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Lat ${_location!.latitude.toStringAsFixed(5)}, Lon ${_location!.longitude.toStringAsFixed(5)}',
+                      style: AppTheme.font(size: 11, color: AppTheme.textMuted),
+                    ),
+                  ],
+                  if (_locationMessage != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _locationMessage!,
+                      style: AppTheme.font(size: 11, color: AppTheme.textMuted),
+                    ),
+                  ],
+                  TextButton.icon(
+                    onPressed: _isCapturingLocation ? null : _captureLocation,
+                    icon: const Icon(Icons.my_location),
+                    label: Text(_location == null
+                        ? 'Ambil lokasi sekarang'
+                        : 'Perbarui lokasi'),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 8),
             _messageCard(
               'Opsional: jika Anda sudah melakukan suatu langkah atas keputusan sendiri, catat apa yang dilakukan dan bagaimana Anda merasakannya setelah itu. Ini adalah laporan pribadi, bukan penilaian efektivitas atau anjuran tindakan.',
@@ -184,11 +216,18 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
                     hintText: 'Catat perubahan yang Anda rasakan'),
               ),
             ),
+            if (!_hasRequiredContext())
+              _messageCard(
+                'Untuk merekam konteks deviasi, pilih aktivitas, sedikitnya satu faktor (atau “tidak tahu”), dan jumlah makan.',
+              ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isSubmitting ? null : () => _submit(state),
+                onPressed: _isSubmitting ||
+                        (isRequested && !_hasRequiredContext())
+                    ? null
+                    : () => _submit(state),
                 child: _isSubmitting
                     ? const SizedBox(
                         width: 20,
@@ -202,13 +241,16 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
           ],
           const SizedBox(height: 14),
           OutlinedButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const WhyScreen()),
-            ),
+            onPressed: isRequested
+                ? null
+                : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WhyScreen()),
+                    ),
             child: const Text('Lihat faktor CAPAR yang berkontribusi'),
           ),
         ],
+      ),
       ),
     );
   }
@@ -221,6 +263,7 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
         (question['options'] as List?)?.map((e) => e.toString()).toList() ??
             const [];
 
+    if (id == 'meal_count') return const SizedBox.shrink();
     if (type == 'text') {
       final controller =
           _textAnswers.putIfAbsent(id, TextEditingController.new);
@@ -384,6 +427,17 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
   }
 
   Future<void> _submit(AppState state) async {
+    if (!_hasRequiredContext()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Pilih aktivitas, faktor konteks (atau “tidak tahu”), dan jumlah makan untuk melanjutkan.',
+          ),
+        ),
+      );
+      return;
+    }
+    final mealCount = int.parse(_mealCountController.text.trim());
     final symptoms =
         _multipleAnswers['current_symptoms']?.toList() ?? <String>[];
     final factors =
@@ -401,10 +455,12 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
       symptomCodes: symptoms,
       factors: factors,
       symptomOnset: onset,
+      mealCount: mealCount,
       notes: note,
       actionTaken: actionTaken,
       responseAfterAction: responseAfterAction,
-      contextActivity: activity,
+      contextActivity: activity!,
+      location: _location?.toJson(),
     );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -417,5 +473,13 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
       return;
     }
     showSaved(context, 'Jawaban follow-up tersimpan di server');
+    Navigator.pop(context);
+  }
+
+  String _factorLabel(Map<String, dynamic> factor) {
+    final label = factor['label'] ?? factor['feature'] ?? factor['key'] ?? 'Fitur';
+    final contribution =
+        factor['contribution_pct'] ?? factor['contribution'] ?? factor['share'];
+    return contribution == null ? '$label' : '$label ($contribution)';
   }
 }

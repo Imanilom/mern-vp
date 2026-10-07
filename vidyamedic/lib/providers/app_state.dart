@@ -42,8 +42,9 @@ class AppState extends ChangeNotifier {
     Map<String, dynamic>? latestSample,
     bool isLiveStream = false,
   ]) {
-    final detectedActivity =
-        WearableData.inferLocomotionActivity(wearable.recentAcceleration);
+    movementAnalysis =
+        WearableData.analyzeLocomotion(wearable.recentAcceleration);
+    final detectedActivity = movementAnalysis?.activity;
     if (detectedActivity == null) return;
     if (detectedActivity == activity) return;
     final recordedAt = DateTime.tryParse(
@@ -474,7 +475,12 @@ class AppState extends ChangeNotifier {
           stress = StressLevel.fromApiValue(stressValue is num
               ? stressValue
               : num.tryParse(stressValue?.toString() ?? ''));
-          if (lifestyle['meal'] is bool) habitMeal = lifestyle['meal'] as bool;
+          if (lifestyle['meal_count'] is num) {
+            mealCount = (lifestyle['meal_count'] as num).round();
+            habitMeal = mealCount! > 0;
+          } else if (lifestyle['meal'] is bool) {
+            habitMeal = lifestyle['meal'] as bool;
+          }
           if (lifestyle['caffeine'] is bool) {
             habitCaffeine = lifestyle['caffeine'] as bool;
           }
@@ -526,6 +532,7 @@ class AppState extends ChangeNotifier {
           if (disturbances['nightmares'] is bool) {
             sleepNightmare = disturbances['nightmares'] as bool;
           }
+          sleepMinutes = calculateSleepDurationMinutes(bedTime, wakeTime);
         }
         if (hasNoteData) note = noteRecord['note'] as String;
         confirmedDailySections
@@ -687,6 +694,7 @@ class AppState extends ChangeNotifier {
   // 2. Aktivitas & gaya hidup
   String activity = 'Istirahat';
   StressLevel? stress;
+  int? mealCount;
   bool habitMeal = true;
   bool habitCaffeine = false;
   bool habitAlcohol = false;
@@ -745,6 +753,7 @@ class AppState extends ChangeNotifier {
   // 7. Deteksi Gerakan ACC & Konfirmasi Aktivitas
   bool showActivityMovementPrompt = false;
   String suggestedActivity = 'Berjalan';
+  LocomotionAnalysis? movementAnalysis;
   DateTime? _lastMovementPromptAt;
   static const _movementPromptCooldown = Duration(minutes: 10);
 
@@ -1347,10 +1356,12 @@ class AppState extends ChangeNotifier {
     required List<String> symptomCodes,
     required List<String> factors,
     required String symptomOnset,
+    required int mealCount,
     required String notes,
+    required String contextActivity,
+    Map<String, dynamic>? location,
     String actionTaken = '',
     String responseAfterAction = '',
-    String? contextActivity,
   }) async {
     final segmentId = followUpPrompt.segmentId;
     if (!isAuthenticated ||
@@ -1362,12 +1373,18 @@ class AppState extends ChangeNotifier {
     }
     final payload = <String, dynamic>{
       'recorded_at': DateTime.now().toIso8601String(),
+      'activity': contextActivity,
       'sleep': <String, dynamic>{},
       'symptoms': symptomCodes,
-      if (contextActivity != null) 'activity': contextActivity,
+      'lifestyle': {
+        'meal': mealCount > 0,
+        'meal_count': mealCount,
+      },
       'deviation_follow_up': {
         'segment_id': segmentId,
         'perceived_factors': factors,
+        'meal_count': mealCount,
+        if (location != null) 'location': location,
         if (symptomOnset.isNotEmpty) 'symptom_onset': symptomOnset,
         if (notes.trim().isNotEmpty) 'note': notes.trim(),
         if (actionTaken.trim().isNotEmpty) 'action_taken': actionTaken.trim(),
@@ -1377,6 +1394,9 @@ class AppState extends ChangeNotifier {
     };
     final res = await ApiService.createCheckIn(payload);
     if (res.success) {
+      this.mealCount = mealCount;
+      habitMeal = mealCount > 0;
+      activity = mapApiToActivity(contextActivity);
       followUpPrompt = const CaparFollowUpPrompt(status: 'already_answered');
       notifyListeners();
       await fetchCaparInsights();
@@ -1478,12 +1498,25 @@ class AppState extends ChangeNotifier {
     final hasActivitySection = hasDailySection('activity');
     final hasSleepSection = hasDailySection('sleep');
     final hasMeasurementSection = hasDailySection('measurements');
+    if (hasActivitySection && mealCount == null) {
+      dataError = 'Isi jumlah makan hari ini sebelum menyimpan konteks aktivitas.';
+      notifyListeners();
+      return false;
+    }
+    final calculatedSleepMinutes =
+        calculateSleepDurationMinutes(bedTime, wakeTime);
+    if (hasSleepSection && calculatedSleepMinutes == 0) {
+      dataError = 'Waktu bangun harus berbeda dari waktu mulai tidur.';
+      notifyListeners();
+      return false;
+    }
+    sleepMinutes = calculatedSleepMinutes;
     final stressValue = stress?.apiValue;
     final payload = <String, dynamic>{
       'recorded_at': logDate.toIso8601String(),
       if (hasSleepSection)
         'sleep': {
-          'duration_minutes': sleepMinutes,
+          'duration_minutes': calculatedSleepMinutes,
           'quality': sleepQuality.apiValue,
           'bedtime':
               '${bedTime.hour.toString().padLeft(2, '0')}:${bedTime.minute.toString().padLeft(2, '0')}',
@@ -1511,7 +1544,8 @@ class AppState extends ChangeNotifier {
         'stress_level': stressValue,
       if (hasActivitySection)
         'lifestyle': {
-          'meal': habitMeal,
+          'meal': (mealCount ?? 0) > 0,
+          'meal_count': mealCount,
           'caffeine': habitCaffeine,
           'alcohol': habitAlcohol,
           'smoking': habitSmoking,

@@ -26,10 +26,10 @@ class _SleepInputScreenState extends State<SleepInputScreen> {
   void initState() {
     super.initState();
     final s = context.read<AppState>();
-    _minutes = s.sleepMinutes;
     _quality = s.sleepQuality;
     _bedTime = s.bedTime;
     _wakeTime = s.wakeTime;
+    _minutes = calculateSleepDurationMinutes(_bedTime, _wakeTime);
     _wakeOften = s.sleepWakeOften;
     _hardToSleep = s.sleepHardToSleep;
     _nightmare = s.sleepNightmare;
@@ -37,6 +37,13 @@ class _SleepInputScreenState extends State<SleepInputScreen> {
 
   Future<void> _save() async {
     final s = context.read<AppState>();
+    _minutes = calculateSleepDurationMinutes(_bedTime, _wakeTime);
+    if (_minutes == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Waktu bangun harus berbeda dari waktu tidur.')),
+      );
+      return;
+    }
     s.update(() {
       s.sleepMinutes = _minutes;
       s.sleepQuality = _quality;
@@ -74,34 +81,21 @@ class _SleepInputScreenState extends State<SleepInputScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle('Durasi tidur', padding: EdgeInsets.only(top: 8, bottom: 10)),
+          const SectionTitle(
+            'Durasi tidur (dihitung otomatis)',
+            padding: EdgeInsets.only(top: 8, bottom: 10),
+          ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppTheme.border),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _stepButton(
-                  icon: Icons.remove,
-                  onTap: () {
-                    if (_minutes > 60) setState(() => _minutes -= 30);
-                  },
-                ),
-                Text(
-                  _formatDuration(_minutes),
-                  style: AppTheme.font(size: 16, weight: FontWeight.w700),
-                ),
-                _stepButton(
-                  icon: Icons.add,
-                  onTap: () {
-                    if (_minutes < 840) setState(() => _minutes += 30);
-                  },
-                ),
-              ],
+            child: Text(
+              _formatDuration(calculateSleepDurationMinutes(_bedTime, _wakeTime)),
+              style: AppTheme.font(size: 16, weight: FontWeight.w700),
             ),
           ),
 
@@ -132,7 +126,13 @@ class _SleepInputScreenState extends State<SleepInputScreen> {
                   time: _bedTime,
                   onTap: () async {
                     final t = await showTimePicker(context: context, initialTime: _bedTime);
-                    if (t != null) setState(() => _bedTime = t);
+                    if (t != null) {
+                      setState(() {
+                        _bedTime = t;
+                        _minutes =
+                            calculateSleepDurationMinutes(_bedTime, _wakeTime);
+                      });
+                    }
                   },
                 ),
               ),
@@ -143,7 +143,13 @@ class _SleepInputScreenState extends State<SleepInputScreen> {
                   time: _wakeTime,
                   onTap: () async {
                     final t = await showTimePicker(context: context, initialTime: _wakeTime);
-                    if (t != null) setState(() => _wakeTime = t);
+                    if (t != null) {
+                      setState(() {
+                        _wakeTime = t;
+                        _minutes =
+                            calculateSleepDurationMinutes(_bedTime, _wakeTime);
+                      });
+                    }
                   },
                 ),
               ),
@@ -185,21 +191,6 @@ class _SleepInputScreenState extends State<SleepInputScreen> {
     );
   }
 
-  Widget _stepButton({required IconData icon, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: AppTheme.fieldFill,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: AppTheme.primaryDark, size: 20),
-      ),
-    );
-  }
 }
 
 class _TimeBox extends StatelessWidget {

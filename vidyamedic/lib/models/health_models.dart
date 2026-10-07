@@ -106,6 +106,13 @@ enum SleepQuality {
   }
 }
 
+int calculateSleepDurationMinutes(TimeOfDay bedtime, TimeOfDay wakeTime) {
+  final start = bedtime.hour * 60 + bedtime.minute;
+  var end = wakeTime.hour * 60 + wakeTime.minute;
+  if (end < start) end += 24 * 60;
+  return end - start;
+}
+
 /// Symptom options shown in "Apakah ada gejala?" (mockup halaman 4).
 class SymptomOption {
   final String label;
@@ -237,6 +244,24 @@ class ActivityMotionPolicy {
   final double minimumPeakProminenceG;
   final double maximumIntervalVariation;
   final double minimumSampleSeconds;
+}
+
+class LocomotionAnalysis {
+  const LocomotionAnalysis({
+    required this.activity,
+    required this.cadenceHz,
+    required this.peakCount,
+    required this.meanDeltaMagnitudeG,
+    required this.rmsDeltaMagnitudeG,
+    required this.intervalVariation,
+  });
+
+  final String activity;
+  final double cadenceHz;
+  final int peakCount;
+  final double meanDeltaMagnitudeG;
+  final double rmsDeltaMagnitudeG;
+  final double intervalVariation;
 }
 
 /// Event marker options (mockup halaman 5 – "Tambah Event").
@@ -606,6 +631,17 @@ class WearableData {
     List<List<double>> accSamples, {
     double sampleRateHz = 50,
     ActivityMotionPolicy policy = ActivityMotionPolicy.demo,
+  }) =>
+      analyzeLocomotion(
+        accSamples,
+        sampleRateHz: sampleRateHz,
+        policy: policy,
+      )?.activity;
+
+  static LocomotionAnalysis? analyzeLocomotion(
+    List<List<double>> accSamples, {
+    double sampleRateHz = 50,
+    ActivityMotionPolicy policy = ActivityMotionPolicy.demo,
   }) {
     const movingAverageSeconds = 0.6;
 
@@ -649,6 +685,19 @@ class WearableData {
     }
     if (peakIndices.length < 4) return null;
 
+    final deltaMagnitudes = [
+      for (final index in peakIndices) dynamicMagnitude[index],
+    ];
+    final meanDeltaMagnitudeG =
+        deltaMagnitudes.reduce((sum, value) => sum + value) /
+            deltaMagnitudes.length;
+    final rmsDeltaMagnitudeG = math.sqrt(
+      deltaMagnitudes
+              .map((value) => value * value)
+              .reduce((sum, value) => sum + value) /
+          deltaMagnitudes.length,
+    );
+
     final intervals = <int>[
       for (var index = 1; index < peakIndices.length; index++)
         peakIndices[index] - peakIndices[index - 1],
@@ -673,7 +722,14 @@ class WearableData {
         intervalVariation > policy.maximumIntervalVariation) {
       return null;
     }
-    return cadenceHz >= policy.runningCadenceHz ? 'Berlari' : 'Berjalan';
+    return LocomotionAnalysis(
+      activity: cadenceHz >= policy.runningCadenceHz ? 'Berlari' : 'Berjalan',
+      cadenceHz: cadenceHz,
+      peakCount: peakIndices.length,
+      meanDeltaMagnitudeG: meanDeltaMagnitudeG,
+      rmsDeltaMagnitudeG: rmsDeltaMagnitudeG,
+      intervalVariation: intervalVariation,
+    );
   }
 
   /// Calculates current motion intensity from tri-axial acceleration variance
@@ -838,12 +894,22 @@ class CaparFollowUpPrompt {
   final String? segmentId;
   final String? message;
   final List<Map<String, dynamic>> questions;
+  final DateTime? onsetTime;
+  final DateTime? peakTime;
+  final double? deviationDistance;
+  final Map<String, dynamic>? referenceThresholds;
+  final List<Map<String, dynamic>> mainFactors;
 
   const CaparFollowUpPrompt({
     this.status = 'none',
     this.segmentId,
     this.message,
     this.questions = const [],
+    this.onsetTime,
+    this.peakTime,
+    this.deviationDistance,
+    this.referenceThresholds,
+    this.mainFactors = const [],
   });
 
   factory CaparFollowUpPrompt.fromJson(Map<String, dynamic>? json) {
@@ -854,6 +920,17 @@ class CaparFollowUpPrompt {
           json['segment_id']?.toString(),
       message: json['message']?.toString(),
       questions: (json['questions'] as List?)
+              ?.whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList() ??
+          const [],
+      onsetTime: DateTime.tryParse(json['onset_time']?.toString() ?? ''),
+      peakTime: DateTime.tryParse(json['peak_time']?.toString() ?? ''),
+      deviationDistance: (json['deviation_distance'] as num?)?.toDouble(),
+      referenceThresholds: json['reference_thresholds'] is Map
+          ? Map<String, dynamic>.from(json['reference_thresholds'] as Map)
+          : null,
+      mainFactors: (json['main_factors'] as List?)
               ?.whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList() ??

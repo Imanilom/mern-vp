@@ -859,6 +859,7 @@ export async function getPatientAppCaparInsights(req, res) {
       deviation: latestMahalanobis,
       segmentId: latestMahalanobis?.segment_id?.toString() || null,
       alreadyAnswered: followUpAlreadyAnswered,
+      episode: recoverySummary.latest_episode,
     });
     const feedbackCheckIn = latestMahalanobis?.segment_id
       ? historicalCheckIns.find((checkIn) => (
@@ -1898,7 +1899,7 @@ function collectPatientContextBeforeEvent({
   if (!Number.isFinite(eventTime)) return [];
   const windowStart = eventTime - 6 * 60 * 60 * 1000;
   const context = [];
-  const add = (type, occurredAt, source, confidence = null) => {
+  const add = (type, occurredAt, source, confidence = null, details = {}) => {
     const timestamp = new Date(occurredAt).getTime();
     if (!Number.isFinite(timestamp) || timestamp < windowStart || timestamp > eventTime) return;
     context.push({
@@ -1913,6 +1914,7 @@ function collectPatientContextBeforeEvent({
           : {}
       ),
       ...(confidence == null ? {} : { confidence }),
+      ...details,
     });
   };
 
@@ -1936,6 +1938,24 @@ function collectPatientContextBeforeEvent({
     if (checkIn.lifestyle?.smoking) add('smoking', recordedAt, 'patient_check_in');
     if (checkIn.lifestyle?.alcohol) add('alcohol', recordedAt, 'patient_check_in');
     if (checkIn.lifestyle?.meal) add('meal', recordedAt, 'patient_check_in');
+    if (Number.isFinite(checkIn.lifestyle?.meal_count)) {
+      add('meal', recordedAt, 'patient_check_in', null, {
+        meal_count: checkIn.lifestyle.meal_count,
+      });
+    }
+    if (Number.isFinite(checkIn.deviation_follow_up?.meal_count)) {
+      add('meal', recordedAt, 'deviation_follow_up', null, {
+        meal_count: checkIn.deviation_follow_up.meal_count,
+      });
+    }
+    const location = checkIn.deviation_follow_up?.location;
+    if (Number.isFinite(location?.latitude) && Number.isFinite(location?.longitude)) {
+      add('location', recordedAt, 'deviation_follow_up', null, {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        place_name: location.place_name || null,
+      });
+    }
     if (checkIn.symptoms?.length) add('reported_symptom', recordedAt, 'patient_check_in');
   }
 

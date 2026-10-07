@@ -53,8 +53,11 @@ class PolarWearablePairingService extends ChangeNotifier {
   StreamSubscription<PolarAccData>? _accelerationSubscription;
   Timer? _sampleFlushTimer;
   Timer? _streamFlushTimer;
+  Timer? _connectionTimeoutTimer;
   DateTime? _windowStartedAt;
   String _deviceId = '';
+  String _connectingDeviceId = '';
+  int _connectionAttempt = 0;
   String _deviceName = '';
   String _activity = 'unknown';
   int? _heartRateBpm;
@@ -161,6 +164,8 @@ class PolarWearablePairingService extends ChangeNotifier {
       return false;
     }
     connectionError = null;
+    final attempt = ++_connectionAttempt;
+    _connectingDeviceId = id;
     isConnecting = true;
     _notify();
     try {
@@ -170,9 +175,34 @@ class PolarWearablePairingService extends ChangeNotifier {
             'Izin Bluetooth diperlukan untuk menghubungkan Polar H10.');
       }
       await stopScan();
+      if (_connectionAttempt != attempt) return false;
+      _connectionTimeoutTimer?.cancel();
+      _connectionTimeoutTimer = Timer(const Duration(seconds: 15), () {
+        if (_isDisposed ||
+            !isConnecting ||
+            _connectingDeviceId != id ||
+            _connectionAttempt != attempt) {
+          return;
+        }
+        _connectionAttempt++;
+        _connectionTimeoutTimer = null;
+        _connectingDeviceId = '';
+        isConnecting = false;
+        connectionError =
+            'Waktu koneksi Polar H10 habis. Pastikan sensor aktif dan coba lagi.';
+        _notify();
+        unawaited(_disconnectTimedOutDevice(id));
+      });
       await _polar.connectToDevice(id);
       return true;
     } catch (e) {
+      if (_connectionAttempt != attempt) {
+        return isConnected && _deviceId == id;
+      }
+      _connectionAttempt++;
+      _connectionTimeoutTimer?.cancel();
+      _connectionTimeoutTimer = null;
+      _connectingDeviceId = '';
       connectionError = 'Gagal menghubungkan Polar H10: $e';
       isConnecting = false;
       _notify();
@@ -180,7 +210,22 @@ class PolarWearablePairingService extends ChangeNotifier {
     }
   }
 
+  Future<void> _disconnectTimedOutDevice(String id) async {
+    try {
+      await _polar.disconnectFromDevice(id);
+    } catch (error) {
+      if (_isDisposed) return;
+      connectionError =
+          'Koneksi Polar H10 melewati batas waktu; pemutusan percobaan gagal: $error';
+      _notify();
+    }
+  }
+
   void _handleConnected(PolarDeviceInfo device) {
+    _connectionAttempt++;
+    _connectionTimeoutTimer?.cancel();
+    _connectionTimeoutTimer = null;
+    _connectingDeviceId = '';
     _deviceId = device.deviceId;
     _deviceName = device.name.isNotEmpty ? device.name : 'Polar H10';
     isConnected = true;
@@ -191,6 +236,10 @@ class PolarWearablePairingService extends ChangeNotifier {
 
   void _handleDisconnected(PolarDeviceDisconnectedEvent event) {
     if (_deviceId.isNotEmpty && event.info.deviceId != _deviceId) return;
+    _connectionAttempt++;
+    _connectionTimeoutTimer?.cancel();
+    _connectionTimeoutTimer = null;
+    _connectingDeviceId = '';
     isConnected = false;
     isConnecting = false;
     isStreaming = false;
@@ -485,6 +534,10 @@ class PolarWearablePairingService extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    _connectionAttempt++;
+    _connectionTimeoutTimer?.cancel();
+    _connectionTimeoutTimer = null;
+    _connectingDeviceId = '';
     await stopStreaming();
     await stopScan();
     _cancelSensorStreams();
@@ -506,8 +559,10 @@ class PolarWearablePairingService extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
+    _connectionAttempt++;
     _sampleFlushTimer?.cancel();
     _streamFlushTimer?.cancel();
+    _connectionTimeoutTimer?.cancel();
     _scanSubscription?.cancel();
     _cancelSensorStreams();
     _connectSubscription?.cancel();

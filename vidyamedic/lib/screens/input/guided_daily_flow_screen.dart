@@ -29,7 +29,7 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
   // Temporary / working state for Step 5
   late String _activity;
   StressLevel? _stress;
-  late bool _makan;
+  final TextEditingController _mealCountCtrl = TextEditingController();
   late bool _kafein;
   late bool _alkohol;
   late bool _merokok;
@@ -41,7 +41,6 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
   late double _symptomLevel;
 
   // Temporary / working state for Step 7
-  late int _sleepMinutes;
   late SleepQuality _sleepQuality;
   late TimeOfDay _bedTime;
   late TimeOfDay _wakeTime;
@@ -65,7 +64,7 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
 
     _activity = s.activity;
     _stress = s.stress;
-    _makan = s.habitMeal;
+    _mealCountCtrl.text = s.mealCount?.toString() ?? '';
     _kafein = s.habitCaffeine;
     _alkohol = s.habitAlcohol;
     _merokok = s.habitSmoking;
@@ -75,7 +74,6 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
     _symptoms = List.from(s.symptoms);
     _symptomLevel = s.symptomLevel;
 
-    _sleepMinutes = s.sleepMinutes;
     _sleepQuality = s.sleepQuality;
     _bedTime = s.bedTime;
     _wakeTime = s.wakeTime;
@@ -90,6 +88,7 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
   void dispose() {
     _pageController.dispose();
     _noteCtrl.dispose();
+    _mealCountCtrl.dispose();
     super.dispose();
   }
 
@@ -99,7 +98,11 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
       // Step 5
       s.activity = _activity;
       s.stress = _stress;
-      s.habitMeal = _makan;
+      final mealCount = int.tryParse(_mealCountCtrl.text.trim());
+      if (mealCount != null && mealCount >= 0 && mealCount <= 20) {
+        s.mealCount = mealCount;
+        s.habitMeal = mealCount > 0;
+      }
       s.habitCaffeine = _kafein;
       s.habitAlcohol = _alkohol;
       s.habitSmoking = _merokok;
@@ -111,7 +114,7 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
       s.symptomLevel = _symptomLevel;
 
       // Step 7
-      s.sleepMinutes = _sleepMinutes;
+      s.sleepMinutes = calculateSleepDurationMinutes(_bedTime, _wakeTime);
       s.sleepQuality = _sleepQuality;
       s.bedTime = _bedTime;
       s.wakeTime = _wakeTime;
@@ -125,6 +128,17 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
   }
 
   void _next() {
+    if (_step == 5) {
+      final mealCount = int.tryParse(_mealCountCtrl.text.trim());
+      if (mealCount == null || mealCount < 0 || mealCount > 20) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Masukkan jumlah makan hari ini (0 sampai 20 kali).'),
+          ),
+        );
+        return;
+      }
+    }
     _saveCurrentStepToState();
     final s = context.read<AppState>();
     switch (_step) {
@@ -200,6 +214,15 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
       default:
         return 'Input Harian';
     }
+
+  }
+
+  String _formatSleepDuration(int minutes) {
+    final hours = minutes ~/ 60;
+    final remainingMinutes = minutes % 60;
+    return remainingMinutes == 0
+        ? '$hours jam'
+        : '$hours jam $remainingMinutes menit';
   }
 
   @override
@@ -405,12 +428,17 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
               .toList(),
         ),
         const SectionTitle('Apakah Anda baru saja?'),
-        ToggleRow(
-          icon: Icons.restaurant,
-          label: 'Makan',
-          value: _makan,
-          onChanged: (v) => setState(() => _makan = v),
+        const Text('Berapa kali Anda makan hari ini?'),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _mealCountCtrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: 'Contoh: 3',
+            suffixText: 'kali',
+          ),
         ),
+        const SizedBox(height: 8),
         ToggleRow(
           icon: Icons.coffee,
           label: 'Minum kafein (kopi/teh)',
@@ -544,48 +572,19 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionTitle('Durasi tidur', padding: EdgeInsets.only(top: 4, bottom: 10)),
+        const SectionTitle('Durasi tidur (dihitung dari waktu tidur dan bangun)'),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppTheme.border),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              InkWell(
-                onTap: () {
-                  if (_sleepMinutes > 60) setState(() => _sleepMinutes -= 30);
-                },
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(color: AppTheme.fieldFill, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.remove, color: AppTheme.primaryDark, size: 20),
-                ),
-              ),
-              Text(
-                _sleepMinutes % 60 == 0
-                    ? '${_sleepMinutes ~/ 60} jam'
-                    : '${_sleepMinutes ~/ 60} jam ${_sleepMinutes % 60} menit',
-                style: AppTheme.font(size: 16, weight: FontWeight.w700),
-              ),
-              InkWell(
-                onTap: () {
-                  if (_sleepMinutes < 840) setState(() => _sleepMinutes += 30);
-                },
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(color: AppTheme.fieldFill, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.add, color: AppTheme.primaryDark, size: 20),
-                ),
-              ),
-            ],
+          child: Text(
+            _formatSleepDuration(
+                calculateSleepDurationMinutes(_bedTime, _wakeTime)),
+            style: AppTheme.font(size: 16, weight: FontWeight.w700),
           ),
         ),
         const SectionTitle('Kualitas tidur'),
@@ -614,7 +613,11 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
                 _bedTime,
                 () async {
                   final t = await showTimePicker(context: context, initialTime: _bedTime);
-                  if (t != null) setState(() => _bedTime = t);
+                  if (t != null) {
+                    setState(() {
+                      _bedTime = t;
+                    });
+                  }
                 },
               ),
             ),
@@ -625,7 +628,11 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
                 _wakeTime,
                 () async {
                   final t = await showTimePicker(context: context, initialTime: _wakeTime);
-                  if (t != null) setState(() => _wakeTime = t);
+                  if (t != null) {
+                    setState(() {
+                      _wakeTime = t;
+                    });
+                  }
                 },
               ),
             ),
@@ -979,7 +986,7 @@ class _GuidedDailyFlowScreenState extends State<GuidedDailyFlowScreen> {
               const Divider(height: 1, indent: 42, color: AppTheme.borderLight),
               _summaryRow(Icons.psychology_outlined, 'Stres', Text(s.stress?.label ?? 'Belum dicatat', style: AppTheme.font(size: 13, weight: FontWeight.w600))),
               const Divider(height: 1, indent: 42, color: AppTheme.borderLight),
-              _summaryRow(Icons.restaurant_outlined, 'Makan', Text(s.habitMeal ? 'Sudah makan' : 'Belum', style: AppTheme.font(size: 13))),
+              _summaryRow(Icons.restaurant_outlined, 'Makan', Text('${s.mealCount ?? '-'} kali hari ini', style: AppTheme.font(size: 13))),
               const Divider(height: 1, indent: 42, color: AppTheme.borderLight),
               _summaryRow(Icons.medication_outlined, 'Minum obat', Text(s.habitMedication ? 'Ya' : 'Tidak', style: AppTheme.font(size: 13))),
               const Divider(height: 1, indent: 42, color: AppTheme.borderLight),

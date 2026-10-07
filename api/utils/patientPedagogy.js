@@ -15,6 +15,7 @@ export function buildPatientDeviationFollowUpPrompt({
   deviation,
   segmentId = null,
   alreadyAnswered = false,
+  episode = null,
 } = {}) {
   if (!deviation?.available || deviation.state === 'within_personal_region') {
     return { status: 'not_required' };
@@ -26,6 +27,11 @@ export function buildPatientDeviationFollowUpPrompt({
       status: 'already_answered',
       triggered_by_segment_id: segmentId,
       deviation_level: highDeviation ? 'high' : 'moderate',
+      onset_time: episode?.onset_time ?? null,
+      peak_time: episode?.peak_time ?? deviation.recorded_at ?? null,
+      deviation_distance: deviation.distance ?? null,
+      reference_thresholds: deviation.thresholds ?? null,
+      main_factors: deviation.features ?? [],
     };
   }
 
@@ -59,8 +65,8 @@ export function buildPatientDeviationFollowUpPrompt({
     {
       id: 'possible_factors',
       question: highDeviation
-        ? 'Menurut Anda, adakah hal yang mungkin berkaitan dengan perubahan ini?'
-        : 'Apakah ada perubahan aktivitas atau kondisi yang ingin dicatat?',
+        ? 'Dari waktu onset sampai puncak deviasi, konteks apa yang berubah dan mungkin berkaitan?'
+        : 'Konteks apa yang berubah di sekitar deviasi dan ingin Anda catat?',
       response_field: 'deviation_follow_up.perceived_factors',
       input_type: 'multi_select',
       options: [
@@ -75,7 +81,16 @@ export function buildPatientDeviationFollowUpPrompt({
         'no_known_factor',
         'prefer_not_to_say',
       ],
-      optional: true,
+      optional: false,
+    },
+    {
+      id: 'meal_count',
+      question: 'Berapa kali Anda makan hari ini?',
+      response_field: 'deviation_follow_up.meal_count',
+      input_type: 'number',
+      minimum: 0,
+      maximum: 20,
+      optional: false,
     },
   ];
 
@@ -105,6 +120,11 @@ export function buildPatientDeviationFollowUpPrompt({
     triggered_by_segment_id: segmentId,
     deviation_level: highDeviation ? 'high' : 'moderate',
     deviation_state: deviation.state,
+    onset_time: episode?.onset_time ?? null,
+    peak_time: episode?.peak_time ?? deviation.recorded_at ?? null,
+    deviation_distance: deviation.distance ?? null,
+    reference_thresholds: deviation.thresholds ?? null,
+    main_factors: deviation.features ?? [],
     questions,
     response_endpoint: 'POST /api/patient-app/check-ins',
     response_field: 'deviation_follow_up',

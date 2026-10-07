@@ -607,6 +607,8 @@ export function validateCheckIn(body) {
       'perceived_factors',
       'symptom_onset',
       'note',
+      'meal_count',
+      'location',
       'action_taken',
       'response_after_action',
     ]);
@@ -656,6 +658,60 @@ export function validateCheckIn(body) {
     if ('note' in followUp) {
       resultFollowUp.note = optionalString(followUp.note, 'deviation_follow_up.note', 500);
     }
+    if ('meal_count' in followUp) {
+      resultFollowUp.meal_count = optionalNumber(
+        followUp.meal_count,
+        'deviation_follow_up.meal_count',
+        0,
+        20
+      );
+      if (!Number.isInteger(resultFollowUp.meal_count)) {
+        throw errorHandler(400, 'deviation_follow_up.meal_count harus berupa bilangan bulat 0-20.');
+      }
+    }
+    if ('location' in followUp) {
+      requireObject(followUp.location, 'deviation_follow_up.location');
+      const locationFields = new Set([
+        'latitude',
+        'longitude',
+        'place_name',
+        'captured_at',
+      ]);
+      rejectUnknownFields(
+        followUp.location,
+        locationFields,
+        'Field deviation_follow_up.location'
+      );
+      const location = {};
+      for (const [key, min, max] of [
+        ['latitude', -90, 90],
+        ['longitude', -180, 180],
+      ]) {
+        if (!(key in followUp.location)) {
+          throw errorHandler(400, `deviation_follow_up.location.${key} wajib diisi.`);
+        }
+        location[key] = optionalNumber(
+          followUp.location[key],
+          `deviation_follow_up.location.${key}`,
+          min,
+          max
+        );
+      }
+      if ('place_name' in followUp.location) {
+        location.place_name = optionalString(
+          followUp.location.place_name,
+          'deviation_follow_up.location.place_name',
+          160
+        );
+      }
+      if ('captured_at' in followUp.location) {
+        location.captured_at = parseDate(
+          followUp.location.captured_at,
+          'deviation_follow_up.location.captured_at'
+        );
+      }
+      resultFollowUp.location = location;
+    }
     if ('action_taken' in followUp) {
       resultFollowUp.action_taken = optionalString(
         followUp.action_taken,
@@ -674,15 +730,26 @@ export function validateCheckIn(body) {
   }
   if ('lifestyle' in body) {
     requireObject(body.lifestyle, 'lifestyle');
-    const allowed = new Set(['meal', 'caffeine', 'alcohol', 'smoking']);
+    const allowed = new Set(['meal', 'meal_count', 'caffeine', 'alcohol', 'smoking']);
     rejectUnknownFields(body.lifestyle, allowed, 'Field lifestyle');
     result.lifestyle = {};
-    for (const key of allowed) {
+    for (const key of ['meal', 'caffeine', 'alcohol', 'smoking']) {
       if (key in body.lifestyle) {
         if (typeof body.lifestyle[key] !== 'boolean') {
           throw errorHandler(400, `lifestyle.${key} harus berupa boolean.`);
         }
         result.lifestyle[key] = body.lifestyle[key];
+      }
+    }
+    if ('meal_count' in body.lifestyle) {
+      result.lifestyle.meal_count = optionalNumber(
+        body.lifestyle.meal_count,
+        'lifestyle.meal_count',
+        0,
+        20
+      );
+      if (!Number.isInteger(result.lifestyle.meal_count)) {
+        throw errorHandler(400, 'lifestyle.meal_count harus berupa bilangan bulat 0-20.');
       }
     }
     if (!Object.keys(result.lifestyle).length) {

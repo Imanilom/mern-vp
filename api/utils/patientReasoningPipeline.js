@@ -39,7 +39,10 @@ export function buildPatientReasoningPipeline({
     latestCheckIn?.sleep?.duration_minutes,
     latestCheckIn?.sleep?.quality,
     latestCheckIn?.lifestyle,
+    latestCheckIn?.lifestyle?.meal_count,
     latestCheckIn?.deviation_follow_up?.perceived_factors,
+    latestCheckIn?.deviation_follow_up?.meal_count,
+    latestCheckIn?.deviation_follow_up?.location,
   ].filter((value) => value != null).length;
   const sources = {
     wearable: {

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nadiku/models/health_models.dart';
 
@@ -31,6 +32,30 @@ void main() {
     expect(SleepQuality.fromApiValue('excellent'), SleepQuality.sangatBaik);
   });
 
+  test('sleep duration is calculated across midnight from entered times', () {
+    expect(
+      calculateSleepDurationMinutes(
+        const TimeOfDay(hour: 22, minute: 30),
+        const TimeOfDay(hour: 5, minute: 30),
+      ),
+      420,
+    );
+    expect(
+      calculateSleepDurationMinutes(
+        const TimeOfDay(hour: 1, minute: 0),
+        const TimeOfDay(hour: 6, minute: 45),
+      ),
+      345,
+    );
+    expect(
+      calculateSleepDurationMinutes(
+        const TimeOfDay(hour: 6, minute: 0),
+        const TimeOfDay(hour: 6, minute: 0),
+      ),
+      0,
+    );
+  });
+
   test('steps can be estimated from accelerometer magnitude peaks', () {
     final steps = WearableData.calculateStepsFromAcc([
       [0, 0, 1],
@@ -54,14 +79,13 @@ void main() {
             ],
         ];
 
-    expect(
-      WearableData.inferLocomotionActivity(periodicAcceleration(1.6)),
-      'Berjalan',
-    );
-    expect(
-      WearableData.inferLocomotionActivity(periodicAcceleration(2.8)),
-      'Berlari',
-    );
+    final walking = WearableData.analyzeLocomotion(periodicAcceleration(1.6));
+    final running = WearableData.analyzeLocomotion(periodicAcceleration(2.8));
+    expect(walking?.activity, 'Berjalan');
+    expect(walking?.cadenceHz, closeTo(1.6, 0.1));
+    expect(walking?.rmsDeltaMagnitudeG, greaterThan(0));
+    expect(running?.activity, 'Berlari');
+    expect(running?.cadenceHz, closeTo(2.8, 0.1));
     expect(
       WearableData.inferLocomotionActivity(
           List.generate(250, (_) => [0, 0, 1])),

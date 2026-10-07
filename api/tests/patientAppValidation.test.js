@@ -79,7 +79,13 @@ test('daily check-in validates input and does not accept account identifiers', (
     medication_name: 'Medication X',
     medication_dosage: '1 tablet',
     medication_taken_at: '2026-10-05T07:30:00.000Z',
-    lifestyle: { meal: true, caffeine: false, alcohol: false, smoking: false },
+    lifestyle: {
+      meal: true,
+      meal_count: 3,
+      caffeine: false,
+      alcohol: false,
+      smoking: false,
+    },
     measurements: { systolic_bp: 120, diastolic_bp: 80 },
   });
   assert.equal(result.feeling, 'fair');
@@ -91,6 +97,7 @@ test('daily check-in validates input and does not accept account identifiers', (
   assert.equal(result.symptom_severity, 4);
   assert.deepEqual(result.lifestyle, {
     meal: true,
+    meal_count: 3,
     caffeine: false,
     alcohol: false,
     smoking: false,
@@ -139,12 +146,19 @@ test('individual VidyaMedic input screens can save partial check-ins', () => {
     sleep: {},
     symptoms: [],
     stress_level: 3,
-    lifestyle: { meal: false, caffeine: true, alcohol: false, smoking: false },
+    lifestyle: {
+      meal: false,
+      meal_count: 0,
+      caffeine: true,
+      alcohol: false,
+      smoking: false,
+    },
     medication_taken: false,
   });
   assert.equal(activityAndLifestyle.activity, 'walking');
   assert.equal('feeling' in activityAndLifestyle, false);
   assert.equal(activityAndLifestyle.stress_level, 3);
+  assert.equal(activityAndLifestyle.lifestyle.meal_count, 0);
 
   const running = validateCheckIn({
     recorded_at,
@@ -215,6 +229,13 @@ test('deviation follow-up answers require a segment reference and known patient-
       perceived_factors: ['stress', 'poor_sleep'],
       symptom_onset: 'around_deviation',
       note: 'Kurang tidur semalam',
+      meal_count: 3,
+      location: {
+        latitude: -6.2,
+        longitude: 106.8,
+        place_name: 'Jakarta',
+        captured_at: '2026-10-05T08:15:00.000Z',
+      },
       action_taken: 'Beristirahat',
       response_after_action: 'Merasa lebih nyaman setelah beberapa waktu',
     },
@@ -224,6 +245,13 @@ test('deviation follow-up answers require a segment reference and known patient-
     perceived_factors: ['stress', 'poor_sleep'],
     symptom_onset: 'around_deviation',
     note: 'Kurang tidur semalam',
+    meal_count: 3,
+    location: {
+      latitude: -6.2,
+      longitude: 106.8,
+      place_name: 'Jakarta',
+      captured_at: new Date('2026-10-05T08:15:00.000Z'),
+    },
     action_taken: 'Beristirahat',
     response_after_action: 'Merasa lebih nyaman setelah beberapa waktu',
   });
@@ -246,6 +274,17 @@ test('deviation follow-up answers require a segment reference and known patient-
     deviation_follow_up: {
       segment_id: '507f1f77bcf86cd799439011',
       perceived_factors: ['no_known_factor', 'stress'],
+    },
+  }), { statusCode: 400 });
+  assert.throws(() => validateCheckIn({
+    ...base,
+    lifestyle: { meal_count: 2.5 },
+  }), { statusCode: 400 });
+  assert.throws(() => validateCheckIn({
+    ...base,
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      location: { latitude: 91, longitude: 106.8 },
     },
   }), { statusCode: 400 });
 });

@@ -86,6 +86,7 @@ Example request:
   "hydration_ml": 500,
   "lifestyle": {
     "meal": true,
+    "meal_count": 3,
     "caffeine": false,
     "alcohol": false,
     "smoking": false
@@ -395,6 +396,17 @@ is treated as missing evidence, not conflicting evidence.
    Patient-selected factors are subjective context, not algorithmically
    established causes. The strong-displacement threshold is a statistical
    reference, not a clinical severity or emergency threshold.
+
+Deviation follow-up check-ins may also store a patient's reported
+`meal_count` (integer 0-20) and a permission-based `location` object.
+Coordinates are validated (`latitude` -90..90, `longitude` -180..180);
+`place_name` is a client reverse-geocoding label and `captured_at` records
+when the device obtained the position. Location is contextual information,
+not evidence of a cause. Daily `lifestyle.meal_count` uses the same 0-20
+integer range. The follow-up prompt can include CAPAR onset, peak, Mahalanobis
+distance, reference thresholds, and feature-contribution details so the app
+can explain why it requested context. Reference thresholds remain statistical,
+not clinical.
 
 Patient-reported chest pain, severe breathlessness (severity >= 7), or any
 symptom severity >= 9 bypasses wearable scoring and returns a red emergency

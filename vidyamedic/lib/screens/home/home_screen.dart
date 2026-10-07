@@ -32,6 +32,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   AppState? _observedAppState;
   bool _movementDialogVisible = false;
+  bool _deviationDialogVisible = false;
+  String? _queuedDeviationSegmentId;
   bool _noDataDialogVisible = false;
   bool _noDataDialogHandled = false;
 
@@ -45,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     _queueNoDataPrompt();
     _queueMovementPrompt();
+    _queueDeviationPrompt();
   }
 
   @override
@@ -56,6 +59,108 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onAppStateChanged() {
     _queueNoDataPrompt();
     _queueMovementPrompt();
+    _queueDeviationPrompt();
+  }
+
+  void _queueDeviationPrompt() {
+    final appState = _observedAppState;
+    final prompt = appState?.followUpPrompt;
+    final segmentId = prompt?.segmentId;
+    if (!mounted ||
+        _currentIndex != 0 ||
+        appState == null ||
+        prompt?.status != 'requested' ||
+        segmentId == null ||
+        _deviationDialogVisible ||
+        _queuedDeviationSegmentId == segmentId ||
+        !appState.markFollowUpPromptShown(segmentId)) {
+      return;
+    }
+    _queuedDeviationSegmentId = segmentId;
+    _deviationDialogVisible = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _currentIndex != 0) {
+        _deviationDialogVisible = false;
+        return;
+      }
+      final followUp = appState.followUpPrompt;
+      final action = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Pola pribadi menyimpang'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 420),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    followUp.message ??
+                        'CAPAR menemukan perubahan terhadap baseline pribadi. Mohon isi konteks agar sistem dapat membandingkan kondisi pada awal deviasi hingga puncaknya.',
+                  ),
+                  const SizedBox(height: 12),
+                  if (followUp.onsetTime != null)
+                    Text('Onset: ${_formatDateTime(followUp.onsetTime!)}'),
+                  if (followUp.peakTime != null)
+                    Text('Puncak: ${_formatDateTime(followUp.peakTime!)}'),
+                  if (followUp.deviationDistance != null)
+                    Text(
+                      'Jarak dari baseline: ${followUp.deviationDistance!.toStringAsFixed(2)}',
+                    ),
+                  if (followUp.mainFactors.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Kontributor fitur terbesar: ${_factorLabel(followUp.mainFactors.first)}',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                  if (followUp.referenceThresholds != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Ambang referensi CAPAR: ${followUp.referenceThresholds}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Angka ini adalah pembanding statistik terhadap baseline Anda, bukan ambang klinis atau diagnosis. Konteks yang Anda isi adalah laporan pribadi, bukan bukti penyebab.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Isi konteks deviasi'),
+            ),
+          ],
+        ),
+      );
+      _deviationDialogVisible = false;
+      if (!mounted || action != true) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const WhatChangedScreen()),
+      );
+    });
+  }
+
+  String _formatDateTime(DateTime value) =>
+      MaterialLocalizations.of(context).formatFullDate(value.toLocal()) +
+      ' ' +
+      MaterialLocalizations.of(context).formatTimeOfDay(
+        TimeOfDay.fromDateTime(value.toLocal()),
+      );
+
+  String _factorLabel(Map<String, dynamic> factor) {
+    final label = factor['label'] ?? factor['feature'] ?? factor['key'] ?? 'Fitur';
+    final contribution =
+        factor['contribution_pct'] ?? factor['contribution'] ?? factor['share'];
+    return contribution == null ? '$label' : '$label ($contribution)';
   }
 
   void _queueNoDataPrompt() {
@@ -162,6 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted ||
         _currentIndex != 0 ||
         appState == null ||
+        appState.followUpPrompt.status == 'requested' ||
         !appState.showActivityMovementPrompt ||
         _movementDialogVisible) {
       return;
@@ -184,6 +290,19 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'Pola akselerometer menyerupai ${appState.suggestedActivity.toLowerCase()}. Apakah Anda sedang ${appState.suggestedActivity.toLowerCase()}? Ini perkiraan sensor; konfirmasi Anda yang menentukan.',
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Aturan non-klinis: resultan √(x²+y²+z²), lalu delta terhadap rerata lokal; sumbu tidak dinormalisasi. Minimal ${ActivityMotionPolicy.demo.minimumSampleSeconds.toStringAsFixed(0)} detik, cadence ${ActivityMotionPolicy.demo.minimumCadenceHz.toStringAsFixed(1)}–${ActivityMotionPolicy.demo.maximumCadenceHz.toStringAsFixed(1)} Hz, berlari mulai ${ActivityMotionPolicy.demo.runningCadenceHz.toStringAsFixed(1)} Hz, prominence ≥${ActivityMotionPolicy.demo.minimumPeakProminenceG.toStringAsFixed(2)} g, variasi interval ≤${(ActivityMotionPolicy.demo.maximumIntervalVariation * 100).round()}%.',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+              if (appState.movementAnalysis != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Terukur: ${appState.movementAnalysis!.cadenceHz.toStringAsFixed(2)} Hz; ${appState.movementAnalysis!.peakCount} puncak; RMS delta resultan ${appState.movementAnalysis!.rmsDeltaMagnitudeG.toStringAsFixed(3)} g.',
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                ),
+              ],
               const SizedBox(height: 10),
               ...kActivities
                   .where((item) => item.$1 != 'Duduk' && item.$1 != 'Istirahat')
@@ -263,6 +382,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onDestinationSelected: (idx) {
                       setState(() => _currentIndex = idx);
                       _queueMovementPrompt();
+                      if (idx == 0) _queueDeviationPrompt();
                     },
                     backgroundColor: Colors.white,
                     indicatorColor: AppTheme.primarySoft,
@@ -560,6 +680,7 @@ class _PedagogyDashboard extends StatelessWidget {
                 _AccMovementAlertBanner(
                   currentActivity: s.activity,
                   suggestedActivity: s.suggestedActivity,
+                  analysis: s.movementAnalysis,
                   onConfirm: () =>
                       s.confirmActivityTransition(s.suggestedActivity),
                   onDismiss: () => s.dismissActivityMovementPrompt(),
@@ -1258,6 +1379,7 @@ void _showActivitySelectionModal(BuildContext context, AppState s) {
 class _AccMovementAlertBanner extends StatelessWidget {
   final String currentActivity;
   final String suggestedActivity;
+  final LocomotionAnalysis? analysis;
   final Future<bool> Function() onConfirm;
   final VoidCallback onDismiss;
   final VoidCallback onSelectOther;
@@ -1265,6 +1387,7 @@ class _AccMovementAlertBanner extends StatelessWidget {
   const _AccMovementAlertBanner({
     required this.currentActivity,
     required this.suggestedActivity,
+    required this.analysis,
     required this.onConfirm,
     required this.onDismiss,
     required this.onSelectOther,
@@ -1325,6 +1448,26 @@ class _AccMovementAlertBanner extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Aturan non-klinis: resultan = √(x²+y²+z²), lalu delta resultan dibanding rerata lokal (tanpa normalisasi sumbu). Minimal ${ActivityMotionPolicy.demo.minimumSampleSeconds.toStringAsFixed(0)} detik; cadence ${ActivityMotionPolicy.demo.minimumCadenceHz.toStringAsFixed(1)}–${ActivityMotionPolicy.demo.maximumCadenceHz.toStringAsFixed(1)} Hz; berlari mulai ${ActivityMotionPolicy.demo.runningCadenceHz.toStringAsFixed(1)} Hz; prominence ≥${ActivityMotionPolicy.demo.minimumPeakProminenceG.toStringAsFixed(2)} g; variasi interval ≤${(ActivityMotionPolicy.demo.maximumIntervalVariation * 100).round()}%.',
+            style: AppTheme.font(
+              size: 10.5,
+              color: const Color(0xFF7A5C00),
+              height: 1.35,
+            ),
+          ),
+          if (analysis != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Terukur: ${analysis!.cadenceHz.toStringAsFixed(2)} Hz • ${analysis!.peakCount} puncak • RMS delta resultan ${analysis!.rmsDeltaMagnitudeG.toStringAsFixed(3)} g • variasi ${(analysis!.intervalVariation * 100).toStringAsFixed(1)}%.',
+              style: AppTheme.font(
+                size: 10.5,
+                color: const Color(0xFF7A5C00),
+                height: 1.35,
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           Row(
             children: [

@@ -25,10 +25,28 @@ test('deviation follow-up asks more contextual questions as personal deviation i
   assert.ok(!moderate.questions.some((question) => question.id === 'symptom_timing'));
 
   const high = buildPatientDeviationFollowUpPrompt({
-    deviation: { available: true, state: 'strongly_displaced' },
+    deviation: {
+      available: true,
+      state: 'strongly_displaced',
+      distance: 4.2,
+      recorded_at: '2026-10-05T09:00:00.000Z',
+      thresholds: { moderate: 2.5, strong: 3.5 },
+      features: [{ feature: 'rmssd', contribution_pct: 42 }],
+    },
     segmentId: 'segment-2',
+    episode: {
+      onset_time: '2026-10-05T08:30:00.000Z',
+      peak_time: '2026-10-05T09:00:00.000Z',
+    },
   });
   assert.equal(high.deviation_level, 'high');
+  assert.equal(high.onset_time, '2026-10-05T08:30:00.000Z');
+  assert.equal(high.peak_time, '2026-10-05T09:00:00.000Z');
+  assert.equal(high.deviation_distance, 4.2);
+  assert.deepEqual(high.reference_thresholds, { moderate: 2.5, strong: 3.5 });
+  assert.deepEqual(high.main_factors, [
+    { feature: 'rmssd', contribution_pct: 42 },
+  ]);
   assert.ok(high.questions.some((question) => question.id === 'possible_factors'));
   assert.ok(high.questions.some((question) => question.id === 'symptom_timing'));
   assert.equal(high.questions.find((question) => question.id === 'current_symptoms').allow_empty, true);
