@@ -1,3 +1,8 @@
+import {
+  getPatientDecisionPolicy,
+  getPatientDecisionPolicyBundle,
+} from '../config/patientDecisionPolicies.js';
+
 const FEATURE_CONFIG = [
   {
     key: 'hr_mean',
@@ -64,7 +69,16 @@ const FEATURE_CONFIG = [
   },
 ];
 
-const MAX_ABS_Z = 8;
+const MAX_ABS_Z = getPatientDecisionPolicy('rr_max_abs_z_score').value;
+const EXPLANATION_POLICY_RULES = [
+  'rr_max_abs_z_score',
+  'patient_deviation_minimum_feature_weight',
+  'patient_deviation_minimum_baseline_samples',
+  'patient_deviation_minimum_baseline_std',
+  'patient_deviation_zero_z_epsilon',
+  'patient_deviation_mild_z_score',
+  'patient_deviation_significant_z_score',
+];
 
 export function patientCaparTimePeriod(timestamp) {
   const hour = (new Date(timestamp).getUTCHours() + 7) % 24;
@@ -87,14 +101,47 @@ export function explainPatientDeviation(
   features,
   baseline,
   {
-    minimumWeight = 0.5,
     mahalanobis = null,
     previousFeatures = null,
     elapsedMinutes = null,
+    policyOverrides = {},
   } = {}
 ) {
+  const minimumWeight = getPatientDecisionPolicy(
+    'patient_deviation_minimum_feature_weight',
+    policyOverrides
+  ).value;
+  const minimumBaselineSamples = getPatientDecisionPolicy(
+    'patient_deviation_minimum_baseline_samples',
+    policyOverrides
+  ).value;
+  const minimumBaselineStd = getPatientDecisionPolicy(
+    'patient_deviation_minimum_baseline_std',
+    policyOverrides
+  ).value;
+  const zeroZScoreEpsilon = getPatientDecisionPolicy(
+    'patient_deviation_zero_z_epsilon',
+    policyOverrides
+  ).value;
+  const mildZScore = getPatientDecisionPolicy(
+    'patient_deviation_mild_z_score',
+    policyOverrides
+  ).value;
+  const significantZScore = getPatientDecisionPolicy(
+    'patient_deviation_significant_z_score',
+    policyOverrides
+  ).value;
+  const policy = getPatientDecisionPolicyBundle(
+    EXPLANATION_POLICY_RULES,
+    policyOverrides
+  );
   if (!features || !baseline?.stats) {
-    return { status: 'insufficient_data', reason: 'matching_baseline_unavailable', factors: [] };
+    return {
+      status: 'insufficient_data',
+      reason: 'matching_baseline_unavailable',
+      factors: [],
+      policy,
+    };
   }
 
   const factors = [];
@@ -105,17 +152,17 @@ export function explainPatientDeviation(
     if (
       !Number.isFinite(value)
       || !stat
-      || stat.n < 2
+      || stat.n < minimumBaselineSamples
       || !Number.isFinite(stat.mean)
       || !Number.isFinite(stat.std)
-      || stat.std < 0.001
+      || stat.std < minimumBaselineStd
     ) {
       continue;
     }
 
     availableWeight += config.weight;
     const zScore = Math.max(-MAX_ABS_Z, Math.min(MAX_ABS_Z, (value - stat.mean) / stat.std));
-    if (Math.abs(zScore) < 0.01) continue;
+    if (Math.abs(zScore) < zeroZScoreEpsilon) continue;
     const previousValue = previousFeatures?.[config.key];
     const recentChange = Number.isFinite(previousValue)
       ? value - previousValue
@@ -134,9 +181,9 @@ export function explainPatientDeviation(
       z_score: round(zScore),
       delta_from_baseline: round(value - stat.mean),
       direction: zScore > 0 ? 'above_baseline' : 'below_baseline',
-      deviation_level: Math.abs(zScore) >= 2
+      deviation_level: Math.abs(zScore) >= significantZScore
         ? 'significant'
-        : Math.abs(zScore) >= 1
+        : Math.abs(zScore) >= mildZScore
           ? 'mild'
           : 'within_personal_variation',
       recent_change: recentChange == null ? null : round(recentChange),
@@ -168,6 +215,7 @@ export function explainPatientDeviation(
       available_weight: round(availableWeight),
       minimum_weight: minimumWeight,
       factors: [],
+      policy,
     };
   }
 
@@ -177,6 +225,7 @@ export function explainPatientDeviation(
       reason: 'no_feature_change_from_personal_baseline',
       available_weight: round(availableWeight),
       factors: [],
+      policy,
     };
   }
 
@@ -198,14 +247,27 @@ export function explainPatientDeviation(
       ? 'delta_i_times_inverse_covariance_delta_i'
       : 'unavailable_without_mature_multivariate_reference',
     factors: rankedFactors,
+    policy,
   };
 }
 
-export function attributePatientContext({ factors = [], contexts = [], motionZScore = null } = {}) {
+export function attributePatientContext({
+  factors = [],
+  contexts = [],
+  motionZScore = null,
+  policyOverrides = {},
+} = {}) {
   const types = new Set(contexts.map((context) => context.type));
   const hrDeviation = factors.find((factor) => factor.feature === 'hr_mean');
-  const elevatedHeartRate = Number(hrDeviation?.z_score) >= 1;
-  const highMotion = Number.isFinite(motionZScore) && motionZScore >= 1;
+  const elevatedHeartRate = Number(hrDeviation?.z_score) >= getPatientDecisionPolicy(
+    'patient_context_elevated_hr_z_score',
+    policyOverrides
+  ).value;
+  const highMotion = Number.isFinite(motionZScore)
+    && motionZScore >= getPatientDecisionPolicy(
+      'patient_context_high_motion_z_score',
+      policyOverrides
+    ).value;
   const hypotheses = new Map();
   const add = (type, score, evidence) => {
     const current = hypotheses.get(type) || { type, score: 0, evidence: [] };
@@ -251,8 +313,110 @@ export function attributePatientContext({ factors = [], contexts = [], motionZSc
   return {
     status: candidates.length ? 'hypotheses_available' : 'insufficient_context',
     candidates,
+    observed_contexts: contexts,
     interpretation_limit: 'Associations and context rules do not establish individual causality.',
     elevated_heart_rate_without_motion: elevatedHeartRate && !highMotion,
+    policy: getPatientDecisionPolicyBundle([
+      'patient_context_elevated_hr_z_score',
+      'patient_context_high_motion_z_score',
+    ], policyOverrides),
+  };
+}
+
+export function assessPatientReasoningUncertainty({
+  explanation = null,
+  contextAttribution = null,
+  signalQuality = null,
+  personalBaselineAvailable = null,
+  conflicts = [],
+  policyOverrides = {},
+} = {}) {
+  const policy = getPatientDecisionPolicy(
+    'patient_reasoning_uncertainty_framework',
+    policyOverrides
+  );
+  const factors = Array.isArray(explanation?.factors) ? explanation.factors : [];
+  const contextCandidates = Array.isArray(contextAttribution?.candidates)
+    ? contextAttribution.candidates
+    : [];
+  const recordedContexts = Array.isArray(contextAttribution?.observed_contexts)
+    ? contextAttribution.observed_contexts
+    : [];
+  const physiologicalAvailable = explanation?.status === 'available' && factors.length > 0;
+  const multivariateAvailable = factors.some(
+    (factor) => Number.isFinite(factor.contribution_share)
+  );
+  const contextAvailable = recordedContexts.length > 0;
+  const signalQualityAvailable = Number.isFinite(signalQuality);
+  const observedConflicts = Array.isArray(conflicts) ? conflicts : [];
+  const reasons = [];
+
+  if (!physiologicalAvailable) {
+    reasons.push(explanation?.reason || 'physiological_evidence_unavailable');
+  }
+  if (!contextAvailable) {
+    reasons.push('no_context_hypothesis_supported_by_recorded_context');
+  }
+  if (!multivariateAvailable) {
+    reasons.push('multivariate_contribution_unavailable');
+  }
+  if (!signalQualityAvailable) {
+    reasons.push('signal_quality_unavailable');
+  }
+  if (observedConflicts.length) {
+    reasons.push('conflicting_observed_evidence');
+  }
+
+  const evidenceStatus = observedConflicts.length
+    ? 'conflicting_evidence'
+    : !physiologicalAvailable
+      ? 'insufficient_evidence'
+      : reasons.length
+        ? 'limited_evidence'
+        : 'evidence_available_with_limits';
+  const interpretation = evidenceStatus === 'conflicting_evidence'
+    ? 'Sebagian sumber data yang tercatat tidak selaras. Sistem tidak memilih satu penjelasan; tinjau bukti yang berbeda.'
+    : evidenceStatus === 'insufficient_evidence'
+      ? 'Data yang diperlukan belum cukup untuk menjelaskan perubahan ini. Ini bukan bukti bahwa tidak ada penyebab.'
+      : evidenceStatus === 'limited_evidence'
+        ? 'Ada bukti yang dapat ditinjau, tetapi konteks, kualitas, atau kontribusi fitur belum lengkap. Faktor yang ditampilkan bukan penyebab yang dipastikan.'
+        : 'Beberapa jenis bukti tersedia dan saling mendukung menurut aturan sistem, tetapi penjelasan individual belum tervalidasi sebagai probabilitas atau sebab.';
+
+  return {
+    evidence_status: evidenceStatus,
+    epistemic_status: 'not_quantified',
+    confidence: null,
+    confidence_status: 'not_calibrated',
+    numeric_probability_provided: false,
+    evidence_dimensions: {
+      physiological_evidence: {
+        available: physiologicalAvailable,
+        factor_count: factors.length,
+        explanation_status: explanation?.status || 'unavailable',
+      },
+      personal_baseline: {
+        available: typeof personalBaselineAvailable === 'boolean'
+          ? personalBaselineAvailable
+          : explanation?.reason !== 'matching_baseline_unavailable'
+            && explanation?.reason !== 'mature_context_baseline_unavailable',
+      },
+      multivariate_contribution: {
+        available: multivariateAvailable,
+      },
+      context_evidence: {
+        available: contextAvailable,
+        candidate_count: contextCandidates.length,
+        recorded_context_count: recordedContexts.length,
+      },
+      signal_quality: {
+        available: signalQualityAvailable,
+        value: signalQualityAvailable ? signalQuality : null,
+      },
+    },
+    conflicts: observedConflicts,
+    reasons,
+    interpretation,
+    policy,
   };
 }
 

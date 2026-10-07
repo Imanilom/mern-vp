@@ -1,3 +1,8 @@
+import {
+  getPatientDecisionPolicy,
+  getPatientDecisionPolicyBundle,
+} from '../config/patientDecisionPolicies.js';
+
 export const PATIENT_ACTIONS = {
   EMERGENCY: 'emergency',
   CONTACT_CLINICIAN: 'contact_clinician',
@@ -107,6 +112,14 @@ export function buildPatientDeviationFollowUpPrompt({
   };
 }
 
+const PATIENT_ACTION_RULES = [
+  'red_flag_chest_pain_enabled',
+  'red_flag_breathlessness_severity_min',
+  'red_flag_symptom_severity_min',
+  'patient_prolonged_dwell_minutes',
+  'patient_active_episode_minutes',
+];
+
 export function recommendPatientAction({
   dataQualityAvailable,
   redFlag = false,
@@ -117,7 +130,9 @@ export function recommendPatientAction({
   prolongedDeviation = false,
   recovering = false,
   relapse = false,
+  policyOverrides = {},
 }) {
+  const policy = getPatientDecisionPolicyBundle(PATIENT_ACTION_RULES, policyOverrides);
   if (redFlag) {
     return {
       level: 'red',
@@ -127,10 +142,17 @@ export function recommendPatientAction({
       reasons: ['reported_red_flag_symptom'],
       bypassed_sensor_scoring: true,
       algorithm_is_not_diagnosis: true,
+      policy,
     };
   }
 
-  if (symptomSeverity != null && symptomSeverity >= 9) {
+  if (
+    symptomSeverity != null
+    && symptomSeverity >= getPatientDecisionPolicy(
+      'red_flag_symptom_severity_min',
+      policyOverrides
+    ).value
+  ) {
     return {
       level: 'red',
       action: PATIENT_ACTIONS.EMERGENCY,
@@ -139,6 +161,7 @@ export function recommendPatientAction({
       reasons: ['patient_reported_very_severe_symptom'],
       bypassed_sensor_scoring: true,
       algorithm_is_not_diagnosis: true,
+      policy,
     };
   }
 
@@ -151,6 +174,7 @@ export function recommendPatientAction({
       reasons: ['insufficient_quality_gated_data'],
       bypassed_sensor_scoring: false,
       algorithm_is_not_diagnosis: true,
+      policy,
     };
   }
 
@@ -166,6 +190,7 @@ export function recommendPatientAction({
       ],
       bypassed_sensor_scoring: false,
       algorithm_is_not_diagnosis: true,
+      policy,
     };
   }
 
@@ -191,6 +216,7 @@ export function recommendPatientAction({
       ],
       bypassed_sensor_scoring: false,
       algorithm_is_not_diagnosis: true,
+      policy,
     };
   }
 
@@ -202,10 +228,23 @@ export function recommendPatientAction({
     reasons: ['no_current_persistent_deviation_or_reported_symptoms'],
     bypassed_sensor_scoring: false,
     algorithm_is_not_diagnosis: true,
+    policy,
   };
 }
 
-export function summarizePatientPersistence(observations, { k = 4, m = 5 } = {}) {
+export function summarizePatientPersistence(observations, { policyOverrides = {} } = {}) {
+  const positiveWindows = getPatientDecisionPolicy(
+    'patient_persistence_positive_windows',
+    policyOverrides
+  ).value;
+  const windowCount = getPatientDecisionPolicy(
+    'patient_persistence_window_count',
+    policyOverrides
+  ).value;
+  const maximumGapMinutes = getPatientDecisionPolicy(
+    'patient_maximum_window_gap_minutes',
+    policyOverrides
+  ).value;
   const ordered = [...(Array.isArray(observations) ? observations : [])]
     .filter((item) => Number.isFinite(item.squared_distance)
       && Number.isFinite(item.thresholds?.mild)
@@ -214,23 +253,23 @@ export function summarizePatientPersistence(observations, { k = 4, m = 5 } = {})
   const flags = ordered.map(
     (item) => item.squared_distance >= item.thresholds.mild
   );
-  const recentFlags = flags.slice(-m);
+  const recentFlags = flags.slice(-windowCount);
   const positiveCount = recentFlags.filter(Boolean).length;
-  const recent = ordered.slice(-m);
-  const windowContiguous = recent.length === m && recent.slice(1).every(
+  const recent = ordered.slice(-windowCount);
+  const windowContiguous = recent.length === windowCount && recent.slice(1).every(
     (item, index) => (
       new Date(item.recorded_at).getTime()
-      - new Date(recent[index].recorded_at).getTime() <= 10 * 60000
+      - new Date(recent[index].recorded_at).getTime() <= maximumGapMinutes * 60000
     )
   );
-  const persistent = windowContiguous && positiveCount >= k;
+  const persistent = windowContiguous && positiveCount >= positiveWindows;
   let onsetIndex = ordered.length - 1;
   while (
     onsetIndex > 0 &&
     flags[onsetIndex - 1] &&
     flags[onsetIndex] &&
     new Date(ordered[onsetIndex].recorded_at).getTime()
-      - new Date(ordered[onsetIndex - 1].recorded_at).getTime() <= 10 * 60000
+      - new Date(ordered[onsetIndex - 1].recorded_at).getTime() <= maximumGapMinutes * 60000
   ) {
     onsetIndex -= 1;
   }
@@ -253,7 +292,7 @@ export function summarizePatientPersistence(observations, { k = 4, m = 5 } = {})
     const previousTime = new Date(previous.recorded_at).getTime();
     const currentTime = new Date(current.recorded_at).getTime();
     const elapsedMinutes = (currentTime - previousTime) / 60000;
-    if (elapsedMinutes <= 0 || elapsedMinutes > 10) continue;
+    if (elapsedMinutes <= 0 || elapsedMinutes > maximumGapMinutes) continue;
     const previousDistance = Math.max(
       0,
       previous.distance - Math.sqrt(previous.thresholds.mild)
@@ -266,11 +305,11 @@ export function summarizePatientPersistence(observations, { k = 4, m = 5 } = {})
   }
 
   return {
-    status: recent.length < m ? 'insufficient_data' : 'available',
+    status: recent.length < windowCount ? 'insufficient_data' : 'available',
     method: 'k_of_m_mahalanobis_threshold',
-    k,
-    m,
-    maximum_window_gap_minutes: 10,
+    k: positiveWindows,
+    m: windowCount,
+    maximum_window_gap_minutes: maximumGapMinutes,
     window_contiguous: windowContiguous,
     available_windows: recent.length,
     deviating_windows: positiveCount,
@@ -278,6 +317,11 @@ export function summarizePatientPersistence(observations, { k = 4, m = 5 } = {})
     onset_at: onset,
     dwell_minutes: dwellMinutes,
     deviation_auc: Number(deviationAuc.toFixed(3)),
+    policy: getPatientDecisionPolicyBundle([
+      'patient_persistence_positive_windows',
+      'patient_persistence_window_count',
+      'patient_maximum_window_gap_minutes',
+    ], policyOverrides),
   };
 }
 
@@ -297,12 +341,37 @@ export function summarizePatientEpisodeOutcomes(episodes) {
   };
 }
 
-export function summarizePatientRecovery(segments, events, now = Date.now()) {
+export function summarizePatientRecovery(
+  segments,
+  events,
+  now = Date.now(),
+  { policyOverrides = {} } = {}
+) {
+  const recentWindowCount = getPatientDecisionPolicy(
+    'patient_recovery_recent_window_count',
+    policyOverrides
+  ).value;
+  const maximumGapMinutes = getPatientDecisionPolicy(
+    'patient_maximum_window_gap_minutes',
+    policyOverrides
+  ).value;
+  const recoveryScoreSlope = getPatientDecisionPolicy(
+    'patient_recovery_score_slope',
+    policyOverrides
+  ).value;
+  const scoreChangeStabilityEpsilon = getPatientDecisionPolicy(
+    'patient_score_change_stability_epsilon',
+    policyOverrides
+  ).value;
+  const relapseLookbackHours = getPatientDecisionPolicy(
+    'patient_relapse_lookback_hours',
+    policyOverrides
+  ).value;
   const ordered = [...segments]
     .filter((segment) => Number.isFinite(segment.distance)
       || Number.isFinite(segment.anomaly_score))
     .sort((a, b) => a.window_start - b.window_start);
-  const recent = ordered.slice(-10);
+  const recent = ordered.slice(-recentWindowCount);
   const first = recent[0];
   const latest = ordered[ordered.length - 1];
   const scoreKey = Number.isFinite(latest?.distance) ? 'distance' : 'anomaly_score';
@@ -327,7 +396,7 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
   const contiguousSinceDeviation = wasDeviating
     && ordered.slice(lastDeviationIndex + 1).every((segment, index, tail) => {
       const previous = ordered[lastDeviationIndex + index];
-      return segment.window_start - previous.window_start <= 10 * 60000;
+      return segment.window_start - previous.window_start <= maximumGapMinutes * 60000;
     });
   const atPersonalBaseline = Number.isFinite(latest?.squared_distance)
     && Number.isFinite(latest?.thresholds?.mild)
@@ -336,7 +405,7 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
     || (wasDeviating && contiguousSinceDeviation && atPersonalBaseline);
   const recovering = !recovered && (
     currentState === 'RECOVERING'
-    || (wasDeviating && contiguousSinceDeviation && scoreChange != null && scoreChange < -0.1)
+    || (wasDeviating && contiguousSinceDeviation && scoreChange != null && scoreChange < recoveryScoreSlope)
   );
   const activeEvent = events.find((event) => ['open', 'paused'].includes(event.status));
   const latestEvent = events[0] || null;
@@ -354,7 +423,7 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
     const observation = ordered[index];
     if (
       index > 0 &&
-      observation.window_start - ordered[index - 1].window_start > 10 * 60000
+      observation.window_start - ordered[index - 1].window_start > maximumGapMinutes * 60000
     ) {
       deviationRunActive = false;
       recoveredFromDeviation = false;
@@ -376,7 +445,7 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
     return (
       (event.relapse === true || event.relapse_count > 0)
       && Number.isFinite(eventTime)
-      && eventTime >= now - 24 * 60 * 60 * 1000
+      && eventTime >= now - relapseLookbackHours * 60 * 60 * 1000
       && eventTime <= now
     );
   });
@@ -387,7 +456,7 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
     const current = ordered[episodeStartIndex];
     const previousState = previous.rr_status || previous.classification;
     if (
-      current.window_start - previous.window_start > 10 * 60000
+      current.window_start - previous.window_start > maximumGapMinutes * 60000
       || (!deviationFlags[episodeStartIndex - 1]
         && !['RECOVERING', 'RECOVERY', 'PERSISTENT_DEVIATION', 'DEVIATION_CANDIDATE'].includes(previousState))
     ) break;
@@ -435,9 +504,9 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
     time_since_peak_minutes: elapsedFromPeak,
     score_trend: scoreChange == null
       ? 'insufficient_data'
-      : scoreChange < -0.1
+      : scoreChange < -scoreChangeStabilityEpsilon
         ? 'decreasing'
-        : scoreChange > 0.1
+        : scoreChange > scoreChangeStabilityEpsilon
           ? 'increasing'
           : 'stable',
     recovering,
@@ -473,19 +542,52 @@ export function summarizePatientRecovery(segments, events, now = Date.now()) {
           : null,
       }
       : null,
+    policy: getPatientDecisionPolicyBundle([
+      'patient_recovery_recent_window_count',
+      'patient_maximum_window_gap_minutes',
+      'patient_recovery_score_slope',
+      'patient_score_change_stability_epsilon',
+      'patient_relapse_lookback_hours',
+    ], policyOverrides),
   };
 }
 
-export function identifyPatientRedFlags(checkIn) {
+export function identifyPatientRedFlags(checkIn, { policyOverrides = {} } = {}) {
+  const chestPainEnabled = getPatientDecisionPolicy(
+    'red_flag_chest_pain_enabled',
+    policyOverrides
+  ).value;
+  const breathlessnessSeverityMin = getPatientDecisionPolicy(
+    'red_flag_breathlessness_severity_min',
+    policyOverrides
+  ).value;
+  const symptomSeverityMin = getPatientDecisionPolicy(
+    'red_flag_symptom_severity_min',
+    policyOverrides
+  ).value;
   const symptoms = Array.isArray(checkIn?.symptoms) ? checkIn.symptoms : [];
   const severity = Number.isFinite(checkIn?.symptom_severity)
     ? checkIn.symptom_severity
     : null;
   const redFlags = [];
-  if (symptoms.includes('chest_pain')) redFlags.push('chest_pain_reported');
-  if (symptoms.includes('breathlessness') && severity != null && severity >= 7) {
+  if (chestPainEnabled && symptoms.includes('chest_pain')) redFlags.push('chest_pain_reported');
+  if (
+    symptoms.includes('breathlessness')
+    && severity != null
+    && severity >= breathlessnessSeverityMin
+  ) {
     redFlags.push('severe_breathlessness_reported');
   }
-  if (severity != null && severity >= 9) redFlags.push('very_severe_symptom_reported');
-  return { red_flag: redFlags.length > 0, reasons: [...new Set(redFlags)] };
+  if (severity != null && severity >= symptomSeverityMin) {
+    redFlags.push('very_severe_symptom_reported');
+  }
+  return {
+    red_flag: redFlags.length > 0,
+    reasons: [...new Set(redFlags)],
+    policy: getPatientDecisionPolicyBundle([
+      'red_flag_chest_pain_enabled',
+      'red_flag_breathlessness_severity_min',
+      'red_flag_symptom_severity_min',
+    ], policyOverrides),
+  };
 }

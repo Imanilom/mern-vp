@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   explainPatientDeviation,
   attributePatientContext,
+  assessPatientReasoningUncertainty,
   isPatientCaparNocturnalTime,
   mapPatientContextToRagAxes,
   patientCaparTimePeriod,
@@ -86,6 +87,97 @@ test('context attribution reports association hypotheses without causal claims',
   assert.equal(result.candidates[0].association, 'consistent_with');
   assert.equal(result.candidates[0].causal_claim, false);
   assert.equal(result.elevated_heart_rate_without_motion, true);
+});
+
+test('reasoning uncertainty exposes evidence coverage without inventing confidence', () => {
+  const explanation = explainPatientDeviation({
+    hr_mean: 80,
+    hr_delta: 20,
+    hr_slope: 0,
+    sdnn: 30,
+    rmssd: 20,
+    dfa_alpha1: 1,
+    motion_index: 0.1,
+  }, baseline, {
+    mahalanobis: {
+      features: [
+        { feature: 'mean_hr', contribution: 1.2, contribution_share: 0.6 },
+        { feature: 'rmssd', contribution: 0.8, contribution_share: 0.4 },
+      ],
+    },
+  });
+  const contextAttribution = attributePatientContext({
+    factors: explanation.factors,
+    contexts: [{ type: 'physical_activity', source: 'patient_check_in' }],
+    motionZScore: 2,
+  });
+  const uncertainty = assessPatientReasoningUncertainty({
+    explanation,
+    contextAttribution,
+    signalQuality: 0.9,
+  });
+
+  assert.equal(uncertainty.evidence_status, 'evidence_available_with_limits');
+  assert.equal(uncertainty.epistemic_status, 'not_quantified');
+  assert.equal(uncertainty.confidence, null);
+  assert.equal(uncertainty.confidence_status, 'not_calibrated');
+  assert.equal(uncertainty.numeric_probability_provided, false);
+  assert.equal(uncertainty.evidence_dimensions.context_evidence.recorded_context_count, 1);
+  assert.equal(uncertainty.policy.rule_id, 'patient_reasoning_uncertainty_framework');
+});
+
+test('reasoning uncertainty marks missing evidence as limited, not low confidence', () => {
+  const uncertainty = assessPatientReasoningUncertainty({
+    explanation: {
+      status: 'available',
+      factors: [{ feature: 'hr_mean', contribution_share: null }],
+    },
+    contextAttribution: {
+      status: 'hypotheses_available',
+      candidates: [{ type: 'physical_activity' }],
+      observed_contexts: [],
+    },
+  });
+
+  assert.equal(uncertainty.evidence_status, 'limited_evidence');
+  assert.equal(uncertainty.confidence, null);
+  assert.ok(uncertainty.reasons.includes('no_context_hypothesis_supported_by_recorded_context'));
+  assert.ok(uncertainty.reasons.includes('multivariate_contribution_unavailable'));
+  assert.ok(uncertainty.reasons.includes('signal_quality_unavailable'));
+  assert.equal(uncertainty.evidence_dimensions.context_evidence.available, false);
+  assert.equal(uncertainty.evidence_dimensions.context_evidence.candidate_count, 1);
+});
+
+test('conflicting evidence remains explicitly conflicting without selecting a source', () => {
+  const conflict = {
+    type: 'activity_label_disagreement',
+    evidence: [
+      { source: 'anomaly_event', value: 'walking' },
+      { source: 'segment_activity_label', value: 'sitting' },
+    ],
+  };
+  const uncertainty = assessPatientReasoningUncertainty({
+    explanation: { status: 'available', factors: [{ feature: 'hr_mean' }] },
+    contextAttribution: { candidates: [] },
+    conflicts: [conflict],
+  });
+
+  assert.equal(uncertainty.evidence_status, 'conflicting_evidence');
+  assert.deepEqual(uncertainty.conflicts, [conflict]);
+  assert.match(uncertainty.interpretation, /tidak memilih satu penjelasan/);
+});
+
+test('unavailable physiological explanation is not treated as absence of a cause', () => {
+  const uncertainty = assessPatientReasoningUncertainty({
+    explanation: {
+      status: 'insufficient_data',
+      reason: 'peak_segment_failed_quality_gate',
+      factors: [],
+    },
+    contextAttribution: { candidates: [] },
+  });
+  assert.equal(uncertainty.evidence_status, 'insufficient_evidence');
+  assert.match(uncertainty.interpretation, /bukan bukti bahwa tidak ada penyebab/);
 });
 
 test('RAG axes are derived only from observed context and physiological factors', () => {

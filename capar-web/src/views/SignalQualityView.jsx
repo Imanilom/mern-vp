@@ -24,20 +24,30 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
       });
   }, [participantId]);
 
-  const goodDataPct = qualityData?.good_data_pct ?? 94.2;
-  const artifact = qualityData?.artifact_fraction_pct ?? 3.8;
-  const missingness = qualityData?.missing_fraction_pct ?? 2.0;
-  const qSignal = qualityData?.q_signal ?? 0.96;
-  const evaluableTime = qualityData?.evaluable_time_pct ?? 96.0;
-  const reconnects = qualityData?.reconnects ?? 0;
-  const isConnectedRecent = qualityData?.is_connected_recent ?? true;
-  const lastActiveStr = qualityData?.last_active_timestamp ? new Date(qualityData.last_active_timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-  const perDeviceQuality = qualityData?.per_device_quality || [
-    { stream: 'Polar H10 (RR / HR Stream)', device: 'POLAR_H10_01', missingness: `${missingness}%`, artifact: `${artifact}%`, qSignal: `${qSignal}`, status: isConnectedRecent ? 'Normal' : 'Disconnected', lastInstruction: `Active (${lastActiveStr})` },
-    { stream: 'ECG Lead (Raw Waveform)', device: 'ECG_LEAD_CH1', missingness: '1.2%', artifact: '2.5%', qSignal: '0.97', status: isConnectedRecent ? 'Normal' : 'Disconnected', lastInstruction: `Active (${lastActiveStr})` },
-    { stream: 'Accelerometer 3-Axis (ENMO)', device: 'ACC_SENSOR_3D', missingness: '0.5%', artifact: '1.8%', qSignal: '0.98', status: isConnectedRecent ? 'Normal' : 'Disconnected', lastInstruction: `Active (${lastActiveStr})` }
-  ];
+  const goodDataPct = qualityData?.good_data_pct ?? null;
+  const artifact = qualityData?.artifact_fraction_pct ?? null;
+  const missingness = qualityData?.missing_fraction_pct ?? null;
+  const qSignal = qualityData?.q_signal ?? null;
+  const evaluableTime = qualityData?.evaluable_time_pct ?? null;
+  const isConnectedRecent = typeof qualityData?.is_connected_recent === 'boolean'
+    ? qualityData.is_connected_recent
+    : null;
+  const lastActiveStr = qualityData?.last_active_timestamp
+    ? new Date(qualityData.last_active_timestamp).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+    : 'Belum tersedia';
+  const formatValue = (value, suffix = '') => (
+    Number.isFinite(value) ? `${value}${suffix}` : 'Belum tersedia'
+  );
+  const perDeviceQuality = qualityData?.per_device_quality || [];
+  const qualityBadgeState = qualityData?.filter_verdict === 'HIGH_NOISE_WARNING'
+    ? 'QUALITY_WARNING'
+    : qualityData?.filter_verdict && qualityData.filter_verdict !== 'DATA_UNAVAILABLE'
+      ? 'EVALUABLE'
+      : 'DATA_UNAVAILABLE';
 
   return (
     <div>
@@ -54,19 +64,24 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
 
         <div className="d-flex align-items-center gap-2">
           {/* Connection Status Badge */}
-          {isConnectedRecent ? (
+          {isConnectedRecent === true ? (
             <span className="badge bg-success text-white px-2.5 py-1.5" style={{ fontSize: 11 }}>
               <Wifi size={12} className="me-1" />
               Terhubung (Streaming Aktif · {lastActiveStr})
             </span>
-          ) : (
+          ) : isConnectedRecent === false ? (
             <span className="badge bg-secondary text-white px-2.5 py-1.5" style={{ fontSize: 11 }}>
               <Radio size={12} className="me-1" />
               Tidak Ada Perangkat Terhubung (15 Mnt Terakhir)
             </span>
+          ) : (
+            <span className="badge bg-secondary text-white px-2.5 py-1.5" style={{ fontSize: 11 }}>
+              <Radio size={12} className="me-1" />
+              Status koneksi belum tersedia
+            </span>
           )}
 
-          <EvidenceBadge state={artifact > 10 ? 'QUALITY_WARNING' : 'EVALUABLE'} />
+          <EvidenceBadge state={qualityBadgeState} />
 
           <button
             className={`btn-outline-navy ${sessionFlagged ? 'chip-amber' : ''}`}
@@ -86,14 +101,14 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
             style={{ fontSize: 11.5 }}
           >
             <RefreshCw size={13} className="me-1" />
-            Send Reconnect
+            Cara menyambungkan
           </button>
         </div>
       </div>
 
       {reconnectSent && (
         <div style={{ background: 'var(--teal-soft)', border: '1px solid var(--teal)', borderRadius: 8, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: 'var(--teal)', fontWeight: 600 }}>
-          ✓ Instruksi reconnect berhasil dikirim ke perangkat {qualityData?.device || 'Polar H10'} ({participantId || 'Active Stream'}).
+          Data koneksi belum tersedia. Periksa pengaturan Bluetooth dan aplikasi perangkat Anda untuk menyambungkan ulang.
         </div>
       )}
 
@@ -101,26 +116,26 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginBottom: 20 }}>
         <div className="stat-card">
           <div className="lbl">Data Bagus (Clean %)</div>
-          <div className="val" style={{ color: 'var(--green)' }}>{goodDataPct}%</div>
-          <div className="sub">Q_sig = {qSignal} / 1.00</div>
+          <div className="val" style={{ color: 'var(--green)' }}>{formatValue(goodDataPct, '%')}</div>
+          <div className="sub">Q_sig = {formatValue(qSignal)} / 1.00</div>
         </div>
 
         <div className="stat-card">
           <div className="lbl">Artifact Ratio (Noise %)</div>
-          <div className="val" style={{ color: artifact > 5 ? 'var(--red)' : 'var(--green)' }}>{artifact}%</div>
+          <div className="val">{formatValue(artifact, '%')}</div>
           <div className="sub">Motion &amp; lead contact noise</div>
         </div>
 
         <div className="stat-card">
           <div className="lbl">Missingness (Drop %)</div>
-          <div className="val" style={{ color: missingness > 10 ? 'var(--amber)' : 'var(--green)' }}>{missingness}%</div>
-          <div className="sub">{missingness > 10 ? 'Above 10% threshold' : 'Within normal limits'}</div>
+          <div className="val">{formatValue(missingness, '%')}</div>
+          <div className="sub">Ringkasan berdasarkan data kualitas yang tersedia</div>
         </div>
 
         <div className="stat-card">
           <div className="lbl">Session Evaluable Time</div>
-          <div className="val" style={{ color: 'var(--teal)' }}>{evaluableTime}%</div>
-          <div className="sub">Of total recorded windows</div>
+          <div className="val" style={{ color: 'var(--teal)' }}>{formatValue(evaluableTime, '%')}</div>
+          <div className="sub">Belum disediakan oleh alur telemetry</div>
         </div>
       </div>
 
@@ -129,7 +144,9 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
         <div className="d-flex justify-content-between align-items-center mb-2">
           <div className="mini-label m-0">Session Spectrum — Accepted vs Rejected Windows (Backend RR Stream)</div>
           <span className="frame-note m-0" style={{ fontSize: 10 }}>
-            {isConnectedRecent ? `Active Streaming (${lastActiveStr})` : 'Idle / Offline Window'}
+            {isConnectedRecent === true
+              ? `Active Streaming (${lastActiveStr})`
+              : isConnectedRecent === false ? 'Idle / Offline Window' : 'Status sesi belum tersedia'}
           </span>
         </div>
 
@@ -137,25 +154,31 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
           <svg viewBox="0 0 700 40" style={{ width: '100%', height: 40, overflow: 'visible' }}>
             <line x1="0" y1="5" x2="0" y2="35" stroke="var(--navy)" strokeWidth="2" />
             <line x1="700" y1="5" x2="700" y2="35" stroke="var(--navy)" strokeWidth="2" />
-            {artifact > 5 || missingness > 5 ? (
-              <>
-                <rect x="0" y="10" width="700" height="20" rx="3" fill="#E7F4E8" />
-                <rect x="40" y="10" width="30" height="20" rx="2" fill="var(--amber)" />
-                <rect x="150" y="10" width="18" height="20" rx="2" fill="var(--red)" />
-                <rect x="300" y="10" width="45" height="20" rx="2" fill="var(--amber)" />
-                <rect x="480" y="10" width="22" height="20" rx="2" fill="var(--red)" />
-                <rect x="600" y="10" width="35" height="20" rx="2" fill="var(--amber)" />
-              </>
-            ) : (
-              <rect x="0" y="10" width="700" height="20" rx="3" fill="#E7F4E8" />
+            <rect
+              x="0"
+              y="10"
+              width="700"
+              height="20"
+              rx="3"
+              fill="#E5E7EB"
+            />
+            {Number.isFinite(goodDataPct) && (
+              <rect
+                x="0"
+                y="10"
+                width={Math.min(700, Math.max(0, goodDataPct * 7))}
+                height="20"
+                rx="3"
+                fill="#E7F4E8"
+              />
             )}
           </svg>
         </div>
 
         <div className="d-flex gap-4 frame-note m-0 flex-wrap" style={{ fontSize: 11 }}>
-          <span><i className="fa-solid fa-square me-1" style={{ color: 'var(--green)' }}></i> Accepted windows (Clean: {goodDataPct}%)</span>
-          <span><i className="fa-solid fa-square me-1" style={{ color: 'var(--amber)' }}></i> Rejected (Missingness: {missingness}%)</span>
-          <span><i className="fa-solid fa-square me-1" style={{ color: 'var(--red)' }}></i> Rejected (Artifacts: {artifact}%)</span>
+          <span><i className="fa-solid fa-square me-1" style={{ color: 'var(--green)' }}></i> Data bersih: {formatValue(goodDataPct, '%')}</span>
+          <span><i className="fa-solid fa-square me-1" style={{ color: 'var(--amber)' }}></i> Missingness: {formatValue(missingness, '%')}</span>
+          <span><i className="fa-solid fa-square me-1" style={{ color: 'var(--red)' }}></i> Artifact: {formatValue(artifact, '%')}</span>
         </div>
       </div>
 
@@ -184,16 +207,18 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
             <tbody>
               {perDeviceQuality.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center text-muted p-3">Tidak ada data perangkat streaming terhubung</td>
+                  <td colSpan="7" className="text-center text-muted p-3">
+                    Data kualitas per perangkat belum tersedia.
+                  </td>
                 </tr>
               ) : (
                 perDeviceQuality.map((dq, idx) => (
                   <tr key={idx}>
                     <td style={{ fontWeight: 700 }}>{dq.stream}</td>
                     <td className="mono">{dq.device}</td>
-                    <td className="mono" style={{ color: parseFloat(dq.missingness) > 10 ? 'var(--amber)' : 'inherit', fontWeight: 700 }}>{dq.missingness}</td>
-                    <td className="mono" style={{ color: parseFloat(dq.artifact) > 5 ? 'var(--red)' : 'inherit', fontWeight: 700 }}>{dq.artifact}</td>
-                    <td className="mono" style={{ color: 'var(--teal)', fontWeight: 800 }}>{dq.qSignal || qSignal}</td>
+                    <td className="mono" style={{ fontWeight: 700 }}>{dq.missingness ?? '—'}</td>
+                    <td className="mono" style={{ fontWeight: 700 }}>{dq.artifact ?? '—'}</td>
+                    <td className="mono" style={{ color: 'var(--teal)', fontWeight: 800 }}>{dq.qSignal ?? '—'}</td>
                     <td>
                       <span className={`evidence-chip ${dq.status === 'Normal' || dq.status === 'Connected' ? 'chip-green' : 'chip-amber'}`}>
                         {dq.status}
@@ -210,4 +235,3 @@ export const SignalQualityView = ({ globalParticipantFilter }) => {
     </div>
   );
 };
-

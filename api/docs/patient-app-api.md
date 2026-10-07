@@ -133,7 +133,15 @@ characters), and optional scalar `value`, `intensity`, and `unit`.
 
 - `POST /api/patient-app/wearable/samples`
 - `GET /api/patient-app/wearable/samples?from=<ISO>&to=<ISO>&limit=30&before=<ISO>`
+- `GET /api/patient-app/wearable/history?from=<ISO>&to=<ISO>&bucket_minutes=60`
 - `POST /api/patient-app/wearable/stream`
+
+The history endpoint returns bounded time buckets (15, 30, 60, 120, or 360
+minutes) for a maximum 31-day range. It aggregates both patient-app wearable
+samples and linked CAPAR PolarData, identifying them with `source:
+"patient_app"` or `source: "capar_polar"` respectively. Heart-rate min/max,
+average, sample count, and available signal-quality/HRV measures are returned
+per bucket for charting without sending every raw sample to the mobile app.
 
 The mobile app submits `provider`, `device_id`, `recorded_at`, `heart_rate_bpm`,
 10-256 `rr_intervals_ms`, `activity`, 10-512 `acceleration_g` triplets
@@ -179,6 +187,20 @@ its quality gate.
 
 - `POST /api/patient-app/link-capar-account`
 - `GET /api/patient-app/capar-insights`
+
+### Decision policy provenance
+
+Patient action guidance, reported-symptom escalation, persistence/recovery
+summaries, patient analytics quality gates, Mahalanobis references, and CAPAR
+fallback thresholds include policy metadata. Each policy rule reports
+`policy_id`, `rule_id`, `version`, `source`, `rationale`, `effective_date`,
+`confidence`, `status`, and its configured `value`. The current rules are
+`NON-CLINICAL / PLACEHOLDER`: they preserve existing demonstration behavior
+only and are not clinically validated or suitable for clinical decision-making.
+They are centrally configured in `api/config/patientDecisionPolicies.js`.
+Rule overrides supplied to policy-aware functions must include the full
+provenance fields; incomplete overrides fail explicitly. Learned patient or
+CAPAR statistics do not thereby become clinical cutoffs.
 
 The link endpoint accepts an authenticated legacy `Patient` account, or an
 authenticated `User` account with `patient_password` in the request body. It
@@ -277,6 +299,18 @@ probability).
 present these as "factors observed around this deviation" and "possible
 context", not as a definitive cause.
 
+Each deviation also includes `reasoning_uncertainty`, with qualitative
+`evidence_status` (`conflicting_evidence`, `insufficient_evidence`,
+`limited_evidence`, or `evidence_available_with_limits`), evidence-dimension
+availability, `reasons`, and a patient-readable `interpretation`.
+`confidence` is `null`, `confidence_status` is `not_calibrated`, and
+`numeric_probability_provided` is `false`: feature-contribution shares and
+context-rule matches are not calibrated probabilities of an explanation.
+`evidence_conflicts` retains the sources and values when patient/event activity
+context and a quality-accepted sensor activity label indicate opposite
+activity states; neither source is selected as authoritative. Missing context
+is treated as missing evidence, not conflicting evidence.
+
 `capar.pedagogy` provides the six patient-facing questions:
 
 1. `where_am_i`: current state relative to the matching personal multivariate
@@ -298,6 +332,10 @@ context", not as a definitive cause.
    deviation. Moderate displacement asks about current symptoms and recent
    activity/context; strong displacement additionally asks which factors the
    patient thinks may be related, symptom timing, and optional notes. This is
+   accompanied by `reasoning_uncertainty` and, where applicable, a message
+   explaining why context is being requested and what the system cannot infer.
+   The prompt does not claim that an uncertainty status is a clinical risk
+   level or that patient answers establish causation. This is
    identified by CAPAR segment; the status changes to `already_answered` after
    the patient submits a response. Clients should show it when
    `status: "requested"` and submit the answers with the regular

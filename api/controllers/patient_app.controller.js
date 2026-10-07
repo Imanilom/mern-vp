@@ -18,6 +18,10 @@ import StateTransition from '../models/state_transition.model.js';
 import User from '../models/user.model.js';
 import { errorHandler } from '../utils/error.js';
 import { publishLogTransport } from '../utils/logTransport.js';
+import {
+  getPatientDecisionPolicy,
+  getPatientDecisionPolicyBundle,
+} from '../config/patientDecisionPolicies.js';
 import { retrieveMultiAxisRag } from './resilience.controller.js';
 import {
   fitPatientMahalanobisModel,
@@ -25,6 +29,7 @@ import {
 } from '../utils/patientMahalanobis.js';
 import {
   attributePatientContext,
+  assessPatientReasoningUncertainty,
   explainPatientDeviation,
   isPatientCaparNocturnalTime,
   mapPatientContextToRagAxes,
@@ -42,6 +47,7 @@ import { assessRRQuality, extractRRFeatures } from '../utils/rrBaselinePipeline.
 import {
   validateCheckIn,
   validateCheckInQuery,
+  validateWearableHistoryQuery,
   validateProfileUpdate,
   validateRegistration,
   validatePatientEvent,
@@ -848,7 +854,7 @@ export async function getPatientAppCaparInsights(req, res) {
         'deviation_follow_up.segment_id': latestMahalanobis.segment_id,
       }))
       : false;
-    const deviationFollowUp = buildPatientDeviationFollowUpPrompt({
+    let deviationFollowUp = buildPatientDeviationFollowUpPrompt({
       deviation: latestMahalanobis,
       segmentId: latestMahalanobis?.segment_id?.toString() || null,
       alreadyAnswered: followUpAlreadyAnswered,
@@ -860,6 +866,12 @@ export async function getPatientAppCaparInsights(req, res) {
       : latestMahalanobis.state;
     const activeEpisode = recoverySummary.latest_episode;
     const persistentDeviation = persistenceSummary.persistent;
+    const prolongedDwellMinutes = getPatientDecisionPolicy(
+      'patient_prolonged_dwell_minutes'
+    ).value;
+    const activeEpisodeMinutes = getPatientDecisionPolicy(
+      'patient_active_episode_minutes'
+    ).value;
     const patientAction = recommendPatientAction({
       dataQualityAvailable: mahalanobisAvailable,
       redFlag: patientRedFlags.red_flag,
@@ -869,9 +881,9 @@ export async function getPatientAppCaparInsights(req, res) {
         mahalanobisAvailable && latestMahalanobis.state !== 'within_personal_region'
       ),
       persistentDeviation,
-      prolongedDeviation: persistenceSummary.dwell_minutes >= 15
-        || activeEpisode?.elapsed_minutes >= 30
-        || activeEpisode?.persistent_dwell_minutes >= 15,
+      prolongedDeviation: persistenceSummary.dwell_minutes >= prolongedDwellMinutes
+        || activeEpisode?.elapsed_minutes >= activeEpisodeMinutes
+        || activeEpisode?.persistent_dwell_minutes >= prolongedDwellMinutes,
       recovering: recoverySummary.recovering,
       relapse: recoverySummary.relapse_detected,
     });
@@ -937,6 +949,45 @@ export async function getPatientAppCaparInsights(req, res) {
           (factor) => factor.feature === 'motion_index'
         )?.z_score ?? null,
       });
+      const activityClass = (value) => {
+        if (typeof value !== 'string') return null;
+        const normalized = value.trim().toLowerCase();
+        if (['walking', 'walk', 'berjalan', 'running', 'run', 'exercise', 'olahraga']
+          .includes(normalized)) return 'active';
+        if (['sitting', 'sit', 'duduk', 'rest', 'resting', 'istirahat', 'sleep', 'sleeping']
+          .includes(normalized)) return 'resting';
+        return null;
+      };
+      const eventActivityClass = activityClass(event.activity);
+      const sensorActivityClass = activityClass(segment?.activity_label);
+      const conflicts = eventActivityClass
+        && sensorActivityClass
+        && eventActivityClass !== sensorActivityClass
+        ? [{
+          type: 'context_sensor_activity_disagreement',
+          description: 'The patient/event activity context and nearest quality-accepted sensor activity label indicate opposite activity states.',
+          evidence: [
+            {
+              source: 'anomaly_event',
+              value: event.activity,
+            },
+            {
+              source: 'segment_activity_label',
+              value: segment.activity_label,
+            },
+          ],
+          interpretation: 'Observed context and sensor activity labels disagree; neither source is treated as authoritative.',
+        }]
+        : [];
+      const reasoningUncertainty = assessPatientReasoningUncertainty({
+        explanation: deviation,
+        contextAttribution,
+        signalQuality: segment?.signal_quality_detail?.q_signal ?? null,
+        personalBaselineAvailable: Boolean(
+          qualityAccepted && baseline && isMaturePatientBaseline(baseline)
+        ),
+        conflicts,
+      });
       const evidenceAxes = mapPatientContextToRagAxes([
         ...deviation.factors.map((factor) => ({ type: factor.physiology })),
         ...contexts.map((context) => ({ type: context.type })),
@@ -969,6 +1020,8 @@ export async function getPatientAppCaparInsights(req, res) {
         signal_quality: segment?.signal_quality_detail?.q_signal ?? null,
         explanation_status: deviation.status,
         explanation_reason: deviation.reason || null,
+        reasoning_uncertainty: reasoningUncertainty,
+        evidence_conflicts: conflicts,
         main_deviation_factors: deviation.factors,
         mahalanobis: eventMahalanobis?.available
           ? {
@@ -990,6 +1043,8 @@ export async function getPatientAppCaparInsights(req, res) {
         })),
         association_window_hours: 6,
         causality_established: false,
+        policy: deviation.policy ?? null,
+        context_policy: contextAttribution.policy,
         evidence_limit: 'Literature evidence is population-level and cannot establish why this individual experienced this deviation.',
         scientific_evidence: citations,
         interpretation: contextAttribution.candidates.length
@@ -998,6 +1053,22 @@ export async function getPatientAppCaparInsights(req, res) {
       };
     });
     const latestDeviationExplanation = deviationExplanations[0] || null;
+    const latestReasoningUncertainty =
+      latestDeviationExplanation?.reasoning_uncertainty || null;
+    if (deviationFollowUp.status === 'requested' && latestReasoningUncertainty) {
+      deviationFollowUp = {
+        ...deviationFollowUp,
+        reasoning_uncertainty: latestReasoningUncertainty,
+        ...(latestReasoningUncertainty.evidence_status === 'conflicting_evidence'
+          || latestReasoningUncertainty.evidence_status === 'limited_evidence'
+          || latestReasoningUncertainty.evidence_status === 'insufficient_evidence'
+          ? {
+            message: `${latestReasoningUncertainty.interpretation} Jawaban Anda dapat menambahkan konteks, tetapi tidak membuktikan penyebab.`,
+            activation_reason: 'personal_deviation_with_uncertain_explanation',
+          }
+          : {}),
+      };
+    }
 
     capar = {
       status: eligibleSegments.length
@@ -1150,8 +1221,12 @@ export async function getPatientAppCaparInsights(req, res) {
           physiological_contributors: latestDeviationExplanation?.main_deviation_factors || [],
           candidate_context_contributors: latestDeviationExplanation?.candidate_context_contributors || [],
           scientific_evidence: latestDeviationExplanation?.scientific_evidence || [],
+          evidence_conflicts: latestDeviationExplanation?.evidence_conflicts || [],
           explanation_status: latestDeviationExplanation?.explanation_status || 'insufficient_data',
           causality_established: false,
+          policy: latestDeviationExplanation?.policy ?? null,
+          context_policy: latestDeviationExplanation?.context_policy ?? null,
+          reasoning_uncertainty: latestReasoningUncertainty,
         },
         how_long: recoverySummary.latest_episode,
         persistence: persistenceSummary,
@@ -1292,9 +1367,15 @@ export async function createPatientAppWearableSample(req, res) {
   const activityConfidence = sampleData.signal_confidence;
   const rrQuality = assessRRQuality(
     sampleData.rr_intervals_ms,
-    activityConfidence,
+    null,
     sampleData.expected_rr_count
   );
+  const minimumSignalConfidence = getPatientDecisionPolicy(
+    'wearable_min_signal_confidence'
+  ).value;
+  const maximumHrDisagreement = getPatientDecisionPolicy(
+    'wearable_max_hr_rr_disagreement_bpm'
+  ).value;
   const accelerationX = sampleData.acceleration_g.map((sample) => sample[0]);
   const accelerationY = sampleData.acceleration_g.map((sample) => sample[1]);
   const accelerationZ = sampleData.acceleration_g.map((sample) => sample[2]);
@@ -1307,17 +1388,19 @@ export async function createPatientAppWearableSample(req, res) {
   const derivedHr = derived.hr_mean;
   const reasons = [...rrQuality.reasons];
   if (!sampleData.sensor_contact) reasons.push('wearable_sensor_contact_not_confirmed');
-  if (activityConfidence < 0.7) reasons.push('signal_confidence_below_0.7');
+  if (activityConfidence < minimumSignalConfidence) {
+    reasons.push('signal_confidence_below_policy_minimum');
+  }
   if (
     Number.isFinite(sampleData.heart_rate_bpm)
     && Number.isFinite(derivedHr)
-    && Math.abs(sampleData.heart_rate_bpm - derivedHr) > 25
+    && Math.abs(sampleData.heart_rate_bpm - derivedHr) > maximumHrDisagreement
   ) {
     reasons.push('reported_hr_disagrees_with_rr_derived_hr');
   }
   const qualityAccepted = rrQuality.accepted
     && sampleData.sensor_contact
-    && activityConfidence >= 0.7
+    && activityConfidence >= minimumSignalConfidence
     && !reasons.includes('reported_hr_disagrees_with_rr_derived_hr');
   const signalQuality = Math.min(rrQuality.q_signal, activityConfidence);
   const dataQuality = {
@@ -1326,6 +1409,14 @@ export async function createPatientAppWearableSample(req, res) {
     q_complete: rrQuality.q_complete,
     reasons,
     feature_source: rrQuality.rr_clean.length >= 2 ? 'derived_from_rr' : 'unavailable',
+    policy: getPatientDecisionPolicyBundle([
+      'rr_min_valid_intervals',
+      'rr_max_artifact_fraction',
+      'rr_max_missing_fraction',
+      'wearable_min_signal_confidence',
+      'wearable_max_hr_rr_disagreement_bpm',
+      'rr_min_beats_for_dfa',
+    ]),
   };
 
   const sample = new PatientAppWearableSample({
@@ -1405,7 +1496,7 @@ export async function createPatientAppWearableSample(req, res) {
             missing_fraction: rrQuality.missing_fraction,
             q_signal: signalQuality,
             q_complete: rrQuality.q_complete,
-            q_context: activityConfidence,
+            q_context: null,
             reasons,
           },
         },
@@ -1449,7 +1540,7 @@ export async function createPatientAppWearableSample(req, res) {
           dfa_alpha1: derived.dfa_alpha1,
           motion_index: derived.motion_index,
         },
-        minimum_rr_for_dfa: 64,
+        minimum_rr_for_dfa: getPatientDecisionPolicy('rr_min_beats_for_dfa').value,
       },
     },
   });
@@ -1654,10 +1745,11 @@ function isPatientAnalyticsSegment(segment) {
   if (segment.signal_quality?.is_artifact) return false;
   if (['QUALITY_WARNING', 'INSUFFICIENT_BASELINE'].includes(segment.rr_status)) return false;
   const quality = segment.signal_quality_detail || {};
-  if (quality.q_signal != null && quality.q_signal < 0.7) return false;
-  if (quality.q_complete != null && quality.q_complete < 0.7) return false;
+  const minimumQuality = getPatientDecisionPolicy('patient_analytics_quality_min').value;
+  if (quality.q_signal != null && quality.q_signal < minimumQuality) return false;
+  if (quality.q_complete != null && quality.q_complete < minimumQuality) return false;
   return segment.quality_audit?.gate_passed === true
-    || (quality.q_signal >= 0.7 && quality.q_complete >= 0.7);
+    || (quality.q_signal >= minimumQuality && quality.q_complete >= minimumQuality);
 }
 
 function isPatientBaselineSegment(segment) {
@@ -1668,7 +1760,12 @@ function isPatientBaselineSegment(segment) {
 
 function isMaturePatientBaseline(baseline) {
   const matureByLevel = baseline.maturity_detail?.level === 'mature';
-  const matureByLegacyFlag = baseline.is_mature && baseline.segment_count >= 20;
+  const minimumLegacySegments = getPatientDecisionPolicy(
+    'patient_legacy_baseline_min_segments'
+  ).value;
+  const minimumQuality = getPatientDecisionPolicy('patient_analytics_quality_min').value;
+  const matureByLegacyFlag = baseline.is_mature
+    && baseline.segment_count >= minimumLegacySegments;
   if (!matureByLevel && !matureByLegacyFlag) return false;
   const maturity = baseline.maturity_detail;
   const qualityWasComputed = Boolean(
@@ -1683,7 +1780,7 @@ function isMaturePatientBaseline(baseline) {
   if (
     (matureByLevel || (matureByLegacyFlag && qualityWasComputed))
     && maturity?.bq != null
-    && maturity.bq < 0.7
+    && maturity.bq < minimumQuality
   ) {
     return false;
   }
@@ -1862,6 +1959,112 @@ export async function listPatientAppWearableSamples(req, res) {
       limit: filters.limit,
       next_before: data.length === filters.limit ? data[data.length - 1].recorded_at : null,
     },
+  });
+}
+
+export async function getPatientAppWearableHistory(req, res) {
+  const { accountScopes } = await getAccount(req);
+  const filters = validateWearableHistoryQuery(req.query);
+  const [wearableHistory, polarHistory] = await Promise.all([
+    PatientAppWearableSample.aggregate([
+      {
+        $match: {
+          ...accountScopeFilter(accountScopes),
+          recorded_at: { $gte: filters.from, $lte: filters.to },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateTrunc: {
+              date: '$recorded_at',
+              unit: 'minute',
+              binSize: filters.bucketMinutes,
+              timezone: 'UTC',
+            },
+          },
+          heart_rate_bpm: { $avg: '$heart_rate_bpm' },
+          heart_rate_min_bpm: { $min: '$heart_rate_bpm' },
+          heart_rate_max_bpm: { $max: '$heart_rate_bpm' },
+          rmssd_ms: { $avg: '$rmssd_ms' },
+          spo2_pct: { $avg: '$spo2_pct' },
+          sample_count: { $sum: 1 },
+          signal_quality: { $avg: '$data_quality.q_signal' },
+        },
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          _id: 0,
+          recorded_at: '$_id',
+          source: { $literal: 'patient_app' },
+          heart_rate_bpm: 1,
+          heart_rate_min_bpm: 1,
+          heart_rate_max_bpm: 1,
+          rmssd_ms: 1,
+          spo2_pct: 1,
+          sample_count: 1,
+          signal_quality: 1,
+        },
+      },
+      { $limit: 3000 },
+    ]),
+    PolarData.aggregate([
+      {
+        $match: {
+          user_id: { $in: accountScopes.map((scope) => scope.account_id) },
+          timestamp: {
+            $gte: Math.floor(filters.from.getTime() / 1000),
+            $lte: Math.floor(filters.to.getTime() / 1000),
+          },
+        },
+      },
+      {
+        $addFields: {
+          recorded_at: { $toDate: { $multiply: ['$timestamp', 1000] } },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateTrunc: {
+              date: '$recorded_at',
+              unit: 'minute',
+              binSize: filters.bucketMinutes,
+              timezone: 'UTC',
+            },
+          },
+          heart_rate_bpm: { $avg: '$hr' },
+          heart_rate_min_bpm: { $min: '$hr' },
+          heart_rate_max_bpm: { $max: '$hr' },
+          rmssd_ms: { $avg: '$rrms' },
+          sample_count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          _id: 0,
+          recorded_at: '$_id',
+          source: { $literal: 'capar_polar' },
+          heart_rate_bpm: 1,
+          heart_rate_min_bpm: 1,
+          heart_rate_max_bpm: 1,
+          rmssd_ms: 1,
+          sample_count: 1,
+        },
+      },
+      { $limit: 3000 },
+    ]),
+  ]);
+  const data = [...wearableHistory, ...polarHistory]
+    .sort((a, b) => a.recorded_at - b.recorded_at);
+  res.json({
+    success: true,
+    data,
+    interval_minutes: filters.bucketMinutes,
+    from: filters.from,
+    to: filters.to,
   });
 }
 

@@ -1,4 +1,8 @@
 import mongoose from 'mongoose';
+import {
+  getPatientDecisionPolicy,
+  getPatientDecisionPolicyBundle,
+} from '../config/patientDecisionPolicies.js';
 
 /**
  * Baseline Per-Individu — disimpan per user + activity + time_period.
@@ -103,6 +107,21 @@ const BaselineSchema = new mongoose.Schema({
     },
     // Gate yang gagal (array string), kosong jika mature
     failed_gates: { type: [String], default: [] },
+    policy: {
+      type: mongoose.Schema.Types.Mixed,
+      default: () => getPatientDecisionPolicyBundle([
+        'rr_min_effective_windows',
+        'rr_min_distinct_days',
+        'rr_min_windows_per_day',
+        'rr_max_single_day_fraction',
+        'rr_baseline_quality_min',
+        'rr_min_stability_score',
+        'rr_min_component_quality',
+        'rr_maturing_min_windows',
+        'rr_provisional_state_min_windows',
+        'rr_auto_freeze_min_days',
+      ]),
+    },
     last_computed: { type: Date, default: null },
   },
 
@@ -121,12 +140,31 @@ const BaselineSchema = new mongoose.Schema({
   // Adaptive threshold learned dari Stable Score Memory (CAPAR Section 7.1)
   // Disimpan setelah threshold dipelajari dari cukup BC→BC windows
   learned_tau: {
-    tau_in:             { type: Number, default: 1.50 }, // Q_0.99 dari StableScore atau default 1.50
-    tau_out:            { type: Number, default: 1.00 }, // Q_0.95 dari StableScore atau default 1.00
-    tau_normal:         { type: Number, default: 0.75 }, // Q_0.90 dari StableScore atau default 0.75
+    tau_in:             { type: Number, default: getPatientDecisionPolicy('capar_default_tau_in').value },
+    tau_out:            { type: Number, default: getPatientDecisionPolicy('capar_default_tau_out').value },
+    tau_normal:         { type: Number, default: getPatientDecisionPolicy('capar_provisional_tau_normal').value },
     source:             { type: String, enum: ['learned', 'provisional', 'configured'], default: 'configured' },
     stable_score_count: { type: Number, default: 0 },   // jumlah stable scores yang dipakai
     computed_at:        { type: Date, default: Date.now },
+    policy: {
+      type: mongoose.Schema.Types.Mixed,
+      default: () => getPatientDecisionPolicyBundle([
+        'capar_default_tau_in',
+        'capar_default_tau_out',
+        'capar_provisional_tau_normal',
+        'capar_min_stable_scores',
+        'capar_min_scores_for_learning',
+        'capar_tau_in_lower',
+        'capar_tau_in_upper',
+        'capar_tau_out_lower',
+        'capar_tau_out_upper',
+        'capar_minimum_hysteresis_gap',
+        'capar_tau_normal_lower',
+        'capar_tau_in_quantile',
+        'capar_tau_out_quantile',
+        'capar_tau_normal_quantile',
+      ]),
+    },
   },
 
   /**

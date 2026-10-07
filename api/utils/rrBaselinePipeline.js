@@ -12,6 +12,10 @@
  * sesuai populasi dan perangkat yang digunakan.
  */
 import { calculateDFA } from '../controllers/metrics.controller.js';
+import {
+  getPatientDecisionPolicy,
+  getPatientDecisionPolicyBundle,
+} from '../config/patientDecisionPolicies.js';
 
 // ── Konfigurasi ───────────────────────────────────────────────────────────────
 
@@ -20,40 +24,41 @@ import { calculateDFA } from '../controllers/metrics.controller.js';
  * Kalibrasi untuk Polar H10 / perangkat kardio serupa.
  */
 export const RR_BOUNDS = {
-  min_ms: 300.0,    // ~200 bpm — batas atas HR saat olahraga berat
-  max_ms: 2000.0,   // ~30 bpm — batas bawah HR saat tidur
+  min_ms: getPatientDecisionPolicy('rr_interval_min_ms').value,
+  max_ms: getPatientDecisionPolicy('rr_interval_max_ms').value,
 };
 
 /**
  * Konfigurasi quality gate.
  */
 export const QUALITY_CONFIG = {
-  local_median_beats: 11,           // lebar window median lokal (harus ganjil)
-  local_relative_deviation: 0.20,   // deviasi relatif terhadap median lokal
-  local_absolute_deviation_ms: 200, // deviasi absolut minimum (ms)
-  max_artifact_fraction: 0.05,      // 5% maksimal artefak
-  max_missing_fraction: 0.10,       // 10% maksimal missing
-  min_activity_confidence: 0.80,    // kepercayaan minimum aktivitas
-  min_rr_count: 45,                 // minimum RR per window 1 menit (>=75bpm x 60s)
-  max_relative_jump: 0.20,          // 20% max relative jump antar beat (J_max)
+  local_median_beats: getPatientDecisionPolicy('rr_local_median_beats').value,
+  local_relative_deviation: getPatientDecisionPolicy('rr_local_relative_deviation').value,
+  local_absolute_deviation_ms: getPatientDecisionPolicy('rr_local_absolute_deviation_ms').value,
+  max_artifact_fraction: getPatientDecisionPolicy('rr_max_artifact_fraction').value,
+  max_missing_fraction: getPatientDecisionPolicy('rr_max_missing_fraction').value,
+  min_activity_confidence: getPatientDecisionPolicy('rr_min_activity_confidence').value,
+  min_rr_count: getPatientDecisionPolicy('rr_min_valid_intervals').value,
+  max_relative_jump: getPatientDecisionPolicy('rr_max_relative_jump').value,
 };
 
 /**
  * Konfigurasi maturity baseline.
  */
 export const MATURITY_CONFIG = {
-  provisional_min_windows: 10, // 10 windows @ 1 min = 10 min total per activity (per hari)
-  mature_min_windows: 20,      // 20 windows @ 1 min = 20 min total per activity
-  min_effective_windows: 20,
-  min_distinct_days: 2,        // Diubah dari 3 hari menjadi 2 hari konsekutif
-  min_windows_per_day: 10,     // 10 menit per hari yang diulang dlm 2 hari
-  max_single_day_fraction: 0.60,
-  bq_min: 0.70,
-  min_stability_score: 0.65,
-  min_component_quality: 0.60,
-  autocorr_max_lag: 20,
-  provisional_outlier_mad: 4.0,
-  provisional_outlier_min_n: 8,
+  provisional_min_windows: getPatientDecisionPolicy('rr_provisional_min_windows').value,
+  mature_min_windows: getPatientDecisionPolicy('rr_mature_min_windows').value,
+  min_effective_windows: getPatientDecisionPolicy('rr_min_effective_windows').value,
+  min_distinct_days: getPatientDecisionPolicy('rr_min_distinct_days').value,
+  min_windows_per_day: getPatientDecisionPolicy('rr_min_windows_per_day').value,
+  auto_freeze_min_days: getPatientDecisionPolicy('rr_auto_freeze_min_days').value,
+  max_single_day_fraction: getPatientDecisionPolicy('rr_max_single_day_fraction').value,
+  bq_min: getPatientDecisionPolicy('rr_baseline_quality_min').value,
+  min_stability_score: getPatientDecisionPolicy('rr_min_stability_score').value,
+  min_component_quality: getPatientDecisionPolicy('rr_min_component_quality').value,
+  autocorr_max_lag: getPatientDecisionPolicy('rr_autocorrelation_max_lag').value,
+  provisional_outlier_mad: getPatientDecisionPolicy('rr_provisional_outlier_mad').value,
+  provisional_outlier_min_n: getPatientDecisionPolicy('rr_provisional_outlier_min_samples').value,
 };
 
 /**
@@ -86,29 +91,52 @@ export const FEATURE_WEIGHTS = {
 export const MANDATORY_FEATURES = ['hr_mean', 'rmssd', 'dfa_alpha1'];
 
 /** Minimum total bobot fitur tersedia agar skor dianggap valid. */
-export const MIN_SCORED_WEIGHT = 0.50;
+export const MIN_SCORED_WEIGHT = getPatientDecisionPolicy(
+  'rr_min_scored_feature_weight'
+).value;
 
 /**
  * Threshold anomaly score berdasarkan level maturity baseline.
  * Semakin matang baseline, semakin ketat threshold.
  */
 export function getDynamicThreshold(maturityLevel) {
+  let cautionRule;
+  let alertRule;
   switch (maturityLevel) {
-    case 'mature': return { CAUTION: 1.5, ALERT: 3.0 };
-    case 'maturing': return { CAUTION: 2.0, ALERT: 3.5 };
-    case 'provisional': return { CAUTION: 2.5, ALERT: 4.0 };
+    case 'mature':
+      cautionRule = 'rr_maturity_mature_caution';
+      alertRule = 'rr_maturity_mature_alert';
+      break;
+    case 'maturing':
+      cautionRule = 'rr_maturity_maturing_caution';
+      alertRule = 'rr_maturity_maturing_alert';
+      break;
+    case 'provisional':
+      cautionRule = 'rr_maturity_provisional_caution';
+      alertRule = 'rr_maturity_provisional_alert';
+      break;
     case 'cold_start':
-    default: return { CAUTION: 3.0, ALERT: 5.0 };
+    default:
+      cautionRule = 'rr_maturity_cold_start_caution';
+      alertRule = 'rr_maturity_cold_start_alert';
   }
+  return {
+    CAUTION: getPatientDecisionPolicy(cautionRule).value,
+    ALERT: getPatientDecisionPolicy(alertRule).value,
+    policy: getPatientDecisionPolicyBundle([cautionRule, alertRule]),
+  };
 }
 
-export const MAX_ABS_Z = 8.0;
+export const MAX_ABS_Z = getPatientDecisionPolicy('rr_max_abs_z_score').value;
 
 export const PERSISTENCE_CONFIG = {
-  persistence_windows: 2,
-  recovery_windows: 2,
-  cooldown_windows: 2,
-  recovery_threshold_frac: 0.5,
+  persistence_windows: getPatientDecisionPolicy('rr_persistence_windows').value,
+  recovery_windows: getPatientDecisionPolicy('rr_recovery_windows').value,
+  cooldown_windows: getPatientDecisionPolicy('rr_cooldown_windows').value,
+  recovery_threshold_frac: getPatientDecisionPolicy('rr_recovery_threshold_fraction').value,
+  tau_normal_recovery_fraction: getPatientDecisionPolicy(
+    'rr_tau_normal_recovery_fraction'
+  ).value,
 };
 
 /** 
@@ -116,12 +144,9 @@ export const PERSISTENCE_CONFIG = {
  * Digunakan untuk Empirical Bayes Shrinkage selama masa PROVISIONAL.
  */
 export const POPULATION_PRIORS = {
-  Rest: { hr_mean: { mean: 65, sd: 10 }, sdnn: { mean: 50, sd: 15 }, rmssd: { mean: 42, sd: 18 }, dfa_alpha1: { mean: 1.10, sd: 0.20 } },
-  Light: { hr_mean: { mean: 80, sd: 12 }, sdnn: { mean: 40, sd: 12 }, rmssd: { mean: 30, sd: 14 }, dfa_alpha1: { mean: 1.00, sd: 0.20 } },
-  Moderate: { hr_mean: { mean: 95, sd: 15 }, sdnn: { mean: 30, sd: 10 }, rmssd: { mean: 20, sd: 10 }, dfa_alpha1: { mean: 0.90, sd: 0.20 } },
-  Intense: { hr_mean: { mean: 130, sd: 20 }, sdnn: { mean: 20, sd: 8 }, rmssd: { mean: 12, sd: 6 }, dfa_alpha1: { mean: 0.80, sd: 0.15 } },
-  Unknown: { hr_mean: { mean: 75, sd: 15 }, sdnn: { mean: 45, sd: 15 }, rmssd: { mean: 35, sd: 15 }, dfa_alpha1: { mean: 1.00, sd: 0.20 } },
+  ...getPatientDecisionPolicy('rr_population_priors').value,
 };
+export const POPULATION_PRIORS_POLICY = getPatientDecisionPolicy('rr_population_priors');
 
 // ── Quality Assessment ─────────────────────────────────────────────────────────
 
@@ -231,7 +256,9 @@ export function assessRRQuality(rrArr, activityConfidence, expectedCount) {
   // Step 4: Quality scores
   const q_signal = clip(1 - artifact_fraction, 0, 1);
   const q_complete = clip(1 - missing_fraction, 0, 1);
-  const q_context = clip(activityConfidence, 0, 1);
+  const q_context = Number.isFinite(activityConfidence)
+    ? clip(activityConfidence, 0, 1)
+    : null;
 
   // Quality gates
   if (rr_clean.length < QUALITY_CONFIG.min_rr_count) {
@@ -258,6 +285,11 @@ export function assessRRQuality(rrArr, activityConfidence, expectedCount) {
     q_complete,
     q_context,
     reasons,
+    policy: getPatientDecisionPolicyBundle([
+      'rr_min_valid_intervals',
+      'rr_max_artifact_fraction',
+      'rr_max_missing_fraction',
+    ]),
   };
 }
 
@@ -287,7 +319,13 @@ export function assessRRQuality(rrArr, activityConfidence, expectedCount) {
  * @param {number}   [minRrForDfa=64] - Minimum beat agar DFA dihitung
  * @returns {{ hr_mean, sdnn, rmssd, pnn50, hr_delta, hr_slope, dfa_alpha1, dfa_alpha2, motion_index }}
  */
-export function extractRRFeatures(rr_clean, accelX = [], accelY = [], accelZ = [], minRrForDfa = 64) {
+export function extractRRFeatures(
+  rr_clean,
+  accelX = [],
+  accelY = [],
+  accelZ = [],
+  minRrForDfa = getPatientDecisionPolicy('rr_min_beats_for_dfa').value
+) {
   const nullResult = {
     hr_mean: null, sdnn: null, rmssd: null,
     hr_delta: null, hr_slope: null, pnn50: null,
@@ -503,15 +541,16 @@ export function computeBaselineMaturity(baseline, featureValues) {
   if (q_stability < cfg.min_stability_score) failed.push(`q_stability=${q_stability.toFixed(2)} < ${cfg.min_stability_score}`);
   if (bq < cfg.bq_min) failed.push(`BQ=${bq.toFixed(2)} < ${cfg.bq_min}`);
 
-  const mature = failed.length === 0 || eligibleDays >= 2;
+  const mature = failed.length === 0 || eligibleDays >= cfg.min_distinct_days;
   const n = baseline.segment_count || 0;
   let level;
-  if (mature || eligibleDays >= 2) level = 'mature';
-  else if (n >= 30) level = 'maturing';    // >= 30 windows (60 mins) → maturing
-  else if (n >= 15) level = 'provisional'; // >= 15 windows (30 mins) → provisional (Live monitoring active!)
+  if (mature || eligibleDays >= cfg.min_distinct_days) level = 'mature';
+  else if (n >= getPatientDecisionPolicy('rr_maturing_min_windows').value) level = 'maturing';
+  else if (n >= getPatientDecisionPolicy('rr_provisional_state_min_windows').value) level = 'provisional';
   else level = 'cold_start';
 
-  const auto_frozen = eligibleDays >= 3 && (n >= 30 || mature);
+  const auto_frozen = eligibleDays >= cfg.auto_freeze_min_days
+    && (n >= getPatientDecisionPolicy('rr_maturing_min_windows').value || mature);
   const active_since = baseline.frozen_active_since || (auto_frozen ? (timestamps[0] ? new Date(timestamps[0]).toISOString() : new Date().toISOString()) : null);
 
   return {
@@ -524,6 +563,21 @@ export function computeBaselineMaturity(baseline, featureValues) {
     q_signal: r4(q_signal), q_complete: r4(q_complete),
     q_context: r4(q_context), q_stability: r4(q_stability),
     bq: r4(bq), failed_gates: failed,
+    policy: getPatientDecisionPolicyBundle([
+      'rr_min_effective_windows',
+      'rr_min_distinct_days',
+      'rr_min_windows_per_day',
+      'rr_max_single_day_fraction',
+      'rr_baseline_quality_min',
+      'rr_min_stability_score',
+      'rr_min_component_quality',
+      'rr_autocorrelation_max_lag',
+      'rr_provisional_outlier_mad',
+      'rr_provisional_outlier_min_samples',
+      'rr_maturing_min_windows',
+      'rr_provisional_state_min_windows',
+      'rr_auto_freeze_min_days',
+    ]),
   };
 }
 
@@ -556,8 +610,14 @@ export function isProvisionalCandidate(value, stat) {
  * @returns {{ z_hr, z_sdnn, z_rmssd }}
  */
 export function computeRRZScores(features, baseline, maturityLevel) {
-  const PENALTY = { mature: 1.0, maturing: 0.85, provisional: 0.70, cold_start: 0.50 };
-  const penalty = PENALTY[maturityLevel] ?? 0.50;
+  const PENALTY = {
+    mature: getPatientDecisionPolicy('rr_maturity_penalty_mature').value,
+    maturing: getPatientDecisionPolicy('rr_maturity_penalty_maturing').value,
+    provisional: getPatientDecisionPolicy('rr_maturity_penalty_provisional').value,
+    cold_start: getPatientDecisionPolicy('rr_maturity_penalty_cold_start').value,
+  };
+  const penalty = PENALTY[maturityLevel]
+    ?? getPatientDecisionPolicy('rr_maturity_penalty_cold_start').value;
   const eps = 1e-8;
 
   const zScore = (value, key) => {
@@ -791,7 +851,7 @@ export function computeProvisionalScore(features, baseline, activityLabel) {
 }
 
 // ── Konfigurasi gap/pause ──────────────────────────────────────────────────
-export const GAP_PAUSE_MS = 60 * 60 * 1000; // 60 menit — untuk mengizinkan data 5-menit yang sparse
+export const GAP_PAUSE_MS = getPatientDecisionPolicy('rr_gap_pause_minutes').value * 60000;
 
 // ── Temporal Status Machine ───────────────────────────────────────────────────
 
@@ -811,12 +871,14 @@ export const GAP_PAUSE_MS = 60 * 60 * 1000; // 60 menit — untuk mengizinkan da
 export function updateTemporalState(state, score, maturityLevel, tau = null, windowStart = null) {
   const ws = windowStart !== null ? new Date(windowStart).getTime() : null;
 
-  const DISCONNECT_TIMEOUT_MS = 15 * 60 * 1000; // 15 menit gap = data terputus / device dilepas
+  const disconnectTimeoutMs = getPatientDecisionPolicy(
+    'rr_disconnect_timeout_minutes'
+  ).value * 60000;
 
   // ── Deteksi gap / data terputus / device dilepas SEBELUM logic biasa ───
   if (ws !== null && state.last_window_start !== null) {
     const elapsed = ws - state.last_window_start;
-    if (elapsed > DISCONNECT_TIMEOUT_MS && state.episode_active) {
+    if (elapsed > disconnectTimeoutMs && state.episode_active) {
       state.last_window_start = ws;
       state.episode_active = false;
       state.window_history = [];
@@ -855,22 +917,27 @@ export function updateTemporalState(state, score, maturityLevel, tau = null, win
     // Fallback ke static threshold (maturity-based)
     tau_in = staticThr.CAUTION;  // entry threshold
     tau_out = staticThr.CAUTION * cfg.recovery_threshold_frac;
-    tau_normal = tau_out * 0.7;
+    tau_normal = tau_out * cfg.tau_normal_recovery_fraction;
   }
 
   // Sliding window history untuk 2-of-3 window persistence check
   if (!state.window_history) state.window_history = [];
   state.window_history.push(score >= tau_in);
-  if (state.window_history.length > 3) state.window_history.shift();
+  if (state.window_history.length > getPatientDecisionPolicy(
+    'rr_state_history_window_count'
+  ).value) state.window_history.shift();
 
-  const countInLast3 = state.window_history.filter(Boolean).length;
+  const positiveCount = state.window_history.filter(Boolean).length;
 
   // Transisi BC → DEVIATION_CANDIDATE / PERSISTENT_DEVIATION (2 dari 3 window)
   if (score >= tau_in) {
     state.high_count++;
     state.low_count = 0;
     state.episode_active = true; // Tandai episode aktif sejak candidate onset
-    if (countInLast3 >= 2 || state.high_count >= cfg.persistence_windows) {
+    if (
+      positiveCount >= getPatientDecisionPolicy('rr_state_positive_history_windows').value
+      || state.high_count >= cfg.persistence_windows
+    ) {
       state.cooldown = cfg.cooldown_windows;
       return { rr_status: 'PERSISTENT_DEVIATION', safe_to_update: false };
     }
@@ -881,7 +948,10 @@ export function updateTemporalState(state, score, maturityLevel, tau = null, win
 
   if (state.episode_active) {
     // Dalam episode — jika masih 2 dari 3 window aktif dan score di atas tau_out, pertahankan PERSISTENT_DEVIATION
-    if (countInLast3 >= 2 && score > tau_out) {
+    if (
+      positiveCount >= getPatientDecisionPolicy('rr_state_positive_history_windows').value
+      && score > tau_out
+    ) {
       return { rr_status: 'PERSISTENT_DEVIATION', safe_to_update: false };
     }
 

@@ -754,3 +754,23 @@ export function validateCheckInQuery(query) {
   }
   return result;
 }
+
+export function validateWearableHistoryQuery(query) {
+  const allowed = new Set(['from', 'to', 'bucket_minutes']);
+  rejectUnknownFields(query, allowed, 'Query');
+  const from = parseDate(query.from, 'from');
+  const to = parseDate(query.to, 'to');
+  if (from > to) {
+    throw errorHandler(400, 'from harus lebih awal dari atau sama dengan to.');
+  }
+  if (to.getTime() - from.getTime() > 31 * 24 * 60 * 60 * 1000) {
+    throw errorHandler(400, 'Rentang riwayat wearable maksimal 31 hari.');
+  }
+  const bucketMinutes = query.bucket_minutes === undefined
+    ? 60
+    : Number(query.bucket_minutes);
+  if (![15, 30, 60, 120, 360].includes(bucketMinutes)) {
+    throw errorHandler(400, 'bucket_minutes harus 15, 30, 60, 120, atau 360.');
+  }
+  return { from, to, bucketMinutes };
+}

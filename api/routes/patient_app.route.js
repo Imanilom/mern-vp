@@ -10,6 +10,7 @@ import {
   getPatientAppCaparInsights,
   getPatientAppOverview,
   getPatientAppProfile,
+  getPatientAppWearableHistory,
   listPatientAppCheckIns,
   listPatientAppEvents,
   listPatientAppWearableSamples,
@@ -46,6 +47,6 @@ router.get('/events', verifyToken, listPatientAppEvents);
 router.post('/wearable/samples', verifyToken, createPatientAppWearableSample);
 router.post('/wearable/stream', verifyToken, streamPatientAppWearableData);
 router.get('/wearable/samples', verifyToken, listPatientAppWearableSamples);
+router.get('/wearable/history', verifyToken, getPatientAppWearableHistory);
 
 export default router;
-

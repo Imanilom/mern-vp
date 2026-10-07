@@ -2,6 +2,10 @@
  * dataQualityGate.js — Quality assessment at RabbitMQ ingestion level.
  * Performs artifact detection, linear interpolation, and generates a transparency audit.
  */
+import {
+  getPatientDecisionPolicy,
+  getPatientDecisionPolicyBundle,
+} from '../config/patientDecisionPolicies.js';
 
 export function analyzeAndCorrectRR(rrArray, expectedCount) {
   const rr = Array.isArray(rrArray) ? rrArray : [];
@@ -142,22 +146,22 @@ export function analyzeAndCorrectRR(rrArray, expectedCount) {
  * Validates the quality audit and context against the pipeline gates.
  */
 export function checkQualityGate(audit, activityLabel, activityConfidence) {
-  const max_artifact_fraction = 0.05;
-  const max_missing_fraction = 0.10;
-  const min_activity_confidence = 0.80;
+  const max_artifact_fraction = getPatientDecisionPolicy('rr_max_artifact_fraction').value;
+  const max_missing_fraction = getPatientDecisionPolicy('rr_max_missing_fraction').value;
+  const min_activity_confidence = getPatientDecisionPolicy('rr_min_activity_confidence').value;
 
   const hasAnnotation = (activityLabel && activityLabel !== 'Unknown' && activityLabel.trim() !== '');
   
   const reasons = [];
   
   if (audit.artifact_fraction > max_artifact_fraction) {
-    reasons.push(`Artefak ${ (audit.artifact_fraction * 100).toFixed(1) }% melebihi batas 5.0%`);
+    reasons.push(`Artefak ${ (audit.artifact_fraction * 100).toFixed(1) }% melebihi batas ${(max_artifact_fraction * 100).toFixed(1)}%`);
   }
   if (audit.missing_fraction > max_missing_fraction) {
-    reasons.push(`Missing data ${ (audit.missing_fraction * 100).toFixed(1) }% melebihi batas 10.0%`);
+    reasons.push(`Missing data ${ (audit.missing_fraction * 100).toFixed(1) }% melebihi batas ${(max_missing_fraction * 100).toFixed(1)}%`);
   }
   if (activityConfidence < min_activity_confidence) {
-    reasons.push(`Confidence aktivitas ${(activityConfidence).toFixed(2)} lebih kecil dari 0.80`);
+    reasons.push(`Confidence aktivitas ${(activityConfidence).toFixed(2)} lebih kecil dari ${min_activity_confidence.toFixed(2)}`);
   }
 
   const passed = reasons.length === 0;
@@ -167,5 +171,10 @@ export function checkQualityGate(audit, activityLabel, activityConfidence) {
     annotation_confidence: activityConfidence,
     gate_passed: passed,
     gate_reasons: reasons,
+    policy: getPatientDecisionPolicyBundle([
+      'rr_max_artifact_fraction',
+      'rr_max_missing_fraction',
+      'rr_min_activity_confidence',
+    ]),
   };
 }

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { PATIENT_DECISION_POLICIES } from '../config/patientDecisionPolicies.js';
 import {
   buildPatientDeviationFollowUpPrompt,
   identifyPatientRedFlags,
@@ -102,6 +103,42 @@ test('red-flag symptoms are derived from patient report and high severity', () =
     symptoms: ['fatigue'],
     symptom_severity: 4,
   }).red_flag, false);
+});
+
+test('reported-symptom rules are configurable and return their non-clinical provenance', () => {
+  const overrides = {
+    red_flag_chest_pain_enabled: {
+      ...PATIENT_DECISION_POLICIES.red_flag_chest_pain_enabled,
+      value: false,
+    },
+    red_flag_breathlessness_severity_min: {
+      ...PATIENT_DECISION_POLICIES.red_flag_breathlessness_severity_min,
+      value: 8,
+    },
+  };
+  const result = identifyPatientRedFlags({
+    symptoms: ['chest_pain', 'breathlessness'],
+    symptom_severity: 7,
+  }, { policyOverrides: overrides });
+
+  assert.equal(result.red_flag, false);
+  assert.equal(result.policy.status, 'NON-CLINICAL / PLACEHOLDER');
+  assert.equal(result.policy.rules.find(
+    (rule) => rule.rule_id === 'red_flag_breathlessness_severity_min'
+  ).value, 8);
+});
+
+test('patient actions always carry explicit placeholder policy metadata', () => {
+  const action = recommendPatientAction({
+    dataQualityAvailable: true,
+  });
+  assert.equal(action.policy.policy_id, 'nadiku_patient_decision_demo');
+  assert.equal(action.policy.version, '0.1.0');
+  assert.equal(action.policy.status, 'NON-CLINICAL / PLACEHOLDER');
+  assert.ok(action.policy.rules.every((rule) => (
+    rule.policy_id && rule.rule_id && rule.version && rule.source
+    && rule.rationale && rule.effective_date && rule.status
+  )));
 });
 
 test('recovery summary reports a falling deviation trend, dwell time, and relapse', () => {

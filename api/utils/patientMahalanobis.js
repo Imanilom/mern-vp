@@ -1,6 +1,11 @@
-const DEFAULT_MIN_BASELINE_SAMPLES = 30;
-const Z_95 = 1.6448536269514722;
-const Z_99 = 2.3263478740408408;
+import {
+  getPatientDecisionPolicy,
+  getPatientDecisionPolicyBundle,
+} from '../config/patientDecisionPolicies.js';
+
+const DEFAULT_MIN_BASELINE_SAMPLES = getPatientDecisionPolicy(
+  'patient_mahalanobis_min_baseline_samples'
+).value;
 
 const isFiniteNumber = (value) =>
   typeof value === 'number' && Number.isFinite(value);
@@ -56,8 +61,25 @@ const chiSquareThreshold = (degreesOfFreedom, zScore) => {
 const fitPatientMahalanobisModel = (
   baselineSamples,
   featureKeys,
-  minSamples = DEFAULT_MIN_BASELINE_SAMPLES
+  { policyOverrides = {} } = {}
 ) => {
+  const minSamples = getPatientDecisionPolicy(
+    'patient_mahalanobis_min_baseline_samples',
+    policyOverrides
+  ).value;
+  const mildZScore = getPatientDecisionPolicy(
+    'patient_mahalanobis_mild_z_score',
+    policyOverrides
+  ).value;
+  const significantZScore = getPatientDecisionPolicy(
+    'patient_mahalanobis_significant_z_score',
+    policyOverrides
+  ).value;
+  const policy = getPatientDecisionPolicyBundle([
+    'patient_mahalanobis_min_baseline_samples',
+    'patient_mahalanobis_mild_z_score',
+    'patient_mahalanobis_significant_z_score',
+  ], policyOverrides);
   const keys = Array.isArray(featureKeys) ? featureKeys : [];
   const vectors = (Array.isArray(baselineSamples) ? baselineSamples : [])
     .map((sample) => keys.map((key) => sample && sample[key]))
@@ -74,6 +96,7 @@ const fitPatientMahalanobisModel = (
       feature_keys: keys,
       sample_count: vectors.length,
       required_samples: Math.max(minSamples, dimensions + 2),
+      policy,
     };
   }
 
@@ -104,6 +127,7 @@ const fitPatientMahalanobisModel = (
       reason: 'invalid_baseline_covariance',
       feature_keys: keys,
       sample_count: vectors.length,
+      policy,
     };
   }
 
@@ -121,6 +145,7 @@ const fitPatientMahalanobisModel = (
       reason: 'singular_baseline_covariance',
       feature_keys: keys,
       sample_count: vectors.length,
+      policy,
     };
   }
 
@@ -133,8 +158,9 @@ const fitPatientMahalanobisModel = (
     sample_count: vectors.length,
     regularization,
     thresholds: {
-      mild: chiSquareThreshold(dimensions, Z_95),
-      significant: chiSquareThreshold(dimensions, Z_99),
+      mild: chiSquareThreshold(dimensions, mildZScore),
+      significant: chiSquareThreshold(dimensions, significantZScore),
+      policy,
     },
   };
 };
@@ -145,6 +171,7 @@ const scorePatientMahalanobis = (current, model) => {
       available: false,
       reason: model && model.reason ? model.reason : 'model_unavailable',
       sample_count: model ? model.sample_count : 0,
+      policy: model?.policy ?? null,
     };
   }
 
@@ -155,6 +182,7 @@ const scorePatientMahalanobis = (current, model) => {
       reason: 'incomplete_current_features',
       feature_keys: model.feature_keys,
       sample_count: model.sample_count,
+      policy: model.policy,
     };
   }
 
@@ -172,6 +200,7 @@ const scorePatientMahalanobis = (current, model) => {
       available: false,
       reason: 'invalid_distance',
       sample_count: model.sample_count,
+      policy: model.policy,
     };
   }
 
@@ -189,6 +218,7 @@ const scorePatientMahalanobis = (current, model) => {
     squared_distance: positiveDistance,
     sample_count: model.sample_count,
     thresholds: model.thresholds,
+    policy: model.policy,
     state:
       positiveDistance >= model.thresholds.significant
         ? 'strongly_displaced'
@@ -218,7 +248,7 @@ const computePatientMahalanobis = (current, baselineSamples) => {
         : sample
     ),
     legacyFeatures,
-    DEFAULT_MIN_BASELINE_SAMPLES
+    { policyOverrides: {} }
   );
   const result = scorePatientMahalanobis(
     {

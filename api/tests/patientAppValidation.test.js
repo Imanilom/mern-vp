@@ -8,6 +8,7 @@ import {
   validateRegistration,
   validateWearableStream,
   validateWearableSample,
+  validateWearableHistoryQuery,
   registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
 
@@ -282,6 +283,47 @@ test('check-in query bounds pagination and validates date ranges', () => {
   assert.throws(() => validateCheckInQuery({ limit: '500' }), { statusCode: 400 });
   assert.throws(
     () => validateCheckInQuery({ from: '2026-02-01', to: '2026-01-01' }),
+    { statusCode: 400 }
+  );
+});
+
+test('wearable history requires a bounded date range and supported chart interval', () => {
+  assert.deepEqual(
+    validateWearableHistoryQuery({
+      from: '2026-10-01T00:00:00.000Z',
+      to: '2026-10-08T00:00:00.000Z',
+    }),
+    {
+      from: new Date('2026-10-01T00:00:00.000Z'),
+      to: new Date('2026-10-08T00:00:00.000Z'),
+      bucketMinutes: 60,
+    }
+  );
+  assert.equal(validateWearableHistoryQuery({
+    from: '2026-10-01T00:00:00.000Z',
+    to: '2026-10-02T00:00:00.000Z',
+    bucket_minutes: '15',
+  }).bucketMinutes, 15);
+  assert.throws(
+    () => validateWearableHistoryQuery({
+      from: '2026-10-08T00:00:00.000Z',
+      to: '2026-10-01T00:00:00.000Z',
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateWearableHistoryQuery({
+      from: '2026-09-01T00:00:00.000Z',
+      to: '2026-10-08T00:00:00.000Z',
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateWearableHistoryQuery({
+      from: '2026-10-01T00:00:00.000Z',
+      to: '2026-10-02T00:00:00.000Z',
+      bucket_minutes: '10',
+    }),
     { statusCode: 400 }
   );
 });

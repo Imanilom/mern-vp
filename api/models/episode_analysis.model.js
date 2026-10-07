@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const EpisodeAnalysisSchema = new mongoose.Schema({
   start_time: { type: Date, required: true },
-  end_time: { type: Date, required: true },
+  end_time: { type: Date, default: null },
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   profile: { type: String },
   activity: { type: String },
@@ -52,6 +52,8 @@ const EpisodeAnalysisSchema = new mongoose.Schema({
   tau_in: { type: Number },
   tau_out: { type: Number },
   tau_normal: { type: Number },
+  threshold_policy: { type: mongoose.Schema.Types.Mixed },
+  ablation_policy: { type: mongoose.Schema.Types.Mixed },
 
   // Physiological Features
   hr_mean: { type: Number },

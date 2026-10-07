@@ -10,35 +10,51 @@
  *  - E6: E5 + Temporal Governance (FSM: Candidate → Persistent → Recovery → Recovered, Persistence, Hysteresis, Dwell)
  */
 
-export const DEFAULT_ABLATION_CONFIG = {
-  sigma_floor: 1.0,
-  tau: 1.50,            // Decision threshold dasar E1-E4
-  tau_enter: 1.86,      // Hysteresis entry threshold E6
-  tau_exit: 1.18,       // Hysteresis exit threshold E6
-  tau_normal: 0.75,     // Baseline normal threshold E6
-  q_min: 0.75,          // Minimum quality score threshold E5
-  m_persistence: 3,     // Persistence window requirement (m consecutive windows)
-  min_dwell: 2,         // Minimum dwell time (windows) sebelum state switching
-  recovery_dwell: 3,    // Minimum dwell windows di RECOVERY sebelum RECOVERED
-  relapse_window_min: 30// Window maksimal relapse (menit) setelah RECOVERED
-};
+import {
+  getPatientDecisionPolicy,
+  getPatientDecisionPolicyBundle,
+} from '../config/patientDecisionPolicies.js';
 
-// Global Reference Baselines (Default Population Priors)
-export const POPULATION_PRIORS = {
-  global: {
-    mean_hr: 72.0, std_hr: 8.5,
-    rmssd: 35.0,   std_rmssd: 10.0,
-    sdnn: 45.0,    std_sdnn: 12.0,
-    dfa_alpha1: 1.0, std_dfa: 0.15
-  },
-  global_context: {
-    sitting:   { mean_hr: 70.0, std_hr: 6.0, rmssd: 38.0, std_rmssd: 9.0,  dfa_alpha1: 1.05, std_dfa: 0.12 },
-    walking:   { mean_hr: 95.0, std_hr: 10.0, rmssd: 22.0, std_rmssd: 6.0,  dfa_alpha1: 0.90, std_dfa: 0.15 },
-    running:   { mean_hr: 135.0, std_hr: 15.0, rmssd: 12.0, std_rmssd: 4.0, dfa_alpha1: 0.75, std_dfa: 0.18 },
-    sleeping:  { mean_hr: 58.0, std_hr: 5.0, rmssd: 48.0, std_rmssd: 12.0, dfa_alpha1: 1.15, std_dfa: 0.10 },
-    resting:   { mean_hr: 68.0, std_hr: 6.0, rmssd: 40.0, std_rmssd: 8.0,  dfa_alpha1: 1.08, std_dfa: 0.11 }
-  }
-};
+const ABLATION_RULES = Object.freeze({
+  sigma_floor: 'ablation_sigma_floor',
+  tau: 'ablation_tau',
+  tau_enter: 'ablation_tau_enter',
+  tau_exit: 'ablation_tau_exit',
+  tau_normal: 'ablation_tau_normal',
+  q_min: 'ablation_quality_minimum',
+  m_persistence: 'ablation_persistence_windows',
+  min_dwell: 'ablation_minimum_dwell_windows',
+  recovery_dwell: 'ablation_recovery_dwell_windows',
+  relapse_window_min: 'ablation_relapse_window_minutes',
+  delta_hr_std_multiplier: 'ablation_delta_hr_std_multiplier',
+  delta_hr_adjustment: 'ablation_delta_hr_adjustment',
+});
+
+export function createAblationConfig(policyOverrides = {}) {
+  const policies = Object.fromEntries(
+    Object.entries(ABLATION_RULES).map(([key, ruleId]) => [
+      key,
+      getPatientDecisionPolicy(ruleId, policyOverrides),
+    ])
+  );
+  return Object.freeze({
+    ...Object.fromEntries(
+      Object.entries(policies).map(([key, policy]) => [key, policy.value])
+    ),
+    policy: getPatientDecisionPolicyBundle([
+      ...Object.values(ABLATION_RULES),
+      'ablation_population_priors',
+    ], policyOverrides),
+  });
+}
+
+export const DEFAULT_ABLATION_CONFIG = createAblationConfig();
+
+const populationPriorsPolicy = getPatientDecisionPolicy('ablation_population_priors');
+export const POPULATION_PRIORS = populationPriorsPolicy.value;
+Object.freeze(POPULATION_PRIORS.global_context);
+Object.freeze(POPULATION_PRIORS.global);
+Object.freeze(POPULATION_PRIORS);
 
 /**
  * Hitung Directional Deviation D(t) dari Z-scores
@@ -60,15 +76,44 @@ export function computeDirectionalDeviation(zHR, zRMSSD, zDFA, deltaHR = 0) {
  * Hitung Z-Score dengan sigma floor
  */
 export function computeZScore(val, mean, std, sigmaFloor = 1.0) {
-  if (typeof val !== 'number' || isNaN(val)) return 0;
-  const effectiveStd = Math.max(std || 1.0, sigmaFloor);
-  return Number(((val - (mean || 0)) / effectiveStd).toFixed(3));
+  if (![val, mean, std, sigmaFloor].every(Number.isFinite) || std < 0 || sigmaFloor <= 0) {
+    return null;
+  }
+  const effectiveStd = Math.max(std, sigmaFloor);
+  return Number(((val - mean) / effectiveStd).toFixed(3));
+}
+
+function missingFeaturesResult(reason = 'MISSING_FEATURES') {
+  return {
+    score: null,
+    pred: `ABSTAIN_${reason}`,
+    status: `ABSTAIN_${reason}`,
+    evaluated: false,
+    zScores: { zHR: null, zRMSSD: null, zDFA: null },
+  };
+}
+
+function hasCoreFeatures(features) {
+  return [
+    features?.hr_mean ?? features?.mean_hr,
+    features?.rmssd,
+    features?.dfa_alpha1,
+  ].every(Number.isFinite);
+}
+
+function hasPersonalBaseline(baseline) {
+  return ['mean_hr', 'rmssd', 'dfa_alpha1'].every((key) => (
+    Number.isFinite(baseline?.stats?.[key]?.mean)
+    && Number.isFinite(baseline?.stats?.[key]?.std)
+    && baseline.stats[key].std >= 0
+  ));
 }
 
 /**
  * Evaluasi E1 — Global, Non-Context
  */
 export function evaluateE1(features, config = DEFAULT_ABLATION_CONFIG) {
+  if (!hasCoreFeatures(features)) return missingFeaturesResult();
   const prior = POPULATION_PRIORS.global;
   const zHR = computeZScore(features.hr_mean ?? features.mean_hr, prior.mean_hr, prior.std_hr, config.sigma_floor);
   const zRMSSD = computeZScore(features.rmssd, prior.rmssd, prior.std_rmssd, config.sigma_floor);
@@ -87,9 +132,11 @@ export function evaluateE1(features, config = DEFAULT_ABLATION_CONFIG) {
 /**
  * Evaluasi E2 — Global + Context
  */
-export function evaluateE2(features, contextLabel = 'sitting', config = DEFAULT_ABLATION_CONFIG) {
-  const ctx = (contextLabel || 'sitting').toLowerCase();
-  const priorCtx = POPULATION_PRIORS.global_context[ctx] || POPULATION_PRIORS.global_context.sitting;
+export function evaluateE2(features, contextLabel = null, config = DEFAULT_ABLATION_CONFIG) {
+  if (!hasCoreFeatures(features)) return missingFeaturesResult();
+  const ctx = typeof contextLabel === 'string' ? contextLabel.toLowerCase() : '';
+  const priorCtx = POPULATION_PRIORS.global_context[ctx];
+  if (!priorCtx) return missingFeaturesResult('MISSING_CONTEXT');
 
   const zHR = computeZScore(features.hr_mean ?? features.mean_hr, priorCtx.mean_hr, priorCtx.std_hr, config.sigma_floor);
   const zRMSSD = computeZScore(features.rmssd, priorCtx.rmssd, priorCtx.std_rmssd, config.sigma_floor);
@@ -109,15 +156,17 @@ export function evaluateE2(features, contextLabel = 'sitting', config = DEFAULT_
  * Evaluasi E3 — Personal, Non-Context
  */
 export function evaluateE3(features, personalBaseline, config = DEFAULT_ABLATION_CONFIG) {
+  if (!hasCoreFeatures(features)) return missingFeaturesResult();
+  if (!hasPersonalBaseline(personalBaseline)) return missingFeaturesResult('MISSING_BASELINE');
   const stats = personalBaseline?.stats || {};
-  const meanHR = stats.mean_hr?.mean ?? POPULATION_PRIORS.global.mean_hr;
-  const stdHR = stats.mean_hr?.std ?? POPULATION_PRIORS.global.std_hr;
+  const meanHR = stats.mean_hr.mean;
+  const stdHR = stats.mean_hr.std;
 
-  const meanRMSSD = stats.rmssd?.mean ?? POPULATION_PRIORS.global.rmssd;
-  const stdRMSSD = stats.rmssd?.std ?? POPULATION_PRIORS.global.std_rmssd;
+  const meanRMSSD = stats.rmssd.mean;
+  const stdRMSSD = stats.rmssd.std;
 
-  const meanDFA = stats.dfa_alpha1?.mean ?? POPULATION_PRIORS.global.dfa_alpha1;
-  const stdDFA = stats.dfa_alpha1?.std ?? POPULATION_PRIORS.global.std_dfa;
+  const meanDFA = stats.dfa_alpha1.mean;
+  const stdDFA = stats.dfa_alpha1.std;
 
   const zHR = computeZScore(features.hr_mean ?? features.mean_hr, meanHR, stdHR, config.sigma_floor);
   const zRMSSD = computeZScore(features.rmssd, meanRMSSD, stdRMSSD, config.sigma_floor);
@@ -137,15 +186,17 @@ export function evaluateE3(features, personalBaseline, config = DEFAULT_ABLATION
  * Evaluasi E4 — Personal + Context
  */
 export function evaluateE4(features, personalContextBaseline, config = DEFAULT_ABLATION_CONFIG) {
+  if (!hasCoreFeatures(features)) return missingFeaturesResult();
+  if (!hasPersonalBaseline(personalContextBaseline)) return missingFeaturesResult('MISSING_BASELINE');
   const stats = personalContextBaseline?.stats || {};
-  const meanHR = stats.mean_hr?.mean ?? POPULATION_PRIORS.global.mean_hr;
-  const stdHR = stats.mean_hr?.std ?? POPULATION_PRIORS.global.std_hr;
+  const meanHR = stats.mean_hr.mean;
+  const stdHR = stats.mean_hr.std;
 
-  const meanRMSSD = stats.rmssd?.mean ?? POPULATION_PRIORS.global.rmssd;
-  const stdRMSSD = stats.rmssd?.std ?? POPULATION_PRIORS.global.std_rmssd;
+  const meanRMSSD = stats.rmssd.mean;
+  const stdRMSSD = stats.rmssd.std;
 
-  const meanDFA = stats.dfa_alpha1?.mean ?? POPULATION_PRIORS.global.dfa_alpha1;
-  const stdDFA = stats.dfa_alpha1?.std ?? POPULATION_PRIORS.global.std_dfa;
+  const meanDFA = stats.dfa_alpha1.mean;
+  const stdDFA = stats.dfa_alpha1.std;
 
   const zHR = computeZScore(features.hr_mean ?? features.mean_hr, meanHR, stdHR, config.sigma_floor);
   const zRMSSD = computeZScore(features.rmssd, meanRMSSD, stdRMSSD, config.sigma_floor);
@@ -153,7 +204,9 @@ export function evaluateE4(features, personalContextBaseline, config = DEFAULT_A
 
   // Delta HR tambahan untuk context dynamics
   const curHR = features.hr_mean ?? features.mean_hr ?? meanHR;
-  const deltaHR = curHR > meanHR + (2 * stdHR) ? 0.15 : 0;
+  const deltaHR = curHR > meanHR + (config.delta_hr_std_multiplier * stdHR)
+    ? config.delta_hr_adjustment
+    : 0;
 
   const deviation = computeDirectionalDeviation(zHR, zRMSSD, zDFA, deltaHR);
   const pred = deviation >= config.tau ? '1' : '0';
@@ -168,8 +221,20 @@ export function evaluateE4(features, personalContextBaseline, config = DEFAULT_A
 /**
  * Evaluasi E5 — E4 + Quality Gating / Abstention
  */
-export function evaluateE5(e4Result, qualityScore = 1.0, config = DEFAULT_ABLATION_CONFIG) {
-  const qVal = typeof qualityScore === 'number' ? qualityScore : 1.0;
+export function evaluateE5(e4Result, qualityScore = null, config = DEFAULT_ABLATION_CONFIG) {
+  if (!e4Result?.evaluated && e4Result?.status?.startsWith('ABSTAIN_')) {
+    return { ...e4Result, qualityPass: false };
+  }
+  const qVal = Number.isFinite(qualityScore) ? qualityScore : null;
+  if (qVal === null) {
+    return {
+      score: e4Result.score,
+      pred: 'ABSTAIN_QUALITY_UNAVAILABLE',
+      status: 'ABSTAIN_QUALITY_UNAVAILABLE',
+      qualityPass: false,
+      evaluated: false,
+    };
+  }
   const isPass = qVal >= config.q_min;
 
   if (!isPass) {
@@ -213,7 +278,7 @@ export class TemporalFSM {
     this.relapseCount = 0;
   }
 
-  step(e5Result, timestamp = Date.now()) {
+  step(e5Result, timestamp = null) {
     const { score, status, evaluated } = e5Result;
     const prev = this.currentState;
 
@@ -330,7 +395,10 @@ export class TemporalFSM {
  * Evaluasi Lengkap E1–E6 untuk satu data window sample
  */
 export function evaluateAllAblations(sample, baselines = {}, config = DEFAULT_ABLATION_CONFIG) {
-  const { features = {}, context = 'sitting', qualityScore = 1.0, timestamp = Date.now() } = sample;
+  if (!config?.policy) {
+    throw new TypeError('Ablation config must be created with createAblationConfig() to include policy provenance');
+  }
+  const { features = {}, context = null, qualityScore = null, timestamp = null } = sample;
 
   const e1 = evaluateE1(features, config);
   const e2 = evaluateE2(features, context, config);
@@ -344,7 +412,8 @@ export function evaluateAllAblations(sample, baselines = {}, config = DEFAULT_AB
     E2: e2,
     E3: e3,
     E4: e4,
-    E5: e5
+    E5: e5,
+    policy: config.policy,
   };
 }
 
@@ -356,7 +425,13 @@ export function computeAblationMetrics(records = []) {
     return {
       E1: getEmptyMetric(), E2: getEmptyMetric(), E3: getEmptyMetric(),
       E4: getEmptyMetric(), E5: getEmptyMetric(), E6: getEmptyMetric(),
-      deltas: { delta_context: 0, delta_personal: 0, delta_joint: 0, delta_quality: 0, delta_temporal: 0 }
+      deltas: {
+        delta_context: null,
+        delta_personal: null,
+        delta_joint: null,
+        delta_quality: null,
+        delta_temporal: null,
+      }
     };
   }
 
@@ -365,12 +440,17 @@ export function computeAblationMetrics(records = []) {
   const calcConfMatrix = (getPred) => {
     let TP = 0, FP = 0, FN = 0, TN = 0;
     let evaluatedCount = 0;
+    let labeledCount = 0;
 
     records.forEach(r => {
-      const yTrue = String(r.y_true ?? r.ground_truth ?? '1') === '1' ? 1 : 0;
+      const rawYTrue = r.y_true ?? r.ground_truth;
+      if (rawYTrue !== '1' && rawYTrue !== '0' && rawYTrue !== 1 && rawYTrue !== 0) return;
+      labeledCount++;
+      const yTrue = String(rawYTrue) === '1' ? 1 : 0;
+
       const pred = getPred(r);
 
-      if (pred === 'ABSTAIN_QUALITY') return;
+      if (typeof pred !== 'string' || pred.startsWith('ABSTAIN')) return;
 
       evaluatedCount++;
       const pVal = pred === '1' || pred === 1 ? 1 : 0;
@@ -382,22 +462,25 @@ export function computeAblationMetrics(records = []) {
     });
 
     const total = TP + FP + FN + TN;
-    const precision = (TP + FP) > 0 ? TP / (TP + FP) : 1.0;
-    const recall = (TP + FN) > 0 ? TP / (TP + FN) : 1.0;
-    const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 1.0;
-    const accuracy = total > 0 ? (TP + TN) / total : 1.0;
-    const coverage = N > 0 ? evaluatedCount / N : 1.0;
-    const abstentionRate = 1.0 - coverage;
+    const precision = (TP + FP) > 0 ? TP / (TP + FP) : null;
+    const recall = (TP + FN) > 0 ? TP / (TP + FN) : null;
+    const f1 = precision !== null && recall !== null && (precision + recall) > 0
+      ? (2 * precision * recall) / (precision + recall)
+      : null;
+    const accuracy = total > 0 ? (TP + TN) / total : null;
+    const coverage = labeledCount > 0 ? evaluatedCount / labeledCount : null;
+    const abstentionRate = coverage === null ? null : 1.0 - coverage;
 
     return {
       TP, FP, FN, TN,
       total: evaluatedCount,
-      precision: Number(precision.toFixed(4)),
-      recall: Number(recall.toFixed(4)),
-      f1: Number(f1.toFixed(4)),
-      accuracy: Number(accuracy.toFixed(4)),
-      coverage: Number(coverage.toFixed(4)),
-      abstention_rate: Number(abstentionRate.toFixed(4))
+      labeled_count: labeledCount,
+      precision: precision === null ? null : Number(precision.toFixed(4)),
+      recall: recall === null ? null : Number(recall.toFixed(4)),
+      f1: f1 === null ? null : Number(f1.toFixed(4)),
+      accuracy: accuracy === null ? null : Number(accuracy.toFixed(4)),
+      coverage: coverage === null ? null : Number(coverage.toFixed(4)),
+      abstention_rate: abstentionRate === null ? null : Number(abstentionRate.toFixed(4))
     };
   };
 
@@ -409,11 +492,9 @@ export function computeAblationMetrics(records = []) {
   const m6 = calcConfMatrix(r => r.pred_E6);
 
   // Delta Contributions
-  const deltaContext = Number((m2.f1 - m1.f1).toFixed(4));
-  const deltaPersonal = Number((m3.f1 - m1.f1).toFixed(4));
-  const deltaJoint = Number((m4.f1 - m1.f1).toFixed(4));
-  const deltaQuality = Number((m5.f1 - m4.f1).toFixed(4));
-  const deltaTemporal = Number((m6.f1 - m5.f1).toFixed(4));
+  const delta = (next, previous) => (
+    next === null || previous === null ? null : Number((next - previous).toFixed(4))
+  );
 
   return {
     sample_count: N,
@@ -424,19 +505,19 @@ export function computeAblationMetrics(records = []) {
     E5: m5,
     E6: m6,
     deltas: {
-      delta_context: deltaContext,
-      delta_personal: deltaPersonal,
-      delta_joint: deltaJoint,
-      delta_quality: deltaQuality,
-      delta_temporal: deltaTemporal
+      delta_context: delta(m2.f1, m1.f1),
+      delta_personal: delta(m3.f1, m1.f1),
+      delta_joint: delta(m4.f1, m1.f1),
+      delta_quality: delta(m5.f1, m4.f1),
+      delta_temporal: delta(m6.f1, m5.f1)
     }
   };
 }
 
 function getEmptyMetric() {
   return {
-    TP: 0, FP: 0, FN: 0, TN: 0, total: 0,
-    precision: 1.0, recall: 1.0, f1: 1.0, accuracy: 1.0,
-    coverage: 1.0, abstention_rate: 0.0
+    TP: 0, FP: 0, FN: 0, TN: 0, total: 0, labeled_count: 0,
+    precision: null, recall: null, f1: null, accuracy: null,
+    coverage: null, abstention_rate: null
   };
 }

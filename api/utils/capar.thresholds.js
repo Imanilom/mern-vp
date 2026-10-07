@@ -17,20 +17,35 @@ import Segment from '../models/segment.model.js';
 import Baseline from '../models/baseline.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
 import mongoose from 'mongoose';
+import { getPatientDecisionPolicyBundle } from '../config/patientDecisionPolicies.js';
 
-// ── Konstanta default (dapat di-override via fungsi) ──────────────────────────
+const CAPAR_POLICY_RULES = {
+  min_stable_scores: 'capar_min_stable_scores',
+  min_scores_for_learning: 'capar_min_scores_for_learning',
+  tau_in_lower: 'capar_tau_in_lower',
+  tau_in_upper: 'capar_tau_in_upper',
+  tau_out_lower: 'capar_tau_out_lower',
+  tau_out_upper: 'capar_tau_out_upper',
+  delta_h_min: 'capar_minimum_hysteresis_gap',
+  tau_normal_lower: 'capar_tau_normal_lower',
+  default_tau_in: 'capar_default_tau_in',
+  default_tau_out: 'capar_default_tau_out',
+  default_tau_normal: 'capar_default_tau_normal',
+  tau_in_quantile: 'capar_tau_in_quantile',
+  tau_out_quantile: 'capar_tau_out_quantile',
+  tau_normal_quantile: 'capar_tau_normal_quantile',
+};
+
+const policyRuleIds = Object.values(CAPAR_POLICY_RULES);
+const policyDefaults = Object.fromEntries(
+  Object.entries(CAPAR_POLICY_RULES).map(([configKey, ruleId]) => [
+    configKey,
+    getPatientDecisionPolicyBundle([ruleId]).rules[0].value,
+  ])
+);
+
 const DEFAULT_CONFIG = {
-  min_stable_scores: 30,   // Minimum stable scores sebelum learned thresholds aktif
-  tau_in_lower: 1.0,       // Batas bawah tau_in
-  tau_in_upper: 3.0,       // Batas atas tau_in
-  tau_out_lower: 0.5,
-  tau_out_upper: 2.5,
-  delta_h_min: 0.15,       // Minimum hysteresis gap: tau_in - tau_out >= delta_h_min
-  tau_normal_lower: 0.3,
-  // Default threshold (saat belum cukup stable scores)
-  default_tau_in: 1.5,
-  default_tau_out: 1.0,
-  default_tau_normal: 0.7,
+  ...policyDefaults,
 };
 
 // ── Helper: Quantile dari array angka ─────────────────────────────────────────
@@ -55,11 +70,26 @@ function round4(v) {
 }
 
 // ── Fungsi inti: hitung tau dari StableScore array ────────────────────────────
-export function computeTauFromStableScores(stableScores, config = {}) {
-  const cfg = { ...DEFAULT_CONFIG, ...config };
+export function computeTauFromStableScores(stableScores, options = {}) {
+  const unknownOptions = Object.keys(options)
+    .filter((key) => key !== 'policyOverrides');
+  if (unknownOptions.length) {
+    throw new TypeError(
+      `CAPAR threshold options require policyOverrides with provenance; unsupported: ${unknownOptions.join(', ')}`
+    );
+  }
+  const { policyOverrides = {} } = options;
+  const policy = getPatientDecisionPolicyBundle(policyRuleIds, policyOverrides);
+  const ruleValues = new Map(policy.rules.map((rule) => [rule.rule_id, rule.value]));
+  const cfg = Object.fromEntries(
+    Object.entries(CAPAR_POLICY_RULES).map(([configKey, ruleId]) => [
+      configKey,
+      ruleValues.get(ruleId),
+    ])
+  );
 
   // Jika belum ada stable scores sama sekali atau < 10, gunakan configured defaults (NON-NULL)
-  if (!stableScores || stableScores.length < 10) {
+  if (!stableScores || stableScores.length < cfg.min_scores_for_learning) {
     return {
       tau_in: cfg.default_tau_in,
       tau_out: cfg.default_tau_out,
@@ -67,15 +97,18 @@ export function computeTauFromStableScores(stableScores, config = {}) {
       source: 'configured',
       stable_score_count: stableScores?.length || 0,
       min_required: cfg.min_stable_scores,
+      policy,
+      policy_status: policy.status,
+      effective_config: cfg,
     };
   }
 
   const isProvisional = stableScores.length < cfg.min_stable_scores;
 
   // Hitung quantiles dari stable scores
-  const q99 = quantile(stableScores, 0.99);
-  const q95 = quantile(stableScores, 0.95);
-  const q90 = quantile(stableScores, 0.90);
+  const q99 = quantile(stableScores, cfg.tau_in_quantile);
+  const q95 = quantile(stableScores, cfg.tau_out_quantile);
+  const q90 = quantile(stableScores, cfg.tau_normal_quantile);
 
   // tau_in = clip(Q_0.99, lower, upper)
   const tau_in = clip(q99, cfg.tau_in_lower, cfg.tau_in_upper);
@@ -99,10 +132,54 @@ export function computeTauFromStableScores(stableScores, config = {}) {
     stable_score_count: stableScores.length,
     min_required: cfg.min_stable_scores,
     hysteresis_valid: validHysteresis,
+    policy,
+    policy_status: policy.status,
+    effective_config: cfg,
     quantiles: {
       q99: round4(q99),
       q95: round4(q95),
       q90: round4(q90),
+    },
+  };
+}
+
+export function applyProvisionalTauFallback(tau, stats) {
+  if (tau?.source !== 'configured' || !stats) return tau;
+  const stdHr = stats.mean_hr?.std
+    || stats.std_hr?.mean
+    || stats.hr_mean?.std
+    || getPatientDecisionPolicyBundle(['capar_provisional_hr_std_fallback']).rules[0].value;
+  if (!Number.isFinite(stdHr) || stdHr <= 0) return tau;
+
+  const policy = getPatientDecisionPolicyBundle([
+    'capar_provisional_hr_std_fallback',
+    'capar_provisional_tau_in_base',
+    'capar_provisional_tau_in_hr_std_weight',
+    'capar_provisional_tau_out_base',
+    'capar_provisional_tau_out_hr_std_weight',
+    'capar_provisional_tau_normal',
+  ]);
+  const values = new Map(policy.rules.map((rule) => [rule.rule_id, rule.value]));
+  return {
+    ...tau,
+    tau_in: Number((
+      values.get('capar_provisional_tau_in_base')
+      + stdHr * values.get('capar_provisional_tau_in_hr_std_weight')
+    ).toFixed(2)),
+    tau_out: Number((
+      values.get('capar_provisional_tau_out_base')
+      + stdHr * values.get('capar_provisional_tau_out_hr_std_weight')
+    ).toFixed(2)),
+    tau_normal: values.get('capar_provisional_tau_normal'),
+    source: 'provisional',
+    policy: {
+      ...tau.policy,
+      rules: [...(tau.policy?.rules || []), ...policy.rules],
+    },
+    policy_status: policy.status,
+    effective_config: {
+      ...tau.effective_config,
+      provisional_hr_std: stdHr,
     },
   };
 }
@@ -155,10 +232,18 @@ export async function getStableScores(userId, activity = null) {
  * dikelompokkan per activity label.
  * 
  * @param {string} userId - MongoDB ObjectId atau guid
- * @param {object} config - Override konfigurasi default
+ * @param {{ policyOverrides?: object }} options - Provenance-complete policy rule overrides
  * @returns {object} threshold_by_activity + global_threshold
  */
-export async function computePersonalThresholds(userId, config = {}) {
+export async function computePersonalThresholds(userId, options = {}) {
+  const unknownOptions = Object.keys(options)
+    .filter((key) => key !== 'policyOverrides');
+  if (unknownOptions.length) {
+    throw new TypeError(
+      `CAPAR threshold options require policyOverrides with provenance; unsupported: ${unknownOptions.join(', ')}`
+    );
+  }
+  const { policyOverrides = {} } = options;
   try {
     const activities = ['Rest', 'Light', 'Moderate', 'Intense', 'Unknown'];
     const result = {};
@@ -166,13 +251,13 @@ export async function computePersonalThresholds(userId, config = {}) {
     // Per-activity thresholds
     for (const activity of activities) {
       const scores = await getStableScores(userId, activity);
-      result[activity] = computeTauFromStableScores(scores, config);
+      result[activity] = computeTauFromStableScores(scores, { policyOverrides });
       result[activity].activity = activity;
     }
 
     // Global threshold (semua aktivitas digabung)
     const allScores = await getStableScores(userId, null);
-    const global = computeTauFromStableScores(allScores, config);
+    const global = computeTauFromStableScores(allScores, { policyOverrides });
 
     return {
       user_id: userId,
@@ -188,6 +273,7 @@ export async function computePersonalThresholds(userId, config = {}) {
         tau_out: 'min(Q_0.95(StableScore), tau_in - delta_h_min)',
         tau_normal: 'min(Q_0.90(StableScore), tau_out)',
         stable_score_definition: 'anomaly_score from Normal (BC→BC) segments',
+        policy: getPatientDecisionPolicyBundle(policyRuleIds, policyOverrides),
       },
     };
   } catch (err) {
@@ -210,6 +296,7 @@ export async function persistTauToBaseline(baselineId, tau) {
     const tauNorm = (tau && typeof tau.tau_normal === 'number') ? tau.tau_normal : DEFAULT_CONFIG.default_tau_normal;
     const source = tau?.source || 'configured';
     const count = tau?.stable_score_count || 0;
+    const policy = tau?.policy || getPatientDecisionPolicyBundle(policyRuleIds);
 
     await Baseline.updateOne(
       { _id: baselineId },
@@ -221,6 +308,7 @@ export async function persistTauToBaseline(baselineId, tau) {
           'learned_tau.source':             source,
           'learned_tau.stable_score_count': count,
           'learned_tau.computed_at':        new Date(),
+          'learned_tau.policy':             policy,
         },
       }
     );
@@ -229,9 +317,44 @@ export async function persistTauToBaseline(baselineId, tau) {
   }
 }
 
+export function buildLegacyTauPolicy(tau) {
+  const computedAt = tau.computed_at ? new Date(tau.computed_at) : null;
+  const effectiveDate = computedAt && Number.isFinite(computedAt.getTime())
+    ? computedAt.toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+  const fields = [
+    ['capar_legacy_tau_in', tau.tau_in],
+    ['capar_legacy_tau_out', tau.tau_out],
+    ['capar_legacy_tau_normal', tau.tau_normal],
+  ];
+  const source = 'Existing Baseline.learned_tau values; original provenance unavailable';
+  const rationale = 'Preserves the previously stored value without asserting clinical validation.';
+  const rules = fields.map(([ruleId, value]) => ({
+    policy_id: 'nadiku_legacy_capar_thresholds',
+    rule_id: ruleId,
+    version: '0.0.0',
+    source,
+    rationale,
+    effective_date: effectiveDate,
+    confidence: 0,
+    status: 'NON-CLINICAL / PLACEHOLDER',
+    value,
+  }));
+  return {
+    policy_id: 'nadiku_legacy_capar_thresholds',
+    version: '0.0.0',
+    source,
+    rationale,
+    effective_date: effectiveDate,
+    confidence: 0,
+    status: 'NON-CLINICAL / PLACEHOLDER',
+    rules,
+  };
+}
+
 /**
  * Auto sync / backfill learned_tau untuk seluruh Baseline di MongoDB
- * yang learned_tau.tau_in nya masih null / undefined.
+ * yang learned_tau.tau_in nya masih null / undefined or lacks policy provenance.
  */
 export async function syncAllBaselineLearnedTau() {
   try {
@@ -239,7 +362,9 @@ export async function syncAllBaselineLearnedTau() {
       $or: [
         { learned_tau: { $exists: false } },
         { 'learned_tau.tau_in': null },
-        { 'learned_tau.tau_in': { $exists: false } }
+        { 'learned_tau.tau_in': { $exists: false } },
+        { 'learned_tau.policy': null },
+        { 'learned_tau.policy': { $exists: false } },
       ]
     });
 
@@ -252,23 +377,32 @@ export async function syncAllBaselineLearnedTau() {
     let updatedCount = 0;
 
     for (const b of baselines) {
+      const legacyTau = b.learned_tau;
+      if (
+        Number.isFinite(legacyTau?.tau_in)
+        && Number.isFinite(legacyTau?.tau_out)
+        && Number.isFinite(legacyTau?.tau_normal)
+        && !legacyTau.policy
+      ) {
+        const legacyValues = typeof legacyTau.toObject === 'function'
+          ? legacyTau.toObject()
+          : legacyTau;
+        await persistTauToBaseline(b._id, {
+          ...legacyValues,
+          policy: buildLegacyTauPolicy(legacyTau),
+        });
+        updatedCount++;
+        continue;
+      }
       const scoresFromSeg = await getStableScores(b.user_id, b.activity);
       const combinedScores = (scoresFromSeg && scoresFromSeg.length > 0)
         ? scoresFromSeg
         : (b.stable_score_history || []);
 
-      let tau = computeTauFromStableScores(combinedScores);
-
-      // Fallback adaptif via std_hr jika score belum ada/configured
-      if (tau.source === 'configured' && b.stats) {
-        const stdHr = b.stats?.mean_hr?.std || b.stats?.std_hr?.mean || b.stats?.hr_mean?.std || 2.5;
-        if (typeof stdHr === 'number' && stdHr > 0) {
-          tau.tau_in = Number((1.5 + stdHr * 0.08).toFixed(2));
-          tau.tau_out = Number((1.0 + stdHr * 0.04).toFixed(2));
-          tau.tau_normal = 0.75;
-          tau.source = 'provisional';
-        }
-      }
+      const tau = applyProvisionalTauFallback(
+        computeTauFromStableScores(combinedScores),
+        b.stats
+      );
 
       await persistTauToBaseline(b._id, tau);
       updatedCount++;

@@ -26,7 +26,15 @@ import mongoose from 'mongoose';
 import ProcessingJob from '../models/processingjob.model.js';
 import { io } from '../index.js';
 import {
-  computeTauFromStableScores, persistTauToBaseline, appendStableScore,
+  getPatientDecisionPolicy,
+  getPatientDecisionPolicyBundle,
+} from '../config/patientDecisionPolicies.js';
+import {
+  computeTauFromStableScores,
+  applyProvisionalTauFallback,
+  buildLegacyTauPolicy,
+  persistTauToBaseline,
+  appendStableScore,
 } from '../utils/capar.thresholds.js';
 import {
   evaluateAllAblations, DEFAULT_ABLATION_CONFIG, computeAblationMetrics
@@ -60,6 +68,7 @@ import {
   assessRRQuality,
   extractRRFeatures,
   computeBaselineMaturity,
+  MATURITY_CONFIG,
   computeRRZScores,
   computeRRCompositeScore,
   computePersonalizedScore,
@@ -70,6 +79,91 @@ import {
   touchTemporalState,
   buildBaselineUpdateFields,
 } from '../utils/rrBaselinePipeline.js';
+
+const finiteOrNull = (value) => (Number.isFinite(value) ? value : null);
+
+function resolveEpisodeThresholds(baseline, fallbackPrefix) {
+  const fallbackRuleIds = {
+    generate: [
+      'episode_generate_tau_in',
+      'episode_generate_tau_out',
+      'episode_generate_tau_normal',
+    ],
+    sync: [
+      'episode_sync_tau_in',
+      'episode_sync_tau_out',
+      'episode_sync_tau_normal',
+    ],
+  }[fallbackPrefix];
+  const keys = ['tau_in', 'tau_out', 'tau_normal'];
+  const values = Object.fromEntries(keys.map((key) => [key, null]));
+  const stored = baseline?.learned_tau || baseline?.thresholds || {};
+  const storedPolicy = stored.policy;
+  const legacyPolicy = buildLegacyTauPolicy(stored);
+  const rules = [];
+  let storedRulesAdded = false;
+
+  keys.forEach((key, index) => {
+    const value = finiteOrNull(stored[key]);
+    if (value !== null) {
+      values[key] = value;
+      if (Array.isArray(storedPolicy?.rules) && storedPolicy.rules.length) {
+        if (!storedRulesAdded) {
+          rules.push(...storedPolicy.rules);
+          storedRulesAdded = true;
+        }
+      } else {
+        rules.push({ ...legacyPolicy.rules[index], rule_id: `${legacyPolicy.rules[index].rule_id}_${key}`, value });
+      }
+      return;
+    }
+    const fallback = getPatientDecisionPolicy(fallbackRuleIds[index]);
+    values[key] = fallback.value;
+    rules.push(fallback);
+  });
+
+  const first = rules[0];
+  return {
+    values,
+    policy: {
+      policy_id: first.policy_id,
+      version: first.version,
+      source: first.source,
+      effective_date: first.effective_date,
+      confidence: Math.min(...rules.map((rule) => rule.confidence)),
+      status: rules.some((rule) => rule.status === 'NON-CLINICAL / PLACEHOLDER')
+        ? 'NON-CLINICAL / PLACEHOLDER'
+        : first.status,
+      applied_values: values,
+      rules,
+    },
+  };
+}
+
+function validationTarget(validationLabel) {
+  if (typeof validationLabel !== 'string') return null;
+  const label = validationLabel.toUpperCase();
+  if (label === 'TP' || label === 'FN') return '1';
+  if (label === 'FP' || label === 'TN') return '0';
+  return null;
+}
+
+function buildEvaluationResult(pred, yTrue) {
+  if (typeof pred === 'string' && pred.startsWith('ABSTAIN')) {
+    return { pred, result: 'ABSTAIN' };
+  }
+  const prediction = String(pred);
+  if (yTrue === null) return { pred: prediction, result: 'UNLABELED' };
+  if (prediction === '1' && yTrue === '1') return { pred: prediction, result: 'TP' };
+  if (prediction === '1' && yTrue === '0') return { pred: prediction, result: 'FP' };
+  if (prediction === '0' && yTrue === '1') return { pred: prediction, result: 'FN' };
+  return { pred: prediction, result: 'TN' };
+}
+
+function hasDeviationState(event) {
+  return ['DEVIATION_CANDIDATE', 'PERSISTENT_DEVIATION', 'RECOVERING', 'RECOVERED']
+    .includes(event.current_state);
+}
 
 // ── Konfigurasi scoring ───────────────────────────────────────────────────────
 
@@ -247,12 +341,15 @@ async function analyzeUser(userId) {
       // 1. Ambil baseline
       const baseline = await getOrCreateBaseline(userId, activity, timePeriod);
       const maturityLevel = baseline.maturity_detail?.level ||
-        (baseline.segment_count >= 30 ? 'maturing' :
-          baseline.segment_count >= 10 ? 'provisional' : 'cold_start');
+        (baseline.segment_count >= getPatientDecisionPolicy('rr_maturing_min_windows').value
+          ? 'maturing'
+          : baseline.segment_count >= MATURITY_CONFIG.provisional_min_windows
+            ? 'provisional'
+            : 'cold_start');
 
       const learnedTau = (baseline.learned_tau && typeof baseline.learned_tau.tau_in === 'number')
         ? baseline.learned_tau
-        : { tau_in: 1.50, tau_out: 1.00, tau_normal: 0.75, source: 'configured' };
+        : computeTauFromStableScores([]);
 
       // 2. Map fitur 5min (legacy schema) ke 7-komponen v1.0
       const features = {
@@ -271,7 +368,9 @@ async function analyzeUser(userId) {
       let isProvisional = false;
 
       if (score === null) {
-        if (baseline.segment_count >= 5) {
+        if (baseline.segment_count >= getPatientDecisionPolicy(
+          'rr_provisional_scoring_min_windows'
+        ).value) {
           const prov = computeProvisionalScore(features, baseline, activity);
           if (prov.score !== null) {
             score = prov.score;
@@ -464,28 +563,25 @@ export async function getOrCreateBaseline(userId, activity, timePeriod) {
         motion_intensity: { n: 0, mean: 0, M2: 0 },
         dfa_alpha1: { n: 0, mean: 0, M2: 0 },
       },
-      learned_tau: {
-        tau_in: 1.50,
-        tau_out: 1.00,
-        tau_normal: 0.75,
-        source: 'configured',
-        stable_score_count: 0,
-        computed_at: new Date()
-      }
     });
   } else if (!baseline.learned_tau || baseline.learned_tau.tau_in === null) {
-    const stdHr = baseline.stats?.mean_hr?.std || baseline.stats?.std_hr?.mean || 2.5;
-    const tauIn = Number((1.5 + stdHr * 0.08).toFixed(2));
-    const tauOut = Number((1.0 + stdHr * 0.04).toFixed(2));
+    const tau = applyProvisionalTauFallback(
+      computeTauFromStableScores(baseline.stable_score_history || []),
+      baseline.stats
+    );
     baseline.learned_tau = {
-      tau_in: tauIn,
-      tau_out: tauOut,
-      tau_normal: 0.75,
-      source: 'configured',
-      stable_score_count: baseline.stable_score_history?.length || 0,
-      computed_at: new Date()
+      tau_in: tau.tau_in,
+      tau_out: tau.tau_out,
+      tau_normal: tau.tau_normal,
+      source: tau.source,
+      stable_score_count: tau.stable_score_count,
+      computed_at: new Date(),
+      policy: tau.policy,
     };
-    await Baseline.updateOne({ _id: baseline._id }, { $set: { learned_tau: baseline.learned_tau } }).catch(() => null);
+    await Baseline.updateOne(
+      { _id: baseline._id },
+      { $set: { learned_tau: baseline.learned_tau } }
+    );
   }
   return baseline;
 }
@@ -817,13 +913,20 @@ export async function getUserBaselines(userId) {
     const u = segs[0].user_id && typeof segs[0].user_id === 'object' ? segs[0].user_id : null;
     const uName = u?.name || u?.email || (userId !== 'ALL' ? userId : 'Dokter Sp.JP (Reviewer Klinis)');
     const count = segs.length;
-    const hrs = segs.map(s => s.features?.mean_hr).filter(Boolean);
-    const rmssds = segs.map(s => s.features?.rmssd).filter(Boolean);
-    const sdnns = segs.map(s => s.features?.sdnn).filter(Boolean);
-    const dfas = segs.map(s => s.features?.dfa_alpha1).filter(Boolean);
+    const numericValues = (feature) => segs
+      .map((segment) => segment.features?.[feature])
+      .filter(Number.isFinite);
+    const hrs = numericValues('mean_hr');
+    const rmssds = numericValues('rmssd');
+    const sdnns = numericValues('sdnn');
+    const dfas = numericValues('dfa_alpha1');
 
-    const calcMean = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 70;
-    const calcStd = (arr, mean) => arr.length > 1 ? Math.sqrt(arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (arr.length - 1)) : 2.5;
+    const calcMean = (arr) => arr.length
+      ? arr.reduce((total, value) => total + value, 0) / arr.length
+      : null;
+    const calcStd = (arr, mean) => arr.length > 1
+      ? Math.sqrt(arr.reduce((total, value) => total + (value - mean) ** 2, 0) / (arr.length - 1))
+      : null;
 
     const hrMean = calcMean(hrs);
     const hrStd = calcStd(hrs, hrMean);
@@ -838,12 +941,52 @@ export async function getUserBaselines(userId) {
       const ms = extractMs(s.createdAt || s.window_start);
       return ms ? new Date(ms).toISOString().substring(0, 10) : null;
     }).filter(Boolean));
-    const distinctDays = Math.max(datesSet.size, 1);
-
-    const isMature = count >= 30 && distinctDays >= 3;
-    const isProv = count >= 15;
-    const levelStr = isMature ? 'mature' : (isProv ? 'provisional' : 'cold_start');
-    const statusStr = isMature ? 'Approved' : (isProv ? 'Provisional' : 'Cold Start');
+    const distinctDays = datesSet.size;
+    const timestamps = segs
+      .map((segment) => extractMs(segment.createdAt || segment.window_start))
+      .filter(Number.isFinite);
+    const qualityRecords = segs.map((segment) => segment.signal_quality_detail || {});
+    const qualityHistory = (key) => qualityRecords
+      .map((quality) => quality[key])
+      .filter(Number.isFinite);
+    const qSignal = qualityHistory('q_signal');
+    const qComplete = qualityHistory('q_complete');
+    const qContext = qualityHistory('q_context');
+    const maturity = computeBaselineMaturity({
+      segment_count: count,
+      window_timestamps: timestamps,
+      q_signal_history: qSignal,
+      q_complete_history: qComplete,
+      q_context_history: qContext,
+      stats: { rmssd: { std: rmssdSd || 0 } },
+    }, rmssds);
+    const levelStr = maturity.level;
+    const isMature = maturity.mature;
+    const qualityEvidenceAvailable = qSignal.length > 0 || qComplete.length > 0;
+    const stableScores = segs
+      .filter((segment) => segment.classification === 'Normal'
+        || segment.rr_status === 'NORMAL')
+      .map((segment) => segment.anomaly_score)
+      .filter(Number.isFinite);
+    const learnedTau = applyProvisionalTauFallback(
+      computeTauFromStableScores(stableScores),
+      { mean_hr: { std: hrStd } }
+    );
+    const maturityPolicy = getPatientDecisionPolicyBundle([
+      'rr_maturing_min_windows',
+      'rr_provisional_state_min_windows',
+      'rr_min_effective_windows',
+      'rr_min_distinct_days',
+      'rr_min_windows_per_day',
+      'rr_max_single_day_fraction',
+      'rr_baseline_quality_min',
+      'rr_min_stability_score',
+      'rr_min_component_quality',
+      'rr_auto_freeze_min_days',
+    ]);
+    const statusStr = isMature
+      ? 'Mature (NON-CLINICAL / PLACEHOLDER)'
+      : `${levelStr} (NON-CLINICAL / PLACEHOLDER)`;
 
     return {
       _id: `generated-base-${act}-${idx}`,
@@ -855,24 +998,49 @@ export async function getUserBaselines(userId) {
       time_period: act === 'sitting' ? 'Morning (08:00 - 12:00)' : (act === 'standing' ? 'Afternoon (12:00 - 17:00)' : 'Evening (17:00 - 21:00)'),
       segment_count: count,
       is_mature: isMature,
-      is_frozen: isMature,
+      is_frozen: maturity.auto_frozen,
       status: statusStr,
       stats: {
-        hr_mean: { mean: Number(hrMean.toFixed(2)), std: Number(hrStd.toFixed(2)) },
-        rmssd: { mean: Number(rmssdMean.toFixed(2)), std: Number(rmssdSd.toFixed(2)) },
-        sdnn: { mean: Number(sdnnMean.toFixed(2)), std: Number(sdnnSd.toFixed(2)) },
-        dfa_alpha1: { mean: Number(dfaMean.toFixed(4)), std: Number(dfaSd.toFixed(2)) }
+        hr_mean: {
+          mean: hrMean == null ? null : Number(hrMean.toFixed(2)),
+          std: hrStd == null ? null : Number(hrStd.toFixed(2)),
+        },
+        rmssd: {
+          mean: rmssdMean == null ? null : Number(rmssdMean.toFixed(2)),
+          std: rmssdSd == null ? null : Number(rmssdSd.toFixed(2)),
+        },
+        sdnn: {
+          mean: sdnnMean == null ? null : Number(sdnnMean.toFixed(2)),
+          std: sdnnSd == null ? null : Number(sdnnSd.toFixed(2)),
+        },
+        dfa_alpha1: {
+          mean: dfaMean == null ? null : Number(dfaMean.toFixed(4)),
+          std: dfaSd == null ? null : Number(dfaSd.toFixed(2)),
+        },
       },
       maturity_detail: {
         level: levelStr,
-        distinct_days: distinctDays,
-        n_effective: Number((count * 0.95).toFixed(1)),
-        max_single_day_frac: Number((1 / Math.max(1, distinctDays)).toFixed(2)),
-        q_signal: 0.95,
-        q_stability: 0.88,
-        bq: 0.91
+        distinct_days: maturity.distinct_days,
+        n_effective: maturity.n_effective,
+        max_single_day_frac: maturity.max_single_day_frac,
+        q_signal: qSignal.length ? maturity.q_signal : null,
+        q_complete: qComplete.length ? maturity.q_complete : null,
+        q_context: qContext.length ? maturity.q_context : null,
+        q_stability: rmssds.length > 1 ? maturity.q_stability : null,
+        bq: qualityEvidenceAvailable ? maturity.bq : null,
+        quality_status: qualityEvidenceAvailable
+          ? 'available'
+          : 'insufficient_quality_evidence',
+        failed_gates: maturity.failed_gates,
+        policy: maturityPolicy,
       },
-      learned_tau: { tau_in: 1.86, tau_out: 1.00, tau_normal: 0.75 }
+      learned_tau: {
+        tau_in: learnedTau.tau_in,
+        tau_out: learnedTau.tau_out,
+        tau_normal: learnedTau.tau_normal,
+        source: learnedTau.source,
+        policy: learnedTau.policy,
+      },
     };
   });
 
@@ -1078,30 +1246,23 @@ export async function getCalibrationHistory(req, res) {
       history = await Promise.all(baselines.map(async (b) => {
         const meanHr = b.stats?.mean_hr?.mean || b.stats?.hr_mean?.mean || null;
         const meanRmssd = b.stats?.rmssd?.mean || null;
-        const stdHr = b.stats?.mean_hr?.std || 2.5;
-
-        let tauIn = b.learned_tau?.tau_in;
-        let tauOut = b.learned_tau?.tau_out;
-        let tauNorm = b.learned_tau?.tau_normal;
-
-        if (tauIn === null || tauIn === undefined) {
-          tauIn = Number((1.5 + stdHr * 0.08).toFixed(2));
-          tauOut = Number((1.0 + stdHr * 0.04).toFixed(2));
-          tauNorm = 0.75;
-          if (b._id) {
-            await Baseline.updateOne(
-              { _id: b._id },
-              {
-                $set: {
-                  'learned_tau.tau_in': tauIn,
-                  'learned_tau.tau_out': tauOut,
-                  'learned_tau.tau_normal': tauNorm,
-                  'learned_tau.source': 'configured',
-                  'learned_tau.computed_at': new Date()
-                }
-              }
-            ).catch(() => null);
-          }
+        let learnedTau = b.learned_tau;
+        if (!Number.isFinite(learnedTau?.tau_in)) {
+          learnedTau = applyProvisionalTauFallback(
+            computeTauFromStableScores(b.stable_score_history || []),
+            b.stats
+          );
+        } else if (!learnedTau.policy) {
+          learnedTau = {
+            ...learnedTau,
+            policy: buildLegacyTauPolicy(learnedTau),
+          };
+        }
+        if (b._id && learnedTau !== b.learned_tau) {
+          await Baseline.updateOne(
+            { _id: b._id },
+            { $set: { learned_tau: learnedTau } }
+          );
         }
 
         const actQuery = { ...query };
@@ -1112,6 +1273,15 @@ export async function getCalibrationHistory(req, res) {
         }
         const actualSegCount = await Segment.countDocuments(actQuery).catch(() => 0);
         const effectiveSegCount = actualSegCount > 0 ? actualSegCount : (b.segment_count || 0);
+        const maturityMinimum = getPatientDecisionPolicy(
+          'rr_provisional_state_min_windows'
+        ).value;
+        const maturityPolicy = getPatientDecisionPolicyBundle([
+          'rr_provisional_state_min_windows',
+          'rr_maturing_min_windows',
+          'rr_min_distinct_days',
+          'rr_auto_freeze_min_days',
+        ]);
 
         // Auto sync baseline segment_count in DB if outdated
         if (b._id && actualSegCount > 0 && b.segment_count !== actualSegCount) {
@@ -1125,14 +1295,20 @@ export async function getCalibrationHistory(req, res) {
           activity: b.activity || 'sitting',
           time_period: b.time_period || 'sirkadian',
           segment_count: effectiveSegCount,
-          distinct_days: b.maturity_detail?.distinct_days || (effectiveSegCount >= 30 ? 3 : 1),
-          quality_score: Math.round((b.maturity_detail?.bq || 0.90) * 100),
-          is_mature: b.is_mature ?? (effectiveSegCount >= 15),
-          status: (b.is_mature || effectiveSegCount >= 15) ? 'Approved' : 'Provisional',
+          distinct_days: b.maturity_detail?.distinct_days ?? null,
+          quality_score: Number.isFinite(b.maturity_detail?.bq)
+            ? Math.round(b.maturity_detail.bq * 100)
+            : null,
+          is_mature: b.is_mature ?? (effectiveSegCount >= maturityMinimum),
+          status: (b.is_mature ?? (effectiveSegCount >= maturityMinimum))
+            ? 'Mature (NON-CLINICAL / PLACEHOLDER)'
+            : 'Provisional (NON-CLINICAL / PLACEHOLDER)',
+          maturity_policy: maturityPolicy,
           learned_tau: {
-            tau_in: tauIn,
-            tau_out: tauOut,
-            tau_normal: tauNorm,
+            tau_in: learnedTau.tau_in,
+            tau_out: learnedTau.tau_out,
+            tau_normal: learnedTau.tau_normal,
+            policy: learnedTau.policy,
           },
           hr_mean: meanHr !== null ? Number(meanHr.toFixed(1)) : null,
           rmssd_mean: meanRmssd !== null ? Number(meanRmssd.toFixed(1)) : null,
@@ -1161,16 +1337,32 @@ export async function getCalibrationHistory(req, res) {
           const rmssdAvg = rmssdVals.length > 0 ? (rmssdVals.reduce((a, b) => a + b, 0) / rmssdVals.length) : null;
 
           // Compute variance/std for real dynamic tau
-          let stdHr = 2.5;
+          let stdHr = getPatientDecisionPolicy('capar_provisional_hr_std_fallback').value;
           if (hrVals.length > 1 && hrAvg !== null) {
             const variance = hrVals.reduce((sum, v) => sum + Math.pow(v - hrAvg, 2), 0) / hrVals.length;
             stdHr = Math.sqrt(variance);
           }
 
-          const tauIn = Number((1.5 + stdHr * 0.08).toFixed(2));
-          const tauOut = Number((1.0 + stdHr * 0.04).toFixed(2));
-          const tauNorm = 0.75;
-          const isMature = count >= 15;
+          const tau = applyProvisionalTauFallback(
+            computeTauFromStableScores([]),
+            { mean_hr: { std: stdHr } }
+          );
+          const isMature = count >= getPatientDecisionPolicy(
+            'rr_provisional_state_min_windows'
+          ).value;
+          const measuredQuality = segList
+            .map((segment) => {
+              const quality = segment.signal_quality_detail || {};
+              if (Number.isFinite(quality.quality_score)) return quality.quality_score;
+              if (
+                Number.isFinite(quality.q_signal)
+                && Number.isFinite(quality.q_complete)
+              ) {
+                return (quality.q_signal + quality.q_complete) / 2;
+              }
+              return null;
+            })
+            .filter(Number.isFinite);
 
           // Count distinct days
           const daysSet = new Set();
@@ -1190,10 +1382,22 @@ export async function getCalibrationHistory(req, res) {
             time_period: 'Per-Individu (Real Stream)',
             segment_count: count,
             distinct_days: distinctDays,
-            quality_score: Math.min(98, Math.max(60, 65 + count)),
+            quality_score: measuredQuality.length
+              ? Number((
+                measuredQuality.reduce((total, value) => total + value, 0)
+                / measuredQuality.length * 100
+              ).toFixed(1))
+              : null,
             is_mature: isMature,
-            status: isMature ? 'Approved' : 'Provisional',
-            learned_tau: { tau_in: tauIn, tau_out: tauOut, tau_normal: tauNorm },
+            status: isMature
+              ? 'Mature (NON-CLINICAL / PLACEHOLDER)'
+              : 'Provisional (NON-CLINICAL / PLACEHOLDER)',
+            learned_tau: {
+              tau_in: tau.tau_in,
+              tau_out: tau.tau_out,
+              tau_normal: tau.tau_normal,
+              policy: tau.policy,
+            },
             hr_mean: hrAvg !== null ? Number(hrAvg.toFixed(1)) : null,
             rmssd_mean: rmssdAvg !== null ? Number(rmssdAvg.toFixed(1)) : null,
           };
@@ -1531,25 +1735,56 @@ async function analyzeOneMinuteUser(userId) {
 
       // 2. Maturity level
       const maturityLevel = baseline.maturity_detail?.level ||
-        (baseline.segment_count >= 30 ? 'maturing' :
-          baseline.segment_count >= 10 ? 'provisional' : 'cold_start');
+        (baseline.segment_count >= getPatientDecisionPolicy('rr_maturing_min_windows').value
+          ? 'maturing'
+          : baseline.segment_count >= MATURITY_CONFIG.provisional_min_windows
+            ? 'provisional'
+            : 'cold_start');
 
       // Load learned tau (CAPAR Section 7.1) — gunakan jika tersedia
       const learnedTau = (baseline.learned_tau && typeof baseline.learned_tau.tau_in === 'number')
         ? baseline.learned_tau
-        : { tau_in: 1.50, tau_out: 1.00, tau_normal: 0.75, source: 'configured' };
+        : computeTauFromStableScores([]);
 
       // 3. Quality assessment
-      let quality = assessRRQuality(rrArr, 0.85, seg.raw_count);
+      const storedQuality = seg.signal_quality_detail || {};
+      const activityConfidence = Number.isFinite(seg.activity_confidence)
+        ? seg.activity_confidence
+        : Number.isFinite(storedQuality.q_context)
+          ? storedQuality.q_context
+          : null;
+      let quality = assessRRQuality(rrArr, activityConfidence, seg.raw_count);
 
-      // BYPASS Q-Gate if segment already has pre-calculated features but missing rr_raw
-      if (!quality.accepted && seg.features && seg.features.mean_hr > 0 && seg.features.rmssd > 0) {
-        quality.accepted = true;
-        quality.q_signal = 0.95;
-        quality.q_complete = 0.95;
-        quality.q_context = 0.95;
-        quality.artifact_fraction = 0;
-        quality.missing_fraction = 0;
+      if (
+        !quality.accepted
+        && seg.features
+        && Number.isFinite(seg.features.mean_hr)
+        && Number.isFinite(seg.features.rmssd)
+        && seg.quality_audit?.gate_passed === true
+        && storedQuality.q_signal >= 0
+        && storedQuality.q_signal <= 1
+        && Number.isFinite(storedQuality.q_signal)
+        && storedQuality.q_complete >= 0
+        && storedQuality.q_complete <= 1
+        && Number.isFinite(storedQuality.q_complete)
+        && seg.quality_audit.rr_artifact_fraction >= 0
+        && seg.quality_audit.rr_artifact_fraction <= 1
+        && Number.isFinite(seg.quality_audit.rr_artifact_fraction)
+        && seg.quality_audit.rr_missing_fraction >= 0
+        && seg.quality_audit.rr_missing_fraction <= 1
+        && Number.isFinite(seg.quality_audit.rr_missing_fraction)
+      ) {
+        quality = {
+          ...quality,
+          accepted: true,
+          q_signal: storedQuality.q_signal,
+          q_complete: storedQuality.q_complete,
+          q_context: activityConfidence,
+          artifact_fraction: seg.quality_audit.rr_artifact_fraction,
+          missing_fraction: seg.quality_audit.rr_missing_fraction,
+          reasons: [],
+          source: 'persisted_quality_audit',
+        };
       }
 
       const qualityDetail = {
@@ -1559,6 +1794,7 @@ async function analyzeOneMinuteUser(userId) {
         q_complete: round2(quality.q_complete),
         q_context: round2(quality.q_context),
         reasons: quality.reasons,
+        source: quality.source || 'rr_quality_gate',
       };
 
       if (!quality.accepted) {
@@ -1601,8 +1837,10 @@ async function analyzeOneMinuteUser(userId) {
         if (!temporalStates[activity]) temporalStates[activity] = createTemporalState();
         touchTemporalState(temporalStates[activity], seg.window_start);
 
-        // Coba PROVISIONAL branch jika data > 5 segments
-        if (baseline.segment_count >= 5) {
+        // Coba PROVISIONAL branch setelah jumlah window yang dikonfigurasi
+        if (baseline.segment_count >= getPatientDecisionPolicy(
+          'rr_provisional_scoring_min_windows'
+        ).value) {
           const prov = computeProvisionalScore(features, baseline, activity);
           if (prov.score !== null) {
             score = prov.score;
@@ -1623,7 +1861,9 @@ async function analyzeOneMinuteUser(userId) {
                 window_timestamps: seg.window_start,
                 q_signal_history: quality.q_signal,
                 q_complete_history: quality.q_complete,
-                q_context_history: quality.q_context,
+                ...(Number.isFinite(quality.q_context)
+                  ? { q_context_history: quality.q_context }
+                  : {}),
               },
             });
           }
@@ -1689,7 +1929,9 @@ async function analyzeOneMinuteUser(userId) {
               window_timestamps: seg.window_start,
               q_signal_history: quality.q_signal,
               q_complete_history: quality.q_complete,
-              q_context_history: quality.q_context,
+              ...(Number.isFinite(quality.q_context)
+                ? { q_context_history: quality.q_context }
+                : {}),
             },
           });
 
@@ -1709,16 +1951,10 @@ async function analyzeOneMinuteUser(userId) {
 
             // 8b. Refresh tau learned (CAPAR Section 7.1)
             const stableScores = freshBaseline.stable_score_history || [];
-            let newTau = computeTauFromStableScores(stableScores, { min_stable_scores: 30 });
-            if (newTau.source === 'configured' && freshBaseline?.stats) {
-              const stdHr = freshBaseline.stats?.mean_hr?.std || freshBaseline.stats?.std_hr?.mean || freshBaseline.stats?.hr_mean?.std || 2.5;
-              if (typeof stdHr === 'number' && stdHr > 0) {
-                newTau.tau_in = Number((1.5 + stdHr * 0.08).toFixed(2));
-                newTau.tau_out = Number((1.0 + stdHr * 0.04).toFixed(2));
-                newTau.tau_normal = 0.75;
-                newTau.source = 'provisional';
-              }
-            }
+            const newTau = applyProvisionalTauFallback(
+              computeTauFromStableScores(stableScores),
+              freshBaseline?.stats
+            );
             await persistTauToBaseline(baseline._id, newTau);
           }
         }
@@ -1850,9 +2086,14 @@ async function updateRRPersistence(
   let eventCreated = false;
   const segWinStart = extractMs(seg.createdAt || seg.window_start) || Date.now();
 
-  const tauIn = baseline?.thresholds?.tau_in ?? baseline?.thresholds?.learned_tau?.tau_in ?? 2.5;
-  const tauOut = baseline?.thresholds?.tau_out ?? baseline?.thresholds?.learned_tau?.tau_out ?? (tauIn * 0.6);
-  const tauNormal = baseline?.thresholds?.learned_tau?.tau_normal ?? (tauOut * 0.75);
+  const tauIn = baseline?.thresholds?.tau_in
+    ?? baseline?.thresholds?.learned_tau?.tau_in
+    ?? getPatientDecisionPolicy('episode_tau_in_fallback').value;
+  const tauOut = baseline?.thresholds?.tau_out
+    ?? baseline?.thresholds?.learned_tau?.tau_out
+    ?? (tauIn * getPatientDecisionPolicy('episode_tau_out_fallback_fraction').value);
+  const tauNormal = baseline?.thresholds?.learned_tau?.tau_normal
+    ?? (tauOut * getPatientDecisionPolicy('episode_tau_normal_fallback_fraction').value);
 
   // ── Tangani status DISCONNECT_TAU_OUT (Data terputus / device dilepas) ─
   if (rr_status === 'DISCONNECT_TAU_OUT') {
@@ -2079,7 +2320,7 @@ async function updateRRPersistence(
       : 1.0;
     const segmentConfidence = typeof seg.signal_quality === 'number'
       ? Number(seg.signal_quality.toFixed(2))
-      : (seg.features?.signal_quality || 0.95);
+      : (seg.features?.signal_quality ?? null);
     const contextTag = `${activity || 'General'} | ${seg.activity_label || 'General'}`;
 
     // Output Log Terstruktur Blok 1
@@ -2217,7 +2458,7 @@ async function updateRRPersistence(
         : 1.0;
       const segmentConfidence = typeof seg.signal_quality === 'number'
         ? Number(seg.signal_quality.toFixed(2))
-        : (seg.features?.signal_quality || 0.95);
+        : (seg.features?.signal_quality ?? null);
       const contextTag = `${activity || 'General'} | ${seg.activity_label || 'General'}`;
 
       console.log(`[Blok-1 Engine Log] WindowState=RECOVERING | Confidence=${segmentConfidence} | EpId=${state.openEventId} | Onset=${new Date(startWinStart).toISOString()} | Peak=${state.peakScore} | Dur=${ongoingDurationMs}ms | TTR=${primaryTtrMin}m | RelapseCount=${state.relapseCount} | ResidualDev=${residualDeviation} | ContextTag=${contextTag}`);
@@ -2264,7 +2505,7 @@ async function updateRRPersistence(
         : 1.0;
       const segmentConfidence = typeof seg.signal_quality === 'number'
         ? Number(seg.signal_quality.toFixed(2))
-        : (seg.features?.signal_quality || 0.95);
+        : (seg.features?.signal_quality ?? null);
       const contextTag = `${activity || 'General'} | ${seg.activity_label || 'General'}`;
 
       console.log(`[Blok-1 Engine Log] WindowState=RECOVERED | Confidence=${segmentConfidence} | EpId=${state.openEventId} | Onset=${new Date(startWinStart).toISOString()} | Peak=${state.peakScore} | Dur=${totalDurationMs}ms | TTR=${primaryTtrMin}m | RelapseCount=${state.relapseCount} | ResidualDev=${residualDeviation} | ContextTag=${contextTag}`);
@@ -2412,15 +2653,25 @@ export async function generateEpisodeAnalysis(eventId) {
     const ev = await AnomalyEvent.findById(eventId).lean();
     if (!ev) return;
 
-    const onset = ev.onset_time ? new Date(ev.onset_time) : new Date();
-    const resolution = ev.resolution_time ? new Date(ev.resolution_time) : new Date(onset.getTime() + ev.duration_ms);
-    const isAnomaly = ev.classification === 'Alert' || ev.classification === 'Caution' || ev.status === 'open' || ev.status === 'closed';
+    const onset = ev.onset_time ? new Date(ev.onset_time) : null;
+    if (!onset || Number.isNaN(onset.getTime())) {
+      console.warn(`[generateEpisodeAnalysis] Event ${eventId} has no valid onset time; episode was not generated.`);
+      return;
+    }
+    const durationMs = finiteOrNull(ev.duration_ms);
+    const resolution = ev.resolution_time
+      ? new Date(ev.resolution_time)
+      : durationMs === null ? null : new Date(onset.getTime() + durationMs);
+    const isAnomaly = ev.classification === 'Alert'
+      || ev.classification === 'Caution'
+      || ev.status === 'open'
+      || hasDeviationState(ev);
 
-    const hrMean = ev.features?.mean_hr ?? ev.peak_hr ?? 88.5;
-    const rmssdVal = ev.features?.rmssd ?? 24.2;
-    const sdnnVal = ev.features?.sdnn ?? 38.5;
-    const dfaVal = ev.features?.dfa_alpha1 ?? 1.15;
-    const anomalyScore = ev.anomaly_score ?? (isAnomaly ? 1.85 : 0.64);
+    const hrMean = finiteOrNull(ev.features?.mean_hr ?? ev.peak_hr);
+    const rmssdVal = finiteOrNull(ev.features?.rmssd);
+    const sdnnVal = finiteOrNull(ev.features?.sdnn);
+    const dfaVal = finiteOrNull(ev.features?.dfa_alpha1);
+    const anomalyScore = finiteOrNull(ev.anomaly_score);
 
     const features = {
       hr_mean: hrMean,
@@ -2429,56 +2680,39 @@ export async function generateEpisodeAnalysis(eventId) {
       dfa_alpha1: dfaVal
     };
 
-    const qualityScore = ev.q_signal ?? 0.94;
-    const contextLabel = ev.context || ev.activity || 'sitting';
+    const qualityScore = finiteOrNull(ev.q_signal);
+    const contextLabel = ev.context || ev.activity || null;
+    const activeBaseline = await Baseline.findOne({
+      user_id: ev.user_id,
+      status: 'active',
+    }).sort({ updated_at: -1 }).lean();
+    const { values: thresholds, policy: thresholdPolicy } = resolveEpisodeThresholds(
+      activeBaseline,
+      'generate'
+    );
 
     const abl = evaluateAllAblations({
       features,
       context: contextLabel,
       qualityScore,
       timestamp: onset.getTime()
-    });
+    }, { personal: activeBaseline });
 
-    const yTrueVal = ev.validation_label?.includes('FP') ? '0' : '1';
-
-    const getResult = (pred) => {
-      if (pred === 'ABSTAIN_QUALITY') return { pred, result: 'TN' };
-      const pStr = String(pred);
-      if (pStr === '1' && yTrueVal === '1') return { pred: pStr, result: 'TP' };
-      if (pStr === '1' && yTrueVal === '0') return { pred: pStr, result: 'FP' };
-      if (pStr === '0' && yTrueVal === '1') return { pred: pStr, result: 'FN' };
-      return { pred: pStr, result: 'TN' };
-    };
+    const yTrueVal = validationTarget(ev.validation_label);
 
     const scoreE1 = abl.E1.score;
     const scoreE2 = abl.E2.score;
     const scoreE3 = abl.E3.score;
     const scoreE4 = abl.E4.score;
     const scoreE5 = abl.E5.score;
-    const scoreE6 = Number(anomalyScore.toFixed(3));
+    const scoreE6 = anomalyScore === null ? null : Number(anomalyScore.toFixed(3));
 
-    const evalE1 = getResult(abl.E1.pred);
-    const evalE2 = getResult(abl.E2.pred);
-    const evalE3 = getResult(abl.E3.pred);
-    const evalE4 = getResult(abl.E4.pred);
-    const evalE5 = getResult(abl.E5.pred);
-    const evalE6 = getResult(isAnomaly ? '1' : '0');
-
-    // Ambil threshold tau_in, tau_out, tau_normal aktual dari Baseline user
-    let actualTauIn = 1.5;
-    let actualTauOut = 1.0;
-    let actualTauNormal = 0.75;
-
-    try {
-      const activeBaseline = await Baseline.findOne({ user_id: ev.user_id, status: 'active' }).sort({ updated_at: -1 }).lean();
-      if (activeBaseline && activeBaseline.thresholds) {
-        actualTauIn = activeBaseline.thresholds.tau_in ?? 1.5;
-        actualTauOut = activeBaseline.thresholds.tau_out ?? 1.0;
-        actualTauNormal = activeBaseline.thresholds.tau_normal ?? 0.75;
-      }
-    } catch (e) {
-      console.warn('[generateEpisodeAnalysis] Failed to fetch active baseline for tau, using default.', e.message);
-    }
+    const evalE1 = buildEvaluationResult(abl.E1.pred, yTrueVal);
+    const evalE2 = buildEvaluationResult(abl.E2.pred, yTrueVal);
+    const evalE3 = buildEvaluationResult(abl.E3.pred, yTrueVal);
+    const evalE4 = buildEvaluationResult(abl.E4.pred, yTrueVal);
+    const evalE5 = buildEvaluationResult(abl.E5.pred, yTrueVal);
+    const evalE6 = buildEvaluationResult(isAnomaly ? '1' : '0', yTrueVal);
 
     const epAnalysis = await EpisodeAnalysis.findOneAndUpdate(
       { episode_id: ev._id },
@@ -2487,43 +2721,47 @@ export async function generateEpisodeAnalysis(eventId) {
         end_time: resolution,
         user_id: ev.user_id,
         profile: ev.profile || 'Personal',
-        activity: ev.activity || 'sitting',
-        context: ev.context || ev.activity || 'sitting',
+        activity: ev.activity || null,
+        context: ev.context || ev.activity || null,
         episode_id: ev._id,
         evidence_state: isAnomaly ? 'ALERT' : 'EVALUABLE',
         physiological_state: ev.status === 'open' ? 'PERSISTENT_DEVIATION' : (ev.status === 'closed' ? 'RECOVERED' : 'BASELINE_COMPATIBLE'),
         y_true: yTrueVal,
-        latent_severity: ev.latent_severity ?? (isAnomaly ? 1.85 : 0.4),
+        latent_severity: finiteOrNull(ev.latent_severity),
         anomaly_score: anomalyScore,
-        tau_in: actualTauIn,
-        tau_out: actualTauOut,
-        tau_normal: actualTauNormal,
+        tau_in: thresholds.tau_in,
+        tau_out: thresholds.tau_out,
+        tau_normal: thresholds.tau_normal,
+        threshold_policy: thresholdPolicy,
+        ablation_policy: abl.policy,
         hr_mean: hrMean,
         rmssd: rmssdVal,
         sdnn: sdnnVal,
         dfa_alpha1: dfaVal,
         quality_score: qualityScore,
-        artifact_fraction: ev.artifact_fraction ?? 0.0,
-        context_confidence: ev.context_confidence ?? 0.89,
-        activity_purity: ev.activity_purity ?? 0.92,
-        quality_gate_pass: qualityScore >= DEFAULT_ABLATION_CONFIG.q_min,
+        artifact_fraction: finiteOrNull(ev.artifact_fraction),
+        context_confidence: finiteOrNull(ev.context_confidence),
+        activity_purity: finiteOrNull(ev.activity_purity),
+        quality_gate_pass: qualityScore === null
+          ? null
+          : qualityScore >= DEFAULT_ABLATION_CONFIG.q_min,
         score_E1: scoreE1, pred_E1: evalE1.pred, result_E1: evalE1.result,
         score_E2: scoreE2, pred_E2: evalE2.pred, result_E2: evalE2.result,
         score_E3: scoreE3, pred_E3: evalE3.pred, result_E3: evalE3.result,
         score_E4: scoreE4, pred_E4: evalE4.pred, result_E4: evalE4.result,
         score_E5: scoreE5, pred_E5: evalE5.pred, result_E5: evalE5.result,
         score_E6: scoreE6, pred_E6: evalE6.pred, result_E6: evalE6.result,
-        predicted_state_E6: ev.current_state || 'BASELINE_COMPATIBLE',
+        predicted_state_E6: ev.current_state || null,
         z_E1: abl.E1.zScores.zHR,
         z_E2: abl.E2.zScores.zHR,
         z_E3: abl.E3.zScores.zHR,
         z_E4: abl.E4.zScores.zHR,
 
         // Episodic specific fields
-        total_duration: ev.duration_ms || 0,
-        peak_deviation: ev.peak_score || 0,
-        mean_deviation: ev.anomaly_score || 0,
-        deviation_auc: ev.auc_score || 0,
+        total_duration: durationMs,
+        peak_deviation: finiteOrNull(ev.peak_score),
+        mean_deviation: anomalyScore,
+        deviation_auc: finiteOrNull(ev.auc_score),
         ttr: ev.ttr_tau_out_ms ?? ev.trajectory?.recovery_time_ms ?? null,
         relapse_detected: ev.relapse || (ev.relapse_count && ev.relapse_count > 0) || false,
         relapse_count: ev.relapse_count || 0,
@@ -2556,6 +2794,17 @@ export async function syncAndGenerateEpisodeAnalyses(targetUserId = null) {
     const events = await AnomalyEvent.find(eventQuery).sort({ onset_time: -1 }).lean();
     if (!events || events.length === 0) return 0;
 
+    const userIds = [...new Set(events.map((event) => String(event.user_id)))];
+    const baselines = await Baseline.find({
+      user_id: { $in: userIds },
+      status: 'active',
+    }).sort({ updated_at: -1 }).lean();
+    const baselineByUser = new Map();
+    for (const baseline of baselines) {
+      const key = String(baseline.user_id);
+      if (!baselineByUser.has(key)) baselineByUser.set(key, baseline);
+    }
+
     let createdCount = 0;
 
     for (const ev of events) {
@@ -2568,15 +2817,25 @@ export async function syncAndGenerateEpisodeAnalyses(targetUserId = null) {
 
       if (existing) continue;
 
-      const onset = ev.onset_time ? new Date(ev.onset_time) : new Date();
-      const resolution = ev.resolution_time ? new Date(ev.resolution_time) : new Date(onset.getTime() + 120000);
-      const isAnomaly = ev.classification === 'Alert' || ev.classification === 'Caution' || ev.status === 'open';
+      const onset = ev.onset_time ? new Date(ev.onset_time) : null;
+      if (!onset || Number.isNaN(onset.getTime())) {
+        console.warn(`[EpisodeAnalysis Sync] Event ${ev._id} has no valid onset time; skipped.`);
+        continue;
+      }
+      const durationMs = finiteOrNull(ev.duration_ms);
+      const resolution = ev.resolution_time
+        ? new Date(ev.resolution_time)
+        : durationMs === null ? null : new Date(onset.getTime() + durationMs);
+      const isAnomaly = ev.classification === 'Alert'
+        || ev.classification === 'Caution'
+        || ev.status === 'open'
+        || hasDeviationState(ev);
 
-      const hrMean = ev.features?.mean_hr ?? ev.peak_hr ?? 88.5;
-      const rmssdVal = ev.features?.rmssd ?? 24.2;
-      const sdnnVal = ev.features?.sdnn ?? 38.5;
-      const dfaVal = ev.features?.dfa_alpha1 ?? 1.15;
-      const anomalyScore = ev.anomaly_score ?? (isAnomaly ? 1.85 : 0.64);
+      const hrMean = finiteOrNull(ev.features?.mean_hr ?? ev.peak_hr);
+      const rmssdVal = finiteOrNull(ev.features?.rmssd);
+      const sdnnVal = finiteOrNull(ev.features?.sdnn);
+      const dfaVal = finiteOrNull(ev.features?.dfa_alpha1);
+      const anomalyScore = finiteOrNull(ev.anomaly_score);
 
       const features = {
         hr_mean: hrMean,
@@ -2585,73 +2844,73 @@ export async function syncAndGenerateEpisodeAnalyses(targetUserId = null) {
         dfa_alpha1: dfaVal
       };
 
-      const qualityScore = ev.q_signal ?? 0.94;
-      const contextLabel = ev.context || ev.activity || 'sitting';
+      const qualityScore = finiteOrNull(ev.q_signal);
+      const contextLabel = ev.context || ev.activity || null;
+      const activeBaseline = baselineByUser.get(String(ev.user_id));
+      const { values: thresholds, policy: thresholdPolicy } = resolveEpisodeThresholds(
+        activeBaseline,
+        'sync'
+      );
 
       const abl = evaluateAllAblations({
         features,
         context: contextLabel,
         qualityScore,
         timestamp: onset.getTime()
-      });
+      }, { personal: activeBaseline });
 
-      const yTrueVal = ev.validation_label?.includes('FP') ? '0' : '1';
-
-      const getResult = (pred) => {
-        if (pred === 'ABSTAIN_QUALITY') return { pred, result: 'TN' };
-        const pStr = String(pred);
-        if (pStr === '1' && yTrueVal === '1') return { pred: pStr, result: 'TP' };
-        if (pStr === '1' && yTrueVal === '0') return { pred: pStr, result: 'FP' };
-        if (pStr === '0' && yTrueVal === '1') return { pred: pStr, result: 'FN' };
-        return { pred: pStr, result: 'TN' };
-      };
+      const yTrueVal = validationTarget(ev.validation_label);
 
       const scoreE1 = abl.E1.score;
       const scoreE2 = abl.E2.score;
       const scoreE3 = abl.E3.score;
       const scoreE4 = abl.E4.score;
       const scoreE5 = abl.E5.score;
-      const scoreE6 = Number(anomalyScore.toFixed(3));
+      const scoreE6 = anomalyScore === null ? null : Number(anomalyScore.toFixed(3));
 
-      const evalE1 = getResult(abl.E1.pred);
-      const evalE2 = getResult(abl.E2.pred);
-      const evalE3 = getResult(abl.E3.pred);
-      const evalE4 = getResult(abl.E4.pred);
-      const evalE5 = getResult(abl.E5.pred);
-      const evalE6 = getResult(isAnomaly ? '1' : '0');
+      const evalE1 = buildEvaluationResult(abl.E1.pred, yTrueVal);
+      const evalE2 = buildEvaluationResult(abl.E2.pred, yTrueVal);
+      const evalE3 = buildEvaluationResult(abl.E3.pred, yTrueVal);
+      const evalE4 = buildEvaluationResult(abl.E4.pred, yTrueVal);
+      const evalE5 = buildEvaluationResult(abl.E5.pred, yTrueVal);
+      const evalE6 = buildEvaluationResult(isAnomaly ? '1' : '0', yTrueVal);
 
       await EpisodeAnalysis.create({
         start_time: onset,
         end_time: resolution,
         user_id: ev.user_id,
-        profile: ev.profile || 'Personal',
-        activity: ev.activity || 'sitting',
-        context: ev.context || ev.activity || 'sitting',
+        profile: ev.profile || null,
+        activity: ev.activity || null,
+        context: ev.context || ev.activity || null,
         episode_id: ev._id,
         evidence_state: isAnomaly ? 'ALERT' : 'EVALUABLE',
-        physiological_state: ev.status === 'open' ? 'PERSISTENT_DEVIATION' : (isAnomaly ? 'DEVIATION_CANDIDATE' : 'BASELINE_COMPATIBLE'),
+        physiological_state: ev.current_state || (isAnomaly ? 'DEVIATION_CANDIDATE' : null),
         y_true: yTrueVal,
-        latent_severity: ev.latent_severity ?? (isAnomaly ? 1.85 : 0.4),
+        latent_severity: finiteOrNull(ev.latent_severity),
         anomaly_score: anomalyScore,
-        tau_in: 1.86,
-        tau_out: 1.20,
-        tau_normal: 0.75,
+        tau_in: thresholds.tau_in,
+        tau_out: thresholds.tau_out,
+        tau_normal: thresholds.tau_normal,
+        threshold_policy: thresholdPolicy,
+        ablation_policy: abl.policy,
         hr_mean: hrMean,
         rmssd: rmssdVal,
         sdnn: sdnnVal,
         dfa_alpha1: dfaVal,
         quality_score: qualityScore,
-        artifact_fraction: ev.artifact_fraction ?? 0.038,
-        context_confidence: ev.context_confidence ?? 0.89,
-        activity_purity: ev.activity_purity ?? 0.92,
-        quality_gate_pass: qualityScore >= DEFAULT_ABLATION_CONFIG.q_min,
+        artifact_fraction: finiteOrNull(ev.artifact_fraction),
+        context_confidence: finiteOrNull(ev.context_confidence),
+        activity_purity: finiteOrNull(ev.activity_purity),
+        quality_gate_pass: qualityScore === null
+          ? null
+          : qualityScore >= DEFAULT_ABLATION_CONFIG.q_min,
         score_E1: scoreE1, pred_E1: evalE1.pred, result_E1: evalE1.result,
         score_E2: scoreE2, pred_E2: evalE2.pred, result_E2: evalE2.result,
         score_E3: scoreE3, pred_E3: evalE3.pred, result_E3: evalE3.result,
         score_E4: scoreE4, pred_E4: evalE4.pred, result_E4: evalE4.result,
         score_E5: scoreE5, pred_E5: evalE5.pred, result_E5: evalE5.result,
         score_E6: scoreE6, pred_E6: evalE6.pred, result_E6: evalE6.result,
-        predicted_state_E6: isAnomaly ? 'PERSISTENT_DEVIATION' : 'BASELINE_COMPATIBLE',
+        predicted_state_E6: ev.current_state || null,
         z_E1: abl.E1.zScores.zHR,
         z_E2: abl.E2.zScores.zHR,
         z_E3: abl.E3.zScores.zHR,
@@ -2734,51 +2993,56 @@ export async function getStreamingSignalQualityStats(userId) {
     .select('signal_quality_detail is_valid analyzed rr_status activity_label window_start')
     .lean();
 
-  if (!recentSegments || recentSegments.length === 0) {
-    return {
-      good_data_pct: 94.2,
-      artifact_fraction_pct: 3.8,
-      missing_fraction_pct: 2.0,
-      q_signal: 0.96,
-      q_complete: 0.98,
-      q_context: 0.90,
-      total_windows_assessed: 0,
-      filter_verdict: 'EXCELLENT_QUALITY',
-      recent_reasons: []
-    };
-  }
-
-  let totalArtifact = 0;
-  let totalMissing = 0;
-  let totalQSig = 0;
-  let count = 0;
-
-  for (const seg of recentSegments) {
-    const q = seg.signal_quality_detail;
-    if (q) {
-      totalArtifact += (q.artifact_fraction || 0);
-      totalMissing += (q.missing_fraction || 0);
-      totalQSig += (q.q_signal || (1 - (q.artifact_fraction || 0)));
-      count++;
-    }
-  }
-
-  const n = count || 1;
-  const avgArtifact = totalArtifact / n;
-  const avgMissing = totalMissing / n;
-  const avgQSig = totalQSig / n;
-  const goodPct = Math.max(0, (1 - avgArtifact - avgMissing) * 100);
+  const qualityRows = (recentSegments || [])
+    .map((segment) => segment.signal_quality_detail)
+    .filter((quality) => quality
+      && typeof quality === 'object'
+      && ['artifact_fraction', 'missing_fraction', 'q_signal', 'q_complete', 'q_context']
+        .some((field) => Number.isFinite(quality[field])));
+  const average = (field) => {
+    const values = qualityRows
+      .map((quality) => quality[field])
+      .filter(Number.isFinite);
+    return values.length
+      ? values.reduce((sum, value) => sum + value, 0) / values.length
+      : null;
+  };
+  const avgArtifact = average('artifact_fraction');
+  const avgMissing = average('missing_fraction');
+  const avgQSig = average('q_signal');
+  const avgQComplete = average('q_complete');
+  const avgQContext = average('q_context');
+  const goodPct = avgArtifact === null || avgMissing === null
+    ? null
+    : Math.max(0, (1 - avgArtifact - avgMissing) * 100);
+  const verdictPolicies = getPatientDecisionPolicyBundle([
+    'streaming_quality_excellent_min_pct',
+    'streaming_quality_acceptable_min_pct',
+  ]);
+  const excellentMin = getPatientDecisionPolicy('streaming_quality_excellent_min_pct').value;
+  const acceptableMin = getPatientDecisionPolicy('streaming_quality_acceptable_min_pct').value;
+  const filterVerdict = goodPct === null
+    ? 'DATA_UNAVAILABLE'
+    : goodPct >= excellentMin
+      ? 'EXCELLENT_QUALITY'
+      : goodPct >= acceptableMin
+        ? 'ACCEPTABLE'
+        : 'HIGH_NOISE_WARNING';
 
   return {
-    good_data_pct: Number(goodPct.toFixed(1)),
-    artifact_fraction_pct: Number((avgArtifact * 100).toFixed(1)),
-    missing_fraction_pct: Number((avgMissing * 100).toFixed(1)),
-    q_signal: Number(avgQSig.toFixed(2)),
-    q_complete: Number((1 - avgMissing).toFixed(2)),
-    q_context: 0.92,
-    total_windows_assessed: recentSegments.length,
-    filter_verdict: goodPct >= 85 ? 'EXCELLENT_QUALITY' : (goodPct >= 70 ? 'ACCEPTABLE' : 'HIGH_NOISE_WARNING'),
-    recent_reasons: recentSegments.filter(s => s.signal_quality_detail?.reasons?.length).flatMap(s => s.signal_quality_detail.reasons).slice(0, 5)
+    good_data_pct: goodPct === null ? null : Number(goodPct.toFixed(1)),
+    artifact_fraction_pct: avgArtifact === null ? null : Number((avgArtifact * 100).toFixed(1)),
+    missing_fraction_pct: avgMissing === null ? null : Number((avgMissing * 100).toFixed(1)),
+    q_signal: avgQSig === null ? null : Number(avgQSig.toFixed(2)),
+    q_complete: avgQComplete === null ? null : Number(avgQComplete.toFixed(2)),
+    q_context: avgQContext === null ? null : Number(avgQContext.toFixed(2)),
+    total_windows_assessed: qualityRows.length,
+    filter_verdict: filterVerdict,
+    filter_policy: verdictPolicies,
+    recent_reasons: (recentSegments || [])
+      .filter((segment) => segment.signal_quality_detail?.reasons?.length)
+      .flatMap((segment) => segment.signal_quality_detail.reasons)
+      .slice(0, 5),
   };
 }
 
