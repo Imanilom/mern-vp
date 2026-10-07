@@ -74,8 +74,11 @@ test('safety action distinguishes clinician contact, observation, and quality wa
   }).action, 'quality_warning');
   assert.equal(recommendPatientAction({
     dataQualityAvailable: false,
+  }).level, 'unknown');
+  assert.equal(recommendPatientAction({
+    dataQualityAvailable: false,
     symptomsPresent: true,
-  }).level, 'yellow');
+  }).level, 'unknown');
   assert.equal(recommendPatientAction({
     dataQualityAvailable: true,
     persistentDeviation: true,

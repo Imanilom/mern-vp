@@ -144,7 +144,7 @@ export function recommendPatientAction({
 
   if (!dataQualityAvailable) {
     return {
-      level: 'yellow',
+      level: 'unknown',
       action: PATIENT_ACTIONS.QUALITY_WARNING,
       title: 'Data belum cukup untuk dinilai',
       message: 'Periksa pemasangan perangkat dan catat kondisi atau gejala yang dirasakan. Jangan gunakan hasil sensor ini untuk menyimpulkan kondisi kesehatan.',

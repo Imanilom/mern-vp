@@ -809,6 +809,32 @@ export async function getPatientAppCaparInsights(req, res) {
       anomalyEvents,
       now.getTime()
     );
+    const recoveryRagFilter = {
+      physiology: ['recovery'],
+      caparDimension: ['RC'],
+    };
+    const recoveryRagResults = (
+      recoverySummary.recovering
+      || recoverySummary.status === 'recovered'
+      || recoverySummary.relapse_detected
+    )
+      ? retrieveMultiAxisRag({
+        ...recoveryRagFilter,
+        minScore: 0.25,
+      }).slice(0, 3).map(({ paper, score, matchedDimensions }) => ({
+        paper_id: paper.paperId,
+        title: paper.title,
+        year: paper.year,
+        journal: paper.journal,
+        doi: paper.doi,
+        url: paper.pubmedUrl,
+        evidence_type: paper.evidenceType,
+        evidence_direction: paper.evidenceDirection,
+        evidence_summary: paper.clinicalTakeaway,
+        relevance_score: score,
+        matched_dimensions: matchedDimensions,
+      }))
+      : [];
     if (recoverySummary.status === 'recovered' && recoverySummary.recovery_progress == null) {
       recoverySummary.recovery_progress = 100;
     }
@@ -1089,6 +1115,13 @@ export async function getPatientAppCaparInsights(req, res) {
           ? null
           : Number((medianRecovery / 60000).toFixed(1)),
         state: recoverySummary.status,
+        rag_status: recoveryRagResults.length ? 'retrieved' : 'not_triggered',
+        rag_filter: {
+          ...recoveryRagFilter,
+          recovery_state: recoverySummary.status,
+          relapse_detected: recoverySummary.relapse_detected,
+        },
+        scientific_evidence: recoveryRagResults,
         distance_trend: recoverySummary.score_trend,
         distance_derivative_per_minute: recoverySummary.distance_derivative_per_minute,
         recovery_progress_pct: recoverySummary.recovery_progress,
