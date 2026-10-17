@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import PatientAppCheckIn from '../models/patient_app_checkin.model.js';
 import PatientAppEvent from '../models/patient_app_event.model.js';
+import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
 import Patient from '../models/patient.model.js';
@@ -50,4 +51,17 @@ test('patient check-in, events, and wearable schemas retain patient provenance',
     assert.ok(model.schema.path('account_type'));
     assert.deepEqual(model.schema.path('account_type').enumValues, ['user', 'patient']);
   }
+});
+
+test('patient action schema stores scoped records and auditable lifecycle states', () => {
+  assert.ok(PatientAppAction.schema.path('account_id'));
+  assert.deepEqual(
+    PatientAppAction.schema.path('account_type').enumValues,
+    ['user', 'patient']
+  );
+  assert.deepEqual(
+    PatientAppAction.schema.path('status').enumValues,
+    ['CREATED', 'DELIVERED', 'ACKNOWLEDGED', 'COMPLETED', 'FAILED']
+  );
+  assert.ok(PatientAppAction.schema.path('status_history'));
 });

@@ -4,6 +4,9 @@ import {
   validateCheckIn,
   validateCheckInQuery,
   validatePatientEvent,
+  validatePatientAction,
+  validatePatientActionStatus,
+  validatePatientImpactSummaryQuery,
   validateProfileUpdate,
   validateRegistration,
   validateWearableStream,
@@ -11,6 +14,75 @@ import {
   validateWearableHistoryQuery,
   registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
+
+test('patient action validates bounded data and optional decision snapshot', () => {
+  const action = validatePatientAction({
+    action_type: 'measurement',
+    title: 'Mengukur ulang tekanan darah',
+    details: 'Setelah beristirahat.',
+    decision: {
+      level: 'yellow',
+      title: 'Observasi & catat',
+      policy_version: '2026-10',
+    },
+  });
+  assert.deepEqual(action, {
+    action_type: 'measurement',
+    title: 'Mengukur ulang tekanan darah',
+    details: 'Setelah beristirahat.',
+    decision: {
+      level: 'yellow',
+      title: 'Observasi & catat',
+      policy_version: '2026-10',
+    },
+  });
+  assert.throws(
+    () => validatePatientAction({
+      action_type: 'other',
+      title: 'A'.repeat(161),
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validatePatientAction({
+      action_type: 'other',
+      title: 'Action',
+      account_id: 'another-account',
+    }),
+    { statusCode: 400 }
+  );
+});
+
+test('patient action status only accepts lifecycle states', () => {
+  assert.equal(
+    validatePatientActionStatus({ status: 'ACKNOWLEDGED' }),
+    'ACKNOWLEDGED'
+  );
+  assert.throws(
+    () => validatePatientActionStatus({ status: 'CREATED' }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validatePatientActionStatus({ status: 'COMPLETED', extra: true }),
+    { statusCode: 400 }
+  );
+});
+
+test('impact summary query defaults to 30 days and caps the requested range', () => {
+  const defaults = validatePatientImpactSummaryQuery({});
+  assert.equal(defaults.to.getTime() - defaults.from.getTime(), 30 * 86400000);
+  assert.throws(
+    () => validatePatientImpactSummaryQuery({
+      from: '2024-01-01T00:00:00.000Z',
+      to: '2026-01-02T00:00:00.000Z',
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validatePatientImpactSummaryQuery({ limit: 5 }),
+    { statusCode: 400 }
+  );
+});
 
 test('registration normalizes email and requires account fields', () => {
   const result = validateRegistration({

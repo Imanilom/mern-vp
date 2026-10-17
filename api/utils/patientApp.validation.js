@@ -329,6 +329,90 @@ export function validatePatientEvent(body) {
   return result;
 }
 
+const patientActionTypes = new Set([
+  'patient_guidance',
+  'measurement',
+  'clinical_review',
+  'monitoring',
+  'other',
+]);
+const patientActionStatuses = new Set([
+  'DELIVERED',
+  'ACKNOWLEDGED',
+  'COMPLETED',
+  'FAILED',
+]);
+
+export function validatePatientAction(body) {
+  requireObject(body, 'Tindakan');
+  rejectUnknownFields(
+    body,
+    new Set(['action_type', 'title', 'details', 'decision']),
+    'Field tindakan'
+  );
+  if (!patientActionTypes.has(body.action_type)) {
+    throw errorHandler(400, 'action_type tidak valid.');
+  }
+  const result = {
+    action_type: body.action_type,
+    title: optionalString(body.title, 'title', 160),
+    details: body.details === undefined
+      ? ''
+      : optionalString(body.details, 'details', 500),
+    decision: { level: '', title: '', policy_version: '' },
+  };
+  if (!result.title) throw errorHandler(400, 'title wajib diisi.');
+
+  if (body.decision !== undefined) {
+    requireObject(body.decision, 'decision');
+    rejectUnknownFields(
+      body.decision,
+      new Set(['level', 'title', 'policy_version']),
+      'Field decision'
+    );
+    result.decision = {
+      level: body.decision.level === undefined
+        ? ''
+        : optionalString(body.decision.level, 'decision.level', 32),
+      title: body.decision.title === undefined
+        ? ''
+        : optionalString(body.decision.title, 'decision.title', 160),
+      policy_version: body.decision.policy_version === undefined
+        ? ''
+        : optionalString(
+          body.decision.policy_version,
+          'decision.policy_version',
+          80
+        ),
+    };
+  }
+  return result;
+}
+
+export function validatePatientActionStatus(body) {
+  requireObject(body, 'Status tindakan');
+  rejectUnknownFields(body, new Set(['status']), 'Field status tindakan');
+  if (!patientActionStatuses.has(body.status)) {
+    throw errorHandler(400, 'status tindakan tidak valid.');
+  }
+  return body.status;
+}
+
+export function validatePatientImpactSummaryQuery(query) {
+  rejectUnknownFields(query, new Set(['from', 'to']), 'Query impact summary');
+  const to = query.to === undefined ? new Date() : parseDate(query.to, 'to');
+  const from = query.from === undefined
+    ? new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000)
+    : parseDate(query.from, 'from');
+  if (from > to) {
+    throw errorHandler(400, 'from harus lebih awal dari atau sama dengan to.');
+  }
+  if (to.getTime() - from.getTime() > 366 * 24 * 60 * 60 * 1000) {
+    throw errorHandler(400, 'Rentang impact summary maksimal 366 hari.');
+  }
+  return { from, to };
+}
+
 export function validateWearableSample(body) {
   requireObject(body, 'Data wearable');
   const allowed = new Set([

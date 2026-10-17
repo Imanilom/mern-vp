@@ -40,7 +40,12 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
 - **Protokol Triase Otomatis**: Kategori I (Rujuk Segera) hingga Kategori IV (Edukasi Mandiri).
 - **Simulasi 24 Jam**: Visualisasi garis waktu pemulihan (Baseline ➔ Deviasi ➔ Stabilisasi).
 
-### 6. 👤 Profil Medis & Kartu Darurat
+### 6. ✅ Tindakan, Tindak Lanjut & Dampak
+- **Tindakan & Tindak Lanjut**: Menampilkan keputusan CAPAR, panduan pasien, dan tindakan yang dilaporkan pada tindak lanjut.
+- **Dampak & Keselamatan**: Menampilkan outcome recovery historis dan jumlah pencatatan dari API, dengan batas data yang tersedia.
+- Status pelaksanaan klinisi, efektivitas tindakan, false alarm, serta analitik populasi tidak diklaim bila belum disediakan backend.
+
+### 7. 👤 Profil Medis & Kartu Darurat
 - Data demografis, BMI status calculator, dan golongan darah.
 - Riwayat kondisi medis dan manajemen pengobatan aktif.
 - Kontak darurat keluarga / caregiver.
@@ -62,6 +67,8 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
   │   ├── home/      # Dashboard utama & CAPAR summary
   │   ├── input/     # Alur input wizard (Langkah 5-11)
   │   ├── pedagogy/  # Detail 6 pertanyaan pedagogi & patient journey
+  │   ├── actions/   # Keputusan dan tindak lanjut pasien
+  │   ├── impact/    # Outcome historis, mutu data, dan batas keselamatan
   │   ├── profile/   # Profil pengguna, kartu darurat, & pengaturan
   │   └── summary/   # Ringkasan harian & ekspor laporan
   ├── theme/         # Design system & palet tema emerald green

@@ -134,6 +134,33 @@ The `event_type` enum is `exercise_started`, `exercise_ended`, `sleep_started`,
 Each event requires `occurred_at` (ISO date) and accepts `details` (up to 300
 characters), and optional scalar `value`, `intensity`, and `unit`.
 
+## Patient actions and impact summary
+
+- `POST /api/patient-app/actions`
+- `GET /api/patient-app/actions?from=<ISO>&to=<ISO>&limit=30&before=<ISO>`
+- `PATCH /api/patient-app/actions/:actionId/status`
+- `GET /api/patient-app/impact-summary?from=<ISO>&to=<ISO>`
+
+Creating an action accepts `action_type` (`patient_guidance`, `measurement`,
+`clinical_review`, `monitoring`, or `other`), required `title`, optional
+`details`, and an optional decision snapshot (`level`, `title`,
+`policy_version`). Account identifiers and status are server-controlled.
+Actions are scoped to the authenticated account and linked patient account.
+
+Actions begin in `CREATED`. Status updates must follow
+`CREATED -> DELIVERED -> ACKNOWLEDGED -> COMPLETED`; `FAILED` is permitted
+before completion. Every transition is timestamped in `status_history`, and
+terminal states cannot be changed. These statuses are recorded from the
+patient app and do not represent clinician acknowledgement or verified
+effectiveness.
+
+The impact summary defaults to the last 30 days and returns scoped counts for
+check-ins, events, patient-reported follow-up actions, and structured actions
+grouped by lifecycle status. Its maximum requested period is 366 days. It does
+not claim clinical effectiveness, population analytics, false-alarm rates, or
+clinician response metrics. Historical episode recovery remains available
+through `GET /api/patient-app/capar-insights`.
+
 ## Wearable bridge
 
 - `POST /api/patient-app/wearable/samples`

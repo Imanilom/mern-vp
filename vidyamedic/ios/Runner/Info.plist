@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>VidyaMedic menggunakan Bluetooth untuk menghubungkan Polar H10 dan menerima data denyut jantung serta akselerasi.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>VidyaMedic menggunakan Bluetooth untuk menghubungkan Polar H10 dan menerima data denyut jantung serta akselerasi.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Lokasi hanya diminta saat Anda memilih untuk menambahkan konteks lokasi pada deviasi kesehatan.</string>
 	<key>UIApplicationSceneManifest</key>

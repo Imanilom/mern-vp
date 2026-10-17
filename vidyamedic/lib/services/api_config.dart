@@ -99,10 +99,13 @@ class ApiConfig {
       '$baseUrl/patient-app/daily-summary';
   static String get caparInsightsEndpoint =>
       '$baseUrl/patient-app/capar-insights';
+  static String get impactSummaryEndpoint =>
+      '$baseUrl/patient-app/impact-summary';
   static String get linkCaparAccountEndpoint =>
       '$baseUrl/patient-app/link-capar-account';
   static String get checkInsEndpoint => '$baseUrl/patient-app/check-ins';
   static String get eventsEndpoint => '$baseUrl/patient-app/events';
+  static String get actionsEndpoint => '$baseUrl/patient-app/actions';
   static String get wearableSamplesEndpoint =>
       '$baseUrl/patient-app/wearable/samples';
   static String get wearableHistoryEndpoint =>

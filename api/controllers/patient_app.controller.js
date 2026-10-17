@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import Patient from '../models/patient.model.js';
 import PatientAppCheckIn from '../models/patient_app_checkin.model.js';
+import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppEvent from '../models/patient_app_event.model.js';
 import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
@@ -52,6 +53,9 @@ import {
   validateProfileUpdate,
   validateRegistration,
   validatePatientEvent,
+  validatePatientAction,
+  validatePatientActionStatus,
+  validatePatientImpactSummaryQuery,
   validateWearableStream,
   validateWearableSample,
   registrationEmailPattern,
@@ -1390,6 +1394,154 @@ export async function listPatientAppEvents(req, res) {
     pagination: {
       limit: filters.limit,
       next_before: data.length === filters.limit ? data[data.length - 1].occurred_at : null,
+    },
+  });
+}
+
+export async function createPatientAppAction(req, res) {
+  const { dataOwnerId, dataOwnerType } = await getAccount(req);
+  const actionData = validatePatientAction(req.body);
+  const action = await PatientAppAction.create({
+    ...actionData,
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+    status: 'CREATED',
+    status_history: [{
+      status: 'CREATED',
+      changed_at: new Date(),
+      changed_by: 'patient_app',
+    }],
+  });
+  res.status(201).json({ success: true, data: action });
+}
+
+export async function listPatientAppActions(req, res) {
+  const { accountScopes } = await getAccount(req);
+  const filters = validateCheckInQuery(req.query);
+  const query = accountScopeFilter(accountScopes);
+  query.createdAt = {};
+  if (filters.from) query.createdAt.$gte = filters.from;
+  if (filters.to) query.createdAt.$lte = filters.to;
+  if (filters.before) query.createdAt.$lt = filters.before;
+  if (!Object.keys(query.createdAt).length) delete query.createdAt;
+
+  const data = await PatientAppAction.find(query)
+    .sort({ createdAt: -1 })
+    .limit(filters.limit)
+    .lean();
+  res.json({
+    success: true,
+    data,
+    pagination: {
+      limit: filters.limit,
+      next_before: data.length === filters.limit
+        ? data[data.length - 1].createdAt
+        : null,
+    },
+  });
+}
+
+export async function updatePatientAppActionStatus(req, res) {
+  const { accountScopes } = await getAccount(req);
+  if (!mongoose.isValidObjectId(req.params.actionId)) {
+    throw errorHandler(400, 'ID tindakan tidak valid.');
+  }
+  const nextStatus = validatePatientActionStatus(req.body);
+  const allowedPreviousStatuses = {
+    DELIVERED: ['CREATED'],
+    ACKNOWLEDGED: ['DELIVERED'],
+    COMPLETED: ['ACKNOWLEDGED'],
+    FAILED: ['CREATED', 'DELIVERED', 'ACKNOWLEDGED'],
+  }[nextStatus];
+  const changedAt = new Date();
+  const action = await PatientAppAction.findOneAndUpdate(
+    {
+      _id: req.params.actionId,
+      ...accountScopeFilter(accountScopes),
+      status: { $in: allowedPreviousStatuses },
+    },
+    {
+      $set: { status: nextStatus },
+      $push: {
+        status_history: {
+          status: nextStatus,
+          changed_at: changedAt,
+          changed_by: 'patient_app',
+        },
+      },
+    },
+    { new: true, runValidators: true }
+  ).lean();
+  if (action) {
+    return res.json({ success: true, data: action });
+  }
+
+  const existing = await PatientAppAction.exists({
+    _id: req.params.actionId,
+    ...accountScopeFilter(accountScopes),
+  });
+  if (!existing) throw errorHandler(404, 'Tindakan tidak ditemukan.');
+  throw errorHandler(409, 'Perubahan status tindakan tidak mengikuti alur yang diizinkan.');
+}
+
+export async function getPatientAppImpactSummary(req, res) {
+  const { accountScopes } = await getAccount(req);
+  const { from, to } = validatePatientImpactSummaryQuery(req.query);
+  const scope = accountScopeFilter(accountScopes);
+  const checkInQuery = {
+    ...scope,
+    recorded_at: { $gte: from, $lte: to },
+  };
+  const eventQuery = {
+    ...scope,
+    occurred_at: { $gte: from, $lte: to },
+  };
+  const actionQuery = {
+    ...scope,
+    createdAt: { $gte: from, $lte: to },
+  };
+
+  const [
+    checkIns,
+    events,
+    reportedActions,
+    actionStatuses,
+  ] = await Promise.all([
+    PatientAppCheckIn.countDocuments(checkInQuery),
+    PatientAppEvent.countDocuments(eventQuery),
+    PatientAppCheckIn.countDocuments({
+      ...checkInQuery,
+      'deviation_follow_up.action_taken': { $type: 'string', $ne: '' },
+    }),
+    PatientAppAction.aggregate([
+      { $match: actionQuery },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
+  ]);
+  const statuses = Object.fromEntries(
+    ['CREATED', 'DELIVERED', 'ACKNOWLEDGED', 'COMPLETED', 'FAILED']
+      .map((status) => [status, 0])
+  );
+  for (const item of actionStatuses) statuses[item._id] = item.count;
+  res.json({
+    success: true,
+    data: {
+      period: { from, to },
+      counts: {
+        check_ins: checkIns,
+        events,
+        reported_patient_actions: reportedActions,
+        tracked_actions: Object.values(statuses).reduce(
+          (total, count) => total + count,
+          0
+        ),
+      },
+      action_statuses: statuses,
+      limitations: [
+        'Jumlah pencatatan bukan ukuran dampak klinis atau efektivitas tindakan.',
+        'False alarm, alert terlewat, dan tindak lanjut klinisi tidak dihitung oleh API pasien.',
+        'Outcome recovery historis tetap disajikan terpisah melalui capar-insights.',
+      ],
     },
   });
 }

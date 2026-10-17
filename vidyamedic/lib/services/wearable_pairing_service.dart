@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -99,16 +100,8 @@ class PolarWearablePairingService extends ChangeNotifier {
   Future<void> startScan() async {
     connectionError = null;
     try {
-      final statuses = await _requestBluetoothPermissions();
-      if (statuses.values.any((status) => !status.isGranted)) {
-        throw StateError(
-            'Izin Bluetooth diperlukan untuk mencari dan menghubungkan Polar H10.');
-      }
-      if (Platform.isAndroid &&
-          await FlutterBluePlus.adapterState.first !=
-              BluetoothAdapterState.on) {
-        await FlutterBluePlus.turnOn();
-      }
+      await _requestBluetoothPermissions();
+      await _ensureBluetoothEnabled();
 
       await stopScan();
       _devices.clear();
@@ -121,7 +114,7 @@ class PolarWearablePairingService extends ChangeNotifier {
           }
         },
         onError: (Object e) {
-          connectionError = 'Pemindaian Bluetooth gagal: $e';
+          connectionError = 'Pemindaian Polar gagal: $e';
           isScanning = false;
           _notify();
         },
@@ -132,22 +125,92 @@ class PolarWearablePairingService extends ChangeNotifier {
       );
       _notify();
     } catch (e) {
-      connectionError = e.toString();
+      connectionError = _errorMessage(e);
       isScanning = false;
       _notify();
     }
   }
 
-  Future<Map<Permission, PermissionStatus>>
-      _requestBluetoothPermissions() async {
-    final permissions = Platform.isAndroid
-        ? [
-            Permission.bluetoothScan,
-            Permission.bluetoothConnect,
-            Permission.locationWhenInUse
-          ]
-        : [Permission.bluetooth, Permission.locationWhenInUse];
-    return permissions.request();
+  Future<void> _requestBluetoothPermissions() async {
+    if (Platform.isAndroid) {
+      final sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+      await _polar.requestPermissions();
+
+      final requiredPermissions = sdkInt >= 31
+          ? [Permission.bluetoothScan, Permission.bluetoothConnect]
+          : sdkInt >= 23
+              ? [Permission.location]
+              : <Permission>[];
+      await _ensurePermissionsGranted(requiredPermissions);
+      return;
+    }
+
+    if (Platform.isIOS) {
+      await Permission.bluetooth.request();
+      await _ensurePermissionsGranted([Permission.bluetooth]);
+      return;
+    }
+
+    throw StateError('Pairing Polar hanya didukung di Android dan iOS.');
+  }
+
+  Future<void> _ensurePermissionsGranted(
+    List<Permission> permissions,
+  ) async {
+    final statuses = await Future.wait(
+      permissions.map((permission) => permission.status),
+    );
+    final denied = <String>[];
+    for (var index = 0; index < permissions.length; index++) {
+      if (!statuses[index].isGranted) {
+        final permissionName = switch (permissions[index]) {
+          Permission.bluetoothScan => 'Bluetooth Scan',
+          Permission.bluetoothConnect => 'Bluetooth Connect',
+          Permission.bluetooth => 'Bluetooth',
+          Permission.location =>
+            'Lokasi (diperlukan Android lama untuk scan BLE)',
+          _ => 'Izin perangkat',
+        };
+        final suffix = statuses[index].isPermanentlyDenied
+            ? ' (ditolak permanen; aktifkan di Pengaturan)'
+            : '';
+        denied.add('$permissionName$suffix');
+      }
+    }
+    if (denied.isNotEmpty) {
+      throw StateError(
+          'Izin berikut diperlukan untuk Polar: ${denied.join(', ')}.');
+    }
+  }
+
+  Future<void> _ensureBluetoothEnabled() async {
+    final adapterState = await FlutterBluePlus.adapterState.first.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => BluetoothAdapterState.unknown,
+    );
+    if (adapterState == BluetoothAdapterState.on) return;
+
+    if (Platform.isAndroid && adapterState == BluetoothAdapterState.off) {
+      await FlutterBluePlus.turnOn(timeout: 15);
+      final enabledState = await FlutterBluePlus.adapterState.first.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => BluetoothAdapterState.unknown,
+      );
+      if (enabledState == BluetoothAdapterState.on) return;
+    }
+
+    throw StateError(
+      adapterState == BluetoothAdapterState.unavailable
+          ? 'Bluetooth tidak tersedia pada perangkat ini.'
+          : 'Bluetooth belum aktif. Aktifkan Bluetooth perangkat, lalu coba pindai lagi.',
+    );
+  }
+
+  String _errorMessage(Object error) {
+    final message = error.toString();
+    return message.startsWith('Bad state: ')
+        ? message.substring('Bad state: '.length)
+        : message;
   }
 
   Future<void> stopScan() async {
@@ -169,15 +232,12 @@ class PolarWearablePairingService extends ChangeNotifier {
     isConnecting = true;
     _notify();
     try {
-      final statuses = await _requestBluetoothPermissions();
-      if (statuses.values.any((status) => !status.isGranted)) {
-        throw StateError(
-            'Izin Bluetooth diperlukan untuk menghubungkan Polar H10.');
-      }
+      await _requestBluetoothPermissions();
+      await _ensureBluetoothEnabled();
       await stopScan();
       if (_connectionAttempt != attempt) return false;
       _connectionTimeoutTimer?.cancel();
-      _connectionTimeoutTimer = Timer(const Duration(seconds: 15), () {
+      _connectionTimeoutTimer = Timer(const Duration(seconds: 30), () {
         if (_isDisposed ||
             !isConnecting ||
             _connectingDeviceId != id ||
@@ -189,7 +249,7 @@ class PolarWearablePairingService extends ChangeNotifier {
         _connectingDeviceId = '';
         isConnecting = false;
         connectionError =
-            'Waktu koneksi Polar H10 habis. Pastikan sensor aktif dan coba lagi.';
+            'Waktu koneksi Polar H10 habis. Pastikan sensor aktif, tidak sedang terhubung ke aplikasi lain, lalu coba lagi.';
         _notify();
         unawaited(_disconnectTimedOutDevice(id));
       });
@@ -203,7 +263,7 @@ class PolarWearablePairingService extends ChangeNotifier {
       _connectionTimeoutTimer?.cancel();
       _connectionTimeoutTimer = null;
       _connectingDeviceId = '';
-      connectionError = 'Gagal menghubungkan Polar H10: $e';
+      connectionError = 'Gagal menghubungkan Polar H10: ${_errorMessage(e)}';
       isConnecting = false;
       _notify();
       return false;

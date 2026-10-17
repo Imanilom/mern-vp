@@ -334,6 +334,94 @@ class ApiService {
     }
   }
 
+  /// POST /api/patient-app/actions
+  static Future<ApiResponse<Map<String, dynamic>>> createPatientAction(
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(ApiConfig.actionsEndpoint),
+            headers: _headers(),
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse.error('Gagal mencatat tindakan: $e', statusCode: 0);
+    }
+  }
+
+  /// GET patient-app/actions with optional date range and pagination.
+  static Future<ApiResponse<List<dynamic>>> getPatientActions({
+    String? from,
+    String? to,
+    int limit = 30,
+    String? before,
+  }) async {
+    try {
+      final uri = Uri.parse(ApiConfig.actionsEndpoint).replace(
+        queryParameters: {
+          'limit': limit.toString(),
+          if (from != null) 'from': from,
+          if (to != null) 'to': to,
+          if (before != null) 'before': before,
+        },
+      );
+      final res =
+          await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 15));
+      return _handleResponse<List<dynamic>>(
+          res, (data) => data as List<dynamic>);
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil riwayat tindakan: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// PATCH /api/patient-app/actions/:id/status
+  static Future<ApiResponse<Map<String, dynamic>>> updatePatientActionStatus({
+    required String actionId,
+    required String status,
+  }) async {
+    try {
+      final res = await http
+          .patch(
+            Uri.parse('${ApiConfig.actionsEndpoint}/$actionId/status'),
+            headers: _headers(),
+            body: jsonEncode({'status': status}),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse.error('Gagal memperbarui status tindakan: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// GET /api/patient-app/impact-summary
+  static Future<ApiResponse<Map<String, dynamic>>> getPatientImpactSummary({
+    String? from,
+    String? to,
+  }) async {
+    try {
+      final uri = Uri.parse(ApiConfig.impactSummaryEndpoint).replace(
+        queryParameters: {
+          if (from != null) 'from': from,
+          if (to != null) 'to': to,
+        },
+      );
+      final res =
+          await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil ringkasan dampak: $e',
+          statusCode: 0);
+    }
+  }
+
   // ---------------- WEARABLE BRIDGE ----------------
 
   /// POST /api/patient-app/wearable/samples

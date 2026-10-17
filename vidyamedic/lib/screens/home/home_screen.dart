@@ -20,6 +20,8 @@ import '../input/event_marker_screen.dart';
 import '../input/free_note_screen.dart';
 import '../summary/daily_summary_screen.dart';
 import '../profile/profile_screen.dart';
+import '../actions/action_tracking_screen.dart';
+import '../impact/impact_dashboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -157,7 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
   String _factorLabel(Map<String, dynamic> factor) {
-    final label = factor['label'] ?? factor['feature'] ?? factor['key'] ?? 'Fitur';
+    final label =
+        factor['label'] ?? factor['feature'] ?? factor['key'] ?? 'Fitur';
     final contribution =
         factor['contribution_pct'] ?? factor['contribution'] ?? factor['share'];
     return contribution == null ? '$label' : '$label ($contribution)';
@@ -1117,6 +1120,37 @@ class _PedagogyDashboard extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
+
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ActionTrackingScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.task_alt_outlined, size: 18),
+                      label: const Text('Tindakan'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ImpactDashboardScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.insights_outlined, size: 18),
+                      label: const Text('Dampak & keselamatan'),
+                    ),
+                  ),
+                ],
               ),
 
               // 7. Scientific Evidence RAG / Wawasan Medis Pasien
