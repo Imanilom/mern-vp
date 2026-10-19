@@ -203,6 +203,22 @@ removed. Applying an adaptive interpretation and writing its event use a MongoDB
 transaction. On a standalone MongoDB server where transactions are unavailable,
 the event is retained for review and no new interpretation version is applied.
 
+Baseline lookup also recognizes legacy Indonesian activity labels such as
+`Duduk` and `Tidur` as canonical CAPAR contexts, preferring the label matching
+the recorded activity when available. A stored CAPAR baseline remains distinct
+from scenario eligibility: production `segment_count` or `is_mature` alone does
+not establish enough quality-valid, same-context recorded windows.
+
+VidyaMedic's scenario page also reads the shared `capar-insights` baseline
+contexts, including immature contexts and available maturity details
+(`n_effective`, qualifying days, failed gates, and policy). When the current
+baseline is not mature or scenario evidence is insufficient, the page keeps
+showing stored CAPAR data and guides the participant to record the matching
+activity and local time period on multiple days with good sensor quality. CAPAR
+periods use WIB: night 00:00-06:00, morning 06:00-12:00, afternoon 12:00-18:00,
+and evening 18:00-24:00. These are collection guidelines, not a guarantee that
+a baseline will mature after a fixed number of recordings.
+
 Scenario sessions do not create an empty or simulated observation. Starting a
 session requires an analyzed CAPAR segment linked to an accepted, sensor-contact
 confirmed Polar H10 sample recorded through VidyaMedic's wearable bridge within

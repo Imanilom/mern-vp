@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
   List<Map<String, dynamic>> _sessions = [];
   List<Map<String, dynamic>> _events = [];
   List<Map<String, dynamic>> _questionnaires = [];
+  List<Map<String, dynamic>> _caparBaselines = [];
   Map<String, dynamic>? _selectedSession;
   String _activity = 'unsure';
   String _confidence = 'unsure';
@@ -45,7 +47,10 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
   bool _busy = false;
   bool _initialRouteHandled = false;
   bool _requiresRealRecording = false;
+  bool _caparLoading = true;
   String? _error;
+  String? _caparError;
+  String _caparStatus = 'insufficient_data';
 
   @override
   void initState() {
@@ -87,6 +92,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       _sessions = history;
       _loading = false;
     });
+    unawaited(_loadCaparBaselines());
     final currentModeSessions = history
         .where((session) => session['scenario_id'] == _activeScenarioId)
         .toList();
@@ -98,6 +104,28 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       _initialRouteHandled = true;
       await _startScenario(initialScenarioId);
     }
+  }
+
+  Future<void> _loadCaparBaselines() async {
+    setState(() => _caparLoading = true);
+    final response = await ApiService.getCaparInsights();
+    if (!mounted) return;
+    final payload = _map(response.data?['capar']);
+    final baseline = _map(payload['baseline']);
+    final contexts = baseline['contexts'];
+    final error = !response.success || response.data == null
+        ? response.message ?? 'Data baseline CAPAR gagal dimuat.'
+        : contexts is! List
+            ? 'Data baseline CAPAR belum tersedia dalam format yang dikenali.'
+            : null;
+    setState(() {
+      if (contexts is List) {
+        _caparBaselines = _maps(contexts);
+        _caparStatus = payload['status']?.toString() ?? 'insufficient_data';
+      }
+      _caparError = error;
+      _caparLoading = false;
+    });
   }
 
   Future<void> _openSession(Map<String, dynamic> item) async {
@@ -175,8 +203,15 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
         _error = result.message ?? 'Sesi tidak dapat dimulai.';
         _requiresRealRecording = result.statusCode == 409;
       });
+      if (result.statusCode == 409 && mounted) {
+        await _showBaselineGuidance(message: result.message);
+      }
       return;
     }
+    final interpretation = _currentInterpretation(result.data!);
+    final baseline = _map(interpretation?['baseline']);
+    final baselineNeedsMoreData = baseline['status'] != 'ELIGIBLE' ||
+        baseline['production_is_mature'] != true;
     setState(() {
       _selectedSession = result.data;
       _events = [];
@@ -185,6 +220,105 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       _requiresRealRecording = false;
     });
     await _loadHistory();
+    if (baselineNeedsMoreData && mounted) {
+      await _showBaselineGuidance(
+        activity: _activityLabel(baseline['activity']?.toString()),
+        timePeriod: baseline['time_period']?.toString(),
+      );
+    }
+  }
+
+  String _activityLabel(String? activity) => switch (activity) {
+        'rest' || 'Rest' => 'Istirahat',
+        'Light' => 'Berjalan',
+        'Moderate' => 'Aktivitas sedang',
+        'Intense' => 'Aktivitas intens',
+        'sitting' || 'Duduk' => 'Duduk',
+        'standing' || 'Berdiri' => 'Berdiri',
+        'sleep' || 'Tidur' => 'Tidur',
+        'walking' || 'Berjalan' => 'Berjalan',
+        'running' || 'Berlari' => 'Berlari',
+        'exercise' || 'Olahraga' => 'Olahraga',
+        null || '' => 'Aktivitas belum diketahui',
+        _ => activity,
+      };
+
+  String _timePeriodLabel(String? timePeriod) => switch (timePeriod) {
+        'night' => 'malam dini hari (00.00-06.00)',
+        'morning' => 'pagi (06.00-12.00)',
+        'afternoon' => 'siang/sore (12.00-18.00)',
+        'evening' => 'malam (18.00-24.00)',
+        null || '' => 'waktu belum diketahui',
+        _ => timePeriod,
+      };
+
+  Future<void> _showBaselineGuidance({
+    String? message,
+    String? activity,
+    String? timePeriod,
+  }) async {
+    final requestedContext = [
+      if (activity != null && activity.isNotEmpty) activity,
+      if (timePeriod != null && timePeriod.isNotEmpty)
+        _timePeriodLabel(timePeriod),
+    ].join(' · ');
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Lengkapi data baseline CAPAR'),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_caparError != null) ...[
+                  Text(
+                    'Pembaruan data CAPAR gagal: $_caparError',
+                    style: const TextStyle(color: Color(0xFF9F2D20)),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                if (message != null && message.isNotEmpty) ...[
+                  Text(message),
+                  const SizedBox(height: 12),
+                ],
+                if (requestedContext.isNotEmpty)
+                  Text('Konteks sesi ini: $requestedContext.'),
+                const Text(
+                  'Data CAPAR yang sudah tersimpan tetap digunakan dan ditampilkan, tetapi perbandingan personal dapat belum tersedia sampai baseline pada konteks yang sama cukup matang.',
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Agar baseline terbentuk, hubungkan Polar H10 lalu rekam secara rutin saat melakukan aktivitas yang benar. Pilih konteks aktivitas yang sesuai (misalnya Duduk, Berjalan, atau Tidur) dan usahakan rekaman terjadi pada periode waktu yang sama. Periode CAPAR mengikuti waktu WIB: 00.00-06.00 malam dini hari, 06.00-12.00 pagi, 12.00-18.00 siang/sore, dan 18.00-24.00 malam.',
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Usahakan sinyal dan kontak sensor baik, rekam pada beberapa hari, dan kumpulkan window yang stabil. CAPAR menilai jumlah window efektif, sebaran hari, kualitas sinyal, dan kestabilan; banyaknya segmen saja tidak menjamin baseline matang. Setelah merekam, tunggu analisis CAPAR selesai lalu buka halaman ini lagi.',
+                ),
+                const SizedBox(height: 14),
+                _baselineContextList(compact: true),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Nanti'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _openRecordingPage();
+            },
+            icon: const Icon(Icons.sensors_rounded),
+            label: const Text('Buka perekaman'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadHistory() async {
@@ -465,6 +599,8 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                   const SizedBox(height: 8),
                   ..._scenarios.map(_scenarioCard),
                   const SizedBox(height: 8),
+                  _caparBaselineCard(),
+                  const SizedBox(height: 8),
                   _dataWorkspaceCard(),
                   const SizedBox(height: 8),
                   SizedBox(
@@ -535,6 +671,156 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
         onTap: _busy || id.isEmpty ? null : () => _selectScenario(id),
       ),
     );
+  }
+
+  Widget _caparBaselineCard() => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Data CAPAR untuk VidyaMedic',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              if (_caparError != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Pembaruan terakhir gagal: $_caparError',
+                  style: const TextStyle(color: Color(0xFF9F2D20)),
+                ),
+              ],
+              const SizedBox(height: 4),
+              const Text(
+                'Baseline CAPAR yang tersimpan dipakai bersama di aplikasi ini. Data tetap ditampilkan meskipun masih belajar atau belum cukup untuk perbandingan skenario.',
+              ),
+              const SizedBox(height: 10),
+              _baselineContextList(),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _busy ? null : () => _showBaselineGuidance(),
+                  icon: const Icon(Icons.info_outline),
+                  label: const Text('Cara melengkapi baseline'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _baselineContextList({bool compact = false}) {
+    if (_caparBaselines.isEmpty) {
+      final message = _caparLoading
+          ? 'Memuat baseline CAPAR...'
+          : _caparError ??
+              (_caparStatus == 'link_required'
+                  ? 'Akun CAPAR belum tertaut. Tautkan akun agar baseline yang sudah ada dapat ditampilkan.'
+                  : 'Belum ada baseline CAPAR tersimpan untuk akun ini. Rekam data wearable untuk mulai membentuk baseline.');
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_caparError != null)
+            Text(
+              'Data CAPAR tidak dapat dimuat: $_caparError',
+              style: const TextStyle(color: Color(0xFF9F2D20)),
+            )
+          else if (!_caparLoading)
+            Text(message),
+          if (_caparStatus == 'link_required')
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                'Buka Profil untuk menautkan akun CAPAR sebelum merekam baseline lama.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _caparBaselines.map((baseline) {
+        final maturity = _map(baseline['maturity_detail']);
+        final level = maturity['level']?.toString() ??
+            baseline['level']?.toString() ??
+            'belum diketahui';
+        final isMature = level == 'mature' || level == 'mature_legacy';
+        final failedGates = maturity['failed_gates'] is List
+            ? (maturity['failed_gates'] as List).whereType<String>().toList()
+            : <String>[];
+        final effectiveWindows = maturity['n_effective'];
+        final distinctDays = maturity['distinct_days'];
+        final quality = baseline['quality'];
+        final details = <String>[
+          '${baseline['segment_count'] ?? 0} segmen',
+          if (effectiveWindows is num)
+            '${effectiveWindows.toStringAsFixed(1)} window efektif',
+          if (distinctDays is num) '$distinctDays hari memenuhi syarat',
+        ];
+        return Container(
+          width: double.infinity,
+          margin: EdgeInsets.only(bottom: compact ? 6 : 8),
+          padding: EdgeInsets.all(compact ? 9 : 11),
+          decoration: BoxDecoration(
+            color: isMature ? const Color(0xFFEFF8F4) : const Color(0xFFFFF8E8),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color:
+                  isMature ? const Color(0xFFB7DDCA) : const Color(0xFFF0D48A),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${_activityLabel(baseline['activity']?.toString())} · ${_timePeriodLabel(baseline['time_period']?.toString())}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'Baseline ${isMature ? 'matang' : 'belum matang'} ($level) · ${details.join(' · ')}${quality is num ? ' · kualitas ${(quality * 100).toStringAsFixed(0)}%' : ''}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              if (failedGates.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Perlu ditingkatkan: ${failedGates.map(_humanizeMaturityGate).join('; ')}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                )
+              else if (!isMature)
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Rincian syarat maturity belum tersedia pada data CAPAR lama.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  String _humanizeMaturityGate(String gate) {
+    final separator = gate.indexOf('=');
+    if (separator < 0) return gate;
+    final key = gate.substring(0, separator);
+    final label = switch (key) {
+      'n_eff' => 'Window efektif',
+      'hari_eligible' => 'Hari rekaman yang memenuhi syarat',
+      'dominasi_hari' => 'Sebaran rekaman antarhari',
+      'q_signal' => 'Kualitas sinyal',
+      'q_complete' => 'Kelengkapan data',
+      'q_stability' => 'Kestabilan rekaman',
+      'BQ' => 'Kualitas baseline keseluruhan',
+      _ => key,
+    };
+    return '$label: ${gate.substring(separator + 1).trim()}';
   }
 
   Widget _dataWorkspaceCard() => Card(
@@ -654,8 +940,12 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                     ? 'Lolos'
                     : 'Tidak lolos / belum tersedia'),
             _detailRow(
-              'Baseline eksperimen',
-              '${baseline['valid_duration_seconds'] ?? 0} detik · ${baseline['distinct_days'] ?? 0} hari · ${baseline['status'] ?? 'INELIGIBLE'}',
+              'Baseline CAPAR',
+              '${baseline['activity'] ?? 'Tidak cocok'} · ${baseline['production_segment_count'] ?? 0} segmen · ${baseline['production_is_mature'] == true ? 'Mature' : 'Belum mature'} (${baseline['production_status'] ?? 'missing'})',
+            ),
+            _detailRow(
+              'Kelayakan skenario',
+              '${baseline['valid_duration_seconds'] ?? 0} detik valid · ${baseline['distinct_days'] ?? 0} hari · ${baseline['status'] ?? 'INELIGIBLE'}',
             ),
             if (evidence.isNotEmpty)
               _detailRow(

@@ -74,6 +74,7 @@ import {
   buildScenarioInterpretation,
   isScenarioRealRecordedSample,
   mapScenarioActivity,
+  scenarioBaselineActivityAliases,
   SCENARIO_DEFINITIONS,
   SCENARIO_RULE_VERSION,
 } from '../utils/scenarioEngine.js';
@@ -1155,6 +1156,19 @@ export async function getPatientAppCaparInsights(req, res) {
             : baseline.maturity_detail?.level || 'provisional',
           quality: baseline.maturity_detail?.bq ?? null,
           segment_count: baseline.segment_count,
+          maturity_threshold: baseline.MATURITY_THRESHOLD ?? 20,
+          maturity_detail: {
+            level: baseline.maturity_detail?.level
+              || (isMaturePatientBaseline(baseline) ? 'mature' : 'cold_start'),
+            distinct_days: baseline.maturity_detail?.distinct_days ?? null,
+            n_effective: baseline.maturity_detail?.n_effective ?? null,
+            max_single_day_frac: baseline.maturity_detail?.max_single_day_frac ?? null,
+            q_signal: baseline.maturity_detail?.q_signal ?? null,
+            q_complete: baseline.maturity_detail?.q_complete ?? null,
+            q_stability: baseline.maturity_detail?.q_stability ?? null,
+            failed_gates: baseline.maturity_detail?.failed_gates ?? [],
+            policy: baseline.maturity_detail?.policy ?? null,
+          },
           last_updated: baseline.last_updated,
           feature_stats: Object.fromEntries(
             [
@@ -1968,16 +1982,34 @@ async function evaluateScenarioObservation({
   previousVersion = null,
 }) {
   const timePeriod = patientCaparTimePeriod(segment.window_start);
-  const [baseline, contextSegments] = await Promise.all([
-    Baseline.findOne({
+  const recordedSample = segment.patient_app_sample_id
+    ? await PatientAppWearableSample.findOne({
+      _id: segment.patient_app_sample_id,
+      account_id: segment.user_id,
+      provider: 'polar_h10',
+      source: 'mobile_wearable_bridge',
+      ingestion_source: 'mobile_wearable_bridge',
+      sensor_contact: true,
+      'data_quality.status': 'accepted',
+    }).select('_id activity provider source ingestion_source sensor_contact data_quality.status')
+      .lean()
+    : null;
+  const baselineActivityAliases = scenarioBaselineActivityAliases(
+    activity,
+    mapScenarioActivity(recordedSample?.activity) === mapScenarioActivity(activity)
+      ? recordedSample?.activity
+      : null
+  );
+  const [baselineCandidates, contextSegments] = await Promise.all([
+    Baseline.find({
       user_id: segment.user_id,
-      activity,
+      activity: { $in: baselineActivityAliases },
       time_period: timePeriod,
     }).lean(),
     Segment.find({
       user_id: segment.user_id,
       window_type: '1min',
-      activity_label: activity,
+      activity_label: { $in: baselineActivityAliases },
       analyzed: true,
       is_valid: true,
       window_start: {
@@ -1986,6 +2018,10 @@ async function evaluateScenarioObservation({
       },
     }).sort({ window_start: -1 }).limit(5000).lean(),
   ]);
+  const baseline = baselineCandidates.sort((left, right) => (
+    baselineActivityAliases.indexOf(left.activity)
+    - baselineActivityAliases.indexOf(right.activity)
+  ))[0] || null;
   const recordedContextSamples = contextSegments.length
     ? await PatientAppWearableSample.find({
       _id: {
@@ -2013,6 +2049,7 @@ async function evaluateScenarioObservation({
       candidate._id.toString() === segment._id.toString()
       || !candidate.patient_app_sample_id
       || !realRecordedSampleIds.has(candidate.patient_app_sample_id.toString())
+      || !baselineActivityAliases.includes(candidate.activity_label)
       || patientCaparTimePeriod(candidate.window_start) !== timePeriod
       || !isPatientBaselineSegment(candidate)
       || stableByWindow.has(candidate.window_start)

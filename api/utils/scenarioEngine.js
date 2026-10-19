@@ -20,14 +20,27 @@ export const SCENARIO_DEFINITIONS = Object.freeze({
 
 export const CAPAR_ACTIVITY_LABELS = Object.freeze({
   rest: 'Rest',
+  Rest: 'Rest',
+  Istirahat: 'Rest',
+  Duduk: 'Rest',
+  Berdiri: 'Rest',
+  Berbaring: 'Rest',
+  Tidur: 'Rest',
   sitting: 'Rest',
   standing: 'Rest',
   sleep: 'Rest',
   walking: 'Light',
+  Berjalan: 'Light',
+  'Berjalan Cepat': 'Moderate',
   running: 'Intense',
+  Berlari: 'Intense',
   exercise: 'Moderate',
+  Olahraga: 'Moderate',
+  'Olahraga Berat': 'Intense',
   work: 'Unknown',
   other: 'Unknown',
+  Lainnya: 'Unknown',
+  Unknown: 'Unknown',
 });
 
 export const SCENARIO_RULE_VERSION = 'scenario-reasoning-v1';
@@ -183,6 +196,9 @@ export function buildScenarioInterpretation({
       activity: baseline?.activity ?? null,
       time_period: baseline?.time_period ?? null,
       version: baseline?.version ?? null,
+      production_segment_count: baseline?.segment_count ?? 0,
+      production_is_mature: baseline?.is_mature ?? false,
+      production_status: baseline?.status ?? 'missing',
       status: baselineReadiness?.status ?? 'INELIGIBLE',
       valid_duration_seconds: baselineReadiness?.valid_duration_seconds ?? 0,
       distinct_days: baselineReadiness?.distinct_days ?? 0,
@@ -217,4 +233,37 @@ export function mapScenarioActivity(activity) {
     return activity;
   }
   return CAPAR_ACTIVITY_LABELS[activity] ?? null;
+}
+
+export function scenarioBaselineActivityAliases(activity, recordedActivity = null) {
+  const canonicalActivity = mapScenarioActivity(activity);
+  const aliases = {
+    Rest: ['Rest', 'Istirahat', 'Duduk', 'Berdiri', 'Berbaring'],
+    Light: ['Light', 'Berjalan'],
+    Moderate: ['Moderate', 'Olahraga', 'Berjalan Cepat'],
+    Intense: ['Intense', 'Berlari', 'Olahraga Berat'],
+    Unknown: ['Unknown', 'Tidak diketahui'],
+  }[canonicalActivity] || [activity];
+
+  const preferredAliases = [];
+  if (recordedActivity === 'sleep' || recordedActivity === 'Tidur') {
+    preferredAliases.push('Tidur');
+  }
+  if (recordedActivity === 'sitting' || recordedActivity === 'Duduk') {
+    preferredAliases.push('Duduk');
+  }
+  if (recordedActivity === 'standing' || recordedActivity === 'Berdiri') {
+    preferredAliases.push('Berdiri');
+  }
+  if (recordedActivity === 'walking' || recordedActivity === 'Berjalan') {
+    preferredAliases.push('Berjalan');
+  }
+  if (recordedActivity === 'running' || recordedActivity === 'Berlari') {
+    preferredAliases.push('Berlari');
+  }
+  if (recordedActivity === 'exercise' || recordedActivity === 'Olahraga') {
+    preferredAliases.push('Olahraga');
+  }
+  if (activity) preferredAliases.push(activity);
+  return [...new Set([...preferredAliases, ...aliases].filter(Boolean))];
 }
