@@ -79,6 +79,7 @@ import {
   SCENARIO_RULE_VERSION,
 } from '../utils/scenarioEngine.js';
 import { calculateScenarioQuestionnaireScore } from '../utils/scenarioQuestionnaire.js';
+import { parsePatientCaparHistoryQuery } from '../utils/patientCaparHistory.js';
 
 async function getAccount(req) {
   const accountId = req.user?.id;
@@ -1520,6 +1521,362 @@ export async function updatePatientAppActionStatus(req, res) {
   });
   if (!existing) throw errorHandler(404, 'Tindakan tidak ditemukan.');
   throw errorHandler(409, 'Perubahan status tindakan tidak mengikuti alur yang diizinkan.');
+}
+
+export async function getPatientAppCaparHistory(req, res) {
+  const { account, accountId, accountScopes, accountType } = await getAccount(req);
+  const parsedQuery = parsePatientCaparHistoryQuery(req.query);
+  if (!parsedQuery) {
+    throw errorHandler(
+      400,
+      'Filter histori CAPAR tidak valid. Gunakan category all/baseline/deviation/recovery/recording/learning, limit 1-100, dan cursor yang dikembalikan server.'
+    );
+  }
+  const { category, limit, cursor } = parsedQuery;
+  const caparUserId = accountType === 'user' ? accountId : account.user_id;
+  if (!caparUserId) {
+    res.json({
+      success: true,
+      data: {
+        status: 'link_required',
+        category,
+        baselines: [],
+        records: [],
+        page: { limit, has_more: false, next_before: null },
+      },
+    });
+    return;
+  }
+
+  const caparDataIds = [...new Set(
+    accountScopes.map((scope) => scope.account_id.toString())
+  )];
+  const baselines = await Baseline.find({
+    user_id: { $in: caparDataIds },
+  }).sort({ last_updated: -1 }).lean();
+  const baselineContexts = baselines.map((baseline) => ({
+    activity: baseline.activity,
+    time_period: baseline.time_period,
+    level: isMaturePatientBaseline(baseline)
+      ? baseline.maturity_detail?.level === 'mature'
+        ? 'mature'
+        : 'mature_legacy'
+      : baseline.maturity_detail?.level || 'provisional',
+    segment_count: baseline.segment_count ?? 0,
+    maturity_threshold: baseline.MATURITY_THRESHOLD ?? 20,
+    quality: baseline.maturity_detail?.bq ?? null,
+    maturity_detail: {
+      n_effective: baseline.maturity_detail?.n_effective ?? null,
+      distinct_days: baseline.maturity_detail?.distinct_days ?? null,
+      failed_gates: baseline.maturity_detail?.failed_gates ?? [],
+    },
+    last_updated: baseline.last_updated,
+    feature_stats: Object.fromEntries(
+      [
+        'mean_hr',
+        'mean_rr',
+        'sdnn',
+        'rmssd',
+        'motion_intensity',
+      ]
+        .filter((key) => baseline.stats?.[key]?.n > 0)
+        .map((key) => [key, {
+          count: baseline.stats[key].n,
+          mean: baseline.stats[key].mean,
+          standard_deviation: baseline.stats[key].std,
+        }])
+    ),
+  }));
+
+  if (category === 'baseline') {
+    res.json({
+      success: true,
+      data: {
+        status: 'available',
+        category,
+        baselines: baselineContexts,
+        records: [],
+        page: { limit, has_more: false, next_before: null },
+      },
+    });
+    return;
+  }
+
+  const objectId = cursor ? new mongoose.Types.ObjectId(cursor.id) : null;
+  const cursorFilter = (field, dateField = false, timestampDivisor = 1) => {
+    if (!cursor) return {};
+    if (timestampDivisor !== 1) {
+      const storageTimestamp = cursor.timestamp / timestampDivisor;
+      if (!Number.isInteger(storageTimestamp)) {
+        return { [field]: { $lte: Math.floor(storageTimestamp) } };
+      }
+      return {
+        $and: [{
+          $or: [
+            { [field]: { $lt: storageTimestamp } },
+            { [field]: storageTimestamp, _id: { $lt: objectId } },
+          ],
+        }],
+      };
+    }
+    const timestamp = dateField ? new Date(cursor.timestamp) : cursor.timestamp;
+    return {
+      $and: [{
+        $or: [
+          { [field]: { $lt: timestamp } },
+          { [field]: timestamp, _id: { $lt: objectId } },
+        ],
+      }],
+    };
+  };
+  const owner = { user_id: { $in: caparDataIds } };
+  const wants = (type) => category === 'all' || category === type;
+  const requests = [];
+
+  if (wants('recording')) {
+    requests.push(
+      Segment.find({
+        ...owner,
+        analyzed: true,
+        is_valid: true,
+        ...cursorFilter('window_start'),
+      })
+        .sort({ window_start: -1, _id: -1 })
+        .limit(limit + 1)
+        .select('_id window_start activity_label rr_status classification anomaly_score signal_quality_detail features')
+        .lean()
+        .then((items) => items.map((item) => {
+          const timePeriod = patientCaparTimePeriod(item.window_start);
+          const baseline = baselineContexts.find((context) => (
+            context.time_period === timePeriod
+            && mapScenarioActivity(context.activity)
+              === mapScenarioActivity(item.activity_label)
+          ));
+          return {
+            id: item._id.toString(),
+            type: 'recording',
+            recorded_at: new Date(item.window_start),
+            activity: item.activity_label,
+            time_period: timePeriod,
+            state: item.rr_status || item.classification || 'analyzed',
+            anomaly_score: item.anomaly_score ?? null,
+            quality: item.signal_quality_detail?.q_signal ?? null,
+            baseline_context: baseline
+              ? {
+                activity: baseline.activity,
+                time_period: baseline.time_period,
+                level: baseline.level,
+              }
+              : null,
+            features: {
+              mean_hr: item.features?.mean_hr ?? null,
+              mean_rr: item.features?.mean_rr ?? null,
+              rmssd: item.features?.rmssd ?? null,
+              sdnn: item.features?.sdnn ?? null,
+              motion_intensity: item.features?.motion_intensity ?? null,
+            },
+          };
+        }))
+    );
+    requests.push(
+      PolarData.find({
+        ...owner,
+        $and: [
+          { timestamp: { $lte: Math.floor(Date.now() / 1000) } },
+          cursorFilter('timestamp', false, 1000),
+        ],
+      })
+        .sort({ timestamp: -1, _id: -1 })
+        .limit(limit + 1)
+        .select('_id timestamp hr rr rrms activity device_id processStatus')
+        .lean()
+        .then((items) => items.map((item) => ({
+          id: item._id.toString(),
+          type: 'polar_reading',
+          recorded_at: new Date(item.timestamp * 1000),
+          activity: item.activity ?? null,
+          state: item.processStatus ?? 'recorded',
+          heart_rate_bpm: item.hr ?? null,
+          rr_interval_ms: item.rrms ?? item.rr ?? null,
+          device_id: item.device_id ?? null,
+        })))
+    );
+  }
+
+  if (wants('deviation') || wants('recovery')) {
+    const anomalyFilter = {
+      ...owner,
+      ...(wants('deviation')
+        ? { classification: { $in: ['Caution', 'Alert'] } }
+        : {
+          $or: [
+            { recovered_at: { $exists: true, $ne: null } },
+            { recovery_started_at: { $exists: true, $ne: null } },
+            { status: { $in: ['closed', 'recovered', 'unresolved'] } },
+          ],
+        }),
+      ...cursorFilter('onset_time'),
+    };
+    requests.push(
+      AnomalyEvent.find(anomalyFilter)
+        .sort({ onset_time: -1, _id: -1 })
+        .limit(limit + 1)
+        .select('_id onset_time peak_time recovered_at resolved_time classification status activity peak_score peak_hr baseline_hr duration_ms trajectory.recovery_time_ms relapse relapse_count physiological_outcome window_count')
+        .lean()
+        .then((items) => items.map((item) => ({
+          id: item._id.toString(),
+          type: item.recovered_at
+            || item.resolved_time
+            || item.status === 'recovered'
+            || item.physiological_outcome === 'RECOVERED'
+            || category === 'recovery'
+            ? 'recovery'
+            : 'deviation',
+          recorded_at: new Date(item.onset_time),
+          activity: item.activity ?? null,
+          state: item.physiological_outcome || item.status,
+          classification: item.classification,
+          peak_at: item.peak_time ? new Date(item.peak_time) : null,
+          recovered_at: item.recovered_at
+            ? new Date(item.recovered_at)
+            : item.resolved_time
+              ? new Date(item.resolved_time)
+              : null,
+          peak_score: item.peak_score ?? null,
+          peak_hr: item.peak_hr ?? null,
+          baseline_hr: item.baseline_hr ?? null,
+          duration_ms: item.duration_ms ?? null,
+          recovery_time_ms: item.trajectory?.recovery_time_ms ?? null,
+          relapse: item.relapse === true,
+          relapse_count: item.relapse_count ?? 0,
+          window_count: item.window_count ?? 0,
+        })))
+    );
+  }
+
+  if (wants('recovery')) {
+    requests.push(
+      EpisodeAnalysis.find({
+        ...owner,
+        ...cursorFilter('start_time', true),
+      })
+        .sort({ start_time: -1, _id: -1 })
+        .limit(limit + 1)
+        .select('_id start_time end_time episode_id activity context evidence_state physiological_state recovery_duration total_duration ttr peak_deviation mean_deviation recovery_slope relapse_detected relapse_count quality_score quality_gate_pass hr_mean rmssd sdnn dfa_alpha1')
+        .lean()
+        .then((items) => items.map((item) => ({
+          id: item._id.toString(),
+          type: 'recovery_analysis',
+          recorded_at: item.start_time,
+          ended_at: item.end_time ?? null,
+          activity: item.activity ?? item.context ?? null,
+          state: item.physiological_state || item.evidence_state || 'analyzed',
+          episode_id: item.episode_id?.toString?.() ?? null,
+          recovery_duration_ms: item.recovery_duration ?? null,
+          total_duration_ms: item.total_duration ?? null,
+          time_to_recovery_ms: item.ttr ?? null,
+          peak_deviation: item.peak_deviation ?? null,
+          mean_deviation: item.mean_deviation ?? null,
+          recovery_slope: item.recovery_slope ?? null,
+          relapse_detected: item.relapse_detected === true,
+          relapse_count: item.relapse_count ?? 0,
+          quality: item.quality_score ?? null,
+          quality_gate_passed: item.quality_gate_pass ?? null,
+          features: {
+            mean_hr: item.hr_mean ?? null,
+            rmssd: item.rmssd ?? null,
+            sdnn: item.sdnn ?? null,
+            dfa_alpha1: item.dfa_alpha1 ?? null,
+          },
+        })))
+    );
+  }
+
+  if (wants('learning')) {
+    requests.push(
+      CognitiveMemory.find({
+        ...owner,
+        ...cursorFilter('epoch_timestamp', true),
+      })
+        .sort({ epoch_timestamp: -1, _id: -1 })
+        .limit(limit + 1)
+        .select('_id epoch_timestamp week_id week_number scores_snapshot average_behavioral_correlation behavioral_factors_snapshot next_week_feedback')
+        .lean()
+        .then((items) => items.map((item) => ({
+          id: item._id.toString(),
+          type: 'learning_memory',
+          recorded_at: item.epoch_timestamp,
+          state: 'weekly_learning_snapshot',
+          week_id: item.week_id,
+          week_number: item.week_number,
+          resilience_score: item.scores_snapshot?.resilience_score ?? null,
+          average_behavioral_correlation: item.average_behavioral_correlation ?? null,
+          confirmed_factors: (item.behavioral_factors_snapshot || [])
+            .filter((factor) => factor.patient_confirmed)
+            .map((factor) => ({
+              name: factor.factor_name,
+              category: factor.category,
+              correlation_pct: factor.correlation_pct,
+            })),
+          next_week_feedback: item.next_week_feedback?.summary_headline ?? null,
+        })))
+    );
+    requests.push(
+      StateTransition.find({
+        ...owner,
+        ...cursorFilter('last_updated', true),
+      })
+        .sort({ last_updated: -1, _id: -1 })
+        .limit(limit + 1)
+        .select('_id activity total_transitions last_updated from_BASELINE_COMPATIBLE from_DEVIATION_CANDIDATE from_PERSISTENT_DEVIATION from_RECOVERY from_RECOVERED from_UNKNOWN')
+        .lean()
+        .then((items) => items.map((item) => ({
+          id: item._id.toString(),
+          type: 'learning_transitions',
+          recorded_at: item.last_updated,
+          activity: item.activity,
+          state: 'state_transition_learning',
+          total_transitions: item.total_transitions ?? 0,
+          transitions: {
+            baseline_compatible: item.from_BASELINE_COMPATIBLE ?? {},
+            deviation_candidate: item.from_DEVIATION_CANDIDATE ?? {},
+            persistent_deviation: item.from_PERSISTENT_DEVIATION ?? {},
+            recovery: item.from_RECOVERY ?? {},
+            recovered: item.from_RECOVERED ?? {},
+            unknown: item.from_UNKNOWN ?? {},
+          },
+        })))
+    );
+  }
+
+  const batches = await Promise.all(requests);
+  const records = batches
+    .flat()
+    .sort((left, right) => (
+      new Date(right.recorded_at).getTime() - new Date(left.recorded_at).getTime()
+      || right.id.localeCompare(left.id)
+    ));
+  const hasMore = records.length > limit;
+  const pageRecords = records.slice(0, limit);
+  const lastRecord = pageRecords.at(-1);
+  const nextBefore = hasMore && lastRecord
+    ? `${new Date(lastRecord.recorded_at).getTime()}:${lastRecord.id}`
+    : null;
+
+  res.json({
+    success: true,
+    data: {
+      status: 'available',
+      category,
+      baselines: baselineContexts,
+      records: pageRecords,
+      page: {
+        limit,
+        has_more: hasMore,
+        next_before: nextBefore,
+      },
+    },
+  });
 }
 
 export async function getPatientAppImpactSummary(req, res) {

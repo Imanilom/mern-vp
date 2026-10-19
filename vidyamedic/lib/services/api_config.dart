@@ -99,6 +99,8 @@ class ApiConfig {
       '$baseUrl/patient-app/daily-summary';
   static String get caparInsightsEndpoint =>
       '$baseUrl/patient-app/capar-insights';
+  static String get caparHistoryEndpoint =>
+      '$baseUrl/patient-app/capar-history';
   static String get impactSummaryEndpoint =>
       '$baseUrl/patient-app/impact-summary';
   static String get scenariosEndpoint => '$baseUrl/patient-app/scenarios';

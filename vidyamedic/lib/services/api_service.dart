@@ -790,4 +790,29 @@ class ApiService {
           statusCode: 0);
     }
   }
+
+  /// GET /api/patient-app/capar-history
+  static Future<ApiResponse<Map<String, dynamic>>> getCaparHistory({
+    String category = 'all',
+    String? before,
+    int limit = 25,
+  }) async {
+    try {
+      final query = <String, String>{
+        'category': category,
+        'limit': '$limit',
+        if (before != null) 'before': before,
+      };
+      final url = Uri.parse(ApiConfig.caparHistoryEndpoint)
+          .replace(queryParameters: query);
+      final res = await http
+          .get(url, headers: _headers())
+          .timeout(const Duration(seconds: 20));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil histori CAPAR: $e',
+          statusCode: 0);
+    }
+  }
 }

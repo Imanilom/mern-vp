@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
 import '../profile/profile_screen.dart';
+import 'capar_history_screen.dart';
 import 'history_trend_chart.dart';
 
 /// Halaman riwayat pemantauan pasien dan data CAPAR.
@@ -186,6 +187,19 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const CaparHistoryScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.manage_search_rounded),
+              label: const Text('Buka histori lengkap CAPAR'),
             ),
           ),
           const SizedBox(height: 16),

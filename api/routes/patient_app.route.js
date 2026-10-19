@@ -12,6 +12,7 @@ import {
   getPatientAppDailySummary,
   getPatientAppCheckIn,
   getPatientAppCaparInsights,
+  getPatientAppCaparHistory,
   getPatientAppOverview,
   getPatientAppImpactSummary,
   getPatientAppScenarios,
@@ -58,6 +59,7 @@ router.patch('/profile', verifyToken, updatePatientAppProfile);
 router.get('/overview', verifyToken, getPatientAppOverview);
 router.get('/daily-summary', verifyToken, getPatientAppDailySummary);
 router.get('/capar-insights', verifyToken, getPatientAppCaparInsights);
+router.get('/capar-history', verifyToken, getPatientAppCaparHistory);
 router.get('/impact-summary', verifyToken, getPatientAppImpactSummary);
 router.get('/scenarios', verifyToken, getPatientAppScenarios);
 router.post(
