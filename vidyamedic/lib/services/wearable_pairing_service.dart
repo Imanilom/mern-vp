@@ -3,7 +3,6 @@ import 'dart:io' show Platform;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:polar/polar.dart';
 
@@ -101,7 +100,6 @@ class PolarWearablePairingService extends ChangeNotifier {
     connectionError = null;
     try {
       await _requestBluetoothPermissions();
-      await _ensureBluetoothEnabled();
 
       await stopScan();
       _devices.clear();
@@ -183,29 +181,6 @@ class PolarWearablePairingService extends ChangeNotifier {
     }
   }
 
-  Future<void> _ensureBluetoothEnabled() async {
-    final adapterState = await FlutterBluePlus.adapterState.first.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => BluetoothAdapterState.unknown,
-    );
-    if (adapterState == BluetoothAdapterState.on) return;
-
-    if (Platform.isAndroid && adapterState == BluetoothAdapterState.off) {
-      await FlutterBluePlus.turnOn(timeout: 15);
-      final enabledState = await FlutterBluePlus.adapterState.first.timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => BluetoothAdapterState.unknown,
-      );
-      if (enabledState == BluetoothAdapterState.on) return;
-    }
-
-    throw StateError(
-      adapterState == BluetoothAdapterState.unavailable
-          ? 'Bluetooth tidak tersedia pada perangkat ini.'
-          : 'Bluetooth belum aktif. Aktifkan Bluetooth perangkat, lalu coba pindai lagi.',
-    );
-  }
-
   String _errorMessage(Object error) {
     final message = error.toString();
     return message.startsWith('Bad state: ')
@@ -221,26 +196,26 @@ class PolarWearablePairingService extends ChangeNotifier {
   }
 
   Future<bool> connectToDevice(String id) async {
-    if (id.trim().isEmpty) {
+    final deviceId = id.trim().toUpperCase();
+    if (deviceId.isEmpty) {
       connectionError = 'ID perangkat Bluetooth tidak valid.';
       _notify();
       return false;
     }
     connectionError = null;
     final attempt = ++_connectionAttempt;
-    _connectingDeviceId = id;
+    _connectingDeviceId = deviceId;
     isConnecting = true;
     _notify();
     try {
       await _requestBluetoothPermissions();
-      await _ensureBluetoothEnabled();
       await stopScan();
       if (_connectionAttempt != attempt) return false;
       _connectionTimeoutTimer?.cancel();
       _connectionTimeoutTimer = Timer(const Duration(seconds: 30), () {
         if (_isDisposed ||
             !isConnecting ||
-            _connectingDeviceId != id ||
+            _connectingDeviceId != deviceId ||
             _connectionAttempt != attempt) {
           return;
         }
@@ -249,21 +224,22 @@ class PolarWearablePairingService extends ChangeNotifier {
         _connectingDeviceId = '';
         isConnecting = false;
         connectionError =
-            'Waktu koneksi Polar H10 habis. Pastikan sensor aktif, tidak sedang terhubung ke aplikasi lain, lalu coba lagi.';
+            'Waktu koneksi Polar H10 habis. Pastikan Bluetooth aktif, sensor dikenakan agar menyala, dan Polar H10 tidak sedang terhubung ke CAPAR Mobile atau aplikasi lain. Lalu pindai ulang.';
         _notify();
-        unawaited(_disconnectTimedOutDevice(id));
+        unawaited(_disconnectTimedOutDevice(deviceId));
       });
-      await _polar.connectToDevice(id);
+      await _polar.connectToDevice(deviceId);
       return true;
     } catch (e) {
       if (_connectionAttempt != attempt) {
-        return isConnected && _deviceId == id;
+        return isConnected && _deviceId == deviceId;
       }
       _connectionAttempt++;
       _connectionTimeoutTimer?.cancel();
       _connectionTimeoutTimer = null;
       _connectingDeviceId = '';
-      connectionError = 'Gagal menghubungkan Polar H10: ${_errorMessage(e)}';
+      connectionError =
+          'Gagal menghubungkan Polar H10 ($deviceId): ${_errorMessage(e)}';
       isConnecting = false;
       _notify();
       return false;
