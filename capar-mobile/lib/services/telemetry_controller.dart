@@ -1,46 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../shared/models/models.dart';
 import 'api_service.dart';
-import 'mqtt_service.dart';
 import 'ble_service.dart';
-
-/// Kirim ping ke backend VPS untuk monitoring status streaming.
-/// Fire-and-forget: gagal tidak mempengaruhi alur utama.
-Future<void> _sendMobilePing({
-  required String userId,
-  required String event,
-  String deviceId = 'POLAR_H10',
-  int readingsCount = 0,
-  bool mqttConnected = false,
-  String? errorMessage,
-  String platform = 'android',
-}) async {
-  try {
-    await http.post(
-      Uri.parse('${ApiService.baseUrl}/log/mobile-ping'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'user_id':       userId,
-        'device_id':     deviceId,
-        'event':         event,
-        'readings_count': readingsCount,
-        'mqtt_connected': mqttConnected,
-        'error_message': errorMessage,
-        'platform':      platform,
-        'app_version':   '1.0.0',
-      }),
-    ).timeout(const Duration(seconds: 5));
-    debugPrint('[MobilePing] event=$event dikirim ke VPS');
-  } catch (e) {
-    // Ping gagal — tidak mengganggu streaming
-    debugPrint('[MobilePing] Gagal kirim ping (event=$event): $e');
-  }
-}
 
 class PendingDataRecord {
   final String id;
@@ -85,15 +49,8 @@ class TelemetryController extends ChangeNotifier {
   void startStreaming() {
     _isStreaming = true;
     _startFlushTimer();
-    debugPrint('[TelemetryController] ▶ Streaming dimulai, flush timer aktif');
+    debugPrint('[TelemetryController] Streaming dimulai melalui API terautentikasi');
     notifyListeners();
-    // Ping VPS: streaming dimulai
-    SharedPreferences.getInstance().then((prefs) {
-      final userId = prefs.getString('user_id') ?? '';
-      if (userId.isNotEmpty) {
-        _sendMobilePing(userId: userId, event: 'streaming_started');
-      }
-    });
   }
 
   void stopStreaming() {
@@ -112,8 +69,8 @@ class TelemetryController extends ChangeNotifier {
     // Kirim data setiap 10 detik, terlepas dari jumlah pending
     _flushTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (_isStreaming && pendingCount > 0) {
-        debugPrint('[TelemetryController] ⏰ Auto-flush: $pendingCount readings pending → kirim ke RMQ');
-        _syncToRabbitMQ();
+        debugPrint('[TelemetryController] Auto-flush: $pendingCount readings pending');
+        _syncToApi();
       }
     });
     debugPrint('[TelemetryController] ⏰ Auto-flush timer dimulai (interval 10s)');
@@ -137,14 +94,14 @@ class TelemetryController extends ChangeNotifier {
 
     // Batch flush saat buffer penuh (≥5 readings ≈ setiap ~5 detik)
     if (pendingCount >= 5) {
-      debugPrint('[TelemetryController] 📦 Buffer penuh ($pendingCount), trigger flush');
-      _syncToRabbitMQ();
+      debugPrint('[TelemetryController] Buffer penuh ($pendingCount), trigger flush');
+      _syncToApi();
     }
   }
 
-  // ─── Sync ke RabbitMQ ────────────────────────────────────────────────────────
+  // ─── Authenticated API upload ────────────────────────────────────────────────
 
-  Future<void> _syncToRabbitMQ() async {
+  Future<void> _syncToApi() async {
     if (_isSyncing) {
       debugPrint('[TelemetryController] 🔄 Sync sudah berjalan, skip');
       return;
@@ -154,93 +111,121 @@ class TelemetryController extends ChangeNotifier {
     if (pendingRecords.isEmpty) return;
 
     _isSyncing = true;
-    debugPrint('[TelemetryController] 🚀 Mulai sync ${pendingRecords.length} readings ke RabbitMQ...');
+    debugPrint('[TelemetryController] Mengirim ${pendingRecords.length} readings ke API...');
 
     try {
       final bleService = ref.read(bleServiceProvider);
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id') ?? '';
-      
-      final savedDeviceId = prefs.getString('device_id') ?? 'POLAR_H10';
+      final savedDeviceId = prefs.getString('device_id') ?? '';
       final deviceId = bleService.isConnected && bleService.deviceId.isNotEmpty
           ? bleService.deviceId
           : savedDeviceId;
 
-      if (userId.isEmpty) {
-        debugPrint('[TelemetryController] ❌ userId tidak ditemukan di SharedPreferences, skip sync');
-        _isSyncing = false;
+      if (bleService.isSimulated) {
+        debugPrint('[TelemetryController] Data simulasi tidak akan dikirim ke CAPAR.');
+        _markAsFailed(pendingRecords);
         return;
       }
-      debugPrint('[TelemetryController] userId=$userId | device=$deviceId');
-
-      final mqtt = ref.read(mqttServiceProvider);
-      debugPrint('[TelemetryController] MQTT.isConnected=${mqtt.isConnected}');
-
-      // Pastikan MQTT connect dengan userId yang benar
-      if (!mqtt.isConnected) {
-        debugPrint('[TelemetryController] ⚠ MQTT tidak connected, mencoba connect ke broker...');
-        final ok = await mqtt.connect(userId);
-        if (!ok) {
-          debugPrint('[TelemetryController] ❌ MQTT connect gagal, data ditandai failed');
-          _sendMobilePing(
-            userId: userId, deviceId: deviceId,
-            event: 'mqtt_failed', mqttConnected: false,
-            errorMessage: 'MQTT connect gagal ke broker',
-          );
-          _markAsFailed(pendingRecords);
-          _isSyncing = false;
-          notifyListeners();
-          return;
-        }
-        debugPrint('[TelemetryController] ✅ MQTT connect berhasil');
-        _sendMobilePing(
-          userId: userId, deviceId: deviceId,
-          event: 'mqtt_connected', mqttConnected: true,
-        );
+      if (deviceId.isEmpty || !await ApiService.hasAuthenticatedSession()) {
+        debugPrint('[TelemetryController] Device ID atau sesi login tidak tersedia.');
+        _markAsFailed(pendingRecords);
+        return;
       }
 
-      final readings = pendingRecords.map((r) => r.reading).toList();
-      debugPrint('[TelemetryController] 📤 publishSensorReadings: ${readings.length} readings...');
+      final validRecords = pendingRecords.where((record) {
+        final reading = record.reading;
+        return reading.sensorContact
+            && reading.hasRrInterval
+            && reading.hasAccelerationData
+            && reading.heartRate >= 20
+            && reading.heartRate <= 250
+            && reading.rrInterval >= 300
+            && reading.rrInterval <= 2000
+            && reading.accX >= -16
+            && reading.accX <= 16
+            && reading.accY >= -16
+            && reading.accY <= 16
+            && reading.accZ >= -16
+            && reading.accZ <= 16;
+      }).toList();
+      final invalidRecords = pendingRecords
+          .where((record) => !validRecords.contains(record))
+          .toList();
+      if (invalidRecords.isNotEmpty) {
+        _markAsFailed(invalidRecords);
+      }
+      if (validRecords.isEmpty) {
+        debugPrint('[TelemetryController] Tidak ada reading dengan kontak dan sensor lengkap.');
+        return;
+      }
 
-      final success = await mqtt.publishSensorReadings(
-        userId: userId,
-        deviceId: deviceId,
-        readings: readings,
-      );
-
-      if (success) {
-        // Hapus yang sudah terkirim dari queue
-        _queue.removeWhere((r) => pendingRecords.any((p) => p.id == r.id));
-        debugPrint('[TelemetryController] ✅ ${readings.length} readings terkirim ke RMQ. Sisa queue: ${_queue.length}');
-        // Ping VPS: publish berhasil
-        _sendMobilePing(
-          userId: userId, deviceId: deviceId,
-          event: 'publish_success',
-          readingsCount: readings.length,
-          mqttConnected: true,
-        );
-      } else {
-        _markAsFailed(pendingRecords);
-        debugPrint('[TelemetryController] ❌ publishSensorReadings gagal, ${pendingRecords.length} records ditandai failed');
-        // Ping VPS: publish gagal
-        _sendMobilePing(
-          userId: userId, deviceId: deviceId,
-          event: 'publish_failed',
-          readingsCount: readings.length,
-          mqttConnected: true,
-          errorMessage: 'publishSensorReadings returned false',
-        );
+      final byActivity = <String, List<PendingDataRecord>>{};
+      for (final record in validRecords) {
+        final activity = _mapActivity(record.reading.motionState);
+        byActivity.putIfAbsent(activity, () => []).add(record);
+      }
+      for (final entry in byActivity.entries) {
+        for (var offset = 0; offset < entry.value.length; offset += 100) {
+          final batch = entry.value.skip(offset).take(100).toList();
+          final readings = batch.map((record) {
+            final reading = record.reading;
+            return <String, dynamic>{
+              'recorded_at': reading.timestamp.toUtc().toIso8601String(),
+              'heart_rate_bpm': reading.heartRate,
+              'rr_interval_ms': reading.rrInterval,
+              'acceleration_g': [reading.accX, reading.accY, reading.accZ],
+              'sensor_contact': reading.sensorContact,
+              'signal_confidence': 1.0,
+            };
+          }).toList();
+          final success = await ApiService.sendSensorData(
+            deviceId: deviceId,
+            activity: entry.key,
+            readings: readings,
+          );
+          if (success) {
+            _queue.removeWhere((record) => batch.contains(record));
+            debugPrint(
+              '[TelemetryController] ${readings.length} readings diterima API.',
+            );
+          } else {
+            _markAsFailed(batch);
+            debugPrint(
+              '[TelemetryController] API menolak batch; reading ditandai gagal.',
+            );
+          }
+        }
       }
     } catch (e, stackTrace) {
-      debugPrint('[TelemetryController] ❌ Exception: $e');
+      debugPrint('[TelemetryController] API upload exception: $e');
       debugPrint('[TelemetryController] StackTrace: $stackTrace');
       _markAsFailed(
-        _queue.where((r) => r.status == 'pending').toList(),
+        _queue.where((record) => record.status == 'pending').toList(),
       );
     } finally {
       _isSyncing = false;
       notifyListeners();
     }
+  }
+
+  String _mapActivity(String value) {
+    final activity = value.toLowerCase();
+    if (activity.contains('tidur')) return 'sleep';
+    if (activity.contains('lari')) return 'running';
+    if (activity.contains('jalan')) return 'walking';
+    if (activity.contains('olahraga') ||
+        activity.contains('senam') ||
+        activity.contains('yoga') ||
+        activity.contains('sepeda') ||
+        activity.contains('renang')) {
+      return 'exercise';
+    }
+    if (activity.contains('berdiri')) return 'standing';
+    if (activity.contains('duduk')) return 'sitting';
+    if (activity.contains('istirahat') || activity.contains('berbaring')) {
+      return 'rest';
+    }
+    return 'other';
   }
 
   void _markAsFailed(List<PendingDataRecord> records) {
@@ -254,7 +239,7 @@ class TelemetryController extends ChangeNotifier {
 
   /// Dipanggil dari UI untuk paksa flush segera
   Future<void> forceFlush() async {
-    await _syncToRabbitMQ();
+    await _syncToApi();
   }
 
   /// Retry semua yang failed
@@ -265,7 +250,7 @@ class TelemetryController extends ChangeNotifier {
       }
     }
     notifyListeners();
-    _syncToRabbitMQ();
+    _syncToApi();
   }
 
   @override

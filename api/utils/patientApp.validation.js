@@ -413,6 +413,139 @@ export function validatePatientImpactSummaryQuery(query) {
   return { from, to };
 }
 
+const scenarioActivityValues = new Set([
+  'rest',
+  'sitting',
+  'standing',
+  'sleep',
+  'walking',
+  'running',
+  'exercise',
+  'work',
+  'other',
+  'unsure',
+]);
+
+export function validateScenarioId(scenarioId) {
+  if (!['a', 'b', 'c'].includes(scenarioId)) {
+    throw errorHandler(404, 'Skenario tidak ditemukan.');
+  }
+  return scenarioId;
+}
+
+export function validateScenarioSession(body) {
+  requireObject(body, 'Sesi skenario');
+  rejectUnknownFields(body, new Set(['consent_given']), 'Field sesi skenario');
+  if (body.consent_given !== true) {
+    throw errorHandler(400, 'Persetujuan peserta wajib diberikan sebelum sesi dimulai.');
+  }
+  return { consent_given: true };
+}
+
+export function validateScenarioEvent(body) {
+  requireObject(body, 'Event skenario');
+  rejectUnknownFields(
+    body,
+    new Set([
+      'idempotency_key',
+      'event_time',
+      'activity',
+      'confidence',
+      'affected_interval',
+    ]),
+    'Field event skenario'
+  );
+  const idempotencyKey = optionalString(
+    body.idempotency_key,
+    'idempotency_key',
+    128
+  );
+  if (!/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
+    throw errorHandler(400, 'idempotency_key harus 8-128 karakter yang valid.');
+  }
+  if (!scenarioActivityValues.has(body.activity)) {
+    throw errorHandler(400, 'activity skenario tidak valid.');
+  }
+  if (!['certain', 'unsure'].includes(body.confidence)) {
+    throw errorHandler(400, 'confidence harus certain atau unsure.');
+  }
+  if (body.activity === 'unsure' && body.confidence !== 'unsure') {
+    throw errorHandler(400, 'Aktivitas unsure harus memiliki confidence unsure.');
+  }
+  requireObject(body.affected_interval, 'affected_interval');
+  rejectUnknownFields(
+    body.affected_interval,
+    new Set(['start', 'end']),
+    'Field affected_interval'
+  );
+  const eventTime = parseDate(body.event_time, 'event_time');
+  const start = parseDate(body.affected_interval.start, 'affected_interval.start');
+  const end = parseDate(body.affected_interval.end, 'affected_interval.end');
+  const now = Date.now();
+  if (start > end) {
+    throw errorHandler(400, 'affected_interval.start harus sebelum atau sama dengan end.');
+  }
+  if (end.getTime() - start.getTime() > 12 * 60 * 60 * 1000) {
+    throw errorHandler(400, 'Interval terdampak maksimal 12 jam.');
+  }
+  if (eventTime.getTime() > now + 5 * 60 * 1000) {
+    throw errorHandler(400, 'event_time tidak boleh berada di masa depan.');
+  }
+  if (eventTime < start || eventTime > end) {
+    throw errorHandler(400, 'event_time harus berada di dalam affected_interval.');
+  }
+  return {
+    idempotency_key: idempotencyKey,
+    event_time: eventTime,
+    activity: body.activity,
+    confidence: body.confidence,
+    affected_interval: { start, end },
+  };
+}
+
+export function validateScenarioQuestionnaire(body) {
+  requireObject(body, 'Kuesioner skenario');
+  rejectUnknownFields(body, new Set(['instrument', 'responses']), 'Field kuesioner');
+
+  if (!['SUS', 'NASA_TLX'].includes(body.instrument)) {
+    throw errorHandler(400, 'instrument harus SUS atau NASA_TLX.');
+  }
+
+  const responses = body.responses;
+  if (body.instrument === 'SUS') {
+    if (!Array.isArray(responses) || responses.length !== 10) {
+      throw errorHandler(400, 'Kuesioner SUS harus memiliki tepat 10 jawaban.');
+    }
+    if (responses.some((answer) => !Number.isInteger(answer) || answer < 1 || answer > 5)) {
+      throw errorHandler(400, 'Setiap jawaban SUS harus berupa bilangan bulat 1-5.');
+    }
+    return { instrument: body.instrument, responses: [...responses] };
+  }
+
+  const dimensions = [
+    'mental_demand',
+    'physical_demand',
+    'temporal_demand',
+    'performance',
+    'effort',
+    'frustration',
+  ];
+  requireObject(responses, 'Jawaban NASA-TLX');
+  rejectUnknownFields(responses, new Set(dimensions), 'Dimensi NASA-TLX');
+  if (Object.keys(responses).length !== dimensions.length) {
+    throw errorHandler(400, 'Kuesioner NASA-TLX harus menjawab semua 6 dimensi.');
+  }
+  const normalizedResponses = {};
+  for (const dimension of dimensions) {
+    const value = responses[dimension];
+    if (!Number.isInteger(value) || value < 0 || value > 100 || value % 5 !== 0) {
+      throw errorHandler(400, `${dimension} harus berupa bilangan 0-100 dengan kelipatan 5.`);
+    }
+    normalizedResponses[dimension] = value;
+  }
+  return { instrument: body.instrument, responses: normalizedResponses };
+}
+
 export function validateWearableSample(body) {
   requireObject(body, 'Data wearable');
   const allowed = new Set([

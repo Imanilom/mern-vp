@@ -7,6 +7,10 @@ import {
   validatePatientAction,
   validatePatientActionStatus,
   validatePatientImpactSummaryQuery,
+  validateScenarioEvent,
+  validateScenarioId,
+  validateScenarioQuestionnaire,
+  validateScenarioSession,
   validateProfileUpdate,
   validateRegistration,
   validateWearableStream,
@@ -80,6 +84,117 @@ test('impact summary query defaults to 30 days and caps the requested range', ()
   );
   assert.throws(
     () => validatePatientImpactSummaryQuery({ limit: 5 }),
+    { statusCode: 400 }
+  );
+});
+
+test('scenario consent, IDs, and participant feedback are strictly validated', () => {
+  assert.equal(validateScenarioId('c'), 'c');
+  assert.throws(() => validateScenarioId('d'), { statusCode: 404 });
+  assert.deepEqual(validateScenarioSession({ consent_given: true }), {
+    consent_given: true,
+  });
+  assert.throws(
+    () => validateScenarioSession({ consent_given: false }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateScenarioSession({ consent_given: true, account_id: 'other' }),
+    { statusCode: 400 }
+  );
+
+  const eventTime = new Date();
+  const event = validateScenarioEvent({
+    idempotency_key: 'scenario-event-123',
+    event_time: eventTime.toISOString(),
+    activity: 'walking',
+    confidence: 'certain',
+    affected_interval: {
+      start: new Date(eventTime.getTime() - 30_000).toISOString(),
+      end: new Date(eventTime.getTime() + 30_000).toISOString(),
+    },
+  });
+  assert.equal(event.activity, 'walking');
+  assert.equal(event.confidence, 'certain');
+  assert.throws(
+    () => validateScenarioEvent({
+      idempotency_key: 'scenario-event-123',
+      event_time: eventTime.toISOString(),
+      activity: 'unsure',
+      confidence: 'certain',
+      affected_interval: {
+        start: new Date(eventTime.getTime() - 30_000).toISOString(),
+        end: new Date(eventTime.getTime() + 30_000).toISOString(),
+      },
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateScenarioEvent({
+      idempotency_key: 'short',
+      event_time: eventTime.toISOString(),
+      activity: 'walking',
+      confidence: 'certain',
+      affected_interval: {
+        start: eventTime.toISOString(),
+        end: eventTime.toISOString(),
+      },
+    }),
+    { statusCode: 400 }
+  );
+});
+
+test('scenario SUS and NASA-TLX answers require complete bounded responses', () => {
+  const susResponses = [4, 2, 4, 2, 5, 2, 4, 1, 4, 2];
+  assert.deepEqual(
+    validateScenarioQuestionnaire({
+      instrument: 'SUS',
+      responses: susResponses,
+    }),
+    { instrument: 'SUS', responses: susResponses }
+  );
+  assert.throws(
+    () => validateScenarioQuestionnaire({
+      instrument: 'SUS',
+      responses: [1, 2],
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateScenarioQuestionnaire({
+      instrument: 'SUS',
+      responses: [1, 2, 3, 4, 5, 1, 2, 3, 4, 6],
+    }),
+    { statusCode: 400 }
+  );
+
+  const tlxResponses = {
+    mental_demand: 45,
+    physical_demand: 10,
+    temporal_demand: 30,
+    performance: 25,
+    effort: 40,
+    frustration: 20,
+  };
+  assert.deepEqual(
+    validateScenarioQuestionnaire({
+      instrument: 'NASA_TLX',
+      responses: tlxResponses,
+    }),
+    { instrument: 'NASA_TLX', responses: tlxResponses }
+  );
+  assert.throws(
+    () => validateScenarioQuestionnaire({
+      instrument: 'NASA_TLX',
+      responses: { ...tlxResponses, frustration: 21 },
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateScenarioQuestionnaire({
+      instrument: 'NASA_TLX',
+      responses: { ...tlxResponses, extra: 10 },
+    }),
     { statusCode: 400 }
   );
 });

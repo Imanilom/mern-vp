@@ -161,6 +161,81 @@ not claim clinical effectiveness, population analytics, false-alarm rates, or
 clinician response metrics. Historical episode recovery remains available
 through `GET /api/patient-app/capar-insights`.
 
+## HCI scenarios A/B/C
+
+- `GET /api/patient-app/scenarios`
+- `POST /api/patient-app/scenarios/:scenarioId/sessions`
+- `GET /api/patient-app/scenario-sessions`
+- `GET /api/patient-app/scenario-sessions/:sessionId`
+- `POST /api/patient-app/scenario-sessions/:sessionId/events`
+- `GET /api/patient-app/scenario-sessions/:sessionId/events`
+- `GET /api/patient-app/scenario-sessions/:sessionId/questionnaires`
+- `POST /api/patient-app/scenario-sessions/:sessionId/questionnaires`
+- `PATCH /api/patient-app/scenario-sessions/:sessionId/complete`
+
+Every endpoint is authenticated and scoped to the verified account. Starting a
+session requires `{"consent_given": true}`. Scenario A is one-way and rejects
+participant corrections. Scenario B stores feedback as an append-only event but
+retains its initial interpretation. Scenario C may add a new immutable
+interpretation version only when the corrected CAPAR context has sufficient
+quality-gated statistical evidence; otherwise the feedback is retained with a
+reason code and no new version is created.
+
+An event requires `idempotency_key`, `event_time`, `activity` (including
+`unsure`), `confidence`, and an `affected_interval`. The server records
+`report_time`, participant pseudonym, actor/source, old/new context, affected
+interval, previous/new interpretation version, evidence quality, processing
+state, and reason code. Reusing an idempotency key with different feedback is
+rejected. Session/event reads are owner-scoped; account IDs are never accepted
+from the client.
+
+Scenario baseline eligibility is separately configured in
+`api/config/scenarioBaselinePolicy.js`: at least one distinct formation day and
+600 seconds of quality-valid, same-context CAPAR windows. This experiment gate
+does not modify or weaken CAPAR production baseline maturity. Statistical
+scoring also requires the existing CAPAR Mahalanobis sample/feature gates; a
+10-minute baseline alone may therefore remain `UNRESOLVED`. The evaluator uses
+only analyzed CAPAR segments that pass patient analytics quality checks and
+stable-baseline checks. No observation, mismatched context, or unavailable
+model is reported as `UNRESOLVED`, never as normal. Export from VidyaMedic
+supports JSON/CSV text copied to the clipboard with account identifiers
+removed. Applying an adaptive interpretation and writing its event use a MongoDB
+transaction. On a standalone MongoDB server where transactions are unavailable,
+the event is retained for review and no new interpretation version is applied.
+
+Scenario C participants can submit one SUS and one NASA-TLX questionnaire per
+session, including after completing the session. SUS accepts ten integer
+responses from 1-5 and the server calculates its standard 0-100 score. NASA-TLX
+accepts six integer dimensions from 0-100 in increments of five; the stored
+score is the unweighted mean of those dimensions, not the weighted NASA-TLX
+score. Repeating an identical submission is idempotent; a different second
+submission for the same instrument/session is rejected so submitted research
+responses remain immutable. Questionnaire reads and writes are scoped to the
+authenticated session owner; other scenarios cannot submit these instruments.
+
+Submission examples:
+
+```json
+{
+  "instrument": "SUS",
+  "responses": [4, 2, 4, 2, 5, 2, 4, 1, 4, 2]
+}
+```
+
+```json
+{
+  "instrument": "NASA_TLX",
+  "responses": {
+    "mental_demand": 45,
+    "physical_demand": 10,
+    "temporal_demand": 30,
+    "performance": 25,
+    "effort": 40,
+    "frustration": 20
+  }
+}
+```
+
 ## Wearable bridge
 
 - `POST /api/patient-app/wearable/samples`
@@ -186,8 +261,9 @@ DFA are not accepted as derived truth: the backend derives them from RR/IBI and
 tri-axial acceleration. DFA alpha1 is only available with at least 64 RR
 intervals. The provider and timestamp are retained as provenance. Vidyamedic
 pairs with a Polar H10 over BLE and submits real HR/RR and accelerometer
-windows through these authenticated endpoints. No simulator readings or
-client-side broker credentials are used.
+windows through these authenticated endpoints. CAPAR Mobile uses the same
+authenticated streaming endpoint; broker credentials remain server-side. No
+simulator readings or client-side broker credentials are used.
 
 While streaming, VidyaMedic uses a local, cadence-based accelerometer heuristic
 to suggest `Berjalan` or `Berlari` and asks the patient to confirm or correct

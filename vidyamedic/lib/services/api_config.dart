@@ -101,6 +101,9 @@ class ApiConfig {
       '$baseUrl/patient-app/capar-insights';
   static String get impactSummaryEndpoint =>
       '$baseUrl/patient-app/impact-summary';
+  static String get scenariosEndpoint => '$baseUrl/patient-app/scenarios';
+  static String get scenarioSessionsEndpoint =>
+      '$baseUrl/patient-app/scenario-sessions';
   static String get linkCaparAccountEndpoint =>
       '$baseUrl/patient-app/link-capar-account';
   static String get checkInsEndpoint => '$baseUrl/patient-app/check-ins';

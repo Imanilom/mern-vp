@@ -6,8 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   static const String baseUrl = 'https://healthtrajectory.cloud/api';
 
-  /// Mengambil userId yang tersimpan dari SharedPreferences.
-  /// Jika belum set, default fallback ke User Dokter (675ba1e92b8428e4dd641cd0).
+  /// Mengambil ID lokal untuk kompatibilitas endpoint lama.
   static Future<String> _getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     final uid = prefs.getString('user_id') ?? '';
@@ -25,6 +24,12 @@ class ApiService {
       headers['Authorization'] = 'Bearer $token';
     }
     return headers;
+  }
+
+  static Future<bool> hasAuthenticatedSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    return token != null && token.isNotEmpty;
   }
 
   static Future<bool> login(String email, String password) async {
@@ -171,10 +176,10 @@ class ApiService {
     return null;
   }
 
-  // Send sensor data to backend (RabbitMQ Transport)
+  // Upload sensor data through the authenticated patient-app API.
   static Future<bool> sendSensorData({
-    required String userId,
     required String deviceId,
+    required String activity,
     required List<Map<String, dynamic>> readings,
   }) async {
     if (readings.isEmpty) return false;
@@ -182,24 +187,27 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final payload = {
-        'userId': userId,
-        'deviceId': deviceId,
-        'source': 'polar_ble',
+        'provider': 'polar_h10',
+        'device_id': deviceId,
+        'activity': activity,
         'readings': readings,
       };
 
       final response = await http
           .post(
-            Uri.parse('$baseUrl/log/transport'),
+            Uri.parse('$baseUrl/patient-app/wearable/stream'),
             headers: headers,
             body: json.encode(payload),
           )
           .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = json.decode(response.body);
         return data['success'] == true;
       }
+      debugPrint(
+        '[ApiService] Wearable stream rejected (${response.statusCode}): ${response.body}',
+      );
     } catch (e) {
       debugPrint('[ApiService] Send sensor data error: $e');
     }
@@ -683,4 +691,3 @@ class ApiService {
     return false;
   }
 }
-

@@ -43,6 +43,7 @@ class BleService extends ChangeNotifier {
   double _lastAccY = 0.0;
   double _lastAccZ = 0.0;
   double _lastEcg = 0.0;
+  bool _hasAccelerationData = false;
 
   // Auto-Reconnect State
   bool isReconnecting = false;
@@ -362,10 +363,15 @@ class BleService extends ChangeNotifier {
   void _onHrData(PolarHrData data) {
     for (final sample in data.samples) {
       final heartRate = sample.hr;
+      final sensorContact = sample.contactStatusSupported
+          ? sample.contactStatus
+          : sample.rrsMs.isNotEmpty;
+      if (!sensorContact) continue;
 
       // Ambil semua RR interval dari sample ini
-      int lastRr = 800;
+      int lastRr = 0;
       for (final rr in sample.rrsMs) {
+        if (rr < 300 || rr > 2000) continue;
         lastRr = rr;
         _rrList.add(rr);
         if (_rrList.length > 30) _rrList.removeAt(0);
@@ -389,6 +395,9 @@ class BleService extends ChangeNotifier {
         accZ: double.parse(_lastAccZ.toStringAsFixed(4)),
         ecg: double.parse(_lastEcg.toStringAsFixed(4)),
         stepCount: 0,
+        sensorContact: sensorContact,
+        hasRrInterval: lastRr > 0,
+        hasAccelerationData: _hasAccelerationData,
       );
 
       _readingController.add(reading);
@@ -402,6 +411,7 @@ class BleService extends ChangeNotifier {
     _lastAccX = s.x / 1000.0;
     _lastAccY = s.y / 1000.0;
     _lastAccZ = s.z / 1000.0;
+    _hasAccelerationData = true;
   }
 
   void _onEcgData(PolarEcgData data) {
@@ -494,6 +504,9 @@ class BleService extends ChangeNotifier {
         accZ: double.parse(_lastAccZ.toStringAsFixed(4)),
         ecg: double.parse(_lastEcg.toStringAsFixed(4)),
         stepCount: tickCount * 2,
+        sensorContact: true,
+        hasRrInterval: true,
+        hasAccelerationData: true,
       );
 
       _readingController.add(reading);
@@ -522,6 +535,7 @@ class BleService extends ChangeNotifier {
     _lastAccY = 0.0;
     _lastAccZ = 0.0;
     _lastEcg = 0.0;
+    _hasAccelerationData = false;
   }
 
   Future<void> disconnect() async {

@@ -58,7 +58,8 @@ class ApiService {
     }
   }
 
-  static Future<void> saveSession(String token, Map<String, dynamic> user) async {
+  static Future<void> saveSession(
+      String token, Map<String, dynamic> user) async {
     _token = token;
     _currentUser = user;
     final prefs = await SharedPreferences.getInstance();
@@ -85,15 +86,18 @@ class ApiService {
     return headers;
   }
 
-  static ApiResponse<T> _handleResponse<T>(http.Response response, T Function(dynamic) parser) {
+  static ApiResponse<T> _handleResponse<T>(
+      http.Response response, T Function(dynamic) parser) {
     dynamic body;
     try {
       body = jsonDecode(utf8.decode(response.bodyBytes));
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (body is Map<String, dynamic> && body.containsKey('data')) {
-          return ApiResponse.success(parser(body['data']), statusCode: response.statusCode);
+          return ApiResponse.success(parser(body['data']),
+              statusCode: response.statusCode);
         }
-        return ApiResponse.success(parser(body), statusCode: response.statusCode);
+        return ApiResponse.success(parser(body),
+            statusCode: response.statusCode);
       } else {
         String msg = 'Terjadi kesalahan (${response.statusCode})';
         if (body is Map<String, dynamic>) {
@@ -128,16 +132,20 @@ class ApiService {
           'phone_number': phoneNumber.trim(),
       };
 
-      final res = await http.post(
-        url,
-        headers: _headers(withAuth: false),
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 15));
+      final res = await http
+          .post(
+            url,
+            headers: _headers(withAuth: false),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
 
-      final parsed = _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final parsed = _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
       if (parsed.success && parsed.data != null) {
         final token = parsed.data!['token'] as String?;
-        final account = parsed.data!['account'] as Map<String, dynamic>? ?? parsed.data!;
+        final account =
+            parsed.data!['account'] as Map<String, dynamic>? ?? parsed.data!;
         if (token != null) {
           await saveSession(token, account);
         }
@@ -160,13 +168,16 @@ class ApiService {
         'password': password,
       };
 
-      final res = await http.post(
-        url,
-        headers: _headers(withAuth: false),
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 15));
+      final res = await http
+          .post(
+            url,
+            headers: _headers(withAuth: false),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
 
-      final parsed = _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final parsed = _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
       if (parsed.success && parsed.data != null) {
         final token = parsed.data!['token'] as String?;
         if (token != null) {
@@ -190,23 +201,30 @@ class ApiService {
   static Future<ApiResponse<Map<String, dynamic>>> getProfile() async {
     try {
       final url = Uri.parse(ApiConfig.profileEndpoint);
-      final res = await http.get(url, headers: _headers()).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .get(url, headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
       return ApiResponse.error('Gagal mengambil profil: $e', statusCode: 0);
     }
   }
 
   /// PATCH /api/patient-app/profile
-  static Future<ApiResponse<Map<String, dynamic>>> updateProfile(Map<String, dynamic> data) async {
+  static Future<ApiResponse<Map<String, dynamic>>> updateProfile(
+      Map<String, dynamic> data) async {
     try {
       final url = Uri.parse(ApiConfig.profileEndpoint);
-      final res = await http.patch(
-        url,
-        headers: _headers(),
-        body: jsonEncode(data),
-      ).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .patch(
+            url,
+            headers: _headers(),
+            body: jsonEncode(data),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
       return ApiResponse.error('Gagal memperbarui profil: $e', statusCode: 0);
     }
@@ -216,8 +234,11 @@ class ApiService {
   static Future<ApiResponse<Map<String, dynamic>>> getOverview() async {
     try {
       final url = Uri.parse(ApiConfig.overviewEndpoint);
-      final res = await http.get(url, headers: _headers()).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .get(url, headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
       return ApiResponse.error('Gagal mengambil overview: $e', statusCode: 0);
     }
@@ -226,15 +247,19 @@ class ApiService {
   // ---------------- DAILY CHECK-INS ----------------
 
   /// POST /api/patient-app/check-ins
-  static Future<ApiResponse<Map<String, dynamic>>> createCheckIn(Map<String, dynamic> payload) async {
+  static Future<ApiResponse<Map<String, dynamic>>> createCheckIn(
+      Map<String, dynamic> payload) async {
     try {
       final url = Uri.parse(ApiConfig.checkInsEndpoint);
-      final res = await http.post(
-        url,
-        headers: _headers(),
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .post(
+            url,
+            headers: _headers(),
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
       return ApiResponse.error('Gagal mengirim check-in: $e', statusCode: 0);
     }
@@ -254,59 +279,81 @@ class ApiService {
         if (to != null) 'to': to,
         if (before != null) 'before': before,
       };
-      final uri = Uri.parse(ApiConfig.checkInsEndpoint).replace(queryParameters: queryParams);
-      final res = await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 15));
+      final uri = Uri.parse(ApiConfig.checkInsEndpoint)
+          .replace(queryParameters: queryParams);
+      final res = await http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 15));
       return _handleResponse<List<dynamic>>(res, (d) => d as List<dynamic>);
     } catch (e) {
-      return ApiResponse.error('Gagal mengambil riwayat check-in: $e', statusCode: 0);
+      return ApiResponse.error('Gagal mengambil riwayat check-in: $e',
+          statusCode: 0);
     }
   }
 
   /// GET /api/patient-app/check-ins/:checkInId
-  static Future<ApiResponse<Map<String, dynamic>>> getCheckInById(String checkInId) async {
+  static Future<ApiResponse<Map<String, dynamic>>> getCheckInById(
+      String checkInId) async {
     try {
       final url = Uri.parse('${ApiConfig.checkInsEndpoint}/$checkInId');
-      final res = await http.get(url, headers: _headers()).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .get(url, headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
       return ApiResponse.error('Gagal mengambil check-in: $e', statusCode: 0);
     }
   }
 
   /// DELETE /api/patient-app/check-ins/:checkInId
-  static Future<ApiResponse<Map<String, dynamic>>> deleteCheckIn(String checkInId) async {
+  static Future<ApiResponse<Map<String, dynamic>>> deleteCheckIn(
+      String checkInId) async {
     try {
       final url = Uri.parse('${ApiConfig.checkInsEndpoint}/$checkInId');
-      final res = await http.delete(url, headers: _headers()).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .delete(url, headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
       return ApiResponse.error('Gagal menghapus check-in: $e', statusCode: 0);
     }
   }
 
   /// GET /api/patient-app/daily-summary?date=YYYY-MM-DD
-  static Future<ApiResponse<Map<String, dynamic>>> getDailySummary(String yyyyMmDd) async {
+  static Future<ApiResponse<Map<String, dynamic>>> getDailySummary(
+      String yyyyMmDd) async {
     try {
-      final uri = Uri.parse(ApiConfig.dailySummaryEndpoint).replace(queryParameters: {'date': yyyyMmDd});
-      final res = await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final uri = Uri.parse(ApiConfig.dailySummaryEndpoint)
+          .replace(queryParameters: {'date': yyyyMmDd});
+      final res = await http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
-      return ApiResponse.error('Gagal mengambil ringkasan harian: $e', statusCode: 0);
+      return ApiResponse.error('Gagal mengambil ringkasan harian: $e',
+          statusCode: 0);
     }
   }
 
   // ---------------- EVENT MARKERS ----------------
 
   /// POST /api/patient-app/events
-  static Future<ApiResponse<Map<String, dynamic>>> createEvent(Map<String, dynamic> payload) async {
+  static Future<ApiResponse<Map<String, dynamic>>> createEvent(
+      Map<String, dynamic> payload) async {
     try {
       final url = Uri.parse(ApiConfig.eventsEndpoint);
-      final res = await http.post(
-        url,
-        headers: _headers(),
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .post(
+            url,
+            headers: _headers(),
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
       return ApiResponse.error('Gagal membuat event: $e', statusCode: 0);
     }
@@ -326,11 +373,15 @@ class ApiService {
         if (to != null) 'to': to,
         if (before != null) 'before': before,
       };
-      final uri = Uri.parse(ApiConfig.eventsEndpoint).replace(queryParameters: queryParams);
-      final res = await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 15));
+      final uri = Uri.parse(ApiConfig.eventsEndpoint)
+          .replace(queryParameters: queryParams);
+      final res = await http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 15));
       return _handleResponse<List<dynamic>>(res, (d) => d as List<dynamic>);
     } catch (e) {
-      return ApiResponse.error('Gagal mengambil riwayat event: $e', statusCode: 0);
+      return ApiResponse.error('Gagal mengambil riwayat event: $e',
+          statusCode: 0);
     }
   }
 
@@ -369,8 +420,9 @@ class ApiService {
           if (before != null) 'before': before,
         },
       );
-      final res =
-          await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 15));
+      final res = await http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 15));
       return _handleResponse<List<dynamic>>(
           res, (data) => data as List<dynamic>);
     } catch (e) {
@@ -412,8 +464,9 @@ class ApiService {
           if (to != null) 'to': to,
         },
       );
-      final res =
-          await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 15));
+      final res = await http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 15));
       return _handleResponse<Map<String, dynamic>>(
           res, (data) => data as Map<String, dynamic>);
     } catch (e) {
@@ -422,20 +475,216 @@ class ApiService {
     }
   }
 
+  /// GET /api/patient-app/scenarios
+  static Future<ApiResponse<List<dynamic>>> getPatientScenarios() async {
+    try {
+      final res = await http
+          .get(Uri.parse(ApiConfig.scenariosEndpoint), headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<List<dynamic>>(
+        res,
+        (data) => data as List<dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil skenario HCI: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// POST /api/patient-app/scenarios/:scenarioId/sessions
+  static Future<ApiResponse<Map<String, dynamic>>> startPatientScenario({
+    required String scenarioId,
+  }) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse('${ApiConfig.scenariosEndpoint}/$scenarioId/sessions'),
+            headers: _headers(),
+            body: jsonEncode({'consent_given': true}),
+          )
+          .timeout(const Duration(seconds: 20));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal memulai sesi skenario: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// GET /api/patient-app/scenario-sessions
+  static Future<ApiResponse<List<dynamic>>> getPatientScenarioSessions() async {
+    try {
+      final res = await http
+          .get(Uri.parse(ApiConfig.scenarioSessionsEndpoint),
+              headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<List<dynamic>>(
+        res,
+        (data) => data as List<dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil riwayat skenario: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// GET /api/patient-app/scenario-sessions/:sessionId
+  static Future<ApiResponse<Map<String, dynamic>>> getPatientScenarioSession(
+      String sessionId) async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse('${ApiConfig.scenarioSessionsEndpoint}/$sessionId'),
+            headers: _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil sesi skenario: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// POST /api/patient-app/scenario-sessions/:sessionId/events
+  static Future<ApiResponse<Map<String, dynamic>>> submitPatientScenarioEvent({
+    required String sessionId,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(
+                '${ApiConfig.scenarioSessionsEndpoint}/$sessionId/events'),
+            headers: _headers(),
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 20));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal mencatat feedback skenario: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// GET /api/patient-app/scenario-sessions/:sessionId/events
+  static Future<ApiResponse<List<dynamic>>> getPatientScenarioEvents(
+      String sessionId) async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse(
+                '${ApiConfig.scenarioSessionsEndpoint}/$sessionId/events'),
+            headers: _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<List<dynamic>>(
+        res,
+        (data) => data as List<dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil audit trail skenario: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// GET /api/patient-app/scenario-sessions/:sessionId/questionnaires
+  static Future<ApiResponse<List<dynamic>>> getPatientScenarioQuestionnaires(
+      String sessionId) async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse(
+                '${ApiConfig.scenarioSessionsEndpoint}/$sessionId/questionnaires'),
+            headers: _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<List<dynamic>>(
+        res,
+        (data) => data as List<dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil kuesioner skenario: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// POST /api/patient-app/scenario-sessions/:sessionId/questionnaires
+  static Future<ApiResponse<Map<String, dynamic>>>
+      submitPatientScenarioQuestionnaire({
+    required String sessionId,
+    required String instrument,
+    required Object responses,
+  }) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(
+                '${ApiConfig.scenarioSessionsEndpoint}/$sessionId/questionnaires'),
+            headers: _headers(),
+            body: jsonEncode({
+              'instrument': instrument,
+              'responses': responses,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal menyimpan kuesioner skenario: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// PATCH /api/patient-app/scenario-sessions/:sessionId/complete
+  static Future<ApiResponse<Map<String, dynamic>>> completePatientScenario(
+      String sessionId) async {
+    try {
+      final res = await http
+          .patch(
+            Uri.parse(
+                '${ApiConfig.scenarioSessionsEndpoint}/$sessionId/complete'),
+            headers: _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal menyelesaikan sesi skenario: $e',
+          statusCode: 0);
+    }
+  }
+
   // ---------------- WEARABLE BRIDGE ----------------
 
   /// POST /api/patient-app/wearable/samples
-  static Future<ApiResponse<Map<String, dynamic>>> createWearableSample(Map<String, dynamic> payload) async {
+  static Future<ApiResponse<Map<String, dynamic>>> createWearableSample(
+      Map<String, dynamic> payload) async {
     try {
       final url = Uri.parse(ApiConfig.wearableSamplesEndpoint);
-      final res = await http.post(
-        url,
-        headers: _headers(),
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .post(
+            url,
+            headers: _headers(),
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
-      return ApiResponse.error('Gagal mengirim sampel wearable: $e', statusCode: 0);
+      return ApiResponse.error('Gagal mengirim sampel wearable: $e',
+          statusCode: 0);
     }
   }
 
@@ -448,9 +697,11 @@ class ApiService {
       final res = await http
           .post(url, headers: _headers(), body: jsonEncode(payload))
           .timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
-      return ApiResponse.error('Gagal meneruskan streaming wearable: $e', statusCode: 0);
+      return ApiResponse.error('Gagal meneruskan streaming wearable: $e',
+          statusCode: 0);
     }
   }
 
@@ -468,11 +719,15 @@ class ApiService {
         if (to != null) 'to': to,
         if (before != null) 'before': before,
       };
-      final uri = Uri.parse(ApiConfig.wearableSamplesEndpoint).replace(queryParameters: queryParams);
-      final res = await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 15));
+      final uri = Uri.parse(ApiConfig.wearableSamplesEndpoint)
+          .replace(queryParameters: queryParams);
+      final res = await http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 15));
       return _handleResponse<List<dynamic>>(res, (d) => d as List<dynamic>);
     } catch (e) {
-      return ApiResponse.error('Gagal mengambil sampel wearable: $e', statusCode: 0);
+      return ApiResponse.error('Gagal mengambil sampel wearable: $e',
+          statusCode: 0);
     }
   }
 
@@ -503,15 +758,19 @@ class ApiService {
   // ---------------- CAPAR INSIGHTS & LINKING ----------------
 
   /// POST /api/patient-app/link-capar-account
-  static Future<ApiResponse<Map<String, dynamic>>> linkCaparAccount({required String patientPassword}) async {
+  static Future<ApiResponse<Map<String, dynamic>>> linkCaparAccount(
+      {required String patientPassword}) async {
     try {
       final url = Uri.parse(ApiConfig.linkCaparAccountEndpoint);
-      final res = await http.post(
-        url,
-        headers: _headers(),
-        body: jsonEncode({'patient_password': patientPassword}),
-      ).timeout(const Duration(seconds: 15));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .post(
+            url,
+            headers: _headers(),
+            body: jsonEncode({'patient_password': patientPassword}),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
       return ApiResponse.error('Gagal menautkan akun CAPAR: $e', statusCode: 0);
     }
@@ -521,10 +780,14 @@ class ApiService {
   static Future<ApiResponse<Map<String, dynamic>>> getCaparInsights() async {
     try {
       final url = Uri.parse(ApiConfig.caparInsightsEndpoint);
-      final res = await http.get(url, headers: _headers()).timeout(const Duration(seconds: 20));
-      return _handleResponse<Map<String, dynamic>>(res, (d) => d as Map<String, dynamic>);
+      final res = await http
+          .get(url, headers: _headers())
+          .timeout(const Duration(seconds: 20));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (d) => d as Map<String, dynamic>);
     } catch (e) {
-      return ApiResponse.error('Gagal mengambil analisis CAPAR: $e', statusCode: 0);
+      return ApiResponse.error('Gagal mengambil analisis CAPAR: $e',
+          statusCode: 0);
     }
   }
 }

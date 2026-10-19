@@ -1152,6 +1152,15 @@ class _PedagogyDashboard extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/scenarios'),
+                  icon: const Icon(Icons.science_outlined, size: 18),
+                  label: const Text('Skenario HCI A/B/C'),
+                ),
+              ),
 
               // 7. Scientific Evidence RAG / Wawasan Medis Pasien
               if (s.scientificCitations.isNotEmpty) ...[

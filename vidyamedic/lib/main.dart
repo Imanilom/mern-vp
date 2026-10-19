@@ -6,6 +6,7 @@ import 'theme/app_theme.dart';
 import 'providers/app_state.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/scenarios/scenario_lab_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,12 @@ class VidyaMedicApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: appState.isAuthenticated ? const HomeScreen() : const WelcomeScreen(),
+        routes: {
+          '/scenarios': (_) => const ScenarioLabScreen(),
+          '/scenarios/a': (_) => const ScenarioLabScreen(initialScenarioId: 'a'),
+          '/scenarios/b': (_) => const ScenarioLabScreen(initialScenarioId: 'b'),
+          '/scenarios/c': (_) => const ScenarioLabScreen(initialScenarioId: 'c'),
+        },
       ),
     );
   }

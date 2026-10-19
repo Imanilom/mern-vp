@@ -12,6 +12,9 @@ class SensorReading {
   final double accZ;
   final double ecg;
   final int stepCount;
+  final bool sensorContact;
+  final bool hasRrInterval;
+  final bool hasAccelerationData;
 
   SensorReading({
     required this.timestamp,
@@ -27,5 +30,8 @@ class SensorReading {
     this.accZ = 0.0,
     this.ecg = 0.0,
     this.stepCount = 0,
+    this.sensorContact = false,
+    this.hasRrInterval = false,
+    this.hasAccelerationData = false,
   });
 }

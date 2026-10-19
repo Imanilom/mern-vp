@@ -45,7 +45,16 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
 - **Dampak & Keselamatan**: Menampilkan outcome recovery historis dan jumlah pencatatan dari API, dengan batas data yang tersedia.
 - Status pelaksanaan klinisi, efektivitas tindakan, false alarm, serta analitik populasi tidak diklaim bila belum disediakan backend.
 
-### 7. 👤 Profil Medis & Kartu Darurat
+### 7. 🧪 Skenario HCI A/B/C
+- **A — Satu arah**: menampilkan interpretasi tanpa kanal koreksi.
+- **B — Dua arah nonadaptif**: feedback peserta tercatat, tetapi interpretasi awal dipertahankan.
+- **C — Dua arah adaptif**: membuat versi interpretasi baru hanya jika koreksi konteks dapat dievaluasi memakai bukti CAPAR berkualitas dan baseline statistik yang sesuai.
+- Persetujuan eksplisit, riwayat sesi, event idempotent, audit trail, serta ekspor JSON/CSV (salin ke clipboard) tersedia di aplikasi.
+- Skenario C menyediakan input kuesioner SUS (10 butir, skala 1-5) dan NASA-TLX (6 dimensi, skala 0-100); setiap hasil terikat ke sesi dan ikut tersedia dalam ekspor.
+- SUS dihitung dengan pembalikan butir standar; nilai NASA-TLX yang disimpan adalah rata-rata enam dimensi tanpa pembobotan, bukan skor NASA-TLX berbobot.
+- Baseline eksperimen memerlukan minimal satu hari dan 10 menit window valid berkualitas; kekurangan bukti menghasilkan `UNRESOLVED`, bukan label normal. Persyaratan ini tidak mengubah kematangan baseline CAPAR produksi.
+
+### 8. 👤 Profil Medis & Kartu Darurat
 - Data demografis, BMI status calculator, dan golongan darah.
 - Riwayat kondisi medis dan manajemen pengobatan aktif.
 - Kontak darurat keluarga / caregiver.

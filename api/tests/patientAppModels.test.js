@@ -5,6 +5,9 @@ import PatientAppEvent from '../models/patient_app_event.model.js';
 import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
+import PatientScenarioEvent from '../models/patient_scenario_event.model.js';
+import PatientScenarioQuestionnaire from '../models/patient_scenario_questionnaire.model.js';
+import PatientScenarioSession from '../models/patient_scenario_session.model.js';
 import Patient from '../models/patient.model.js';
 import User from '../models/user.model.js';
 
@@ -64,4 +67,48 @@ test('patient action schema stores scoped records and auditable lifecycle states
     ['CREATED', 'DELIVERED', 'ACKNOWLEDGED', 'COMPLETED', 'FAILED']
   );
   assert.ok(PatientAppAction.schema.path('status_history'));
+});
+
+test('scenario sessions retain versioned interpretations and explicit consent', () => {
+  assert.ok(PatientScenarioSession.schema.path('account_id'));
+  assert.ok(PatientScenarioSession.schema.path('participant_pseudonym'));
+  assert.ok(PatientScenarioSession.schema.path('consent.given'));
+  assert.ok(PatientScenarioSession.schema.path('current_interpretation_version'));
+  assert.ok(PatientScenarioSession.schema.path('interpretations'));
+  assert.deepEqual(
+    PatientScenarioSession.schema.path('scenario_id').enumValues,
+    ['a', 'b', 'c']
+  );
+});
+
+test('scenario events are scoped and deduplicated per session', () => {
+  assert.ok(PatientScenarioEvent.schema.path('account_id'));
+  assert.ok(PatientScenarioEvent.schema.path('session_id'));
+  assert.ok(PatientScenarioEvent.schema.path('idempotency_key'));
+  const idempotencyIndex = PatientScenarioEvent.schema.indexes().find(
+    ([keys, options]) => (
+      keys.session_id === 1
+      && keys.idempotency_key === 1
+      && options.unique === true
+    )
+  );
+  assert.ok(idempotencyIndex);
+});
+
+test('scenario questionnaires are scoped and unique per session and instrument', () => {
+  assert.ok(PatientScenarioQuestionnaire.schema.path('account_id'));
+  assert.ok(PatientScenarioQuestionnaire.schema.path('session_id'));
+  assert.ok(PatientScenarioQuestionnaire.schema.path('responses'));
+  assert.deepEqual(
+    PatientScenarioQuestionnaire.schema.path('instrument').enumValues,
+    ['SUS', 'NASA_TLX']
+  );
+  const uniqueIndex = PatientScenarioQuestionnaire.schema.indexes().find(
+    ([keys, options]) => (
+      keys.session_id === 1
+      && keys.instrument === 1
+      && options.unique === true
+    )
+  );
+  assert.ok(uniqueIndex);
 });

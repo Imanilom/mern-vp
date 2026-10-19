@@ -4,22 +4,31 @@ import {
   createPatientAppCheckIn,
   createPatientAppEvent,
   createPatientAppAction,
+  createPatientScenarioEvent,
+  createPatientScenarioQuestionnaire,
   createPatientAppWearableSample,
+  completePatientScenarioSession,
   deletePatientAppCheckIn,
   getPatientAppDailySummary,
   getPatientAppCheckIn,
   getPatientAppCaparInsights,
   getPatientAppOverview,
   getPatientAppImpactSummary,
+  getPatientAppScenarios,
   getPatientAppProfile,
   getPatientAppWearableHistory,
   listPatientAppCheckIns,
   listPatientAppEvents,
   listPatientAppActions,
   listPatientAppWearableSamples,
+  listPatientScenarioEvents,
+  listPatientScenarioQuestionnaires,
+  listPatientScenarioSessions,
   linkPatientAppToCaparUser,
   registerPatientAppAccount,
   streamPatientAppWearableData,
+  startPatientScenarioSession,
+  getPatientScenarioSession,
   updatePatientAppProfile,
   updatePatientAppActionStatus,
 } from '../controllers/patient_app.controller.js';
@@ -35,6 +44,14 @@ const registrationLimiter = rateLimit({
   message: { success: false, message: 'Terlalu banyak percobaan pendaftaran. Coba lagi nanti.' },
 });
 
+const scenarioWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { success: false, message: 'Terlalu banyak perubahan skenario. Coba lagi nanti.' },
+});
+
 router.post('/register', registrationLimiter, registerPatientAppAccount);
 router.get('/profile', verifyToken, getPatientAppProfile);
 router.patch('/profile', verifyToken, updatePatientAppProfile);
@@ -42,6 +59,43 @@ router.get('/overview', verifyToken, getPatientAppOverview);
 router.get('/daily-summary', verifyToken, getPatientAppDailySummary);
 router.get('/capar-insights', verifyToken, getPatientAppCaparInsights);
 router.get('/impact-summary', verifyToken, getPatientAppImpactSummary);
+router.get('/scenarios', verifyToken, getPatientAppScenarios);
+router.post(
+  '/scenarios/:scenarioId/sessions',
+  verifyToken,
+  scenarioWriteLimiter,
+  startPatientScenarioSession
+);
+router.get('/scenario-sessions', verifyToken, listPatientScenarioSessions);
+router.get('/scenario-sessions/:sessionId', verifyToken, getPatientScenarioSession);
+router.get(
+  '/scenario-sessions/:sessionId/events',
+  verifyToken,
+  listPatientScenarioEvents
+);
+router.post(
+  '/scenario-sessions/:sessionId/events',
+  verifyToken,
+  scenarioWriteLimiter,
+  createPatientScenarioEvent
+);
+router.get(
+  '/scenario-sessions/:sessionId/questionnaires',
+  verifyToken,
+  listPatientScenarioQuestionnaires
+);
+router.post(
+  '/scenario-sessions/:sessionId/questionnaires',
+  verifyToken,
+  scenarioWriteLimiter,
+  createPatientScenarioQuestionnaire
+);
+router.patch(
+  '/scenario-sessions/:sessionId/complete',
+  verifyToken,
+  scenarioWriteLimiter,
+  completePatientScenarioSession
+);
 router.post('/link-capar-account', verifyToken, linkPatientAppToCaparUser);
 router.post('/check-ins', verifyToken, createPatientAppCheckIn);
 router.get('/check-ins', verifyToken, listPatientAppCheckIns);

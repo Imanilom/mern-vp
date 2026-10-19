@@ -1,4 +1,5 @@
 import bcryptjs from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import Patient from '../models/patient.model.js';
@@ -7,6 +8,9 @@ import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppEvent from '../models/patient_app_event.model.js';
 import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
+import PatientScenarioEvent from '../models/patient_scenario_event.model.js';
+import PatientScenarioQuestionnaire from '../models/patient_scenario_questionnaire.model.js';
+import PatientScenarioSession from '../models/patient_scenario_session.model.js';
 import AnomalyEvent from '../models/anomalyevent.model.js';
 import Baseline from '../models/baseline.model.js';
 import BehaviorEvent from '../models/behavior_event.model.js';
@@ -23,6 +27,7 @@ import {
   getPatientDecisionPolicy,
   getPatientDecisionPolicyBundle,
 } from '../config/patientDecisionPolicies.js';
+import { SCENARIO_BASELINE_POLICY } from '../config/scenarioBaselinePolicy.js';
 import { retrieveMultiAxisRag } from './resilience.controller.js';
 import {
   fitPatientMahalanobisModel,
@@ -58,8 +63,20 @@ import {
   validatePatientImpactSummaryQuery,
   validateWearableStream,
   validateWearableSample,
+  validateScenarioEvent,
+  validateScenarioQuestionnaire,
+  validateScenarioId,
+  validateScenarioSession,
   registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
+import {
+  assessScenarioBaseline,
+  buildScenarioInterpretation,
+  mapScenarioActivity,
+  SCENARIO_DEFINITIONS,
+  SCENARIO_RULE_VERSION,
+} from '../utils/scenarioEngine.js';
+import { calculateScenarioQuestionnaireScore } from '../utils/scenarioQuestionnaire.js';
 
 async function getAccount(req) {
   const accountId = req.user?.id;
@@ -115,6 +132,12 @@ async function getAccount(req) {
 
 function accountScopeFilter(accountScopes) {
   return { $or: accountScopes };
+}
+
+function requireValidScenarioSessionId(sessionId) {
+  if (!mongoose.isValidObjectId(sessionId)) {
+    throw errorHandler(404, 'Sesi skenario tidak ditemukan.');
+  }
 }
 
 async function findOrCreatePatientAppProfile({ accountScopes, dataOwnerId, dataOwnerType }) {
@@ -1546,6 +1569,467 @@ export async function getPatientAppImpactSummary(req, res) {
   });
 }
 
+export async function getPatientAppScenarios(req, res) {
+  await getAccount(req);
+  res.json({
+    success: true,
+    data: Object.values(SCENARIO_DEFINITIONS).map((scenario) => ({
+      ...scenario,
+      rule_version: SCENARIO_RULE_VERSION,
+      baseline_policy: SCENARIO_BASELINE_POLICY,
+      limitations: [
+        'Bukti CAPAR yang lolos quality gate diperlukan; status unresolved bukan status normal.',
+        'Interpretasi statistik bukan diagnosis atau probabilitas klinis.',
+      ],
+    })),
+  });
+}
+
+export async function listPatientScenarioSessions(req, res) {
+  const { accountScopes } = await getAccount(req);
+  const sessions = await PatientScenarioSession.find(
+    accountScopeFilter(accountScopes)
+  ).sort({ createdAt: -1 }).limit(100).lean();
+  res.json({ success: true, data: sessions });
+}
+
+export async function startPatientScenarioSession(req, res) {
+  const { accountScopes, dataOwnerId, dataOwnerType } = await getAccount(req);
+  const scenarioId = validateScenarioId(req.params.scenarioId);
+  validateScenarioSession(req.body);
+  const segments = await Segment.find({
+    user_id: { $in: [...new Set(accountScopes.map((scope) => scope.account_id))] },
+    window_type: '1min',
+    analyzed: true,
+    is_valid: true,
+    window_start: {
+      $gte: Date.now() - 180 * 24 * 60 * 60 * 1000,
+      $lte: Date.now(),
+    },
+  }).sort({ window_start: -1 }).limit(5000).lean();
+  const latestObservation = segments.find(isPatientAnalyticsSegment) || null;
+  let interpretation;
+  if (latestObservation) {
+    interpretation = await evaluateScenarioObservation({
+      segment: latestObservation,
+      activity: latestObservation.activity_label,
+      scenarioId,
+    });
+  } else {
+    interpretation = buildScenarioInterpretation({
+      version: 1,
+      scenarioId,
+      segment: null,
+      baseline: null,
+      baselineReadiness: assessScenarioBaseline(null),
+      score: null,
+    });
+  }
+  const session = await PatientScenarioSession.create({
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+    participant_pseudonym: randomUUID(),
+    scenario_id: scenarioId,
+    consent: {
+      given: true,
+      recorded_at: new Date(),
+      version: 'hci-scenario-consent-v1',
+    },
+    source: latestObservation
+      ? 'CAPAR_ANALYTICS_SEGMENT'
+      : 'NO_QUALIFIED_OBSERVATION',
+    current_interpretation_version: 1,
+    interpretations: [interpretation],
+  });
+  res.status(201).json({ success: true, data: session });
+}
+
+export async function getPatientScenarioSession(req, res) {
+  const { accountScopes } = await getAccount(req);
+  requireValidScenarioSessionId(req.params.sessionId);
+  const session = await PatientScenarioSession.findOne({
+    _id: req.params.sessionId,
+    ...accountScopeFilter(accountScopes),
+  }).lean();
+  if (!session) throw errorHandler(404, 'Sesi skenario tidak ditemukan.');
+  res.json({ success: true, data: session });
+}
+
+export async function listPatientScenarioEvents(req, res) {
+  const { accountScopes } = await getAccount(req);
+  requireValidScenarioSessionId(req.params.sessionId);
+  const scenarioSession = await PatientScenarioSession.findOne({
+    _id: req.params.sessionId,
+    ...accountScopeFilter(accountScopes),
+  }).select('_id account_id account_type').lean();
+  if (!scenarioSession) throw errorHandler(404, 'Sesi skenario tidak ditemukan.');
+  const events = await PatientScenarioEvent.find({
+    session_id: scenarioSession._id,
+    account_id: scenarioSession.account_id,
+    account_type: scenarioSession.account_type,
+  }).sort({ event_time: 1, createdAt: 1 }).limit(1000).lean();
+  res.json({ success: true, data: events });
+}
+
+export async function listPatientScenarioQuestionnaires(req, res) {
+  const { accountScopes } = await getAccount(req);
+  requireValidScenarioSessionId(req.params.sessionId);
+  const scenarioSession = await PatientScenarioSession.findOne({
+    _id: req.params.sessionId,
+    ...accountScopeFilter(accountScopes),
+  }).select('_id account_id account_type scenario_id').lean();
+  if (!scenarioSession) throw errorHandler(404, 'Sesi skenario tidak ditemukan.');
+  const questionnaires = await PatientScenarioQuestionnaire.find({
+    session_id: scenarioSession._id,
+    account_id: scenarioSession.account_id,
+    account_type: scenarioSession.account_type,
+  }).select('-account_id -account_type -participant_pseudonym')
+    .sort({ submitted_at: 1 }).lean();
+  res.json({ success: true, data: questionnaires });
+}
+
+export async function createPatientScenarioQuestionnaire(req, res) {
+  const { accountScopes, dataOwnerId, dataOwnerType } = await getAccount(req);
+  requireValidScenarioSessionId(req.params.sessionId);
+  const input = validateScenarioQuestionnaire(req.body);
+  const scenarioSession = await PatientScenarioSession.findOne({
+    _id: req.params.sessionId,
+    ...accountScopeFilter(accountScopes),
+  }).select('_id account_id account_type participant_pseudonym scenario_id');
+  if (!scenarioSession) throw errorHandler(404, 'Sesi skenario tidak ditemukan.');
+  if (scenarioSession.scenario_id !== 'c') {
+    throw errorHandler(409, 'Kuesioner evaluasi hanya tersedia untuk skenario C.');
+  }
+
+  const existing = await PatientScenarioQuestionnaire.findOne({
+    session_id: scenarioSession._id,
+    instrument: input.instrument,
+  }).lean();
+  if (existing) {
+    if (JSON.stringify(existing.responses) !== JSON.stringify(input.responses)) {
+      throw errorHandler(409, 'Kuesioner ini sudah dikirim untuk sesi tersebut.');
+    }
+    return res.json({
+      success: true,
+      data: scenarioQuestionnairePublicRecord(existing),
+      idempotent: true,
+    });
+  }
+
+  const score = calculateScenarioQuestionnaireScore(
+    input.instrument,
+    input.responses
+  );
+  try {
+    const [questionnaire] = await PatientScenarioQuestionnaire.create([{
+      session_id: scenarioSession._id,
+      account_id: dataOwnerId,
+      account_type: dataOwnerType,
+      participant_pseudonym: scenarioSession.participant_pseudonym,
+      scenario_id: 'c',
+      instrument: input.instrument,
+      responses: input.responses,
+      ...score,
+      submitted_at: new Date(),
+    }]);
+    res.status(201).json({
+      success: true,
+      data: scenarioQuestionnairePublicRecord(questionnaire.toObject()),
+    });
+  } catch (error) {
+    if (error?.code !== 11000) throw error;
+    const duplicate = await PatientScenarioQuestionnaire.findOne({
+      session_id: scenarioSession._id,
+      instrument: input.instrument,
+    }).lean();
+    if (!duplicate) throw error;
+    if (JSON.stringify(duplicate.responses) !== JSON.stringify(input.responses)) {
+      throw errorHandler(409, 'Kuesioner ini sudah dikirim untuk sesi tersebut.');
+    }
+    res.json({
+      success: true,
+      data: scenarioQuestionnairePublicRecord(duplicate),
+      idempotent: true,
+    });
+  }
+}
+
+export async function createPatientScenarioEvent(req, res) {
+  const { accountScopes, dataOwnerId, dataOwnerType } = await getAccount(req);
+  requireValidScenarioSessionId(req.params.sessionId);
+  const input = validateScenarioEvent(req.body);
+  const scenarioSession = await PatientScenarioSession.findOne({
+    _id: req.params.sessionId,
+    ...accountScopeFilter(accountScopes),
+  });
+  if (!scenarioSession) throw errorHandler(404, 'Sesi skenario tidak ditemukan.');
+  if (scenarioSession.status !== 'ACTIVE') {
+    throw errorHandler(409, 'Sesi skenario sudah selesai.');
+  }
+  if (scenarioSession.scenario_id === 'a') {
+    throw errorHandler(409, 'Skenario satu arah tidak menerima koreksi peserta.');
+  }
+
+  const existingEvent = await PatientScenarioEvent.findOne({
+    session_id: scenarioSession._id,
+    idempotency_key: input.idempotency_key,
+  }).lean();
+  if (existingEvent) {
+    if (!scenarioEventMatchesInput(existingEvent, input)) {
+      throw errorHandler(409, 'idempotency_key sudah digunakan untuk event lain.');
+    }
+    return res.json({ success: true, data: existingEvent, idempotent: true });
+  }
+
+  const previousVersion = scenarioSession.current_interpretation_version;
+  const previousInterpretation = scenarioSession.interpretations.find(
+    (item) => item.version === previousVersion
+  );
+  if (!previousInterpretation) {
+    throw errorHandler(500, 'Versi interpretasi aktif sesi tidak ditemukan.');
+  }
+  const latestInterpretation = scenarioSession.interpretations.find(
+    (item) => item.version === previousVersion
+  );
+  const segmentId = latestInterpretation?.observation?.segment_id;
+  const segment = segmentId
+    ? await Segment.findOne({
+      _id: segmentId,
+      user_id: { $in: [...new Set(accountScopes.map((scope) => scope.account_id))] },
+      window_type: '1min',
+      analyzed: true,
+      is_valid: true,
+    }).lean()
+    : null;
+  const canAdapt = scenarioSession.scenario_id === 'c'
+    && input.activity !== 'unsure'
+    && Boolean(segment);
+  let newInterpretation = null;
+  let eventState = 'NEEDS_REVIEW';
+  let reasonCode = scenarioSession.scenario_id === 'b'
+    ? 'NON_ADAPTIVE_SCENARIO_NO_REEVALUATION'
+    : 'FEEDBACK_RECORDED_NO_QUALIFIED_REEVALUATION';
+  if (input.activity === 'unsure') {
+    reasonCode = 'PARTICIPANT_UNSURE';
+  } else if (canAdapt) {
+    const correctedActivity = mapScenarioActivity(input.activity);
+    if (correctedActivity) {
+      const evaluated = await evaluateScenarioObservation({
+        segment,
+        activity: correctedActivity,
+        scenarioId: scenarioSession.scenario_id,
+        triggerEventId: null,
+        previousVersion,
+      });
+      if (
+        evaluated.status !== 'UNRESOLVED'
+        && evaluated.statistical_evidence
+      ) {
+        newInterpretation = evaluated;
+        eventState = 'APPLIED';
+        reasonCode = null;
+      } else {
+        reasonCode = evaluated.reason_code
+          || 'FEEDBACK_EVIDENCE_INSUFFICIENT';
+      }
+    } else {
+      reasonCode = 'ACTIVITY_CONTEXT_NOT_MAPPED';
+    }
+  }
+
+  const eventId = new mongoose.Types.ObjectId();
+  const eventData = {
+    _id: eventId,
+    session_id: scenarioSession._id,
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+    participant_pseudonym: scenarioSession.participant_pseudonym,
+    scenario_id: scenarioSession.scenario_id,
+    idempotency_key: input.idempotency_key,
+    actor_type: 'participant',
+    source: 'vidyamedic_app',
+    event_type: 'activity_correction',
+    event_time: input.event_time,
+    report_time: new Date(),
+    input_type: input.activity === 'unsure' ? 'unsure' : 'activity',
+    value: input.activity,
+    confidence: input.confidence,
+    affected_interval: input.affected_interval,
+    previous_context: previousInterpretation.context?.activity ?? null,
+    current_context: input.activity === 'unsure'
+      ? null
+      : mapScenarioActivity(input.activity),
+    previous_version: previousVersion,
+    new_version: newInterpretation ? previousVersion + 1 : null,
+    processing_state: eventState,
+    reason_code: reasonCode,
+    evidence_quality: latestInterpretation?.observation?.quality ?? null,
+  };
+  let event;
+  try {
+    if (newInterpretation) {
+      newInterpretation.trigger_event_id = eventId;
+      const transaction = await mongoose.startSession();
+      try {
+        await transaction.withTransaction(async () => {
+          const updated = await PatientScenarioSession.updateOne(
+            {
+              _id: scenarioSession._id,
+              ...accountScopeFilter(accountScopes),
+              status: 'ACTIVE',
+              current_interpretation_version: previousVersion,
+            },
+            {
+              $push: { interpretations: newInterpretation },
+              $set: {
+                current_interpretation_version: previousVersion + 1,
+              },
+            },
+            { session: transaction, runValidators: true }
+          );
+          if (updated.matchedCount !== 1) {
+            throw errorHandler(
+              409,
+              'Sesi berubah saat evaluasi. Muat ulang sebelum mengirim feedback.'
+            );
+          }
+          [event] = await PatientScenarioEvent.create([eventData], {
+            session: transaction,
+          });
+        });
+      } finally {
+        await transaction.endSession();
+      }
+    } else {
+      [event] = await PatientScenarioEvent.create([eventData]);
+    }
+  } catch (error) {
+    if (error?.code === 11000) {
+      const duplicateEvent = await PatientScenarioEvent.findOne({
+        session_id: scenarioSession._id,
+        idempotency_key: input.idempotency_key,
+      }).lean();
+      if (!duplicateEvent) throw error;
+      if (!scenarioEventMatchesInput(duplicateEvent, input)) {
+        throw errorHandler(409, 'idempotency_key sudah digunakan untuk event lain.');
+      }
+      return res.json({ success: true, data: duplicateEvent, idempotent: true });
+    }
+    if (newInterpretation && isUnsupportedMongoTransaction(error)) {
+      eventData.new_version = null;
+      eventData.processing_state = 'NEEDS_REVIEW';
+      eventData.reason_code = 'ADAPTIVE_ATOMIC_WRITE_UNAVAILABLE';
+      [event] = await PatientScenarioEvent.create([eventData]);
+      newInterpretation = null;
+    } else {
+      throw error;
+    }
+  }
+  res.status(201).json({ success: true, data: event });
+}
+
+export async function completePatientScenarioSession(req, res) {
+  const { accountScopes } = await getAccount(req);
+  requireValidScenarioSessionId(req.params.sessionId);
+  const session = await PatientScenarioSession.findOneAndUpdate(
+    {
+      _id: req.params.sessionId,
+      ...accountScopeFilter(accountScopes),
+    },
+    { $set: { status: 'COMPLETED' } },
+    { new: true, runValidators: true }
+  ).lean();
+  if (!session) throw errorHandler(404, 'Sesi skenario tidak ditemukan.');
+  res.json({ success: true, data: session });
+}
+
+async function evaluateScenarioObservation({
+  segment,
+  activity,
+  scenarioId,
+  triggerEventId = null,
+  previousVersion = null,
+}) {
+  const timePeriod = patientCaparTimePeriod(segment.window_start);
+  const [baseline, contextSegments] = await Promise.all([
+    Baseline.findOne({
+      user_id: segment.user_id,
+      activity,
+      time_period: timePeriod,
+    }).lean(),
+    Segment.find({
+      user_id: segment.user_id,
+      window_type: '1min',
+      activity_label: activity,
+      analyzed: true,
+      is_valid: true,
+      window_start: {
+        $gte: segment.window_start - 180 * 24 * 60 * 60 * 1000,
+        $lte: segment.window_start,
+      },
+    }).sort({ window_start: -1 }).limit(5000).lean(),
+  ]);
+  const stableByWindow = new Map();
+  for (const candidate of contextSegments) {
+    if (
+      candidate._id.toString() === segment._id.toString()
+      || patientCaparTimePeriod(candidate.window_start) !== timePeriod
+      || !isPatientBaselineSegment(candidate)
+      || stableByWindow.has(candidate.window_start)
+    ) {
+      continue;
+    }
+    stableByWindow.set(candidate.window_start, candidate);
+  }
+  const stableSegments = [...stableByWindow.values()];
+  const baselineReadiness = assessScenarioBaseline(baseline, stableSegments);
+  const samples = stableSegments.map(patientMahalanobisFeatureVector);
+  const featureKeys = selectPatientMahalanobisFeatures(samples, baseline);
+  const model = fitPatientMahalanobisModel(samples, featureKeys);
+  const score = scorePatientMahalanobis(
+    patientMahalanobisFeatureVector(segment),
+    model
+  );
+  return buildScenarioInterpretation({
+    version: previousVersion === null ? 1 : previousVersion + 1,
+    scenarioId,
+    segment: {
+      ...segment,
+      activity,
+      time_period: timePeriod,
+    },
+    baseline,
+    baselineReadiness,
+    score,
+    triggerEventId,
+    previousVersion,
+  });
+}
+
+function scenarioEventMatchesInput(event, input) {
+  return event.event_time.getTime() === input.event_time.getTime()
+    && event.value === input.activity
+    && event.confidence === input.confidence
+    && event.affected_interval?.start?.getTime()
+      === input.affected_interval.start.getTime()
+    && event.affected_interval?.end?.getTime()
+      === input.affected_interval.end.getTime();
+}
+
+function scenarioQuestionnairePublicRecord(record) {
+  const result = { ...record };
+  delete result.account_id;
+  delete result.account_type;
+  delete result.participant_pseudonym;
+  return result;
+}
+
+function isUnsupportedMongoTransaction(error) {
+  return error?.code === 20
+    && /Transaction numbers are only allowed on a replica set member or mongos/i
+      .test(error.message ?? '');
+}
+
 export async function createPatientAppWearableSample(req, res) {
   const accountData = await getAccount(req);
   const { dataOwnerId, dataOwnerType } = accountData;
@@ -1747,7 +2231,7 @@ export async function streamPatientAppWearableData(req, res) {
   try {
     const result = await publishLogTransport({
       user_id: dataOwnerId.toString(),
-      source: 'vidyamedic_polar_ble',
+      source: 'patient_app_polar_ble',
       device_id: stream.device_id,
       received_at: new Date().toISOString(),
       readings: stream.readings.map((reading) => ({

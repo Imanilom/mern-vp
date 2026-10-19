@@ -1,27 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:polar/polar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../theme/app_colors.dart';
+import '../../services/api_service.dart';
 import '../../services/ble_service.dart';
-import '../../services/mqtt_service.dart';
 import '../../services/telemetry_controller.dart';
 
 class DevicePairingScreen extends ConsumerStatefulWidget {
   const DevicePairingScreen({super.key});
 
   @override
-  ConsumerState<DevicePairingScreen> createState() => _DevicePairingScreenState();
+  ConsumerState<DevicePairingScreen> createState() =>
+      _DevicePairingScreenState();
 }
 
 class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
   String _selectedActivity = 'Duduk';
   final List<String> _activities = [
-    'Tidur', 'Berbaring', 'Duduk', 'Berdiri', 'Berjalan', 
-    'Berjalan Cepat', 'Naik Tangga', 'Bersepeda', 'Berenang',
-    'Senam', 'Yoga', 'Berlari', 'Lari Cepat', 'Olahraga Berat',
-    'Makan', 'Memasak', 'Berkendara', 'Bekerja', 'Lainnya'
+    'Tidur',
+    'Berbaring',
+    'Duduk',
+    'Berdiri',
+    'Berjalan',
+    'Berjalan Cepat',
+    'Naik Tangga',
+    'Bersepeda',
+    'Berenang',
+    'Senam',
+    'Yoga',
+    'Berlari',
+    'Lari Cepat',
+    'Olahraga Berat',
+    'Makan',
+    'Memasak',
+    'Berkendara',
+    'Bekerja',
+    'Lainnya',
   ];
 
   @override
@@ -34,7 +48,6 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
 
   Future<void> _startStreaming() async {
     final ble = ref.read(bleServiceProvider);
-    final mqtt = ref.read(mqttServiceProvider);
 
     if (!ble.isConnected) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -43,14 +56,12 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
       return;
     }
 
-    // Ambil userId dari SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('user_id') ?? '';
-
-    if (userId.isEmpty) {
+    if (!await ApiService.hasAuthenticatedSession()) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User ID tidak ditemukan. Silakan login ulang.')),
+          const SnackBar(
+            content: Text('Sesi login tidak ditemukan. Silakan login ulang.'),
+          ),
         );
       }
       return;
@@ -59,35 +70,10 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
     // Update activity context ke BLE service
     ble.updateMotionState(_selectedActivity);
 
-    // Tampilkan loading
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (c) => const Center(
-        child: CircularProgressIndicator(color: AppColors.teal),
-      ),
-    );
-
-    // Connect MQTT dengan userId yang benar
-    final mqttConnected = await mqtt.connect(userId);
-
-    if (!mounted) return;
-    Navigator.pop(context); // sembunyikan loading
-
-    if (!mqttConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal terhubung ke RabbitMQ Broker! Periksa koneksi internet.')),
-      );
-      return;
-    }
-
-    // ⬇ Inisialisasi TelemetryController secara eksplisit
-    // Ini penting agar provider tidak lazy-init saat HomeScreen dibuka nanti
-    // sehingga BLE readings sudah di-buffer sejak awal streaming dimulai
     ref.read(telemetryControllerProvider).startStreaming();
-
-    debugPrint('[DevicePairing] MQTT connected ✓ | TelemetryController aktif | userId=$userId');
+    debugPrint(
+      '[DevicePairing] Sesi API terautentikasi ✓ | telemetry controller aktif',
+    );
 
     // Navigasi ke Dashboard
     if (mounted) Navigator.pushNamed(context, '/app');
@@ -95,38 +81,28 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
 
   Future<void> _enableEmulatorBypass() async {
     final ble = ref.read(bleServiceProvider);
-    final mqtt = ref.read(mqttServiceProvider);
+    if (!await ApiService.hasAuthenticatedSession()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login diperlukan untuk membuka dashboard.'),
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
 
     ble.enableSimulationMode();
     ble.updateMotionState(_selectedActivity);
-
-    final prefs = await SharedPreferences.getInstance();
-    String userId = prefs.getString('user_id') ?? '';
-    if (userId.isEmpty) {
-      userId = '675ba1e92b8428e4dd641cd0'; // Default test user ID (Dokter)
-      await prefs.setString('user_id', userId);
-    }
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (c) => const Center(
-        child: CircularProgressIndicator(color: AppColors.teal),
-      ),
-    );
-
-    // Try MQTT connection
-    await mqtt.connect(userId).catchError((_) => false);
-
-    if (!mounted) return;
-    Navigator.pop(context);
 
     ref.read(telemetryControllerProvider).startStreaming();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('⚡ Emulator Bypass Mode Aktif: Perangkat Polar H10 Disimulasikan!'),
+        content: Text(
+          'Demo emulator aktif; data sintetis tidak dikirim ke CAPAR.',
+        ),
         backgroundColor: AppColors.teal,
       ),
     );
@@ -137,7 +113,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
   @override
   Widget build(BuildContext context) {
     final bleState = ref.watch(bleServiceProvider);
-    
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -149,7 +125,11 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
         ),
         title: const Text(
           'Pairing & Aktivitas',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy,
+          ),
         ),
         centerTitle: true,
       ),
@@ -158,7 +138,10 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 8.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -178,31 +161,56 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                           children: [
                             const Row(
                               children: [
-                                Icon(Icons.bolt_rounded, color: AppColors.teal, size: 20),
+                                Icon(
+                                  Icons.bolt_rounded,
+                                  color: AppColors.teal,
+                                  size: 20,
+                                ),
                                 SizedBox(width: 8),
                                 Text(
                                   'Bypass Perangkat (Emulator Mode)',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.navy),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.navy,
+                                  ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 6),
                             const Text(
                               'Gunakan mode simulator untuk menguji tampilan grafik real-time dan isian seluruh halaman di emulator tanpa fisik Polar H10.',
-                              style: TextStyle(fontSize: 11.5, color: AppColors.ink, height: 1.35),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.ink,
+                                height: 1.35,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
                                 onPressed: _enableEmulatorBypass,
-                                icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                                label: const Text('Aktifkan Simulator & Start Live Session', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                                icon: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'Aktifkan Simulator & Start Live Session',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.teal,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
                               ),
                             ),
@@ -211,7 +219,11 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                       ),
                       const Text(
                         'Pindai Perangkat BLE',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.navy),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
@@ -233,7 +245,10 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                               const SizedBox(
                                 width: 22,
                                 height: 22,
-                                child: CircularProgressIndicator(color: AppColors.teal, strokeWidth: 2.5),
+                                child: CircularProgressIndicator(
+                                  color: AppColors.teal,
+                                  strokeWidth: 2.5,
+                                ),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -242,12 +257,19 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                                   children: [
                                     Text(
                                       'Menghubungkan ke ${bleState.connectingDeviceId}...',
-                                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy, fontSize: 13.5),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.navy,
+                                        fontSize: 13.5,
+                                      ),
                                     ),
                                     const SizedBox(height: 2),
                                     const Text(
                                       'Dekatkan HP ke Polar H10 dan pastikan tali dada terpasang.',
-                                      style: TextStyle(fontSize: 11.5, color: AppColors.gray),
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: AppColors.gray,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -262,21 +284,32 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                     ] else ...[
                       const Text(
                         'Perangkat Terhubung',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.navy),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Terhubung ke ${bleState.deviceName}. Kualitas Sinyal: ${bleState.signalQuality}% | Baterai: ${bleState.batteryLevel}%',
-                        style: const TextStyle(fontSize: 14, color: AppColors.gray),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.gray,
+                        ),
                       ),
                       const SizedBox(height: 32),
                       const Text(
                         'Pilih Aktivitas Saat Ini',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.navy),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       _buildActivityDropdown(bleState),
-                    ]
+                    ],
                   ],
                 ),
               ),
@@ -303,11 +336,17 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                     onPressed: _startStreaming,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.teal,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: const Text(
-                      'Mulai Streaming ke RMQ',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white),
+                      'Mulai Streaming Aman',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -347,7 +386,11 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
               children: [
                 const Text(
                   'Hubungkan via ID Perangkat (8 Karakter di Pod Polar H10)',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.navy),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -355,12 +398,22 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                     Expanded(
                       child: TextField(
                         controller: _manualIdController,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.navy),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navy,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Contoh: 1C2A3B4D',
-                          hintStyle: const TextStyle(fontSize: 13, color: AppColors.gray),
+                          hintStyle: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.gray,
+                          ),
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: const BorderSide(color: AppColors.line),
@@ -373,28 +426,47 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                       onPressed: () async {
                         final inputId = _manualIdController.text.trim();
                         if (inputId.isNotEmpty) {
-                          final success = await bleService.connectToDevice(inputId);
+                          final success = await bleService.connectToDevice(
+                            inputId,
+                          );
                           if (!success && mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Gagal terhubung. Pastikan alat menempel di dada & tidak terkoneksi ke app lain (mis. Polar Flow).'),
+                                content: Text(
+                                  'Gagal terhubung. Pastikan alat menempel di dada & tidak terkoneksi ke app lain (mis. Polar Flow).',
+                                ),
                                 backgroundColor: AppColors.red,
                               ),
                             );
                           }
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Masukkan ID perangkat Polar terlebih dahulu!')),
+                            const SnackBar(
+                              content: Text(
+                                'Masukkan ID perangkat Polar terlebih dahulu!',
+                              ),
+                            ),
                           );
                         }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.teal,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      child: const Text('Hubungkan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      child: const Text(
+                        'Hubungkan',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -409,7 +481,11 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
           children: [
             const Text(
               'Perangkat Terdeteksi',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+              ),
             ),
             TextButton.icon(
               onPressed: () => bleService.startScan(),
@@ -420,7 +496,11 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
               ),
               label: Text(
                 bleService.isScanning ? 'Memindai...' : 'Pindai Ulang',
-                style: const TextStyle(fontSize: 12, color: AppColors.teal, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.teal,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -442,15 +522,28 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
               ),
               child: ListTile(
                 leading: const Icon(Icons.bluetooth, color: AppColors.teal),
-                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy)),
-                subtitle: Text(device.deviceId, style: const TextStyle(fontSize: 12, color: AppColors.gray)),
+                title: Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                  ),
+                ),
+                subtitle: Text(
+                  device.deviceId,
+                  style: const TextStyle(fontSize: 12, color: AppColors.gray),
+                ),
                 trailing: ElevatedButton(
                   onPressed: () async {
-                    final success = await bleService.connectToDevice(device.deviceId);
+                    final success = await bleService.connectToDevice(
+                      device.deviceId,
+                    );
                     if (!success && mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Gagal terhubung. Pastikan alat dipakai dan tidak terkoneksi ke app lain.'),
+                          content: Text(
+                            'Gagal terhubung. Pastikan alat dipakai dan tidak terkoneksi ke app lain.',
+                          ),
                           backgroundColor: AppColors.red,
                         ),
                       );
@@ -459,10 +552,18 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.teal,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                   ),
-                  child: const Text('Hubungkan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  child: const Text(
+                    'Hubungkan',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             );
@@ -478,12 +579,19 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
           const SizedBox(height: 20),
           const CircularProgressIndicator(color: AppColors.teal),
           const SizedBox(height: 12),
-          const Text('Mencari perangkat Polar via Bluetooth...', style: TextStyle(color: AppColors.gray, fontSize: 13)),
+          const Text(
+            'Mencari perangkat Polar via Bluetooth...',
+            style: TextStyle(color: AppColors.gray, fontSize: 13),
+          ),
           const SizedBox(height: 8),
           const Text(
             '💡 Tips: Pastikan chest strap basah & terpasang di dada agar sensor Polar H10 aktif.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11, color: AppColors.gray, fontStyle: FontStyle.italic),
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.gray,
+              fontStyle: FontStyle.italic,
+            ),
           ),
           const SizedBox(height: 12),
         ],
@@ -503,12 +611,22 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
         child: DropdownButton<String>(
           value: _selectedActivity,
           isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.gray),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.gray,
+          ),
           dropdownColor: AppColors.surface,
           items: _activities.map((String act) {
             return DropdownMenuItem<String>(
               value: act,
-              child: Text(act, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.navy)),
+              child: Text(
+                act,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.navy,
+                ),
+              ),
             );
           }).toList(),
           onChanged: (String? newValue) {

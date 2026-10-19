@@ -1,17 +1,23 @@
-# capar_mobile
+# CAPAR Mobile
 
-A new Flutter project.
+CAPAR Mobile pairs with Polar H10 through the Polar BLE SDK and submits
+validated HR/RR/accelerometer readings through the authenticated
+`POST /api/patient-app/wearable/stream` endpoint. The API derives the account
+owner from the bearer token and forwards accepted readings to the server-side
+CAPAR transport; the mobile client does not connect directly to MQTT/AMQP and
+does not send account IDs in the telemetry payload.
 
-## Getting Started
+The emulator mode is for interface demonstrations only. Synthetic readings
+are not uploaded to the API. Streaming requires a valid signed-in session and
+real sensor contact, RR data, and accelerometer data.
 
-This project is a starting point for a Flutter application.
+Any broker credentials previously shipped in mobile builds must be rotated
+before deployment; removing credentials from the client does not invalidate
+credentials that may already have been extracted.
 
-A few resources to get you started if this is your first Flutter project:
+Install dependencies and run the app with Flutter:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+flutter run
+```
