@@ -72,6 +72,7 @@ import {
 import {
   assessScenarioBaseline,
   buildScenarioInterpretation,
+  isScenarioRealRecordedSample,
   mapScenarioActivity,
   SCENARIO_DEFINITIONS,
   SCENARIO_RULE_VERSION,
@@ -1597,34 +1598,52 @@ export async function startPatientScenarioSession(req, res) {
   const { accountScopes, dataOwnerId, dataOwnerType } = await getAccount(req);
   const scenarioId = validateScenarioId(req.params.scenarioId);
   validateScenarioSession(req.body);
+  const recordedSamples = await PatientAppWearableSample.find({
+    ...accountScopeFilter(accountScopes),
+    provider: 'polar_h10',
+    source: 'mobile_wearable_bridge',
+    ingestion_source: 'mobile_wearable_bridge',
+    sensor_contact: true,
+    'data_quality.status': 'accepted',
+    recorded_at: {
+      $gte: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000),
+      $lte: new Date(),
+    },
+  }).sort({ recorded_at: -1 }).limit(5000)
+    .select('_id provider source ingestion_source sensor_contact data_quality.status')
+    .lean();
+  const realRecordedSamples = recordedSamples.filter(isScenarioRealRecordedSample);
+  if (!realRecordedSamples.length) {
+    throw errorHandler(
+      409,
+      'Belum ada rekaman Polar H10 nyata yang lolos quality gate. Hubungkan Polar H10 dan rekam data melalui halaman Pairing wearable sebelum memulai skenario.'
+    );
+  }
   const segments = await Segment.find({
     user_id: { $in: [...new Set(accountScopes.map((scope) => scope.account_id))] },
     window_type: '1min',
     analyzed: true,
     is_valid: true,
+    patient_app_sample_id: {
+      $in: realRecordedSamples.map((sample) => sample._id),
+    },
     window_start: {
       $gte: Date.now() - 180 * 24 * 60 * 60 * 1000,
       $lte: Date.now(),
     },
   }).sort({ window_start: -1 }).limit(5000).lean();
   const latestObservation = segments.find(isPatientAnalyticsSegment) || null;
-  let interpretation;
-  if (latestObservation) {
-    interpretation = await evaluateScenarioObservation({
-      segment: latestObservation,
-      activity: latestObservation.activity_label,
-      scenarioId,
-    });
-  } else {
-    interpretation = buildScenarioInterpretation({
-      version: 1,
-      scenarioId,
-      segment: null,
-      baseline: null,
-      baselineReadiness: assessScenarioBaseline(null),
-      score: null,
-    });
+  if (!latestObservation) {
+    throw errorHandler(
+      409,
+      'Rekaman Polar H10 sudah tersimpan, tetapi belum ada window CAPAR yang selesai dianalisis dan lolos quality gate. Tunggu pemrosesan CAPAR lalu coba lagi.'
+    );
   }
+  const interpretation = await evaluateScenarioObservation({
+    segment: latestObservation,
+    activity: latestObservation.activity_label,
+    scenarioId,
+  });
   const session = await PatientScenarioSession.create({
     account_id: dataOwnerId,
     account_type: dataOwnerType,
@@ -1635,9 +1654,7 @@ export async function startPatientScenarioSession(req, res) {
       recorded_at: new Date(),
       version: 'hci-scenario-consent-v1',
     },
-    source: latestObservation
-      ? 'CAPAR_ANALYTICS_SEGMENT'
-      : 'NO_QUALIFIED_OBSERVATION',
+    source: 'RECORDED_POLAR_SAMPLE',
     current_interpretation_version: 1,
     interpretations: [interpretation],
   });
@@ -1969,10 +1986,33 @@ async function evaluateScenarioObservation({
       },
     }).sort({ window_start: -1 }).limit(5000).lean(),
   ]);
+  const recordedContextSamples = contextSegments.length
+    ? await PatientAppWearableSample.find({
+      _id: {
+        $in: contextSegments
+          .map((candidate) => candidate.patient_app_sample_id)
+          .filter(Boolean),
+      },
+      account_id: segment.user_id,
+      provider: 'polar_h10',
+      source: 'mobile_wearable_bridge',
+      ingestion_source: 'mobile_wearable_bridge',
+      sensor_contact: true,
+      'data_quality.status': 'accepted',
+    }).select('_id provider source ingestion_source sensor_contact data_quality.status')
+      .lean()
+    : [];
+  const realRecordedSampleIds = new Set(
+    recordedContextSamples
+      .filter(isScenarioRealRecordedSample)
+      .map((sample) => sample._id.toString())
+  );
   const stableByWindow = new Map();
   for (const candidate of contextSegments) {
     if (
       candidate._id.toString() === segment._id.toString()
+      || !candidate.patient_app_sample_id
+      || !realRecordedSampleIds.has(candidate.patient_app_sample_id.toString())
       || patientCaparTimePeriod(candidate.window_start) !== timePeriod
       || !isPatientBaselineSegment(candidate)
       || stableByWindow.has(candidate.window_start)

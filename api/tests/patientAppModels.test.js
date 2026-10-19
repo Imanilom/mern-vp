@@ -79,6 +79,11 @@ test('scenario sessions retain versioned interpretations and explicit consent', 
     PatientScenarioSession.schema.path('scenario_id').enumValues,
     ['a', 'b', 'c']
   );
+  assert.ok(
+    PatientScenarioSession.schema.path('source').enumValues.includes(
+      'RECORDED_POLAR_SAMPLE'
+    )
+  );
 });
 
 test('scenario events are scoped and deduplicated per session', () => {

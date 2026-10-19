@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   assessScenarioBaseline,
   buildScenarioInterpretation,
+  isScenarioRealRecordedSample,
   mapScenarioActivity,
 } from '../utils/scenarioEngine.js';
 
@@ -96,4 +97,43 @@ test('activity context maps to CAPAR labels without inventing unsupported mappin
   assert.equal(mapScenarioActivity('exercise'), 'Moderate');
   assert.equal(mapScenarioActivity('Rest'), 'Rest');
   assert.equal(mapScenarioActivity('unsure'), null);
+});
+
+test('scenario accepts only quality-accepted Polar H10 records from the wearable bridge', () => {
+  const realSample = {
+    provider: 'polar_h10',
+    source: 'mobile_wearable_bridge',
+    ingestion_source: 'mobile_wearable_bridge',
+    sensor_contact: true,
+    data_quality: { status: 'accepted' },
+  };
+  assert.equal(isScenarioRealRecordedSample(realSample), true);
+  assert.equal(
+    isScenarioRealRecordedSample({
+      ...realSample,
+      provider: 'other',
+    }),
+    false
+  );
+  assert.equal(
+    isScenarioRealRecordedSample({
+      ...realSample,
+      sensor_contact: false,
+    }),
+    false
+  );
+  assert.equal(
+    isScenarioRealRecordedSample({
+      ...realSample,
+      data_quality: { status: 'warning' },
+    }),
+    false
+  );
+  assert.equal(
+    isScenarioRealRecordedSample({
+      ...realSample,
+      ingestion_source: 'simulation',
+    }),
+    false
+  );
 });

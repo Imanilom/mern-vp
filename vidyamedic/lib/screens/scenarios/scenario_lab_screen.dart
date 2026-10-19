@@ -3,6 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../actions/action_tracking_screen.dart';
+import '../impact/impact_dashboard_screen.dart';
+import '../input/guided_daily_flow_screen.dart';
+import '../profile/wearable_pairing_screen.dart';
+import '../summary/daily_summary_screen.dart';
 import '../../services/api_service.dart';
 import 'scenario_questionnaire_screen.dart';
 
@@ -35,14 +40,17 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
   Map<String, dynamic>? _selectedSession;
   String _activity = 'unsure';
   String _confidence = 'unsure';
+  late String _activeScenarioId;
   bool _loading = true;
   bool _busy = false;
   bool _initialRouteHandled = false;
+  bool _requiresRealRecording = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _activeScenarioId = widget.initialScenarioId ?? 'a';
     _load();
   }
 
@@ -79,8 +87,11 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       _sessions = history;
       _loading = false;
     });
-    if (_selectedSession == null && history.isNotEmpty) {
-      await _openSession(history.first);
+    final currentModeSessions = history
+        .where((session) => session['scenario_id'] == _activeScenarioId)
+        .toList();
+    if (_selectedSession == null && currentModeSessions.isNotEmpty) {
+      await _openSession(currentModeSessions.first);
     }
     final initialScenarioId = widget.initialScenarioId;
     if (!_initialRouteHandled && initialScenarioId != null) {
@@ -95,6 +106,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _requiresRealRecording = false;
     });
     final results = await Future.wait([
       ApiService.getPatientScenarioSession(id),
@@ -132,7 +144,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
         title: const Text('Persetujuan sesi penelitian'),
         content: const SingleChildScrollView(
           child: Text(
-            'Sesi ini mencatat pilihan skenario dan feedback Anda untuk evaluasi interaksi. Data CAPAR yang memenuhi quality gate dapat digunakan sebagai bukti observasi. Interpretasi bersifat eksperimental, bukan diagnosis, dan tidak menggantikan layanan klinis. Anda dapat berhenti kapan saja; sesi yang sudah tercatat tetap tersedia di riwayat akun.',
+            'Sesi ini memakai rekaman Polar H10 nyata yang sudah tersimpan dan dianalisis CAPAR; aplikasi tidak membuat data sensor contoh. Pilihan skenario dan feedback Anda dicatat untuk evaluasi interaksi. Interpretasi bersifat eksperimental, bukan diagnosis, dan tidak menggantikan layanan klinis. Anda dapat berhenti kapan saja; sesi yang sudah tercatat tetap tersedia di riwayat akun.',
           ),
         ),
         actions: [
@@ -151,6 +163,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _requiresRealRecording = false;
     });
     final result = await ApiService.startPatientScenario(
       scenarioId: scenarioId,
@@ -160,6 +173,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       setState(() {
         _busy = false;
         _error = result.message ?? 'Sesi tidak dapat dimulai.';
+        _requiresRealRecording = result.statusCode == 409;
       });
       return;
     }
@@ -168,6 +182,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       _events = [];
       _questionnaires = [];
       _busy = false;
+      _requiresRealRecording = false;
     });
     await _loadHistory();
   }
@@ -180,6 +195,33 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     } else {
       setState(() => _error = response.message ?? 'Gagal memperbarui riwayat.');
     }
+  }
+
+  Future<void> _selectScenario(String scenarioId) async {
+    if (scenarioId == _activeScenarioId) return;
+    setState(() {
+      _activeScenarioId = scenarioId;
+      _selectedSession = null;
+      _events = [];
+      _questionnaires = [];
+      _requiresRealRecording = false;
+      _error = null;
+    });
+    final matching = _sessions
+        .where((session) => session['scenario_id'] == scenarioId)
+        .toList();
+    if (matching.isNotEmpty) await _openSession(matching.first);
+  }
+
+  Future<void> _openAppPage(Widget page) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => page),
+    );
+    if (mounted) await _load();
+  }
+
+  Future<void> _openRecordingPage() async {
+    await _openAppPage(const WearablePairingScreen());
   }
 
   Future<void> _openQuestionnaire(ScenarioQuestionnaireType type) async {
@@ -418,16 +460,36 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                     const LinearProgressIndicator(),
                   ],
                   const SizedBox(height: 20),
-                  Text('Mulai skenario',
+                  Text('Pilih mode aplikasi',
                       style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
                   ..._scenarios.map(_scenarioCard),
-                  if (_sessions.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _dataWorkspaceCard(),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () => _startScenario(_activeScenarioId),
+                      icon: const Icon(Icons.play_arrow_rounded),
+                      label: Text(
+                        'Mulai sesi ${_activeScenarioId.toUpperCase()} dari data rekaman',
+                      ),
+                    ),
+                  ),
+                  if (_sessions.any(
+                    (session) => session['scenario_id'] == _activeScenarioId,
+                  )) ...[
                     const SizedBox(height: 20),
-                    Text('Riwayat sesi',
+                    Text('Riwayat mode ${_activeScenarioId.toUpperCase()}',
                         style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 8),
-                    ..._sessions.map(_sessionTile),
+                    ..._sessions
+                        .where((session) =>
+                            session['scenario_id'] == _activeScenarioId)
+                        .map(_sessionTile),
                   ],
                   if (_selectedSession != null) ...[
                     const SizedBox(height: 20),
@@ -444,22 +506,99 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
         child: const Padding(
           padding: EdgeInsets.all(16),
           child: Text(
-            'Sesi membandingkan tiga pola interaksi. Data yang tidak memenuhi kualitas atau baseline akan ditandai UNRESOLVED, bukan normal. Hasil hanya untuk evaluasi interaksi dan bukan diagnosis.',
+            'VidyaMedic berisi tiga mode interaksi A, B, dan C. Semua mode memakai halaman pencatatan serta data Polar H10/CAPAR yang benar-benar direkam. Tidak ada hasil sensor simulasi; sesi hanya dapat dimulai setelah rekaman tersimpan dan window CAPAR lolos quality gate. Interpretasi yang belum memiliki baseline tetap UNRESOLVED, bukan normal.',
           ),
         ),
       );
 
   Widget _scenarioCard(Map<String, dynamic> scenario) {
     final id = scenario['id']?.toString() ?? '';
+    final selected = id == _activeScenarioId;
     return Card(
+      color: selected ? const Color(0xFFEFF8F4) : null,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(
+          color: selected ? const Color(0xFF16805D) : Colors.transparent,
+          width: 1.5,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: selected ? const Color(0xFF16805D) : null,
+          foregroundColor: selected ? Colors.white : null,
+          child: Text(id.toUpperCase()),
+        ),
         title: Text(scenario['title']?.toString() ?? 'Skenario'),
         subtitle: Text(scenario['interaction']?.toString() ?? ''),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-        onTap: _busy || id.isEmpty ? null : () => _startScenario(id),
+        trailing: Icon(selected ? Icons.check_circle : Icons.chevron_right),
+        onTap: _busy || id.isEmpty ? null : () => _selectScenario(id),
       ),
     );
   }
+
+  Widget _dataWorkspaceCard() => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Halaman bersama untuk semua mode',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Mode A/B/C menggunakan perekaman dan catatan kesehatan VidyaMedic yang sama; yang berubah hanya cara feedback dan interpretasi ditampilkan.',
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _openAppPage(const WearablePairingScreen()),
+                    icon: const Icon(Icons.sensors_rounded),
+                    label: const Text('Rekam Polar H10'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _openAppPage(
+                              const GuidedDailyFlowScreen(),
+                            ),
+                    icon: const Icon(Icons.edit_note_rounded),
+                    label: const Text('Catat kondisi'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _openAppPage(const DailySummaryScreen()),
+                    icon: const Icon(Icons.assessment_outlined),
+                    label: const Text('Ringkasan'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _openAppPage(const ImpactDashboardScreen()),
+                    icon: const Icon(Icons.insights_outlined),
+                    label: const Text('Dampak'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _openAppPage(const ActionTrackingScreen()),
+                    icon: const Icon(Icons.task_alt_outlined),
+                    label: const Text('Tindakan'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
 
   Widget _sessionTile(Map<String, dynamic> session) {
     final selected = session['_id'] == _selectedSession?['_id'];
@@ -737,8 +876,20 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
         color: const Color(0xFFFFF1F0),
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child:
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(message, style: const TextStyle(color: Color(0xFF9F2D20))),
+              if (_requiresRealRecording) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _openRecordingPage,
+                  icon: const Icon(Icons.sensors_rounded),
+                  label: const Text('Buka perekaman Polar H10'),
+                ),
+              ],
+            ],
+          ),
         ),
       );
 }

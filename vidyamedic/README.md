@@ -50,6 +50,8 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
 - **B — Dua arah nonadaptif**: feedback peserta tercatat, tetapi interpretasi awal dipertahankan.
 - **C — Dua arah adaptif**: membuat versi interpretasi baru hanya jika koreksi konteks dapat dievaluasi memakai bukti CAPAR berkualitas dan baseline statistik yang sesuai.
 - Persetujuan eksplisit, riwayat sesi, event idempotent, audit trail, serta ekspor JSON/CSV (salin ke clipboard) tersedia di aplikasi.
+- Mode A/B/C memakai data hasil rekaman Polar H10 yang tersimpan dan lolos quality gate CAPAR; tanpa rekaman/window analisis nyata, sesi tidak dibuat dan aplikasi mengarahkan pengguna ke halaman pairing/perekaman.
+- Ketiga mode berbagi halaman perekaman wearable, catatan kondisi, ringkasan, dampak, dan tindakan. Perbedaan A/B/C hanya pada pola feedback dan interpretasi.
 - Skenario C menyediakan input kuesioner SUS (10 butir, skala 1-5) dan NASA-TLX (6 dimensi, skala 0-100); setiap hasil terikat ke sesi dan ikut tersedia dalam ekspor.
 - SUS dihitung dengan pembalikan butir standar; nilai NASA-TLX yang disimpan adalah rata-rata enam dimensi tanpa pembobotan, bukan skor NASA-TLX berbobot.
 - Baseline eksperimen memerlukan minimal satu hari dan 10 menit window valid berkualitas; kekurangan bukti menghasilkan `UNRESOLVED`, bukan label normal. Persyaratan ini tidak mengubah kematangan baseline CAPAR produksi.

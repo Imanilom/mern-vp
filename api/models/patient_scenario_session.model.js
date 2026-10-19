@@ -63,7 +63,11 @@ const PatientScenarioSessionSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['CAPAR_ANALYTICS_SEGMENT', 'NO_QUALIFIED_OBSERVATION'],
+      enum: [
+        'CAPAR_ANALYTICS_SEGMENT',
+        'NO_QUALIFIED_OBSERVATION',
+        'RECORDED_POLAR_SAMPLE',
+      ],
       required: true,
     },
     current_interpretation_version: { type: Number, required: true, default: 1 },

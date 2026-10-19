@@ -32,6 +32,14 @@ export const CAPAR_ACTIVITY_LABELS = Object.freeze({
 
 export const SCENARIO_RULE_VERSION = 'scenario-reasoning-v1';
 
+export function isScenarioRealRecordedSample(sample) {
+  return sample?.provider === 'polar_h10'
+    && sample?.source === 'mobile_wearable_bridge'
+    && sample?.ingestion_source === 'mobile_wearable_bridge'
+    && sample?.sensor_contact === true
+    && sample?.data_quality?.status === 'accepted';
+}
+
 export function assessScenarioBaseline(baseline, baselineSegments = []) {
   if (!baseline) {
     return {
@@ -156,7 +164,7 @@ export function buildScenarioInterpretation({
       : null,
     observation: {
       source: 'CAPAR_ANALYZED_SEGMENT',
-      source_provenance: 'CAPAR segment; underlying device provenance is not guaranteed by this record.',
+      source_provenance: 'CAPAR analyzed segment linked to a quality-accepted Polar H10 recording saved by VidyaMedic.',
       segment_id: segment?._id?.toString?.() ?? null,
       quality: {
         signal: quality.q_signal ?? null,

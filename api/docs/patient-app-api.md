@@ -203,6 +203,16 @@ removed. Applying an adaptive interpretation and writing its event use a MongoDB
 transaction. On a standalone MongoDB server where transactions are unavailable,
 the event is retained for review and no new interpretation version is applied.
 
+Scenario sessions do not create an empty or simulated observation. Starting a
+session requires an analyzed CAPAR segment linked to an accepted, sensor-contact
+confirmed Polar H10 sample recorded through VidyaMedic's wearable bridge within
+the supported 180-day history window. If no such sample exists, the API returns
+`409 Conflict` and the user must record data first. If the sample exists but its
+CAPAR window is still processing or fails quality checks, the API also returns
+`409 Conflict`; the user can wait for CAPAR analysis and retry. Baseline windows
+used for the scenario comparison are subject to the same recorded-sample
+provenance and quality checks, so unlinked or synthetic segments are excluded.
+
 Scenario C participants can submit one SUS and one NASA-TLX questionnaire per
 session, including after completing the session. SUS accepts ten integer
 responses from 1-5 and the server calculates its standard 0-100 score. NASA-TLX

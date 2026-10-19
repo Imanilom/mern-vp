@@ -218,7 +218,7 @@ class _ScenarioQuestionnaireScreenState
 
   Widget _tlxQuestionCard(MapEntry<String, String> dimension) {
     final value = _tlxResponses[dimension.key];
-    final sliderValue = value?.toDouble() ?? 50;
+    final sliderValue = value?.toDouble() ?? 0;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -272,6 +272,14 @@ class _ScenarioQuestionnaireScreenState
                 child: Text(
                   'Nilai yang lebih tinggi menunjukkan kinerja yang dirasakan lebih buruk.',
                   style: TextStyle(color: Color(0xFF8A5A00)),
+                ),
+              ),
+            if (value == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Geser skala untuk memilih jawaban; nilai belum dipilih.',
+                  style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
                 ),
               ),
           ],
