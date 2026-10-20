@@ -38,8 +38,11 @@ class _DailySummaryScreenState extends State<DailySummaryScreen> {
       _selectedDate = DateUtils.dateOnly(selected);
       _loadingDate = true;
     });
-    await context.read<AppState>().fetchDailySummary(_selectedDate);
-    if (mounted) setState(() => _loadingDate = false);
+    try {
+      await context.read<AppState>().fetchDailySummary(_selectedDate);
+    } finally {
+      if (mounted) setState(() => _loadingDate = false);
+    }
   }
 
   Future<void> _moveDate(int days) async {
@@ -49,8 +52,11 @@ class _DailySummaryScreenState extends State<DailySummaryScreen> {
       _selectedDate = date;
       _loadingDate = true;
     });
-    await context.read<AppState>().fetchDailySummary(_selectedDate);
-    if (mounted) setState(() => _loadingDate = false);
+    try {
+      await context.read<AppState>().fetchDailySummary(_selectedDate);
+    } finally {
+      if (mounted) setState(() => _loadingDate = false);
+    }
   }
 
   @override

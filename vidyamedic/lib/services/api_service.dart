@@ -731,6 +731,42 @@ class ApiService {
     }
   }
 
+  static Future<ApiResponse<Map<String, dynamic>>> getGamification() async {
+    try {
+      final res = await http
+          .get(Uri.parse(ApiConfig.gamificationEndpoint), headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil data gamifikasi: $e',
+          statusCode: 0);
+    }
+  }
+
+  static Future<ApiResponse<Map<String, dynamic>>> updateGamification(
+    Map<String, dynamic> settings,
+  ) async {
+    try {
+      final res = await http
+          .patch(
+            Uri.parse(ApiConfig.gamificationEndpoint),
+            headers: _headers(),
+            body: jsonEncode(settings),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal menyimpan pengaturan gamifikasi: $e',
+          statusCode: 0);
+    }
+  }
+
   /// GET /api/patient-app/wearable/history
   static Future<ApiResponse<List<dynamic>>> getWearableHistory({
     required DateTime from,

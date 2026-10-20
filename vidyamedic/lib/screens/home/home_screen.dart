@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
 import '../pedagogy/pedagogy_screen_what_changed.dart';
@@ -19,6 +20,7 @@ import '../profile/profile_screen.dart';
 import '../profile/wearable_pairing_screen.dart';
 import '../actions/action_tracking_screen.dart';
 import '../impact/impact_dashboard_screen.dart';
+import '../gamification/gamification_screen.dart';
 import 'profile_snapshot_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -345,10 +347,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final pages = [
       _PedagogyDashboard(
-          onNavigateToInput: () => setState(() => _currentIndex = 1)),
+          onNavigateToInput: () => setState(() => _currentIndex = 1),
+          onNavigateToCommunity: () => setState(() => _currentIndex = 4)),
       const _InputFlowTab(),
       const DailySummaryScreen(),
       const ProfileScreen(),
+      const GamificationScreen(),
     ];
 
     return Scaffold(
@@ -412,6 +416,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: AppTheme.primary, size: 23),
                         label: 'Profil',
                       ),
+                      NavigationDestination(
+                        icon: Icon(Icons.emoji_events_outlined, size: 22),
+                        selectedIcon: Icon(Icons.emoji_events_rounded,
+                            color: AppTheme.primary, size: 23),
+                        label: 'Komunitas',
+                      ),
                     ],
                   ),
                 ),
@@ -429,7 +439,11 @@ class _HomeScreenState extends State<HomeScreen> {
 // ---------------------------------------------------------------------------
 class _PedagogyDashboard extends StatelessWidget {
   final VoidCallback onNavigateToInput;
-  const _PedagogyDashboard({required this.onNavigateToInput});
+  final VoidCallback onNavigateToCommunity;
+  const _PedagogyDashboard({
+    required this.onNavigateToInput,
+    required this.onNavigateToCommunity,
+  });
 
   bool _profileComplete(Map<String, dynamic>? overview) {
     final completion = overview?['profile_completion'];
@@ -695,6 +709,16 @@ class _PedagogyDashboard extends StatelessWidget {
               ),
 
               const ProfileSnapshotCard(),
+
+              _HomeGamificationCard(
+                recordedToday: _hasRealWearableDataToday(s.wearableSamples),
+                onRecord: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const WearablePairingScreen()),
+                ),
+                onCommunity: onNavigateToCommunity,
+              ),
 
               _HomeProgressCard(
                 profileComplete: _profileComplete(s.overviewData),
@@ -2059,6 +2083,187 @@ class _HomeProgressCard extends StatelessWidget {
             }),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _HomeGamificationCard extends StatefulWidget {
+  const _HomeGamificationCard({
+    required this.recordedToday,
+    required this.onRecord,
+    required this.onCommunity,
+  });
+
+  final bool recordedToday;
+  final VoidCallback onRecord;
+  final VoidCallback onCommunity;
+
+  @override
+  State<_HomeGamificationCard> createState() => _HomeGamificationCardState();
+}
+
+class _HomeGamificationCardState extends State<_HomeGamificationCard> {
+  int? _coins;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCoins();
+  }
+
+  Future<void> _loadCoins() async {
+    if (!ApiService.isAuthenticated) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    final response = await ApiService.getGamification();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _coins =
+          response.success ? (response.data?['coins'] as num?)?.toInt() : null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.recordedToday
+        ? 'Hebat, sudah ada rekaman hari ini!'
+        : 'Satu rekaman, satu koin hari ini';
+    final description = widget.recordedToday
+        ? 'Konsistensi Anda membantu membangun riwayat tubuh personal.'
+        : 'Pakai Polar H10 untuk mulai mengumpulkan koin dan mengenali pola tubuh Anda.';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B7A5A), Color(0xFF159A72)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B7A5A).withValues(alpha: 0.16),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.monetization_on_rounded,
+                  color: Color(0xFFFFD166),
+                  size: 27,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTheme.font(
+                        size: 14,
+                        weight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      description,
+                      style: AppTheme.font(
+                        size: 11,
+                        color: Colors.white.withValues(alpha: 0.88),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                children: [
+                  Text(
+                    _loading ? '…' : (_coins?.toString() ?? '—'),
+                    style: AppTheme.font(
+                      size: 21,
+                      weight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    'KOIN',
+                    style: AppTheme.font(
+                      size: 9,
+                      weight: FontWeight.w800,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: widget.recordedToday ? null : widget.onRecord,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF0B7A5A),
+                    disabledBackgroundColor:
+                        Colors.white.withValues(alpha: 0.7),
+                    disabledForegroundColor: const Color(0xFF0B7A5A),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                  ),
+                  icon: Icon(
+                    widget.recordedToday
+                        ? Icons.check_circle_rounded
+                        : Icons.favorite_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    widget.recordedToday
+                        ? 'Misi hari ini selesai'
+                        : 'Mulai rekam',
+                    maxLines: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
+              OutlinedButton(
+                onPressed: widget.onCommunity,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 11,
+                  ),
+                ),
+                child: const Text('Papan skor'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

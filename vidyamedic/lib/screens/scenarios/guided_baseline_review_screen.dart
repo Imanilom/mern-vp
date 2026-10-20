@@ -134,7 +134,7 @@ class _GuidedBaselineReviewScreenState
           })
           .whereType<String>()
           .toSet();
-      if (days.length >= 2) return 'Tren HR duduk berdasarkan hari';
+      if (days.length >= 2) return 'Tren HR konteks Rest/Duduk CAPAR';
     }
     return 'Detak jantung selama sesi baseline';
   }
@@ -156,7 +156,7 @@ class _GuidedBaselineReviewScreenState
       _error = null;
     });
     final response = await ApiService.createEvent({
-      'event_type': 'other',
+      'event_type': 'activity_correction',
       'occurred_at': DateTime.now().toUtc().toIso8601String(),
       'details': corrections.isEmpty
           ? 'Pengguna meninjau konteks sesi baseline dan tidak mengirim koreksi.'
@@ -255,6 +255,7 @@ class _GuidedBaselineReviewScreenState
           const SizedBox(height: 12),
           if (_step < 6)
             FilledButton.icon(
+              key: const Key('baseline-review-next'),
               onPressed: _step == 5 && _savingCorrection
                   ? null
                   : _step == 5 && !_correctionSaved
@@ -421,11 +422,11 @@ class _GuidedBaselineReviewScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Konteks yang direkam',
+                Text('Konteks yang dipelajari',
                     style: AppTheme.font(size: 14, weight: FontWeight.w800)),
                 const SizedBox(height: 4),
                 Text(
-                  'Konteks di bawah berasal dari tahap sesi yang benar-benar terekam.',
+                  'Ditampilkan jika tersedia dari baseline CAPAR atau rekaman sesi ini.',
                   style: AppTheme.font(
                       size: 11, color: AppTheme.textSecondary, height: 1.35),
                 ),

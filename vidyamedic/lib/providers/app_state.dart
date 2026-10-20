@@ -328,60 +328,63 @@ class AppState extends ChangeNotifier {
   Future<void> fetchCaparInsights() async {
     isCaparLoading = true;
     notifyListeners();
+    try {
+      final res = await ApiService.getCaparInsights();
+      if (res.success && res.data != null) {
+        rawCaparInsights = res.data;
+        _applyLegacyCaparWearableReading();
 
-    final res = await ApiService.getCaparInsights();
-    isCaparLoading = false;
-    if (res.success && res.data != null) {
-      rawCaparInsights = res.data;
-      _applyLegacyCaparWearableReading();
+        final evidence = res.data!['scientific_evidence'];
+        final citationItems = evidence is List
+            ? evidence
+            : evidence is Map && evidence['items'] is List
+                ? evidence['items'] as List
+                : const <dynamic>[];
+        scientificCitations = citationItems
+            .whereType<Map>()
+            .map((citation) => ScientificCitation.fromJson(
+                Map<String, dynamic>.from(citation)))
+            .toList();
+        final baselineGuidance = res.data!['baseline_guidance'];
+        final baselineGuidanceItems =
+            baselineGuidance is Map && baselineGuidance['items'] is List
+                ? baselineGuidance['items'] as List
+                : const <dynamic>[];
+        baselineGuidanceCitations = baselineGuidanceItems
+            .whereType<Map>()
+            .map((citation) => ScientificCitation.fromJson(
+                Map<String, dynamic>.from(citation)))
+            .toList();
+        baselineGuidanceEvidenceLimit = baselineGuidance is Map
+            ? baselineGuidance['evidence_limit']?.toString()
+            : null;
 
-      // Parse scientific citations
-      final evidence = res.data!['scientific_evidence'];
-      final citationItems = evidence is List
-          ? evidence
-          : evidence is Map && evidence['items'] is List
-              ? evidence['items'] as List
-              : const <dynamic>[];
-      scientificCitations = citationItems
-          .whereType<Map>()
-          .map((citation) =>
-              ScientificCitation.fromJson(Map<String, dynamic>.from(citation)))
-          .toList();
-      final baselineGuidance = res.data!['baseline_guidance'];
-      final baselineGuidanceItems =
-          baselineGuidance is Map && baselineGuidance['items'] is List
-              ? baselineGuidance['items'] as List
-              : const <dynamic>[];
-      baselineGuidanceCitations = baselineGuidanceItems
-          .whereType<Map>()
-          .map((citation) =>
-              ScientificCitation.fromJson(Map<String, dynamic>.from(citation)))
-          .toList();
-      baselineGuidanceEvidenceLimit = baselineGuidance is Map
-          ? baselineGuidance['evidence_limit']?.toString()
-          : null;
-
-      // Parse follow up prompt
-      final capar = res.data!['capar'] as Map<String, dynamic>?;
-      final recovery = capar?['recovery'];
-      final recoveryEvidence =
-          recovery is Map ? recovery['scientific_evidence'] : null;
-      recoveryScientificCitations = recoveryEvidence is List
-          ? recoveryEvidence
-              .whereType<Map>()
-              .map((citation) => ScientificCitation.fromJson(
-                  Map<String, dynamic>.from(citation)))
-              .toList()
-          : [];
-      final ped = capar?['pedagogy'] as Map<String, dynamic>?;
-      if (ped != null && ped['follow_up'] != null) {
-        followUpPrompt = CaparFollowUpPrompt.fromJson(
-            ped['follow_up'] as Map<String, dynamic>);
+        final capar = res.data!['capar'] as Map<String, dynamic>?;
+        final recovery = capar?['recovery'];
+        final recoveryEvidence =
+            recovery is Map ? recovery['scientific_evidence'] : null;
+        recoveryScientificCitations = recoveryEvidence is List
+            ? recoveryEvidence
+                .whereType<Map>()
+                .map((citation) => ScientificCitation.fromJson(
+                    Map<String, dynamic>.from(citation)))
+                .toList()
+            : [];
+        final ped = capar?['pedagogy'] as Map<String, dynamic>?;
+        if (ped != null && ped['follow_up'] is Map) {
+          followUpPrompt = CaparFollowUpPrompt.fromJson(
+              Map<String, dynamic>.from(ped['follow_up'] as Map));
+        }
+        dataError = null;
+      } else {
+        dataError = res.message ?? 'Gagal memuat analisis CAPAR dari server.';
       }
-
+    } catch (error, stackTrace) {
+      dataError = 'Analisis CAPAR gagal diperbarui: $error';
+      debugPrint('$dataError\n$stackTrace');
+    } finally {
+      isCaparLoading = false;
       notifyListeners();
-    } else {
-      dataError = res.message ?? 'Gagal memuat analisis CAPAR dari server.';
     }
   }
 
@@ -1660,8 +1663,20 @@ class AppState extends ChangeNotifier {
       isDailyDraftDirty = false;
       dataError = null;
       notifyListeners();
-      await Future.wait(
-          [fetchDailySummary(), fetchCaparInsights(), fetchOverview()]);
+      unawaited(
+        Future.wait<void>([
+          fetchDailySummary(),
+          fetchOverview(),
+          fetchCaparInsights(),
+        ]).then<void>((_) {}).catchError(
+          (Object error, StackTrace stackTrace) {
+            dataError =
+                'Catatan tersimpan, tetapi sebagian ringkasan gagal diperbarui.';
+            debugPrint('$dataError $error\n$stackTrace');
+            notifyListeners();
+          },
+        ),
+      );
       return true;
     }
     dataError = res.message ?? 'Check-in gagal disimpan di server.';

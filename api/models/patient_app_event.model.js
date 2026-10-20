@@ -30,6 +30,7 @@ const PatientAppEventSchema = new mongoose.Schema(
         'hydration',
         'illness',
         'posture_change',
+        'activity_correction',
         'menstruation',
         'other',
         'ema',

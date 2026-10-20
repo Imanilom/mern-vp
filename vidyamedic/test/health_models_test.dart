@@ -71,6 +71,21 @@ void main() {
     expect(citation.summary, 'Population-level finding.');
   });
 
+  test('scientific citations accept object-shaped matched dimensions', () {
+    final citation = ScientificCitation.fromJson({
+      'title': 'Evidence title',
+      'matched_dimensions': {
+        'sleep_duration': 'sleep',
+        'heart_rate': 'cardiovascular',
+      },
+    });
+
+    expect(citation.matchedDimensions, [
+      'sleep_duration: sleep',
+      'heart_rate: cardiovascular',
+    ]);
+  });
+
   test('morning reminder time round-trips with profile preferences', () {
     final profile = UserProfile.fromJson({
       'notification_preferences': {

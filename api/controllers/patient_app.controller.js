@@ -8,6 +8,8 @@ import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppEvent from '../models/patient_app_event.model.js';
 import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
+import PatientGamificationProfile from '../models/patient_gamification_profile.model.js';
+import PatientRecordingCoin from '../models/patient_recording_coin.model.js';
 import PatientScenarioEvent from '../models/patient_scenario_event.model.js';
 import PatientScenarioQuestionnaire from '../models/patient_scenario_questionnaire.model.js';
 import PatientScenarioSession from '../models/patient_scenario_session.model.js';
@@ -68,8 +70,10 @@ import {
   validateScenarioQuestionnaire,
   validateScenarioId,
   validateScenarioSession,
+  validateGamificationSettings,
   registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
+import { awardRecordingDayCoin } from '../utils/recordingCoins.js';
 import {
   assessScenarioBaseline,
   buildScenarioInterpretation,
@@ -301,6 +305,269 @@ export async function updatePatientAppProfile(req, res) {
     data: {
       account: publicAccount(account, accountType),
       profile: profileData(profile),
+    },
+  });
+}
+
+export async function getPatientAppGamification(req, res) {
+  const { dataOwnerId, dataOwnerType } = await getAccount(req);
+  const accountId = new mongoose.Types.ObjectId(dataOwnerId);
+  const identityFilter = { account_id: accountId, account_type: dataOwnerType };
+  let identity = await PatientGamificationProfile.findOne(identityFilter).lean();
+  if (!identity) {
+    try {
+      identity = await PatientGamificationProfile.findOneAndUpdate(
+        identityFilter,
+        {
+          $setOnInsert: {
+            ...identityFilter,
+            nickname: `Teman-${String(accountId).slice(-4)}`,
+          },
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+      ).lean();
+    } catch (error) {
+      if (error?.code !== 11000) throw error;
+      identity = await PatientGamificationProfile.findOne(identityFilter).lean();
+      if (!identity) throw error;
+    }
+  }
+
+  if (!identity.recording_history_backfilled_at) {
+    const patientProfile = await findExistingPatientAppProfile([
+      { account_id: dataOwnerId, account_type: dataOwnerType },
+    ]);
+    const timezone = patientProfile?.timezone || 'Asia/Jakarta';
+    const recordingDays = await PatientAppWearableSample.aggregate([
+      {
+        $match: {
+          account_id: accountId,
+          account_type: dataOwnerType,
+          is_simulated: { $ne: true },
+          sensor_contact: true,
+          'rr_intervals_ms.0': { $exists: true },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          recorded_at: 1,
+          is_simulated: 1,
+          sensor_contact: 1,
+          rr_intervals_ms: 1,
+          recording_date: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$recorded_at',
+              timezone,
+            },
+          },
+        },
+      },
+      { $sort: { recorded_at: 1 } },
+      {
+        $group: {
+          _id: '$recording_date',
+          sample: { $first: '$$ROOT' },
+        },
+      },
+    ]);
+    if (recordingDays.length) {
+      try {
+        await PatientRecordingCoin.bulkWrite(
+          recordingDays.map(({ sample }) => ({
+            updateOne: {
+              filter: {
+                account_id: accountId,
+                account_type: dataOwnerType,
+                recording_date: sample.recording_date,
+              },
+              update: {
+                $setOnInsert: {
+                  account_id: accountId,
+                  account_type: dataOwnerType,
+                  recording_date: sample.recording_date,
+                  timezone,
+                  awarded_at: new Date(),
+                  sample_id: sample._id,
+                },
+              },
+              upsert: true,
+            },
+          })),
+          { ordered: false }
+        );
+      } catch (error) {
+        const writeErrors = error?.writeErrors
+          ?? error?.result?.getWriteErrors?.()
+          ?? [];
+        if (
+          !writeErrors.length
+          || writeErrors.some((item) => (item.code ?? item.err?.code) !== 11000)
+        ) {
+          throw error;
+        }
+      }
+    }
+    await PatientGamificationProfile.updateOne(
+      { _id: identity._id, recording_history_backfilled_at: null },
+      { $set: { recording_history_backfilled_at: new Date() } }
+    );
+  }
+
+  const profilesQuery = identity.location_opt_in && identity.location
+    ? PatientGamificationProfile.find({
+      leaderboard_opt_in: true,
+      location_opt_in: true,
+      location: {
+        $near: {
+          $geometry: identity.location,
+          $maxDistance: 10000,
+        },
+      },
+    }).limit(30).lean()
+    : null;
+
+  let leaderboard;
+  let scope;
+  if (profilesQuery) {
+    const nearbyProfiles = await profilesQuery;
+    const accountFilters = nearbyProfiles.map((item) => ({
+      account_id: item.account_id,
+      account_type: item.account_type,
+    }));
+    const coinTotals = accountFilters.length
+      ? await PatientRecordingCoin.aggregate([
+        { $match: { $or: accountFilters } },
+        {
+          $group: {
+            _id: { account_id: '$account_id', account_type: '$account_type' },
+            coins: { $sum: 1 },
+          },
+        },
+      ])
+      : [];
+    const coinMap = new Map(coinTotals.map((item) => [
+      `${item._id.account_type}:${item._id.account_id}`,
+      item.coins,
+    ]));
+    leaderboard = nearbyProfiles
+      .map((item) => ({
+        nickname: item.nickname,
+        coins: coinMap.get(`${item.account_type}:${item.account_id}`) ?? 0,
+        is_me: String(item.account_id) === String(accountId)
+          && item.account_type === dataOwnerType,
+      }))
+      .sort((left, right) => right.coins - left.coins)
+      .slice(0, 30);
+    scope = 'nearby';
+  } else {
+    leaderboard = await PatientGamificationProfile.aggregate([
+      { $match: { leaderboard_opt_in: true } },
+      {
+        $lookup: {
+          from: PatientRecordingCoin.collection.name,
+          let: { accountId: '$account_id', accountType: '$account_type' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$account_id', '$$accountId'] },
+                    { $eq: ['$account_type', '$$accountType'] },
+                  ],
+                },
+              },
+            },
+            { $count: 'coins' },
+          ],
+          as: 'coin_totals',
+        },
+      },
+      {
+        $project: {
+          nickname: 1,
+          account_id: 1,
+          account_type: 1,
+          coins: { $ifNull: [{ $arrayElemAt: ['$coin_totals.coins', 0] }, 0] },
+        },
+      },
+      { $sort: { coins: -1, _id: 1 } },
+      { $limit: 30 },
+    ]);
+    leaderboard = leaderboard.map((item) => ({
+      nickname: item.nickname,
+      coins: item.coins,
+      is_me: String(item.account_id) === String(accountId)
+        && item.account_type === dataOwnerType,
+    }));
+    scope = 'global';
+  }
+
+  const myCoins = await PatientRecordingCoin.countDocuments({
+    account_id: accountId,
+    account_type: dataOwnerType,
+  });
+  res.json({
+    success: true,
+    data: {
+      coins: myCoins,
+      recording_days: myCoins,
+      settings: {
+        nickname: identity.nickname,
+        leaderboard_opt_in: identity.leaderboard_opt_in,
+        location_opt_in: identity.location_opt_in,
+      },
+      leaderboard_scope: scope,
+      community_size: leaderboard.length,
+      leaderboard,
+    },
+  });
+}
+
+export async function updatePatientAppGamification(req, res) {
+  const { dataOwnerId, dataOwnerType } = await getAccount(req);
+  const input = validateGamificationSettings(req.body);
+  const accountId = new mongoose.Types.ObjectId(dataOwnerId);
+  const update = {
+    $set: {
+      account_id: accountId,
+      account_type: dataOwnerType,
+      ...(input.nickname !== undefined && { nickname: input.nickname }),
+      ...(input.leaderboard_opt_in !== undefined
+        && { leaderboard_opt_in: input.leaderboard_opt_in }),
+    },
+    $setOnInsert: {
+      ...(input.nickname === undefined
+        && { nickname: `Teman-${String(accountId).slice(-4)}` }),
+    },
+  };
+  if (input.location_opt_in === true) {
+    update.$set.location_opt_in = true;
+    update.$set.location = {
+      type: 'Point',
+      coordinates: [
+        Math.round(input.longitude * 100) / 100,
+        Math.round(input.latitude * 100) / 100,
+      ],
+    };
+  } else if (input.location_opt_in === false) {
+    update.$set.location_opt_in = false;
+    update.$unset = { location: 1 };
+  }
+  const profile = await PatientGamificationProfile.findOneAndUpdate(
+    { account_id: accountId, account_type: dataOwnerType },
+    update,
+    { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+  ).lean();
+  res.json({
+    success: true,
+    data: {
+      settings: {
+        nickname: profile.nickname,
+        leaderboard_opt_in: profile.leaderboard_opt_in,
+        location_opt_in: profile.location_opt_in,
+      },
     },
   });
 }
@@ -2704,6 +2971,13 @@ export async function createPatientAppWearableSample(req, res) {
     },
     { upsert: true, setDefaultsOnInsert: true, runValidators: true }
   );
+  const coinAwarded = await awardRecordingDayCoin({
+    CoinModel: PatientRecordingCoin,
+    accountId: dataOwnerId,
+    accountType: dataOwnerType,
+    sample,
+    timezone: existingProfile?.timezone || 'Asia/Jakarta',
+  });
   res.status(201).json({
     success: true,
     data: {
@@ -2726,6 +3000,7 @@ export async function createPatientAppWearableSample(req, res) {
         },
         minimum_rr_for_dfa: getPatientDecisionPolicy('rr_min_beats_for_dfa').value,
       },
+      gamification_coin_awarded: coinAwarded,
     },
   });
 }

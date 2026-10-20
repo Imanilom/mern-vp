@@ -300,6 +300,7 @@ const patientEventTypes = new Set([
   'hydration',
   'illness',
   'posture_change',
+  'activity_correction',
   'menstruation',
   'other',
   'ema',
@@ -416,6 +417,46 @@ export function validatePatientEvent(body) {
     result.intensity = body.intensity;
   }
   if ('unit' in body) result.unit = optionalString(body.unit, 'unit', 32);
+  return result;
+}
+
+export function validateGamificationSettings(body) {
+  requireObject(body, 'Pengaturan gamifikasi');
+  const allowed = new Set([
+    'nickname',
+    'leaderboard_opt_in',
+    'location_opt_in',
+    'latitude',
+    'longitude',
+  ]);
+  rejectUnknownFields(body, allowed, 'Field gamifikasi');
+  const result = {};
+  if ('nickname' in body) {
+    result.nickname = optionalString(body.nickname, 'nickname', 24);
+    if (result.nickname.length < 2) {
+      throw errorHandler(400, 'Nama samaran harus berisi 2-24 karakter.');
+    }
+  }
+  for (const field of ['leaderboard_opt_in', 'location_opt_in']) {
+    if (field in body) {
+      if (typeof body[field] !== 'boolean') {
+        throw errorHandler(400, `${field} harus berupa boolean.`);
+      }
+      result[field] = body[field];
+    }
+  }
+  if (!Object.keys(result).length) {
+    throw errorHandler(400, 'Minimal satu pengaturan gamifikasi harus diisi.');
+  }
+  if (body.location_opt_in === true) {
+    result.latitude = optionalNumber(body.latitude, 'latitude', -90, 90);
+    result.longitude = optionalNumber(body.longitude, 'longitude', -180, 180);
+    if (!Number.isFinite(result.latitude) || !Number.isFinite(result.longitude)) {
+      throw errorHandler(400, 'Izin lokasi memerlukan koordinat GPS yang valid.');
+    }
+  } else if ('latitude' in body || 'longitude' in body) {
+    throw errorHandler(400, 'Koordinat hanya boleh dikirim saat lokasi diaktifkan.');
+  }
   return result;
 }
 

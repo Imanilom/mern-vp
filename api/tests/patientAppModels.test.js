@@ -5,6 +5,8 @@ import PatientAppEvent from '../models/patient_app_event.model.js';
 import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
+import PatientGamificationProfile from '../models/patient_gamification_profile.model.js';
+import PatientRecordingCoin from '../models/patient_recording_coin.model.js';
 import PatientScenarioEvent from '../models/patient_scenario_event.model.js';
 import PatientScenarioQuestionnaire from '../models/patient_scenario_questionnaire.model.js';
 import PatientScenarioSession from '../models/patient_scenario_session.model.js';
@@ -54,6 +56,30 @@ test('patient check-in, events, and wearable schemas retain patient provenance',
     assert.ok(model.schema.path('account_type'));
     assert.deepEqual(model.schema.path('account_type').enumValues, ['user', 'patient']);
   }
+});
+
+test('gamification models scope pseudonyms and award one coin per local date', async () => {
+  assert.ok(PatientGamificationProfile.schema.path('account_id'));
+  assert.ok(PatientGamificationProfile.schema.path('leaderboard_opt_in'));
+  assert.ok(PatientGamificationProfile.schema.path('location_opt_in'));
+  assert.ok(PatientGamificationProfile.schema.path('location.coordinates'));
+  assert.ok(PatientRecordingCoin.schema.path('recording_date'));
+  assert.ok(PatientRecordingCoin.schema.path('sample_id'));
+  assert.ok(PatientRecordingCoin.schema.indexes().some(([keys, options]) => (
+    keys.account_id === 1
+    && keys.account_type === 1
+    && keys.recording_date === 1
+    && options.unique === true
+  )));
+  const profile = new PatientGamificationProfile({
+    account_id: new PatientGamificationProfile.base.Types.ObjectId(),
+    account_type: 'user',
+    nickname: 'TemanSehat',
+    location_opt_in: true,
+    location: { type: 'Point', coordinates: [106.8, -6.2] },
+  });
+  await profile.validate();
+  assert.deepEqual(profile.location.coordinates, [106.8, -6.2]);
 });
 
 test('patient action schema stores scoped records and auditable lifecycle states', () => {

@@ -55,8 +55,8 @@ void main() {
     expect(find.text('Detak jantung selama sesi baseline'), findsOneWidget);
     expect(find.byType(CustomPaint), findsWidgets);
 
-    final next = find.text('Lanjut ke tahap 4');
-    await tester.ensureVisible(next);
+    final next = find.byKey(const Key('baseline-review-next'));
+    await tester.scrollUntilVisible(next, 250);
     await tester.tap(next);
     await tester.pumpAndSettle();
 

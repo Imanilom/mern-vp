@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -24,7 +26,9 @@ class _ImpactDashboardScreenState extends State<ImpactDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _loadActivity();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadActivity();
+    });
   }
 
   Future<void> _loadActivity() async {
@@ -36,11 +40,9 @@ class _ImpactDashboardScreenState extends State<ImpactDashboardScreen> {
     final from = now.subtract(const Duration(days: 30)).toIso8601String();
     final to = now.toIso8601String();
     final appState = context.read<AppState>();
-    final responses = await Future.wait([
-      ApiService.getPatientImpactSummary(from: from, to: to),
-      appState.fetchCaparInsights(),
-    ]);
-    final summary = responses[0] as ApiResponse<Map<String, dynamic>>;
+    unawaited(appState.fetchCaparInsights());
+    final summary =
+        await ApiService.getPatientImpactSummary(from: from, to: to);
     if (!mounted) return;
 
     final counts = _asMap(summary.data?['counts']);

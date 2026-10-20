@@ -94,6 +94,7 @@ class ApiConfig {
   static String get registerEndpoint => '$baseUrl/patient-app/register';
   static String get signinEndpoint => '$baseUrl/auth/signin';
   static String get profileEndpoint => '$baseUrl/patient-app/profile';
+  static String get gamificationEndpoint => '$baseUrl/patient-app/gamification';
   static String get overviewEndpoint => '$baseUrl/patient-app/overview';
   static String get dailySummaryEndpoint =>
       '$baseUrl/patient-app/daily-summary';

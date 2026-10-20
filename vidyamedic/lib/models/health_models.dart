@@ -926,6 +926,14 @@ class ScientificCitation {
 
   factory ScientificCitation.fromJson(Map<String, dynamic> json) {
     final rawAuthors = json['authors'];
+    final rawDimensions = json['matched_dimensions'];
+    final matchedDimensions = rawDimensions is List
+        ? rawDimensions.map((item) => item.toString()).toList()
+        : rawDimensions is Map
+            ? rawDimensions.entries
+                .map((entry) => '${entry.key}: ${entry.value}')
+                .toList()
+            : const <String>[];
     return ScientificCitation(
       title:
           json['title']?.toString() ?? json['document_title']?.toString() ?? '',
@@ -941,10 +949,7 @@ class ScientificCitation {
       relevance: (json['relevance'] as num?)?.toDouble() ??
           (json['relevance_score'] as num?)?.toDouble() ??
           0,
-      matchedDimensions: (json['matched_dimensions'] as List?)
-              ?.map((item) => item.toString())
-              .toList() ??
-          const [],
+      matchedDimensions: matchedDimensions,
     );
   }
 }

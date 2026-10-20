@@ -16,8 +16,45 @@ import {
   validateWearableStream,
   validateWearableSample,
   validateWearableHistoryQuery,
+  validateGamificationSettings,
   registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
+
+test('gamification settings require strict pseudonym and explicit location consent', () => {
+  assert.deepEqual(
+    validateGamificationSettings({
+      leaderboard_opt_in: true,
+      location_opt_in: true,
+      latitude: -6.2,
+      longitude: 106.8,
+    }),
+    {
+      leaderboard_opt_in: true,
+      location_opt_in: true,
+      latitude: -6.2,
+      longitude: 106.8,
+    }
+  );
+  assert.throws(
+    () => validateGamificationSettings({ location_opt_in: true }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateGamificationSettings({
+      location_opt_in: false,
+      latitude: -6.2,
+      longitude: 106.8,
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateGamificationSettings({
+      leaderboard_opt_in: true,
+      account_id: 'another-account',
+    }),
+    { statusCode: 400 }
+  );
+});
 
 test('patient action validates bounded data and optional decision snapshot', () => {
   const action = validatePatientAction({
@@ -542,6 +579,15 @@ test('patient event markers and wearable samples validate their source values', 
   assert.equal(event.details, 'Obat pagi');
   assert.equal(event.occurred_at.toISOString(), '2026-10-05T07:30:00.000Z');
   assert.equal(event.value, '1 tablet');
+  const activityCorrection = validatePatientEvent({
+    event_type: 'activity_correction',
+    occurred_at: '2026-10-05T08:30:00.000Z',
+    details: 'Konteks Duduk dikoreksi menjadi Berdiri.',
+    value: 'baseline_context_correction',
+    unit: 'baseline_context_feedback',
+  });
+  assert.equal(activityCorrection.event_type, 'activity_correction');
+  assert.equal(activityCorrection.value, 'baseline_context_correction');
   assert.throws(
     () => validatePatientEvent({ event_type: 'unknown', occurred_at: '2026-10-05T07:30:00Z' }),
     { statusCode: 400 }

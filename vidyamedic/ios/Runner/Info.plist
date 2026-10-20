@@ -31,7 +31,7 @@
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>VidyaMedic menggunakan Bluetooth untuk menghubungkan Polar H10 dan menerima data denyut jantung serta akselerasi.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Lokasi hanya diminta saat Anda memilih untuk menambahkan konteks lokasi pada deviasi kesehatan.</string>
+	<string>Lokasi hanya diminta setelah persetujuan Anda untuk menambahkan konteks deviasi atau menemukan komunitas VidyaMedic di sekitar. Untuk komunitas, hanya area perkiraan yang disimpan.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

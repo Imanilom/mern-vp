@@ -17,6 +17,7 @@ import {
   getPatientAppImpactSummary,
   getPatientAppScenarios,
   getPatientAppProfile,
+  getPatientAppGamification,
   getPatientAppWearableHistory,
   listPatientAppCheckIns,
   listPatientAppEvents,
@@ -31,6 +32,7 @@ import {
   startPatientScenarioSession,
   getPatientScenarioSession,
   updatePatientAppProfile,
+  updatePatientAppGamification,
   updatePatientAppActionStatus,
 } from '../controllers/patient_app.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
@@ -56,6 +58,8 @@ const scenarioWriteLimiter = rateLimit({
 router.post('/register', registrationLimiter, registerPatientAppAccount);
 router.get('/profile', verifyToken, getPatientAppProfile);
 router.patch('/profile', verifyToken, updatePatientAppProfile);
+router.get('/gamification', verifyToken, getPatientAppGamification);
+router.patch('/gamification', verifyToken, updatePatientAppGamification);
 router.get('/overview', verifyToken, getPatientAppOverview);
 router.get('/daily-summary', verifyToken, getPatientAppDailySummary);
 router.get('/capar-insights', verifyToken, getPatientAppCaparInsights);

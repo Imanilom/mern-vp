@@ -134,9 +134,11 @@ markers, and wearable samples recorded on the requested UTC calendar day.
 
 The `event_type` enum is `exercise_started`, `exercise_ended`, `sleep_started`,
 `woke_up`, `meal`, `medication`, `stress`, `symptom`, `caffeine`, `alcohol`,
-`smoking`, `hydration`, `illness`, `posture_change`, `menstruation`, `other`,
-or `ema`. Each event requires `occurred_at` (ISO date) and accepts `details` (up
-to 300 characters), and optional `value`, `intensity`, and `unit`. EMA events
+`smoking`, `hydration`, `illness`, `posture_change`, `activity_correction`,
+`menstruation`, `other`, or `ema`. Each event requires `occurred_at` (ISO date)
+and accepts `details` (up to 300 characters), and optional `value`, `intensity`,
+and `unit`. Activity corrections are patient-reported context feedback and do
+not alter sensor readings. EMA events
 use a validated structured `value` with a questionnaire version, patient-reported
 feeling, optional note, and the four activity sample summaries; they are kept
 separate from sensor-derived findings.
@@ -269,6 +271,26 @@ Submission examples:
 }
 ```
 
+## Gamification
+
+- `GET /api/patient-app/gamification`
+- `PATCH /api/patient-app/gamification`
+
+Gamification awards one MongoDB ledger coin per local calendar day after a
+non-simulated wearable sample with confirmed sensor contact and RR data is
+saved. The unique `(account_id, account_type, recording_date)` index makes
+awards idempotent; simulated/demo samples do not earn coins. On first use, the
+GET endpoint also backfills eligible historical recording days into the ledger.
+It returns the account's coin/day total, pseudonymous leaderboard, and current
+sharing settings. The PATCH endpoint accepts
+`nickname`, `leaderboard_opt_in`, and `location_opt_in`. Enabling location
+requires `latitude` and `longitude`; the server rounds coordinates to two
+decimal places (roughly 1 km) and only returns pseudonyms and coin totals.
+Nearby opted-in participants are shown within 10 km. Disabling location
+removes the stored point; disabling leaderboard participation removes that
+account from public standings. Without location consent, the leaderboard is
+global. Location is never required to earn coins.
+
 ## Wearable bridge
 
 - `POST /api/patient-app/wearable/samples`
@@ -303,7 +325,7 @@ checks, daily summaries, and wearable-history charts. The streaming endpoint
 remains restricted to Polar H10 readings. CAPAR Mobile uses that authenticated
 streaming endpoint; broker credentials remain server-side.
 
-While streaming, VidyaMedic uses a local, cadence-based accelerometer heuristic
+While streaming, Vidyamedic uses a local, cadence-based accelerometer heuristic
 to suggest `Berjalan` or `Berlari` and asks the patient to confirm or correct
 the activity; sensor classification alone never saves a confirmed activity.
 Its cadence/prominence settings are configurable demo policy
