@@ -99,7 +99,6 @@ export function buildPatientAppDemoSampleOperations(envelope) {
                 : ['rest', 'istirahat'].includes(activity)
                   ? 'rest'
                   : 'other';
-      const now = new Date();
       const sample = {
         account_id: envelope.user_id,
         account_type: envelope.account_type,
@@ -135,7 +134,7 @@ export function buildPatientAppDemoSampleOperations(envelope) {
             is_simulated: true,
             ingestion_source: 'rabbitmq_stream',
           },
-          update: { $setOnInsert: { ...sample, createdAt: now, updatedAt: now } },
+          update: { $setOnInsert: sample },
           upsert: true,
         },
       }];

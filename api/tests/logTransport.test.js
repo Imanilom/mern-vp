@@ -86,6 +86,8 @@ test('patient app demo transport creates idempotent non-clinical Mongo samples',
   assert.equal(sample.activity, 'standing');
   assert.deepEqual(sample.data_quality.reasons, ['simulated_sensor_data']);
   assert.equal(operation.upsert, true);
+  assert.equal('createdAt' in operation.update.$setOnInsert, false);
+  assert.equal('updatedAt' in operation.update.$setOnInsert, false);
   assert.equal(operation.filter.recorded_at.toISOString(), sample.recorded_at.toISOString());
 });
 
