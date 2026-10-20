@@ -316,6 +316,7 @@ export async function getPatientAppOverview(req, res) {
       .sort({ recorded_at: -1 })
       .lean(),
     PatientAppWearableSample.findOne(accountScopeFilter(accountScopes))
+      .where({ is_simulated: { $ne: true } })
       .sort({ recorded_at: -1 })
       .lean(),
     PatientAppCheckIn.countDocuments({
@@ -497,6 +498,7 @@ export async function getPatientAppDailySummary(req, res) {
     }).sort({ occurred_at: 1 }).lean(),
     PatientAppWearableSample.find({
       ...owner,
+      is_simulated: { $ne: true },
       recorded_at: { $gte: start, $lt: end },
     }).sort({ recorded_at: 1 }).lean(),
   ]);
@@ -2533,6 +2535,7 @@ export async function createPatientAppWearableSample(req, res) {
   );
   const derivedHr = derived.hr_mean;
   const reasons = [...rrQuality.reasons];
+  if (sampleData.is_simulated) reasons.push('simulated_sensor_data');
   if (!sampleData.sensor_contact) reasons.push('wearable_sensor_contact_not_confirmed');
   if (activityConfidence < minimumSignalConfidence) {
     reasons.push('signal_confidence_below_policy_minimum');
@@ -2544,7 +2547,8 @@ export async function createPatientAppWearableSample(req, res) {
   ) {
     reasons.push('reported_hr_disagrees_with_rr_derived_hr');
   }
-  const qualityAccepted = rrQuality.accepted
+  const qualityAccepted = !sampleData.is_simulated
+    && rrQuality.accepted
     && sampleData.sensor_contact
     && activityConfidence >= minimumSignalConfidence
     && !reasons.includes('reported_hr_disagrees_with_rr_derived_hr');
@@ -2609,6 +2613,7 @@ export async function createPatientAppWearableSample(req, res) {
           user_id: dataOwnerId,
           device_id: sampleData.device_id,
           patient_app_sample_id: sample._id,
+          is_simulated: sampleData.is_simulated,
           window_type: '1min',
           window_start: sampleData.recorded_at.getTime(),
           window_end: windowEnd,
@@ -2633,9 +2638,13 @@ export async function createPatientAppWearableSample(req, res) {
             gate_reasons: reasons,
           },
           signal_quality: {
-            is_artifact: !qualityAccepted,
+            is_artifact: !qualityAccepted && !sampleData.is_simulated,
             is_anomaly: false,
-            artifact_type: qualityAccepted ? null : 'quality_gate',
+            artifact_type: sampleData.is_simulated
+              ? 'simulated_data'
+              : qualityAccepted
+                ? null
+                : 'quality_gate',
           },
           signal_quality_detail: {
             artifact_fraction: rrQuality.artifact_fraction,
@@ -2707,7 +2716,10 @@ export async function streamPatientAppWearableData(req, res) {
   try {
     const result = await publishLogTransport({
       user_id: dataOwnerId.toString(),
-      source: 'patient_app_polar_ble',
+      source: stream.is_simulated
+        ? 'patient_app_polar_ble_demo'
+        : 'patient_app_polar_ble',
+      is_simulated: stream.is_simulated,
       device_id: stream.device_id,
       received_at: new Date().toISOString(),
       readings: stream.readings.map((reading) => ({
@@ -2719,6 +2731,7 @@ export async function streamPatientAppWearableData(req, res) {
         acc_x: reading.acceleration_g[0],
         acc_y: reading.acceleration_g[1],
         acc_z: reading.acceleration_g[2],
+        is_simulated: stream.is_simulated,
       })),
     });
     if (!result.published) {
@@ -3135,6 +3148,7 @@ export async function getPatientAppWearableHistory(req, res) {
       {
         $match: {
           ...accountScopeFilter(accountScopes),
+          is_simulated: { $ne: true },
           recorded_at: { $gte: filters.from, $lte: filters.to },
         },
       },

@@ -16,6 +16,7 @@ import '../input/event_marker_screen.dart';
 import '../input/free_note_screen.dart';
 import '../summary/daily_summary_screen.dart';
 import '../profile/profile_screen.dart';
+import '../profile/wearable_pairing_screen.dart';
 import '../actions/action_tracking_screen.dart';
 import '../impact/impact_dashboard_screen.dart';
 import 'profile_snapshot_card.dart';
@@ -430,6 +431,41 @@ class _PedagogyDashboard extends StatelessWidget {
   final VoidCallback onNavigateToInput;
   const _PedagogyDashboard({required this.onNavigateToInput});
 
+  bool _profileComplete(Map<String, dynamic>? overview) {
+    final completion = overview?['profile_completion'];
+    return completion is Map &&
+        completion['total_fields'] is num &&
+        completion['completed_fields'] is num &&
+        (completion['total_fields'] as num) > 0 &&
+        (completion['completed_fields'] as num) >=
+            (completion['total_fields'] as num);
+  }
+
+  bool _hasCheckInToday(Map<String, dynamic>? overview) {
+    final checkIn = overview?['latest_check_in'];
+    if (checkIn is! Map) return false;
+    final recordedAt =
+        DateTime.tryParse(checkIn['recorded_at']?.toString() ?? '')?.toLocal();
+    return _isToday(recordedAt);
+  }
+
+  bool _hasRealWearableDataToday(List<Map<String, dynamic>> samples) {
+    return samples.any((sample) {
+      if (sample['is_simulated'] == true) return false;
+      final recordedAt =
+          DateTime.tryParse(sample['recorded_at']?.toString() ?? '')?.toLocal();
+      return _isToday(recordedAt);
+    });
+  }
+
+  bool _isToday(DateTime? date) {
+    if (date == null) return false;
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
@@ -481,17 +517,21 @@ class _PedagogyDashboard extends StatelessWidget {
               children: [
                 PulsingStatusDot(
                   size: 6,
-                  color: w.hasServerSamples || s.hasCaparRecords
-                      ? AppTheme.statusGreen
-                      : AppTheme.textMuted,
+                  color: w.isSimulated
+                      ? AppTheme.statusYellow
+                      : w.hasServerSamples || s.hasCaparRecords
+                          ? AppTheme.statusGreen
+                          : AppTheme.textMuted,
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  w.hasServerSamples
-                      ? 'Sampel wearable dari server • ${w.deviceName}'
-                      : s.hasCaparRecords
-                          ? 'Riwayat CAPAR tersedia dari server'
-                          : 'Belum ada data wearable dari server',
+                  w.isSimulated
+                      ? 'Data demo simulasi (bukan pengukuran nyata)'
+                      : w.hasServerSamples
+                          ? 'Sampel wearable dari server • ${w.deviceName}'
+                          : s.hasCaparRecords
+                              ? 'Riwayat CAPAR tersedia dari server'
+                              : 'Belum ada data wearable dari server',
                   style: AppTheme.font(
                       size: 11,
                       color: AppTheme.textSecondary,
@@ -622,23 +662,29 @@ class _PedagogyDashboard extends StatelessWidget {
                         children: [
                           PulsingStatusDot(
                             size: 6,
-                            color: w.hasServerSamples || s.hasCaparRecords
-                                ? AppTheme.statusGreen
-                                : AppTheme.textMuted,
+                            color: w.isSimulated
+                                ? AppTheme.statusYellow
+                                : w.hasServerSamples || s.hasCaparRecords
+                                    ? AppTheme.statusGreen
+                                    : AppTheme.textMuted,
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            w.hasServerSamples
-                                ? 'Data server tersedia'
-                                : s.hasCaparRecords
-                                    ? 'Riwayat CAPAR tersedia'
-                                    : 'Belum ada data',
+                            w.isSimulated
+                                ? 'Data demo simulasi'
+                                : w.hasServerSamples
+                                    ? 'Data server tersedia'
+                                    : s.hasCaparRecords
+                                        ? 'Riwayat CAPAR tersedia'
+                                        : 'Belum ada data',
                             style: AppTheme.font(
                               size: 10.5,
                               weight: FontWeight.w700,
-                              color: w.hasServerSamples || s.hasCaparRecords
-                                  ? AppTheme.statusGreen
-                                  : AppTheme.textMuted,
+                              color: w.isSimulated
+                                  ? AppTheme.statusYellow
+                                  : w.hasServerSamples || s.hasCaparRecords
+                                      ? AppTheme.statusGreen
+                                      : AppTheme.textMuted,
                             ),
                           ),
                         ],
@@ -649,6 +695,22 @@ class _PedagogyDashboard extends StatelessWidget {
               ),
 
               const ProfileSnapshotCard(),
+
+              _HomeProgressCard(
+                profileComplete: _profileComplete(s.overviewData),
+                dailyCheckInComplete: _hasCheckInToday(s.overviewData),
+                wearableComplete: _hasRealWearableDataToday(s.wearableSamples),
+                onCompleteProfile: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                ),
+                onDailyCheckIn: onNavigateToInput,
+                onRecordWearable: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const WearablePairingScreen()),
+                ),
+              ),
 
               if (caparStatus == 'link_required') ...[
                 const SizedBox(height: 12),
@@ -710,6 +772,24 @@ class _PedagogyDashboard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (w.isSimulated) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Text(
+                          'DEMO · HR sintetis, bukan pengukuran tubuh',
+                          style: AppTheme.font(
+                              size: 10.5,
+                              color: Colors.white,
+                              weight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -757,9 +837,11 @@ class _PedagogyDashboard extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                s.hasCaparMetrics
-                                    ? 'Deviasi personal: ${s.latestCaparMahalanobis?['distance'] ?? '—'}'
-                                    : 'Analisis baseline personal belum tersedia',
+                                w.isSimulated
+                                    ? 'Data demo tidak dibandingkan dengan baseline'
+                                    : s.hasCaparMetrics
+                                        ? 'Deviasi personal: ${s.latestCaparMahalanobis?['distance'] ?? '—'}'
+                                        : 'Analisis baseline personal belum tersedia',
                                 style: AppTheme.font(
                                     size: 11,
                                     color: Colors.white.withValues(alpha: 0.9)),
@@ -801,7 +883,7 @@ class _PedagogyDashboard extends StatelessWidget {
                                   style: AppTheme.font(
                                       size: 10.5, color: Colors.white70)),
                               const SizedBox(height: 8),
-                              _metricRow('Pemulihan (HRV)',
+                              _metricRow('HRV (RMSSD)',
                                   w.hrvRmssd > 0 ? '${w.hrvRmssd} ms' : '—'),
                               _metricRow(
                                   w.stepsEstimatedFromAcc
@@ -821,93 +903,94 @@ class _PedagogyDashboard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 14),
-
-              // 3. Quick Recovery & Readiness Score Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.borderLight),
-                  boxShadow: AppTheme.shadowSoft,
-                ),
-                child: Row(
-                  children: [
-                    if (s.recoveryProgress != null)
-                      CircularScoreGauge(
-                        score: s.recoveryProgress!,
-                        size: 82,
-                        subtitle: '${s.recoveryProgress!.round()}%',
-                        primaryColor: AppTheme.accent,
-                      )
-                    else
-                      const CircleAvatar(
-                        radius: 41,
-                        backgroundColor: AppTheme.fieldFill,
-                        child: Icon(Icons.hourglass_empty_rounded,
-                            color: AppTheme.textMuted),
-                      ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Pemulihan berdasarkan CAPAR',
+              if (s.hasCaparRecoveryData) ...[
+                const SizedBox(height: 14),
+                // Show recovery only when CAPAR has evidence for a result.
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.borderLight),
+                    boxShadow: AppTheme.shadowSoft,
+                  ),
+                  child: Row(
+                    children: [
+                      if (s.recoveryProgress != null)
+                        CircularScoreGauge(
+                          score: s.recoveryProgress!,
+                          size: 82,
+                          subtitle: '${s.recoveryProgress!.round()}%',
+                          primaryColor: AppTheme.accent,
+                        )
+                      else
+                        const CircleAvatar(
+                          radius: 41,
+                          backgroundColor: AppTheme.fieldFill,
+                          child: Icon(Icons.hourglass_empty_rounded,
+                              color: AppTheme.textMuted),
+                        ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Pemulihan berdasarkan CAPAR',
+                                style: AppTheme.font(
+                                    size: 13.5,
+                                    weight: FontWeight.w800,
+                                    color: AppTheme.textPrimary)),
+                            const SizedBox(height: 3),
+                            Text(
+                              (s.rawCaparInsights?['capar'] as Map<String,
+                                          dynamic>?)?['recovery']?['state']
+                                      ?.toString() ??
+                                  'Data pemulihan belum tersedia dari backend.',
                               style: AppTheme.font(
-                                  size: 13.5,
-                                  weight: FontWeight.w800,
-                                  color: AppTheme.textPrimary)),
-                          const SizedBox(height: 3),
-                          Text(
-                            (s.rawCaparInsights?['capar'] as Map<String,
-                                        dynamic>?)?['recovery']?['state']
-                                    ?.toString() ??
-                                'Data pemulihan belum tersedia dari backend.',
-                            style: AppTheme.font(
-                                size: 11.5,
-                                color: AppTheme.textSecondary,
-                                height: 1.3),
-                          ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              if (s.hasCaparMetrics)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 7, vertical: 2.5),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primarySoft,
-                                    borderRadius: BorderRadius.circular(6),
+                                  size: 11.5,
+                                  color: AppTheme.textSecondary,
+                                  height: 1.3),
+                            ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                if (s.hasCaparMetrics)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 7, vertical: 2.5),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primarySoft,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                        s.latestCaparMahalanobis?['state']
+                                                ?.toString() ??
+                                            'CAPAR tersedia',
+                                        style: AppTheme.font(
+                                            size: 9.5,
+                                            weight: FontWeight.w700,
+                                            color: AppTheme.primaryDark)),
                                   ),
-                                  child: Text(
-                                      s.latestCaparMahalanobis?['state']
-                                              ?.toString() ??
-                                          'CAPAR tersedia',
-                                      style: AppTheme.font(
-                                          size: 9.5,
-                                          weight: FontWeight.w700,
-                                          color: AppTheme.primaryDark)),
-                                ),
-                              Text(
-                                  s.latestCaparMahalanobis == null
-                                      ? 'Belum ada hasil deviasi'
-                                      : 'Mahalanobis ${s.latestCaparMahalanobis?['distance'] ?? '—'}',
-                                  style: AppTheme.font(
-                                      size: 10,
-                                      color: AppTheme.textMuted,
-                                      weight: FontWeight.w600)),
-                            ],
-                          ),
-                        ],
+                                Text(
+                                    s.latestCaparMahalanobis == null
+                                        ? 'Belum ada hasil deviasi'
+                                        : 'Mahalanobis ${s.latestCaparMahalanobis?['distance'] ?? '—'}',
+                                    style: AppTheme.font(
+                                        size: 10,
+                                        color: AppTheme.textMuted,
+                                        weight: FontWeight.w600)),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
 
               const SizedBox(height: 14),
 
@@ -1822,6 +1905,159 @@ class _FlowStepCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeProgressCard extends StatelessWidget {
+  const _HomeProgressCard({
+    required this.profileComplete,
+    required this.dailyCheckInComplete,
+    required this.wearableComplete,
+    required this.onCompleteProfile,
+    required this.onDailyCheckIn,
+    required this.onRecordWearable,
+  });
+
+  final bool profileComplete;
+  final bool dailyCheckInComplete;
+  final bool wearableComplete;
+  final VoidCallback onCompleteProfile;
+  final VoidCallback onDailyCheckIn;
+  final VoidCallback onRecordWearable;
+
+  @override
+  Widget build(BuildContext context) {
+    final missions = <(String, String, bool, IconData, VoidCallback)>[
+      (
+        'Lengkapi profil dasar',
+        'Agar ringkasan personal lebih sesuai',
+        profileComplete,
+        Icons.person_outline_rounded,
+        onCompleteProfile,
+      ),
+      (
+        'Catat kondisi hari ini',
+        'Tambahkan tidur, aktivitas, atau keluhan',
+        dailyCheckInComplete,
+        Icons.edit_note_rounded,
+        onDailyCheckIn,
+      ),
+      (
+        'Rekam data wearable',
+        'Gunakan Polar H10 untuk data nyata',
+        wearableComplete,
+        Icons.favorite_border_rounded,
+        onRecordWearable,
+      ),
+    ];
+    final completed = missions.where((mission) => mission.$3).length;
+    final nextMission = missions.indexWhere((mission) => !mission.$3);
+
+    return Card(
+      margin: const EdgeInsets.only(top: 12),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: AppTheme.borderLight),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primarySoft,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: const Icon(Icons.flag_outlined,
+                      color: AppTheme.primary, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Misi pemantauan',
+                        style: AppTheme.font(size: 14, weight: FontWeight.w800),
+                      ),
+                      Text(
+                        '$completed dari ${missions.length} langkah selesai',
+                        style: AppTheme.font(
+                            size: 11, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${(completed / missions.length * 100).round()}%',
+                  style: AppTheme.font(
+                      size: 15,
+                      weight: FontWeight.w800,
+                      color: AppTheme.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: completed / missions.length,
+                minHeight: 7,
+                backgroundColor: AppTheme.fieldFill,
+                color: AppTheme.primary,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              'Progres ini merangkum kelengkapan data, bukan skor kesehatan.',
+              style: AppTheme.font(
+                  size: 10.5, color: AppTheme.textMuted, height: 1.3),
+            ),
+            const SizedBox(height: 7),
+            ...missions.map((mission) {
+              final isNext = missions.indexOf(mission) == nextMission;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                minLeadingWidth: 26,
+                leading: Icon(
+                  mission.$3 ? Icons.check_circle_rounded : mission.$4,
+                  color: mission.$3 ? AppTheme.statusGreen : AppTheme.textMuted,
+                  size: 20,
+                ),
+                title: Text(
+                  mission.$1,
+                  style: AppTheme.font(
+                      size: 11.5,
+                      weight: isNext ? FontWeight.w800 : FontWeight.w600),
+                ),
+                subtitle: Text(
+                  mission.$2,
+                  style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
+                ),
+                trailing: mission.$3
+                    ? const Icon(Icons.done,
+                        size: 18, color: AppTheme.statusGreen)
+                    : Icon(
+                        isNext
+                            ? Icons.arrow_forward_rounded
+                            : Icons.chevron_right_rounded,
+                        size: 18,
+                        color: AppTheme.primary,
+                      ),
+                onTap: mission.$5,
+              );
+            }),
+          ],
         ),
       ),
     );

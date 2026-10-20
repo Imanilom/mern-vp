@@ -27,6 +27,24 @@ test('buildTransportEnvelope normalizes sensor payload for backend transport', (
   assert.equal(envelope.readings[0].rr_interval, 910);
 });
 
+test('buildTransportEnvelope retains the simulated-data marker', () => {
+  const envelope = buildTransportEnvelope({
+    user_id: 'user123',
+    source: 'patient_app_polar_ble_demo',
+    is_simulated: true,
+    device_id: 'VIDYAMEDIC-DEMO',
+    readings: [{
+      timestamp: 1710000000,
+      heart_rate: 72,
+      rr_interval: 830,
+      is_simulated: true,
+    }],
+  });
+
+  assert.equal(envelope.is_simulated, true);
+  assert.equal(envelope.readings[0].is_simulated, true);
+});
+
 test('publishLogTransport invokes publishFn if provided', async () => {
   let called = false;
   let dataPassed = null;

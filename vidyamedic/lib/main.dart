@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -17,6 +19,7 @@ Future<void> main() async {
   await initializeDateFormatting('id_ID', null);
   final appState = AppState();
   await appState.initialize();
+
   void openDailySummary() {
     _appNavigatorKey.currentState?.push(
       MaterialPageRoute<void>(
@@ -25,9 +28,6 @@ Future<void> main() async {
     );
   }
 
-  final openedFromReminder = await MorningSummaryReminder.initialize(
-    onReminderTap: openDailySummary,
-  );
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -35,8 +35,20 @@ Future<void> main() async {
     ),
   );
   runApp(VidyaMedicApp(appState: appState));
-  if (openedFromReminder) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => openDailySummary());
+  unawaited(_initializeReminder(openDailySummary));
+}
+
+Future<void> _initializeReminder(VoidCallback openDailySummary) async {
+  try {
+    final openedFromReminder = await MorningSummaryReminder.initialize(
+      onReminderTap: openDailySummary,
+    );
+    if (openedFromReminder) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => openDailySummary());
+    }
+  } catch (error, stackTrace) {
+    debugPrint('Gagal menginisialisasi pengingat ringkasan pagi: '
+        '$error\n$stackTrace');
   }
 }
 
@@ -53,9 +65,11 @@ class VidyaMedicApp extends StatelessWidget {
         title: 'VidyaMedic',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: appState.isAuthenticated
-            ? const HomeScreen()
-            : const WelcomeScreen(),
+        home: Consumer<AppState>(
+          builder: (context, state, _) => state.isAuthenticated
+              ? const HomeScreen()
+              : const WelcomeScreen(),
+        ),
         routes: {
           '/scenarios': (_) => const ScenarioLabScreen(),
           '/scenarios/a': (_) =>

@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/app_state.dart';
-import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import 'guided_baseline_ema_screen.dart';
 import '../profile/wearable_pairing_screen.dart';
 
 class GuidedBaselineSessionScreen extends StatefulWidget {
@@ -37,14 +37,11 @@ class _GuidedBaselineSessionScreenState
   bool _finishingStage = false;
   bool _emaSaved = false;
   String? _error;
-  String? _feeling;
-  final _noteController = TextEditingController();
   final List<Map<String, dynamic>> _stageResults = [];
 
   @override
   void dispose() {
     _timer?.cancel();
-    _noteController.dispose();
     final wearable = context.read<AppState>().wearableBridge;
     if (wearable.isStreaming) unawaited(wearable.stopStreaming());
     super.dispose();
@@ -166,50 +163,21 @@ class _GuidedBaselineSessionScreenState
     }
   }
 
-  Future<void> _saveEma() async {
-    if (_feeling == null) {
-      setState(() =>
-          _error = 'Pilih kondisi yang paling sesuai sebelum menyimpan EMA.');
-      return;
-    }
-    final note = _noteController.text.trim();
-    final response = await ApiService.createEvent({
-      'event_type': 'ema',
-      'occurred_at': DateTime.now().toUtc().toIso8601String(),
-      'details': 'EMA sesi perekaman baseline terpandu.',
-      'value': {
-        'instrument': 'guided_baseline_session',
-        'version': 1,
-        'feeling': _feeling,
-        'note': note,
-        'samples': _stageResults
-            .map(
-              (item) => {
-                'activity': item['activity'],
-                'skipped': item['skipped'],
-                'incomplete': item['incomplete'],
-                'reading_count': item['reading_count'],
-                'window_count': item['window_count'],
-                'rr_interval_count': item['rr_interval_count'],
-                'minimum_hr': item['minimum_hr'],
-                'maximum_hr': item['maximum_hr'],
-              },
-            )
-            .toList(),
-      },
-      'unit': 'baseline_session',
-    });
-    if (!mounted) return;
-    if (!response.success) {
-      setState(() =>
-          _error = response.message ?? 'Jawaban EMA belum berhasil disimpan.');
-      return;
-    }
+  Future<void> _openEmaScreen() async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => GuidedBaselineEmaScreen(
+          stageResults: _stageResults
+              .map((result) => Map<String, dynamic>.from(result))
+              .toList(),
+        ),
+      ),
+    );
+    if (!mounted || saved != true) return;
     setState(() {
       _emaSaved = true;
       _error = null;
     });
-    await context.read<AppState>().fetchRecentEvents();
   }
 
   @override
@@ -264,7 +232,10 @@ class _GuidedBaselineSessionScreenState
                         runSpacing: 8,
                         children: [
                           _metric('HR saat ini', wearable.heartRateBpm, 'bpm'),
-                          _metric('Rentang HR', _hrRange(wearable), ''),
+                          _metric('HR minimum',
+                              wearable.sessionMinimumHeartRate, 'bpm'),
+                          _metric('HR maksimum',
+                              wearable.sessionMaximumHeartRate, 'bpm'),
                           _metric('Interval antardetak',
                               wearable.sessionRrIntervalCount, 'RR/IBI'),
                           _metric('Titik terkumpul',
@@ -272,6 +243,20 @@ class _GuidedBaselineSessionScreenState
                           _metric('Window tersimpan',
                               wearable.sessionWindowCount, 'window'),
                         ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        wearable.streamError ??
+                            (wearable.lastStreamPublishedAt == null
+                                ? 'RabbitMQ: menunggu batch pertama (maks. 10 detik)'
+                                : 'RabbitMQ: batch terakhir diterima ${TimeOfDay.fromDateTime(wearable.lastStreamPublishedAt!.toLocal()).format(context)}'),
+                        style: AppTheme.font(
+                          size: 10.5,
+                          color: wearable.streamError == null
+                              ? AppTheme.textSecondary
+                              : AppTheme.statusRed,
+                          weight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       LinearProgressIndicator(
@@ -347,69 +332,6 @@ class _GuidedBaselineSessionScreenState
                     ..._stageResults.map(_stageResultCard),
                     const SizedBox(height: 12),
                     _baselineComparison(),
-                  ],
-                ),
-              ),
-            ),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('EMA · pengalaman Anda',
-                        style:
-                            AppTheme.font(size: 15, weight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Bagaimana perasaan Anda setelah rangkaian aktivitas ini? Catatan ini adalah laporan pribadi, bukan kesimpulan sensor.',
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      initialValue: _feeling,
-                      decoration: const InputDecoration(
-                        labelText: 'Pilih kondisi',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                            value: 'calmer', child: Text('Lebih tenang')),
-                        DropdownMenuItem(
-                            value: 'same', child: Text('Sama seperti awal')),
-                        DropdownMenuItem(
-                            value: 'more_tired', child: Text('Lebih lelah')),
-                        DropdownMenuItem(
-                            value: 'uncomfortable',
-                            child: Text('Tidak nyaman')),
-                      ],
-                      onChanged: _emaSaved
-                          ? null
-                          : (value) => setState(() => _feeling = value),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _noteController,
-                      enabled: !_emaSaved,
-                      maxLength: 120,
-                      decoration: const InputDecoration(
-                        labelText: 'Catatan tambahan (opsional)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    if (_emaSaved)
-                      const ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.check_circle,
-                            color: AppTheme.statusGreen),
-                        title: Text('EMA tersimpan'),
-                        subtitle: Text('Jawaban dicatat sebagai laporan Anda.'),
-                      )
-                    else
-                      FilledButton.icon(
-                        onPressed: _saveEma,
-                        icon: const Icon(Icons.save_outlined),
-                        label: const Text('Simpan EMA'),
-                      ),
                   ],
                 ),
               ),
@@ -492,6 +414,24 @@ class _GuidedBaselineSessionScreenState
                     .toList(),
               ),
             ),
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  _emaSaved ? Icons.check_circle : Icons.rate_review_outlined,
+                  color: _emaSaved ? AppTheme.statusGreen : AppTheme.primary,
+                ),
+                title: Text(
+                    _emaSaved ? 'Tahap 7 · EMA tersimpan' : 'Tahap 7 · EMA'),
+                subtitle: Text(
+                  _emaSaved
+                      ? 'Pengalaman Anda dicatat terpisah dari hasil sensor.'
+                      : 'Tambahkan catatan pengalaman setelah melihat interpretasi sesi.',
+                ),
+                trailing:
+                    _emaSaved ? null : const Icon(Icons.chevron_right_rounded),
+                onTap: _emaSaved ? null : _openEmaScreen,
+              ),
+            ),
           ],
           const SizedBox(height: 12),
           Text(
@@ -543,13 +483,6 @@ class _GuidedBaselineSessionScreenState
         ],
       ),
     );
-  }
-
-  String _hrRange(dynamic wearable) {
-    final minimum = wearable.sessionMinimumHeartRate;
-    final maximum = wearable.sessionMaximumHeartRate;
-    if (minimum == null || maximum == null) return '—';
-    return '$minimum–$maximum bpm';
   }
 
   Widget _stageResultCard(Map<String, dynamic> result) {

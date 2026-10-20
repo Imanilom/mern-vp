@@ -110,18 +110,40 @@ class AppState extends ChangeNotifier {
 
   Future<void> initialize() async {
     await ApiService.init();
-    if (ApiService.isAuthenticated) {
+    if (!ApiService.isAuthenticated) return;
+
+    _isAuthenticated = true;
+    _currentAccount = ApiService.currentUser;
+    notifyListeners();
+    unawaited(_validateStoredSession());
+  }
+
+  Future<void> _validateStoredSession() async {
+    try {
       final profile = await ApiService.getProfile();
       if (!profile.success) {
-        await ApiService.clearSession();
-        _authError =
-            profile.message ?? 'Sesi tidak dapat divalidasi oleh server.';
+        if (profile.statusCode == 401 || profile.statusCode == 403) {
+          await ApiService.clearSession();
+          _isAuthenticated = false;
+          _currentAccount = null;
+          notifyListeners();
+        } else {
+          dataError = profile.message ?? 'Profil belum dapat dimuat.';
+          notifyListeners();
+        }
         return;
       }
-      _isAuthenticated = true;
-      _currentAccount = ApiService.currentUser;
-      notifyListeners();
+
+      final account = profile.data?['account'];
+      if (account is Map<String, dynamic>) {
+        _currentAccount = account;
+        notifyListeners();
+      }
       await refreshAllData();
+    } catch (error, stackTrace) {
+      dataError = 'Data belum dapat dimuat: $error';
+      notifyListeners();
+      debugPrint('Gagal memvalidasi sesi VidyaMedic: $error\n$stackTrace');
     }
   }
 
@@ -617,7 +639,10 @@ class AppState extends ChangeNotifier {
         final serverSteps = (latest['steps'] as num?)?.round() ?? 0;
         wearable = WearableData(
           hasServerSamples: true,
-          deviceName: latest['device_id']?.toString() ?? '',
+          isSimulated: latest['is_simulated'] == true,
+          deviceName: latest['is_simulated'] == true
+              ? 'Sensor Dummy VidyaMedic (DEMO)'
+              : latest['device_id']?.toString() ?? '',
           provider: latest['provider']?.toString() ?? '',
           lastSync: DateTime.tryParse(latest['recorded_at']?.toString() ?? ''),
           heartRate: (latest['heart_rate_bpm'] as num?)?.round() ?? 0,
@@ -868,6 +893,36 @@ class AppState extends ChangeNotifier {
     return recovery is Map && recovery['recovery_progress_pct'] is num
         ? (recovery['recovery_progress_pct'] as num).toDouble()
         : null;
+  }
+
+  bool get hasCaparRecoveryData {
+    final capar = rawCaparInsights?['capar'];
+    final recovery = capar is Map ? capar['recovery'] : null;
+    if (recovery is! Map) return false;
+    if (recovery['recovery_progress_pct'] is num ||
+        recovery['time_to_recovery_minutes'] is num ||
+        recovery['distance_trend'] is num ||
+        recovery['distance_derivative_per_minute'] is num) {
+      return true;
+    }
+    const unavailable = {
+      'insufficient_data',
+      'insufficient data',
+      'insufficient_baseline',
+      'not_available',
+      'unavailable',
+      'unknown',
+      'no_data',
+      'no_recovery_data',
+      'not_ready',
+      'belum tersedia',
+      'belum cukup data',
+      'data pemulihan belum tersedia dari backend.',
+    };
+    return ['state', 'distance_trend'].any((key) {
+      final value = recovery[key]?.toString().trim().toLowerCase();
+      return value != null && value.isNotEmpty && !unavailable.contains(value);
+    });
   }
 
   /// Enam Pertanyaan Panduan Memahami Tubuh (Pedagogy) dengan Bahasa Ramah Pengguna

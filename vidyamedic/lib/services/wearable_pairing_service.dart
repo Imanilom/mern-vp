@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -54,6 +55,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   StreamSubscription<PolarAccData>? _accelerationSubscription;
   Timer? _sampleFlushTimer;
   Timer? _streamFlushTimer;
+  Timer? _demoReadingTimer;
   Timer? _connectionTimeoutTimer;
   DateTime? _windowStartedAt;
   String _deviceId = '';
@@ -70,17 +72,21 @@ class PolarWearablePairingService extends ChangeNotifier {
   bool _hasAccelerationStream = false;
   bool _isUploadingSample = false;
   bool _isUploadingStream = false;
+  bool _isDummyDevice = false;
   bool _isDisposed = false;
+  int _demoTick = 0;
   Completer<void>? _sampleUploadCompleter;
   Completer<void>? _streamUploadCompleter;
   int _sessionRrIntervalCount = 0;
   int _sessionReadingCount = 0;
+  int _sessionAccelerationCount = 0;
   int _sessionWindowCount = 0;
 
   bool isScanning = false;
   bool isConnecting = false;
   bool isConnected = false;
   bool isStreaming = false;
+  bool get isDemoDevice => _isDummyDevice;
   bool get isUploading => _isUploadingSample || _isUploadingStream;
   String? sampleError;
   String? streamError;
@@ -103,6 +109,7 @@ class PolarWearablePairingService extends ChangeNotifier {
       : _sessionHeartRates.reduce((a, b) => a > b ? a : b);
   int get sessionRrIntervalCount => _sessionRrIntervalCount;
   int get sessionReadingCount => _sessionReadingCount;
+  int get sessionAccelerationCount => _sessionAccelerationCount;
   int get sessionWindowCount => _sessionWindowCount;
   List<List<double>> get recentAcceleration =>
       _recentAcceleration.map(List<double>.from).toList();
@@ -210,7 +217,31 @@ class PolarWearablePairingService extends ChangeNotifier {
     _notify();
   }
 
+  Future<bool> connectDummyDevice() async {
+    if (isConnected && !_isDummyDevice) {
+      connectionError = 'Putuskan Polar H10 terlebih dahulu.';
+      _notify();
+      return false;
+    }
+    await stopScan();
+    _isDummyDevice = true;
+    _deviceId = 'VIDYAMEDIC-DEMO';
+    _deviceName = 'Sensor Dummy VidyaMedic (DEMO)';
+    _hasHeartRateStream = true;
+    _hasAccelerationStream = true;
+    isConnected = true;
+    isConnecting = false;
+    connectionError = null;
+    _notify();
+    return true;
+  }
+
   Future<bool> connectToDevice(String id) async {
+    if (_isDummyDevice) {
+      connectionError = 'Putuskan sensor dummy sebelum menghubungkan Polar.';
+      _notify();
+      return false;
+    }
     final deviceId = id.trim().toUpperCase();
     if (deviceId.isEmpty) {
       connectionError = 'ID perangkat Bluetooth tidak valid.';
@@ -419,6 +450,7 @@ class PolarWearablePairingService extends ChangeNotifier {
       _latestAcceleration = vector;
       _acceleration.add(vector);
       _recentAcceleration.add(vector);
+      _sessionAccelerationCount++;
       if (_recentAcceleration.length > 500) {
         _recentAcceleration.removeRange(0, _recentAcceleration.length - 500);
       }
@@ -447,10 +479,12 @@ class PolarWearablePairingService extends ChangeNotifier {
     _sessionHeartRates.clear();
     _sessionRrIntervalCount = 0;
     _sessionReadingCount = 0;
+    _sessionAccelerationCount = 0;
     _sessionWindowCount = 0;
     _streamReadings.clear();
     _recentStreamReadings.clear();
     _recentAcceleration.clear();
+    lastStreamPublishedAt = null;
     isStreaming = true;
     sampleError = null;
     streamError = null;
@@ -460,11 +494,22 @@ class PolarWearablePairingService extends ChangeNotifier {
         Timer.periodic(const Duration(minutes: 1), (_) => flushSample());
     _streamFlushTimer =
         Timer.periodic(const Duration(seconds: 10), (_) => flushStream());
+    if (_isDummyDevice) {
+      _demoTick = 0;
+      _demoReadingTimer?.cancel();
+      _demoReadingTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _emitDummyReading(),
+      );
+      _emitDummyReading();
+    }
     _notify();
     return true;
   }
 
   Future<void> stopStreaming() async {
+    _demoReadingTimer?.cancel();
+    _demoReadingTimer = null;
     _sampleFlushTimer?.cancel();
     _sampleFlushTimer = null;
     _streamFlushTimer?.cancel();
@@ -472,6 +517,77 @@ class PolarWearablePairingService extends ChangeNotifier {
     isStreaming = false;
     await flushStream(force: true);
     await flushSample(force: true);
+    _notify();
+  }
+
+  void _emitDummyReading() {
+    if (!isStreaming || !_isDummyDevice) return;
+    final recordedAt = DateTime.now().toUtc();
+    _windowStartedAt ??= recordedAt;
+    final intensity = switch (_activity) {
+      'walking' => 1.0,
+      'running' || 'exercise' => 1.5,
+      'standing' => 0.45,
+      _ => 0.0,
+    };
+    final baseHeartRate = switch (_activity) {
+      'walking' => 105,
+      'running' => 138,
+      'exercise' => 125,
+      'standing' => 82,
+      _ => 70,
+    };
+    final phase = _demoTick.toDouble();
+    final heartRate =
+        (baseHeartRate + 3 * math.sin(phase / 7) + 2 * math.sin(phase / 2.5))
+            .round();
+    final rrInterval = (60000 / heartRate + 15 * math.sin(phase / 3)).round();
+    _heartRateBpm = heartRate;
+    _sensorContact = true;
+    _expectedRrCount++;
+    _sessionRrIntervalCount++;
+    _sessionReadingCount++;
+    _sessionHeartRates.add(heartRate);
+    if (_sessionHeartRates.length > 10000) {
+      _sessionHeartRates.removeAt(0);
+    }
+    _rrIntervals.add(rrInterval);
+    _validRrCount++;
+
+    List<double>? latestAcceleration;
+    for (var sample = 0; sample < 10; sample++) {
+      final accPhase = (phase * 10 + sample) * 2 * math.pi / 14;
+      final vector = [
+        intensity * 0.3 * math.sin(accPhase),
+        intensity * 0.08 * math.cos(accPhase * 0.7),
+        1 + intensity * 0.12 * math.cos(accPhase),
+      ];
+      _latestAcceleration = vector;
+      _acceleration.add(vector);
+      _recentAcceleration.add(vector);
+      _sessionAccelerationCount++;
+      latestAcceleration = vector;
+    }
+    if (latestAcceleration != null) {
+      final reading = <String, dynamic>{
+        'recorded_at': recordedAt.toIso8601String(),
+        'heart_rate_bpm': heartRate,
+        'rr_interval_ms': rrInterval,
+        'acceleration_g': latestAcceleration,
+        'sensor_contact': true,
+        'signal_confidence': 1.0,
+      };
+      _streamReadings.add(reading);
+      _recentStreamReadings.add(reading);
+      if (_recentStreamReadings.length > 300) {
+        _recentStreamReadings.removeRange(
+            0, _recentStreamReadings.length - 300);
+      }
+    }
+    if (_recentAcceleration.length > 500) {
+      _recentAcceleration.removeRange(0, _recentAcceleration.length - 500);
+    }
+    _demoTick++;
     _notify();
   }
 
@@ -485,7 +601,8 @@ class PolarWearablePairingService extends ChangeNotifier {
     if (!isStreaming && !force) return;
     if (_streamReadings.isNotEmpty) {
       _pendingStreamBatches.add({
-        'provider': 'polar_h10',
+        'provider': _isDummyDevice ? 'other' : 'polar_h10',
+        'is_simulated': _isDummyDevice,
         'device_id': _deviceId,
         'activity': _activity,
         'readings': List<Map<String, dynamic>>.from(_streamReadings),
@@ -580,7 +697,8 @@ class PolarWearablePairingService extends ChangeNotifier {
         : _rrIntervals.sublist(_rrIntervals.length - 256);
     final acceleration = _downsampleAcceleration(_acceleration, 512);
     return {
-      'provider': 'polar_h10',
+      'provider': _isDummyDevice ? 'other' : 'polar_h10',
+      'is_simulated': _isDummyDevice,
       'device_id': _deviceId,
       'recorded_at':
           (_windowStartedAt ?? DateTime.now().toUtc()).toIso8601String(),
@@ -632,13 +750,14 @@ class PolarWearablePairingService extends ChangeNotifier {
     await stopStreaming();
     await stopScan();
     _cancelSensorStreams();
-    if (_deviceId.isNotEmpty) {
+    if (_deviceId.isNotEmpty && !_isDummyDevice) {
       await _polar.disconnectFromDevice(_deviceId);
     }
     isConnected = false;
     isConnecting = false;
     _deviceId = '';
     _deviceName = '';
+    _isDummyDevice = false;
     _recentAcceleration.clear();
     _notify();
   }
@@ -653,13 +772,16 @@ class PolarWearablePairingService extends ChangeNotifier {
     _connectionAttempt++;
     _sampleFlushTimer?.cancel();
     _streamFlushTimer?.cancel();
+    _demoReadingTimer?.cancel();
     _connectionTimeoutTimer?.cancel();
     _scanSubscription?.cancel();
     _cancelSensorStreams();
     _connectSubscription?.cancel();
     _disconnectSubscription?.cancel();
     _featureSubscription?.cancel();
-    if (_deviceId.isNotEmpty) _polar.disconnectFromDevice(_deviceId);
+    if (_deviceId.isNotEmpty && !_isDummyDevice) {
+      _polar.disconnectFromDevice(_deviceId);
+    }
     super.dispose();
   }
 }

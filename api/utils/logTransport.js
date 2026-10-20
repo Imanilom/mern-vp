@@ -23,6 +23,7 @@ function normalizeTransportReading(reading) {
     acc_z: reading.acc_z ?? reading.accZ ?? 0,
     ecg: reading.ecg ?? 0,
     step_count: reading.step_count ?? reading.stepCount ?? 0,
+    is_simulated: reading.is_simulated === true,
   };
 }
 
@@ -32,6 +33,7 @@ export function buildTransportEnvelope(payload) {
   return {
     user_id: payload?.user_id ?? payload?.userId ?? null,
     source: payload?.source ?? 'polar_ble',
+    is_simulated: payload?.is_simulated === true,
     device_id: payload?.device_id ?? payload?.deviceId ?? 'UNKNOWN',
     received_at: payload?.received_at ?? new Date().toISOString(),
     readings: readings.map(normalizeTransportReading),
@@ -197,6 +199,17 @@ export async function startLogTransportConsumer() {
       const envelope = JSON.parse(contentStr);
       console.log(`[RabbitMQ Consumer] Received transport envelope for user: ${envelope.user_id}`);
 
+      if (
+        envelope.is_simulated === true
+        || envelope.source === 'patient_app_polar_ble_demo'
+      ) {
+        console.info(
+          `[RabbitMQ Consumer] Received ${envelope.readings?.length ?? 0} simulated readings for device ${envelope.device_id}; acknowledged without writing clinical PolarData.`
+        );
+        ch.ack(msg);
+        return;
+      }
+
       let targetUserId = envelope.user_id;
 
       // Import User dynamically or check fallback
@@ -251,7 +264,8 @@ export async function startLogTransportConsumer() {
 
         if (docs.length === 0) {
           console.warn(`[RabbitMQ -> MongoDB] All ${envelope.readings.length} readings for user ${targetUserId} were filtered out (invalid HR/RR)`);
-          return; // Skip insert if all readings are invalid
+          ch.ack(msg);
+          return;
         }
 
         const result = await PolarData.insertMany(docs, { ordered: false }).catch((err) => {

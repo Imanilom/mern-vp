@@ -640,6 +640,7 @@ export function validateWearableSample(body) {
   requireObject(body, 'Data wearable');
   const allowed = new Set([
     'provider',
+    'is_simulated',
     'recorded_at',
     'device_id',
     'heart_rate_bpm',
@@ -661,9 +662,13 @@ export function validateWearableSample(body) {
   if (!wearableProviders.has(body.provider)) {
     throw errorHandler(400, `provider harus salah satu dari: ${[...wearableProviders].join(', ')}.`);
   }
+  if ('is_simulated' in body && typeof body.is_simulated !== 'boolean') {
+    throw errorHandler(400, 'is_simulated harus berupa boolean.');
+  }
 
   const result = {
     provider: body.provider,
+    is_simulated: body.is_simulated === true,
     recorded_at: parseDate(body.recorded_at, 'recorded_at'),
     device_id: optionalString(body.device_id, 'device_id', 120),
   };
@@ -742,9 +747,23 @@ export function validateWearableSample(body) {
 
 export function validateWearableStream(body) {
   requireObject(body, 'Wearable stream');
-  rejectUnknownFields(body, new Set(['provider', 'device_id', 'activity', 'readings']), 'Field wearable stream');
-  if (body.provider !== 'polar_h10') {
-    throw errorHandler(400, 'provider untuk streaming BLE saat ini harus polar_h10.');
+  rejectUnknownFields(
+    body,
+    new Set(['provider', 'is_simulated', 'device_id', 'activity', 'readings']),
+    'Field wearable stream'
+  );
+  const isSimulated = body.is_simulated === true;
+  if ('is_simulated' in body && typeof body.is_simulated !== 'boolean') {
+    throw errorHandler(400, 'is_simulated harus berupa boolean.');
+  }
+  if (
+    (isSimulated && body.provider !== 'other')
+    || (!isSimulated && body.provider !== 'polar_h10')
+  ) {
+    throw errorHandler(
+      400,
+      'Streaming nyata harus menggunakan polar_h10; streaming simulasi harus ditandai is_simulated dan menggunakan provider other.'
+    );
   }
   const deviceId = optionalString(body.device_id, 'device_id', 120);
   if (!deviceId) throw errorHandler(400, 'device_id wajib diisi.');
@@ -796,7 +815,8 @@ export function validateWearableStream(body) {
   });
 
   return {
-    provider: 'polar_h10',
+    provider: body.provider,
+    is_simulated: isSimulated,
     device_id: deviceId,
     activity: body.activity,
     readings,

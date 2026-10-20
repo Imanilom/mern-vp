@@ -287,16 +287,21 @@ The mobile app submits `provider`, `device_id`, `recorded_at`, `heart_rate_bpm`,
 10-256 `rr_intervals_ms`, `activity`, 10-512 `acceleration_g` triplets
 (`[x,y,z]` in g), `sensor_contact`, and `signal_confidence` (0-1). This is the
 minimum physiological/context input; timestamp, activity and device provenance
-are mandatory. Optional values include `expected_rr_count`, `activity_intensity`,
+are mandatory. `is_simulated` is an optional boolean and defaults to `false`.
+Optional values include `expected_rr_count`, `activity_intensity`,
 `posture`, `sleep_duration_minutes`, `sleep_quality`, `spo2_pct`, `steps`, and
 `skin_temperature_c`. Client-supplied SDNN, RMSSD, pNN50, HR delta/slope, and
 DFA are not accepted as derived truth: the backend derives them from RR/IBI and
 tri-axial acceleration. DFA alpha1 is only available with at least 64 RR
 intervals. The provider and timestamp are retained as provenance. Vidyamedic
 pairs with a Polar H10 over BLE and submits real HR/RR and accelerometer
-windows through these authenticated endpoints. CAPAR Mobile uses the same
-authenticated streaming endpoint; broker credentials remain server-side. No
-simulator readings or client-side broker credentials are used.
+windows through these authenticated endpoints. The explicit VidyaMedic demo
+device uses provider `other` and sets `is_simulated: true`; its synthetic
+readings are retained for interface/integration testing but always receive a
+quality warning and are excluded from accepted CAPAR segments, readiness
+checks, daily summaries, and wearable-history charts. The streaming endpoint
+remains restricted to Polar H10 readings. CAPAR Mobile uses that authenticated
+streaming endpoint; broker credentials remain server-side.
 
 While streaming, VidyaMedic uses a local, cadence-based accelerometer heuristic
 to suggest `Berjalan` or `Berlari` and asks the patient to confirm or correct
@@ -313,7 +318,14 @@ and measured acceleration, then publishes them to the configured RabbitMQ
 `Sensor` queue. Vidyamedic flushes this stream every 10 seconds. The response
 is `202` with `published` and `reading_count`; if RabbitMQ is unavailable the
 endpoint returns `503` without claiming success. The CAPAR consumer stores
-accepted readings in the shared CAPAR data collection.
+accepted real readings in the shared CAPAR data collection.
+
+For interface testing, the explicit dummy device may also publish stream
+batches using `provider: "other"` and `is_simulated: true`. These messages use
+source `patient_app_polar_ble_demo`, are acknowledged by the queue consumer,
+and are deliberately not written to clinical PolarData or baseline analysis.
+The wearable sample endpoint retains demo windows separately with the same
+simulation marker.
 
 Accepted samples are converted into CAPAR `Segment` records with
 `window_type: "1min"` and left for the existing CAPAR Layer 3-RR pipeline to
@@ -486,9 +498,10 @@ with activity); temporal proximity or rule agreement does not prove
 individual causation. Literature summaries describe population-level evidence.
 Explanations abstain when a quality-accepted segment, mature matching
 baseline, or enough comparable multivariate features are unavailable.
-Accepted patient-app wearable samples are transformed to raw-RR CAPAR segments
-and are analyzed by the existing Layer 3-RR pipeline; samples that fail the
-quality gate are retained as warnings and excluded from baseline analysis.
+Accepted real patient-app wearable samples are transformed to raw-RR CAPAR
+segments and are analyzed by the existing Layer 3-RR pipeline; samples that
+fail the quality gate and explicitly simulated samples are retained as
+warnings and excluded from baseline analysis.
 
 Each explanation reports `explanation_status` (`available`,
 `insufficient_data`, or `unexplained`), `main_deviation_factors` with personal

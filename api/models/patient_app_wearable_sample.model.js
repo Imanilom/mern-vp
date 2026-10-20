@@ -17,6 +17,7 @@ const PatientAppWearableSampleSchema = new mongoose.Schema(
       required: true,
       enum: ['polar_h10', 'apple_watch', 'garmin', 'fitbit', 'other'],
     },
+    is_simulated: { type: Boolean, default: false, index: true },
     recorded_at: { type: Date, required: true },
     heart_rate_bpm: { type: Number, min: 20, max: 250, default: null },
     rr_intervals_ms: {

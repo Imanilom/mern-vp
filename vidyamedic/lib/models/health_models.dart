@@ -592,6 +592,7 @@ class UserProfile {
 
 class WearableData {
   bool hasServerSamples;
+  bool isSimulated;
   String deviceName;
   String provider;
   DateTime? lastSync;
@@ -606,6 +607,7 @@ class WearableData {
 
   WearableData({
     this.hasServerSamples = false,
+    this.isSimulated = false,
     this.deviceName = '',
     this.provider = '',
     this.lastSync,

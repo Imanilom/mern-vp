@@ -43,12 +43,46 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
     );
   }
 
+  Future<void> _connectDummy() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Gunakan sensor demo?'),
+        content: const Text(
+          'HR, RR/IBI, dan akselerasi akan dibuat secara sintetis dan disimpan dengan penanda simulasi. Data demo tidak mewakili kondisi tubuh dan tidak digunakan untuk baseline atau analisis CAPAR.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Aktifkan demo'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+    final connected =
+        await context.read<AppState>().wearableBridge.connectDummyDevice();
+    if (!connected && mounted) {
+      final bridge = context.read<AppState>().wearableBridge;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(bridge.error ?? 'Sensor demo gagal diaktifkan.')),
+      );
+    }
+  }
+
   Future<void> _startStreaming() async {
     final state = context.read<AppState>();
     final bridge = state.wearableBridge;
     if (!bridge.isConnected) return;
 
-    if (!await state.connectWearable('Polar H10')) {
+    final deviceName =
+        bridge.isDemoDevice ? 'VidyaMedic Dummy Sensor' : 'Polar H10';
+    if (!await state.connectWearable(deviceName)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -133,9 +167,31 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                   ),
                   if (bridge.isConnected) ...[
                     const SizedBox(height: 8),
+                    if (bridge.isDemoDevice)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.statusYellowBg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: AppTheme.statusYellow
+                                  .withValues(alpha: 0.35)),
+                        ),
+                        child: Text(
+                          'MODE DEMO: HR/RR 1 Hz dan ACC 10 Hz adalah data sintetis. Sampel diberi penanda simulasi dan tidak dipakai untuk analisis kesehatan CAPAR.',
+                          style: AppTheme.font(
+                              size: 11.5,
+                              color: AppTheme.textPrimary,
+                              height: 1.35,
+                              weight: FontWeight.w600),
+                        ),
+                      ),
                     Text(
                       bridge.isStreaming
-                          ? 'Streaming aktif • ${bridge.pendingCount} batch menunggu pengiriman'
+                          ? bridge.isDemoDevice
+                              ? 'Perekaman demo aktif • ${bridge.sessionWindowCount} window tersimpan'
+                              : 'Streaming aktif • ${bridge.pendingCount} batch menunggu pengiriman'
                           : 'Perangkat terhubung; streaming belum dimulai.',
                       style: AppTheme.font(
                           size: 12, color: AppTheme.textSecondary),
@@ -147,6 +203,28 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                         style: AppTheme.font(
                             size: 12, color: AppTheme.textSecondary),
                       ),
+                      if (bridge.isDemoDevice && bridge.isStreaming)
+                        Text(
+                          'RR: ${bridge.sessionRrIntervalCount} interval · ACC: ${bridge.sessionAccelerationCount} sampel · minimal 10 detik sebelum simpan',
+                          style: AppTheme.font(
+                              size: 11, color: AppTheme.textSecondary),
+                        ),
+                      if (bridge.isStreaming) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          bridge.streamError ??
+                              (bridge.lastStreamPublishedAt == null
+                                  ? 'RabbitMQ: menunggu batch pertama (maks. 10 detik)'
+                                  : 'RabbitMQ: batch terakhir diterima ${TimeOfDay.fromDateTime(bridge.lastStreamPublishedAt!.toLocal()).format(context)}'),
+                          style: AppTheme.font(
+                            size: 11,
+                            color: bridge.streamError == null
+                                ? AppTheme.textSecondary
+                                : AppTheme.statusRed,
+                            weight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ],
                     if (bridge.lastUploadedAt != null) ...[
                       const SizedBox(height: 4),
@@ -203,9 +281,15 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                                 : _startStreaming,
                         icon: Icon(
                             bridge.isStreaming ? Icons.stop : Icons.sensors),
-                        label: Text(bridge.isStreaming
-                            ? 'Hentikan streaming'
-                            : 'Mulai streaming'),
+                        label: Text(
+                          bridge.isStreaming
+                              ? bridge.isDemoDevice
+                                  ? 'Hentikan rekaman demo'
+                                  : 'Hentikan streaming'
+                              : bridge.isDemoDevice
+                                  ? 'Mulai rekam demo'
+                                  : 'Mulai streaming',
+                        ),
                       ),
                     ),
                     OutlinedButton.icon(
@@ -241,6 +325,18 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                       ],
                     ),
                     if (bridge.isScanning) const LinearProgressIndicator(),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: bridge.isConnecting ? null : _connectDummy,
+                      icon: const Icon(Icons.science_outlined),
+                      label: const Text('Gunakan sensor dummy (DEMO)'),
+                    ),
+                    Text(
+                      'Untuk uji alur aplikasi saja. Data sintetis diberi penanda dan tidak digunakan untuk baseline atau analisis kesehatan.',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.font(
+                          size: 10.5, color: AppTheme.textMuted, height: 1.35),
+                    ),
                   ],
                 ],
               ),

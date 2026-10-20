@@ -27,6 +27,11 @@ const SegmentSchema = new mongoose.Schema({
     default: null,
     index: true,
   },
+  is_simulated: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
 
   /**
    * Tipe pipeline:

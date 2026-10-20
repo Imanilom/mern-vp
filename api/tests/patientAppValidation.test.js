@@ -549,6 +549,7 @@ test('patient event markers and wearable samples validate their source values', 
 
   const sample = validateWearableSample({
     provider: 'apple_watch',
+    is_simulated: true,
     device_id: 'watch-01',
     recorded_at: '2026-10-05T08:15:00.000Z',
     heart_rate_bpm: 72,
@@ -561,6 +562,16 @@ test('patient event markers and wearable samples validate their source values', 
     activity: 'walking',
   });
   assert.equal(sample.provider, 'apple_watch');
+  assert.equal(sample.is_simulated, true);
+  assert.throws(
+    () => validateWearableSample({
+      provider: 'other',
+      is_simulated: 'yes',
+      device_id: 'dummy',
+      recorded_at: '2026-10-05T08:15:00.000Z',
+    }),
+    { statusCode: 400 }
+  );
   assert.equal(sample.heart_rate_bpm, 72);
   assert.equal(sample.rr_intervals_ms.length, 64);
   assert.equal(sample.acceleration_g.length, 10);
@@ -578,6 +589,7 @@ test('patient event markers and wearable samples validate their source values', 
     activity: 'running',
   });
   assert.equal(runningSample.activity, 'running');
+  assert.equal(runningSample.is_simulated, false);
   assert.throws(
     () => validateWearableSample({
       provider: 'polar_h10',
@@ -622,6 +634,28 @@ test('Polar H10 streaming batches require authenticated-safe sensor provenance a
   assert.equal(result.readings[0].recorded_at.toISOString(), '2026-10-05T08:15:00.000Z');
   assert.equal(result.readings[0].rr_interval_ms, 830);
   assert.deepEqual(result.readings[0].acceleration_g, [0.02, -0.01, 0.98]);
+  const demoPayload = validateWearableStream({
+    ...payload,
+    provider: 'other',
+    is_simulated: true,
+    device_id: 'VIDYAMEDIC-DEMO',
+  });
+  assert.equal(demoPayload.provider, 'other');
+  assert.equal(demoPayload.is_simulated, true);
+  assert.throws(
+    () => validateWearableStream({
+      ...payload,
+      provider: 'other',
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateWearableStream({
+      ...payload,
+      is_simulated: 'true',
+    }),
+    { statusCode: 400 }
+  );
   assert.throws(() => validateWearableStream({ ...payload, user_id: 'another-user' }), { statusCode: 400 });
   assert.throws(() => validateWearableStream({ ...payload, readings: [] }), { statusCode: 400 });
   assert.throws(() => validateWearableStream({ ...payload, readings: Array(101).fill(reading) }), { statusCode: 400 });
