@@ -299,11 +299,15 @@ global. Location is never required to earn coins.
 - `POST /api/patient-app/wearable/stream`
 
 The history endpoint returns bounded time buckets (15, 30, 60, 120, or 360
-minutes) for a maximum 31-day range. It aggregates both patient-app wearable
-samples and linked CAPAR PolarData, identifying them with `source:
-"patient_app"` or `source: "capar_polar"` respectively. Heart-rate min/max,
-average, sample count, and available signal-quality/HRV measures are returned
-per bucket for charting without sending every raw sample to the mobile app.
+minutes) for a maximum 31-day range. It aggregates patient-app wearable
+samples and linked CAPAR PolarData. `source` is `patient_app`,
+`patient_app_demo`, or `capar_polar`. Heart-rate min/max, average, sample
+count, and available signal-quality/HRV measures are returned per bucket.
+Real samples also include `baseline_comparison`, matched to the stored
+activity/time-of-day baseline when available. It reports the baseline mean,
+sample count, maturity level, and heart-rate delta; it is a statistical
+comparison, not a clinical interpretation. Simulated samples are returned
+separately and explicitly excluded from baseline comparison.
 
 The mobile app submits `provider`, `device_id`, `recorded_at`, `heart_rate_bpm`,
 10-256 `rr_intervals_ms`, `activity`, 10-512 `acceleration_g` triplets
@@ -319,11 +323,13 @@ intervals. The provider and timestamp are retained as provenance. Vidyamedic
 pairs with a Polar H10 over BLE and submits real HR/RR and accelerometer
 windows through these authenticated endpoints. The explicit VidyaMedic demo
 device uses provider `other` and sets `is_simulated: true`; its synthetic
-readings are retained for interface/integration testing but always receive a
-quality warning and are excluded from accepted CAPAR segments, readiness
-checks, daily summaries, and wearable-history charts. The streaming endpoint
-remains restricted to Polar H10 readings. CAPAR Mobile uses that authenticated
-streaming endpoint; broker credentials remain server-side.
+readings are retained for interface/integration testing with a quality warning
+and are excluded from accepted CAPAR segments, readiness checks, daily
+summaries, and baseline learning. Simulated stream readings appear in
+wearable-history charts under the separate `patient_app_demo` source. The
+streaming endpoint validates the provider against the simulation flag. CAPAR
+Mobile uses that authenticated streaming endpoint; broker credentials remain
+server-side.
 
 While streaming, Vidyamedic uses a local, cadence-based accelerometer heuristic
 to suggest `Berjalan` or `Berlari` and asks the patient to confirm or correct
@@ -344,10 +350,13 @@ accepted real readings in the shared CAPAR data collection.
 
 For interface testing, the explicit dummy device may also publish stream
 batches using `provider: "other"` and `is_simulated: true`. These messages use
-source `patient_app_polar_ble_demo`, are acknowledged by the queue consumer,
-and are deliberately not written to clinical PolarData or baseline analysis.
-The wearable sample endpoint retains demo windows separately with the same
-simulation marker.
+source `patient_app_polar_ble_demo`. The RabbitMQ consumer stores the
+account-scoped readings in MongoDB `PatientAppWearableSample`, using an
+idempotent key per account, device, and timestamp. They are deliberately not
+written to clinical PolarData, CAPAR baseline learning, or gamification coin
+awards. The history endpoint exposes them as `patient_app_demo` for
+longitudinal interface/integration testing, clearly separated from real
+measurements.
 
 Accepted samples are converted into CAPAR `Segment` records with
 `window_type: "1min"` and left for the existing CAPAR Layer 3-RR pipeline to

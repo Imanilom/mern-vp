@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildTransportEnvelope, publishLogTransport } from '../utils/logTransport.js';
+import {
+  buildPatientAppDemoSampleOperations,
+  buildTransportEnvelope,
+  publishLogTransport,
+} from '../utils/logTransport.js';
+import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
 
 test('buildTransportEnvelope normalizes sensor payload for backend transport', () => {
   const envelope = buildTransportEnvelope({
@@ -43,6 +48,56 @@ test('buildTransportEnvelope retains the simulated-data marker', () => {
 
   assert.equal(envelope.is_simulated, true);
   assert.equal(envelope.readings[0].is_simulated, true);
+});
+
+test('patient app demo transport creates idempotent non-clinical Mongo samples', async () => {
+  const accountId = new PatientAppWearableSample.base.Types.ObjectId().toString();
+  const envelope = buildTransportEnvelope({
+    user_id: accountId,
+    account_type: 'user',
+    provider: 'other',
+    source: 'patient_app_polar_ble_demo',
+    is_simulated: true,
+    device_id: 'VIDYAMEDIC-DEMO',
+    readings: [{
+      timestamp: 1710000000,
+      heart_rate: 84,
+      rr_interval: 714,
+      activity: 'Berdiri',
+      signal_quality: 0.9,
+      acc_x: 0.1,
+      acc_y: -0.2,
+      acc_z: 1,
+      is_simulated: true,
+    }],
+  });
+
+  const operations = buildPatientAppDemoSampleOperations(envelope);
+  assert.equal(operations.length, 1);
+  const operation = operations[0].updateOne;
+  const sample = new PatientAppWearableSample(operation.update.$setOnInsert);
+  await sample.validate();
+  assert.equal(sample.account_id.toString(), accountId);
+  assert.equal(sample.account_type, 'user');
+  assert.equal(sample.provider, 'other');
+  assert.equal(sample.is_simulated, true);
+  assert.equal(sample.ingestion_source, 'rabbitmq_stream');
+  assert.equal(sample.posture, 'standing');
+  assert.equal(sample.activity, 'standing');
+  assert.deepEqual(sample.data_quality.reasons, ['simulated_sensor_data']);
+  assert.equal(operation.upsert, true);
+  assert.equal(operation.filter.recorded_at.toISOString(), sample.recorded_at.toISOString());
+});
+
+test('patient app demo persistence rejects missing or invalid account scope', () => {
+  assert.throws(
+    () => buildPatientAppDemoSampleOperations({
+      user_id: 'not-an-object-id',
+      account_type: 'user',
+      readings: [],
+    }),
+    /missing a valid account scope/
+  );
 });
 
 test('publishLogTransport invokes publishFn if provided', async () => {

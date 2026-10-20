@@ -12,11 +12,15 @@ class FaceBadge extends StatelessWidget {
   final FaceExpression expression;
   final Color color;
   final double size;
-  const FaceBadge({super.key, required this.expression, required this.color, this.size = 34});
+  const FaceBadge(
+      {super.key,
+      required this.expression,
+      required this.color,
+      this.size = 34});
 
   @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: Size.square(size), painter: _FacePainter(expression, color));
+  Widget build(BuildContext context) => CustomPaint(
+      size: Size.square(size), painter: _FacePainter(expression, color));
 }
 
 class _FacePainter extends CustomPainter {
@@ -76,7 +80,8 @@ class _FacePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _FacePainter old) => old.e != e || old.color != color;
+  bool shouldRepaint(covariant _FacePainter old) =>
+      old.e != e || old.color != color;
 }
 
 // ---------------------------------------------------------------------------
@@ -109,7 +114,8 @@ class StepProgress extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Text('$step/$total',
-            style: AppTheme.font(size: 12, weight: FontWeight.w600, color: AppTheme.textMuted)),
+            style: AppTheme.font(
+                size: 12, weight: FontWeight.w600, color: AppTheme.textMuted)),
       ],
     );
   }
@@ -121,19 +127,23 @@ class StepProgress extends StatelessWidget {
 class PulsingStatusDot extends StatefulWidget {
   final Color color;
   final double size;
-  const PulsingStatusDot({super.key, this.color = AppTheme.statusGreen, this.size = 8});
+  const PulsingStatusDot(
+      {super.key, this.color = AppTheme.statusGreen, this.size = 8});
 
   @override
   State<PulsingStatusDot> createState() => _PulsingStatusDotState();
 }
 
-class _PulsingStatusDotState extends State<PulsingStatusDot> with SingleTickerProviderStateMixin {
+class _PulsingStatusDotState extends State<PulsingStatusDot>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat(reverse: true);
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1400))
+      ..repeat(reverse: true);
   }
 
   @override
@@ -156,7 +166,8 @@ class _PulsingStatusDotState extends State<PulsingStatusDot> with SingleTickerPr
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: widget.color.withValues(alpha: 0.4 + _controller.value * 0.4),
+                color: widget.color
+                    .withValues(alpha: 0.4 + _controller.value * 0.4),
                 blurRadius: glow,
                 spreadRadius: _controller.value * 1.5,
               ),
@@ -212,11 +223,17 @@ class CircularScoreGauge extends StatelessWidget {
                 children: [
                   Text(
                     '${val.toInt()}%',
-                    style: AppTheme.font(size: size * 0.22, weight: FontWeight.w800, color: AppTheme.textPrimary),
+                    style: AppTheme.font(
+                        size: size * 0.22,
+                        weight: FontWeight.w800,
+                        color: AppTheme.textPrimary),
                   ),
                   Text(
                     subtitle,
-                    style: AppTheme.font(size: size * 0.095, weight: FontWeight.w700, color: primaryColor),
+                    style: AppTheme.font(
+                        size: size * 0.095,
+                        weight: FontWeight.w700,
+                        color: primaryColor),
                   ),
                 ],
               ),
@@ -331,21 +348,34 @@ class MockupScaffold extends StatelessWidget {
                 automaticallyImplyLeading: false,
                 backgroundColor: Colors.white,
                 surfaceTintColor: Colors.transparent,
-                leading: showBack && (Navigator.of(context).canPop() || onBack != null)
+                leading: showBack &&
+                        (Navigator.of(context).canPop() || onBack != null)
                     ? IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppTheme.primaryDark),
-                        onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                            size: 20, color: AppTheme.primaryDark),
+                        onPressed:
+                            onBack ?? () => Navigator.of(context).maybePop(),
                       )
                     : null,
                 toolbarHeight: subtitle == null ? 56 : 68,
                 title: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(title, style: AppTheme.font(size: 16.5, weight: FontWeight.w700, color: AppTheme.textPrimary)),
-                    if (subtitle != null) ...[const SizedBox(height: 2), subtitle!],
+                    Text(title,
+                        style: AppTheme.font(
+                            size: 16.5,
+                            weight: FontWeight.w700,
+                            color: AppTheme.textPrimary)),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      subtitle!
+                    ],
                   ],
                 ),
-                actions: [if (trailing != null) trailing!, const SizedBox(width: 8)],
+                actions: [
+                  if (trailing != null) trailing!,
+                  const SizedBox(width: 8)
+                ],
               ),
               body: SafeArea(
                 top: false,
@@ -363,7 +393,10 @@ class MockupScaffold extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          border: Border(top: BorderSide(color: AppTheme.borderLight.withValues(alpha: 0.8))),
+                          border: Border(
+                              top: BorderSide(
+                                  color: AppTheme.borderLight
+                                      .withValues(alpha: 0.8))),
                         ),
                         child: bottom,
                       ),
@@ -391,8 +424,14 @@ class DateLine extends StatelessWidget {
       children: [
         const Icon(Icons.event_note_rounded, size: 14, color: AppTheme.primary),
         const SizedBox(width: 5),
-        Text(DateFormat('EEE, d MMM yyyy', 'id_ID').format(date),
-            style: AppTheme.font(size: 12, color: AppTheme.textSecondary)),
+        Flexible(
+          child: Text(
+            DateFormat('EEE, d MMM yyyy', 'id_ID').format(date),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTheme.font(size: 12, color: AppTheme.textSecondary),
+          ),
+        ),
       ],
     );
   }
@@ -401,12 +440,14 @@ class DateLine extends StatelessWidget {
 class SectionTitle extends StatelessWidget {
   final String text;
   final EdgeInsets padding;
-  const SectionTitle(this.text, {super.key, this.padding = const EdgeInsets.only(top: 18, bottom: 10)});
+  const SectionTitle(this.text,
+      {super.key, this.padding = const EdgeInsets.only(top: 18, bottom: 10)});
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: padding,
-        child: Text(text, style: AppTheme.font(size: 14, weight: FontWeight.w700)),
+        child:
+            Text(text, style: AppTheme.font(size: 14, weight: FontWeight.w700)),
       );
 }
 
@@ -417,7 +458,8 @@ class FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: 14, bottom: 6),
-        child: Text(text, style: AppTheme.font(size: 13, color: AppTheme.textSecondary)),
+        child: Text(text,
+            style: AppTheme.font(size: 13, color: AppTheme.textSecondary)),
       );
 }
 
@@ -498,7 +540,8 @@ class IconChoiceTile extends StatelessWidget {
           Container(
             width: 38,
             height: 38,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.13), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.13), shape: BoxShape.circle),
             child: Icon(icon, size: 20, color: color),
           ),
           const SizedBox(height: 6),
@@ -546,10 +589,17 @@ class ActivityTile extends StatelessWidget {
               color: selected ? AppTheme.primary : AppTheme.fieldFill,
               borderRadius: BorderRadius.circular(14),
               boxShadow: selected
-                  ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))]
+                  ? [
+                      BoxShadow(
+                          color: AppTheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4))
+                    ]
                   : null,
             ),
-            child: Icon(icon, color: selected ? Colors.white : AppTheme.primaryDark, size: 24),
+            child: Icon(icon,
+                color: selected ? Colors.white : AppTheme.primaryDark,
+                size: 24),
           ),
           const SizedBox(height: 6),
           Text(label,
@@ -593,7 +643,9 @@ class _SelectableBox extends StatelessWidget {
             border: Border.all(
               color: selected
                   ? AppTheme.primaryLight
-                  : (showBorderWhenIdle ? AppTheme.borderLight : Colors.transparent),
+                  : (showBorderWhenIdle
+                      ? AppTheme.borderLight
+                      : Colors.transparent),
               width: selected ? 1.6 : 1,
             ),
           ),
@@ -640,11 +692,14 @@ class ToggleRow extends StatelessWidget {
                 children: [
                   Text(label, style: AppTheme.font(size: 13.5)),
                   if (sublabel != null)
-                    Text(sublabel!, style: AppTheme.font(size: 11.5, color: AppTheme.textMuted)),
+                    Text(sublabel!,
+                        style: AppTheme.font(
+                            size: 11.5, color: AppTheme.textMuted)),
                 ],
               ),
             ),
-            Transform.scale(scale: 0.85, child: Switch(value: value, onChanged: onChanged)),
+            Transform.scale(
+                scale: 0.85, child: Switch(value: value, onChanged: onChanged)),
           ],
         ),
       ),
@@ -657,7 +712,11 @@ class RadioRow extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const RadioRow({super.key, required this.label, required this.selected, required this.onTap});
+  const RadioRow(
+      {super.key,
+      required this.label,
+      required this.selected,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -672,12 +731,17 @@ class RadioRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected ? AppTheme.primarySoft : Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: selected ? AppTheme.primaryLight : AppTheme.borderLight),
+            border: Border.all(
+                color: selected ? AppTheme.primaryLight : AppTheme.borderLight),
           ),
           child: Row(
             children: [
-              Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  size: 20, color: selected ? AppTheme.primary : AppTheme.textMuted),
+              Icon(
+                  selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  size: 20,
+                  color: selected ? AppTheme.primary : AppTheme.textMuted),
               const SizedBox(width: 10),
               Expanded(child: Text(label, style: AppTheme.font(size: 13))),
             ],
@@ -693,7 +757,8 @@ class TonalButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
   final IconData? icon;
-  const TonalButton({super.key, required this.label, required this.onPressed, this.icon});
+  const TonalButton(
+      {super.key, required this.label, required this.onPressed, this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -705,13 +770,21 @@ class TonalButton extends StatelessWidget {
         style: TextButton.styleFrom(
           backgroundColor: AppTheme.primarySoft,
           foregroundColor: AppTheme.primary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: 6)],
-            Text(label, style: AppTheme.font(size: 15, weight: FontWeight.w600, color: AppTheme.primary)),
+            if (icon != null) ...[
+              Icon(icon, size: 18),
+              const SizedBox(width: 6)
+            ],
+            Text(label,
+                style: AppTheme.font(
+                    size: 15,
+                    weight: FontWeight.w600,
+                    color: AppTheme.primary)),
           ],
         ),
       ),
@@ -742,7 +815,11 @@ class WatchFace extends StatelessWidget {
             height: h + 36,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF2B3431), Color(0xFF3D4844), Color(0xFF2B3431)],
+                colors: [
+                  Color(0xFF2B3431),
+                  Color(0xFF3D4844),
+                  Color(0xFF2B3431)
+                ],
               ),
               borderRadius: BorderRadius.circular(16),
             ),
@@ -755,7 +832,12 @@ class WatchFace extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF1F2523),
               borderRadius: BorderRadius.circular(width * 0.26),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 14, offset: const Offset(0, 6))],
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6))
+              ],
             ),
             child: Container(
               decoration: BoxDecoration(
@@ -773,7 +855,9 @@ class WatchFace extends StatelessWidget {
             child: Container(
               width: 5,
               height: 18,
-              decoration: BoxDecoration(color: const Color(0xFF3D4844), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                  color: const Color(0xFF3D4844),
+                  borderRadius: BorderRadius.circular(2)),
             ),
           ),
         ],
@@ -786,11 +870,12 @@ class WatchFace extends StatelessWidget {
 class PulseLine extends StatelessWidget {
   final Color color;
   final double height;
-  const PulseLine({super.key, this.color = AppTheme.accentMint, this.height = 14});
+  const PulseLine(
+      {super.key, this.color = AppTheme.accentMint, this.height = 14});
 
   @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: Size(double.infinity, height), painter: _PulsePainter(color));
+  Widget build(BuildContext context) => CustomPaint(
+      size: Size(double.infinity, height), painter: _PulsePainter(color));
 }
 
 class _PulsePainter extends CustomPainter {
@@ -825,7 +910,8 @@ class _PulsePainter extends CustomPainter {
 void showSaved(BuildContext context, String msg) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(msg), duration: const Duration(milliseconds: 1400)));
+    ..showSnackBar(SnackBar(
+        content: Text(msg), duration: const Duration(milliseconds: 1400)));
 }
 
 String fmtTime(TimeOfDay t) =>

@@ -53,6 +53,7 @@ import {
   summarizePatientRecovery,
 } from '../utils/patientPedagogy.js';
 import { buildPatientReasoningPipeline } from '../utils/patientReasoningPipeline.js';
+import { withWearableBaselineComparison } from '../utils/patientWearableHistory.js';
 import { assessRRQuality, extractRRFeatures } from '../utils/rrBaselinePipeline.js';
 import {
   validateCheckIn,
@@ -3006,7 +3007,7 @@ export async function createPatientAppWearableSample(req, res) {
 }
 
 export async function streamPatientAppWearableData(req, res) {
-  const { dataOwnerId } = await getAccount(req);
+  const { dataOwnerId, dataOwnerType } = await getAccount(req);
   const stream = validateWearableStream(req.body);
   const streamActivity = {
     rest: 'Istirahat',
@@ -3020,6 +3021,8 @@ export async function streamPatientAppWearableData(req, res) {
   try {
     const result = await publishLogTransport({
       user_id: dataOwnerId.toString(),
+      account_type: dataOwnerType,
+      provider: stream.provider,
       source: stream.is_simulated
         ? 'patient_app_polar_ble_demo'
         : 'patient_app_polar_ble',
@@ -3447,24 +3450,31 @@ export async function listPatientAppWearableSamples(req, res) {
 export async function getPatientAppWearableHistory(req, res) {
   const { accountScopes } = await getAccount(req);
   const filters = validateWearableHistoryQuery(req.query);
-  const [wearableHistory, polarHistory] = await Promise.all([
+  const caparUserIds = accountScopes
+    .filter((scope) => scope.account_type === 'user')
+    .map((scope) => scope.account_id);
+  const [wearableHistory, polarHistory, baselines] = await Promise.all([
     PatientAppWearableSample.aggregate([
       {
         $match: {
           ...accountScopeFilter(accountScopes),
-          is_simulated: { $ne: true },
           recorded_at: { $gte: filters.from, $lte: filters.to },
         },
       },
       {
         $group: {
           _id: {
-            $dateTrunc: {
-              date: '$recorded_at',
-              unit: 'minute',
-              binSize: filters.bucketMinutes,
-              timezone: 'UTC',
+            bucket: {
+              $dateTrunc: {
+                date: '$recorded_at',
+                unit: 'minute',
+                binSize: filters.bucketMinutes,
+                timezone: 'UTC',
+              },
             },
+            activity: '$activity',
+            intensity: '$activity_intensity',
+            is_simulated: '$is_simulated',
           },
           heart_rate_bpm: { $avg: '$heart_rate_bpm' },
           heart_rate_min_bpm: { $min: '$heart_rate_bpm' },
@@ -3475,12 +3485,21 @@ export async function getPatientAppWearableHistory(req, res) {
           signal_quality: { $avg: '$data_quality.q_signal' },
         },
       },
-      { $sort: { _id: 1 } },
+      { $sort: { '_id.bucket': 1 } },
       {
         $project: {
           _id: 0,
-          recorded_at: '$_id',
-          source: { $literal: 'patient_app' },
+          recorded_at: '$_id.bucket',
+          activity: '$_id.activity',
+          activity_intensity: '$_id.intensity',
+          is_simulated: '$_id.is_simulated',
+          source: {
+            $cond: [
+              '$_id.is_simulated',
+              'patient_app_demo',
+              'patient_app',
+            ],
+          },
           heart_rate_bpm: 1,
           heart_rate_min_bpm: 1,
           heart_rate_max_bpm: 1,
@@ -3510,12 +3529,15 @@ export async function getPatientAppWearableHistory(req, res) {
       {
         $group: {
           _id: {
-            $dateTrunc: {
-              date: '$recorded_at',
-              unit: 'minute',
-              binSize: filters.bucketMinutes,
-              timezone: 'UTC',
+            bucket: {
+              $dateTrunc: {
+                date: '$recorded_at',
+                unit: 'minute',
+                binSize: filters.bucketMinutes,
+                timezone: 'UTC',
+              },
             },
+            activity: '$activity',
           },
           heart_rate_bpm: { $avg: '$hr' },
           heart_rate_min_bpm: { $min: '$hr' },
@@ -3524,11 +3546,13 @@ export async function getPatientAppWearableHistory(req, res) {
           sample_count: { $sum: 1 },
         },
       },
-      { $sort: { _id: 1 } },
+      { $sort: { '_id.bucket': 1 } },
       {
         $project: {
           _id: 0,
-          recorded_at: '$_id',
+          recorded_at: '$_id.bucket',
+          activity: '$_id.activity',
+          is_simulated: { $literal: false },
           source: { $literal: 'capar_polar' },
           heart_rate_bpm: 1,
           heart_rate_min_bpm: 1,
@@ -3539,8 +3563,18 @@ export async function getPatientAppWearableHistory(req, res) {
       },
       { $limit: 3000 },
     ]),
+    Baseline.find({ user_id: { $in: caparUserIds } })
+      .select('activity time_period stats.mean_hr maturity_detail.level segment_count is_mature')
+      .lean(),
   ]);
+  const baselineByContext = new Map(
+    baselines.map((baseline) => [
+      `${baseline.activity}:${baseline.time_period}`,
+      baseline,
+    ])
+  );
   const data = [...wearableHistory, ...polarHistory]
+    .map((item) => withWearableBaselineComparison(item, baselineByContext))
     .sort((a, b) => a.recorded_at - b.recorded_at);
   res.json({
     success: true,

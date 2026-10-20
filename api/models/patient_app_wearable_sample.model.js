@@ -61,7 +61,11 @@ const PatientAppWearableSampleSchema = new mongoose.Schema(
       feature_source: { type: String, enum: ['derived_from_rr', 'unavailable'], required: true },
     },
     device_id: { type: String, trim: true, maxlength: 120, required: true },
-    ingestion_source: { type: String, enum: ['mobile_wearable_bridge'], default: 'mobile_wearable_bridge' },
+    ingestion_source: {
+      type: String,
+      enum: ['mobile_wearable_bridge', 'rabbitmq_stream'],
+      default: 'mobile_wearable_bridge',
+    },
     rmssd_ms: { type: Number, min: 0, max: 1000, default: null },
     sdnn_ms: { type: Number, min: 0, max: 1000, default: null },
     dfa_alpha1: { type: Number, min: 0, max: 3, default: null },
@@ -85,5 +89,15 @@ const PatientAppWearableSampleSchema = new mongoose.Schema(
 );
 
 PatientAppWearableSampleSchema.index({ account_id: 1, account_type: 1, recorded_at: -1 });
+PatientAppWearableSampleSchema.index(
+  { account_id: 1, account_type: 1, device_id: 1, recorded_at: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      is_simulated: true,
+      ingestion_source: 'rabbitmq_stream',
+    },
+  }
+);
 
 export default mongoose.model('PatientAppWearableSample', PatientAppWearableSampleSchema);

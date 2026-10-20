@@ -1,4 +1,5 @@
 import amqp from 'amqplib';
+import mongoose from 'mongoose';
 import { analyzeAndCorrectRR, checkQualityGate } from './dataQualityGate.js';
 import { sendMobileNotification } from './notificationService.js';
 import { io } from '../index.js';
@@ -32,12 +33,113 @@ export function buildTransportEnvelope(payload) {
 
   return {
     user_id: payload?.user_id ?? payload?.userId ?? null,
+    account_type: payload?.account_type ?? payload?.accountType ?? null,
+    provider: payload?.provider ?? null,
     source: payload?.source ?? 'polar_ble',
     is_simulated: payload?.is_simulated === true,
     device_id: payload?.device_id ?? payload?.deviceId ?? 'UNKNOWN',
     received_at: payload?.received_at ?? new Date().toISOString(),
     readings: readings.map(normalizeTransportReading),
   };
+}
+
+export function buildPatientAppDemoSampleOperations(envelope) {
+  if (
+    !mongoose.isValidObjectId(envelope?.user_id)
+    || !['user', 'patient'].includes(envelope.account_type)
+  ) {
+    throw new Error('Patient app demo stream is missing a valid account scope.');
+  }
+
+  return (Array.isArray(envelope.readings) ? envelope.readings : [])
+    .flatMap((reading) => {
+      const recordedAt = new Date(Number(reading.timestamp) * 1000);
+      const heartRate = Number(reading.heart_rate);
+      const rrInterval = Number(reading.rr_interval);
+      if (
+        !Number.isFinite(recordedAt.getTime())
+        || !Number.isFinite(heartRate)
+        || heartRate < 20
+        || heartRate > 250
+      ) {
+        return [];
+      }
+
+      const rawConfidence = Number(reading.signal_quality);
+      const signalConfidence = Number.isFinite(rawConfidence)
+        ? Math.max(0, Math.min(1, rawConfidence > 1 ? rawConfidence / 100 : rawConfidence))
+        : 0;
+      const rrIntervals = Number.isFinite(rrInterval)
+        && rrInterval >= 250
+        && rrInterval <= 3000
+        ? [rrInterval]
+        : [];
+      const acceleration = ['acc_x', 'acc_y', 'acc_z'].map((axis) => {
+        const value = Number(reading[axis]);
+        return Number.isFinite(value) ? Math.max(-16, Math.min(16, value)) : 0;
+      });
+      const activity = String(reading.activity || '').toLowerCase();
+      const posture = ['lying', 'berbaring', 'sleep', 'tidur'].includes(activity)
+        ? 'lying'
+        : ['standing', 'berdiri'].includes(activity)
+          ? 'standing'
+          : ['sitting', 'duduk', 'rest', 'istirahat'].includes(activity)
+            ? 'sitting'
+            : 'unknown';
+      const recordedActivity = ['lying', 'berbaring', 'sleep', 'tidur'].includes(activity)
+        ? 'sleep'
+        : ['standing', 'berdiri'].includes(activity)
+          ? 'standing'
+          : ['walking', 'berjalan'].includes(activity)
+            ? 'walking'
+            : ['running', 'berlari'].includes(activity)
+              ? 'running'
+              : ['sitting', 'duduk'].includes(activity)
+                ? 'sitting'
+                : ['rest', 'istirahat'].includes(activity)
+                  ? 'rest'
+                  : 'other';
+      const now = new Date();
+      const sample = {
+        account_id: envelope.user_id,
+        account_type: envelope.account_type,
+        provider: envelope.provider === 'other' ? 'other' : 'polar_h10',
+        is_simulated: true,
+        recorded_at: recordedAt,
+        heart_rate_bpm: heartRate,
+        rr_intervals_ms: rrIntervals,
+        acceleration_g: [{ x: acceleration[0], y: acceleration[1], z: acceleration[2] }],
+        activity_intensity: 'unknown',
+        posture,
+        activity: recordedActivity,
+        sensor_contact: true,
+        signal_confidence: signalConfidence,
+        expected_rr_count: rrIntervals.length || null,
+        data_quality: {
+          status: 'warning',
+          q_signal: signalConfidence,
+          q_complete: rrIntervals.length ? 1 : 0,
+          reasons: ['simulated_sensor_data'],
+          feature_source: rrIntervals.length ? 'derived_from_rr' : 'unavailable',
+        },
+        device_id: envelope.device_id || 'UNKNOWN',
+        ingestion_source: 'rabbitmq_stream',
+      };
+      return [{
+        updateOne: {
+          filter: {
+            account_id: sample.account_id,
+            account_type: sample.account_type,
+            device_id: sample.device_id,
+            recorded_at: sample.recorded_at,
+            is_simulated: true,
+            ingestion_source: 'rabbitmq_stream',
+          },
+          update: { $setOnInsert: { ...sample, createdAt: now, updatedAt: now } },
+          upsert: true,
+        },
+      }];
+    });
 }
 
 let connection = null;
@@ -203,6 +305,22 @@ export async function startLogTransportConsumer() {
         envelope.is_simulated === true
         || envelope.source === 'patient_app_polar_ble_demo'
       ) {
+        if (envelope.source === 'patient_app_polar_ble_demo') {
+          const PatientAppWearableSample = (
+            await import('../models/patient_app_wearable_sample.model.js')
+          ).default;
+          const operations = buildPatientAppDemoSampleOperations(envelope);
+          if (operations.length) {
+            await PatientAppWearableSample.bulkWrite(operations, {
+              ordered: false,
+            });
+          }
+          console.info(
+            `[RabbitMQ Consumer] Persisted ${operations.length} simulated wearable samples for account ${envelope.user_id}; excluded from clinical PolarData and baseline learning.`
+          );
+          ch.ack(msg);
+          return;
+        }
         console.info(
           `[RabbitMQ Consumer] Received ${envelope.readings?.length ?? 0} simulated readings for device ${envelope.device_id}; acknowledged without writing clinical PolarData.`
         );

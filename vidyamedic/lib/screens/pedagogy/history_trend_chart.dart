@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
-enum HistoryChart { wearable, capar, polarCapar, streaming }
+enum HistoryChart { wearable, demo, capar, polarCapar, streaming }
 
 class ChartPoint {
   final DateTime time;

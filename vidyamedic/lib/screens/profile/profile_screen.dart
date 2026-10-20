@@ -1557,21 +1557,28 @@ class ProfileScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.sensors_rounded,
-                              color: AppTheme.accentMint, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            s.wearable.hasServerSamples
-                                ? 'Sampel wearable tersedia'
-                                : 'Belum ada sampel wearable',
-                            style: AppTheme.font(
-                                size: 11.5,
-                                weight: FontWeight.w600,
-                                color: Colors.white),
-                          ),
-                        ],
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.sensors_rounded,
+                                color: AppTheme.accentMint, size: 16),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                s.wearable.hasServerSamples
+                                    ? 'Sampel wearable tersedia'
+                                    : 'Belum ada sampel wearable',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTheme.font(
+                                  size: 11.5,
+                                  weight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       // Tactile White Sync Pill Button
                       InkWell(
@@ -1660,11 +1667,18 @@ class ProfileScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Kondisi Medis Pasien:',
+                    Expanded(
+                      child: Text(
+                        'Kondisi Medis Pasien:',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTheme.font(
-                            size: 12.5,
-                            color: AppTheme.textMuted,
-                            weight: FontWeight.w700)),
+                          size: 12.5,
+                          color: AppTheme.textMuted,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
                     // Styled Pill Button
                     InkWell(
                       onTap: () => _addConditionModal(context),
@@ -1729,11 +1743,18 @@ class ProfileScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Daftar Obat Rutin:',
+                    Expanded(
+                      child: Text(
+                        'Daftar Obat Rutin:',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTheme.font(
-                            size: 12.5,
-                            color: AppTheme.textMuted,
-                            weight: FontWeight.w700)),
+                          size: 12.5,
+                          color: AppTheme.textMuted,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
                     // Styled Pill Button
                     InkWell(
                       onTap: () => _addMedicationModal(context),

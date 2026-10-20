@@ -357,72 +357,75 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F8),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Container(
-            color: AppTheme.background,
-            child: Scaffold(
-              body: pages[_currentIndex],
-              bottomNavigationBar: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(
-                      top: BorderSide(color: AppTheme.borderLight, width: 1)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x0A0B7A5A),
-                      blurRadius: 16,
-                      offset: Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: SafeArea(
-                  child: NavigationBar(
-                    selectedIndex: _currentIndex,
-                    onDestinationSelected: (idx) {
-                      setState(() => _currentIndex = idx);
-                      _queueMovementPrompt();
-                      if (idx == 0) _queueDeviationPrompt();
-                    },
-                    backgroundColor: Colors.white,
-                    indicatorColor: AppTheme.primarySoft,
-                    elevation: 0,
-                    height: 65,
-                    labelBehavior:
-                        NavigationDestinationLabelBehavior.alwaysShow,
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.favorite_border_rounded, size: 22),
-                        selectedIcon: Icon(Icons.favorite_rounded,
-                            color: AppTheme.primary, size: 23),
-                        label: 'Beranda',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.edit_note_outlined, size: 24),
-                        selectedIcon: Icon(Icons.edit_note_rounded,
-                            color: AppTheme.primary, size: 25),
-                        label: 'Catat Harian',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.assessment_outlined, size: 22),
-                        selectedIcon: Icon(Icons.assessment_rounded,
-                            color: AppTheme.primary, size: 23),
-                        label: 'Ringkasan',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.person_outline_rounded, size: 22),
-                        selectedIcon: Icon(Icons.person_rounded,
-                            color: AppTheme.primary, size: 23),
-                        label: 'Profil',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.emoji_events_outlined, size: 22),
-                        selectedIcon: Icon(Icons.emoji_events_rounded,
-                            color: AppTheme.primary, size: 23),
-                        label: 'Komunitas',
+      body: LayoutBuilder(
+        builder: (context, constraints) => Center(
+          child: SizedBox(
+            width: constraints.maxWidth > 480 ? 480 : constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: Container(
+              color: AppTheme.background,
+              child: Scaffold(
+                body: pages[_currentIndex],
+                bottomNavigationBar: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                        top: BorderSide(color: AppTheme.borderLight, width: 1)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x0A0B7A5A),
+                        blurRadius: 16,
+                        offset: Offset(0, -4),
                       ),
                     ],
+                  ),
+                  child: SafeArea(
+                    child: NavigationBar(
+                      selectedIndex: _currentIndex,
+                      onDestinationSelected: (idx) {
+                        setState(() => _currentIndex = idx);
+                        _queueMovementPrompt();
+                        if (idx == 0) _queueDeviationPrompt();
+                      },
+                      backgroundColor: Colors.white,
+                      indicatorColor: AppTheme.primarySoft,
+                      elevation: 0,
+                      height: 65,
+                      labelBehavior:
+                          NavigationDestinationLabelBehavior.alwaysShow,
+                      destinations: const [
+                        NavigationDestination(
+                          icon: Icon(Icons.favorite_border_rounded, size: 22),
+                          selectedIcon: Icon(Icons.favorite_rounded,
+                              color: AppTheme.primary, size: 23),
+                          label: 'Beranda',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.edit_note_outlined, size: 24),
+                          selectedIcon: Icon(Icons.edit_note_rounded,
+                              color: AppTheme.primary, size: 25),
+                          label: 'Catat Harian',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.assessment_outlined, size: 22),
+                          selectedIcon: Icon(Icons.assessment_rounded,
+                              color: AppTheme.primary, size: 23),
+                          label: 'Ringkasan',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.person_outline_rounded, size: 22),
+                          selectedIcon: Icon(Icons.person_rounded,
+                              color: AppTheme.primary, size: 23),
+                          label: 'Profil',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.emoji_events_outlined, size: 22),
+                          selectedIcon: Icon(Icons.emoji_events_rounded,
+                              color: AppTheme.primary, size: 23),
+                          label: 'Komunitas',
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -510,18 +513,25 @@ class _PedagogyDashboard extends StatelessWidget {
                       letterSpacing: -0.3),
                 ),
                 const SizedBox(width: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primarySoft,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text('Kesehatan Personal',
+                Flexible(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primarySoft,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Kesehatan Personal',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTheme.font(
-                          size: 9.5,
-                          weight: FontWeight.w800,
-                          color: AppTheme.primaryDark)),
+                        size: 9.5,
+                        weight: FontWeight.w800,
+                        color: AppTheme.primaryDark,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -538,18 +548,22 @@ class _PedagogyDashboard extends StatelessWidget {
                           : AppTheme.textMuted,
                 ),
                 const SizedBox(width: 5),
-                Text(
-                  w.isSimulated
-                      ? 'Data demo simulasi (bukan pengukuran nyata)'
-                      : w.hasServerSamples
-                          ? 'Sampel wearable dari server • ${w.deviceName}'
-                          : s.hasCaparRecords
-                              ? 'Riwayat CAPAR tersedia dari server'
-                              : 'Belum ada data wearable dari server',
-                  style: AppTheme.font(
-                      size: 11,
-                      color: AppTheme.textSecondary,
-                      weight: FontWeight.w500),
+                Flexible(
+                  child: Text(
+                    w.isSimulated
+                        ? 'Data demo simulasi (bukan pengukuran nyata)'
+                        : w.hasServerSamples
+                            ? 'Sampel wearable dari server • ${w.deviceName}'
+                            : s.hasCaparRecords
+                                ? 'Riwayat CAPAR tersedia dari server'
+                                : 'Belum ada data wearable dari server',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.font(
+                        size: 11,
+                        color: AppTheme.textSecondary,
+                        weight: FontWeight.w500),
+                  ),
                 ),
               ],
             ),
@@ -826,13 +840,17 @@ class _PedagogyDashboard extends StatelessWidget {
                                   const Icon(Icons.favorite,
                                       color: AppTheme.faceRed, size: 20),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    'Detak Jantung',
-                                    style: AppTheme.font(
-                                        size: 13,
-                                        color: Colors.white
-                                            .withValues(alpha: 0.85),
-                                        weight: FontWeight.w600),
+                                  Flexible(
+                                    child: Text(
+                                      'Detak Jantung',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTheme.font(
+                                          size: 13,
+                                          color: Colors.white
+                                              .withValues(alpha: 0.85),
+                                          weight: FontWeight.w600),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1150,13 +1168,19 @@ class _PedagogyDashboard extends StatelessWidget {
                               color: triage.color.withValues(alpha: 0.25)),
                         ),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Buka Panduan Tindakan Lengkap',
+                            Flexible(
+                              child: Text(
+                                'Buka Panduan Tindakan Lengkap',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: AppTheme.font(
-                                    size: 12,
-                                    weight: FontWeight.w700,
-                                    color: triage.color)),
+                                  size: 12,
+                                  weight: FontWeight.w700,
+                                  color: triage.color,
+                                ),
+                              ),
+                            ),
                             const SizedBox(width: 4),
                             Icon(Icons.arrow_forward_rounded,
                                 size: 14, color: triage.color),
@@ -2249,17 +2273,25 @@ class _HomeGamificationCardState extends State<_HomeGamificationCard> {
                 ),
               ),
               const SizedBox(width: 9),
-              OutlinedButton(
-                onPressed: widget.onCommunity,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 11,
+              SizedBox(
+                width: 108,
+                child: OutlinedButton(
+                  onPressed: widget.onCommunity,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 50),
+                    side:
+                        BorderSide(color: Colors.white.withValues(alpha: 0.6)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 11,
+                    ),
+                  ),
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Papan skor'),
                   ),
                 ),
-                child: const Text('Papan skor'),
               ),
             ],
           ),

@@ -29,8 +29,8 @@ class ProfileSnapshotCard extends StatelessWidget {
 
     final hasTodayCheckIn = checkIns is List &&
         checkIns.any((item) => item is Map && isToday(item['recorded_at']));
-    final hasTodayWearableSample =
-        state.wearableSamples.any((sample) => isToday(sample['recorded_at']));
+    final hasTodayWearableSample = state.wearableSamples.any((sample) =>
+        sample['is_simulated'] != true && isToday(sample['recorded_at']));
     final dailyProgress = [
       hasTodayCheckIn,
       hasTodayWearableSample,

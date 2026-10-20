@@ -23,6 +23,7 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
   int _activeStep = 0;
   HistoryChart _selectedChart = HistoryChart.wearable;
   List<Map<String, dynamic>> _weeklyWearable = [];
+  List<Map<String, dynamic>> _weeklyDemo = [];
   List<Map<String, dynamic>> _weeklyPolar = [];
   bool _isLoadingWearableHistory = true;
   String? _wearableHistoryError;
@@ -109,6 +110,9 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
             .toList();
         _weeklyWearable =
             history.where((item) => item['source'] == 'patient_app').toList();
+        _weeklyDemo = history
+            .where((item) => item['source'] == 'patient_app_demo')
+            .toList();
         _weeklyPolar =
             history.where((item) => item['source'] == 'capar_polar').toList();
         _wearableHistoryError = null;
@@ -188,6 +192,7 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
     final chartPoints = _chartPoints(s, filteredTrajectory);
     final chartLabel = switch (_selectedChart) {
       HistoryChart.wearable => 'Detak jantung wearable (bpm)',
+      HistoryChart.demo => 'Detak jantung wearable demo (bpm)',
       HistoryChart.capar => 'Deviasi dari baseline CAPAR',
       HistoryChart.polarCapar => 'Detak jantung PolarData CAPAR (bpm)',
       HistoryChart.streaming => 'Detak jantung streaming langsung (bpm)',
@@ -496,15 +501,34 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
   ) {
     final isStreaming = _selectedChart == HistoryChart.streaming;
     final isCapar = _selectedChart == HistoryChart.capar;
-    final isLoading =
-        _selectedChart == HistoryChart.wearable && _isLoadingWearableHistory;
+    final isDemo = _selectedChart == HistoryChart.demo;
+    final isLoading = (_selectedChart == HistoryChart.wearable || isDemo) &&
+        _isLoadingWearableHistory;
     final pointCount = isCapar
         ? caparPointCount
         : isStreaming
             ? points.length
-            : _selectedChart == HistoryChart.polarCapar
-                ? _weeklyPolar.length
-                : _weeklyWearable.length;
+            : isDemo
+                ? _weeklyDemo.length
+                : _selectedChart == HistoryChart.polarCapar
+                    ? _weeklyPolar.length
+                    : _weeklyWearable.length;
+    final comparableItem = !isDemo && !isStreaming && !isCapar
+        ? [..._weeklyWearable, ..._weeklyPolar]
+            .where((item) =>
+                item['is_simulated'] != true &&
+                item['baseline_comparison'] is Map &&
+                (item['baseline_comparison'] as Map)['available'] == true)
+            .fold<Map<String, dynamic>?>(null, (latest, item) {
+            if (latest == null) return item;
+            final latestAt = _date(latest['recorded_at']);
+            final itemAt = _date(item['recorded_at']);
+            return itemAt != null &&
+                    (latestAt == null || itemAt.isAfter(latestAt))
+                ? item
+                : latest;
+          })
+        : null;
 
     return Container(
       width: double.infinity,
@@ -553,6 +577,7 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
             runSpacing: 4,
             children: [
               _chartChoice('Wearable', HistoryChart.wearable),
+              _chartChoice('Wearable demo', HistoryChart.demo),
               _chartChoice('PolarData CAPAR', HistoryChart.polarCapar),
               _chartChoice('Analisis CAPAR', HistoryChart.capar),
               _chartChoice('Streaming langsung', HistoryChart.streaming),
@@ -581,13 +606,15 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
                         ? state.wearableBridge.isStreaming
                             ? 'Menunggu sampel HR berikutnya dari wearable.'
                             : 'Mulai streaming wearable di menu perangkat untuk melihat grafik langsung.'
-                        : isCapar
-                            ? 'Belum ada titik analisis CAPAR untuk rentang tanggal yang dipilih.'
-                            : _selectedChart == HistoryChart.polarCapar
-                                ? _wearableHistoryError ??
-                                    'Belum ada sampel PolarData CAPAR pada rentang tanggal yang dipilih.'
-                                : _wearableHistoryError ??
-                                    'Belum ada data wearable tersimpan pada rentang tanggal yang dipilih.',
+                        : isDemo
+                            ? 'Belum ada data demo tersimpan pada rentang tanggal yang dipilih.'
+                            : isCapar
+                                ? 'Belum ada titik analisis CAPAR untuk rentang tanggal yang dipilih.'
+                                : _selectedChart == HistoryChart.polarCapar
+                                    ? _wearableHistoryError ??
+                                        'Belum ada sampel PolarData CAPAR pada rentang tanggal yang dipilih.'
+                                    : _wearableHistoryError ??
+                                        'Belum ada data wearable tersimpan pada rentang tanggal yang dipilih.',
                     textAlign: TextAlign.center,
                     style: AppTheme.font(
                         size: 12, color: AppTheme.textSecondary, height: 1.4),
@@ -603,13 +630,26 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
                 painter: TrendChartPainter(points: points, color: color),
               ),
             ),
+          if (isDemo) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Data simulasi disimpan terpisah untuk pengujian longitudinal dan tidak digunakan untuk pembelajaran atau perbandingan baseline klinis.',
+              style: AppTheme.font(
+                  size: 10.5, color: AppTheme.textMuted, height: 1.35),
+            ),
+          ] else if (comparableItem != null) ...[
+            const SizedBox(height: 8),
+            _baselineComparisonCard(comparableItem),
+          ],
           const SizedBox(height: 5),
           Text(
             isCapar
                 ? '$pointCount titik analisis personal pada rentang tanggal • data trajectory CAPAR tersedia maksimal 30 hari'
                 : isStreaming
                     ? '${state.wearableBridge.isStreaming ? 'LIVE' : 'Streaming berhenti'} • $pointCount titik sesi ini • hingga 300 titik terbaru'
-                    : 'Rerata per jam • $pointCount jam dengan sampel ${_selectedChart == HistoryChart.polarCapar ? 'PolarData CAPAR' : 'wearable'}',
+                    : isDemo
+                        ? '$pointCount bucket data simulasi tersimpan • tidak dibandingkan dengan baseline'
+                        : 'Rerata per jam • $pointCount jam dengan sampel ${_selectedChart == HistoryChart.polarCapar ? 'PolarData CAPAR' : 'wearable'}',
             style: AppTheme.font(size: 10.5, color: AppTheme.textMuted),
           ),
           if ((_selectedChart == HistoryChart.wearable ||
@@ -645,10 +685,41 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
         ),
       );
 
+  Widget _baselineComparisonCard(Map<String, dynamic> item) {
+    final comparison =
+        Map<String, dynamic>.from(item['baseline_comparison'] as Map);
+    final heartRate = (item['heart_rate_bpm'] as num?)?.toDouble();
+    final baselineHr =
+        (comparison['heart_rate_baseline_bpm'] as num?)?.toDouble();
+    final delta = (comparison['delta_bpm'] as num?)?.toDouble();
+    if (heartRate == null || baselineHr == null || delta == null) {
+      return const SizedBox.shrink();
+    }
+    final sign = delta > 0 ? '+' : '';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppTheme.primarySoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        'Perbandingan terbaru dengan baseline tersimpan '
+        '(${comparison['activity'] ?? 'aktivitas'} · ${comparison['time_period'] ?? 'waktu'}): '
+        '${heartRate.toStringAsFixed(1)} bpm vs ${baselineHr.toStringAsFixed(1)} bpm '
+        '($sign${delta.toStringAsFixed(1)} bpm). '
+        'Baseline memakai ${comparison['sample_count'] ?? 0} sampel; ini perbandingan statistik, bukan diagnosis.',
+        style: AppTheme.font(
+            size: 10.5, color: AppTheme.primaryDark, height: 1.35),
+      ),
+    );
+  }
+
   List<ChartPoint> _chartPoints(
       AppState state, List<Map<String, dynamic>> trajectory) {
     final records = switch (_selectedChart) {
       HistoryChart.wearable => _weeklyWearable,
+      HistoryChart.demo => _weeklyDemo,
       HistoryChart.capar => trajectory,
       HistoryChart.polarCapar => _weeklyPolar,
       HistoryChart.streaming => state.liveStreamReadings,
@@ -657,6 +728,7 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
       HistoryChart.capar => 'mahalanobis_distance',
       HistoryChart.polarCapar ||
       HistoryChart.wearable ||
+      HistoryChart.demo ||
       HistoryChart.streaming =>
         'heart_rate_bpm',
     };
@@ -1098,8 +1170,15 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
     }
 
     for (final sample in state.wearableSamples) {
-      add(sample, 'recorded_at', 'Sampel wearable', 'Wearable',
-          'HR ${sample['heart_rate_bpm'] ?? '—'} bpm • Aktivitas ${sample['activity'] ?? '—'}');
+      final simulated = sample['is_simulated'] == true;
+      add(
+        sample,
+        'recorded_at',
+        simulated ? 'Sampel wearable demo' : 'Sampel wearable',
+        simulated ? 'Wearable demo' : 'Wearable',
+        'HR ${sample['heart_rate_bpm'] ?? '—'} bpm • Aktivitas ${sample['activity'] ?? '—'}'
+            '${simulated ? ' • data simulasi, tidak dibandingkan dengan baseline' : ''}',
+      );
     }
     final capar = state.rawCaparInsights?['capar'];
     final trajectory = capar is Map ? capar['trajectory_30d'] : null;

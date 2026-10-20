@@ -56,6 +56,19 @@ test('patient check-in, events, and wearable schemas retain patient provenance',
     assert.ok(model.schema.path('account_type'));
     assert.deepEqual(model.schema.path('account_type').enumValues, ['user', 'patient']);
   }
+  assert.ok(
+    PatientAppWearableSample.schema
+      .path('ingestion_source')
+      .enumValues.includes('rabbitmq_stream')
+  );
+  assert.ok(PatientAppWearableSample.schema.indexes().some(([keys, options]) => (
+    keys.account_id === 1
+    && keys.account_type === 1
+    && keys.device_id === 1
+    && keys.recorded_at === 1
+    && options.unique === true
+    && options.partialFilterExpression?.is_simulated === true
+  )));
 });
 
 test('gamification models scope pseudonyms and award one coin per local date', async () => {
