@@ -2600,8 +2600,9 @@ export async function createPatientAppWearableSample(req, res) {
     dfa_alpha2: derived.dfa_alpha2,
     pnn50: derived.pnn50,
   };
+  let caparSegment;
   try {
-    const caparSegment = await Segment.findOneAndUpdate(
+    caparSegment = await Segment.findOneAndUpdate(
       {
         user_id: dataOwnerId,
         device_id: sampleData.device_id,

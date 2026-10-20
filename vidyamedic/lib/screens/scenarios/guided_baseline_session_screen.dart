@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/app_state.dart';
+import '../../services/wearable_pairing_service.dart';
 import '../../theme/app_theme.dart';
 import 'guided_baseline_ema_screen.dart';
 import '../profile/wearable_pairing_screen.dart';
@@ -203,65 +204,134 @@ class _GuidedBaselineSessionScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Konteks ${_stageIndex + 1} dari ${_stages.length}',
-                      style: AppTheme.font(size: 11, color: AppTheme.textMuted),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: AppTheme.primarySoft,
+                          child: Icon(
+                            _stageIcon(stage!.$1),
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'KONTEKS ${_stageIndex + 1} DARI ${_stages.length}',
+                                style: AppTheme.font(
+                                  size: 10,
+                                  color: AppTheme.textMuted,
+                                  weight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                stage.$2,
+                                style: AppTheme.font(
+                                    size: 20, weight: FontWeight.w800),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_stageRunning)
+                          const Icon(Icons.radio_button_checked_rounded,
+                              color: AppTheme.statusGreen, size: 20),
+                      ],
                     ),
-                    const SizedBox(height: 5),
-                    Text(stage!.$2,
-                        style:
-                            AppTheme.font(size: 20, weight: FontWeight.w800)),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(stage.$3,
                         style: AppTheme.font(
                             size: 12,
                             color: AppTheme.textSecondary,
                             height: 1.4)),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     if (_stageRunning) ...[
-                      Text(
-                        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                        style: AppTheme.font(
-                            size: 36,
-                            weight: FontWeight.w900,
-                            color: AppTheme.primary),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _metric('HR saat ini', wearable.heartRateBpm, 'bpm'),
-                          _metric('HR minimum',
-                              wearable.sessionMinimumHeartRate, 'bpm'),
-                          _metric('HR maksimum',
-                              wearable.sessionMaximumHeartRate, 'bpm'),
-                          _metric('Interval antardetak',
-                              wearable.sessionRrIntervalCount, 'RR/IBI'),
-                          _metric('Titik terkumpul',
-                              wearable.sessionReadingCount, 'titik'),
-                          _metric('Window tersimpan',
-                              wearable.sessionWindowCount, 'window'),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        wearable.streamError ??
-                            (wearable.lastStreamPublishedAt == null
-                                ? 'RabbitMQ: menunggu batch pertama (maks. 10 detik)'
-                                : 'RabbitMQ: batch terakhir diterima ${TimeOfDay.fromDateTime(wearable.lastStreamPublishedAt!.toLocal()).format(context)}'),
-                        style: AppTheme.font(
-                          size: 10.5,
-                          color: wearable.streamError == null
-                              ? AppTheme.textSecondary
-                              : AppTheme.statusRed,
-                          weight: FontWeight.w600,
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primarySoft,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppTheme.borderLight),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.timer_outlined,
+                                    color: AppTheme.primary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Waktu perekaman',
+                                  style: AppTheme.font(
+                                      size: 12, weight: FontWeight.w700),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                                  style: AppTheme.font(
+                                    size: 28,
+                                    weight: FontWeight.w900,
+                                    color: AppTheme.primaryDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                minHeight: 7,
+                                value: 1 -
+                                    _remainingSeconds /
+                                        _stageDuration.inSeconds,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      LinearProgressIndicator(
-                        value: 1 - _remainingSeconds / _stageDuration.inSeconds,
+                      const SizedBox(height: 12),
+                      _heartRateSummary(
+                        current: wearable.heartRateBpm,
+                        minimum: wearable.sessionMinimumHeartRate,
+                        maximum: wearable.sessionMaximumHeartRate,
                       ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _metric(
+                              'Interval antardetak',
+                              wearable.sessionRrIntervalCount,
+                              'RR/IBI',
+                              Icons.waves_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _metric(
+                              'Titik terkumpul',
+                              wearable.sessionReadingCount,
+                              'titik',
+                              Icons.sensors_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _metric(
+                              'Window tersimpan',
+                              wearable.sessionWindowCount,
+                              'window',
+                              Icons.view_week_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _streamStatus(wearable, context),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: _finishingStage
@@ -271,15 +341,7 @@ class _GuidedBaselineSessionScreenState
                         label: const Text('Hentikan tahap ini'),
                       ),
                     ] else ...[
-                      Text(
-                        wearable.isConnected
-                            ? 'Polar H10 tersambung${wearable.isStreaming ? ' · streaming aktif' : ''}.'
-                            : 'Sambungkan Polar H10 untuk mulai merekam data nyata.',
-                        style: AppTheme.font(
-                            size: 11.5,
-                            color: AppTheme.textSecondary,
-                            height: 1.35),
-                      ),
+                      _connectionStatus(wearable.isConnected),
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -461,25 +523,198 @@ class _GuidedBaselineSessionScreenState
         ),
       );
 
-  Widget _metric(String label, Object? value, String unit) {
-    final displayed = value is num
-        ? '$value${unit == 'RR/IBI' ? ' RR/IBI' : unit.isEmpty ? '' : ' $unit'}'
-        : '—';
+  IconData _stageIcon(String activity) => switch (activity) {
+        'standing' => Icons.accessibility_new_rounded,
+        'walking' => Icons.directions_walk_rounded,
+        _ => Icons.chair_alt_rounded,
+      };
+
+  Widget _heartRateSummary({
+    required int? current,
+    required int? minimum,
+    required int? maximum,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(9),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.borderLight),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: AppTheme.font(size: 9.5, color: AppTheme.textMuted)),
+          Row(
+            children: [
+              const Icon(Icons.monitor_heart_outlined,
+                  color: AppTheme.statusRed, size: 20),
+              const SizedBox(width: 7),
+              Text('Detak jantung · bpm',
+                  style: AppTheme.font(size: 12, weight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _heartRateValue('Saat ini', current, emphasized: true),
+              ),
+              _heartRateDivider(),
+              Expanded(child: _heartRateValue('Minimum', minimum)),
+              _heartRateDivider(),
+              Expanded(child: _heartRateValue('Maksimum', maximum)),
+            ],
+          ),
+          if (minimum == null || maximum == null) ...[
+            const SizedBox(height: 9),
+            Text(
+              'Rentang min–maks akan terhitung otomatis setelah pembacaan HR pertama diterima.',
+              style: AppTheme.font(
+                  size: 10, color: AppTheme.textMuted, height: 1.35),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _heartRateValue(String label, int? value, {bool emphasized = false}) {
+    return Column(
+      children: [
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: AppTheme.font(size: 10, color: AppTheme.textMuted),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value?.toString() ?? '—',
+          textAlign: TextAlign.center,
+          style: AppTheme.font(
+            size: emphasized ? 25 : 22,
+            weight: FontWeight.w900,
+            color: emphasized ? AppTheme.primary : AppTheme.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _heartRateDivider() => Container(
+        width: 1,
+        height: 38,
+        color: AppTheme.borderLight,
+      );
+
+  Widget _metric(String label, Object? value, String unit, IconData icon) {
+    final displayed = value is num
+        ? '$value${unit == 'RR/IBI' ? ' RR/IBI' : unit.isEmpty ? '' : ' $unit'}'
+        : '—';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.fieldFill,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 17, color: AppTheme.primary),
+          const SizedBox(height: 7),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style:
+                AppTheme.font(size: 9, color: AppTheme.textMuted, height: 1.2),
+          ),
           const SizedBox(height: 3),
-          Text(displayed,
-              style: AppTheme.font(size: 11.5, weight: FontWeight.w700)),
+          FittedBox(
+            alignment: Alignment.centerLeft,
+            fit: BoxFit.scaleDown,
+            child: Text(displayed,
+                style: AppTheme.font(size: 11, weight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _streamStatus(
+    PolarWearablePairingService wearable,
+    BuildContext context,
+  ) {
+    final hasError = wearable.streamError != null;
+    final lastPublishedAt = wearable.lastStreamPublishedAt;
+    final message = wearable.streamError ??
+        (lastPublishedAt == null
+            ? 'Menunggu batch pertama; pengiriman berjalan berkala.'
+            : 'Batch terakhir diterima ${TimeOfDay.fromDateTime(lastPublishedAt.toLocal()).format(context)}');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+      decoration: BoxDecoration(
+        color: hasError ? AppTheme.statusRedBg : AppTheme.statusGreenBg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            hasError
+                ? Icons.cloud_off_outlined
+                : lastPublishedAt == null
+                    ? Icons.cloud_upload_outlined
+                    : Icons.cloud_done_outlined,
+            size: 17,
+            color: hasError ? AppTheme.statusRed : AppTheme.statusGreen,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'RabbitMQ · $message',
+              style: AppTheme.font(
+                size: 10.5,
+                color: hasError ? AppTheme.statusRed : AppTheme.textSecondary,
+                weight: FontWeight.w600,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _connectionStatus(bool connected) {
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: connected ? AppTheme.statusGreenBg : AppTheme.fieldFill,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            connected
+                ? Icons.bluetooth_connected_rounded
+                : Icons.bluetooth_disabled_rounded,
+            color: connected ? AppTheme.statusGreen : AppTheme.textMuted,
+            size: 19,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              connected
+                  ? 'Wearable tersambung dan siap merekam.'
+                  : 'Sambungkan Polar H10 untuk mulai merekam data nyata.',
+              style: AppTheme.font(
+                  size: 11,
+                  color: AppTheme.textSecondary,
+                  weight: FontWeight.w600,
+                  height: 1.3),
+            ),
+          ),
         ],
       ),
     );
