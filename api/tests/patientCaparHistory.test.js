@@ -51,3 +51,10 @@ test('CAPAR history query accepts the learning category', () => {
     'learning'
   );
 });
+
+test('CAPAR history query accepts the EMA category', () => {
+  assert.equal(
+    parsePatientCaparHistoryQuery({ category: 'ema' })?.category,
+    'ema'
+  );
+});

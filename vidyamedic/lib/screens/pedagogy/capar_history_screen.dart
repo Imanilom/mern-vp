@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import 'history_trend_chart.dart';
 
 class CaparHistoryScreen extends StatefulWidget {
   const CaparHistoryScreen({super.key});
@@ -19,12 +20,19 @@ class _CaparHistoryScreenState extends State<CaparHistoryScreen> {
     ('recovery', 'Recovery'),
     ('recording', 'Rekaman'),
     ('learning', 'Pembelajaran'),
+    ('ema', 'EMA'),
+  ];
+  static const _chartMetrics = <(String, String)>[
+    ('heart_rate', 'Detak jantung'),
+    ('deviation', 'Deviasi'),
+    ('ema', 'EMA'),
   ];
 
   final _dateFormat = DateFormat('dd MMM yyyy, HH:mm');
   List<Map<String, dynamic>> _baselines = [];
   List<Map<String, dynamic>> _records = [];
   String _category = 'all';
+  String _chartMetric = 'heart_rate';
   String? _nextBefore;
   String? _error;
   String _status = 'available';
@@ -155,6 +163,8 @@ class _CaparHistoryScreenState extends State<CaparHistoryScreen> {
               const SizedBox(height: 12),
               _baselineSection(),
               const SizedBox(height: 16),
+              _historyChart(),
+              const SizedBox(height: 16),
               Text(
                 'Riwayat rekaman dan analisis',
                 style: AppTheme.font(size: 16, weight: FontWeight.w800),
@@ -251,20 +261,157 @@ class _CaparHistoryScreenState extends State<CaparHistoryScreen> {
         ),
       );
 
-  Widget _baselineSection() => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Baseline personal CAPAR',
-            style: AppTheme.font(size: 15, weight: FontWeight.w800),
+  Widget _baselineSection() => Card(
+        margin: EdgeInsets.zero,
+        child: ExpansionTile(
+          leading: const Icon(
+            Icons.equalizer_rounded,
+            color: AppTheme.primary,
           ),
-          const SizedBox(height: 8),
-          if (_baselines.isEmpty)
-            _messageCard('Belum ada baseline CAPAR tersimpan.')
-          else
-            ..._baselines.map(_baselineCard),
-        ],
+          title: Text(
+            'Baseline personal CAPAR',
+            style: AppTheme.font(size: 14, weight: FontWeight.w800),
+          ),
+          subtitle: Text(
+            '${_baselines.length} konteks · ketuk untuk melihat penjelasan',
+            style: AppTheme.font(size: 10.5, color: AppTheme.textMuted),
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          children: [
+            Text(
+              'Baseline adalah rentang acuan personal berdasarkan aktivitas dan waktu. Status matang menunjukkan data sudah memenuhi kriteria CAPAR; baseline sementara masih dapat berubah seiring rekaman baru.',
+              style: AppTheme.font(
+                size: 11,
+                color: AppTheme.textSecondary,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_baselines.isEmpty)
+              _messageCard('Belum ada baseline CAPAR tersimpan.')
+            else
+              ..._baselines.map(_baselineCard),
+          ],
+        ),
       );
+
+  List<ChartPoint> _historyChartPoints() {
+    final points = <ChartPoint>[];
+    for (final item in _records) {
+      final type = item['type']?.toString();
+      final features = _map(item['features']);
+      num? value;
+      switch (_chartMetric) {
+        case 'heart_rate':
+          value = switch (type) {
+            'polar_reading' => item['heart_rate_bpm'] as num?,
+            'recording' || 'recovery_analysis' => features['mean_hr'] as num?,
+            'deviation' || 'recovery' => item['peak_hr'] as num?,
+            _ => null,
+          };
+        case 'deviation':
+          value = switch (type) {
+            'recording' => item['anomaly_score'] as num?,
+            'deviation' || 'recovery' => item['peak_score'] as num?,
+            'recovery_analysis' => item['peak_deviation'] as num?,
+            _ => null,
+          };
+        case 'ema':
+          if (type == 'ema_response') {
+            final symptom = item['symptom_intensity'] as num?;
+            final disruption = item['disruption_score'] as num?;
+            value = symptom != null && symptom > 0
+                ? symptom
+                : disruption != null && disruption > 0
+                    ? disruption
+                    : null;
+          }
+      }
+      final recordedAt = _date(item['recorded_at']);
+      if (value != null && recordedAt != null) {
+        points.add(ChartPoint(recordedAt, value.toDouble()));
+      }
+    }
+    points.sort((a, b) => a.time.compareTo(b.time));
+    return points;
+  }
+
+  Widget _historyChart() {
+    final points = _historyChartPoints();
+    final label = switch (_chartMetric) {
+      'heart_rate' => 'Detak jantung (bpm)',
+      'deviation' => 'Skor deviasi CAPAR',
+      _ => 'Intensitas EMA (skala 0–10)',
+    };
+    final color = switch (_chartMetric) {
+      'deviation' => AppTheme.statusOrange,
+      'ema' => AppTheme.statusYellow,
+      _ => AppTheme.primary,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Grafik histori',
+          style: AppTheme.font(size: 15, weight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: _chartMetrics.map((metric) {
+              final selected = _chartMetric == metric.$1;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(metric.$2),
+                  selected: selected,
+                  onSelected: (_) => setState(() => _chartMetric = metric.$1),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            child: points.isEmpty
+                ? _messageCard(
+                    'Belum ada data ${label.toLowerCase()} pada histori yang dimuat.',
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: AppTheme.font(
+                          size: 11,
+                          color: AppTheme.textSecondary,
+                          weight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 190,
+                        width: double.infinity,
+                        child: CustomPaint(
+                          painter:
+                              TrendChartPainter(points: points, color: color),
+                        ),
+                      ),
+                      Text(
+                        'Grafik berdasarkan ${points.length} titik data yang sudah dimuat.',
+                        style:
+                            AppTheme.font(size: 10, color: AppTheme.textMuted),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _baselineCard(Map<String, dynamic> item) {
     final maturity = _map(item['maturity_detail']);
@@ -345,6 +492,7 @@ class _CaparHistoryScreenState extends State<CaparHistoryScreen> {
         'Snapshot pembelajaran · ${item['week_id'] ?? 'mingguan'}',
       'learning_transitions' =>
         'Transisi CAPAR · ${item['activity'] ?? 'konteks'}',
+      'ema_response' => 'EMA · tahap ${item['step_completed'] ?? '-'}',
       _ => 'Data CAPAR',
     };
     final details = <String>[
@@ -383,6 +531,34 @@ class _CaparHistoryScreenState extends State<CaparHistoryScreen> {
         'Faktor terkonfirmasi ${(item['confirmed_factors'] as List).length}',
       if (type == 'learning_transitions')
         '${item['total_transitions'] ?? 0} transisi tercatat',
+      if (type == 'ema_response' && item['ema_activity'] is String)
+        'Aktivitas ${item['ema_activity']}',
+      if (type == 'ema_response' && item['symptom'] is String)
+        'Keluhan ${item['symptom']}',
+      if (type == 'ema_response' && item['symptom_intensity'] is num)
+        'Intensitas ${item['symptom_intensity']}/10',
+      if (type == 'ema_response' && item['trigger'] is String)
+        'Pemicu ${item['trigger']}',
+      if (type == 'ema_response' && item['sleep_status'] is String)
+        'Tidur ${item['sleep_status']}',
+      if (type == 'ema_response' && item['sleep_hours'] is num)
+        'Durasi tidur ${item['sleep_hours']} jam',
+      if (type == 'ema_response' && item['medication_intake'] is String)
+        'Obat/suplemen ${item['medication_intake']}',
+      if (type == 'ema_response' && item['recovery_status'] is String)
+        'Pemulihan ${item['recovery_status']}',
+      if (type == 'ema_response' && item['context_change'] is String)
+        'Perubahan konteks ${item['context_change']}',
+      if (type == 'ema_response' && item['primary_trigger'] is String)
+        'Pemicu utama ${item['primary_trigger']}',
+      if (type == 'ema_response' && item['overall_condition'] is String)
+        'Kondisi ${item['overall_condition']}',
+      if (type == 'ema_response' && item['disruption_score'] is num)
+        'Dampak ${item['disruption_score']}/10',
+      if (type == 'ema_response' && item['intervention_note'] is String)
+        'Tindakan ${item['intervention_note']}',
+      if (type == 'ema_response' && item['medication_detail'] is String)
+        'Catatan obat ${item['medication_detail']}',
       if (type == 'recovery' && item['recovery_time_ms'] is num)
         'Waktu pemulihan ${((item['recovery_time_ms'] as num) / 60000).toStringAsFixed(1)} menit',
       if (item['duration_ms'] is num)
@@ -394,6 +570,7 @@ class _CaparHistoryScreenState extends State<CaparHistoryScreen> {
       'deviation' => AppTheme.statusOrange,
       'recovery' || 'recovery_analysis' => AppTheme.statusGreen,
       'learning_memory' || 'learning_transitions' => AppTheme.statusYellow,
+      'ema_response' => AppTheme.statusYellow,
       'polar_reading' => AppTheme.primaryLight,
       _ => AppTheme.primary,
     };
@@ -409,6 +586,7 @@ class _CaparHistoryScreenState extends State<CaparHistoryScreen> {
               'learning_memory' ||
               'learning_transitions' =>
                 Icons.psychology_alt_rounded,
+              'ema_response' => Icons.assignment_turned_in_outlined,
               'polar_reading' => Icons.favorite_rounded,
               _ => Icons.sensors_rounded,
             },

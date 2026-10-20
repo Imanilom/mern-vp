@@ -5,6 +5,7 @@ const HISTORY_CATEGORIES = new Set([
   'recovery',
   'recording',
   'learning',
+  'ema',
 ]);
 
 export function parsePatientCaparHistoryQuery(query = {}) {

@@ -908,7 +908,7 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Alur penalaran NadiKu',
+          Text('Alur penalaran VidyaMedic',
               style: AppTheme.font(size: 14, weight: FontWeight.w800)),
           const SizedBox(height: 4),
           Text(

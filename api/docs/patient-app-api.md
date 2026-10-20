@@ -342,13 +342,13 @@ unrecorded rather than being filled with a default feeling or activity.
 
 The CAPAR history endpoint returns the account's baseline contexts and a
 chronological, cursor-paginated record list. Supported categories are `all`,
-`baseline`, `deviation`, `recovery`, `recording`, and `learning`. Use the returned
+`baseline`, `deviation`, `recovery`, `recording`, `learning`, and `ema`. Use the returned
 `page.next_before` value as the next request's `before` query parameter while
 keeping the same category and page size. The endpoint includes historical
 anomaly/deviation events, episode recovery analyses, analyzed CAPAR segments,
-recorded PolarData sensor readings, cognitive memory snapshots, and learned
-state-transition summaries; baseline contexts include maturity and available
-feature summaries.
+recorded PolarData sensor readings, cognitive memory snapshots, learned
+state-transition summaries, and EMA responses; baseline contexts include
+maturity and available feature summaries.
 Data remains scoped to the authenticated account and linked CAPAR identity.
 The existing insights endpoint retains its summary-oriented recent time ranges.
 

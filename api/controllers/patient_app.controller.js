@@ -17,6 +17,7 @@ import BehaviorEvent from '../models/behavior_event.model.js';
 import CognitiveMemory from '../models/cognitive_memory.model.js';
 import EpisodeMeta from '../models/episodemeta.model.js';
 import EpisodeAnalysis from '../models/episode_analysis.model.js';
+import EmaResponse from '../models/ema.model.js';
 import PolarData from '../models/data.model.js';
 import Segment from '../models/segment.model.js';
 import StateTransition from '../models/state_transition.model.js';
@@ -1529,7 +1530,7 @@ export async function getPatientAppCaparHistory(req, res) {
   if (!parsedQuery) {
     throw errorHandler(
       400,
-      'Filter histori CAPAR tidak valid. Gunakan category all/baseline/deviation/recovery/recording/learning, limit 1-100, dan cursor yang dikembalikan server.'
+      'Filter histori CAPAR tidak valid. Gunakan category all/baseline/deviation/recovery/recording/learning/ema, limit 1-100, dan cursor yang dikembalikan server.'
     );
   }
   const { category, limit, cursor } = parsedQuery;
@@ -1845,6 +1846,46 @@ export async function getPatientAppCaparHistory(req, res) {
             recovered: item.from_RECOVERED ?? {},
             unknown: item.from_UNKNOWN ?? {},
           },
+        })))
+    );
+  }
+
+  if (wants('ema')) {
+    requests.push(
+      EmaResponse.find({
+        ...owner,
+        ...cursorFilter('submitted_at', true),
+      })
+        .sort({ submitted_at: -1, _id: -1 })
+        .limit(limit + 1)
+        .select('_id submitted_at event_id step_completed ema1.activity ema1.sleep_status ema1.sleep_hours ema1.medication_intake ema1.medication_detail ema2.symptom ema2.intensity ema2.trigger ema3.recovery_status ema3.context_change ema3.intervention_note ema4.primary_trigger ema4.overall_condition ema4.disruption_score')
+        .lean()
+        .then((items) => items.map((item) => ({
+          id: item._id.toString(),
+          type: 'ema_response',
+          recorded_at: item.submitted_at,
+          state: `step_${item.step_completed}`,
+          step_completed: item.step_completed,
+          event_id: item.event_id ?? null,
+          ema_activity: item.ema1?.activity ?? null,
+          sleep_status: item.ema1?.sleep_status ?? null,
+          sleep_hours: item.ema1?.sleep_hours ?? null,
+          medication_intake: item.ema1?.medication_intake ?? null,
+          medication_detail: item.ema1?.medication_detail ?? null,
+          symptom: item.ema2?.symptom ?? null,
+          symptom_intensity: item.ema2?.symptom
+            ? item.ema2.intensity ?? null
+            : null,
+          trigger: item.ema2?.trigger ?? null,
+          recovery_status: item.ema3?.recovery_status ?? null,
+          context_change: item.ema3?.context_change ?? null,
+          intervention_note: item.ema3?.intervention_note ?? null,
+          primary_trigger: item.ema4?.primary_trigger ?? null,
+          overall_condition: item.ema4?.overall_condition ?? null,
+          disruption_score: item.ema4?.overall_condition
+            || item.ema4?.primary_trigger
+            ? item.ema4.disruption_score ?? null
+            : null,
         })))
     );
   }
