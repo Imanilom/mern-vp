@@ -253,6 +253,7 @@ class AppState extends ChangeNotifier {
         routineMedications = List.from(userProfile.medications);
         wearable.provider = userProfile.wearableProvider;
         notifDailySummary = userProfile.notifMorningSummary;
+        notifDailyTime = userProfile.notifMorningSummaryTime;
         notifCriticalAlerts = userProfile.notifImportantAlerts;
         notifHealthEducation = userProfile.notifHealthEducation;
         allowDataSharing =
@@ -269,6 +270,7 @@ class AppState extends ChangeNotifier {
     userProfile.allergies = allergies;
     userProfile.medications = List.from(routineMedications);
     userProfile.notifMorningSummary = notifDailySummary;
+    userProfile.notifMorningSummaryTime = notifDailyTime;
     userProfile.notifImportantAlerts = notifCriticalAlerts;
     userProfile.notifHealthEducation = notifHealthEducation;
     userProfile.clinicianSharing = allowDataSharing;
@@ -381,6 +383,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> fetchDailySummary([DateTime? date]) async {
     final targetDate = date ?? logDate;
+    if (date != null) logDate = DateUtils.dateOnly(date);
     final yyyyMmDd = DateFormat('yyyy-MM-dd').format(targetDate);
     final res = await ApiService.getDailySummary(yyyyMmDd);
     if (res.success && res.data != null) {
@@ -677,8 +680,8 @@ class AppState extends ChangeNotifier {
     'Lainnya',
   ];
   String primaryGoal = 'Memantau kesehatan sehari-hari';
-  bool notifDailySummary = true;
-  TimeOfDay notifDailyTime = const TimeOfDay(hour: 7, minute: 0);
+  bool notifDailySummary = false;
+  TimeOfDay notifDailyTime = const TimeOfDay(hour: 8, minute: 0);
   bool notifCriticalAlerts = true;
   bool notifHealthEducation = true;
   bool allowDataSharing = true;
@@ -1499,7 +1502,8 @@ class AppState extends ChangeNotifier {
     final hasSleepSection = hasDailySection('sleep');
     final hasMeasurementSection = hasDailySection('measurements');
     if (hasActivitySection && mealCount == null) {
-      dataError = 'Isi jumlah makan hari ini sebelum menyimpan konteks aktivitas.';
+      dataError =
+          'Isi jumlah makan hari ini sebelum menyimpan konteks aktivitas.';
       notifyListeners();
       return false;
     }

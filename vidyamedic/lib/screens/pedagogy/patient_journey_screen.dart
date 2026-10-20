@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../providers/app_state.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
@@ -30,11 +31,18 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
   bool _hasLoadedWeeklyCheckIns = false;
   bool _hasLoadedWeeklyEvents = false;
   String? _patientHistoryError;
+  late DateTimeRange _historyRange;
+  final DateFormat _historyDateFormat = DateFormat('dd MMM yyyy');
 
   @override
   void initState() {
     super.initState();
-    _loadWeeklyHistory();
+    final today = DateUtils.dateOnly(DateTime.now());
+    _historyRange = DateTimeRange(
+      start: today.subtract(const Duration(days: 30)),
+      end: today,
+    );
+    _loadHistory();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(_refreshCaparData());
@@ -47,9 +55,34 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
     await state.fetchWearableSamples();
   }
 
-  Future<void> _loadWeeklyHistory() async {
-    final to = DateTime.now().toUtc();
-    final from = to.subtract(const Duration(days: 7));
+  Future<void> _selectHistoryRange() async {
+    final selected = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateUtils.dateOnly(DateTime.now()),
+      initialDateRange: _historyRange,
+      helpText: 'Pilih rentang tanggal riwayat',
+      saveText: 'Terapkan',
+    );
+    if (selected == null || !mounted) return;
+    if (selected.end.difference(selected.start).inDays >= 31) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Rentang tanggal maksimal 31 hari.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _historyRange = selected);
+    await _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final from = _historyRange.start.toUtc();
+    final to = _historyRange.end
+        .add(const Duration(days: 1))
+        .subtract(const Duration(milliseconds: 1))
+        .toUtc();
     final responses = await Future.wait<dynamic>([
       ApiService.getWearableHistory(from: from, to: to),
       ApiService.getCheckIns(
@@ -137,19 +170,22 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
             .map((item) => Map<String, dynamic>.from(item))
             .toList()
         : <Map<String, dynamic>>[];
-    final now = DateTime.now();
-    final weeklyTrajectory = capar is Map && capar['trajectory_30d'] is List
+    final fromDate = _historyRange.start;
+    final throughDate = _historyRange.end
+        .add(const Duration(days: 1))
+        .subtract(const Duration(milliseconds: 1));
+    final filteredTrajectory = capar is Map && capar['trajectory_30d'] is List
         ? (capar['trajectory_30d'] as List)
             .whereType<Map>()
             .map((item) => Map<String, dynamic>.from(item))
             .where((item) {
             final recordedAt = _date(item['recorded_at']);
             return recordedAt != null &&
-                !recordedAt.isBefore(now.subtract(const Duration(days: 7))) &&
-                !recordedAt.isAfter(now);
+                !recordedAt.isBefore(fromDate) &&
+                !recordedAt.isAfter(throughDate);
           }).toList()
         : <Map<String, dynamic>>[];
-    final chartPoints = _chartPoints(s, weeklyTrajectory);
+    final chartPoints = _chartPoints(s, filteredTrajectory);
     final chartLabel = switch (_selectedChart) {
       HistoryChart.wearable => 'Detak jantung wearable (bpm)',
       HistoryChart.capar => 'Deviasi dari baseline CAPAR',
@@ -279,7 +315,7 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
             chartPoints,
             chartLabel,
             chartColor,
-            weeklyTrajectory.length,
+            filteredTrajectory.length,
             s,
           ),
           const SizedBox(height: 16),
@@ -485,14 +521,20 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
           Row(
             children: [
               Expanded(
-                child: Text('Grafik 7 hari terakhir',
+                child: Text('Riwayat berdasarkan tanggal',
                     style: AppTheme.font(size: 14, weight: FontWeight.w800)),
+              ),
+              IconButton(
+                tooltip: 'Filter tanggal riwayat',
+                onPressed: _selectHistoryRange,
+                icon: const Icon(Icons.calendar_month_rounded,
+                    color: AppTheme.primary),
               ),
               IconButton(
                 tooltip: 'Perbarui grafik dan analisis',
                 onPressed: () async {
                   await Future.wait([
-                    _loadWeeklyHistory(),
+                    _loadHistory(),
                     _refreshCaparData(),
                   ]);
                 },
@@ -501,12 +543,16 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
               ),
             ],
           ),
+          Text(
+            '${_historyDateFormat.format(_historyRange.start)} – ${_historyDateFormat.format(_historyRange.end)}',
+            style: AppTheme.font(size: 10.5, color: AppTheme.textMuted),
+          ),
           const SizedBox(height: 6),
           Wrap(
             spacing: 7,
             runSpacing: 4,
             children: [
-              _chartChoice('Wearable 7 hari', HistoryChart.wearable),
+              _chartChoice('Wearable', HistoryChart.wearable),
               _chartChoice('PolarData CAPAR', HistoryChart.polarCapar),
               _chartChoice('Analisis CAPAR', HistoryChart.capar),
               _chartChoice('Streaming langsung', HistoryChart.streaming),
@@ -536,12 +582,12 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
                             ? 'Menunggu sampel HR berikutnya dari wearable.'
                             : 'Mulai streaming wearable di menu perangkat untuk melihat grafik langsung.'
                         : isCapar
-                            ? 'Belum ada titik analisis CAPAR yang tersedia selama 7 hari terakhir.'
+                            ? 'Belum ada titik analisis CAPAR untuk rentang tanggal yang dipilih.'
                             : _selectedChart == HistoryChart.polarCapar
                                 ? _wearableHistoryError ??
-                                    'Belum ada sampel PolarData CAPAR selama 7 hari terakhir.'
+                                    'Belum ada sampel PolarData CAPAR pada rentang tanggal yang dipilih.'
                                 : _wearableHistoryError ??
-                                    'Belum ada data wearable tersimpan selama 7 hari terakhir.',
+                                    'Belum ada data wearable tersimpan pada rentang tanggal yang dipilih.',
                     textAlign: TextAlign.center,
                     style: AppTheme.font(
                         size: 12, color: AppTheme.textSecondary, height: 1.4),
@@ -560,7 +606,7 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
           const SizedBox(height: 5),
           Text(
             isCapar
-                ? '$pointCount titik analisis personal dalam rentang 7 hari • data CAPAR tersedia 30 hari'
+                ? '$pointCount titik analisis personal pada rentang tanggal • data trajectory CAPAR tersedia maksimal 30 hari'
                 : isStreaming
                     ? '${state.wearableBridge.isStreaming ? 'LIVE' : 'Streaming berhenti'} • $pointCount titik sesi ini • hingga 300 titik terbaru'
                     : 'Rerata per jam • $pointCount jam dengan sampel ${_selectedChart == HistoryChart.polarCapar ? 'PolarData CAPAR' : 'wearable'}',
@@ -1107,6 +1153,13 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
       }
     }
     entries.sort((a, b) => b['sort']!.compareTo(a['sort']!));
-    return entries;
+    final rangeStart = _historyRange.start;
+    final rangeEnd = _historyRange.end.add(const Duration(days: 1));
+    return entries.where((entry) {
+      final recordedAt = DateTime.tryParse(entry['sort']!);
+      return recordedAt != null &&
+          !recordedAt.isBefore(rangeStart) &&
+          recordedAt.isBefore(rangeEnd);
+    }).toList();
   }
 }

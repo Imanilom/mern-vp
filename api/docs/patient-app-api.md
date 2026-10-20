@@ -49,9 +49,13 @@ Profile patch fields: `date_of_birth` (ISO date or null), `timezone` (IANA, e.g.
 (`daily_monitoring`, `early_awareness`, `fitness`, `other`),
 `wearable_provider` (`none`, `polar_h10`, `apple_watch`, `garmin`, `fitbit`,
 `other`), and `notification_preferences` (`morning_summary`,
-`important_alerts`, `health_education`, `quiet_start`, `quiet_end`). Notification
-times use `HH:mm`. `data_sharing` records explicit opt-in flags for clinician or
-family sharing; both default to `false`.
+`morning_summary_time`, `important_alerts`, `health_education`, `quiet_start`,
+`quiet_end`). Notification times use `HH:mm`; the morning summary defaults to
+disabled, with its selected time defaulting to `08:00` in the profile's IANA
+timezone (or `Asia/Jakarta` if no timezone is set). Enabling it also requires
+the user's device notification permission.
+`data_sharing` records explicit opt-in flags for clinician or family sharing;
+both default to `false`.
 
 ## Daily check-ins
 
@@ -130,9 +134,12 @@ markers, and wearable samples recorded on the requested UTC calendar day.
 
 The `event_type` enum is `exercise_started`, `exercise_ended`, `sleep_started`,
 `woke_up`, `meal`, `medication`, `stress`, `symptom`, `caffeine`, `alcohol`,
-`smoking`, `hydration`, `illness`, `posture_change`, `menstruation`, or `other`.
-Each event requires `occurred_at` (ISO date) and accepts `details` (up to 300
-characters), and optional scalar `value`, `intensity`, and `unit`.
+`smoking`, `hydration`, `illness`, `posture_change`, `menstruation`, `other`,
+or `ema`. Each event requires `occurred_at` (ISO date) and accepts `details` (up
+to 300 characters), and optional `value`, `intensity`, and `unit`. EMA events
+use a validated structured `value` with a questionnaire version, patient-reported
+feeling, optional note, and the four activity sample summaries; they are kept
+separate from sensor-derived findings.
 
 ## Patient actions and impact summary
 

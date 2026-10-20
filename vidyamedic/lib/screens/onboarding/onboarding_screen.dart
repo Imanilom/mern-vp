@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
+import '../../services/morning_summary_reminder.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
 import '../home/home_screen.dart';
@@ -173,6 +174,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           setState(() => _stepError =
               s.dataError ?? 'Preferensi gagal disimpan ke server.');
           return;
+        }
+        if (s.notifDailySummary) {
+          try {
+            await MorningSummaryReminder.sync(
+              enabled: true,
+              time: s.notifDailyTime,
+              timeZone: s.userProfile.timeZone,
+            );
+          } catch (error) {
+            setState(() => _stepError =
+                'Preferensi tersimpan, tetapi pengingat belum dapat dijadwalkan: $error');
+            return;
+          }
         }
         _finish();
         return;

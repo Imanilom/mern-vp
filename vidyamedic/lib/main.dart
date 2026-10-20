@@ -6,13 +6,28 @@ import 'theme/app_theme.dart';
 import 'providers/app_state.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/summary/daily_summary_screen.dart';
 import 'screens/scenarios/scenario_lab_screen.dart';
+import 'services/morning_summary_reminder.dart';
+
+final GlobalKey<NavigatorState> _appNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
   final appState = AppState();
   await appState.initialize();
+  void openDailySummary() {
+    _appNavigatorKey.currentState?.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const DailySummaryScreen(),
+      ),
+    );
+  }
+
+  final openedFromReminder = await MorningSummaryReminder.initialize(
+    onReminderTap: openDailySummary,
+  );
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -20,6 +35,9 @@ Future<void> main() async {
     ),
   );
   runApp(VidyaMedicApp(appState: appState));
+  if (openedFromReminder) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => openDailySummary());
+  }
 }
 
 class VidyaMedicApp extends StatelessWidget {
@@ -31,15 +49,21 @@ class VidyaMedicApp extends StatelessWidget {
     return ChangeNotifierProvider.value(
       value: appState,
       child: MaterialApp(
+        navigatorKey: _appNavigatorKey,
         title: 'VidyaMedic',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: appState.isAuthenticated ? const HomeScreen() : const WelcomeScreen(),
+        home: appState.isAuthenticated
+            ? const HomeScreen()
+            : const WelcomeScreen(),
         routes: {
           '/scenarios': (_) => const ScenarioLabScreen(),
-          '/scenarios/a': (_) => const ScenarioLabScreen(initialScenarioId: 'a'),
-          '/scenarios/b': (_) => const ScenarioLabScreen(initialScenarioId: 'b'),
-          '/scenarios/c': (_) => const ScenarioLabScreen(initialScenarioId: 'c'),
+          '/scenarios/a': (_) =>
+              const ScenarioLabScreen(initialScenarioId: 'a'),
+          '/scenarios/b': (_) =>
+              const ScenarioLabScreen(initialScenarioId: 'b'),
+          '/scenarios/c': (_) =>
+              const ScenarioLabScreen(initialScenarioId: 'c'),
         },
       ),
     );

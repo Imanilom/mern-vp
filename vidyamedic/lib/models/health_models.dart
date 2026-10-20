@@ -14,8 +14,9 @@ enum Gender {
   static Gender fromString(String? val) {
     if (val == null || val.isEmpty) return Gender.other;
     final lower = val.toLowerCase();
-    if (lower == 'male' || lower == 'laki-laki' || lower == 'pria')
+    if (lower == 'male' || lower == 'laki-laki' || lower == 'pria') {
       return Gender.male;
+    }
     if (lower == 'other' || lower == 'lainnya') return Gender.other;
     return Gender.female;
   }
@@ -290,6 +291,7 @@ const Map<String, String> _eventToApiMap = {
   'Minum Air': 'hydration',
   'Merokok': 'smoking',
   'Alkohol': 'alcohol',
+  'EMA sesi': 'ema',
   'Lainnya': 'other',
 };
 
@@ -426,6 +428,7 @@ class UserProfile {
   String
       wearableProvider; // 'none', 'polar_h10', 'apple_watch', 'garmin', 'fitbit', 'other'
   bool notifMorningSummary;
+  TimeOfDay notifMorningSummaryTime;
   bool notifImportantAlerts;
   bool notifHealthEducation;
   String notifQuietStart;
@@ -452,7 +455,8 @@ class UserProfile {
     this.allergiesReviewed = true,
     this.goal = '',
     this.wearableProvider = '',
-    this.notifMorningSummary = true,
+    this.notifMorningSummary = false,
+    this.notifMorningSummaryTime = const TimeOfDay(hour: 8, minute: 0),
     this.notifImportantAlerts = true,
     this.notifHealthEducation = true,
     this.notifQuietStart = '22:00',
@@ -498,6 +502,8 @@ class UserProfile {
       if (wearableProvider.isNotEmpty) 'wearable_provider': wearableProvider,
       'notification_preferences': {
         'morning_summary': notifMorningSummary,
+        'morning_summary_time':
+            '${notifMorningSummaryTime.hour.toString().padLeft(2, '0')}:${notifMorningSummaryTime.minute.toString().padLeft(2, '0')}',
         'important_alerts': notifImportantAlerts,
         'health_education': notifHealthEducation,
         'quiet_start': notifQuietStart,
@@ -558,7 +564,10 @@ class UserProfile {
       allergiesReviewed: json['allergies_reviewed'] == true,
       goal: json['goal']?.toString() ?? '',
       wearableProvider: json['wearable_provider']?.toString() ?? '',
-      notifMorningSummary: notif['morning_summary'] != false,
+      notifMorningSummary: notif['morning_summary'] == true,
+      notifMorningSummaryTime: _timeOfDayFromString(
+        notif['morning_summary_time']?.toString() ?? '08:00',
+      ),
       notifImportantAlerts: notif['important_alerts'] != false,
       notifHealthEducation: notif['health_education'] != false,
       notifQuietStart: notif['quiet_start']?.toString() ?? '22:00',
@@ -568,6 +577,15 @@ class UserProfile {
       emergencyContactPhone: json['emergency_contact_phone']?.toString() ?? '',
       clinicianSharing: sharing['share_with_clinician'] == true,
       familySharing: sharing['share_with_family'] == true,
+    );
+  }
+
+  static TimeOfDay _timeOfDayFromString(String value) {
+    final match = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$').firstMatch(value);
+    if (match == null) return const TimeOfDay(hour: 8, minute: 0);
+    return TimeOfDay(
+      hour: int.parse(match.group(1)!),
+      minute: int.parse(match.group(2)!),
     );
   }
 }
@@ -786,7 +804,7 @@ class EventItem {
   final Color color;
   final DateTime timestamp;
   final String details;
-  final num? value;
+  final Object? value;
   final String? unit;
 
   EventItem({
@@ -817,6 +835,10 @@ class EventItem {
 
     final time = DateTime.tryParse(json['occurred_at']?.toString() ?? '') ??
         DateTime.fromMillisecondsSinceEpoch(0);
+    final eventValue = json['value'];
+    final details = type == 'ema' && eventValue is Map
+        ? _formatEmaDetails(eventValue)
+        : json['details']?.toString() ?? '';
 
     return EventItem(
       id: json['_id']?.toString() ?? '',
@@ -825,11 +847,39 @@ class EventItem {
       icon: match.$2,
       color: match.$3,
       timestamp: time,
-      details: json['details']?.toString() ?? '',
-      value: json['value'] as num?,
+      details: details,
+      value: eventValue,
       unit: json['unit']?.toString(),
     );
   }
+}
+
+String _formatEmaDetails(Map<dynamic, dynamic> value) {
+  const feelings = {
+    'calmer': 'Merasa lebih tenang',
+    'same': 'Merasa sama seperti awal',
+    'more_tired': 'Merasa lebih lelah',
+    'uncomfortable': 'Merasa tidak nyaman',
+  };
+  const activityLabels = {
+    'sitting': 'Duduk',
+    'standing': 'Berdiri',
+    'walking': 'Berjalan',
+  };
+  final samples = value['samples'];
+  final summaries = samples is List
+      ? samples
+          .whereType<Map>()
+          .map((sample) =>
+              '${activityLabels[sample['activity']] ?? sample['activity']}: ${sample['reading_count'] ?? 0} titik')
+          .toList()
+      : <String>[];
+  return [
+    feelings[value['feeling']] ?? 'EMA sesi tersimpan',
+    if (value['note'] is String && (value['note'] as String).isNotEmpty)
+      value['note'] as String,
+    if (summaries.isNotEmpty) summaries.join(', '),
+  ].join(' · ');
 }
 
 class PedagogyAnswer {
@@ -860,6 +910,7 @@ class ScientificCitation {
   final String authors;
   final String year;
   final double relevance;
+  final List<String> matchedDimensions;
 
   const ScientificCitation({
     required this.title,
@@ -868,6 +919,7 @@ class ScientificCitation {
     required this.authors,
     required this.year,
     required this.relevance,
+    this.matchedDimensions = const [],
   });
 
   factory ScientificCitation.fromJson(Map<String, dynamic> json) {
@@ -884,6 +936,10 @@ class ScientificCitation {
       relevance: (json['relevance'] as num?)?.toDouble() ??
           (json['relevance_score'] as num?)?.toDouble() ??
           0,
+      matchedDimensions: (json['matched_dimensions'] as List?)
+              ?.map((item) => item.toString())
+              .toList() ??
+          const [],
     );
   }
 }

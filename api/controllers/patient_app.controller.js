@@ -1387,6 +1387,7 @@ export async function getPatientAppCaparInsights(req, res) {
           url: paper.pubmedUrl,
           evidence_type: paper.evidenceType,
           evidence_direction: paper.evidenceDirection,
+          evidence_summary: paper.clinicalTakeaway,
           relevance_score: score,
           matched_dimensions: matchedDimensions,
         })),

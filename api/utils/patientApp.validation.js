@@ -241,6 +241,7 @@ export function validateProfileUpdate(body) {
     requireObject(preferences, 'notification_preferences');
     const allowed = new Set([
       'morning_summary',
+      'morning_summary_time',
       'important_alerts',
       'health_education',
       'quiet_start',
@@ -267,6 +268,18 @@ export function validateProfileUpdate(body) {
         validated[key] = preferences[key];
       }
     }
+    if ('morning_summary_time' in preferences) {
+      if (
+        typeof preferences.morning_summary_time !== 'string'
+        || !clockPattern.test(preferences.morning_summary_time)
+      ) {
+        throw errorHandler(
+          400,
+          'morning_summary_time harus menggunakan format waktu HH:mm.'
+        );
+      }
+      validated.morning_summary_time = preferences.morning_summary_time;
+    }
     result.notification_preferences = validated;
   }
   return result;
@@ -289,9 +302,82 @@ const patientEventTypes = new Set([
   'posture_change',
   'menstruation',
   'other',
+  'ema',
 ]);
 const wearableProviders = new Set(['polar_h10', 'apple_watch', 'garmin', 'fitbit', 'other']);
 const wearableActivities = new Set(['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'sleep', 'other']);
+
+function validateGuidedSessionEma(value) {
+  requireObject(value, 'value EMA');
+  const allowed = new Set(['instrument', 'version', 'feeling', 'note', 'samples']);
+  rejectUnknownFields(value, allowed, 'Field value EMA');
+  if (value.instrument !== 'guided_baseline_session' || value.version !== 1) {
+    throw errorHandler(400, 'Identitas kuesioner EMA sesi baseline tidak valid.');
+  }
+  const feelings = new Set(['calmer', 'same', 'more_tired', 'uncomfortable']);
+  if (!feelings.has(value.feeling)) {
+    throw errorHandler(400, 'Jawaban perasaan EMA tidak valid.');
+  }
+  const note = value.note === undefined ? '' : optionalString(value.note, 'value.note', 120);
+  if (!Array.isArray(value.samples) || value.samples.length !== 4) {
+    throw errorHandler(400, 'EMA sesi baseline harus mencatat empat konteks aktivitas.');
+  }
+  const activities = new Set(['sitting', 'standing', 'walking']);
+  const samples = value.samples.map((sample, index) => {
+    requireObject(sample, `value.samples[${index}]`);
+    const fields = new Set([
+      'activity',
+      'skipped',
+      'incomplete',
+      'reading_count',
+      'window_count',
+      'rr_interval_count',
+      'minimum_hr',
+      'maximum_hr',
+    ]);
+    rejectUnknownFields(sample, fields, `Field value.samples[${index}]`);
+    if (!activities.has(sample.activity)) {
+      throw errorHandler(400, `Aktivitas EMA pada konteks ${index + 1} tidak valid.`);
+    }
+    for (const flag of ['skipped', 'incomplete']) {
+      if (typeof sample[flag] !== 'boolean') {
+        throw errorHandler(400, `value.samples[${index}].${flag} harus berupa boolean.`);
+      }
+    }
+    const counts = {};
+    for (const field of ['reading_count', 'window_count', 'rr_interval_count']) {
+      const count = sample[field];
+      if (!Number.isInteger(count) || count < 0 || count > 100000) {
+        throw errorHandler(400, `value.samples[${index}].${field} harus bilangan bulat 0-100000.`);
+      }
+      counts[field] = count;
+    }
+    const minimumHr = sample.minimum_hr === null
+      ? null
+      : optionalNumber(sample.minimum_hr, `value.samples[${index}].minimum_hr`, 20, 250);
+    const maximumHr = sample.maximum_hr === null
+      ? null
+      : optionalNumber(sample.maximum_hr, `value.samples[${index}].maximum_hr`, 20, 250);
+    if (minimumHr !== null && maximumHr !== null && minimumHr > maximumHr) {
+      throw errorHandler(400, `Rentang HR pada konteks ${index + 1} tidak valid.`);
+    }
+    return {
+      activity: sample.activity,
+      skipped: sample.skipped,
+      incomplete: sample.incomplete,
+      ...counts,
+      minimum_hr: minimumHr,
+      maximum_hr: maximumHr,
+    };
+  });
+  return {
+    instrument: 'guided_baseline_session',
+    version: 1,
+    feeling: value.feeling,
+    note,
+    samples,
+  };
+}
 
 export function validatePatientEvent(body) {
   requireObject(body, 'Event');
@@ -309,7 +395,9 @@ export function validatePatientEvent(body) {
     details: body.details === undefined ? '' : optionalString(body.details, 'details', 300),
   };
   if ('value' in body) {
-    if (typeof body.value === 'string') {
+    if (body.event_type === 'ema') {
+      result.value = validateGuidedSessionEma(body.value);
+    } else if (typeof body.value === 'string') {
       result.value = optionalString(body.value, 'value', 120);
     } else if (typeof body.value === 'number' && Number.isFinite(body.value)) {
       result.value = body.value;
@@ -318,6 +406,8 @@ export function validatePatientEvent(body) {
     } else {
       throw errorHandler(400, 'value harus berupa teks, angka, atau boolean.');
     }
+  } else if (body.event_type === 'ema') {
+    throw errorHandler(400, 'Jawaban EMA wajib dikirim.');
   }
   if ('intensity' in body) {
     if (!['low', 'moderate', 'vigorous', 'none', 'high', 'severe', 'mild', null].includes(body.intensity)) {

@@ -38,6 +38,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   final VoidCallback _onSampleStored;
   final List<PolarDeviceInfo> _devices = [];
   final List<int> _rrIntervals = [];
+  final List<int> _sessionHeartRates = [];
   final List<List<double>> _acceleration = [];
   final List<List<double>> _recentAcceleration = [];
   final List<Map<String, dynamic>> _pendingSamples = [];
@@ -70,6 +71,11 @@ class PolarWearablePairingService extends ChangeNotifier {
   bool _isUploadingSample = false;
   bool _isUploadingStream = false;
   bool _isDisposed = false;
+  Completer<void>? _sampleUploadCompleter;
+  Completer<void>? _streamUploadCompleter;
+  int _sessionRrIntervalCount = 0;
+  int _sessionReadingCount = 0;
+  int _sessionWindowCount = 0;
 
   bool isScanning = false;
   bool isConnecting = false;
@@ -89,6 +95,15 @@ class PolarWearablePairingService extends ChangeNotifier {
   String get deviceName => _deviceName;
   String get activity => _activity;
   int? get heartRateBpm => _heartRateBpm;
+  int? get sessionMinimumHeartRate => _sessionHeartRates.isEmpty
+      ? null
+      : _sessionHeartRates.reduce((a, b) => a < b ? a : b);
+  int? get sessionMaximumHeartRate => _sessionHeartRates.isEmpty
+      ? null
+      : _sessionHeartRates.reduce((a, b) => a > b ? a : b);
+  int get sessionRrIntervalCount => _sessionRrIntervalCount;
+  int get sessionReadingCount => _sessionReadingCount;
+  int get sessionWindowCount => _sessionWindowCount;
   List<List<double>> get recentAcceleration =>
       _recentAcceleration.map(List<double>.from).toList();
   int get pendingCount =>
@@ -354,9 +369,11 @@ class PolarWearablePairingService extends ChangeNotifier {
       if (!hasContact) continue;
       _sensorContact = true;
       _heartRateBpm = sample.hr;
+      _sessionHeartRates.add(sample.hr);
 
       for (final rr in sample.rrsMs) {
         _expectedRrCount++;
+        _sessionRrIntervalCount++;
         if (rr >= 250 && rr <= 3000) {
           _rrIntervals.add(rr);
           _validRrCount++;
@@ -378,6 +395,7 @@ class PolarWearablePairingService extends ChangeNotifier {
               'acceleration_g': List<double>.from(_latestAcceleration!),
             });
           }
+          _sessionReadingCount += records.length;
           _streamReadings.addAll(records.reversed);
           _recentStreamReadings.addAll(records.reversed);
           if (_recentStreamReadings.length > 300) {
@@ -426,6 +444,10 @@ class PolarWearablePairingService extends ChangeNotifier {
     }
     _activity = activity;
     _clearWindow();
+    _sessionHeartRates.clear();
+    _sessionRrIntervalCount = 0;
+    _sessionReadingCount = 0;
+    _sessionWindowCount = 0;
     _streamReadings.clear();
     _recentStreamReadings.clear();
     _recentAcceleration.clear();
@@ -453,6 +475,12 @@ class PolarWearablePairingService extends ChangeNotifier {
     _notify();
   }
 
+  Future<bool> flushPendingUploads() async {
+    await flushStream(force: true);
+    await flushSample(force: true);
+    return _pendingStreamBatches.isEmpty && _pendingSamples.isEmpty;
+  }
+
   Future<void> flushStream({bool force = false}) async {
     if (!isStreaming && !force) return;
     if (_streamReadings.isNotEmpty) {
@@ -464,9 +492,20 @@ class PolarWearablePairingService extends ChangeNotifier {
       });
       _streamReadings.clear();
     }
-    if (_isUploadingStream || _pendingStreamBatches.isEmpty) return;
+    if (_isUploadingStream) {
+      if (force) {
+        await _streamUploadCompleter?.future;
+        if (_pendingStreamBatches.isNotEmpty) {
+          await flushStream(force: true);
+        }
+      }
+      return;
+    }
+    if (_pendingStreamBatches.isEmpty) return;
 
     _isUploadingStream = true;
+    final uploadCompleter = Completer<void>();
+    _streamUploadCompleter = uploadCompleter;
     _notify();
     try {
       while (_pendingStreamBatches.isNotEmpty) {
@@ -484,6 +523,8 @@ class PolarWearablePairingService extends ChangeNotifier {
       streamError = 'Gagal mengirim batch wearable: $e';
     } finally {
       _isUploadingStream = false;
+      _streamUploadCompleter = null;
+      uploadCompleter.complete();
       _notify();
     }
   }
@@ -494,9 +535,20 @@ class PolarWearablePairingService extends ChangeNotifier {
       _pendingSamples.add(_createSamplePayload());
       _clearWindow();
     }
-    if (_isUploadingSample || _pendingSamples.isEmpty) return;
+    if (_isUploadingSample) {
+      if (force) {
+        await _sampleUploadCompleter?.future;
+        if (_pendingSamples.isNotEmpty) {
+          await flushSample(force: true);
+        }
+      }
+      return;
+    }
+    if (_pendingSamples.isEmpty) return;
 
     _isUploadingSample = true;
+    final uploadCompleter = Completer<void>();
+    _sampleUploadCompleter = uploadCompleter;
     _notify();
     try {
       while (_pendingSamples.isNotEmpty) {
@@ -507,6 +559,7 @@ class PolarWearablePairingService extends ChangeNotifier {
           break;
         }
         _pendingSamples.removeAt(0);
+        _sessionWindowCount++;
         lastUploadedAt = DateTime.now();
         sampleError = null;
         _onSampleStored();
@@ -515,6 +568,8 @@ class PolarWearablePairingService extends ChangeNotifier {
       sampleError = 'Gagal menyimpan sampel wearable: $e';
     } finally {
       _isUploadingSample = false;
+      _sampleUploadCompleter = null;
+      uploadCompleter.complete();
       _notify();
     }
   }

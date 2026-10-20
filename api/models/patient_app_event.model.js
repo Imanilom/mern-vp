@@ -32,6 +32,7 @@ const PatientAppEventSchema = new mongoose.Schema(
         'posture_change',
         'menstruation',
         'other',
+        'ema',
       ],
     },
     occurred_at: { type: Date, required: true, default: Date.now },

@@ -11,6 +11,7 @@ import '../profile/wearable_pairing_screen.dart';
 import '../summary/daily_summary_screen.dart';
 import '../../services/api_service.dart';
 import 'scenario_questionnaire_screen.dart';
+import 'guided_baseline_session_screen.dart';
 
 class ScenarioLabScreen extends StatefulWidget {
   const ScenarioLabScreen({super.key, this.initialScenarioId});
@@ -41,7 +42,9 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
   List<Map<String, dynamic>> _caparBaselines = [];
   Map<String, dynamic>? _selectedSession;
   String _activity = 'unsure';
+  String _initialActivity = 'unsure';
   String _confidence = 'unsure';
+  String _initialConfidence = 'unsure';
   late String _activeScenarioId;
   bool _loading = true;
   bool _busy = false;
@@ -155,14 +158,43 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       });
       return;
     }
+    final eventItems = _maps(events.data);
+    final corrections = eventItems
+        .where((event) => event['event_type'] == 'activity_correction')
+        .toList();
+    final interpretation = _currentInterpretation(session.data!);
+    final contextActivity =
+        _map(interpretation?['context'])['activity']?.toString();
+    final latestCorrection =
+        corrections.isEmpty ? null : corrections.last;
+    final selectedActivity = _scenarioActivityValue(
+      latestCorrection?['value'] ?? contextActivity,
+    );
+    final selectedConfidence =
+        latestCorrection?['confidence']?.toString() ?? 'unsure';
     setState(() {
       _selectedSession = session.data;
-      _events = _maps(events.data);
+      _events = eventItems;
       _questionnaires = _maps(questionnaires.data);
       _busy = false;
-      _activity = 'unsure';
-      _confidence = 'unsure';
+      _activity = selectedActivity;
+      _initialActivity = selectedActivity;
+      _confidence = selectedConfidence;
+      _initialConfidence = selectedConfidence;
     });
+  }
+
+  String _scenarioActivityValue(dynamic value) {
+    final normalized = value?.toString().trim().toLowerCase() ?? '';
+    if (_activityOptions.containsKey(normalized)) return normalized;
+    return switch (normalized) {
+      'rest' || 'duduk' => 'sitting',
+      'light' || 'berjalan' || 'walk' => 'walking',
+      'moderate' || 'aktivitas sedang' => 'exercise',
+      'intense' || 'berlari' => 'running',
+      'berdiri' => 'standing',
+      _ => 'unsure',
+    };
   }
 
   Future<void> _startScenario(String scenarioId) async {
@@ -355,7 +387,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
   }
 
   Future<void> _openRecordingPage() async {
-    await _openAppPage(const WearablePairingScreen());
+    await _openAppPage(const GuidedBaselineSessionScreen());
   }
 
   Future<void> _openQuestionnaire(ScenarioQuestionnaireType type) async {
@@ -912,6 +944,8 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     final quality = _map(observation['quality']);
     final baseline = _map(interpretation?['baseline']);
     final evidence = _map(interpretation?['statistical_evidence']);
+    final hasCorrectionChanges = _activity != _initialActivity ||
+        _confidence != _initialConfidence;
     final statusLabel = switch (status) {
       'BASELINE_COMPATIBLE' => 'Kompatibel dengan baseline statistik',
       'DEVIATION_CANDIDATE' => 'Kandidat deviasi statistik',
@@ -986,6 +1020,21 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                 'Respons dicatat sebagai laporan peserta. Skenario B tidak mengubah interpretasi; skenario C mengevaluasi ulang hanya bila bukti statistik tersedia.',
               ),
               const SizedBox(height: 10),
+              if (hasCorrectionChanges)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF5D7),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE7C66A)),
+                  ),
+                  child: Text(
+                    'Perubahan ditandai. Koreksi ini kembali ke L1 sebagai laporan konteks; sistem akan menilai ulang bagian yang terdampak tanpa menghapus versi sebelumnya atau menganggapnya sebagai bukti fisiologis.',
+                    style: const TextStyle(fontSize: 12, height: 1.35),
+                  ),
+                ),
               DropdownButtonFormField<String>(
                 initialValue: _activity,
                 decoration: const InputDecoration(

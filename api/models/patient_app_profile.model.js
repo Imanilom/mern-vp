@@ -60,7 +60,8 @@ const PatientAppProfileSchema = new mongoose.Schema(
       default: 'daily_monitoring',
     },
     notification_preferences: {
-      morning_summary: { type: Boolean, default: true },
+      morning_summary: { type: Boolean, default: false },
+      morning_summary_time: { type: String, default: '08:00' },
       important_alerts: { type: Boolean, default: true },
       health_education: { type: Boolean, default: true },
       quiet_start: { type: String, default: '22:00' },

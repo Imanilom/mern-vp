@@ -245,6 +245,60 @@ test('profile only accepts known and bounded patient fields', () => {
   assert.throws(() => validateProfileUpdate({ timezone: 'Not/AZone' }), { statusCode: 400 });
 });
 
+test('profile validates the morning summary reminder time', () => {
+  assert.deepEqual(
+    validateProfileUpdate({
+      notification_preferences: {
+        morning_summary: true,
+        morning_summary_time: '08:00',
+      },
+    }),
+    {
+      notification_preferences: {
+        morning_summary: true,
+        morning_summary_time: '08:00',
+      },
+    },
+  );
+  assert.throws(
+    () => validateProfileUpdate({
+      notification_preferences: { morning_summary_time: '24:00' },
+    }),
+    { statusCode: 400 },
+  );
+});
+
+test('guided baseline EMA is stored as bounded structured patient input', () => {
+  const event = validatePatientEvent({
+    event_type: 'ema',
+    occurred_at: '2026-10-08T08:15:00.000Z',
+    value: {
+      instrument: 'guided_baseline_session',
+      version: 1,
+      feeling: 'same',
+      note: 'Tidak ada keluhan.',
+      samples: [
+        { activity: 'sitting', skipped: false, incomplete: false, reading_count: 240, window_count: 5, rr_interval_count: 220, minimum_hr: 60, maximum_hr: 72 },
+        { activity: 'standing', skipped: false, incomplete: false, reading_count: 235, window_count: 5, rr_interval_count: 210, minimum_hr: 64, maximum_hr: 80 },
+        { activity: 'walking', skipped: true, incomplete: false, reading_count: 0, window_count: 0, rr_interval_count: 0, minimum_hr: null, maximum_hr: null },
+        { activity: 'sitting', skipped: false, incomplete: false, reading_count: 240, window_count: 5, rr_interval_count: 220, minimum_hr: 59, maximum_hr: 70 },
+      ],
+    },
+  });
+  assert.equal(event.event_type, 'ema');
+  assert.equal(event.value.feeling, 'same');
+  assert.equal(event.value.samples.length, 4);
+  assert.equal(event.value.samples[2].minimum_hr, null);
+  assert.throws(
+    () => validatePatientEvent({
+      event_type: 'ema',
+      occurred_at: '2026-10-08T08:15:00.000Z',
+      value: { instrument: 'guided_baseline_session', version: 1, feeling: 'same', samples: [] },
+    }),
+    { statusCode: 400 },
+  );
+});
+
 test('daily check-in validates input and does not accept account identifiers', () => {
   const result = validateCheckIn({
     recorded_at: '2026-10-05T08:15:00.000Z',

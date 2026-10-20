@@ -4,11 +4,7 @@ import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
-import 'pedagogy_detail_sheet.dart';
-import '../pedagogy/pedagogy_screen_where_am_i.dart';
 import '../pedagogy/pedagogy_screen_what_changed.dart';
-import '../pedagogy/pedagogy_screen_why.dart';
-import '../pedagogy/pedagogy_screen_recovery.dart';
 import '../pedagogy/pedagogy_screen_action.dart';
 import '../pedagogy/patient_journey_screen.dart';
 import '../input/guided_daily_flow_screen.dart';
@@ -22,6 +18,7 @@ import '../summary/daily_summary_screen.dart';
 import '../profile/profile_screen.dart';
 import '../actions/action_tracking_screen.dart';
 import '../impact/impact_dashboard_screen.dart';
+import 'profile_snapshot_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -152,11 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _formatDateTime(DateTime value) =>
-      MaterialLocalizations.of(context).formatFullDate(value.toLocal()) +
-      ' ' +
-      MaterialLocalizations.of(context).formatTimeOfDay(
-        TimeOfDay.fromDateTime(value.toLocal()),
-      );
+      '${MaterialLocalizations.of(context).formatFullDate(value.toLocal())} ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(value.toLocal()))}';
 
   String _factorLabel(Map<String, dynamic> factor) {
     final label =
@@ -654,6 +647,8 @@ class _PedagogyDashboard extends StatelessWidget {
                   ],
                 ),
               ),
+
+              const ProfileSnapshotCard(),
 
               if (caparStatus == 'link_required') ...[
                 const SizedBox(height: 12),
@@ -1164,7 +1159,7 @@ class _PedagogyDashboard extends StatelessWidget {
 
               // 7. Scientific Evidence RAG / Wawasan Medis Pasien
               if (s.scientificCitations.isNotEmpty) ...[
-                const SectionTitle('Wawasan Medis & Edukasi Terkait',
+                const SectionTitle('Wawasan untuk Anda · berbasis paper ilmiah',
                     padding: EdgeInsets.only(top: 22, bottom: 10)),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -1182,12 +1177,20 @@ class _PedagogyDashboard extends StatelessWidget {
                           const Icon(Icons.menu_book_outlined,
                               color: AppTheme.primary, size: 18),
                           const SizedBox(width: 8),
-                          Text('Informasi Ilmiah untuk Pasien',
+                          Text('Wawasan dari data yang tercatat',
                               style: AppTheme.font(
                                   size: 13,
                                   weight: FontWeight.w700,
                                   color: AppTheme.primaryDark)),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Artikel dipilih dari konteks pemantauan dan informasi yang Anda catat. Keterkaitan topik tidak membuktikan penyebab atau diagnosis pada diri Anda.',
+                        style: AppTheme.font(
+                            size: 10.5,
+                            color: AppTheme.textMuted,
+                            height: 1.35),
                       ),
                       const SizedBox(height: 8),
                       ...s.scientificCitations.take(2).map((c) => Padding(
@@ -1205,7 +1208,10 @@ class _PedagogyDashboard extends StatelessWidget {
                                       style: AppTheme.font(
                                           size: 12.5, weight: FontWeight.w700)),
                                   const SizedBox(height: 3),
-                                  Text(c.summary,
+                                  Text(
+                                      c.summary.trim().isNotEmpty
+                                          ? c.summary
+                                          : 'Literatur ini membahas ${c.matchedDimensions.isEmpty ? 'topik yang terkait dengan data pemantauan' : c.matchedDimensions.join(', ')}. Relevansi ini bersifat topikal, bukan bukti hubungan sebab-akibat.',
                                       style: AppTheme.font(
                                           size: 11.5,
                                           color: AppTheme.textSecondary,
@@ -1218,12 +1224,6 @@ class _PedagogyDashboard extends StatelessWidget {
                   ),
                 ),
               ],
-
-              const SectionTitle('6 Panduan Memahami Tubuh Anda',
-                  padding: EdgeInsets.only(top: 22, bottom: 12)),
-
-              // 8. The 6 Pedagogical Framework Tiles
-              ...s.pedagogyAnswers.map((p) => _PedagogyTile(item: p)),
             ],
           ),
         ),
@@ -1562,166 +1562,6 @@ class _AccMovementAlertBanner extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PedagogyTile extends StatelessWidget {
-  final PedagogyAnswer item;
-  const _PedagogyTile({required this.item});
-
-  void _openScreen(BuildContext context) {
-    Widget target;
-    switch (item.number) {
-      case 1:
-        target = const WhereAmIScreen();
-      case 2:
-        target = const WhatChangedScreen();
-      case 3:
-        target = const WhyScreen();
-      case 4:
-      case 5:
-        target = const RecoveryScreen();
-      case 6:
-      default:
-        target = const ActionGuidanceScreen();
-    }
-    Navigator.push(context, MaterialPageRoute(builder: (_) => target));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: AppTheme.shadowSoft,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _openScreen(context),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primarySoft,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: AppTheme.primaryLight.withValues(alpha: 0.3)),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${item.number}',
-                      style: AppTheme.font(
-                          size: 13.5,
-                          weight: FontWeight.w800,
-                          color: AppTheme.primaryDark),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.question,
-                              style: AppTheme.font(
-                                  size: 13.5, weight: FontWeight.w700),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: item.statusColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              item.status,
-                              style: AppTheme.font(
-                                  size: 10.5,
-                                  weight: FontWeight.w700,
-                                  color: item.statusColor),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.summary,
-                        style: AppTheme.font(
-                            size: 12,
-                            color: AppTheme.textSecondary,
-                            height: 1.3),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Lihat Penjelasan Detail',
-                                  style: AppTheme.font(
-                                      size: 11.5,
-                                      weight: FontWeight.w700,
-                                      color: AppTheme.primary)),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.arrow_forward,
-                                  size: 12, color: AppTheme.primary),
-                            ],
-                          ),
-                          InkWell(
-                            onTap: () => showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => PedagogyDetailSheet(answer: item),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.help_outline_rounded,
-                                      size: 13, color: AppTheme.textMuted),
-                                  const SizedBox(width: 3),
-                                  Text('Cara Analisis',
-                                      style: AppTheme.font(
-                                          size: 10.5,
-                                          color: AppTheme.textMuted)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

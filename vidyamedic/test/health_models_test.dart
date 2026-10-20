@@ -32,6 +32,52 @@ void main() {
     expect(SleepQuality.fromApiValue('excellent'), SleepQuality.sangatBaik);
   });
 
+  test('structured EMA events render as patient-reported history', () {
+    final event = EventItem.fromJson({
+      'event_type': 'ema',
+      'occurred_at': '2026-10-08T08:15:00.000Z',
+      'details': 'EMA sesi perekaman baseline terpandu.',
+      'value': {
+        'instrument': 'guided_baseline_session',
+        'version': 1,
+        'feeling': 'calmer',
+        'note': 'Nyaman.',
+        'samples': [
+          {'activity': 'sitting', 'reading_count': 240},
+        ],
+      },
+    });
+
+    expect(event.title, 'EMA sesi');
+    expect(event.value, isA<Map>());
+    expect(event.details, contains('Merasa lebih tenang'));
+    expect(event.details, contains('Nyaman.'));
+    expect(event.details, contains('Duduk: 240 titik'));
+  });
+
+  test('morning reminder time round-trips with profile preferences', () {
+    final profile = UserProfile.fromJson({
+      'notification_preferences': {
+        'morning_summary': true,
+        'morning_summary_time': '06:45',
+      },
+    });
+
+    expect(
+        profile.notifMorningSummaryTime, const TimeOfDay(hour: 6, minute: 45));
+    expect(
+      (profile.toPatchJson()['notification_preferences']
+          as Map<String, dynamic>)['morning_summary_time'],
+      '06:45',
+    );
+    expect(
+      UserProfile.fromJson({
+        'notification_preferences': {'morning_summary_time': '26:00'},
+      }).notifMorningSummaryTime,
+      const TimeOfDay(hour: 8, minute: 0),
+    );
+  });
+
   test('sleep duration is calculated across midnight from entered times', () {
     expect(
       calculateSleepDurationMinutes(
