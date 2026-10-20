@@ -240,6 +240,8 @@ class AppState extends ChangeNotifier {
   bool isSubmittingDaily = false;
   bool _isConfirmingActivity = false;
   List<ScientificCitation> scientificCitations = [];
+  List<ScientificCitation> baselineGuidanceCitations = [];
+  String? baselineGuidanceEvidenceLimit;
   List<ScientificCitation> recoveryScientificCitations = [];
   CaparFollowUpPrompt followUpPrompt = const CaparFollowUpPrompt();
   String? _followUpPromptShownSegmentId;
@@ -345,6 +347,19 @@ class AppState extends ChangeNotifier {
           .map((citation) =>
               ScientificCitation.fromJson(Map<String, dynamic>.from(citation)))
           .toList();
+      final baselineGuidance = res.data!['baseline_guidance'];
+      final baselineGuidanceItems =
+          baselineGuidance is Map && baselineGuidance['items'] is List
+              ? baselineGuidance['items'] as List
+              : const <dynamic>[];
+      baselineGuidanceCitations = baselineGuidanceItems
+          .whereType<Map>()
+          .map((citation) =>
+              ScientificCitation.fromJson(Map<String, dynamic>.from(citation)))
+          .toList();
+      baselineGuidanceEvidenceLimit = baselineGuidance is Map
+          ? baselineGuidance['evidence_limit']?.toString()
+          : null;
 
       // Parse follow up prompt
       final capar = res.data!['capar'] as Map<String, dynamic>?;

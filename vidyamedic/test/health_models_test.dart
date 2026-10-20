@@ -55,6 +55,22 @@ void main() {
     expect(event.details, contains('Duduk: 240 titik'));
   });
 
+  test('scientific citations format author lists returned by RAG', () {
+    final citation = ScientificCitation.fromJson({
+      'title': 'Evidence title',
+      'authors': ['Author One', 'Author Two'],
+      'journal': 'Evidence Journal',
+      'year': 2024,
+      'evidence_summary': 'Population-level finding.',
+      'relevance_score': 0.55,
+    });
+
+    expect(citation.authors, 'Author One, Author Two');
+    expect(citation.source, 'Evidence Journal');
+    expect(citation.year, '2024');
+    expect(citation.summary, 'Population-level finding.');
+  });
+
   test('morning reminder time round-trips with profile preferences', () {
     final profile = UserProfile.fromJson({
       'notification_preferences': {

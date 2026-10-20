@@ -925,6 +925,7 @@ class ScientificCitation {
   });
 
   factory ScientificCitation.fromJson(Map<String, dynamic> json) {
+    final rawAuthors = json['authors'];
     return ScientificCitation(
       title:
           json['title']?.toString() ?? json['document_title']?.toString() ?? '',
@@ -933,7 +934,9 @@ class ScientificCitation {
           json['snippet']?.toString() ??
           '',
       source: json['source']?.toString() ?? json['journal']?.toString() ?? '',
-      authors: json['authors']?.toString() ?? '',
+      authors: rawAuthors is List
+          ? rawAuthors.map((author) => author.toString()).join(', ')
+          : rawAuthors?.toString() ?? '',
       year: json['year']?.toString() ?? '',
       relevance: (json['relevance'] as num?)?.toDouble() ??
           (json['relevance_score'] as num?)?.toDouble() ??

@@ -3,10 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
 import '../../services/wearable_pairing_service.dart';
 import '../../theme/app_theme.dart';
-import 'guided_baseline_ema_screen.dart';
+import 'guided_baseline_review_screen.dart';
 import '../profile/wearable_pairing_screen.dart';
 
 class GuidedBaselineSessionScreen extends StatefulWidget {
@@ -37,6 +38,7 @@ class _GuidedBaselineSessionScreenState
   bool _stageRunning = false;
   bool _finishingStage = false;
   bool _emaSaved = false;
+  bool _reviewOpened = false;
   String? _error;
   final List<Map<String, dynamic>> _stageResults = [];
 
@@ -140,6 +142,7 @@ class _GuidedBaselineSessionScreenState
     final result = <String, dynamic>{
       'activity': activity,
       'label': _stages[_stageIndex].$2,
+      'is_simulated': wearable.isDemoDevice,
       'skipped': skipped && !wasRunning,
       'incomplete': skipped && wasRunning,
       'minimum_hr': wasRunning ? wearable.sessionMinimumHeartRate : null,
@@ -147,6 +150,11 @@ class _GuidedBaselineSessionScreenState
       'rr_interval_count': wasRunning ? wearable.sessionRrIntervalCount : 0,
       'reading_count': wasRunning ? wearable.sessionReadingCount : 0,
       'window_count': wasRunning ? wearable.sessionWindowCount : 0,
+      'recorded_readings': wasRunning
+          ? wearable.recentStreamReadings
+              .map((reading) => Map<String, dynamic>.from(reading))
+              .toList()
+          : <Map<String, dynamic>>[],
       'finished_at': DateTime.now().toIso8601String(),
     };
     final streamError = wearable.streamError ?? wearable.sampleError;
@@ -161,24 +169,30 @@ class _GuidedBaselineSessionScreenState
     });
     if (_stageIndex == _stages.length && mounted) {
       await context.read<AppState>().fetchCaparInsights();
+      if (mounted) await _openReviewScreen();
     }
   }
 
-  Future<void> _openEmaScreen() async {
+  Future<void> _openReviewScreen() async {
+    if (_reviewOpened || !mounted) return;
+    _reviewOpened = true;
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => GuidedBaselineEmaScreen(
+        builder: (_) => GuidedBaselineReviewScreen(
           stageResults: _stageResults
               .map((result) => Map<String, dynamic>.from(result))
               .toList(),
         ),
       ),
     );
-    if (!mounted || saved != true) return;
-    setState(() {
-      _emaSaved = true;
-      _error = null;
-    });
+    if (!mounted) return;
+    _reviewOpened = false;
+    if (saved == true) {
+      setState(() {
+        _emaSaved = true;
+        _error = null;
+      });
+    }
   }
 
   @override
@@ -248,6 +262,8 @@ class _GuidedBaselineSessionScreenState
                             size: 12,
                             color: AppTheme.textSecondary,
                             height: 1.4)),
+                    const SizedBox(height: 8),
+                    _baselineExplanation(stage.$1, appState),
                     const SizedBox(height: 16),
                     if (_stageRunning) ...[
                       Container(
@@ -374,124 +390,27 @@ class _GuidedBaselineSessionScreenState
             ),
           ] else ...[
             Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Perbandingan pola pribadi dan hasil rekaman',
-                        style:
-                            AppTheme.font(size: 15, weight: FontWeight.w800)),
-                    const SizedBox(height: 5),
-                    Text(
-                      'CAPAR membandingkan rekaman dengan baseline pada konteks aktivitas dan waktu yang sama. Tahap lima menit ini mengumpulkan bukti; belum berarti baseline sudah matang.',
-                      style: AppTheme.font(
-                          size: 11.5,
-                          color: AppTheme.textSecondary,
-                          height: 1.4),
-                    ),
-                    const SizedBox(height: 10),
-                    ..._stageResults.map(_stageResultCard),
-                    const SizedBox(height: 12),
-                    _baselineComparison(),
-                  ],
-                ),
-              ),
-            ),
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: ExpansionTile(
-                leading: const Icon(Icons.menu_book_outlined,
-                    color: AppTheme.primary),
-                title: Text(
-                  'Tahap 3A · Memahami tubuh Anda',
-                  style: AppTheme.font(size: 14, weight: FontWeight.w800),
-                ),
-                subtitle: const Text(
-                  'Enam panduan untuk membaca hasil dengan konteks dan batasnya.',
-                ),
-                children: appState.pedagogyAnswers
-                    .map(
-                      (answer) => ExpansionTile(
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-                        title: Text(
-                          answer.question,
-                          style:
-                              AppTheme.font(size: 13, weight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          answer.status,
-                          style: AppTheme.font(
-                              size: 11, color: answer.statusColor),
-                        ),
-                        childrenPadding:
-                            const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                        children: [
-                          if (answer.algorithm.isNotEmpty) ...[
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Cara membaca',
-                                style: AppTheme.font(
-                                    size: 11.5, weight: FontWeight.w700),
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                answer.algorithm,
-                                style: AppTheme.font(
-                                    size: 12,
-                                    color: AppTheme.textSecondary,
-                                    height: 1.35),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              answer.summary,
-                              style: AppTheme.font(
-                                  size: 12.5,
-                                  weight: FontWeight.w600,
-                                  height: 1.35),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              answer.detail,
-                              style: AppTheme.font(
-                                  size: 12,
-                                  color: AppTheme.textSecondary,
-                                  height: 1.4),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-            Card(
               child: ListTile(
                 leading: Icon(
-                  _emaSaved ? Icons.check_circle : Icons.rate_review_outlined,
+                  _emaSaved
+                      ? Icons.check_circle
+                      : Icons.account_circle_outlined,
                   color: _emaSaved ? AppTheme.statusGreen : AppTheme.primary,
                 ),
                 title: Text(
-                    _emaSaved ? 'Tahap 7 · EMA tersimpan' : 'Tahap 7 · EMA'),
+                  _emaSaved
+                      ? 'Tahap 3–6 selesai · EMA tersimpan'
+                      : 'Rekaman selesai',
+                  style: AppTheme.font(size: 14, weight: FontWeight.w800),
+                ),
                 subtitle: Text(
                   _emaSaved
-                      ? 'Pengalaman Anda dicatat terpisah dari hasil sensor.'
-                      : 'Tambahkan catatan pengalaman setelah melihat interpretasi sesi.',
+                      ? 'Profil, perubahan, koreksi, dan interpretasi telah ditinjau.'
+                      : 'Lanjutkan untuk meninjau profil, perubahan, koreksi, dan interpretasi.',
                 ),
                 trailing:
                     _emaSaved ? null : const Icon(Icons.chevron_right_rounded),
-                onTap: _emaSaved ? null : _openEmaScreen,
+                onTap: _emaSaved ? null : _openReviewScreen,
               ),
             ),
           ],
@@ -514,7 +433,7 @@ class _GuidedBaselineSessionScreenState
           border: Border.all(color: AppTheme.borderLight),
         ),
         child: Text(
-          'Alur pengukuran L1 → L2 → L3A → EMA. Setiap konteks direkam 5 menit dengan window wearable per menit. Lakukan hanya aktivitas yang aman bagi Anda; Anda boleh berhenti atau melewati tahap.',
+          'Setiap konteks direkam hingga 5 menit. Setelah sesi, tinjau profil, perubahan, koreksi konteks, lalu interpretasi sebelum mengisi EMA. Lakukan hanya aktivitas yang aman; Anda boleh berhenti atau melewati tahap.',
           style: AppTheme.font(
               size: 11.5,
               color: AppTheme.primaryDark,
@@ -528,6 +447,122 @@ class _GuidedBaselineSessionScreenState
         'walking' => Icons.directions_walk_rounded,
         _ => Icons.chair_alt_rounded,
       };
+
+  Widget _baselineExplanation(String activity, AppState appState) {
+    final explanation = switch (activity) {
+      'standing' =>
+        'Berdiri setelah duduk membantu merekam respons tubuh terhadap perubahan postur. CAPAR membandingkan data dalam konteks aktivitas yang sesuai, bukan menganggap semua aktivitas memiliki pola yang sama.',
+      'walking' =>
+        'Berjalan santai memberi konteks aktivitas untuk membaca respons denyut dan gerak. Lakukan hanya jika aman dan nyaman; tahap ini boleh dilewati.',
+      _ when _stageIndex == 3 =>
+        'Duduk kembali membantu merekam perubahan setelah aktivitas. Ini adalah pengamatan respons tubuh, bukan diagnosis atau penilaian medis.',
+      _ =>
+        'Rekaman duduk memberi konteks untuk memahami pola Anda saat tenang. Baseline dibentuk dari pengukuran berulang yang berkualitas, bukan dari satu angka atau rentang populasi.',
+    };
+    final citations = appState.baselineGuidanceCitations.take(3).toList();
+    return Card(
+      margin: EdgeInsets.zero,
+      color: AppTheme.fieldFill,
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        leading:
+            const Icon(Icons.auto_awesome_outlined, color: AppTheme.primary),
+        title: Text(
+          'Mengapa konteks ini direkam?',
+          style: AppTheme.font(size: 12, weight: FontWeight.w800),
+        ),
+        subtitle: Text(
+          citations.isEmpty
+              ? 'Penjelasan dan bukti ilmiah'
+              : '${citations.length} sumber ilmiah terkait',
+          style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
+        ),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              explanation,
+              style: AppTheme.font(
+                  size: 11.5, color: AppTheme.textSecondary, height: 1.4),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.science_outlined,
+                  size: 16, color: AppTheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                'Bukti ilmiah yang ditemukan (RAG)',
+                style: AppTheme.font(size: 11, weight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          if (citations.isEmpty)
+            Text(
+              appState.isCaparLoading
+                  ? 'Sedang mencari sumber ilmiah yang relevan…'
+                  : 'Belum ada sumber yang cocok tersedia. Penjelasan ini tidak menggunakan sitasi yang belum terverifikasi.',
+              style: AppTheme.font(
+                  size: 10.5, color: AppTheme.textMuted, height: 1.35),
+            )
+          else
+            ...citations.map(_baselineCitationCard),
+          if (appState.baselineGuidanceEvidenceLimit?.isNotEmpty == true) ...[
+            const SizedBox(height: 3),
+            Text(
+              appState.baselineGuidanceEvidenceLimit!,
+              style: AppTheme.font(
+                  size: 10, color: AppTheme.textMuted, height: 1.35),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _baselineCitationCard(ScientificCitation citation) {
+    final citationInfo = [
+      citation.authors,
+      citation.source,
+      citation.year,
+    ].where((item) => item.isNotEmpty).join(' · ');
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 7),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(citation.title,
+              style: AppTheme.font(size: 10.5, weight: FontWeight.w700)),
+          if (citation.summary.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              citation.summary,
+              style: AppTheme.font(
+                  size: 10, color: AppTheme.textSecondary, height: 1.35),
+            ),
+          ],
+          if (citationInfo.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              citationInfo,
+              style: AppTheme.font(size: 9.5, color: AppTheme.textMuted),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _heartRateSummary({
     required int? current,
@@ -717,95 +752,6 @@ class _GuidedBaselineSessionScreenState
           ),
         ],
       ),
-    );
-  }
-
-  Widget _stageResultCard(Map<String, dynamic> result) {
-    final skipped = result['skipped'] == true;
-    final minimum = result['minimum_hr'];
-    final maximum = result['maximum_hr'];
-    final comparison = _findBaseline(result['activity']?.toString());
-    final featureStats = comparison?['feature_stats'] is Map
-        ? Map<String, dynamic>.from(comparison!['feature_stats'] as Map)
-        : <String, dynamic>{};
-    final baselineHr = featureStats['mean_hr'] is Map
-        ? (featureStats['mean_hr'] as Map)['mean']
-        : null;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 7),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: skipped ? AppTheme.fieldFill : Colors.white,
-        border: Border.all(color: AppTheme.borderLight),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(result['label']?.toString() ?? 'Konteks',
-              style: AppTheme.font(size: 11.5, weight: FontWeight.w700)),
-          Text(
-            skipped
-                ? 'Tahap dilewati; tidak ada pengukuran untuk konteks ini.'
-                : '${result['incomplete'] == true ? 'Tahap dihentikan sebelum 5 menit. ' : ''}'
-                    'HR min–maks ${minimum ?? '—'}–${maximum ?? '—'} bpm · '
-                    '${result['rr_interval_count'] ?? 0} interval RR/IBI · '
-                    '${result['reading_count'] ?? 0} titik · '
-                    '${result['window_count'] ?? 0} window tersimpan',
-            style: AppTheme.font(
-                size: 10.5, color: AppTheme.textSecondary, height: 1.35),
-          ),
-          if (comparison != null) ...[
-            const SizedBox(height: 3),
-            Text(
-              'Baseline CAPAR ${comparison['level'] ?? comparison['maturity_detail']?['level'] ?? 'tersimpan'}'
-              '${baselineHr is num ? ' · HR rerata ${baselineHr.toStringAsFixed(1)} bpm' : ''}'
-              ' · ${comparison['segment_count'] ?? 0} segmen',
-              style: AppTheme.font(
-                  size: 10, color: AppTheme.primaryDark, height: 1.3),
-            ),
-          ] else if (!skipped)
-            Text(
-              'Belum ditemukan baseline CAPAR pada aktivitas ini. Rekaman tetap tersimpan; perbandingan belum tersedia.',
-              style: AppTheme.font(
-                  size: 10, color: AppTheme.textMuted, height: 1.3),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Map<String, dynamic>? _findBaseline(String? activity) {
-    final capar = context.read<AppState>().rawCaparInsights?['capar'];
-    final baseline = capar is Map ? capar['baseline'] : null;
-    final contexts = baseline is Map ? baseline['contexts'] : null;
-    if (contexts is! List) return null;
-    const aliases = {
-      'sitting': ['sitting', 'rest', 'duduk'],
-      'standing': ['standing', 'berdiri'],
-      'walking': ['walking', 'light', 'berjalan'],
-    };
-    final accepted = aliases[activity] ?? [activity?.toLowerCase() ?? ''];
-    for (final item in contexts.whereType<Map>()) {
-      final baselineActivity = item['activity']?.toString().toLowerCase() ?? '';
-      if (accepted.any((alias) => baselineActivity == alias)) {
-        return Map<String, dynamic>.from(item);
-      }
-    }
-    return null;
-  }
-
-  Widget _baselineComparison() {
-    final skipped =
-        _stageResults.where((item) => item['skipped'] == true).length;
-    final partial =
-        _stageResults.where((item) => item['incomplete'] == true).length;
-    final recorded = _stageResults.length - skipped - partial;
-    return Text(
-      '$recorded dari ${_stages.length} konteks selesai direkam${partial > 0 ? ' · $partial dihentikan sebelum selesai' : ''}${skipped > 0 ? ' · $skipped dilewati' : ''}. CAPAR mengolah data sesuai quality gate dan konteks. Perekaman singkat ini tidak langsung mengubah status baseline menjadi matang.',
-      style: AppTheme.font(
-          size: 10.5, color: AppTheme.textSecondary, height: 1.35),
     );
   }
 

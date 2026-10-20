@@ -1367,6 +1367,14 @@ export async function getPatientAppCaparInsights(req, res) {
   const ragResults = Object.values(ragAxes).some((axis) => axis.length > 0)
     ? retrieveMultiAxisRag({ ...ragAxes, minScore: 0.05 }).slice(0, 5)
     : [];
+  const baselineGuidanceAxes = {
+    behavior: ['physical_activity'],
+    physiology: ['activity_response', 'acc'],
+  };
+  const baselineGuidanceResults = retrieveMultiAxisRag({
+    ...baselineGuidanceAxes,
+    minScore: 0.3,
+  }).slice(0, 4);
 
   res.json({
     success: true,
@@ -1380,6 +1388,26 @@ export async function getPatientAppCaparInsights(req, res) {
         personalized_causality: false,
         axes_used: ragAxes,
         items: ragResults.map(({ paper, score, matchedDimensions }) => ({
+          paper_id: paper.paperId,
+          title: paper.title,
+          authors: paper.authors,
+          year: paper.year,
+          journal: paper.journal,
+          doi: paper.doi,
+          url: paper.pubmedUrl,
+          evidence_type: paper.evidenceType,
+          evidence_direction: paper.evidenceDirection,
+          evidence_summary: paper.clinicalTakeaway,
+          relevance_score: score,
+          matched_dimensions: matchedDimensions,
+        })),
+      },
+      baseline_guidance: {
+        type: 'local_multi_axis_retrieval',
+        personalized_causality: false,
+        axes_used: baselineGuidanceAxes,
+        evidence_limit: 'Bukti ini menjelaskan hubungan pada tingkat populasi, bukan menafsirkan kondisi atau menetapkan rentang normal pribadi.',
+        items: baselineGuidanceResults.map(({ paper, score, matchedDimensions }) => ({
           paper_id: paper.paperId,
           title: paper.title,
           authors: paper.authors,
