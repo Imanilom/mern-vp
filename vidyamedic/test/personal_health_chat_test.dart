@@ -261,6 +261,44 @@ void main() {
       expect(response, contains('rentang waktu'));
       expect(response, contains('bukan diagnosis'));
     });
+
+    test('builds Gemini context from matching, non-simulated local evidence', () {
+      final now = DateTime.now();
+      state.wearableSamples = [
+        {
+          'recorded_at': now.subtract(const Duration(minutes: 5)).toIso8601String(),
+          'heart_rate_bpm': 91,
+          'is_simulated': false,
+        },
+        {
+          'recorded_at': now.subtract(const Duration(minutes: 4)).toIso8601String(),
+          'heart_rate_bpm': 190,
+          'is_simulated': true,
+        },
+      ];
+
+      final evidence = const PersonalHealthChatModel().buildGeminiEvidence(
+        question: 'Bagaimana denyut jantung saya?',
+        state: state,
+        history: const [],
+      );
+
+      expect(
+        evidence.where((item) => item['source'] == 'check_in'),
+        hasLength(1),
+      );
+      expect(
+        evidence.where((item) => item['source'] == 'wearable_sample'),
+        hasLength(1),
+      );
+      expect(evidence.last['value'], '91');
+      expect(
+        const PersonalHealthChatModel().isSafeForGemini(
+          'Apakah denyut jantung saya normal?',
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('PersonalChatHistoryStore', () {

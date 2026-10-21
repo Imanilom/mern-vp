@@ -116,6 +116,8 @@ class ApiConfig {
       '$baseUrl/patient-app/wearable/samples';
   static String get wearableHistoryEndpoint =>
       '$baseUrl/patient-app/wearable/history';
+  static String get personalChatGeminiEndpoint =>
+      '$baseUrl/patient-app/chat/gemini';
   static String get wearableStreamEndpoint =>
       '$baseUrl/patient-app/wearable/stream';
 }

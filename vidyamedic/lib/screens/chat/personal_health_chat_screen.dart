@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/app_state.dart';
+import '../../services/api_service.dart';
 import '../../services/personal_health_chat.dart';
 import '../../theme/app_theme.dart';
 
@@ -21,9 +23,11 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
   final _model = const PersonalHealthChatModel();
   late final PersonalChatHistoryStore _historyStore;
   final List<PersonalChatMessage> _messages = [];
+  late final String _geminiConsentKey;
   bool _loadingHistory = true;
   bool _sending = false;
   bool _refreshingData = false;
+  bool _useGemini = false;
   String? _historyError;
 
   @override
@@ -37,8 +41,12 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
             state.userProfile.name)
         .toString()
         .trim();
+    final consentAccountId =
+        accountId.isEmpty ? 'signed_in_account' : accountId;
+    _geminiConsentKey =
+        'vidyamedic_personal_chat_gemini_consent_v1_${Uri.encodeComponent(consentAccountId)}';
     _historyStore = PersonalChatHistoryStore(
-      accountId: accountId.isEmpty ? 'signed_in_account' : accountId,
+      accountId: consentAccountId,
     );
     unawaited(_loadHistory());
   }
@@ -52,12 +60,14 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
 
   Future<void> _loadHistory() async {
     try {
+      final preferences = await SharedPreferences.getInstance();
       final messages = await _historyStore.load();
       if (!mounted) return;
       setState(() {
         _messages
           ..clear()
           ..addAll(messages);
+        _useGemini = preferences.getBool(_geminiConsentKey) ?? false;
         _historyError = null;
         _loadingHistory = false;
       });
@@ -81,6 +91,49 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
         setState(() => _historyError = 'Riwayat chat gagal disimpan: $error');
       }
       return false;
+    }
+  }
+
+  Future<void> _configureGemini() async {
+    if (_useGemini) {
+      try {
+        final preferences = await SharedPreferences.getInstance();
+        final saved = await preferences.setBool(_geminiConsentKey, false);
+        if (!saved) throw StateError('Preferensi Gemini gagal disimpan.');
+        if (mounted) setState(() => _useGemini = false);
+      } catch (error) {
+        if (mounted) _showMessage('Gemini gagal dinonaktifkan: $error');
+      }
+      return;
+    }
+
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Aktifkan Gemini?'),
+        content: const Text(
+          'Jika Anda setuju, pertanyaan dan hanya catatan kesehatan yang relevan akan dikirim melalui backend VidyaMedic ke Google Gemini untuk membuat jawaban. Riwayat chat, profil, dan Gemini API key tidak dikirim dari aplikasi. Gemini diproses oleh layanan Google dan dapat mengikuti kebijakan privasinya. Anda dapat tetap memakai chatbot lokal atau menonaktifkan Gemini kapan saja.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Tetap lokal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Setuju, aktifkan'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final saved = await preferences.setBool(_geminiConsentKey, true);
+      if (!saved) throw StateError('Preferensi Gemini gagal disimpan.');
+      if (mounted) setState(() => _useGemini = true);
+    } catch (error) {
+      if (mounted) _showMessage('Persetujuan Gemini gagal disimpan: $error');
     }
   }
 
@@ -116,12 +169,41 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
       state: state,
       history: previousMessages,
     );
+    var answer = response.text;
+    var usedGemini = false;
+    if (_useGemini &&
+        !response.hasInsufficientData &&
+        response.supportingRecords > 0 &&
+        _model.isSafeForGemini(question)) {
+      final evidence = _model.buildGeminiEvidence(
+        question: question,
+        state: state,
+        history: previousMessages,
+      );
+      if (evidence.isNotEmpty) {
+        final geminiResponse = await ApiService.generatePersonalChatAnswer(
+          question: question,
+          evidence: evidence,
+          localSummary: response.text,
+        );
+        if (!mounted) return;
+        if (geminiResponse.success && geminiResponse.data != null) {
+          answer = geminiResponse.data!;
+          usedGemini = true;
+        } else {
+          answer = '${response.text}\n\n'
+              'Gemini tidak tersedia: ${geminiResponse.message ?? 'kesalahan tidak diketahui'}. '
+              'Saya menampilkan ringkasan lokal dari catatan yang ditemukan.';
+        }
+      }
+    }
     final assistantMessage = PersonalChatMessage(
       role: PersonalChatRole.assistant,
-      text: response.text,
+      text: answer,
       createdAt: DateTime.now(),
       quickActions: response.quickActions,
       supportingRecords: response.supportingRecords,
+      usedGemini: usedGemini,
     );
     if (!mounted) return;
     setState(() {
@@ -228,6 +310,16 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
         title: const Text('Wawasan Personal'),
         actions: [
           IconButton(
+            tooltip: _useGemini
+                ? 'Gemini aktif; ketuk untuk menonaktifkan'
+                : 'Aktifkan Gemini (perlu persetujuan)',
+            onPressed: _sending ? null : _configureGemini,
+            icon: Icon(
+              Icons.auto_awesome,
+              color: _useGemini ? AppTheme.primary : null,
+            ),
+          ),
+          IconButton(
             tooltip: 'Perbarui data personal',
             onPressed: _refreshingData ? null : _refreshPersonalData,
             icon: _refreshingData
@@ -274,7 +366,9 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
-          'RAG lokal mencari catatan check-in dan sampel wearable yang paling relevan untuk menyusun jawaban di perangkat; data tidak dikirim ke AI pihak ketiga. Riwayat chat tersimpan lokal dan tidak dienkripsi oleh fitur ini; Anda dapat menghapusnya kapan saja. Bukan diagnosis.',
+          _useGemini
+              ? 'Gemini aktif dengan persetujuan Anda: pertanyaan dan bukti kesehatan terpilih dikirim melalui backend ke Google Gemini. Riwayat chat dan profil tidak dikirim. Ketuk ikon Gemini untuk mematikan. Rujukan tetap dicari lokal; bukan diagnosis.'
+              : 'RAG lokal mencari catatan check-in dan sampel wearable yang relevan. Tidak ada data yang dikirim ke AI pihak ketiga selama Gemini nonaktif. Ketuk ikon Gemini bila ingin mengaktifkannya. Riwayat tersimpan lokal dan tidak dienkripsi oleh fitur ini; bukan diagnosis.',
           style: AppTheme.font(
             size: 11,
             color: AppTheme.textSecondary,
@@ -418,6 +512,7 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
             if (!isUser && message.supportingRecords > 0) ...[
               const SizedBox(height: 5),
               Text(
+                '${message.usedGemini ? 'Jawaban Gemini • ' : ''}'
                 'Rujukan lokal: ${message.supportingRecords} catatan/sampel',
                 style: AppTheme.font(size: 10, color: AppTheme.textMuted),
               ),

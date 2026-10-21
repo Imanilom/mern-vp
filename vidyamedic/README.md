@@ -62,6 +62,13 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
 - Kontak darurat keluarga / caregiver.
 - Ekspor laporan kesehatan ringkas (PDF & WhatsApp sharing).
 
+### 9. 💬 Wawasan Personal dengan Gemini
+- RAG lokal memilih catatan check-in dan sampel wearable yang paling relevan sebelum jawaban dibuat.
+- Gemini hanya menerima pertanyaan dan bukti terpilih setelah pengguna menyetujui; riwayat chat, profil, dan API key tidak dikirim oleh aplikasi.
+- Pengguna dapat menonaktifkan Gemini kapan saja dan tetap memakai jawaban lokal.
+- API key disimpan di environment backend (`GEMINI_API_KEY`), bukan di source code atau aplikasi Flutter. `GEMINI_MODEL` dapat diatur opsional; default backend adalah `gemini-2.5-flash`.
+- Model tetap dibatasi untuk rangkuman non-diagnostik. Hitungan terukur berasal dari analisis lokal, bukan hasil tebakan model.
+
 ---
 
 ## 🛠️ Arsitektur & Teknologi
@@ -119,6 +126,9 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
    ```bash
    flutter test
    ```
+
+### Konfigurasi Gemini (opsional)
+Tambahkan `GEMINI_API_KEY` ke environment backend API. Contoh nama variabel tersedia di `.env.example`; jangan memasukkan key ke aplikasi Flutter, repositori, atau log. Endpoint Gemini hanya dapat digunakan oleh pengguna terautentikasi dan dibatasi jumlah permintaannya. Tanpa key backend, chatbot tetap berfungsi lokal dan menampilkan alasan saat Gemini tidak tersedia.
 
 ---
 

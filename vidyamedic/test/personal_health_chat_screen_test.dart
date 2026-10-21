@@ -114,4 +114,43 @@ void main() {
     expect(find.text('Cara mencatat data'), findsOneWidget);
     expect(find.text('Coba topik lain'), findsOneWidget);
   });
+
+  testWidgets('requires consent before enabling Gemini', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState()..userProfile.name = 'Pasien persetujuan';
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: state,
+        child: const MaterialApp(home: PersonalHealthChatScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byTooltip('Aktifkan Gemini (perlu persetujuan)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aktifkan Gemini?'), findsOneWidget);
+    expect(
+      find.textContaining(
+          'akan dikirim melalui backend VidyaMedic ke Google Gemini'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Setuju, aktifkan'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Gemini aktif; ketuk untuk menonaktifkan'),
+        findsOneWidget);
+    expect(
+      find.textContaining('Gemini aktif dengan persetujuan Anda'),
+      findsOneWidget,
+    );
+    expect(
+      (await SharedPreferences.getInstance()).getBool(
+        'vidyamedic_personal_chat_gemini_consent_v1_Pasien%20persetujuan',
+      ),
+      isTrue,
+    );
+  });
 }

@@ -705,6 +705,43 @@ class ApiService {
     }
   }
 
+  /// POST /api/patient-app/chat/gemini
+  static Future<ApiResponse<String>> generatePersonalChatAnswer({
+    required String question,
+    required List<Map<String, dynamic>> evidence,
+    required String localSummary,
+  }) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(ApiConfig.personalChatGeminiEndpoint),
+            headers: _headers(),
+            body: jsonEncode({
+              'question': question,
+              'evidence': evidence,
+              'local_summary': localSummary,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+      return _handleResponse<String>(
+        res,
+        (data) {
+          if (data is! Map<String, dynamic> ||
+              data['answer'] is! String ||
+              (data['answer'] as String).trim().isEmpty) {
+            throw const FormatException('Jawaban Gemini tidak valid.');
+          }
+          return (data['answer'] as String).trim();
+        },
+      );
+    } catch (error) {
+      return ApiResponse.error(
+        'Tidak dapat menghubungi Gemini: $error',
+        statusCode: 0,
+      );
+    }
+  }
+
   /// GET /api/patient-app/wearable/samples
   static Future<ApiResponse<List<dynamic>>> getWearableSamples({
     String? from,

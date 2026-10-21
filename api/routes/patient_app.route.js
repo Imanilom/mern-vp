@@ -36,8 +36,10 @@ import {
   updatePatientAppActionStatus,
 } from '../controllers/patient_app.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
+import personalChatRouter from './personal_chat.route.js';
 
 const router = express.Router();
+router.use('/chat', personalChatRouter);
 
 const registrationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

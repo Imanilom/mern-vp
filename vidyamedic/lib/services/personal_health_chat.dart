@@ -76,6 +76,7 @@ class PersonalChatMessage {
     required this.createdAt,
     this.quickActions = const [],
     this.supportingRecords = 0,
+    this.usedGemini = false,
   });
 
   final PersonalChatRole role;
@@ -83,6 +84,7 @@ class PersonalChatMessage {
   final DateTime createdAt;
   final List<PersonalChatQuickAction> quickActions;
   final int supportingRecords;
+  final bool usedGemini;
 
   Map<String, dynamic> toJson() => {
         'role': role.name,
@@ -95,6 +97,7 @@ class PersonalChatMessage {
                 })
             .toList(),
         'supporting_records': supportingRecords,
+        'used_gemini': usedGemini,
       };
 
   factory PersonalChatMessage.fromJson(Map<String, dynamic> json) {
@@ -128,6 +131,7 @@ class PersonalChatMessage {
       createdAt: createdAt,
       quickActions: quickActions,
       supportingRecords: (json['supporting_records'] as num?)?.toInt() ?? 0,
+      usedGemini: json['used_gemini'] == true,
     );
   }
 }
@@ -204,6 +208,124 @@ class PersonalHealthChatModel {
             ]
           : const [],
     );
+  }
+
+  List<Map<String, dynamic>> buildGeminiEvidence({
+    required String question,
+    required AppState state,
+    required List<PersonalChatMessage> history,
+  }) {
+    final normalized = question.toLowerCase().trim();
+    final effectiveQuestion = _isFollowUp(normalized)
+        ? _previousUserQuestion(history) ?? normalized
+        : normalized;
+    final evidence = <Map<String, dynamic>>[];
+
+    for (final checkIn in _retrieveCheckIns(effectiveQuestion, state)) {
+      final facts = _checkInSummary(checkIn);
+      if (facts == null) continue;
+      evidence.add({
+        'source': 'check_in',
+        'recorded_at': checkIn['recorded_at']?.toString(),
+        'facts': facts,
+      });
+    }
+
+    final plan = _planWearableAnalysis(effectiveQuestion);
+    if (plan != null) {
+      final now = DateTime.now();
+      final observations = <_WearableObservation>[];
+      for (final sample in state.wearableSamples) {
+        if (sample['is_simulated'] == true) continue;
+        final recordedAt =
+            DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
+        final value = _sampleValue(plan.metric, sample);
+        if (recordedAt == null ||
+            value == null ||
+            recordedAt.isAfter(now) ||
+            (plan.window != null &&
+                now.difference(recordedAt) > plan.window!)) {
+          continue;
+        }
+        final range = plan.calendarRange;
+        if (range != null &&
+            (recordedAt.isBefore(range.start) ||
+                !recordedAt.isBefore(range.end))) {
+          continue;
+        }
+        observations.add(
+          _WearableObservation(value: value, recordedAt: recordedAt),
+        );
+      }
+      observations.sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
+      for (final observation in observations.skip(
+        observations.length > 8 ? observations.length - 8 : 0,
+      )) {
+        evidence.add({
+          'source': 'wearable_sample',
+          'recorded_at': observation.recordedAt.toIso8601String(),
+          'metric': _metricName(plan.metric),
+          'value': _formatNumber(observation.value),
+          'unit': _metricUnit(plan.metric),
+        });
+      }
+      final current = state.wearable;
+      final currentValue = _sampleValue(plan.metric, {
+        'heart_rate_bpm': current.heartRate,
+        'steps': current.steps,
+        'rmssd_ms': current.hrvRmssd,
+      });
+      final currentTime = current.lastSync;
+      final currentMatchesRange = currentTime != null &&
+          !currentTime.isAfter(now) &&
+          (plan.window == null ||
+              now.difference(currentTime) <= plan.window!) &&
+          (plan.calendarRange == null ||
+              (!currentTime.isBefore(plan.calendarRange!.start) &&
+                  currentTime.isBefore(plan.calendarRange!.end)));
+      if (observations.isEmpty &&
+          current.hasServerSamples &&
+          !current.isSimulated &&
+          currentValue != null &&
+          currentMatchesRange) {
+        evidence.add({
+          'source': 'wearable_sample',
+          'recorded_at': currentTime.toIso8601String(),
+          'metric': _metricName(plan.metric),
+          'value': _formatNumber(currentValue),
+          'unit': _metricUnit(plan.metric),
+        });
+      }
+      if (plan.metric == _HealthMetric.heartRate &&
+          _containsAny(effectiveQuestion, const [
+            'baseline',
+            'pola pribadi',
+          ])) {
+        final baseline = state.wearable.baselineHr > 0
+            ? state.wearable.baselineHr
+            : state.currentActivityBaseline.muHr;
+        if (baseline > 0) {
+          evidence.add({
+            'source': 'personal_baseline',
+            'metric': 'denyut jantung',
+            'value': baseline,
+            'unit': 'bpm',
+          });
+        }
+      }
+    }
+
+    if (_containsAny(effectiveQuestion, const ['capar', 'pola pribadi']) &&
+        state.hasCaparMetrics) {
+      final caparState = _caparState(state);
+      if (caparState != null) {
+        evidence.add({
+          'source': 'capar_summary',
+          'status': caparState,
+        });
+      }
+    }
+    return evidence.take(15).toList();
   }
 
   String reply({
@@ -489,6 +611,10 @@ class PersonalHealthChatModel {
           'cara menggunakan',
         ],
       );
+
+  bool isSafeForGemini(String question) =>
+      !_isClinicalOrUnsafeQuestion(question.toLowerCase().trim()) &&
+      !isGuidanceQuestion(question);
 
   _PersonalAnalysisPlan? _planWearableAnalysis(String question) {
     final metric = _metricFor(question);
