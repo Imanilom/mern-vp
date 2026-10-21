@@ -233,31 +233,7 @@ class PersonalHealthChatModel {
 
     final plan = _planWearableAnalysis(effectiveQuestion);
     if (plan != null) {
-      final now = DateTime.now();
-      final observations = <_WearableObservation>[];
-      for (final sample in state.wearableSamples) {
-        if (sample['is_simulated'] == true) continue;
-        final recordedAt =
-            DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
-        final value = _sampleValue(plan.metric, sample);
-        if (recordedAt == null ||
-            value == null ||
-            recordedAt.isAfter(now) ||
-            (plan.window != null &&
-                now.difference(recordedAt) > plan.window!)) {
-          continue;
-        }
-        final range = plan.calendarRange;
-        if (range != null &&
-            (recordedAt.isBefore(range.start) ||
-                !recordedAt.isBefore(range.end))) {
-          continue;
-        }
-        observations.add(
-          _WearableObservation(value: value, recordedAt: recordedAt),
-        );
-      }
-      observations.sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
+      final observations = _wearableObservations(plan, state);
       for (final observation in observations.skip(
         observations.length > 8 ? observations.length - 8 : 0,
       )) {
@@ -269,30 +245,14 @@ class PersonalHealthChatModel {
           'unit': _metricUnit(plan.metric),
         });
       }
-      final current = state.wearable;
-      final currentValue = _sampleValue(plan.metric, {
-        'heart_rate_bpm': current.heartRate,
-        'steps': current.steps,
-        'rmssd_ms': current.hrvRmssd,
-      });
-      final currentTime = current.lastSync;
-      final currentMatchesRange = currentTime != null &&
-          !currentTime.isAfter(now) &&
-          (plan.window == null ||
-              now.difference(currentTime) <= plan.window!) &&
-          (plan.calendarRange == null ||
-              (!currentTime.isBefore(plan.calendarRange!.start) &&
-                  currentTime.isBefore(plan.calendarRange!.end)));
-      if (observations.isEmpty &&
-          current.hasServerSamples &&
-          !current.isSimulated &&
-          currentValue != null &&
-          currentMatchesRange) {
+      for (final observation in observations.isEmpty
+          ? _currentWearableObservation(plan, state)
+          : const <_WearableObservation>[]) {
         evidence.add({
           'source': 'wearable_sample',
-          'recorded_at': currentTime.toIso8601String(),
+          'recorded_at': observation.recordedAt.toIso8601String(),
           'metric': _metricName(plan.metric),
-          'value': _formatNumber(currentValue),
+          'value': _formatNumber(observation.value),
           'unit': _metricUnit(plan.metric),
         });
       }
@@ -410,6 +370,23 @@ class PersonalHealthChatModel {
   ) {
     final checkIns = _checkIns(state);
     if (checkIns.isEmpty) return const [];
+    final range = _calendarRangeFor(question);
+    final dayMatch = RegExp(r'(\d{1,3})\s*hari').firstMatch(question);
+    final days = dayMatch == null ? null : int.tryParse(dayMatch.group(1)!);
+    final from = range?.start ??
+        (days != null && days > 0 && days <= 365
+            ? DateTime.now().subtract(Duration(days: days))
+            : null);
+    final rangedCheckIns = from == null
+        ? checkIns
+        : checkIns.where((checkIn) {
+            final date = DateTime.tryParse(
+              checkIn['recorded_at']?.toString() ?? '',
+            );
+            if (date == null || date.isBefore(from)) return false;
+            return range == null || date.isBefore(range.end);
+          }).toList();
+    if (rangedCheckIns.isEmpty) return const [];
     if (_containsAny(question, const [
       'wawasan',
       'insight',
@@ -418,16 +395,16 @@ class PersonalHealthChatModel {
       'ringkas',
       'rangkuman',
     ])) {
-      return checkIns.length <= 5
-          ? checkIns
-          : checkIns.sublist(checkIns.length - 5);
+      return rangedCheckIns.length <= 5
+          ? rangedCheckIns
+          : rangedCheckIns.sublist(rangedCheckIns.length - 5);
     }
 
     final queryTokens = _searchTokens(question);
     if (queryTokens.isEmpty) return const [];
     final ranked =
         <({Map<String, dynamic> checkIn, int score, DateTime date})>[];
-    for (final checkIn in checkIns) {
+    for (final checkIn in rangedCheckIns) {
       final index = _checkInSearchIndex(checkIn);
       final score = queryTokens.intersection(index).length;
       if (score == 0) continue;
@@ -558,46 +535,87 @@ class PersonalHealthChatModel {
     final checkIns = _retrieveCheckIns(effectiveQuestion, state).length;
     final plan = _planWearableAnalysis(effectiveQuestion);
     if (plan == null) return checkIns;
-    final metric = plan.metric;
+    final observations = _wearableObservations(plan, state);
+    return checkIns +
+        observations.length +
+        (observations.isEmpty
+            ? _currentWearableObservation(plan, state).length
+            : 0);
+  }
+
+  List<_WearableObservation> _wearableObservations(
+    _PersonalAnalysisPlan plan,
+    AppState state,
+  ) {
     final now = DateTime.now();
-    final realSamples = state.wearableSamples.where((sample) {
-      if (sample['is_simulated'] == true) return false;
-      final value = _sampleValue(metric, sample);
-      final recordedAt = DateTime.tryParse(
-        sample['recorded_at']?.toString() ?? '',
-      );
-      if (value == null || recordedAt == null || recordedAt.isAfter(now)) {
-        return false;
+    final preferHistory = plan.metric != _HealthMetric.steps &&
+        state.personalChatWearableHistory.isNotEmpty &&
+        (plan.window != null ||
+            plan.calendarRange != null ||
+            plan.operation != _AnalysisOperation.latest ||
+            state.wearableSamples.isEmpty);
+    final source = preferHistory
+        ? state.personalChatWearableHistory
+        : state.wearableSamples;
+    final observations = <_WearableObservation>[];
+    for (final sample in source) {
+      if (sample['is_simulated'] == true) continue;
+      final recordedAt =
+          DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
+      final value = _sampleValue(plan.metric, sample);
+      if (recordedAt == null ||
+          value == null ||
+          !value.isFinite ||
+          recordedAt.isAfter(now)) {
+        continue;
       }
-      if (plan.window != null && now.difference(recordedAt) > plan.window!) {
-        return false;
+      if (plan.window != null &&
+          now.difference(recordedAt) > plan.window!) {
+        continue;
       }
       final calendarRange = plan.calendarRange;
       if (calendarRange != null &&
           (recordedAt.isBefore(calendarRange.start) ||
               !recordedAt.isBefore(calendarRange.end))) {
-        return false;
+        continue;
       }
-      return true;
-    }).length;
-    final lastSync = state.wearable.lastSync;
-    final currentValue = _sampleValue(metric, {
-      'heart_rate_bpm': state.wearable.heartRate,
-      'steps': state.wearable.steps,
-      'rmssd_ms': state.wearable.hrvRmssd,
+      observations.add(
+        _WearableObservation(value: value, recordedAt: recordedAt),
+      );
+    }
+    observations.sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
+    return observations;
+  }
+
+  List<_WearableObservation> _currentWearableObservation(
+    _PersonalAnalysisPlan plan,
+    AppState state,
+  ) {
+    final current = state.wearable;
+    final recordedAt = current.lastSync;
+    if (!current.hasServerSamples ||
+        current.isSimulated ||
+        recordedAt == null) {
+      return const [];
+    }
+    final value = _sampleValue(plan.metric, {
+      'heart_rate_bpm': current.heartRate,
+      'steps': current.steps,
+      'rmssd_ms': current.hrvRmssd,
     });
-    final matchesCurrentWindow = lastSync != null &&
-        !lastSync.isAfter(now) &&
-        (plan.window == null || now.difference(lastSync) <= plan.window!) &&
-        (plan.calendarRange == null ||
-            (!lastSync.isBefore(plan.calendarRange!.start) &&
-                lastSync.isBefore(plan.calendarRange!.end)));
-    final hasCurrentFallback = realSamples == 0 &&
-        state.wearable.hasServerSamples &&
-        !state.wearable.isSimulated &&
-        currentValue != null &&
-        matchesCurrentWindow;
-    return checkIns + realSamples + (hasCurrentFallback ? 1 : 0);
+    final now = DateTime.now();
+    if (value == null ||
+        recordedAt.isAfter(now) ||
+        (plan.window != null &&
+            now.difference(recordedAt) > plan.window!)) {
+      return const [];
+    }
+    final range = plan.calendarRange;
+    if (range != null &&
+        (recordedAt.isBefore(range.start) || !recordedAt.isBefore(range.end))) {
+      return const [];
+    }
+    return [_WearableObservation(value: value, recordedAt: recordedAt)];
   }
 
   bool isGuidanceQuestion(String question) => _containsAny(
@@ -719,51 +737,10 @@ class PersonalHealthChatModel {
     AppState state,
   ) {
     final now = DateTime.now();
-    final observations = <_WearableObservation>[];
-    for (final sample in state.wearableSamples) {
-      if (sample['is_simulated'] == true) continue;
-      final recordedAt =
-          DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
-      final value = _sampleValue(plan.metric, sample);
-      if (recordedAt == null || value == null || !value.isFinite) continue;
-      if (plan.window != null &&
-          (recordedAt.isAfter(now) ||
-              now.difference(recordedAt) > plan.window!)) {
-        continue;
-      }
-      final calendarRange = plan.calendarRange;
-      if (calendarRange != null &&
-          (recordedAt.isBefore(calendarRange.start) ||
-              !recordedAt.isBefore(calendarRange.end))) {
-        continue;
-      }
-      observations.add(
-        _WearableObservation(value: value, recordedAt: recordedAt),
-      );
+    final observations = _wearableObservations(plan, state);
+    if (observations.isEmpty) {
+      observations.addAll(_currentWearableObservation(plan, state));
     }
-    final current = state.wearable;
-    if (observations.isEmpty &&
-        current.hasServerSamples &&
-        !current.isSimulated &&
-        current.lastSync != null) {
-      final value = switch (plan.metric) {
-        _HealthMetric.heartRate => current.heartRate.toDouble(),
-        _HealthMetric.steps => current.steps.toDouble(),
-        _HealthMetric.hrv => current.hrvRmssd.toDouble(),
-      };
-      final sampleAge = now.difference(current.lastSync!).abs();
-      if (value > 0 &&
-          !current.lastSync!.isAfter(now) &&
-          (plan.window == null || sampleAge <= plan.window!) &&
-          (plan.calendarRange == null ||
-              (!current.lastSync!.isBefore(plan.calendarRange!.start) &&
-                  current.lastSync!.isBefore(plan.calendarRange!.end)))) {
-        observations.add(
-          _WearableObservation(value: value, recordedAt: current.lastSync!),
-        );
-      }
-    }
-    observations.sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
 
     final metricName = _metricName(plan.metric);
     final unit = _metricUnit(plan.metric);
@@ -779,7 +756,14 @@ class PersonalHealthChatModel {
       }
       final requestedWindow =
           'pada sampel wearable yang dimuat${plan.calendarRange != null ? ' untuk ${plan.calendarRange!.label}' : plan.window == null ? '' : ' dalam ${plan.window!.inDays} hari terakhir'}';
-      return 'Saya memeriksa $metricName $requestedWindow, tetapi tidak menemukan sampel nyata yang cocok. Data demo tidak dihitung. Perbarui sinkronisasi atau coba rentang waktu yang lebih luas.';
+      final baselineNote = plan.metric == _HealthMetric.heartRate &&
+              state.wearable.baselineHr > 0
+          ? ' Baseline pribadi ${state.wearable.baselineHr} bpm tersedia, tetapi baseline bukan sampel historis untuk rentang ini.'
+          : '';
+      final historyNote = state.personalChatHistoryError == null
+          ? ''
+          : ' Riwayat lama belum berhasil dimuat: ${state.personalChatHistoryError}';
+      return 'Saya memeriksa $metricName $requestedWindow, tetapi belum menemukan sampel nyata yang cocok pada riwayat yang dimuat. Data demo tidak dihitung.$baselineNote$historyNote Perbarui data lalu coba lagi.';
     }
 
     final values = observations.map((item) => item.value).toList();
@@ -952,12 +936,26 @@ class PersonalHealthChatModel {
       '${date.toLocal().day.toString().padLeft(2, '0')}/${date.toLocal().month.toString().padLeft(2, '0')}/${date.toLocal().year}';
 
   List<Map<String, dynamic>> _checkIns(AppState state) {
-    final raw = state.dailySummaryData?['check_ins'];
-    if (raw is! List) return const [];
-    return raw
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList()
+    final records = <Map<String, dynamic>>[
+      ...state.personalChatCheckIns.map(Map<String, dynamic>.from),
+    ];
+    final daily = state.dailySummaryData?['check_ins'];
+    if (daily is List) {
+      records.addAll(
+        daily.whereType<Map>().map(
+              (item) => Map<String, dynamic>.from(item),
+            ),
+      );
+    }
+    final unique = <String, Map<String, dynamic>>{};
+    for (final record in records) {
+      final id = record['_id']?.toString();
+      final recordedAt = record['recorded_at']?.toString() ?? '';
+      unique[id != null && id.isNotEmpty
+          ? id
+          : '${recordedAt}_${_checkInSummary(record) ?? ''}'] = record;
+    }
+    return unique.values.toList()
       ..sort((a, b) {
         final first = DateTime.tryParse(a['recorded_at']?.toString() ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);

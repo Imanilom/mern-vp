@@ -184,7 +184,7 @@ void main() {
         history: const [],
       );
 
-      expect(answer, contains('tidak menemukan sampel nyata'));
+      expect(answer, contains('belum menemukan sampel nyata yang cocok'));
       expect(answer, contains('Data demo tidak dihitung'));
     });
 
@@ -232,6 +232,68 @@ void main() {
       expect(answer, contains('durasi 7.0 jam'));
       expect(answer, contains('kualitas baik'));
       expect(answer, isNot(contains('stres tercatat tinggi')));
+    });
+
+    test('retrieves historical check-ins beyond the current daily summary', () {
+      state.dailySummaryData = {
+        'check_ins': [
+          {'recorded_at': DateTime.now().toIso8601String(), 'activity': 'work'},
+        ],
+      };
+      state.personalChatCheckIns = [
+        {
+          '_id': 'yesterday-sleep',
+          'recorded_at':
+              DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+          'sleep': {'duration_minutes': 450, 'quality': 'good'},
+        },
+      ];
+
+      final answer = const PersonalHealthChatModel().reply(
+        question: 'Apa catatan tidur saya kemarin?',
+        state: state,
+        history: const [],
+      );
+
+      expect(answer, contains('durasi 7.5 jam'));
+      expect(answer, contains('kualitas baik'));
+    });
+
+    test('uses historical wearable summaries and baseline for yesterday', () {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      state.wearableSamples = [
+        {
+          'recorded_at': DateTime.now().toIso8601String(),
+          'heart_rate_bpm': 120,
+          'is_simulated': false,
+        },
+      ];
+      state.personalChatWearableHistory = [
+        {
+          'recorded_at':
+              today              .subtract(const Duration(days: 1))
+              .add(const Duration(hours: 3)).toIso8601String(),
+          'heart_rate_bpm': 80,
+          'is_simulated': false,
+        },
+        {
+          'recorded_at':
+              today.subtract(const Duration(hours: 12)).toIso8601String(),
+          'heart_rate_bpm': 90,
+          'is_simulated': false,
+        },
+      ];
+
+      final answer = const PersonalHealthChatModel().reply(
+        question: 'Berapa denyut jantung terakhir saya kemarin?',
+        state: state,
+        history: const [],
+      );
+
+      expect(answer, contains('90 bpm'));
+      expect(answer, contains('baseline pribadi 70 bpm'));
+      expect(answer, isNot(contains('120 bpm')));
     });
 
     test('offers recovery shortcuts when retrieved data is insufficient', () {

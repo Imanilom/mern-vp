@@ -229,6 +229,11 @@ class AppState extends ChangeNotifier {
   Map<String, dynamic>? overviewData;
   Map<String, dynamic>? dailySummaryData;
   List<Map<String, dynamic>> wearableSamples = [];
+  List<Map<String, dynamic>> personalChatCheckIns = [];
+  List<Map<String, dynamic>> personalChatWearableHistory = [];
+  String? personalChatHistoryError;
+  bool personalChatHistoryLoaded = false;
+  bool isLoadingPersonalChatHistory = false;
   Map<String, dynamic>? get reasoningPipeline {
     final capar = rawCaparInsights?['capar'];
     final pipeline = capar is Map ? capar['reasoning_pipeline'] : null;
@@ -259,6 +264,7 @@ class AppState extends ChangeNotifier {
       fetchDailySummary(),
       fetchRecentEvents(),
       fetchWearableSamples(),
+      fetchPersonalChatHistory(),
     ]);
     isRefreshing = false;
     notifyListeners();
@@ -684,6 +690,54 @@ class AppState extends ChangeNotifier {
       dataError = res.message ?? 'Gagal memuat data wearable dari server.';
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<void> fetchPersonalChatHistory() async {
+    if (!isAuthenticated || isLoadingPersonalChatHistory) return;
+    isLoadingPersonalChatHistory = true;
+    notifyListeners();
+    final now = DateTime.now();
+    final checkInFuture = ApiService.getCheckIns(
+      from: now.subtract(const Duration(days: 365)).toUtc().toIso8601String(),
+      to: now.toUtc().toIso8601String(),
+      limit: 100,
+    );
+    final wearableFuture = ApiService.getWearableHistory(
+      from: now.subtract(const Duration(days: 30)),
+      to: now,
+      bucketMinutes: 60,
+    );
+    try {
+      await Future.wait([
+        checkInFuture.then<void>((_) {}),
+        wearableFuture.then<void>((_) {}),
+      ]);
+      final checkInResult = await checkInFuture;
+      final wearableResult = await wearableFuture;
+
+      final errors = <String>[];
+      if (checkInResult.success && checkInResult.data != null) {
+        personalChatCheckIns = checkInResult.data!
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      } else {
+        errors.add(checkInResult.message ?? 'Riwayat check-in tidak termuat.');
+      }
+      if (wearableResult.success && wearableResult.data != null) {
+        personalChatWearableHistory = wearableResult.data!
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      } else {
+        errors.add(wearableResult.message ?? 'Riwayat wearable tidak termuat.');
+      }
+      personalChatHistoryError = errors.isEmpty ? null : errors.join(' ');
+      personalChatHistoryLoaded = true;
+    } finally {
+      isLoadingPersonalChatHistory = false;
+      notifyListeners();
     }
   }
 

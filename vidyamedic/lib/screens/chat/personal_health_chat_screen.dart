@@ -49,6 +49,14 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
       accountId: consentAccountId,
     );
     unawaited(_loadHistory());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final currentState = context.read<AppState>();
+      if (currentState.isAuthenticated &&
+          !currentState.personalChatHistoryLoaded) {
+        unawaited(currentState.fetchPersonalChatHistory());
+      }
+    });
   }
 
   @override
@@ -140,6 +148,13 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
   Future<void> _send([String? preset]) async {
     final question = (preset ?? _inputController.text).trim();
     if (question.isEmpty || _sending || _loadingHistory) return;
+    final appState = context.read<AppState>();
+    if (appState.isAuthenticated && !appState.personalChatHistoryLoaded) {
+      _showMessage(
+        'Riwayat kesehatan masih dimuat. Coba kirim pertanyaan kembali sebentar lagi.',
+      );
+      return;
+    }
     if (_historyError != null) {
       _showMessage('Selesaikan masalah riwayat chat sebelum mengirim pesan.');
       return;
@@ -223,9 +238,14 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
         state.fetchDailySummary(DateTime.now()),
         state.fetchCaparInsights(),
         state.fetchWearableSamples().then<void>((_) {}),
+        state.fetchPersonalChatHistory(),
       ]);
       if (!mounted) return;
-      if (state.dataError != null) {
+      if (state.personalChatHistoryError != null) {
+        _showMessage(
+          'Riwayat chatbot belum lengkap: ${state.personalChatHistoryError}',
+        );
+      } else if (state.dataError != null) {
         _showMessage(state.dataError!);
       } else {
         _showMessage('Data personal berhasil diperbarui.');
@@ -342,7 +362,13 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
         child: Column(
           children: [
             _privacyNotice(),
+            if (context.watch<AppState>().isLoadingPersonalChatHistory)
+              const LinearProgressIndicator(minHeight: 2),
             if (_historyError != null) _historyErrorBanner(),
+            if (context.watch<AppState>().personalChatHistoryError != null)
+              _personalHistoryErrorBanner(
+                context.watch<AppState>().personalChatHistoryError!,
+              ),
             Expanded(
               child: _loadingHistory
                   ? const Center(child: CircularProgressIndicator())
@@ -395,6 +421,30 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
             ),
             TextButton(
               onPressed: _loadHistory,
+              child: const Text('Coba lagi'),
+            ),
+          ],
+        ),
+      );
+
+  Widget _personalHistoryErrorBanner(String error) => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppTheme.statusOrangeBg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Sebagian riwayat lama tidak termuat: $error',
+                style: AppTheme.font(size: 11, color: AppTheme.textPrimary),
+              ),
+            ),
+            TextButton(
+              onPressed: _refreshingData ? null : _refreshPersonalData,
               child: const Text('Coba lagi'),
             ),
           ],
@@ -534,9 +584,8 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
                     .map(
                       (action) => ActionChip(
                         label: Text(action.label),
-                        onPressed: _sending
-                            ? null
-                            : () => _runQuickAction(action),
+                        onPressed:
+                            _sending ? null : () => _runQuickAction(action),
                         visualDensity: VisualDensity.compact,
                       ),
                     )
