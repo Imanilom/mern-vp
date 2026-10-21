@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
 import '../../services/api_service.dart';
+import '../../services/deviation_prompt_model.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
 import '../pedagogy/pedagogy_screen_what_changed.dart';
@@ -19,6 +20,7 @@ import '../summary/daily_summary_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/wearable_pairing_screen.dart';
 import '../actions/action_tracking_screen.dart';
+import '../chat/personal_health_chat_screen.dart';
 import '../impact/impact_dashboard_screen.dart';
 import '../gamification/gamification_screen.dart';
 import 'profile_snapshot_card.dart';
@@ -90,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Pola pribadi menyimpang'),
+          title: const Text('Ada perubahan pada pola tubuh Anda'),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 420),
             child: SingleChildScrollView(
@@ -99,35 +101,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    followUp.message ??
-                        'CAPAR menemukan perubahan terhadap baseline pribadi. Mohon isi konteks agar sistem dapat membandingkan kondisi pada awal deviasi hingga puncaknya.',
+                    _deviationPromptMessage(appState, followUp),
                   ),
                   const SizedBox(height: 12),
                   if (followUp.onsetTime != null)
-                    Text('Onset: ${_formatDateTime(followUp.onsetTime!)}'),
-                  if (followUp.peakTime != null)
-                    Text('Puncak: ${_formatDateTime(followUp.peakTime!)}'),
-                  if (followUp.deviationDistance != null)
                     Text(
-                      'Jarak dari baseline: ${followUp.deviationDistance!.toStringAsFixed(2)}',
+                      'Mulai terdeteksi: ${_formatDateTime(followUp.onsetTime!)}',
+                    ),
+                  if (followUp.peakTime != null)
+                    Text(
+                      'Perubahan tertinggi: ${_formatDateTime(followUp.peakTime!)}',
                     ),
                   if (followUp.mainFactors.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Kontributor fitur terbesar: ${_factorLabel(followUp.mainFactors.first)}',
+                      'Faktor utama yang terpantau: ${_factorLabel(followUp.mainFactors.first)}',
                       style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                  if (followUp.referenceThresholds != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Ambang referensi CAPAR: ${followUp.referenceThresholds}',
-                      style: const TextStyle(fontSize: 12),
                     ),
                   ],
                   const SizedBox(height: 10),
                   const Text(
-                    'Angka ini adalah pembanding statistik terhadap baseline Anda, bukan ambang klinis atau diagnosis. Konteks yang Anda isi adalah laporan pribadi, bukan bukti penyebab.',
+                    'Perbandingan ini berdasarkan pola pribadi Anda, bukan diagnosis. Catatan konteks membantu memahami situasi saat itu, tetapi tidak membuktikan penyebab perubahan.',
                     style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                   ),
                 ],
@@ -137,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Isi konteks deviasi'),
+              child: const Text('Ceritakan kondisi saat itu'),
             ),
           ],
         ),
@@ -151,15 +145,39 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  String _deviationPromptMessage(
+    AppState appState,
+    CaparFollowUpPrompt followUp,
+  ) {
+    final rawCheckIns = appState.dailySummaryData?['check_ins'];
+    final checkIns = rawCheckIns is List
+        ? rawCheckIns
+            .whereType<Map>()
+            .map((checkIn) => Map<String, dynamic>.from(checkIn))
+            .toList()
+        : const <Map<String, dynamic>>[];
+    return const DeviationPromptModel().generate(
+      followUp: followUp,
+      wearable: appState.wearable,
+      checkIns: checkIns,
+    );
+  }
+
   String _formatDateTime(DateTime value) =>
       '${MaterialLocalizations.of(context).formatFullDate(value.toLocal())} ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(value.toLocal()))}';
 
   String _factorLabel(Map<String, dynamic> factor) {
-    final label =
-        factor['label'] ?? factor['feature'] ?? factor['key'] ?? 'Fitur';
-    final contribution =
-        factor['contribution_pct'] ?? factor['contribution'] ?? factor['share'];
-    return contribution == null ? '$label' : '$label ($contribution)';
+    final feature =
+        (factor['feature'] ?? factor['key'] ?? '').toString().toLowerCase();
+    final label = factor['label']?.toString() ??
+        switch (feature) {
+          'delta_hr' || 'hr_delta' => 'perubahan denyut jantung',
+          'hr_mean' => 'denyut jantung rata-rata',
+          'hr_slope' => 'kenaikan denyut jantung',
+          'dfa_alpha1' => 'pola ritme jantung',
+          _ => feature.isEmpty ? 'data tubuh' : feature.replaceAll('_', ' '),
+        };
+    return label;
   }
 
   void _queueNoDataPrompt() {
@@ -723,6 +741,39 @@ class _PedagogyDashboard extends StatelessWidget {
               ),
 
               const ProfileSnapshotCard(),
+
+              Card(
+                margin: const EdgeInsets.only(top: 12),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppTheme.primarySoft,
+                    child: Icon(Icons.chat_bubble_outline,
+                        color: AppTheme.primary),
+                  ),
+                  title: Text(
+                    'Tanya Wawasan Personal',
+                    style: AppTheme.font(
+                      size: 14,
+                      weight: FontWeight.w800,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Tanya tentang catatan dan pola kesehatan Anda',
+                    style: AppTheme.font(
+                      size: 11.5,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PersonalHealthChatScreen(),
+                    ),
+                  ),
+                ),
+              ),
 
               _HomeGamificationCard(
                 recordedToday: _hasRealWearableDataToday(s.wearableSamples),
