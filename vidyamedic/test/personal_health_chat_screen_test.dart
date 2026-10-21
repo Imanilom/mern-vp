@@ -46,6 +46,8 @@ void main() {
         child: const MaterialApp(home: PersonalHealthChatScreen()),
       ),
     );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     await tester.pumpAndSettle();
 
     expect(find.text('Bagaimana denyut jantung saya dibanding baseline?'),
@@ -76,5 +78,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Wawasan Personal'), findsOneWidget);
+  });
+
+  testWidgets('shows recovery shortcuts when personal data is missing',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState()
+      ..userProfile.name = 'Pasien tanpa data'
+      ..wearable = WearableData();
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: state,
+        child: const MaterialApp(home: PersonalHealthChatScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+    final sleepSuggestion = find.text('Apa yang tercatat tentang tidur saya?');
+    await tester.scrollUntilVisible(
+      sleepSuggestion,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(sleepSuggestion);
+    await tester.pumpAndSettle();
+
+    expect(
+        find.text(
+            'Belum ada catatan tidur yang tersedia pada ringkasan yang dimuat.'),
+        findsOneWidget);
+    expect(find.text('Perbarui data'), findsOneWidget);
+    expect(find.text('Cara mencatat data'), findsOneWidget);
+    expect(find.text('Coba topik lain'), findsOneWidget);
   });
 }

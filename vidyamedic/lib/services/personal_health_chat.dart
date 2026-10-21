@@ -45,21 +45,56 @@ class _WearableObservation {
   final DateTime recordedAt;
 }
 
+class PersonalChatQuickAction {
+  const PersonalChatQuickAction({
+    required this.label,
+    this.prompt,
+  });
+
+  final String label;
+  final String? prompt;
+}
+
+class PersonalChatResponse {
+  const PersonalChatResponse({
+    required this.text,
+    required this.supportingRecords,
+    this.quickActions = const [],
+  });
+
+  final String text;
+  final int supportingRecords;
+  final List<PersonalChatQuickAction> quickActions;
+
+  bool get hasInsufficientData => quickActions.isNotEmpty;
+}
+
 class PersonalChatMessage {
   const PersonalChatMessage({
     required this.role,
     required this.text,
     required this.createdAt,
+    this.quickActions = const [],
+    this.supportingRecords = 0,
   });
 
   final PersonalChatRole role;
   final String text;
   final DateTime createdAt;
+  final List<PersonalChatQuickAction> quickActions;
+  final int supportingRecords;
 
   Map<String, dynamic> toJson() => {
         'role': role.name,
         'text': text,
         'created_at': createdAt.toIso8601String(),
+        'quick_actions': quickActions
+            .map((action) => {
+                  'label': action.label,
+                  'prompt': action.prompt,
+                })
+            .toList(),
+        'supporting_records': supportingRecords,
       };
 
   factory PersonalChatMessage.fromJson(Map<String, dynamic> json) {
@@ -73,10 +108,26 @@ class PersonalChatMessage {
     if (text is! String || createdAt == null) {
       throw const FormatException('Format pesan chat pribadi tidak valid.');
     }
+    final rawActions = json['quick_actions'];
+    final quickActions = rawActions is List
+        ? rawActions.whereType<Map>().map((action) {
+            final label = action['label'];
+            final prompt = action['prompt'];
+            if (label is! String || (prompt != null && prompt is! String)) {
+              throw const FormatException('Aksi cepat chat tidak valid.');
+            }
+            return PersonalChatQuickAction(
+              label: label,
+              prompt: prompt as String?,
+            );
+          }).toList()
+        : const <PersonalChatQuickAction>[];
     return PersonalChatMessage(
       role: role,
       text: text,
       createdAt: createdAt,
+      quickActions: quickActions,
+      supportingRecords: (json['supporting_records'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -127,6 +178,34 @@ class PersonalChatHistoryStore {
 class PersonalHealthChatModel {
   const PersonalHealthChatModel();
 
+  PersonalChatResponse respond({
+    required String question,
+    required AppState state,
+    required List<PersonalChatMessage> history,
+  }) {
+    final text = reply(question: question, state: state, history: history);
+    final insufficient =
+        !isGuidanceQuestion(question) && _isInsufficientAnswer(text);
+    final records = _supportingRecordCount(question, state, history);
+    return PersonalChatResponse(
+      text: text,
+      supportingRecords: records,
+      quickActions: insufficient
+          ? const [
+              PersonalChatQuickAction(label: 'Perbarui data'),
+              PersonalChatQuickAction(
+                label: 'Cara mencatat data',
+                prompt: 'Bagaimana cara mengisi catatan kesehatan saya?',
+              ),
+              PersonalChatQuickAction(
+                label: 'Coba topik lain',
+                prompt: 'Apa saja yang bisa saya tanyakan?',
+              ),
+            ]
+          : const [],
+    );
+  }
+
   String reply({
     required String question,
     required AppState state,
@@ -136,62 +215,65 @@ class PersonalHealthChatModel {
     final followUp = _isFollowUp(normalized);
     final effectiveQuestion =
         followUp ? _previousUserQuestion(history) ?? normalized : normalized;
-    final checkIns = _checkIns(state);
+    final checkIns = _retrieveCheckIns(effectiveQuestion, state);
 
     final plan = _planWearableAnalysis(effectiveQuestion);
     final answer = _isClinicalOrUnsafeQuestion(effectiveQuestion)
         ? 'Saya tidak dapat mendiagnosis, menilai apakah kondisi Anda aman/normal, atau memberi saran medis dari data wearable. Saya hanya dapat membantu merangkum dan menghitung catatan personal. Untuk keluhan berat atau darurat, hubungi tenaga medis atau layanan darurat.'
-        : _requiresPairedData(effectiveQuestion)
-            ? 'Pertanyaan ini membutuhkan catatan berpasangan dari beberapa hari agar hubungan atau perbandingan dapat dihitung. Data personal yang saat ini dimuat belum cukup untuk menyimpulkannya. Sinkronkan riwayat untuk rentang lebih panjang; saya tidak akan menebak hubungan dari satu catatan.'
-            : plan != null
-                ? _runWearableAnalysis(plan, state)
-                : _containsAny(effectiveQuestion, const [
-                    'wawasan',
-                    'insight',
-                    'analisis',
-                    'pola',
-                    'ringkas',
-                    'rangkuman',
-                  ])
-                    ? _insightReply(state, checkIns)
+        : isGuidanceQuestion(effectiveQuestion)
+            ? 'Anda bisa mulai dengan langkah ini: (1) tekan Perbarui data agar wearable, check-in, dan CAPAR dimuat; (2) isi check-in harian tentang tidur, aktivitas, stres, dan gejala yang benar-benar dialami; (3) tanyakan satu hal yang spesifik, misalnya “Berapa rata-rata denyut jantung 7 hari terakhir?” atau “Apa yang tercatat tentang tidur saya?”; (4) sebutkan rentang waktu dan metrik yang ingin dibandingkan. Bila data belum cukup, gunakan tombol saran yang muncul untuk memperbarui data atau mencoba pertanyaan lain. Jawaban merujuk catatan yang ada dan bukan diagnosis.'
+            : _requiresPairedData(effectiveQuestion)
+                ? 'Pertanyaan ini membutuhkan catatan berpasangan dari beberapa hari agar hubungan atau perbandingan dapat dihitung. Data personal yang saat ini dimuat belum cukup untuk menyimpulkannya. Sinkronkan riwayat untuk rentang lebih panjang; saya tidak akan menebak hubungan dari satu catatan.'
+                : plan != null
+                    ? _runWearableAnalysis(plan, state)
                     : _containsAny(effectiveQuestion, const [
-                        'tidur',
-                        'istirahat',
-                        'sleep',
+                        'wawasan',
+                        'insight',
+                        'analisis',
+                        'pola',
+                        'ringkas',
+                        'rangkuman',
                       ])
-                        ? _sleepReply(checkIns)
+                        ? _insightReply(state, checkIns)
                         : _containsAny(effectiveQuestion, const [
-                            'stres',
-                            'stress',
-                            'tekanan',
+                            'tidur',
+                            'istirahat',
+                            'sleep',
                           ])
-                            ? _stressReply(checkIns)
+                            ? _sleepReply(checkIns)
                             : _containsAny(effectiveQuestion, const [
-                                'gejala',
-                                'keluhan',
-                                'sakit',
-                                'berdebar',
-                                'pusing',
+                                'stres',
+                                'stress',
+                                'tekanan',
                               ])
-                                ? _symptomReply(checkIns)
+                                ? _stressReply(checkIns)
                                 : _containsAny(effectiveQuestion, const [
-                                    'aktivitas',
-                                    'olahraga',
-                                    'gerak',
-                                    'berjalan',
+                                    'gejala',
+                                    'keluhan',
+                                    'sakit',
+                                    'berdebar',
+                                    'pusing',
                                   ])
-                                    ? _activityReply(checkIns)
+                                    ? _symptomReply(checkIns)
                                     : _containsAny(effectiveQuestion, const [
-                                        'jantung',
-                                        'denyut',
-                                        'detak',
-                                        'bpm',
-                                        'hrv',
+                                        'aktivitas',
+                                        'olahraga',
+                                        'gerak',
+                                        'berjalan',
                                       ])
-                                        ? _heartReply(state,
-                                            includeHrv:
-                                                normalized.contains('hrv'))
-                                        : _fallbackReply(state);
+                                        ? _activityReply(checkIns)
+                                        : _containsAny(
+                                                effectiveQuestion, const [
+                                            'jantung',
+                                            'denyut',
+                                            'detak',
+                                            'bpm',
+                                            'hrv',
+                                          ])
+                                            ? _heartReply(state,
+                                                includeHrv:
+                                                    normalized.contains('hrv'))
+                                            : _fallbackReply(state);
 
     if (!followUp) return answer;
     final previous = _previousUserQuestion(history);
@@ -199,6 +281,214 @@ class PersonalHealthChatModel {
         ? answer
         : 'Menindaklanjuti pertanyaan Anda tentang “$previous”: $answer';
   }
+
+  List<Map<String, dynamic>> _retrieveCheckIns(
+    String question,
+    AppState state,
+  ) {
+    final checkIns = _checkIns(state);
+    if (checkIns.isEmpty) return const [];
+    if (_containsAny(question, const [
+      'wawasan',
+      'insight',
+      'analisis',
+      'pola',
+      'ringkas',
+      'rangkuman',
+    ])) {
+      return checkIns.length <= 5
+          ? checkIns
+          : checkIns.sublist(checkIns.length - 5);
+    }
+
+    final queryTokens = _searchTokens(question);
+    if (queryTokens.isEmpty) return const [];
+    final ranked =
+        <({Map<String, dynamic> checkIn, int score, DateTime date})>[];
+    for (final checkIn in checkIns) {
+      final index = _checkInSearchIndex(checkIn);
+      final score = queryTokens.intersection(index).length;
+      if (score == 0) continue;
+      ranked.add((
+        checkIn: checkIn,
+        score: score,
+        date: DateTime.tryParse(checkIn['recorded_at']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      ));
+    }
+    ranked.sort((a, b) {
+      final relevance = b.score.compareTo(a.score);
+      return relevance != 0 ? relevance : b.date.compareTo(a.date);
+    });
+    return ranked.take(5).map((result) => result.checkIn).toList()
+      ..sort((a, b) {
+        final first = DateTime.tryParse(a['recorded_at']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final second = DateTime.tryParse(b['recorded_at']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return first.compareTo(second);
+      });
+  }
+
+  Set<String> _checkInSearchIndex(Map<String, dynamic> checkIn) {
+    final words = <String>{'catatan', 'checkin'};
+    final activity = checkIn['activity']?.toString();
+    if (activity != null) {
+      words.addAll(_searchTokens(activity));
+      words.addAll(_searchTokens(_activityLabel(activity)));
+      words.addAll(const {'aktivitas', 'gerak'});
+    }
+    final stress = _number(checkIn['stress_level']);
+    if (stress != null) words.addAll(const {'stres', 'stress', 'tekanan'});
+    final symptoms = checkIn['symptoms'];
+    if (symptoms is List && symptoms.isNotEmpty) {
+      words.addAll(const {'gejala', 'keluhan', 'sakit'});
+      for (final symptom in symptoms) {
+        words.addAll(_searchTokens(_symptomLabel(symptom)));
+        words.addAll(_searchTokens(symptom.toString()));
+      }
+    }
+    final sleep = checkIn['sleep'];
+    if (sleep is Map) {
+      words.addAll(const {'tidur', 'sleep', 'istirahat'});
+      if (_number(sleep['duration_minutes']) != null) {
+        words.addAll(const {'durasi', 'jam'});
+      }
+      final quality = sleep['quality']?.toString();
+      if (quality != null) words.addAll(_searchTokens(_sleepQuality(quality)));
+    }
+    final recordedAt = DateTime.tryParse(
+      checkIn['recorded_at']?.toString() ?? '',
+    );
+    if (recordedAt != null) {
+      words.addAll(_searchTokens(_formatDate(recordedAt)));
+      words.addAll(const {'tanggal', 'waktu', 'terakhir'});
+    }
+    return words;
+  }
+
+  Set<String> _searchTokens(String text) {
+    const stopWords = {
+      'apa',
+      'apakah',
+      'saya',
+      'aku',
+      'data',
+      'catatan',
+      'tercatat',
+      'tentang',
+      'yang',
+      'dan',
+      'dari',
+      'untuk',
+      'pada',
+      'dengan',
+      'berapa',
+      'bagaimana',
+      'terakhir',
+      'personal',
+      'pribadi',
+    };
+    final tokens = RegExp(r'[a-z0-9]+')
+        .allMatches(text.toLowerCase())
+        .map((match) => match.group(0)!)
+        .where((token) => token.length > 1 && !stopWords.contains(token))
+        .toSet();
+    final expanded = Set<String>.of(tokens);
+    if (tokens.any(const {'denyut', 'jantung', 'berdebar'}.contains)) {
+      expanded.addAll(const {'denyut', 'jantung', 'berdebar', 'palpitasi'});
+    }
+    if (tokens.any(const {'stres', 'stress', 'tekanan'}.contains)) {
+      expanded.addAll(const {'stres', 'stress', 'tekanan'});
+    }
+    if (tokens.any(const {'tidur', 'sleep', 'istirahat'}.contains)) {
+      expanded.addAll(const {'tidur', 'sleep', 'istirahat'});
+    }
+    if (tokens
+        .any(const {'aktivitas', 'olahraga', 'berjalan', 'langkah'}.contains)) {
+      expanded.addAll(const {'aktivitas', 'olahraga', 'berjalan', 'langkah'});
+    }
+    if (tokens.any(const {'pusing', 'dizziness'}.contains)) {
+      expanded.addAll(const {'pusing', 'dizziness'});
+    }
+    return expanded;
+  }
+
+  bool _isInsufficientAnswer(String answer) => _containsAny(
+        answer.toLowerCase(),
+        const [
+          'belum ada',
+          'belum cukup',
+          'tidak menemukan sampel nyata',
+          'membutuhkan catatan berpasangan',
+          'belum tersedia',
+        ],
+      );
+
+  int _supportingRecordCount(
+    String question,
+    AppState state,
+    List<PersonalChatMessage> history,
+  ) {
+    final followUp = _isFollowUp(question.toLowerCase().trim());
+    final effectiveQuestion =
+        followUp ? _previousUserQuestion(history) ?? question : question;
+    final checkIns = _retrieveCheckIns(effectiveQuestion, state).length;
+    final plan = _planWearableAnalysis(effectiveQuestion);
+    if (plan == null) return checkIns;
+    final metric = plan.metric;
+    final now = DateTime.now();
+    final realSamples = state.wearableSamples.where((sample) {
+      if (sample['is_simulated'] == true) return false;
+      final value = _sampleValue(metric, sample);
+      final recordedAt = DateTime.tryParse(
+        sample['recorded_at']?.toString() ?? '',
+      );
+      if (value == null || recordedAt == null || recordedAt.isAfter(now)) {
+        return false;
+      }
+      if (plan.window != null && now.difference(recordedAt) > plan.window!) {
+        return false;
+      }
+      final calendarRange = plan.calendarRange;
+      if (calendarRange != null &&
+          (recordedAt.isBefore(calendarRange.start) ||
+              !recordedAt.isBefore(calendarRange.end))) {
+        return false;
+      }
+      return true;
+    }).length;
+    final lastSync = state.wearable.lastSync;
+    final currentValue = _sampleValue(metric, {
+      'heart_rate_bpm': state.wearable.heartRate,
+      'steps': state.wearable.steps,
+      'rmssd_ms': state.wearable.hrvRmssd,
+    });
+    final matchesCurrentWindow = lastSync != null &&
+        !lastSync.isAfter(now) &&
+        (plan.window == null || now.difference(lastSync) <= plan.window!) &&
+        (plan.calendarRange == null ||
+            (!lastSync.isBefore(plan.calendarRange!.start) &&
+                lastSync.isBefore(plan.calendarRange!.end)));
+    final hasCurrentFallback = realSamples == 0 &&
+        state.wearable.hasServerSamples &&
+        !state.wearable.isSimulated &&
+        currentValue != null &&
+        matchesCurrentWindow;
+    return checkIns + realSamples + (hasCurrentFallback ? 1 : 0);
+  }
+
+  bool isGuidanceQuestion(String question) => _containsAny(
+        question.toLowerCase(),
+        const [
+          'cara mengisi',
+          'cara mencatat',
+          'bagaimana cara',
+          'apa saja yang bisa',
+          'bisa saya tanyakan',
+          'cara menggunakan',
+        ],
+      );
 
   _PersonalAnalysisPlan? _planWearableAnalysis(String question) {
     final metric = _metricFor(question);

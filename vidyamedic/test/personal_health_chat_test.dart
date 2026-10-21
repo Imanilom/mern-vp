@@ -208,6 +208,59 @@ void main() {
 
       expect(answer, contains('catatan berpasangan'));
     });
+
+    test('retrieves only relevant check-ins for a topic question', () {
+      state.dailySummaryData = {
+        'check_ins': [
+          {
+            'recorded_at': '2026-10-19T07:00:00Z',
+            'sleep': {'duration_minutes': 420, 'quality': 'good'},
+          },
+          {
+            'recorded_at': '2026-10-21T07:00:00Z',
+            'stress_level': 3,
+          },
+        ],
+      };
+
+      final answer = const PersonalHealthChatModel().reply(
+        question: 'Apa yang tercatat tentang tidur saya?',
+        state: state,
+        history: const [],
+      );
+
+      expect(answer, contains('durasi 7.0 jam'));
+      expect(answer, contains('kualitas baik'));
+      expect(answer, isNot(contains('stres tercatat tinggi')));
+    });
+
+    test('offers recovery shortcuts when retrieved data is insufficient', () {
+      state.dailySummaryData = {'check_ins': []};
+      state.wearableSamples = [];
+      state.wearable = WearableData();
+
+      final response = const PersonalHealthChatModel().respond(
+        question: 'Apa catatan tidur saya?',
+        state: state,
+        history: const [],
+      );
+
+      expect(response.hasInsufficientData, isTrue);
+      expect(response.quickActions.map((action) => action.label),
+          containsAll(['Perbarui data', 'Cara mencatat data', 'Coba topik lain']));
+    });
+
+    test('gives practical instructions for using the personal chatbot', () {
+      final response = const PersonalHealthChatModel().reply(
+        question: 'Bagaimana cara mengisi catatan kesehatan saya?',
+        state: state,
+        history: const [],
+      );
+
+      expect(response, contains('isi check-in harian'));
+      expect(response, contains('rentang waktu'));
+      expect(response, contains('bukan diagnosis'));
+    });
   });
 
   group('PersonalChatHistoryStore', () {
@@ -226,6 +279,10 @@ void main() {
           role: PersonalChatRole.assistant,
           text: 'Dari data personal Anda...',
           createdAt: DateTime.utc(2026, 10, 21, 0, 1),
+          quickActions: const [
+            PersonalChatQuickAction(label: 'Perbarui data'),
+          ],
+          supportingRecords: 2,
         ),
       ];
 
@@ -233,6 +290,9 @@ void main() {
 
       expect((await firstAccount.load()).map((message) => message.text),
           messages.map((message) => message.text));
+      final restoredAssistant = (await firstAccount.load()).last;
+      expect(restoredAssistant.quickActions.single.label, 'Perbarui data');
+      expect(restoredAssistant.supportingRecords, 2);
       expect(await secondAccount.load(), isEmpty);
 
       await firstAccount.clear();

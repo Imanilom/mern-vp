@@ -111,15 +111,17 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
       return;
     }
 
-    final answer = _model.reply(
+    final response = _model.respond(
       question: question,
       state: state,
       history: previousMessages,
     );
     final assistantMessage = PersonalChatMessage(
       role: PersonalChatRole.assistant,
-      text: answer,
+      text: response.text,
       createdAt: DateTime.now(),
+      quickActions: response.quickActions,
+      supportingRecords: response.supportingRecords,
     );
     if (!mounted) return;
     setState(() {
@@ -209,6 +211,14 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
     );
   }
 
+  void _runQuickAction(PersonalChatQuickAction action) {
+    if (action.prompt == null) {
+      _refreshPersonalData();
+    } else {
+      _send(action.prompt);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     context.watch<AppState>();
@@ -264,7 +274,7 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
-          'Jawaban dibuat di perangkat dari data yang sudah dimuat aplikasi, tanpa AI pihak ketiga. Riwayat chat tersimpan lokal dan tidak dienkripsi oleh fitur ini; Anda dapat menghapusnya kapan saja. Bukan diagnosis.',
+          'RAG lokal mencari catatan check-in dan sampel wearable yang paling relevan untuk menyusun jawaban di perangkat; data tidak dikirim ke AI pihak ketiga. Riwayat chat tersimpan lokal dan tidak dienkripsi oleh fitur ini; Anda dapat menghapusnya kapan saja. Bukan diagnosis.',
           style: AppTheme.font(
             size: 11,
             color: AppTheme.textSecondary,
@@ -318,6 +328,24 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
             'Saya merujuk pada data yang tercatat. Jika datanya belum ada, saya akan mengatakannya.',
             textAlign: TextAlign.center,
             style: AppTheme.font(size: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderLight),
+            ),
+            child: Text(
+              'Cara menggunakan: perbarui data, isi check-in tidur/aktivitas/stres/gejala, lalu ajukan satu pertanyaan spesifik dengan rentang waktu. Contoh: “Berapa rata-rata denyut jantung 7 hari terakhir?” Jika bukti kurang, chatbot memberi tombol tindakan cepat.',
+              style: AppTheme.font(
+                size: 12,
+                color: AppTheme.textSecondary,
+                height: 1.45,
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           _suggestion('Bagaimana denyut jantung saya dibanding baseline?'),
@@ -387,6 +415,13 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
                 height: 1.4,
               ),
             ),
+            if (!isUser && message.supportingRecords > 0) ...[
+              const SizedBox(height: 5),
+              Text(
+                'Rujukan lokal: ${message.supportingRecords} catatan/sampel',
+                style: AppTheme.font(size: 10, color: AppTheme.textMuted),
+              ),
+            ],
             const SizedBox(height: 4),
             Text(
               DateFormat('HH:mm').format(message.createdAt.toLocal()),
@@ -395,6 +430,24 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
                 color: isUser ? Colors.white70 : AppTheme.textMuted,
               ),
             ),
+            if (message.quickActions.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: message.quickActions
+                    .map(
+                      (action) => ActionChip(
+                        label: Text(action.label),
+                        onPressed: _sending
+                            ? null
+                            : () => _runQuickAction(action),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
           ],
         ),
       ),
