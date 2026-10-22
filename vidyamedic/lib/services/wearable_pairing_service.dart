@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:polar/polar.dart';
 
@@ -162,6 +163,7 @@ class PolarWearablePairingService extends ChangeNotifier {
               ? [Permission.location]
               : <Permission>[];
       await _ensurePermissionsGranted(requiredPermissions);
+      await _ensureBluetoothEnabled();
       return;
     }
 
@@ -172,6 +174,19 @@ class PolarWearablePairingService extends ChangeNotifier {
     }
 
     throw StateError('Pairing Polar hanya didukung di Android dan iOS.');
+  }
+
+  Future<void> _ensureBluetoothEnabled() async {
+    if (await FlutterBluePlus.adapterState.first == BluetoothAdapterState.on) {
+      return;
+    }
+
+    await FlutterBluePlus.turnOn();
+    if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
+      throw StateError(
+        'Bluetooth belum aktif. Aktifkan Bluetooth untuk menyambungkan Polar H10.',
+      );
+    }
   }
 
   Future<void> _ensurePermissionsGranted(
