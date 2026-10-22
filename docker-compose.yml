@@ -40,14 +40,14 @@ services:
       - 103.253.213.134
       - 203.175.8.227
 
-  capar-web:
-    build: ./capar-web
-    container_name: mern-vp-capar-web
+  vidyamedic-web:
+    build: ./vidyamedic-web
+    container_name: mern-vp-vidyamedic-web
     restart: always
     ports:
       - "8080:80"
-    environment:
-      - NODE_ENV=production
+    depends_on:
+      - api
 
 volumes:
   rabbitmq_data:

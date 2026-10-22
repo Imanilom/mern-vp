@@ -93,8 +93,12 @@ docker compose build --no-cache
 ## Langkah 6 — Jalankan Container
 
 ```bash
-docker compose up -d
+docker compose up -d --remove-orphans
 ```
+
+Frontend sekarang menggunakan service `vidyamedic-web` di port host `8080`
+menggantikan `capar-web`. Nginx VPS yang sudah meneruskan traffic web ke
+`localhost:8080` tidak perlu mengubah upstream.
 
 ---
 

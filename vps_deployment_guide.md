@@ -109,7 +109,12 @@ Kembali ke folder utama proyek dan nyalakan Docker:
 cd ~/mern-vp
 docker compose up -d --build
 ```
-> Pada tahap ini, aplikasi Anda sedang berjalan di port `3031` di dalam VPS.
+Frontend Vidyamedic berjalan pada port host `8080` dan meneruskan `/api/` ke
+service backend Compose `api`. Nginx VPS dapat tetap meneruskan frontend ke
+`http://localhost:8080`.
+
+Untuk mengganti container `capar-web` lama, gunakan `--remove-orphans` agar
+Compose menghentikan container frontend lama yang tidak lagi didefinisikan.
 
 ---
 
