@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   sanitizePersonalChatAnalysis,
+  sanitizePersonalChatErrorMessage,
   sanitizePersonalChatEvidence,
 } from './personal_chat.controller.js';
 
@@ -56,4 +57,17 @@ test('rejects empty or malformed CAPAR analysis', () => {
   assert.equal(sanitizePersonalChatAnalysis(null), null);
   assert.equal(sanitizePersonalChatAnalysis([]), null);
   assert.equal(sanitizePersonalChatAnalysis({ clinical_suspicion: 'hidden' }), null);
+});
+
+test('includes useful error details without exposing Gemini credentials', () => {
+  const result = sanitizePersonalChatErrorMessage(
+    new Error(
+      'Request failed: https://example.test?key=secret-key x-goog-api-key: secret-key',
+    ),
+    'secret-key',
+  );
+  assert.equal(
+    result,
+    'Request failed: https://example.test?key=[REDACTED] x-goog-api-key: [REDACTED]',
+  );
 });

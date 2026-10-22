@@ -647,12 +647,7 @@ async function callGemini(prompt) {
   const requestedModel = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
   const candidateModels = Array.from(new Set([
     requestedModel,
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
-    'gemini-3.6-flash',
-    'gemini-3.7-flash',
-    'gemini-3.5-flash',
-    'gemini-flash-latest',
+    'gemini-2.5-flash',
   ]));
 
   const payload = {
@@ -676,10 +671,13 @@ async function callGemini(prompt) {
     try {
       const remainingMs = deadline - Date.now();
       if (remainingMs <= 0) break;
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
       const res = await fetch(url, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
         body:    JSON.stringify(payload),
         signal:  AbortSignal.timeout(remainingMs),
       });

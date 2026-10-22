@@ -35,6 +35,15 @@ const allowedEvidenceSources = new Set([
   'capar_summary',
 ]);
 
+export const sanitizePersonalChatErrorMessage = (error, secret = '') => {
+  let message = error instanceof Error ? error.message : String(error);
+  if (secret) message = message.split(secret).join('[REDACTED]');
+  return message
+    .replace(/([?&]key=)[^&\s]+/gi, '$1[REDACTED]')
+    .replace(/(x-goog-api-key\s*[:=]\s*)[^\s,]+/gi, '$1[REDACTED]')
+    .slice(0, 300);
+};
+
 export const sanitizePersonalChatEvidence = (input) => {
   if (!Array.isArray(input) || input.length > MAX_EVIDENCE_ITEMS) {
     return null;
@@ -182,14 +191,13 @@ export const generatePersonalChatAnswer = async (req, res) => {
           await generateUser360AnalysisForChat(caparUserId),
         );
       } catch (error) {
+        const detail = sanitizePersonalChatErrorMessage(error, apiKey);
         console.error(
-          '[personal-chat] CAPAR analysis failed:',
-          error instanceof Error ? error.name : 'UnknownError',
+          `[personal-chat] CAPAR analysis failed: ${detail}`,
         );
         return res.status(502).json({
           success: false,
-          message:
-            'Analisis CAPAR komprehensif gagal dibuat. Periksa konfigurasi AI backend dan coba lagi.',
+          message: `Analisis CAPAR komprehensif gagal dibuat: ${detail}`,
         });
       }
       if (!caparAnalysis) {
@@ -274,9 +282,9 @@ export const generatePersonalChatAnswer = async (req, res) => {
     });
   } catch (error) {
     const timedOut = error?.name === 'AbortError';
+    const detail = sanitizePersonalChatErrorMessage(error, apiKey);
     console.warn(
-      `[personal-chat] ${stage} ${timedOut ? 'timed out' : 'failed'}:`,
-      error instanceof Error ? error.name : 'UnknownError',
+      `[personal-chat] ${stage} ${timedOut ? 'timed out' : 'failed'}: ${detail}`,
     );
     return res.status(502).json({
       success: false,
