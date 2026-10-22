@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sanitizePersonalChatEvidence } from './personal_chat.controller.js';
+import {
+  sanitizePersonalChatAnalysis,
+  sanitizePersonalChatEvidence,
+} from './personal_chat.controller.js';
 
 test('sanitizes evidence fields before forwarding them to Gemini', () => {
   const result = sanitizePersonalChatEvidence([
@@ -33,4 +36,24 @@ test('rejects malformed, nested, or oversized evidence', () => {
     ),
     null,
   );
+});
+
+test('keeps only bounded patient-facing CAPAR analysis fields', () => {
+  const result = sanitizePersonalChatAnalysis({
+    user_profile_summary: 'Pemantauan wearable tercatat selama beberapa hari.',
+    autonomic_phenotype: 'Efficient Autonomic Recovery',
+    clinical_suspicion: 'Do not include clinician-only conclusions.',
+    patient_email: 'private@example.com',
+  });
+
+  assert.deepEqual(result, {
+    user_profile_summary: 'Pemantauan wearable tercatat selama beberapa hari.',
+    autonomic_phenotype: 'Efficient Autonomic Recovery',
+  });
+});
+
+test('rejects empty or malformed CAPAR analysis', () => {
+  assert.equal(sanitizePersonalChatAnalysis(null), null);
+  assert.equal(sanitizePersonalChatAnalysis([]), null);
+  assert.equal(sanitizePersonalChatAnalysis({ clinical_suspicion: 'hidden' }), null);
 });

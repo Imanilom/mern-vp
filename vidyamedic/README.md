@@ -63,11 +63,12 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
 - Ekspor laporan kesehatan ringkas (PDF & WhatsApp sharing).
 
 ### 9. 💬 Wawasan Personal dengan Gemini
-- RAG lokal memilih catatan check-in dan sampel wearable yang paling relevan sebelum jawaban dibuat.
-- Gemini hanya menerima pertanyaan dan bukti terpilih setelah pengguna menyetujui; riwayat chat, profil, dan API key tidak dikirim oleh aplikasi.
+- Aplikasi memilih bukti check-in dan sampel wearable yang relevan, lalu mengirim pertanyaan, ringkasan lokal, dan bukti terpilih ke backend.
+- Backend mengambil data CAPAR sesuai akun terautentikasi, membuat analisis XAI komprehensif tanpa identitas langsung, lalu meneruskan ringkasan analisis dan bukti terpilih ke Gemini.
+- Riwayat chat dan Gemini API key tidak dikirim dari aplikasi. Data kesehatan CAPAR yang tersimpan di backend diproses oleh penyedia AI backend dan Google Gemini setelah pengguna menyetujui.
 - Pengguna dapat menonaktifkan Gemini kapan saja dan tetap memakai jawaban lokal.
 - API key disimpan di environment backend (`GEMINI_API_KEY`), bukan di source code atau aplikasi Flutter. `GEMINI_MODEL` dapat diatur opsional; default backend adalah `gemini-2.5-flash`.
-- Model tetap dibatasi untuk rangkuman non-diagnostik. Hitungan terukur berasal dari analisis lokal, bukan hasil tebakan model.
+- Model tetap dibatasi untuk rangkuman non-diagnostik. Hitungan terukur berasal dari analisis lokal, bukan hasil tebakan model. Analisis CAPAR yang tidak tersedia atau gagal akan ditampilkan sebagai kegagalan backend, bukan dianggap berhasil.
 
 ---
 
@@ -128,7 +129,7 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
    ```
 
 ### Konfigurasi Gemini (opsional)
-Tambahkan `GEMINI_API_KEY` ke environment backend API. Contoh nama variabel tersedia di `.env.example`; jangan memasukkan key ke aplikasi Flutter, repositori, atau log. Endpoint Gemini hanya dapat digunakan oleh pengguna terautentikasi dan dibatasi jumlah permintaannya. Tanpa key backend, chatbot tetap berfungsi lokal dan menampilkan alasan saat Gemini tidak tersedia.
+Tambahkan `GEMINI_API_KEY` ke environment backend API. Contoh nama variabel tersedia di `.env.example`; jangan memasukkan key ke aplikasi Flutter, repositori, atau log. Endpoint Gemini hanya dapat digunakan oleh pengguna terautentikasi dan dibatasi jumlah permintaannya. Setiap permintaan Gemini juga membuat analisis CAPAR 360° di backend terlebih dahulu, sehingga endpoint memerlukan konfigurasi Gemini yang valid untuk kedua tahap. Tanpa key backend, chatbot tetap berfungsi lokal dan menampilkan alasan saat analisis AI tidak tersedia.
 
 ---
 

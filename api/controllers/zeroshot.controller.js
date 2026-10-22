@@ -368,20 +368,24 @@ async function gatherUser360Context(userId, episodeId = null) {
 }
 
 // ── Build User-Centric 360° Zero-Shot Prompt ──────────────────────────────────
-function buildUser360Prompt(ctx) {
+function buildUser360Prompt(ctx, { includeIdentity = true } = {}) {
   const {
     user, polarStats, polarActivityDistribution, allBaselines, matureBaselines, provisionalBaselines, missingActivities,
     recentSegments, segmentsStats, activityDistribution, episodeHistory, anomaliesStats,
     episodeAnalysis, emaHistory, stateLog, transitions, selectedEpisode, phenotypeProfile
   } = ctx;
 
-  const userName = user?.name || user?.email || 'Peserta';
+  const userName = includeIdentity
+    ? user?.name || user?.email || 'Peserta'
+    : 'Peserta';
   const age = user?.age ? `${user.age} th` : 'N/A';
   const gender = user?.gender || 'N/A';
   const weight = user?.weight ? `${user.weight} kg` : 'N/A';
   const height = user?.height ? `${user.height} cm` : 'N/A';
-  const device = user?.current_device || 'Polar H10';
-  const docterInfo = user?.docter?.name ? `${user.docter.name} (${user.docter.email || ''})` : 'Belum Ditugaskan';
+  const device = includeIdentity ? user?.current_device || 'Polar H10' : 'Polar H10';
+  const docterInfo = includeIdentity && user?.docter?.name
+    ? `${user.docter.name} (${user.docter.email || ''})`
+    : 'Tidak disertakan';
 
   // 1. App Usage & Activity Summary (Polar Data + Window Segments)
   const minTime = segmentsStats.first_time || polarStats.min_timestamp;
@@ -568,6 +572,19 @@ Berikan analisis komprehensif 360° dalam format JSON berikut:
 }`;
 }
 
+export async function generateUser360AnalysisForChat(userId) {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error('ID akun CAPAR tidak valid.');
+  }
+
+  const ctx = await gatherUser360Context(userId);
+  if (!ctx.user) {
+    throw new Error('Akun CAPAR tidak ditemukan untuk analisis chatbot.');
+  }
+
+  return callGemini(buildUser360Prompt(ctx, { includeIdentity: false }));
+}
+
 // ── Robust JSON Parser ────────────────────────────────────────────────────────
 function safeParseJSON(rawText) {
   if (!rawText || typeof rawText !== 'string') {
@@ -624,10 +641,10 @@ function safeParseJSON(rawText) {
 
 // ── Call Gemini LLM Engine ───────────────────────────────────────────────────
 async function callGemini(prompt) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) throw new Error('GEMINI_API_KEY tidak dikonfigurasi di environment.');
 
-  const requestedModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+  const requestedModel = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
   const candidateModels = Array.from(new Set([
     requestedModel,
     'gemini-3.5-flash-lite',
@@ -654,14 +671,17 @@ async function callGemini(prompt) {
   };
 
   let lastError = null;
+  const deadline = Date.now() + 90000;
   for (const model of candidateModels) {
     try {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload),
-        signal:  AbortSignal.timeout(90000),
+        signal:  AbortSignal.timeout(remainingMs),
       });
 
       if (!res.ok) {
@@ -681,7 +701,7 @@ async function callGemini(prompt) {
       if (err.name === 'AbortError' || err.message?.includes('aborted') || err.message?.includes('timeout')) {
         lastError = new Error(`Koneksi ke Gemini API timeout setelah 90 detik (${model}).`);
         console.warn(`[Explain] Timeout pada model ${model}, mencoba model fallback...`);
-        continue;
+        break;
       }
       lastError = err;
       if (!err.message.includes('404')) {

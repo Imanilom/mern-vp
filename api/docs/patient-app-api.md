@@ -384,6 +384,23 @@ activity/lifestyle, symptoms/feeling, sleep, a measurement, or a note); a
 timestamp with only empty containers is rejected. Omitted fields remain
 unrecorded rather than being filled with a default feeling or activity.
 
+## Personal health chat
+
+`POST /api/patient-app/chat/gemini` requires an authenticated account and is
+rate-limited to 20 requests per 15 minutes. The request contains `question`,
+`local_summary`, and up to 15 selected `evidence` records. The server validates
+and filters those records, resolves the linked CAPAR account from the
+authenticated session (never from a client-supplied account ID), and generates
+a CAPAR 360 analysis before asking Gemini for the patient-facing answer.
+
+Only selected patient-facing fields from the CAPAR result are passed to the
+second Gemini request. Account and doctor names/emails are omitted from the
+chat analysis prompt; chat history and provider API keys are not sent by the
+app. If no CAPAR account is linked, the endpoint can still answer from the
+selected evidence and local summary, while stating that CAPAR analysis is
+unavailable. Configure `GEMINI_API_KEY` and optionally `GEMINI_MODEL` on the
+backend. The app permits up to three minutes for both AI stages.
+
 ## CAPAR insights and scientific evidence
 
 - `POST /api/patient-app/link-capar-account`

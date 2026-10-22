@@ -134,7 +134,7 @@ void main() {
     expect(find.text('Aktifkan Gemini?'), findsOneWidget);
     expect(
       find.textContaining(
-          'akan dikirim melalui backend VidyaMedic ke Google Gemini'),
+          'akan dikirim ke backend VidyaMedic. Backend akan mengambil data CAPAR'),
       findsOneWidget,
     );
 

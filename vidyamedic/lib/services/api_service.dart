@@ -722,7 +722,7 @@ class ApiService {
               'local_summary': localSummary,
             }),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 180));
       return _handleResponse<String>(
         res,
         (data) {
@@ -736,7 +736,7 @@ class ApiService {
       );
     } catch (error) {
       return ApiResponse.error(
-        'Tidak dapat menghubungi Gemini: $error',
+        'Tidak dapat menyelesaikan analisis chatbot backend: $error',
         statusCode: 0,
       );
     }
