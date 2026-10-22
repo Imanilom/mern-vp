@@ -5,6 +5,7 @@ import {
   sanitizePersonalChatErrorMessage,
   sanitizePersonalChatEvidence,
 } from './personal_chat.controller.js';
+import { hasUser360LongitudinalData } from './zeroshot.controller.js';
 
 test('sanitizes evidence fields before forwarding them to Gemini', () => {
   const result = sanitizePersonalChatEvidence([
@@ -69,5 +70,28 @@ test('includes useful error details without exposing Gemini credentials', () => 
   assert.equal(
     result,
     'Request failed: https://example.test?key=[REDACTED] x-goog-api-key: [REDACTED]',
+  );
+});
+
+test('uses CAPAR analysis only when longitudinal CAPAR data exists', () => {
+  assert.equal(
+    hasUser360LongitudinalData({
+      polarStats: { total_raw_points: 0 },
+      segmentsStats: { total_segments: 0 },
+      allBaselines: [],
+      episodeHistory: [],
+      phenotypeProfile: null,
+    }),
+    false,
+  );
+  assert.equal(
+    hasUser360LongitudinalData({
+      polarStats: { total_raw_points: 0 },
+      segmentsStats: { total_segments: 1 },
+      allBaselines: [],
+      episodeHistory: [],
+      phenotypeProfile: null,
+    }),
+    true,
   );
 });

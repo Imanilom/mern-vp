@@ -189,9 +189,17 @@ export const generatePersonalChatAnswer = async (req, res) => {
     if (caparUserId) {
       stage = 'CAPAR analysis';
       try {
-        caparAnalysis = sanitizePersonalChatAnalysis(
-          await generateUser360AnalysisForChat(caparUserId),
-        );
+        const generatedAnalysis =
+          await generateUser360AnalysisForChat(caparUserId);
+        if (generatedAnalysis !== null) {
+          caparAnalysis = sanitizePersonalChatAnalysis(generatedAnalysis);
+          if (!caparAnalysis) {
+            return res.status(502).json({
+              success: false,
+              message: 'Hasil analisis CAPAR tidak valid untuk chatbot.',
+            });
+          }
+        }
       } catch (error) {
         const detail = sanitizePersonalChatErrorMessage(error, apiKey);
         console.error(
@@ -200,12 +208,6 @@ export const generatePersonalChatAnswer = async (req, res) => {
         return res.status(502).json({
           success: false,
           message: `Analisis CAPAR komprehensif gagal dibuat: ${detail}`,
-        });
-      }
-      if (!caparAnalysis) {
-        return res.status(502).json({
-          success: false,
-          message: 'Hasil analisis CAPAR tidak valid untuk chatbot.',
         });
       }
     }

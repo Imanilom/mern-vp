@@ -134,7 +134,7 @@ void main() {
     expect(find.text('Aktifkan Gemini?'), findsOneWidget);
     expect(
       find.textContaining(
-          'akan dikirim ke backend VidyaMedic. Backend akan mengambil data CAPAR'),
+          'akan dikirim ke backend VidyaMedic. Jika data longitudinal CAPAR tersedia'),
       findsOneWidget,
     );
 

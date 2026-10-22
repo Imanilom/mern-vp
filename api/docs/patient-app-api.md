@@ -396,9 +396,10 @@ a CAPAR 360 analysis before asking Gemini for the patient-facing answer.
 Only selected patient-facing fields from the CAPAR result are passed to the
 second Gemini request. Account and doctor names/emails are omitted from the
 chat analysis prompt; chat history and provider API keys are not sent by the
-app. If no CAPAR account is linked, the endpoint can still answer from the
-selected evidence and local summary, while stating that CAPAR analysis is
-unavailable. Configure `GEMINI_API_KEY` and optionally `GEMINI_MODEL` on the
+app. If no linked CAPAR account or longitudinal CAPAR records are available,
+the endpoint still answers from the selected evidence and local summary, and
+marks the CAPAR analysis as unavailable instead of generating an analysis from
+empty data. Configure `GEMINI_API_KEY` and optionally `GEMINI_MODEL` on the
 backend. The app permits up to three minutes for both AI stages.
 
 ## CAPAR insights and scientific evidence

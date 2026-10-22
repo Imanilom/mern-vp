@@ -418,7 +418,7 @@ function buildUser360Prompt(ctx, { includeIdentity = true } = {}) {
   const epLines = episodeHistory.slice(0, 8).map((ep, i) => {
     const onsetStr = fmtDateTime(ep.onset_time || ep.started_at);
     return `  #${i + 1} [${ep.classification || 'Anomali'}] ${onsetStr} | Akt: ${ep.activity || 'N/A'} | Durasi: ${fmtMs(ep.duration_ms)} | Peak HR: ${fmtFloat(ep.peak_hr, 1)} bpm | Relapse: ${ep.relapse ? 'Ya' : 'Tidak'}`;
-  }).join('\n') || '  (Tidak ada riwayat anomali tercatat — peserta stabil)';
+  }).join('\n') || '  (Tidak ada riwayat anomali tercatat)';
 
   // 4. EMA Diary Surveys (Ecological Momentary Assessment)
   const emaLines = (emaHistory || []).slice(0, 4).map((e, i) => {
@@ -571,15 +571,26 @@ Berikan analisis komprehensif 360° dalam format JSON berikut:
 }`;
 }
 
+export function hasUser360LongitudinalData(ctx) {
+  return Boolean(
+    ctx &&
+    (
+      ctx.polarStats?.total_raw_points > 0 ||
+      ctx.segmentsStats?.total_segments > 0 ||
+      ctx.allBaselines?.length > 0 ||
+      ctx.episodeHistory?.length > 0 ||
+      ctx.phenotypeProfile != null
+    )
+  );
+}
+
 export async function generateUser360AnalysisForChat(userId) {
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     throw new Error('ID akun CAPAR tidak valid.');
   }
 
   const ctx = await gatherUser360Context(userId);
-  if (!ctx.user) {
-    throw new Error('Akun CAPAR tidak ditemukan untuk analisis chatbot.');
-  }
+  if (!hasUser360LongitudinalData(ctx)) return null;
 
   return callGemini(buildUser360Prompt(ctx, { includeIdentity: false }));
 }
