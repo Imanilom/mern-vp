@@ -123,8 +123,7 @@ async function gatherUser360Context(userId, episodeId = null) {
   const userDoc = await User.findOne(userQuery)
     .populate('docter', 'name email phone_number')
     .select('name email current_device role phone_number age gender weight height docter profilePicture created_at')
-    .lean()
-    .catch(() => null);
+    .lean();
 
   const validObjectIds = [];
   if (userDoc?._id) validObjectIds.push(new mongoose.Types.ObjectId(String(userDoc._id)));

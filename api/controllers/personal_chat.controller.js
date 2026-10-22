@@ -108,40 +108,42 @@ async function resolveCaparUserId(req) {
   const accountId = req.user?.id;
   if (!mongoose.isValidObjectId(accountId)) return null;
 
-  let caparUserId;
+  const isUsableCaparUser = (user) =>
+    user &&
+    user.is_active !== false &&
+    (!user.role || user.role === 'user');
+
   if (req.user?.role === 'patient') {
     const patient = await Patient.findById(accountId)
-      .select('user_id is_active')
+      .select('user_id email is_active')
       .lean();
-    if (!patient || patient.is_active === false || !patient.user_id) return null;
-    caparUserId = patient.user_id;
+    if (!patient || patient.is_active === false) return null;
+
+    if (patient.user_id) {
+      const linkedUser = await User.findById(patient.user_id)
+        .select('_id role is_active')
+        .lean();
+      if (isUsableCaparUser(linkedUser)) return String(linkedUser._id);
+    }
+
+    // Legacy Patient accounts may not have been explicitly linked yet. The
+    // same-email association is also used by the patient-app linking flow.
+    const email = patient.email?.trim().toLowerCase();
+    if (!email) return null;
+    const matchingUser = await User.findOne({ email })
+      .select('_id role is_active')
+      .lean();
+    return isUsableCaparUser(matchingUser)
+      ? String(matchingUser._id)
+      : null;
   } else if (!req.user?.role || req.user.role === 'user') {
     const user = await User.findById(accountId)
       .select('_id role is_active')
       .lean();
-    if (
-      !user ||
-      user.is_active === false ||
-      (user.role && user.role !== 'user')
-    ) {
-      return null;
-    }
-    caparUserId = user._id;
-  } else {
-    return null;
+    return isUsableCaparUser(user) ? String(user._id) : null;
   }
 
-  const caparUser = await User.findById(caparUserId)
-    .select('_id role is_active')
-    .lean();
-  if (
-    !caparUser ||
-    caparUser.is_active === false ||
-    (caparUser.role && caparUser.role !== 'user')
-  ) {
-    return null;
-  }
-  return String(caparUser._id);
+  return null;
 }
 
 export const generatePersonalChatAnswer = async (req, res) => {
