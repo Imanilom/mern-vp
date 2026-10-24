@@ -61,7 +61,7 @@ export function buildPolarDataDocuments(envelope, userId = envelope?.user_id) {
         ? Number.NaN
         : Number(reading.timestamp);
       const timestamp = Number.isFinite(rawTimestamp)
-        ? Math.floor(rawTimestamp > 10000000000 ? rawTimestamp / 1000 : rawTimestamp)
+        ? rawTimestamp > 10000000000 ? rawTimestamp / 1000 : rawTimestamp
         : Math.floor(Date.now() / 1000);
       const heartRate = Number(reading.heart_rate);
       const rrInterval = Number(reading.rr_interval);

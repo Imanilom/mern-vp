@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
@@ -697,6 +698,9 @@ class ApiService {
       final res = await http
           .post(url, headers: _headers(), body: jsonEncode(payload))
           .timeout(const Duration(seconds: 15));
+      debugPrint(
+        '[Wearable API] POST stream status=${res.statusCode}, response=${res.body}',
+      );
       return _handleResponse<Map<String, dynamic>>(
           res, (d) => d as Map<String, dynamic>);
     } catch (e) {

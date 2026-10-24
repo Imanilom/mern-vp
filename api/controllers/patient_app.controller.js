@@ -3032,7 +3032,7 @@ export async function streamPatientAppWearableData(req, res) {
     device_id: stream.device_id,
     received_at: new Date().toISOString(),
     readings: stream.readings.map((reading) => ({
-      timestamp: Math.floor(reading.recorded_at.getTime() / 1000),
+      timestamp: reading.recorded_at.getTime() / 1000,
       heart_rate: reading.heart_rate_bpm,
       rr_interval: reading.rr_interval_ms,
       activity: streamActivity,
@@ -3047,6 +3047,9 @@ export async function streamPatientAppWearableData(req, res) {
   try {
     if (!stream.is_simulated) {
       const documents = buildPolarDataDocuments(transportPayload, dataOwnerId);
+      console.info(
+        `[PatientAppWearable] Received ${stream.readings.length} real readings from ${stream.device_id}; ${documents.length} passed HR/RR validation for account ${dataOwnerId}.`
+      );
       if (documents.length === 0) {
         return res.status(422).json({
           success: false,
@@ -3066,7 +3069,7 @@ export async function streamPatientAppWearableData(req, res) {
       })), { ordered: false });
       persistedCount = writeResult.upsertedCount + writeResult.matchedCount;
       console.info(
-        `[PatientAppWearable] Persisted ${writeResult.upsertedCount} new PolarData readings for account ${dataOwnerId}; ${writeResult.matchedCount} already existed.`
+        `[PatientAppWearable] MongoDB PolarData confirmed ${persistedCount}/${documents.length} readings for account ${dataOwnerId}; ${writeResult.upsertedCount} inserted, ${writeResult.matchedCount} already existed.`
       );
     }
 

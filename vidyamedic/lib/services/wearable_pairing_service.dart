@@ -47,6 +47,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   final List<Map<String, dynamic>> _streamReadings = [];
   final List<Map<String, dynamic>> _recentStreamReadings = [];
   final List<Map<String, dynamic>> _pendingStreamBatches = [];
+  int? _lastStreamReadingTimestampMs;
 
   StreamSubscription<PolarDeviceInfo>? _scanSubscription;
   StreamSubscription<PolarDeviceInfo>? _connectSubscription;
@@ -75,6 +76,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   bool _isUploadingStream = false;
   bool _isDummyDevice = false;
   bool _isDisposed = false;
+  bool _loggedAccelerationData = false;
   int _demoTick = 0;
   Completer<void>? _sampleUploadCompleter;
   Completer<void>? _streamUploadCompleter;
@@ -269,6 +271,9 @@ class PolarWearablePairingService extends ChangeNotifier {
       return false;
     }
     connectionError = null;
+    _hasHeartRateStream = false;
+    _hasAccelerationStream = false;
+    _sensorStreamsCompleter = Completer<bool>();
     final attempt = ++_connectionAttempt;
     _connectingDeviceId = deviceId;
     isConnecting = true;
@@ -330,7 +335,11 @@ class PolarWearablePairingService extends ChangeNotifier {
     _connectingDeviceId = '';
     _deviceId = device.deviceId;
     _deviceName = device.name.isNotEmpty ? device.name : 'Polar H10';
-    _sensorStreamsCompleter = Completer<bool>();
+    if (_sensorStreamsCompleter == null ||
+        _sensorStreamsCompleter!.isCompleted) {
+      _sensorStreamsCompleter = Completer<bool>();
+      if (sensorStreamsReady) _completeSensorStreamsReady(true);
+    }
     isConnected = true;
     isConnecting = false;
     connectionError = null;
@@ -348,6 +357,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     isStreaming = false;
     _hasHeartRateStream = false;
     _hasAccelerationStream = false;
+    _loggedAccelerationData = false;
     _completeSensorStreamsReady(false);
     connectionError = 'Polar H10 terputus dari perangkat.';
     _sampleFlushTimer?.cancel();
@@ -369,6 +379,9 @@ class PolarWearablePairingService extends ChangeNotifier {
           await _polar.getAvailableOnlineStreamDataTypes(identifier);
       _hasHeartRateStream = available.contains(PolarDataType.hr);
       _hasAccelerationStream = available.contains(PolarDataType.acc);
+      debugPrint(
+        '[Polar H10] Tipe stream tersedia: HR/RR=$_hasHeartRateStream, ACC=$_hasAccelerationStream.',
+      );
       if (_hasHeartRateStream) {
         await _heartRateSubscription?.cancel();
         _heartRateSubscription = _polar.startHrStreaming(identifier).listen(
@@ -443,10 +456,18 @@ class PolarWearablePairingService extends ChangeNotifier {
       final hasContact = sample.contactStatusSupported
           ? sample.contactStatus
           : sample.rrsMs.isNotEmpty;
-      if (!hasContact) continue;
+      if (!hasContact) {
+        debugPrint(
+          '[Polar H10] HR sample diabaikan: kontak sensor belum terkonfirmasi.',
+        );
+        continue;
+      }
       _sensorContact = true;
       _heartRateBpm = sample.hr;
       _sessionHeartRates.add(sample.hr);
+      debugPrint(
+        '[Polar H10] Bacaan diterima: HR=${sample.hr}, RR=${sample.rrsMs.length}, ACC siap=${_latestAcceleration != null}.',
+      );
 
       for (final rr in sample.rrsMs) {
         _expectedRrCount++;
@@ -459,7 +480,11 @@ class PolarWearablePairingService extends ChangeNotifier {
       if (sample.rrsMs.isNotEmpty) {
         final eventTime = DateTime.now().toUtc();
         _windowStartedAt ??= eventTime;
-        if (_latestAcceleration != null) {
+        if (_latestAcceleration == null) {
+          debugPrint(
+            '[Polar H10] Bacaan belum dapat diunggah: menunggu sampel akselerometer pertama.',
+          );
+        } else {
           var beatTime = eventTime;
           final records = <Map<String, dynamic>>[];
           for (var index = sample.rrsMs.length - 1; index >= 0; index--) {
@@ -473,17 +498,37 @@ class PolarWearablePairingService extends ChangeNotifier {
               'acceleration_g': List<double>.from(_latestAcceleration!),
             });
           }
+          _appendStreamReadings(records.reversed);
           _sessionReadingCount += records.length;
-          _streamReadings.addAll(records.reversed);
-          _recentStreamReadings.addAll(records.reversed);
-          if (_recentStreamReadings.length > 300) {
-            _recentStreamReadings.removeRange(
-                0, _recentStreamReadings.length - 300);
+          if (records.isNotEmpty) {
+            debugPrint(
+              '[Polar H10] ${records.length} bacaan masuk buffer; total sesi=$_sessionReadingCount.',
+            );
           }
         }
       }
     }
     _notify();
+  }
+
+  void _appendStreamReadings(Iterable<Map<String, dynamic>> readings) {
+    for (final reading in readings) {
+      var timestampMs = DateTime.parse(reading['recorded_at'] as String)
+          .millisecondsSinceEpoch;
+      final previousTimestampMs = _lastStreamReadingTimestampMs;
+      if (previousTimestampMs != null && timestampMs <= previousTimestampMs) {
+        timestampMs = previousTimestampMs + 1;
+        reading['recorded_at'] =
+            DateTime.fromMillisecondsSinceEpoch(timestampMs, isUtc: true)
+                .toIso8601String();
+      }
+      _lastStreamReadingTimestampMs = timestampMs;
+      _streamReadings.add(reading);
+      _recentStreamReadings.add(reading);
+    }
+    if (_recentStreamReadings.length > 300) {
+      _recentStreamReadings.removeRange(0, _recentStreamReadings.length - 300);
+    }
   }
 
   void _handleAcceleration(PolarAccData data) {
@@ -495,6 +540,10 @@ class PolarWearablePairingService extends ChangeNotifier {
         sample.z / 1000.0,
       ];
       _latestAcceleration = vector;
+      if (!_loggedAccelerationData) {
+        _loggedAccelerationData = true;
+        debugPrint('[Polar H10] Sampel akselerometer diterima.');
+      }
       _acceleration.add(vector);
       _recentAcceleration.add(vector);
       _sessionAccelerationCount++;
@@ -528,11 +577,16 @@ class PolarWearablePairingService extends ChangeNotifier {
     _sessionReadingCount = 0;
     _sessionAccelerationCount = 0;
     _sessionWindowCount = 0;
+    _loggedAccelerationData = false;
+    _lastStreamReadingTimestampMs = null;
     _streamReadings.clear();
     _recentStreamReadings.clear();
     _recentAcceleration.clear();
     lastStreamPublishedAt = null;
     isStreaming = true;
+    debugPrint(
+      '[Polar H10] Streaming dimulai. Batch upload setiap 10 detik.',
+    );
     sampleError = null;
     streamError = null;
     _sampleFlushTimer?.cancel();
@@ -624,12 +678,7 @@ class PolarWearablePairingService extends ChangeNotifier {
         'sensor_contact': true,
         'signal_confidence': 1.0,
       };
-      _streamReadings.add(reading);
-      _recentStreamReadings.add(reading);
-      if (_recentStreamReadings.length > 300) {
-        _recentStreamReadings.removeRange(
-            0, _recentStreamReadings.length - 300);
-      }
+      _appendStreamReadings([reading]);
     }
     if (_recentAcceleration.length > 500) {
       _recentAcceleration.removeRange(0, _recentAcceleration.length - 500);
@@ -673,21 +722,36 @@ class PolarWearablePairingService extends ChangeNotifier {
     _notify();
     try {
       while (_pendingStreamBatches.isNotEmpty) {
-        final result = await _uploadStream(_pendingStreamBatches.first);
+        final batch = _pendingStreamBatches.first;
+        final readings = batch['readings'] as List<dynamic>;
+        debugPrint(
+          '[Polar H10] Mengirim ${readings.length} bacaan ke backend.',
+        );
+        final result = await _uploadStream(batch);
         final persistedCount = result.data?['persisted_count'];
         if (!_isDummyDevice && persistedCount is num && persistedCount > 0) {
           lastMongoPersistedAt = DateTime.now();
           lastMongoPersistedCount = persistedCount.toInt();
         }
-        if (!result.success || result.data?['published'] != true) {
+        final mongoConfirmed =
+            persistedCount is num && persistedCount >= readings.length;
+        final rabbitConfirmed = result.data?['published'] == true;
+        if (!result.success || (!mongoConfirmed && !rabbitConfirmed)) {
           streamError = result.data?['message']?.toString() ??
               result.message ??
               'RabbitMQ tidak menerima batch streaming.';
+          debugPrint('[Polar H10] Upload gagal: $streamError');
           break;
         }
         _pendingStreamBatches.removeAt(0);
-        lastStreamPublishedAt = DateTime.now();
-        streamError = null;
+        if (rabbitConfirmed) lastStreamPublishedAt = DateTime.now();
+        streamError = rabbitConfirmed
+            ? null
+            : result.data?['message']?.toString() ??
+                'Bacaan tersimpan di MongoDB; RabbitMQ belum menerima batch.';
+        debugPrint(
+          '[Polar H10] Backend mengonfirmasi MongoDB=$mongoConfirmed, RabbitMQ=$rabbitConfirmed, tersimpan=$persistedCount.',
+        );
       }
     } catch (e) {
       streamError = 'Gagal mengirim batch wearable: $e';

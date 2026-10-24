@@ -45,6 +45,10 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
       _appState = state;
       final bridge = state.wearableBridge;
       bridge.addListener(_handleBridgeChange);
+      if (bridge.isConnected) {
+        _handleBridgeChange();
+        return;
+      }
       bridge.startScan();
     });
   }
@@ -52,6 +56,10 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
   void _handleBridgeChange() {
     if (!widget.startStreamingAndReturnHome || !mounted) return;
     final bridge = context.read<AppState>().wearableBridge;
+    if (bridge.isStreaming) {
+      Navigator.of(context).pop();
+      return;
+    }
     if (!bridge.isConnected) {
       _preparingDeviceId = null;
       return;
@@ -99,7 +107,7 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
     }
 
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed('/');
+    Navigator.of(context).pop();
   }
 
   void _showPairingError(String message) {

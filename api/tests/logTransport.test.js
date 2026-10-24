@@ -62,9 +62,18 @@ test('patient app real stream builds Mongo PolarData docs with pending pipeline 
     device_id: 'polar-h10-01',
     readings: [
       {
-        timestamp: 1792857600,
+        timestamp: 1792857600.25,
         heart_rate: 78,
         rr_interval: 769,
+        activity: 'Berjalan',
+        acc_x: 0.1,
+        acc_y: -0.2,
+        acc_z: 1,
+      },
+      {
+        timestamp: 1792857600.95,
+        heart_rate: 79,
+        rr_interval: 761,
         activity: 'Berjalan',
         acc_x: 0.1,
         acc_y: -0.2,
@@ -79,11 +88,12 @@ test('patient app real stream builds Mongo PolarData docs with pending pipeline 
   });
 
   const documents = buildPolarDataDocuments(envelope, accountId);
-  assert.equal(documents.length, 1);
+  assert.equal(documents.length, 2);
+  assert.notEqual(documents[0].timestamp, documents[1].timestamp);
   const document = new PolarData(documents[0]);
   await document.validate();
   assert.equal(document.user_id.toString(), accountId.toString());
-  assert.equal(document.timestamp, 1792857600);
+  assert.equal(document.timestamp, 1792857600.25);
   assert.equal(document.hr, 78);
   assert.equal(document.rr, 769);
   assert.equal(document.device_id, 'polar-h10-01');
