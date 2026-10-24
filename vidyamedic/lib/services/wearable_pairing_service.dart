@@ -78,6 +78,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   int _demoTick = 0;
   Completer<void>? _sampleUploadCompleter;
   Completer<void>? _streamUploadCompleter;
+  Completer<bool>? _sensorStreamsCompleter;
   int _sessionRrIntervalCount = 0;
   int _sessionReadingCount = 0;
   int _sessionAccelerationCount = 0;
@@ -87,6 +88,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   bool isConnecting = false;
   bool isConnected = false;
   bool isStreaming = false;
+  bool get sensorStreamsReady => _hasHeartRateStream && _hasAccelerationStream;
   bool get isDemoDevice => _isDummyDevice;
   bool get isUploading => _isUploadingSample || _isUploadingStream;
   String? sampleError;
@@ -246,6 +248,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     _deviceName = 'Sensor Dummy VidyaMedic (DEMO)';
     _hasHeartRateStream = true;
     _hasAccelerationStream = true;
+    _completeSensorStreamsReady(true);
     isConnected = true;
     isConnecting = false;
     connectionError = null;
@@ -327,6 +330,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     _connectingDeviceId = '';
     _deviceId = device.deviceId;
     _deviceName = device.name.isNotEmpty ? device.name : 'Polar H10';
+    _sensorStreamsCompleter = Completer<bool>();
     isConnected = true;
     isConnecting = false;
     connectionError = null;
@@ -344,6 +348,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     isStreaming = false;
     _hasHeartRateStream = false;
     _hasAccelerationStream = false;
+    _completeSensorStreamsReady(false);
     connectionError = 'Polar H10 terputus dari perangkat.';
     _sampleFlushTimer?.cancel();
     _sampleFlushTimer = null;
@@ -401,10 +406,34 @@ class PolarWearablePairingService extends ChangeNotifier {
         connectionError =
             'Polar H10 tidak menyediakan aliran akselerometer yang dibutuhkan.';
       }
+      _completeSensorStreamsReady(sensorStreamsReady);
       _notify();
     } catch (e) {
       connectionError = 'Gagal memulai aliran sensor Polar: $e';
+      _completeSensorStreamsReady(false);
       _notify();
+    }
+  }
+
+  Future<bool> waitForSensorStreams({
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    if (sensorStreamsReady) return true;
+    final completer = _sensorStreamsCompleter ??= Completer<bool>();
+    try {
+      return await completer.future.timeout(timeout);
+    } on TimeoutException {
+      connectionError ??=
+          'Koneksi Bluetooth berhasil, tetapi aliran HR/RR dan akselerometer belum siap.';
+      _notify();
+      return false;
+    }
+  }
+
+  void _completeSensorStreamsReady(bool ready) {
+    final completer = _sensorStreamsCompleter;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(ready);
     }
   }
 
@@ -436,6 +465,7 @@ class PolarWearablePairingService extends ChangeNotifier {
           for (var index = sample.rrsMs.length - 1; index >= 0; index--) {
             final rr = sample.rrsMs[index];
             beatTime = beatTime.subtract(Duration(milliseconds: rr));
+            if (rr < 300 || rr > 2000) continue;
             records.add({
               'recorded_at': beatTime.toIso8601String(),
               'heart_rate_bpm': sample.hr,
@@ -650,8 +680,9 @@ class PolarWearablePairingService extends ChangeNotifier {
           lastMongoPersistedCount = persistedCount.toInt();
         }
         if (!result.success || result.data?['published'] != true) {
-          streamError =
-              result.message ?? 'RabbitMQ tidak menerima batch streaming.';
+          streamError = result.data?['message']?.toString() ??
+              result.message ??
+              'RabbitMQ tidak menerima batch streaming.';
           break;
         }
         _pendingStreamBatches.removeAt(0);

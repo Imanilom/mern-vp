@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:polar/polar.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +8,12 @@ import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 
 class WearablePairingScreen extends StatefulWidget {
-  const WearablePairingScreen({super.key});
+  const WearablePairingScreen({
+    super.key,
+    this.startStreamingAndReturnHome = true,
+  });
+
+  final bool startStreamingAndReturnHome;
 
   @override
   State<WearablePairingScreen> createState() => _WearablePairingScreenState();
@@ -14,6 +21,9 @@ class WearablePairingScreen extends StatefulWidget {
 
 class _WearablePairingScreenState extends State<WearablePairingScreen> {
   String _activity = 'rest';
+  String? _preparingDeviceId;
+  bool _isPreparingStream = false;
+  AppState? _appState;
 
   static const _activities = <(String, String)>[
     ('Istirahat', 'rest'),
@@ -30,8 +40,72 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AppState>().wearableBridge.startScan();
+      if (!mounted) return;
+      final state = context.read<AppState>();
+      _appState = state;
+      final bridge = state.wearableBridge;
+      bridge.addListener(_handleBridgeChange);
+      bridge.startScan();
     });
+  }
+
+  void _handleBridgeChange() {
+    if (!widget.startStreamingAndReturnHome || !mounted) return;
+    final bridge = context.read<AppState>().wearableBridge;
+    if (!bridge.isConnected) {
+      _preparingDeviceId = null;
+      return;
+    }
+    if (_isPreparingStream || _preparingDeviceId == bridge.deviceId) return;
+    _preparingDeviceId = bridge.deviceId;
+    _isPreparingStream = true;
+    unawaited(_activateStreamAndReturnHome());
+  }
+
+  Future<void> _activateStreamAndReturnHome() async {
+    final state = context.read<AppState>();
+    final bridge = state.wearableBridge;
+    final ready = await bridge.waitForSensorStreams();
+    if (!mounted) return;
+    if (!ready) {
+      _showPairingError(
+        bridge.error ??
+            'Perangkat tersambung, tetapi stream sensor belum siap.',
+      );
+      _isPreparingStream = false;
+      _preparingDeviceId = null;
+      return;
+    }
+
+    final deviceName =
+        bridge.isDemoDevice ? 'VidyaMedic Dummy Sensor' : 'Polar H10';
+    if (!await state.connectWearable(deviceName)) {
+      if (!mounted) return;
+      _showPairingError(
+        state.dataError ?? 'Preferensi wearable gagal disimpan.',
+      );
+      _isPreparingStream = false;
+      return;
+    }
+
+    state.setWearableActivityContext(_activity);
+    if (!bridge.startStreaming(_activity)) {
+      if (!mounted) return;
+      _showPairingError(
+        bridge.error ?? 'Streaming wearable tidak dapat dimulai.',
+      );
+      _isPreparingStream = false;
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/');
+  }
+
+  void _showPairingError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _connect(PolarDeviceInfo device) async {
@@ -41,6 +115,13 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(bridge.error ?? 'Polar H10 gagal dihubungkan.')),
     );
+  }
+
+  @override
+  void dispose() {
+    final bridge = _appState?.wearableBridge;
+    if (bridge != null) bridge.removeListener(_handleBridgeChange);
+    super.dispose();
   }
 
   Future<void> _connectDummy() async {
@@ -188,11 +269,13 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                         ),
                       ),
                     Text(
-                      bridge.isStreaming
-                          ? bridge.isDemoDevice
-                              ? 'Perekaman demo aktif • ${bridge.sessionWindowCount} window tersimpan'
-                              : 'Streaming aktif • ${bridge.pendingCount} batch menunggu pengiriman'
-                          : 'Perangkat terhubung; streaming belum dimulai.',
+                      _isPreparingStream
+                          ? 'Perangkat tersambung • menyiapkan streaming dan beranda...'
+                          : bridge.isStreaming
+                              ? bridge.isDemoDevice
+                                  ? 'Perekaman demo aktif • ${bridge.sessionWindowCount} window tersimpan'
+                                  : 'Streaming aktif • ${bridge.pendingCount} batch menunggu pengiriman'
+                              : 'Perangkat terhubung; streaming belum dimulai.',
                       style: AppTheme.font(
                           size: 12, color: AppTheme.textSecondary),
                     ),
@@ -282,7 +365,7 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: bridge.isUploading
+                        onPressed: bridge.isUploading || _isPreparingStream
                             ? null
                             : bridge.isStreaming
                                 ? _stopStreaming

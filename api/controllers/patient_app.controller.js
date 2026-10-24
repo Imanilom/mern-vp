@@ -3073,6 +3073,21 @@ export async function streamPatientAppWearableData(req, res) {
     const result = await publishLogTransport(transportPayload);
     if (!result.published) {
       console.warn(`[PatientAppWearable] RabbitMQ did not accept stream for account ${dataOwnerId}: ${result.reason}`);
+      if (!stream.is_simulated && persistedCount > 0) {
+        const message =
+          'Bacaan sudah tersimpan di MongoDB, tetapi RabbitMQ belum menerima batch untuk pemrosesan lanjutan.';
+        return res.status(202).json({
+          success: true,
+          message,
+          data: {
+            published: false,
+            persisted_count: persistedCount,
+            reading_count: stream.readings.length,
+            device_id: stream.device_id,
+            message,
+          },
+        });
+      }
       return res.status(503).json({
         success: false,
         message: stream.is_simulated

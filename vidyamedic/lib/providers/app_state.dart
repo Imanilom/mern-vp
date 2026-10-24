@@ -75,17 +75,19 @@ class AppState extends ChangeNotifier {
   late final PolarWearablePairingService wearableBridge;
 
   void _notifyWearableChange() {
+    if (wearableBridge.isConnected) {
+      wearable.isSimulated = wearableBridge.isDemoDevice;
+      wearable.deviceName = wearableBridge.deviceName.isEmpty
+          ? wearableBridge.isDemoDevice
+              ? 'Sensor Dummy VidyaMedic (DEMO)'
+              : 'Polar H10'
+          : wearableBridge.deviceName;
+      wearable.provider = wearableBridge.isDemoDevice ? 'other' : 'polar_h10';
+      final connectedHeartRate = wearableBridge.heartRateBpm;
+      if (connectedHeartRate != null) wearable.heartRate = connectedHeartRate;
+    }
     if (wearableBridge.isStreaming) {
       wearable.recentAcceleration = wearableBridge.recentAcceleration;
-      if (!wearableBridge.isDemoDevice) {
-        wearable.isSimulated = false;
-        wearable.deviceName = wearableBridge.deviceName.isEmpty
-            ? 'Polar H10'
-            : wearableBridge.deviceName;
-        wearable.provider = 'polar_h10';
-        final liveHeartRate = wearableBridge.heartRateBpm;
-        if (liveHeartRate != null) wearable.heartRate = liveHeartRate;
-      }
       _maybePromptForMovement(null, true);
     }
     notifyListeners();

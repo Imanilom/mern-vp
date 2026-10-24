@@ -84,7 +84,9 @@ class _GuidedBaselineSessionScreenState
     if (!appState.wearableBridge.isConnected) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => const WearablePairingScreen(),
+          builder: (_) => const WearablePairingScreen(
+            startStreamingAndReturnHome: false,
+          ),
         ),
       );
       if (!mounted || !appState.wearableBridge.isConnected) return;
