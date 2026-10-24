@@ -116,6 +116,19 @@ service backend Compose `api`. Nginx VPS dapat tetap meneruskan frontend ke
 Untuk mengganti container `capar-web` lama, gunakan `--remove-orphans` agar
 Compose menghentikan container frontend lama yang tidak lagi didefinisikan.
 
+### Memperbarui backend setelah perubahan kode
+Setelah perubahan backend wearable tersedia di branch yang dipakai VPS, jalankan:
+```bash
+cd ~/mern-vp
+git pull
+docker compose up -d --build api
+docker compose logs --tail=100 api
+```
+Endpoint stream Polar menyimpan bacaan nyata ke MongoDB `PolarData` sebelum
+meneruskannya ke RabbitMQ. Log backend akan mencatat jumlah bacaan baru yang
+tersimpan; bila RabbitMQ tidak tersedia, respons tetap menyatakan bahwa bacaan
+sudah tersimpan tetapi pemrosesan lanjutan belum menerima batch.
+
 ---
 
 ## TAHAP 5: Setup Domain & SSL (Redirect)

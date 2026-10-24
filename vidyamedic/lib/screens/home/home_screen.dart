@@ -23,6 +23,7 @@ import '../actions/action_tracking_screen.dart';
 import '../chat/personal_health_chat_screen.dart';
 import '../impact/impact_dashboard_screen.dart';
 import '../gamification/gamification_screen.dart';
+import 'live_heart_rate_chart.dart';
 import 'profile_snapshot_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -506,6 +507,29 @@ class _PedagogyDashboard extends StatelessWidget {
     final s = context.watch<AppState>();
     final triage = s.triageLevel;
     final w = s.wearable;
+    final bridge = s.wearableBridge;
+    final isLivePolarStreaming = bridge.isStreaming && !bridge.isDemoDevice;
+    final availableHeartRateReadings = [
+      ...s.personalChatWearableHistory,
+      ...s.wearableSamples,
+      if (isLivePolarStreaming) ...s.liveStreamReadings,
+    ];
+    final uniqueHeartRateReadings = <String, Map<String, dynamic>>{};
+    for (final reading in availableHeartRateReadings) {
+      if (reading['is_simulated'] == true ||
+          reading['heart_rate_bpm'] is! num) {
+        continue;
+      }
+      final key = '${reading['recorded_at']}:${reading['heart_rate_bpm']}';
+      uniqueHeartRateReadings[key] = reading;
+    }
+    final heartRateReadings = uniqueHeartRateReadings.values.toList()
+      ..sort((a, b) {
+        final aTime = DateTime.tryParse(a['recorded_at']?.toString() ?? '');
+        final bTime = DateTime.tryParse(b['recorded_at']?.toString() ?? '');
+        if (aTime == null || bTime == null) return 0;
+        return aTime.compareTo(bTime);
+      });
     final caparStatus =
         (s.rawCaparInsights?['capar'] as Map<String, dynamic>?)?['status'];
 
@@ -559,22 +583,29 @@ class _PedagogyDashboard extends StatelessWidget {
               children: [
                 PulsingStatusDot(
                   size: 6,
-                  color: w.isSimulated
+                  color: bridge.isDemoDevice || w.isSimulated
                       ? AppTheme.statusYellow
-                      : w.hasServerSamples || s.hasCaparRecords
+                      : bridge.isStreaming ||
+                              bridge.isConnected ||
+                              w.hasServerSamples ||
+                              s.hasCaparRecords
                           ? AppTheme.statusGreen
                           : AppTheme.textMuted,
                 ),
                 const SizedBox(width: 5),
                 Flexible(
                   child: Text(
-                    w.isSimulated
+                    bridge.isDemoDevice || w.isSimulated
                         ? 'Data demo simulasi (bukan pengukuran nyata)'
-                        : w.hasServerSamples
-                            ? 'Sampel wearable dari server • ${w.deviceName}'
-                            : s.hasCaparRecords
-                                ? 'Riwayat CAPAR tersedia dari server'
-                                : 'Belum ada data wearable dari server',
+                        : isLivePolarStreaming
+                            ? 'Streaming Polar H10 aktif • ${bridge.deviceName}'
+                            : bridge.isConnected
+                                ? 'Polar H10 tersambung • streaming belum dimulai'
+                                : w.hasServerSamples
+                                    ? 'Sampel wearable dari server • ${w.deviceName}'
+                                    : s.hasCaparRecords
+                                        ? 'Riwayat CAPAR tersedia dari server'
+                                        : 'Belum ada data wearable dari server',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTheme.font(
@@ -710,7 +741,10 @@ class _PedagogyDashboard extends StatelessWidget {
                             size: 6,
                             color: w.isSimulated
                                 ? AppTheme.statusYellow
-                                : w.hasServerSamples || s.hasCaparRecords
+                                : bridge.isStreaming ||
+                                        bridge.isConnected ||
+                                        w.hasServerSamples ||
+                                        s.hasCaparRecords
                                     ? AppTheme.statusGreen
                                     : AppTheme.textMuted,
                           ),
@@ -992,6 +1026,97 @@ class _PedagogyDashboard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    LiveHeartRateChart(
+                      readings: heartRateReadings,
+                      isStreaming: isLivePolarStreaming,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          isLivePolarStreaming
+                              ? Icons.sensors_rounded
+                              : bridge.isConnected
+                                  ? Icons.bluetooth_connected_rounded
+                                  : Icons.bluetooth_disabled_rounded,
+                          size: 13,
+                          color: Colors.white70,
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            isLivePolarStreaming
+                                ? 'Streaming aktif · ${bridge.sessionReadingCount} bacaan sesi'
+                                : bridge.isConnected
+                                    ? 'Perangkat terhubung · mulai streaming dari menu wearable'
+                                    : w.hasServerSamples
+                                        ? 'Menampilkan rekaman tersimpan terakhir'
+                                        : 'Hubungkan Polar H10 untuk mulai merekam',
+                            style: AppTheme.font(
+                              size: 9.5,
+                              color: Colors.white70,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (bridge.isUploading) ...[
+                          const SizedBox(width: 6),
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (bridge.error != null) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        bridge.error!,
+                        style: AppTheme.font(
+                          size: 9,
+                          color: const Color(0xFFFFD5CD),
+                        ),
+                      ),
+                    ],
+                    if (!isLivePolarStreaming) ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const WearablePairingScreen(),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.bluetooth_searching_rounded,
+                            size: 15,
+                          ),
+                          label: Text(
+                            bridge.isConnected
+                                ? 'Atur streaming Polar H10'
+                                : 'Hubungkan / mulai streaming',
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 5,
+                            ),
+                            textStyle: AppTheme.font(
+                              size: 10,
+                              weight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

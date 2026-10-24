@@ -77,6 +77,15 @@ class AppState extends ChangeNotifier {
   void _notifyWearableChange() {
     if (wearableBridge.isStreaming) {
       wearable.recentAcceleration = wearableBridge.recentAcceleration;
+      if (!wearableBridge.isDemoDevice) {
+        wearable.isSimulated = false;
+        wearable.deviceName = wearableBridge.deviceName.isEmpty
+            ? 'Polar H10'
+            : wearableBridge.deviceName;
+        wearable.provider = 'polar_h10';
+        final liveHeartRate = wearableBridge.heartRateBpm;
+        if (liveHeartRate != null) wearable.heartRate = liveHeartRate;
+      }
       _maybePromptForMovement(null, true);
     }
     notifyListeners();
@@ -396,6 +405,7 @@ class AppState extends ChangeNotifier {
 
   void _applyLegacyCaparWearableReading() {
     if (wearableSamples.isNotEmpty) return;
+    if (wearableBridge.isStreaming && !wearableBridge.isDemoDevice) return;
     final capar = rawCaparInsights?['capar'];
     final readings = capar is Map ? capar['polar_data'] : null;
     if (readings is! List || readings.isEmpty || readings.first is! Map) return;
@@ -657,8 +667,11 @@ class AppState extends ChangeNotifier {
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
-      if (wearableSamples.isNotEmpty) {
-        final latest = wearableSamples.first;
+      final realSamples = wearableSamples
+          .where((sample) => sample['is_simulated'] != true)
+          .toList();
+      if (realSamples.isNotEmpty) {
+        final latest = realSamples.first;
         final acceleration = _parseAcceleration(latest['acceleration_g']);
         final serverSteps = (latest['steps'] as num?)?.round() ?? 0;
         wearable = WearableData(
@@ -680,9 +693,22 @@ class AppState extends ChangeNotifier {
           skinTemp: (latest['skin_temperature_c'] as num?)?.toDouble() ?? 0,
           recentAcceleration: acceleration,
         );
+        if (wearableBridge.isStreaming && !wearableBridge.isDemoDevice) {
+          wearable.deviceName = wearableBridge.deviceName.isEmpty
+              ? 'Polar H10'
+              : wearableBridge.deviceName;
+          wearable.provider = 'polar_h10';
+          wearable.heartRate =
+              wearableBridge.heartRateBpm ?? wearable.heartRate;
+        }
         _maybePromptForMovement(latest);
+      } else if (!wearableBridge.isStreaming || wearableBridge.isDemoDevice) {
+        if (wearable.provider != 'CAPAR PolarData') {
+          wearable = WearableData(provider: userProfile.wearableProvider);
+        }
       } else {
-        wearable = WearableData(provider: userProfile.wearableProvider);
+        wearable.hasServerSamples = false;
+        wearable.isSimulated = false;
       }
       notifyListeners();
       return true;

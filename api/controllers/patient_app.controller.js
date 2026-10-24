@@ -25,7 +25,10 @@ import Segment from '../models/segment.model.js';
 import StateTransition from '../models/state_transition.model.js';
 import User from '../models/user.model.js';
 import { errorHandler } from '../utils/error.js';
-import { publishLogTransport } from '../utils/logTransport.js';
+import {
+  buildPolarDataDocuments,
+  publishLogTransport,
+} from '../utils/logTransport.js';
 import {
   getPatientDecisionPolicy,
   getPatientDecisionPolicyBundle,
@@ -3018,49 +3021,84 @@ export async function streamPatientAppWearableData(req, res) {
     sleep: 'Tidur',
     other: 'Lainnya',
   }[stream.activity] ?? 'Lainnya';
-  try {
-    const result = await publishLogTransport({
-      user_id: dataOwnerId.toString(),
-      account_type: dataOwnerType,
-      provider: stream.provider,
-      source: stream.is_simulated
-        ? 'patient_app_polar_ble_demo'
-        : 'patient_app_polar_ble',
+  const transportPayload = {
+    user_id: dataOwnerId.toString(),
+    account_type: dataOwnerType,
+    provider: stream.provider,
+    source: stream.is_simulated
+      ? 'patient_app_polar_ble_demo'
+      : 'patient_app_polar_ble',
+    is_simulated: stream.is_simulated,
+    device_id: stream.device_id,
+    received_at: new Date().toISOString(),
+    readings: stream.readings.map((reading) => ({
+      timestamp: Math.floor(reading.recorded_at.getTime() / 1000),
+      heart_rate: reading.heart_rate_bpm,
+      rr_interval: reading.rr_interval_ms,
+      activity: streamActivity,
+      signal_quality: reading.signal_confidence,
+      acc_x: reading.acceleration_g[0],
+      acc_y: reading.acceleration_g[1],
+      acc_z: reading.acceleration_g[2],
       is_simulated: stream.is_simulated,
-      device_id: stream.device_id,
-      received_at: new Date().toISOString(),
-      readings: stream.readings.map((reading) => ({
-        timestamp: Math.floor(reading.recorded_at.getTime() / 1000),
-        heart_rate: reading.heart_rate_bpm,
-        rr_interval: reading.rr_interval_ms,
-        activity: streamActivity,
-        signal_quality: reading.signal_confidence,
-        acc_x: reading.acceleration_g[0],
-        acc_y: reading.acceleration_g[1],
-        acc_z: reading.acceleration_g[2],
-        is_simulated: stream.is_simulated,
-      })),
-    });
+    })),
+  };
+  let persistedCount = 0;
+  try {
+    if (!stream.is_simulated) {
+      const documents = buildPolarDataDocuments(transportPayload, dataOwnerId);
+      if (documents.length === 0) {
+        return res.status(422).json({
+          success: false,
+          message: 'Tidak ada bacaan Polar H10 valid untuk disimpan ke MongoDB.',
+          data: { received_count: stream.readings.length, persisted_count: 0 },
+        });
+      }
+      const writeResult = await PolarData.bulkWrite(documents.map((document) => ({
+        updateOne: {
+          filter: {
+            user_id: document.user_id,
+            timestamp: document.timestamp,
+          },
+          update: { $setOnInsert: document },
+          upsert: true,
+        },
+      })), { ordered: false });
+      persistedCount = writeResult.upsertedCount + writeResult.matchedCount;
+      console.info(
+        `[PatientAppWearable] Persisted ${writeResult.upsertedCount} new PolarData readings for account ${dataOwnerId}; ${writeResult.matchedCount} already existed.`
+      );
+    }
+
+    const result = await publishLogTransport(transportPayload);
     if (!result.published) {
       console.warn(`[PatientAppWearable] RabbitMQ did not accept stream for account ${dataOwnerId}: ${result.reason}`);
       return res.status(503).json({
         success: false,
-        message: 'RabbitMQ tidak menerima batch streaming. Periksa koneksi server.',
+        message: stream.is_simulated
+          ? 'RabbitMQ tidak menerima batch streaming simulasi. Periksa koneksi server.'
+          : 'Data tersimpan di MongoDB, tetapi RabbitMQ tidak menerima batch untuk pemrosesan lanjutan.',
+        data: {
+          published: false,
+          persisted_count: persistedCount,
+          reading_count: stream.readings.length,
+        },
       });
     }
     return res.status(202).json({
       success: true,
       data: {
         published: true,
+        persisted_count: persistedCount,
         reading_count: result.envelope.readings.length,
         device_id: stream.device_id,
       },
     });
   } catch (error) {
-    console.error(`[PatientAppWearable] RabbitMQ stream failed for account ${dataOwnerId}: ${error.message}`);
+    console.error(`[PatientAppWearable] Stream persistence/transport failed for account ${dataOwnerId}: ${error.message}`);
     return res.status(503).json({
       success: false,
-      message: 'Streaming wearable gagal diteruskan ke RabbitMQ.',
+      message: 'Streaming wearable gagal disimpan atau diteruskan ke backend.',
     });
   }
 }

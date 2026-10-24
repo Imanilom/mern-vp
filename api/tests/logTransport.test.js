@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildPatientAppDemoSampleOperations,
+  buildPolarDataDocuments,
   buildTransportEnvelope,
   publishLogTransport,
 } from '../utils/logTransport.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
+import PolarData from '../models/data.model.js';
 
 test('buildTransportEnvelope normalizes sensor payload for backend transport', () => {
   const envelope = buildTransportEnvelope({
@@ -48,6 +50,58 @@ test('buildTransportEnvelope retains the simulated-data marker', () => {
 
   assert.equal(envelope.is_simulated, true);
   assert.equal(envelope.readings[0].is_simulated, true);
+});
+
+test('patient app real stream builds Mongo PolarData docs with pending pipeline status', async () => {
+  const accountId = new PolarData.base.Types.ObjectId();
+  const envelope = buildTransportEnvelope({
+    user_id: accountId.toString(),
+    account_type: 'user',
+    provider: 'polar_h10',
+    source: 'patient_app_polar_ble',
+    device_id: 'polar-h10-01',
+    readings: [
+      {
+        timestamp: 1792857600,
+        heart_rate: 78,
+        rr_interval: 769,
+        activity: 'Berjalan',
+        acc_x: 0.1,
+        acc_y: -0.2,
+        acc_z: 1,
+      },
+      {
+        timestamp: 1792857601,
+        heart_rate: 20,
+        rr_interval: 769,
+      },
+    ],
+  });
+
+  const documents = buildPolarDataDocuments(envelope, accountId);
+  assert.equal(documents.length, 1);
+  const document = new PolarData(documents[0]);
+  await document.validate();
+  assert.equal(document.user_id.toString(), accountId.toString());
+  assert.equal(document.timestamp, 1792857600);
+  assert.equal(document.hr, 78);
+  assert.equal(document.rr, 769);
+  assert.equal(document.device_id, 'polar-h10-01');
+  assert.equal(document.processStatus, 'PENDING');
+  assert.equal(document.isChecked, false);
+});
+
+test('patient app demo stream is excluded from clinical PolarData', () => {
+  const envelope = buildTransportEnvelope({
+    user_id: new PolarData.base.Types.ObjectId().toString(),
+    is_simulated: true,
+    readings: [{
+      timestamp: 1792857600,
+      heart_rate: 78,
+      rr_interval: 769,
+    }],
+  });
+  assert.deepEqual(buildPolarDataDocuments(envelope), []);
 });
 
 test('patient app demo transport creates idempotent non-clinical Mongo samples', async () => {

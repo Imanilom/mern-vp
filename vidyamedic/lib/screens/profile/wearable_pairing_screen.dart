@@ -242,6 +242,14 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                             AppTheme.font(size: 11, color: AppTheme.textMuted),
                       ),
                     ],
+                    if (bridge.lastMongoPersistedAt != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${bridge.lastMongoPersistedCount} bacaan tersimpan di MongoDB: ${TimeOfDay.fromDateTime(bridge.lastMongoPersistedAt!.toLocal()).format(context)}',
+                        style:
+                            AppTheme.font(size: 11, color: AppTheme.textMuted),
+                      ),
+                    ],
                     if (bridge.error != null) ...[
                       const SizedBox(height: 8),
                       Text(

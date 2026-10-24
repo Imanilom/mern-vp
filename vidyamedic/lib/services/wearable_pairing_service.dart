@@ -95,6 +95,8 @@ class PolarWearablePairingService extends ChangeNotifier {
   String? get error => streamError ?? sampleError ?? connectionError;
   DateTime? lastUploadedAt;
   DateTime? lastStreamPublishedAt;
+  DateTime? lastMongoPersistedAt;
+  int lastMongoPersistedCount = 0;
   List<PolarDeviceInfo> get devices => List.unmodifiable(_devices);
   List<Map<String, dynamic>> get recentStreamReadings =>
       List.unmodifiable(_recentStreamReadings);
@@ -642,6 +644,11 @@ class PolarWearablePairingService extends ChangeNotifier {
     try {
       while (_pendingStreamBatches.isNotEmpty) {
         final result = await _uploadStream(_pendingStreamBatches.first);
+        final persistedCount = result.data?['persisted_count'];
+        if (!_isDummyDevice && persistedCount is num && persistedCount > 0) {
+          lastMongoPersistedAt = DateTime.now();
+          lastMongoPersistedCount = persistedCount.toInt();
+        }
         if (!result.success || result.data?['published'] != true) {
           streamError =
               result.message ?? 'RabbitMQ tidak menerima batch streaming.';

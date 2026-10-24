@@ -43,6 +43,66 @@ export function buildTransportEnvelope(payload) {
   };
 }
 
+export function buildPolarDataDocuments(envelope, userId = envelope?.user_id) {
+  if (!mongoose.isValidObjectId(userId) || envelope?.is_simulated === true) {
+    return [];
+  }
+
+  const validActivities = new Set([
+    'Tidur', 'Berbaring', 'Duduk', 'Berdiri', 'Berjalan', 'Berjalan Cepat',
+    'Naik Tangga', 'Bersepeda', 'Berenang', 'Senam', 'Yoga', 'Berlari',
+    'Lari Cepat', 'Olahraga Berat', 'Makan', 'Memasak', 'Berkendara',
+    'Bekerja', 'Lainnya',
+  ]);
+
+  return (Array.isArray(envelope.readings) ? envelope.readings : [])
+    .flatMap((reading) => {
+      const rawTimestamp = reading.timestamp == null
+        ? Number.NaN
+        : Number(reading.timestamp);
+      const timestamp = Number.isFinite(rawTimestamp)
+        ? Math.floor(rawTimestamp > 10000000000 ? rawTimestamp / 1000 : rawTimestamp)
+        : Math.floor(Date.now() / 1000);
+      const heartRate = Number(reading.heart_rate);
+      const rrInterval = Number(reading.rr_interval);
+      if (
+        !Number.isFinite(heartRate)
+        || heartRate < 30
+        || heartRate > 220
+        || !Number.isFinite(rrInterval)
+        || rrInterval < 300
+        || rrInterval > 2000
+      ) {
+        return [];
+      }
+
+      const recordedAt = new Date(timestamp * 1000);
+      const wibTime = new Date(recordedAt.getTime() + 7 * 60 * 60 * 1000);
+      const activity = validActivities.has(reading.activity)
+        ? reading.activity
+        : 'Lainnya';
+
+      return [{
+        user_id: userId,
+        timestamp,
+        date_created: `${String(wibTime.getUTCDate()).padStart(2, '0')}-${String(wibTime.getUTCMonth() + 1).padStart(2, '0')}-${wibTime.getUTCFullYear()}`,
+        time_created: `${String(wibTime.getUTCHours()).padStart(2, '0')}:${String(wibTime.getUTCMinutes()).padStart(2, '0')}:${String(wibTime.getUTCSeconds()).padStart(2, '0')}`,
+        hr: heartRate,
+        rr: rrInterval,
+        rrms: reading.rmssd ?? null,
+        activity,
+        device_id: envelope.device_id || 'UNKNOWN',
+        isChecked: false,
+        processStatus: 'PENDING',
+        acc_x: reading.acc_x ?? 0,
+        acc_y: reading.acc_y ?? 0,
+        acc_z: reading.acc_z ?? 0,
+        step_count: reading.step_count ?? 0,
+        ecg: reading.ecg ?? 0,
+      }];
+    });
+}
+
 export function buildPatientAppDemoSampleOperations(envelope) {
   if (
     !mongoose.isValidObjectId(envelope?.user_id)
@@ -341,57 +401,21 @@ export async function startLogTransportConsumer() {
       }
 
       if (targetUserId && Array.isArray(envelope.readings) && envelope.readings.length > 0) {
-        const validActivities = [
-          'Tidur', 'Berbaring', 'Duduk', 'Berdiri', 'Berjalan', 'Berjalan Cepat', 
-          'Naik Tangga', 'Bersepeda', 'Berenang', 'Senam', 'Yoga', 'Berlari', 
-          'Lari Cepat', 'Olahraga Berat', 'Makan', 'Memasak', 'Berkendara', 'Bekerja', 'Lainnya'
-        ];
-
-        let docs = envelope.readings.map((r) => {
-          const now = new Date(r.timestamp ? r.timestamp * 1000 : Date.now());
-          
-          // Konversi eksplisit ke WIB (UTC+7) agar tidak bergantung pada timezone server/mesin
-          const wibTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-          
-          const dateStr = `${String(wibTime.getUTCDate()).padStart(2, '0')}-${String(wibTime.getUTCMonth() + 1).padStart(2, '0')}-${wibTime.getUTCFullYear()}`;
-          const timeStr = `${String(wibTime.getUTCHours()).padStart(2, '0')}:${String(wibTime.getUTCMinutes()).padStart(2, '0')}:${String(wibTime.getUTCSeconds()).padStart(2, '0')}`;
-          
-          let act = r.activity || r.motion_state || 'Duduk';
-          if (!validActivities.includes(act)) act = 'Lainnya';
-
-          return {
-            user_id: targetUserId,
-            timestamp: r.timestamp || Math.floor(Date.now() / 1000),
-            date_created: dateStr,
-            time_created: timeStr,
-            hr: r.heart_rate || r.hr || 0,
-            rr: r.rr_interval || r.rr || 0,
-            rrms: r.rmssd || r.rrms || null,
-            activity: act,
-            device_id: envelope.device_id || 'UNKNOWN',
-            isChecked: false,
-            processStatus: 'PENDING',
-            acc_x: r.acc_x ?? r.accX ?? 0,
-            acc_y: r.acc_y ?? r.accY ?? 0,
-            acc_z: r.acc_z ?? r.accZ ?? 0,
-            step_count: r.step_count ?? r.stepCount ?? 0,
-            ecg: r.ecg ?? 0,
-          };
-        }).filter(d => d.hr >= 30 && d.hr <= 220 && d.rr >= 300 && d.rr <= 2000);
-
+        const docs = buildPolarDataDocuments(envelope, targetUserId);
         if (docs.length === 0) {
           console.warn(`[RabbitMQ -> MongoDB] All ${envelope.readings.length} readings for user ${targetUserId} were filtered out (invalid HR/RR)`);
           ch.ack(msg);
           return;
         }
 
-        const result = await PolarData.insertMany(docs, { ordered: false }).catch((err) => {
-          console.error(`[RabbitMQ -> MongoDB] InsertMany Error: ${err.message}`);
-          if (err.insertedDocs) return err.insertedDocs;
-          return [];
-        });
-        const insertedCount = result ? result.length : 0;
-        console.log(`[RabbitMQ -> MongoDB] Successfully stored ${insertedCount} readings for user ${targetUserId}`);
+        const result = await PolarData.bulkWrite(docs.map((doc) => ({
+          updateOne: {
+            filter: { user_id: doc.user_id, timestamp: doc.timestamp },
+            update: { $setOnInsert: doc },
+            upsert: true,
+          },
+        })), { ordered: false });
+        console.log(`[RabbitMQ -> MongoDB] Stored ${result.upsertedCount} new readings for user ${targetUserId}; ${result.matchedCount} already existed`);
 
         if (io) {
           io.emit('new_sensor_data', {
