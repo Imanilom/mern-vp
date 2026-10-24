@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -84,7 +85,32 @@ class AppState extends ChangeNotifier {
           : wearableBridge.deviceName;
       wearable.provider = wearableBridge.isDemoDevice ? 'other' : 'polar_h10';
       final connectedHeartRate = wearableBridge.heartRateBpm;
-      if (connectedHeartRate != null) wearable.heartRate = connectedHeartRate;
+      if (connectedHeartRate != null) {
+        wearable.heartRate = connectedHeartRate;
+      } else if (wearableBridge.isStreaming) {
+        wearable.heartRate = 0;
+      }
+      if (wearableBridge.isStreaming && !wearableBridge.isDemoDevice) {
+        final rrIntervals = wearableBridge.recentRrIntervalsMs;
+        if (rrIntervals.length > 1) {
+          var squaredDifferenceTotal = 0.0;
+          for (var index = 1; index < rrIntervals.length; index++) {
+            final difference = rrIntervals[index] - rrIntervals[index - 1];
+            squaredDifferenceTotal += difference * difference;
+          }
+          wearable.hrvRmssd = math
+              .sqrt(squaredDifferenceTotal / (rrIntervals.length - 1))
+              .round();
+        } else {
+          wearable.hrvRmssd = 0;
+        }
+        final acceleration = wearableBridge.recentAcceleration;
+        wearable.steps = WearableData.calculateStepsFromAcc(acceleration);
+        wearable.stepsEstimatedFromAcc = true;
+        wearable.spO2 = 0;
+        wearable.skinTemp = 0;
+        wearable.lastSync = wearableBridge.lastHeartRateAt;
+      }
     }
     if (wearableBridge.isStreaming) {
       wearable.recentAcceleration = wearableBridge.recentAcceleration;
@@ -126,6 +152,7 @@ class AppState extends ChangeNotifier {
     _isAuthenticated = true;
     _currentAccount = ApiService.currentUser;
     notifyListeners();
+    unawaited(wearableBridge.restoreSavedDeviceAndAutoConnect());
     unawaited(_validateStoredSession());
   }
 
@@ -135,6 +162,7 @@ class AppState extends ChangeNotifier {
       if (!profile.success) {
         if (profile.statusCode == 401 || profile.statusCode == 403) {
           await ApiService.clearSession();
+          await wearableBridge.disconnect();
           _isAuthenticated = false;
           _currentAccount = null;
           notifyListeners();
@@ -182,6 +210,7 @@ class AppState extends ChangeNotifier {
       _currentAccount = ApiService.currentUser;
       userProfile.name = name;
       notifyListeners();
+      unawaited(wearableBridge.restoreSavedDeviceAndAutoConnect());
       await refreshAllData();
       return true;
     } else {
@@ -214,6 +243,7 @@ class AppState extends ChangeNotifier {
         userProfile.name = _currentAccount!['name'].toString();
       }
       notifyListeners();
+      unawaited(wearableBridge.restoreSavedDeviceAndAutoConnect());
       await refreshAllData();
       return true;
     } else {

@@ -752,17 +752,24 @@ class _PedagogyDashboard extends StatelessWidget {
                           Text(
                             w.isSimulated
                                 ? 'Data demo simulasi'
-                                : w.hasServerSamples
-                                    ? 'Data server tersedia'
-                                    : s.hasCaparRecords
-                                        ? 'Riwayat CAPAR tersedia'
-                                        : 'Belum ada data',
+                                : bridge.isStreaming && !bridge.isDemoDevice
+                                    ? 'Streaming Polar H10 aktif'
+                                    : bridge.isConnected
+                                        ? 'Polar H10 tersambung'
+                                        : w.hasServerSamples
+                                            ? 'Data server tersedia'
+                                            : s.hasCaparRecords
+                                                ? 'Riwayat CAPAR tersedia'
+                                                : 'Belum ada data',
                             style: AppTheme.font(
                               size: 10.5,
                               weight: FontWeight.w700,
                               color: w.isSimulated
                                   ? AppTheme.statusYellow
-                                  : w.hasServerSamples || s.hasCaparRecords
+                                  : bridge.isStreaming ||
+                                          bridge.isConnected ||
+                                          w.hasServerSamples ||
+                                          s.hasCaparRecords
                                       ? AppTheme.statusGreen
                                       : AppTheme.textMuted,
                             ),
@@ -992,9 +999,11 @@ class _PedagogyDashboard extends StatelessWidget {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      w.hasServerSamples
-                                          ? w.deviceName
-                                          : 'Wearable belum tersedia',
+                                      bridge.isConnected
+                                          ? bridge.deviceName
+                                          : w.hasServerSamples
+                                              ? w.deviceName
+                                              : 'Wearable belum tersedia',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: AppTheme.font(
@@ -1006,21 +1015,37 @@ class _PedagogyDashboard extends StatelessWidget {
                                 ],
                               ),
                               Text(
-                                  'Tersinkron: ${w.lastSync == null ? 'Belum tersedia' : fmtTime(TimeOfDay.fromDateTime(w.lastSync!))}',
+                                  isLivePolarStreaming
+                                      ? bridge.lastHeartRateAt == null
+                                          ? 'Data langsung: menunggu bacaan'
+                                          : 'Data langsung: ${fmtTime(TimeOfDay.fromDateTime(bridge.lastHeartRateAt!))}:${bridge.lastHeartRateAt!.second.toString().padLeft(2, '0')}'
+                                      : 'Tersinkron: ${w.lastSync == null ? 'Belum tersedia' : fmtTime(TimeOfDay.fromDateTime(w.lastSync!))}',
                                   style: AppTheme.font(
                                       size: 10.5, color: Colors.white70)),
                               const SizedBox(height: 8),
                               _metricRow('HRV (RMSSD)',
                                   w.hrvRmssd > 0 ? '${w.hrvRmssd} ms' : '—'),
                               _metricRow(
-                                  w.stepsEstimatedFromAcc
-                                      ? 'Perkiraan langkah (ACC)'
-                                      : 'Langkah Harian',
+                                  isLivePolarStreaming
+                                      ? 'Langkah estimasi (ACC)'
+                                      : w.stepsEstimatedFromAcc
+                                          ? 'Perkiraan langkah (ACC)'
+                                          : 'Langkah Harian',
                                   w.steps > 0 ? '${w.steps} lk' : '—'),
-                              _metricRow('Kadar Oksigen (SpO₂)',
-                                  w.spO2 > 0 ? '${w.spO2}%' : '—'),
-                              _metricRow('Suhu Kulit',
-                                  w.skinTemp > 0 ? '${w.skinTemp}°C' : '—'),
+                              _metricRow(
+                                  isLivePolarStreaming
+                                      ? 'SpO₂ (tidak tersedia)'
+                                      : 'Kadar Oksigen (SpO₂)',
+                                  !isLivePolarStreaming && w.spO2 > 0
+                                      ? '${w.spO2}%'
+                                      : '—'),
+                              _metricRow(
+                                  isLivePolarStreaming
+                                      ? 'Suhu kulit (tidak tersedia)'
+                                      : 'Suhu Kulit',
+                                  !isLivePolarStreaming && w.skinTemp > 0
+                                      ? '${w.skinTemp}°C'
+                                      : '—'),
                             ],
                           ),
                         ),

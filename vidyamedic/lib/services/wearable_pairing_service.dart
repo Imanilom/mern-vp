@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:polar/polar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_service.dart';
 
@@ -40,6 +41,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   final VoidCallback _onSampleStored;
   final List<PolarDeviceInfo> _devices = [];
   final List<int> _rrIntervals = [];
+  final List<int> _recentRrIntervals = [];
   final List<int> _sessionHeartRates = [];
   final List<List<double>> _acceleration = [];
   final List<List<double>> _recentAcceleration = [];
@@ -47,6 +49,8 @@ class PolarWearablePairingService extends ChangeNotifier {
   final List<Map<String, dynamic>> _streamReadings = [];
   final List<Map<String, dynamic>> _recentStreamReadings = [];
   final List<Map<String, dynamic>> _pendingStreamBatches = [];
+  static const _savedDeviceIdKey = 'vidyamedic_polar_device_id';
+  static const _savedDeviceNameKey = 'vidyamedic_polar_device_name';
   int? _lastStreamReadingTimestampMs;
 
   StreamSubscription<PolarDeviceInfo>? _scanSubscription;
@@ -59,11 +63,17 @@ class PolarWearablePairingService extends ChangeNotifier {
   Timer? _streamFlushTimer;
   Timer? _demoReadingTimer;
   Timer? _connectionTimeoutTimer;
+  Timer? _autoReconnectTimer;
   DateTime? _windowStartedAt;
+  DateTime? _lastHeartRateAt;
   String _deviceId = '';
   String _connectingDeviceId = '';
   int _connectionAttempt = 0;
   String _deviceName = '';
+  String _savedDeviceId = '';
+  bool _isManualDisconnect = false;
+  bool _isRestoringSavedDevice = false;
+  int _autoReconnectAttempt = 0;
   String _activity = 'unknown';
   int? _heartRateBpm;
   int _expectedRrCount = 0;
@@ -91,6 +101,10 @@ class PolarWearablePairingService extends ChangeNotifier {
   bool isConnected = false;
   bool isStreaming = false;
   bool get sensorStreamsReady => _hasHeartRateStream && _hasAccelerationStream;
+  bool get hasSavedDevice => _savedDeviceId.isNotEmpty;
+  bool get isAutoReconnecting => _autoReconnectTimer?.isActive == true;
+  DateTime? get lastHeartRateAt => _lastHeartRateAt;
+  List<int> get recentRrIntervalsMs => List.unmodifiable(_recentRrIntervals);
   bool get isDemoDevice => _isDummyDevice;
   bool get isUploading => _isUploadingSample || _isUploadingStream;
   String? sampleError;
@@ -125,7 +139,64 @@ class PolarWearablePairingService extends ChangeNotifier {
       _pendingStreamBatches.length +
       (_streamReadings.isEmpty ? 0 : 1);
 
+  Future<void> restoreSavedDeviceAndAutoConnect() async {
+    if (_isDisposed ||
+        _isRestoringSavedDevice ||
+        isConnected ||
+        isConnecting ||
+        isAutoReconnecting) {
+      return;
+    }
+    _isRestoringSavedDevice = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _savedDeviceId = prefs.getString(_savedDeviceIdKey) ?? '';
+      if (_savedDeviceId.isEmpty || _isDisposed) return;
+      _deviceName = prefs.getString(_savedDeviceNameKey) ?? 'Polar H10';
+      debugPrint(
+        '[Polar H10] Perangkat tersimpan ditemukan; mencoba pairing otomatis.',
+      );
+      _isManualDisconnect = false;
+      final connected = await connectToDevice(_savedDeviceId);
+      if (!connected) _scheduleAutoReconnect();
+    } catch (error, stackTrace) {
+      connectionError = 'Gagal memulihkan pairing Polar tersimpan: $error';
+      debugPrint('$connectionError\n$stackTrace');
+      _notify();
+    } finally {
+      _isRestoringSavedDevice = false;
+    }
+  }
+
+  void _scheduleAutoReconnect([String? failedDeviceId]) {
+    if (_isManualDisconnect ||
+        _isDisposed ||
+        _savedDeviceId.isEmpty ||
+        isConnected ||
+        (failedDeviceId != null && failedDeviceId != _savedDeviceId)) {
+      return;
+    }
+    if (isAutoReconnecting) return;
+    final delaySeconds = math.min(5 * (1 << _autoReconnectAttempt), 30);
+    _autoReconnectAttempt++;
+    debugPrint('[Polar H10] Auto-pair ulang dijadwalkan.');
+    _autoReconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      _autoReconnectTimer = null;
+      if (_isManualDisconnect || _isDisposed || isConnected) return;
+      if (isConnecting) {
+        _scheduleAutoReconnect(deviceId);
+        return;
+      }
+      debugPrint('[Polar H10] Mencoba auto-pair ke perangkat tersimpan.');
+      unawaited(connectToDevice(_savedDeviceId));
+    });
+    _notify();
+  }
+
   Future<void> startScan() async {
+    _isManualDisconnect = false;
+    _autoReconnectTimer?.cancel();
+    _autoReconnectTimer = null;
     connectionError = null;
     try {
       await _requestBluetoothPermissions();
@@ -270,6 +341,10 @@ class PolarWearablePairingService extends ChangeNotifier {
       _notify();
       return false;
     }
+    if (isConnected && _deviceId == deviceId) return true;
+    if (isConnecting && _connectingDeviceId == deviceId) return true;
+    _isManualDisconnect = false;
+    _autoReconnectTimer?.cancel();
     connectionError = null;
     _hasHeartRateStream = false;
     _hasAccelerationStream = false;
@@ -298,6 +373,7 @@ class PolarWearablePairingService extends ChangeNotifier {
             'Waktu koneksi Polar H10 habis. Pastikan Bluetooth aktif, sensor dikenakan agar menyala, dan Polar H10 tidak sedang terhubung ke CAPAR Mobile atau aplikasi lain. Lalu pindai ulang.';
         _notify();
         unawaited(_disconnectTimedOutDevice(deviceId));
+        _scheduleAutoReconnect(deviceId);
       });
       await _polar.connectToDevice(deviceId);
       return true;
@@ -313,6 +389,7 @@ class PolarWearablePairingService extends ChangeNotifier {
           'Gagal menghubungkan Polar H10 ($deviceId): ${_errorMessage(e)}';
       isConnecting = false;
       _notify();
+      _scheduleAutoReconnect();
       return false;
     }
   }
@@ -335,6 +412,11 @@ class PolarWearablePairingService extends ChangeNotifier {
     _connectingDeviceId = '';
     _deviceId = device.deviceId;
     _deviceName = device.name.isNotEmpty ? device.name : 'Polar H10';
+    _savedDeviceId = device.deviceId;
+    _isManualDisconnect = false;
+    _autoReconnectAttempt = 0;
+    _autoReconnectTimer?.cancel();
+    unawaited(_saveConnectedDevice(device));
     if (_sensorStreamsCompleter == null ||
         _sensorStreamsCompleter!.isCompleted) {
       _sensorStreamsCompleter = Completer<bool>();
@@ -344,6 +426,21 @@ class PolarWearablePairingService extends ChangeNotifier {
     isConnecting = false;
     connectionError = null;
     _notify();
+  }
+
+  Future<void> _saveConnectedDevice(PolarDeviceInfo device) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_savedDeviceIdKey, device.deviceId);
+      await prefs.setString(
+        _savedDeviceNameKey,
+        device.name.isNotEmpty ? device.name : 'Polar H10',
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        '[Polar H10] Gagal menyimpan pairing perangkat: $error\n$stackTrace',
+      );
+    }
   }
 
   void _handleDisconnected(PolarDeviceDisconnectedEvent event) {
@@ -367,6 +464,9 @@ class PolarWearablePairingService extends ChangeNotifier {
     _cancelSensorStreams();
     unawaited(flushStream(force: true));
     unawaited(flushSample(force: true));
+    if (!_isManualDisconnect) {
+      _scheduleAutoReconnect(event.info.deviceId);
+    }
     _notify();
   }
 
@@ -464,6 +564,7 @@ class PolarWearablePairingService extends ChangeNotifier {
       }
       _sensorContact = true;
       _heartRateBpm = sample.hr;
+      _lastHeartRateAt = DateTime.now();
       _sessionHeartRates.add(sample.hr);
       debugPrint(
         '[Polar H10] Bacaan diterima: HR=${sample.hr}, RR=${sample.rrsMs.length}, ACC siap=${_latestAcceleration != null}.',
@@ -474,6 +575,10 @@ class PolarWearablePairingService extends ChangeNotifier {
         _sessionRrIntervalCount++;
         if (rr >= 250 && rr <= 3000) {
           _rrIntervals.add(rr);
+          _recentRrIntervals.add(rr);
+          if (_recentRrIntervals.length > 256) {
+            _recentRrIntervals.removeAt(0);
+          }
           _validRrCount++;
         }
       }
@@ -496,6 +601,8 @@ class PolarWearablePairingService extends ChangeNotifier {
               'heart_rate_bpm': sample.hr,
               'rr_interval_ms': rr,
               'acceleration_g': List<double>.from(_latestAcceleration!),
+              'sensor_contact': true,
+              'signal_confidence': 1.0,
             });
           }
           _appendStreamReadings(records.reversed);
@@ -573,6 +680,8 @@ class PolarWearablePairingService extends ChangeNotifier {
     _activity = activity;
     _clearWindow();
     _sessionHeartRates.clear();
+    _recentRrIntervals.clear();
+    _lastHeartRateAt = null;
     _sessionRrIntervalCount = 0;
     _sessionReadingCount = 0;
     _sessionAccelerationCount = 0;
@@ -644,6 +753,7 @@ class PolarWearablePairingService extends ChangeNotifier {
             .round();
     final rrInterval = (60000 / heartRate + 15 * math.sin(phase / 3)).round();
     _heartRateBpm = heartRate;
+    _lastHeartRateAt = recordedAt;
     _sensorContact = true;
     _expectedRrCount++;
     _sessionRrIntervalCount++;
@@ -860,6 +970,8 @@ class PolarWearablePairingService extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    _isManualDisconnect = true;
+    _autoReconnectTimer?.cancel();
     _connectionAttempt++;
     _connectionTimeoutTimer?.cancel();
     _connectionTimeoutTimer = null;
@@ -889,6 +1001,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     _connectionAttempt++;
     _sampleFlushTimer?.cancel();
     _streamFlushTimer?.cancel();
+    _autoReconnectTimer?.cancel();
     _demoReadingTimer?.cancel();
     _connectionTimeoutTimer?.cancel();
     _scanSubscription?.cancel();

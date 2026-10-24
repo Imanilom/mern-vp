@@ -49,6 +49,11 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
         _handleBridgeChange();
         return;
       }
+      if (bridge.isConnecting || bridge.isAutoReconnecting) return;
+      if (bridge.hasSavedDevice) {
+        unawaited(bridge.restoreSavedDeviceAndAutoConnect());
+        return;
+      }
       bridge.startScan();
     });
   }
@@ -57,7 +62,7 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
     if (!widget.startStreamingAndReturnHome || !mounted) return;
     final bridge = context.read<AppState>().wearableBridge;
     if (bridge.isStreaming) {
-      Navigator.of(context).pop();
+      if (!_isPreparingStream) Navigator.of(context).pop();
       return;
     }
     if (!bridge.isConnected) {
@@ -410,14 +415,19 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                           child: Text(
                             bridge.isScanning
                                 ? 'Mencari perangkat Bluetooth…'
-                                : 'Pastikan Polar H10 aktif dan berada dekat ponsel.',
+                                : bridge.isConnecting && bridge.hasSavedDevice
+                                    ? 'Menghubungkan ulang ke Polar H10 tersimpan…'
+                                    : bridge.isAutoReconnecting
+                                        ? 'Auto-pair aktif; mencoba kembali otomatis…'
+                                        : 'Pastikan Polar H10 aktif dan berada dekat ponsel.',
                             style: AppTheme.font(
                                 size: 12, color: AppTheme.textSecondary),
                           ),
                         ),
                         IconButton(
-                          onPressed:
-                              bridge.isScanning ? null : bridge.startScan,
+                          onPressed: bridge.isScanning || bridge.isConnecting
+                              ? null
+                              : bridge.startScan,
                           tooltip: 'Pindai ulang',
                           icon: const Icon(Icons.refresh),
                         ),

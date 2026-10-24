@@ -59,5 +59,9 @@ void main() {
       publishedReadings.every((reading) => reading['sensor_contact'] == true),
       isTrue,
     );
+    expect(
+      publishedReadings.every((reading) => reading['signal_confidence'] == 1.0),
+      isTrue,
+    );
   });
 }
