@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://healthtrajectory.cloud/api';
+  static const String baseUrl = 'https://api.vidyamedic.my.id/api';
 
   /// Mengambil ID lokal untuk kompatibilitas endpoint lama.
   static Future<String> _getUserId() async {

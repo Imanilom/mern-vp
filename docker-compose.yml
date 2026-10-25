@@ -11,31 +11,43 @@ services:
     container_name: mern-vp-mongodb
     restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: capar_admin
-      MONGO_INITDB_ROOT_PASSWORD: SecurePassword123! # Ganti dengan password yang lebih kuat
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?Set this in .env.production}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?Set this in .env.production}
     ports:
       # HANYA ekspos ke localhost VPS (127.0.0.1) agar tidak bisa diakses dari internet publik
       - "127.0.0.1:27017:27017"
     volumes:
       - mongodb_data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mongosh --quiet --username "$${MONGO_INITDB_ROOT_USERNAME}" --password "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval 'db.adminCommand("ping").ok'
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   api:
     build: ./api
     container_name: mern-vp-api
     restart: always
     ports:
-      - "3030:3030"
+      - "127.0.0.1:3030:3030"
     volumes:
       - ./data:/app/data
       - ./data:/data
     env_file:
-      - ./api/.env
+      - ./.env.production
     environment:
-      - PORT=3030
-      - TRUST_PROXY=loopback,linklocal,uniquelocal
-      - ALLOWED_ORIGINS=https://healthtrajectory.cloud,https://api.healthtrajectory.cloud
+      PORT: 3030
+      NODE_ENV: production
+      TRUST_PROXY: loopback,linklocal,uniquelocal
+      ALLOWED_ORIGINS: https://vidyamedic.my.id,https://www.vidyamedic.my.id
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
     dns:
       - 103.253.213.134
       - 203.175.8.227
@@ -45,7 +57,7 @@ services:
     container_name: mern-vp-vidyamedic-web
     restart: always
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"
     depends_on:
       - api
 

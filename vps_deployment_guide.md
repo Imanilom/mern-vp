@@ -89,29 +89,37 @@ cd mern-vp
 
 ## TAHAP 4: Jalankan Aplikasi MERN
 
-### 1. Setup File .env (Environment Backend)
-Karena `.env` biasanya tidak ikut di-*commit* ke GitHub, Anda perlu membuatnya manual di VPS:
+### 1. Siapkan `.env.production`
+File environment ini tidak ikut di-*commit*. Buat dari template dan isi
+kredensial kuat yang sudah digunakan/dirotasi di server:
 ```bash
-cd api
-nano .env
+cd ~/mern-vp
+test -f .env.production || cp .env.example .env.production
+nano .env.production
 ```
-Isikan kredensial yang dibutuhkan (sesuaikan dengan lokal Anda):
+Konfigurasikan variabel berikut. Gunakan password MongoDB URL-encoded pada
+connection string jika password memiliki karakter khusus:
 ```env
 PORT=3030
-MONGO=mongodb://mongodb:27017/healthdevice
-JWT_SECRET=rahasiakita123
+NODE_ENV=production
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=<password-kuat>
+MONGO=mongodb://admin:<password-url-encoded>@mongodb:27017/healthdevice?authSource=admin
+JWT_SECRET=<secret-acak-minimal-32-karakter>
+INTERNAL_KEY=<kunci-acak>
+ALLOWED_ORIGINS=https://vidyamedic.my.id,https://www.vidyamedic.my.id
 ```
-Tekan `Ctrl+X`, lalu `Y`, dan tekan `Enter` untuk menyimpan.
+Jangan menimpa secret database yang sudah dipakai oleh volume MongoDB aktif.
 
 ### 2. Jalankan Docker Compose
 Kembali ke folder utama proyek dan nyalakan Docker:
 ```bash
-cd ~/mern-vp
-docker compose up -d --build
+docker compose --env-file .env.production up -d --build --remove-orphans
+docker compose --env-file .env.production ps
 ```
-Frontend Vidyamedic berjalan pada port host `8080` dan meneruskan `/api/` ke
-service backend Compose `api`. Nginx VPS dapat tetap meneruskan frontend ke
-`http://localhost:8080`.
+Frontend Vidyamedic dan API hanya dipublikasikan di loopback VPS:
+`127.0.0.1:8080` dan `127.0.0.1:3030`. Host Nginx menjadi satu-satunya jalur
+akses publik dan meneruskan domain web/API ke kedua port tersebut.
 
 Untuk mengganti container `capar-web` lama, gunakan `--remove-orphans` agar
 Compose menghentikan container frontend lama yang tidak lagi didefinisikan.
@@ -121,8 +129,8 @@ Setelah perubahan backend wearable tersedia di branch yang dipakai VPS, jalankan
 ```bash
 cd ~/mern-vp
 git pull
-docker compose up -d --build api
-docker compose logs --tail=100 api
+docker compose --env-file .env.production up -d --build api
+docker compose --env-file .env.production logs --tail=100 api
 ```
 Endpoint stream Polar menyimpan bacaan nyata ke MongoDB `PolarData` sebelum
 meneruskannya ke RabbitMQ. Log backend akan mencatat jumlah bacaan baru yang
@@ -131,137 +139,35 @@ sudah tersimpan tetapi pemrosesan lanjutan belum menerima batch.
 
 ---
 
-## TAHAP 5: Setup Domain & SSL (Redirect)
+## TAHAP 5: Domain Vidyamedic & SSL
 
-Agar orang bisa mengakses `https://domainanda.com` dan bukan mengetik IP, ikuti langkah ini:
+DNS A record untuk `vidyamedic.my.id`, `www.vidyamedic.my.id`, dan
+`api.vidyamedic.my.id` harus mengarah ke `202.10.42.153`. Pastikan firewall VPS
+membuka port 80 dan 443.
 
-### 1. Pointing A-Record di Provider Domain
-1. Login ke tempat Anda membeli domain (Niagahoster, Rumahweb, dll).
-2. Masuk ke menu **DNS Management**.
-3. Tambahkan **A Record**:
-   - Name/Host: `@`
-   - Value/IP: Masukkan `IP_VPS` Anda.
-4. Tambahkan satu lagi untuk **www**:
-   - Name/Host: `www`
-   - Value/IP: Masukkan `IP_VPS` Anda.
-*(Tunggu sekitar 5-30 menit agar propagasi DNS berjalan).*
-
-### 2. Buat Virtual Host Nginx di VPS
-Kita harus memberitahu Nginx di VPS untuk menangkap *traffic* domain dan mengarahkannya ke Port Docker Anda (3031).
+### 1. Pasang konfigurasi reverse proxy
+Setelah container menyala, salin konfigurasi HTTP yang disediakan:
 ```bash
-sudo nano /etc/nginx/sites-available/mern-vp
-```
-Masukkan konfigurasi berikut (Ganti `domainanda.com` dengan domain asli Anda):
-```nginx
-# Map Connection header secara dinamis (Upgrade jika WebSocket, close jika HTTP biasa)
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
-
-# ── API Backend (subdomain) ───────────────────────────────────────────────────
-server {
-    listen 443 ssl;
-    server_name api.healthtrajectory.cloud;
-
-    ssl_certificate /etc/letsencrypt/live/healthtrajectory.cloud/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/healthtrajectory.cloud/privkey.pem;
-
-    location / {
-        proxy_pass http://localhost:3030;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /socket.io/ {
-        proxy_pass http://localhost:3030;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-server {
-    listen 80;
-    server_name api.healthtrajectory.cloud;
-    return 301 https://$host$request_uri;
-}
-
-# ── Backoffice Frontend ───────────────────────────────────────────────────────
-server {
-    listen 443 ssl;
-    server_name healthtrajectory.cloud www.healthtrajectory.cloud;
-
-    ssl_certificate /etc/letsencrypt/live/healthtrajectory.cloud/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/healthtrajectory.cloud/privkey.pem;
-
-    # Proxy /api/* ke backend
-    location /api/ {
-        proxy_pass http://localhost:3030;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Konfigurasi khusus WebSocket / Socket.io
-    location /socket.io/ {
-        proxy_pass http://localhost:3030;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Semua request lain → React frontend (port 8080)
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-
-server {
-    listen 80;
-    server_name healthtrajectory.cloud www.healthtrajectory.cloud;
-    return 301 https://$host$request_uri;
-}
-```
-Simpan (`Ctrl+X` -> `Y` -> `Enter`).
-
-### 3. Aktifkan Konfigurasi & Restart Nginx
-```bash
-sudo ln -s /etc/nginx/sites-available/mern-vp /etc/nginx/sites-enabled/
+sudo cp ~/mern-vp/deploy/nginx/vidyamedic.conf /etc/nginx/sites-available/vidyamedic
+sudo ln -s /etc/nginx/sites-available/vidyamedic /etc/nginx/sites-enabled/vidyamedic
 sudo nginx -t
-sudo systemctl restart nginx
+sudo systemctl reload nginx
 ```
-Sekarang `http://domainanda.com` sudah bisa diakses!
+Konfigurasi meneruskan web `vidyamedic.my.id` dan `www` ke port loopback 8080,
+serta API `api.vidyamedic.my.id` ke port loopback 3030 (termasuk Socket.IO).
 
-### 4. Install SSL (HTTPS Gratis) agar Aman
-Agar gembok hijau muncul (HTTPS), jalankan Certbot:
+### 2. Aktifkan HTTPS
+Tunggu sampai ketiga DNS A record dapat di-resolve ke IP VPS, kemudian jalankan:
 ```bash
-sudo certbot --nginx -d domainanda.com -d www.domainanda.com
+sudo certbot --nginx --redirect \
+  -d vidyamedic.my.id \
+  -d www.vidyamedic.my.id \
+  -d api.vidyamedic.my.id
+sudo nginx -t
+sudo systemctl reload nginx
 ```
-- Masukkan email Anda saat diminta.
-- Ketik `Y` untuk menyetujui *Terms of Service*.
-- Certbot akan otomatis mengedit konfigurasi Nginx dan me-restartnya.
+Certbot memasang sertifikat dan redirect HTTP ke HTTPS. API publik kemudian
+tersedia di `https://api.vidyamedic.my.id/api`.
 
 ---
 
@@ -279,7 +185,8 @@ Kami sudah menyediakan *script* otomatis untuk menginstal layanan ini di VPS. Ja
 cd ~/mern-vp
 sudo bash api/systemd/install-systemd-timers.sh
 ```
-*Pastikan Anda sudah menjalankan perintah `docker compose up -d` (Tahap 4) sebelum menjalankan script ini, karena timer akan mencoba memanggil API di port 3030.*
+*Pastikan Docker Compose sudah berjalan (Tahap 4) sebelum menjalankan script ini,
+karena timer memanggil API pada port loopback VPS 3030.*
 
 ### 2. Cek Status Timer
 Untuk memastikan bahwa timer sudah berhasil diinstal dan diatur jadwalnya:
@@ -293,4 +200,5 @@ Jika Anda ingin melihat aktivitas log pemrosesan dari sistem yang berjalan di la
 - Log Layer 2: `journalctl -u mern-pipeline-l2 -f`
 - Log Layer 3: `journalctl -u mern-pipeline-l3 -f`
 
-**Selesai!** Aplikasi Anda sekarang sudah bisa diakses secara publik menggunakan `https://domainanda.com` dan otomatis memproses data setiap saat.
+**Selesai!** Aplikasi tersedia di `https://vidyamedic.my.id` dan API di
+`https://api.vidyamedic.my.id`, serta otomatis memproses data sesuai jadwal.

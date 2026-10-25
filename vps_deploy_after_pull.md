@@ -1,140 +1,88 @@
-# Panduan Deploy ke Server setelah `git pull`
+# Deploy Vidyamedic setelah `git pull`
 
-> Jalankan langkah-langkah ini secara berurutan di **VPS/server** via SSH.
+Jalankan perintah berikut di VPS dari root repository.
 
----
+## 1. Siapkan environment produksi
 
-## ⚠️ Penting: Perubahan yang Memerlukan Aksi Manual
-
-Setelah `git pull`, terdapat perubahan yang **tidak bisa otomatis** karena menyangkut file secret:
-
-| Perubahan | Dampak |
-|-----------|--------|
-| `docker-compose.yml` kini pakai `env_file: .env.production` | File `.env.production` **wajib ada** di server |
-| `api/.env` dihapus dari Git | Server mungkin kehilangan file `.env` jika sebelumnya bergantung padanya |
-| `Dockerfile` multi-stage + non-root user | Perlu `docker compose build --no-cache` |
-| Paket baru: `helmet`, `express-rate-limit` | Sudah ada di `package.json`, ikut ter-build |
-
----
-
-## Langkah 1 — SSH ke Server
+File `.env.production` berisi secret dan tidak boleh dimasukkan ke Git. Buat
+dari template hanya jika belum ada; jika sudah ada, pertahankan secret dan
+volume MongoDB yang sedang digunakan.
 
 ```bash
-ssh user@your-server-ip
-cd /path/to/mern-vp
-```
-
----
-
-## Langkah 2 — Buat `.env.production` di Server
-
-> [!CAUTION]
-> File ini **WAJIB ada** sebelum menjalankan `docker compose up`. Tanpa file ini, Docker akan error karena variabel environment tidak terdefinisi.
-
-```bash
-# Buat file .env.production dari template
-cp .env.example .env.production
-
-# Edit dengan nilai yang sebenarnya
+cd ~/mern-vp
+test -f .env.production || cp .env.example .env.production
 nano .env.production
 ```
 
-**Isi wajib yang harus diubah dari placeholder:**
+Pastikan nilai berikut sudah diisi:
 
-```bash
-# MongoDB credentials untuk Docker internal
-MONGO_INITDB_ROOT_USERNAME=admin
-MONGO_INITDB_ROOT_PASSWORD=GantiDenganPasswordKuat123!
-
-# Connection string (sesuaikan dengan password di atas)
-MONGO=mongodb://admin:GantiDenganPasswordKuat123!@mongodb:27017/healthdevice?authSource=admin
-
-# JWT Secret — generate dulu dengan perintah ini:
-# node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-JWT_SECRET=hasil_generate_di_atas
-
-# CORS: domain frontend yang diizinkan
-ALLOWED_ORIGINS=https://domain-kamu.com,http://localhost:3031
-
-# Internal Key — generate dulu:
-# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-INTERNAL_KEY=hasil_generate_di_atas
+```dotenv
+MONGO_INITDB_ROOT_USERNAME=<user-mongodb>
+MONGO_INITDB_ROOT_PASSWORD=<password-kuat>
+MONGO=mongodb://<user-mongodb>:<password-url-encoded>@mongodb:27017/healthdevice?authSource=admin
+PORT=3030
+NODE_ENV=production
+JWT_SECRET=<secret-acak-minimal-32-karakter>
+INTERNAL_KEY=<kunci-acak>
+ALLOWED_ORIGINS=https://vidyamedic.my.id,https://www.vidyamedic.my.id
 ```
 
----
+Jangan mengganti kredensial MongoDB jika volume data yang sudah ada
+diinisialisasi dengan user/password berbeda. Jika password berisi karakter
+khusus, URL-encode nilainya pada `MONGO`.
 
-## Langkah 3 — `git pull`
+## 2. Perbarui dan jalankan container
 
 ```bash
 git pull origin main
+docker compose --env-file .env.production up -d --build --remove-orphans
+docker compose --env-file .env.production ps
+docker compose --env-file .env.production logs --tail=100 api
 ```
 
----
+Compose mengikat API pada `127.0.0.1:3030` dan web pada `127.0.0.1:8080`.
+Jangan mengubah bind address menjadi `0.0.0.0`; trafik publik harus masuk
+melalui Nginx VPS dan HTTPS.
 
-## Langkah 4 — Stop Container yang Berjalan
+## 3. Konfigurasi Nginx dan HTTPS
+
+Pastikan DNS A record berikut menunjuk ke IP VPS `202.10.42.153`:
+
+- `vidyamedic.my.id`
+- `www.vidyamedic.my.id`
+- `api.vidyamedic.my.id`
+
+Pasang reverse proxy yang disediakan repository:
 
 ```bash
-docker compose down
+sudo cp ~/mern-vp/deploy/nginx/vidyamedic.conf /etc/nginx/sites-available/vidyamedic
+sudo ln -s /etc/nginx/sites-available/vidyamedic /etc/nginx/sites-enabled/vidyamedic
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
----
-
-## Langkah 5 — Rebuild Docker (wajib karena Dockerfile berubah)
+Setelah DNS terpropagasi dan port 80/443 terbuka:
 
 ```bash
-# --no-cache penting agar layer lama tidak dipakai
-docker compose build --no-cache
+sudo certbot --nginx --redirect \
+  -d vidyamedic.my.id \
+  -d www.vidyamedic.my.id \
+  -d api.vidyamedic.my.id
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-> Proses ini memakan waktu 3–10 menit karena kompilasi native module (`canvas`).
-
----
-
-## Langkah 6 — Jalankan Container
+## 4. Verifikasi
 
 ```bash
-docker compose up -d --remove-orphans
+curl --fail https://api.vidyamedic.my.id/api/health
+curl --fail https://vidyamedic.my.id/
+docker compose --env-file .env.production ps
 ```
 
-Frontend sekarang menggunakan service `vidyamedic-web` di port host `8080`
-menggantikan `capar-web`. Nginx VPS yang sudah meneruskan traffic web ke
-`localhost:8080` tidak perlu mengubah upstream.
+Health check yang diharapkan berisi `"success":true` dan `"status":"OK"`.
+Endpoint aplikasi/API tersedia melalui `https://api.vidyamedic.my.id/api`;
+web menggunakan API lewat reverse proxy HTTPS.
 
----
-
-## Langkah 7 — Verifikasi
-
-```bash
-# Cek semua container berjalan
-docker compose ps
-
-# Cek log backend (pastikan tidak ada error)
-docker compose logs backend --tail=50
-
-# Cek health endpoint
-curl http://localhost:3030/api/health
-# Expected: {"success":true,"status":"OK","timestamp":"..."}
-```
-
----
-
-## Checklist Sebelum Selesai
-
-- [ ] File `.env.production` sudah dibuat dan diisi dengan nilai asli
-- [ ] `MONGO_INITDB_ROOT_PASSWORD` sudah diganti dari placeholder
-- [ ] `JWT_SECRET` sudah di-generate ulang (bukan nilai lama yang bocor)
-- [ ] `INTERNAL_KEY` sudah di-generate ulang
-- [ ] `ALLOWED_ORIGINS` sudah diisi domain frontend
-- [ ] `docker compose ps` menunjukkan semua container `Up`
-- [ ] `curl http://localhost:3030/api/health` mengembalikan `{"success":true}`
-
----
-
-## Catatan Keamanan — Ganti Credentials Lama!
-
-Karena `api/.env` sebelumnya ter-commit ke Git, credentials lama sudah bocor:
-- MongoDB password lama: `Imam123imam!`
-- JWT Secret lama: `asnjkKkjsnklnly1xcx?23r`
-- Internal Key lama: `mern-vp-internal-systemd-2026`
-
-Wajib ganti semua nilai ini dengan yang baru di `.env.production`.
+Jika aplikasi Flutter masih menyimpan URL backend lama secara manual, versi
+Vidyamedic yang diperbarui akan memigrasikannya ke subdomain API yang baru.

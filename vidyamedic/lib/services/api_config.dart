@@ -6,7 +6,7 @@ class ApiConfig {
   static const String _keyCustomBaseUrl = 'vidyamedic_api_base_url';
   static const String _legacyCustomBaseUrlKey =
       'https://healthtrajectory.cloud/api';
-  static const String _productionBaseUrl = 'https://healthtrajectory.cloud/api';
+  static const String _productionBaseUrl = 'https://api.vidyamedic.my.id/api';
 
   // Default base URLs depending on runtime environment
   static String get defaultBaseUrl {
@@ -18,7 +18,7 @@ class ApiConfig {
         return _productionBaseUrl;
       }
     } catch (_) {}
-    return 'http://localhost:3030/api';
+    return kDebugMode ? 'http://localhost:3030/api' : _productionBaseUrl;
   }
 
   static String _baseUrl = '';
@@ -63,6 +63,21 @@ class ApiConfig {
 
   static String _normalizeBaseUrl(String value) {
     var cleanUrl = value.trim();
+    final parsed = Uri.tryParse(cleanUrl);
+    if (parsed != null &&
+        const {
+          'healthtrajectory.cloud',
+          'www.healthtrajectory.cloud',
+          'api.healthtrajectory.cloud',
+        }.contains(parsed.host.toLowerCase())) {
+      cleanUrl = Uri(
+        scheme: 'https',
+        host: 'api.vidyamedic.my.id',
+        path: parsed.path,
+        query: parsed.hasQuery ? parsed.query : null,
+        fragment: parsed.hasFragment ? parsed.fragment : null,
+      ).toString();
+    }
     while (cleanUrl.endsWith('/')) {
       cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
     }

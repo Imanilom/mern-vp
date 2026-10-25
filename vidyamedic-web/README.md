@@ -27,17 +27,22 @@ npm run preview
 
 The repository's Compose configuration builds this app as the production
 frontend, publishes it on host port `8080`, and proxies `/api/` requests to the
-Compose `api` service. From the repository root:
+Compose `api` service. From the repository root, with `.env.production` configured:
 
 ```sh
-docker compose up -d --build --remove-orphans
-docker compose ps
-docker compose logs vidyamedic-web --tail=50
+docker compose --env-file .env.production up -d --build --remove-orphans
+docker compose --env-file .env.production ps
+docker compose --env-file .env.production logs vidyamedic-web --tail=50
 ```
 
-The VPS Nginx frontend upstream can continue pointing to `http://localhost:8080`.
-The old `capar-web` service is replaced; `--remove-orphans` removes its
-superseded container from the Compose project.
+The VPS Nginx frontend upstream points to `http://127.0.0.1:8080`. The API is
+bound to `127.0.0.1:3030`; the old `capar-web` service is replaced and
+`--remove-orphans` removes its superseded container. In production, host Nginx
+serves `vidyamedic.my.id` and
+`www.vidyamedic.my.id` over HTTPS and proxies the API domain
+`api.vidyamedic.my.id` to the API service. Containers bind only to host
+loopback; see [`deploy/nginx/vidyamedic.conf`](../deploy/nginx/vidyamedic.conf)
+and the VPS deployment guide.
 
 Patient data is loaded from authenticated API responses; the app does not
 generate substitute health measurements. The Rekomendasi & Keputusan page

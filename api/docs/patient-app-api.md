@@ -57,6 +57,11 @@ the user's device notification permission.
 `data_sharing` records explicit opt-in flags for clinician or family sharing;
 both default to `false`.
 
+The production API base URL is `https://api.vidyamedic.my.id/api`. Browser
+origins allowed by the API are the Vidyamedic web domains
+`https://vidyamedic.my.id` and `https://www.vidyamedic.my.id`, configured via
+`ALLOWED_ORIGINS`. Do not add wildcard origins when credentials are enabled.
+
 ## Daily check-ins
 
 - `POST /api/patient-app/check-ins`

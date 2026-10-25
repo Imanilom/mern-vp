@@ -42,6 +42,7 @@ import clinicalVulnerabilityRouter from './routes/clinical_vulnerability.route.j
 import resilienceRouter from './routes/resilience.route.js';
 import patientAppRouter from './routes/patient_app.route.js';
 import { verifyToken } from './utils/verifyUser.js';
+import { isAllowedOrigin, parseAllowedOrigins } from './utils/corsOrigins.js';
 dotenv.config();
 
 const mongoUri = process.env.MONGO;
@@ -94,6 +95,14 @@ const __dirname = path.resolve();
 
 const app = express();
 const httpServer = http.createServer(app);
+const allowedOrigins = parseAllowedOrigins(process.env.ALLOWED_ORIGINS);
+const allowLocalhostOrigins = process.env.NODE_ENV !== 'production';
+const corsOrigin = (origin, callback) => {
+  if (isAllowedOrigin(origin, allowedOrigins, allowLocalhostOrigins)) {
+    return callback(null, true);
+  }
+  return callback(new Error(`CORS: Origin '${origin}' tidak diizinkan.`));
+};
 
 // Nginx proxies requests through the Docker bridge; trust only private proxy
 // addresses so public clients cannot spoof X-Forwarded-For.
@@ -105,9 +114,7 @@ app.set(
 // Initialize Socket.io
 export const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.ALLOWED_ORIGINS
-      ? process.env.ALLOWED_ORIGINS.replace(/['"]/g, '').split(',').map(o => o.trim())
-      : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:59674', '*'],
+    origin: corsOrigin,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -132,30 +139,9 @@ io.on("connection", (socket) => {
 // ── Security Headers (Helmet) ────────────────────────────────────────────────
 app.use(helmet());
 
-// ── CORS — Whitelist dari environment variable ALLOWED_ORIGINS ──────────────
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.replace(/['"]/g, '').split(',').map(o => o.trim())
-  : ['http://localhost:3031', 'https://healthtrajectory.cloud', 'http://localhost:5173', 'http://localhost:56710'];
-
-// Regex untuk allow semua localhost port (development Flutter web / Vite / dev servers)
-// Pattern ini TIDAK berlaku di production karena origin production tidak pernah localhost.
-const localhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
-
-// Agar jika ada typo https://https:// di .env tetap aman:
-if (!allowedOrigins.includes('https://healthtrajectory.cloud')) {
-  allowedOrigins.push('https://healthtrajectory.cloud');
-}
-
+// ── CORS — Whitelist origins dari konfigurasi environment ──────────────────
 app.use(cors({
-  origin: (origin, callback) => {
-    // Izinkan request tanpa origin (server-to-server / curl / Postman)
-    if (!origin) return callback(null, true);
-    // Izinkan semua localhost:* untuk keperluan development
-    if (localhostRegex.test(origin)) return callback(null, true);
-    // Cek whitelist eksplisit (production origins)
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error(`CORS: Origin '${origin}' tidak diizinkan.`));
-  },
+  origin: corsOrigin,
   credentials: true, // Izinkan cookie di-kirim bersama request
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Key', 'ngrok-skip-browser-warning'],
