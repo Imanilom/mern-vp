@@ -1,6 +1,10 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../services/api_service.dart';
 import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
 import '../../services/deviation_prompt_model.dart';
@@ -657,6 +661,7 @@ class _PedagogyDashboard extends StatelessWidget {
 
               const WearableMonitoringCard(),
               const WearableVitalsGrid(),
+              const PhysiologicalSummaryCard(),
 
               const ProfileSnapshotCard(),
 
@@ -1437,6 +1442,75 @@ class _TodayOverviewTab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('Aktivitas hari ini',
+                              style: AppTheme.font(
+                                  size: 14, weight: FontWeight.w800)),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _openDailyFlow(context, state),
+                          icon: const Icon(Icons.add_rounded, size: 17),
+                          label: const Text('Catat'),
+                        ),
+                      ],
+                    ),
+                    _TodayMetricRow(
+                      label: 'Aktivitas yang dilaporkan',
+                      value: _display(
+                        checkIn['activity'] == null
+                            ? null
+                            : mapApiToActivity(checkIn['activity'].toString()),
+                        fallback: state.activity,
+                      ),
+                    ),
+                    _TodayMetricRow(
+                      label: 'Jumlah check-in hari ini',
+                      value: state.personalChatCheckIns
+                          .where((item) {
+                            final date = DateTime.tryParse(
+                              item['recorded_at']?.toString() ?? '',
+                            );
+                            return date != null &&
+                                DateUtils.isSameDay(
+                                    date.toLocal(), DateTime.now());
+                          })
+                          .length
+                          .toString(),
+                    ),
+                    _TodayMetricRow(
+                      label: 'Sampel wearable nyata',
+                      value: readings.length.toString(),
+                    ),
+                    if (checkIn['posture'] != null)
+                      _TodayMetricRow(
+                        label: 'Posisi yang dicatat',
+                        value: mapApiToActivity(checkIn['posture'].toString()),
+                      ),
+                    if (checkIn['note'] is String &&
+                        (checkIn['note'] as String).trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Catatan: ${checkIn['note']}',
+                          style: AppTheme.font(
+                              size: 11.5,
+                              color: AppTheme.textSecondary,
+                              height: 1.35),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Card(
+              margin: const EdgeInsets.only(top: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text('Ringkasan pengamatan',
                         style:
                             AppTheme.font(size: 14, weight: FontWeight.w800)),
@@ -1528,6 +1602,15 @@ class _TodayOverviewTab extends StatelessWidget {
                 ),
               ),
             ),
+            _TodayEpisodesCard(
+              episodes: _todayCaparEpisodes(state),
+              onOpenHistory: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const CaparHistoryScreen(),
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () => _openDailyFlow(context, state),
@@ -1559,6 +1642,123 @@ class _TodayOverviewTab extends StatelessWidget {
       ),
     );
   }
+}
+
+List<Map<String, dynamic>> _todayCaparEpisodes(AppState state) {
+  final capar = state.rawCaparInsights?['capar'];
+  final history = capar is Map ? capar['episode_history'] : null;
+  if (history is! List) return const [];
+  final today = DateUtils.dateOnly(DateTime.now());
+  return history
+      .whereType<Map>()
+      .map((episode) => Map<String, dynamic>.from(episode))
+      .where((episode) {
+    final start = DateTime.tryParse(episode['start_at']?.toString() ?? '');
+    return start != null && DateUtils.isSameDay(start.toLocal(), today);
+  }).toList()
+    ..sort((first, second) {
+      final firstAt = DateTime.tryParse(first['start_at']?.toString() ?? '');
+      final secondAt = DateTime.tryParse(second['start_at']?.toString() ?? '');
+      if (firstAt == null || secondAt == null) return 0;
+      return secondAt.compareTo(firstAt);
+    });
+}
+
+class _TodayEpisodesCard extends StatelessWidget {
+  const _TodayEpisodesCard({
+    required this.episodes,
+    required this.onOpenHistory,
+  });
+
+  final List<Map<String, dynamic>> episodes;
+  final VoidCallback onOpenHistory;
+
+  String _duration(dynamic value) {
+    if (value is! num || value <= 0) return 'Durasi belum tersedia';
+    final minutes = (value / 60000).round();
+    return minutes < 1 ? 'Kurang dari 1 menit' : '$minutes menit';
+  }
+
+  String _outcome(String? outcome) => switch (outcome) {
+        'recovered' => 'Pemulihan tercatat',
+        'unresolved' => 'Belum terselesaikan',
+        'in_progress_or_unverified' => 'Berlangsung / belum diverifikasi',
+        _ => 'Status belum tersedia',
+      };
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: const EdgeInsets.only(top: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Episode hari ini',
+                        style:
+                            AppTheme.font(size: 14, weight: FontWeight.w800)),
+                  ),
+                  if (episodes.isNotEmpty)
+                    TextButton(
+                      onPressed: onOpenHistory,
+                      child: const Text('Riwayat'),
+                    ),
+                ],
+              ),
+              if (episodes.isEmpty)
+                Text(
+                  'Belum ada episode CAPAR dengan waktu mulai hari ini. Ini tidak berarti kondisi normal; episode hanya ditampilkan jika tersedia dari server.',
+                  style: AppTheme.font(
+                      size: 11.5, color: AppTheme.textSecondary, height: 1.4),
+                )
+              else
+                ...episodes.take(5).map((episode) {
+                  final start =
+                      DateTime.tryParse(episode['start_at']?.toString() ?? '');
+                  final activity = episode['activity']?.toString();
+                  final classification = episode['classification']?.toString();
+                  final features = episode['features'];
+                  final heartRate =
+                      features is Map ? features['heart_rate_mean'] : null;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: const CircleAvatar(
+                      backgroundColor: AppTheme.primarySoft,
+                      child: Icon(Icons.monitor_heart_outlined,
+                          color: AppTheme.primary),
+                    ),
+                    title: Text(
+                      classification == null || classification.isEmpty
+                          ? _outcome(episode['outcome']?.toString())
+                          : classification,
+                      style: AppTheme.font(size: 12, weight: FontWeight.w700),
+                    ),
+                    subtitle: Text([
+                      if (start != null)
+                        DateFormat('HH:mm').format(start.toLocal()),
+                      if (activity != null && activity.isNotEmpty)
+                        'Aktivitas: ${mapApiToActivity(activity)}',
+                      _duration(episode['duration_ms']),
+                      if (heartRate is num)
+                        'HR rata-rata segmen ${heartRate.round()} bpm',
+                      _outcome(episode['outcome']?.toString()),
+                    ].join(' · ')),
+                  );
+                }),
+              if (episodes.isNotEmpty)
+                Text(
+                  'Ringkasan episode CAPAR bukan diagnosis. Tinjau detail dan konteks sebelum menarik kesimpulan.',
+                  style: AppTheme.font(
+                      size: 10.5, color: AppTheme.textMuted, height: 1.35),
+                ),
+            ],
+          ),
+        ),
+      );
 }
 
 class _TodayMetricRow extends StatelessWidget {
@@ -1595,8 +1795,194 @@ class _TodayMetricRow extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Tab 2: Insight dan akses fitur analisis lanjutan
 // ---------------------------------------------------------------------------
-class _InsightsHubTab extends StatelessWidget {
+class _InsightsHubTab extends StatefulWidget {
   const _InsightsHubTab();
+
+  @override
+  State<_InsightsHubTab> createState() => _InsightsHubTabState();
+}
+
+class _InsightsHubTabState extends State<_InsightsHubTab> {
+  int _periodDays = 7;
+  List<Map<String, dynamic>> _history = [];
+  bool _loadingHistory = false;
+  String? _historyError;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadHistory();
+    });
+  }
+
+  Future<void> _loadHistory() async {
+    final state = context.read<AppState>();
+    if (!state.isAuthenticated || _loadingHistory) return;
+    setState(() {
+      _loadingHistory = true;
+      _historyError = null;
+    });
+    final now = DateTime.now();
+    final response = await ApiService.getWearableHistory(
+      from: now.subtract(Duration(days: _periodDays)),
+      to: now,
+      bucketMinutes: 60,
+    );
+    if (!mounted) return;
+    if (response.success && response.data != null) {
+      setState(() {
+        _history = response.data!
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+        _historyError = null;
+        _loadingHistory = false;
+      });
+    } else {
+      setState(() {
+        _historyError = response.message ?? 'Riwayat wearable gagal dimuat.';
+        _loadingHistory = false;
+      });
+    }
+  }
+
+  void _selectPeriod(int days) {
+    if (_periodDays == days) return;
+    setState(() {
+      _periodDays = days;
+      _history = [];
+    });
+    _loadHistory();
+  }
+
+  List<Map<String, dynamic>> _readingsForPeriod(AppState state) {
+    final source = _history.isNotEmpty
+        ? _history
+        : state.personalChatWearableHistory.isNotEmpty
+            ? state.personalChatWearableHistory
+            : state.wearableSamples;
+    final cutoff = DateTime.now().subtract(Duration(days: _periodDays));
+    return source.where((sample) {
+      final recordedAt =
+          DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
+      return recordedAt != null &&
+          !recordedAt.isAfter(DateTime.now()) &&
+          !recordedAt.isBefore(cutoff) &&
+          sample['is_simulated'] != true &&
+          sample['heart_rate_bpm'] is num;
+    }).toList()
+      ..sort((first, second) {
+        final firstAt =
+            DateTime.tryParse(first['recorded_at']?.toString() ?? '');
+        final secondAt =
+            DateTime.tryParse(second['recorded_at']?.toString() ?? '');
+        if (firstAt == null || secondAt == null) return 0;
+        return firstAt.compareTo(secondAt);
+      });
+  }
+
+  String _activityLabel(dynamic raw) {
+    final value = raw?.toString().trim();
+    if (value == null || value.isEmpty) return 'Konteks belum dicatat';
+    final normalized = value.toLowerCase();
+    if (normalized == 'rest' || normalized == 'resting') return 'Istirahat';
+    if (normalized == 'light') return 'Aktivitas ringan';
+    if (normalized == 'moderate') return 'Aktivitas sedang';
+    if (normalized == 'intense') return 'Aktivitas intens';
+    if (normalized == 'unknown') return 'Konteks belum dicatat';
+    final mapped = mapApiToActivity(value);
+    return mapped == 'Lainnya' ? value : mapped;
+  }
+
+  List<_ActivityPhysiologySummary> _summarizeActivities(
+    List<Map<String, dynamic>> readings,
+  ) {
+    final groups = <String, List<Map<String, dynamic>>>{};
+    for (final reading in readings) {
+      final label = _activityLabel(reading['activity']);
+      groups.putIfAbsent(label, () => []).add(reading);
+    }
+    final summaries = groups.entries.map((entry) {
+      var weightTotal = 0;
+      var heartRateTotal = 0.0;
+      var heartRateMin = double.infinity;
+      var heartRateMax = double.negativeInfinity;
+      var hrvTotal = 0.0;
+      var hrvWeight = 0;
+      for (final sample in entry.value) {
+        final weight = (sample['sample_count'] as num?)?.toInt() ?? 1;
+        final heartRate = (sample['heart_rate_bpm'] as num).toDouble();
+        weightTotal += weight;
+        heartRateTotal += heartRate * weight;
+        if (heartRate < heartRateMin) heartRateMin = heartRate;
+        if (heartRate > heartRateMax) heartRateMax = heartRate;
+        final hrv = sample['rmssd_ms'];
+        if (hrv is num && hrv > 0) {
+          hrvTotal += hrv.toDouble() * weight;
+          hrvWeight += weight;
+        }
+      }
+      return _ActivityPhysiologySummary(
+        activity: entry.key,
+        heartRateMean: heartRateTotal / weightTotal,
+        heartRateMin: heartRateMin,
+        heartRateMax: heartRateMax,
+        hrvMean: hrvWeight == 0 ? null : hrvTotal / hrvWeight,
+        bucketCount: entry.value.length,
+        sampleCount: weightTotal,
+      );
+    }).toList()
+      ..sort(
+          (first, second) => second.sampleCount.compareTo(first.sampleCount));
+    return summaries;
+  }
+
+  List<_PhysiologyTrendPoint> _summarizeTrend(
+    List<Map<String, dynamic>> readings,
+  ) {
+    final now = DateTime.now();
+    final start = now.subtract(Duration(days: _periodDays));
+    final buckets = List.generate(6, (_) => <Map<String, dynamic>>[]);
+    for (final reading in readings) {
+      final recordedAt =
+          DateTime.tryParse(reading['recorded_at']?.toString() ?? '');
+      if (recordedAt == null) continue;
+      final position = now.difference(recordedAt).inMilliseconds /
+          now.difference(start).inMilliseconds;
+      final bucketIndex =
+          ((position * buckets.length).floor()).clamp(0, buckets.length - 1);
+      buckets[bucketIndex].add(reading);
+    }
+    return List.generate(buckets.length, (index) {
+      final items = buckets[index];
+      final hrValues = items
+          .map((item) => (item['heart_rate_bpm'] as num).toDouble())
+          .toList();
+      final hrvValues = items
+          .map((item) => item['rmssd_ms'])
+          .whereType<num>()
+          .map((value) => value.toDouble())
+          .where((value) => value > 0)
+          .toList();
+      final date = start.add(Duration(
+        milliseconds: (now.difference(start).inMilliseconds *
+                (index + 0.5) /
+                buckets.length)
+            .round(),
+      ));
+      return _PhysiologyTrendPoint(
+        date: date,
+        heartRateMean: hrValues.isEmpty
+            ? null
+            : hrValues.reduce((a, b) => a + b) / hrValues.length,
+        hrvMean: hrvValues.isEmpty
+            ? null
+            : hrvValues.reduce((a, b) => a + b) / hrvValues.length,
+        sampleCount: items.length,
+      );
+    });
+  }
 
   void _open(BuildContext context, Widget screen) {
     Navigator.push(
@@ -1610,6 +1996,9 @@ class _InsightsHubTab extends StatelessWidget {
     final state = context.watch<AppState>();
     final recovery = state.recoveryProgress;
     final citations = state.scientificCitations;
+    final readings = _readingsForPeriod(state);
+    final activitySummaries = _summarizeActivities(readings);
+    final trend = _summarizeTrend(readings);
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -1633,8 +2022,136 @@ class _InsightsHubTab extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 6, 20, 32),
         children: [
           Text(
-            'Pola, baseline, dan riwayat pemantauan Anda',
+            'Pola berdasar aktivitas dan tren fisiologis pribadi',
             style: AppTheme.font(size: 12, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [7, 30, 90]
+                .map(
+                  (days) => ChoiceChip(
+                    label: Text('$days hari'),
+                    selected: _periodDays == days,
+                    onSelected: (_) => _selectPeriod(days),
+                    selectedColor: AppTheme.primarySoft,
+                    labelStyle: AppTheme.font(
+                      size: 11,
+                      weight: FontWeight.w700,
+                      color: _periodDays == days
+                          ? AppTheme.primaryDark
+                          : AppTheme.textSecondary,
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          if (_loadingHistory)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
+          if (_historyError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Riwayat terbaru tidak termuat: $_historyError. '
+                'Menampilkan data riwayat lokal yang tersedia.',
+                style: AppTheme.font(
+                    size: 10.5, color: AppTheme.statusOrange, height: 1.35),
+              ),
+            ),
+          Card(
+            margin: const EdgeInsets.only(top: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Pola fisiologis berdasarkan aktivitas',
+                      style: AppTheme.font(size: 14, weight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Perbandingan ringkasan pengukuran wearable nyata berdasarkan konteks aktivitas yang tercatat. '
+                    'Ini bukan rentang normal atau penilaian medis.',
+                    style: AppTheme.font(
+                        size: 10.5,
+                        color: AppTheme.textSecondary,
+                        height: 1.35),
+                  ),
+                  const SizedBox(height: 8),
+                  if (activitySummaries.isEmpty)
+                    Text(
+                      'Belum ada sampel fisiologis nyata dengan konteks aktivitas untuk periode ini.',
+                      style: AppTheme.font(
+                          size: 11.5, color: AppTheme.textSecondary),
+                    )
+                  else
+                    ...activitySummaries.map(
+                      (summary) => _ActivityPhysiologyRow(summary: summary),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.only(top: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Tren fisiologis personal',
+                      style: AppTheme.font(size: 14, weight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Rerata denyut jantung dan RMSSD dari sampel nyata selama $_periodDays hari. '
+                    'Skala tiap metrik dinormalisasi terpisah untuk memperlihatkan arah tren, bukan membandingkan besar nilainya.',
+                    style: AppTheme.font(
+                        size: 10.5,
+                        color: AppTheme.textSecondary,
+                        height: 1.35),
+                  ),
+                  const SizedBox(height: 10),
+                  if (readings.isEmpty)
+                    Text(
+                      'Tren belum tersedia karena belum ada sampel nyata pada periode ini.',
+                      style: AppTheme.font(
+                          size: 11.5, color: AppTheme.textSecondary),
+                    )
+                  else ...[
+                    SizedBox(
+                      height: 150,
+                      width: double.infinity,
+                      child: CustomPaint(
+                        painter: _PhysiologyTrendPainter(points: trend),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 14,
+                      children: [
+                        _TrendLegend(
+                          color: AppTheme.primary,
+                          label: 'Denyut jantung (bpm)',
+                        ),
+                        _TrendLegend(
+                          color: const Color(0xFF8B5CF6),
+                          label: 'RMSSD (ms)',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${readings.length} ringkasan sampel nyata digunakan. '
+                      'Garis terputus menandai periode tanpa data; tren bukan diagnosis.',
+                      style: AppTheme.font(
+                          size: 10, color: AppTheme.textMuted, height: 1.35),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
           Card(
             margin: const EdgeInsets.only(top: 12),
@@ -1786,6 +2303,220 @@ class _InsightsHubTab extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ActivityPhysiologySummary {
+  const _ActivityPhysiologySummary({
+    required this.activity,
+    required this.heartRateMean,
+    required this.heartRateMin,
+    required this.heartRateMax,
+    required this.hrvMean,
+    required this.bucketCount,
+    required this.sampleCount,
+  });
+
+  final String activity;
+  final double heartRateMean;
+  final double heartRateMin;
+  final double heartRateMax;
+  final double? hrvMean;
+  final int bucketCount;
+  final int sampleCount;
+}
+
+class _PhysiologyTrendPoint {
+  const _PhysiologyTrendPoint({
+    required this.date,
+    required this.heartRateMean,
+    required this.hrvMean,
+    required this.sampleCount,
+  });
+
+  final DateTime date;
+  final double? heartRateMean;
+  final double? hrvMean;
+  final int sampleCount;
+}
+
+class _ActivityPhysiologyRow extends StatelessWidget {
+  const _ActivityPhysiologyRow({required this.summary});
+
+  final _ActivityPhysiologySummary summary;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(summary.activity,
+                      style: AppTheme.font(size: 12, weight: FontWeight.w700)),
+                ),
+                Text('${summary.sampleCount} sampel',
+                    style: AppTheme.font(size: 10, color: AppTheme.textMuted)),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              'HR rerata ${summary.heartRateMean.toStringAsFixed(1)} bpm '
+              '(rentang rerata per jam ${summary.heartRateMin.toStringAsFixed(0)}–'
+              '${summary.heartRateMax.toStringAsFixed(0)} bpm)'
+              '${summary.hrvMean == null ? '' : ' · RMSSD ${summary.hrvMean!.toStringAsFixed(1)} ms'}',
+              style: AppTheme.font(
+                  size: 10.5, color: AppTheme.textSecondary, height: 1.35),
+            ),
+          ],
+        ),
+      );
+}
+
+class _TrendLegend extends StatelessWidget {
+  const _TrendLegend({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(label,
+              style: AppTheme.font(size: 10, color: AppTheme.textSecondary)),
+        ],
+      );
+}
+
+class _PhysiologyTrendPainter extends CustomPainter {
+  const _PhysiologyTrendPainter({required this.points});
+
+  final List<_PhysiologyTrendPoint> points;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    const bottomPadding = 20.0;
+    final chartHeight = size.height - bottomPadding;
+    final gridPaint = Paint()
+      ..color = AppTheme.borderLight
+      ..strokeWidth = 0.8;
+    for (var line = 0; line < 4; line++) {
+      final y = chartHeight * line / 3;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+    _drawSeries(
+      canvas,
+      size,
+      chartHeight,
+      points.map((point) => point.heartRateMean).toList(),
+      AppTheme.primary,
+    );
+    _drawSeries(
+      canvas,
+      size,
+      chartHeight,
+      points.map((point) => point.hrvMean).toList(),
+      const Color(0xFF8B5CF6),
+    );
+
+    if (points.isNotEmpty) {
+      _drawLabel(
+        canvas,
+        DateFormat('d/M').format(points.first.date),
+        Offset(0, chartHeight + 3),
+      );
+      final lastLabel = DateFormat('d/M').format(points.last.date);
+      final textWidth = _measureLabel(lastLabel);
+      _drawLabel(
+        canvas,
+        lastLabel,
+        Offset(size.width - textWidth, chartHeight + 3),
+      );
+    }
+  }
+
+  void _drawSeries(
+    Canvas canvas,
+    Size size,
+    double chartHeight,
+    List<double?> values,
+    Color color,
+  ) {
+    final finite = values.whereType<double>().toList();
+    if (finite.isEmpty) return;
+    final minimum = finite.reduce(math.min);
+    final maximum = finite.reduce(math.max);
+    final range = math.max(maximum - minimum, 0.001);
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    var path = Path();
+    var hasCurrentPath = false;
+    for (var index = 0; index < values.length; index++) {
+      final value = values[index];
+      if (value == null || !value.isFinite) {
+        if (hasCurrentPath) canvas.drawPath(path, paint);
+        path = Path();
+        hasCurrentPath = false;
+        continue;
+      }
+      final x = values.length <= 1
+          ? size.width / 2
+          : size.width * index / (values.length - 1);
+      final y = chartHeight -
+          ((value - minimum) / range * chartHeight * 0.78 + chartHeight * 0.1);
+      if (hasCurrentPath) {
+        path.lineTo(x, y);
+      } else {
+        path.moveTo(x, y);
+        hasCurrentPath = true;
+      }
+      canvas.drawCircle(
+        Offset(x, y),
+        2.5,
+        Paint()..color = color,
+      );
+    }
+    if (hasCurrentPath) canvas.drawPath(path, paint);
+  }
+
+  double _measureLabel(String value) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: value,
+        style: AppTheme.font(size: 9, color: AppTheme.textMuted),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    return painter.width;
+  }
+
+  void _drawLabel(Canvas canvas, String value, Offset offset) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: value,
+        style: AppTheme.font(size: 9, color: AppTheme.textMuted),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    painter.paint(canvas, offset);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PhysiologyTrendPainter oldDelegate) =>
+      oldDelegate.points != points;
 }
 
 class _InsightLinkCard extends StatelessWidget {

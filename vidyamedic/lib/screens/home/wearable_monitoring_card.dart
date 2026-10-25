@@ -336,3 +336,189 @@ class WearableVitalsGrid extends StatelessWidget {
     );
   }
 }
+
+class PhysiologicalSummaryCard extends StatelessWidget {
+  const PhysiologicalSummaryCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final today = DateUtils.dateOnly(DateTime.now());
+    final readings = <String, Map<String, dynamic>>{};
+    final candidates = [
+      ...state.personalChatWearableHistory,
+      ...state.wearableSamples,
+      if (state.wearableBridge.isStreaming &&
+          !state.wearableBridge.isDemoDevice)
+        ...state.liveStreamReadings,
+    ];
+
+    for (final reading in candidates) {
+      final recordedAt =
+          DateTime.tryParse(reading['recorded_at']?.toString() ?? '');
+      if (recordedAt == null ||
+          !DateUtils.isSameDay(recordedAt.toLocal(), today) ||
+          reading['is_simulated'] == true ||
+          reading['heart_rate_bpm'] is! num) {
+        continue;
+      }
+      readings['${recordedAt.toIso8601String()}:${reading['heart_rate_bpm']}'] =
+          reading;
+    }
+
+    final values = readings.values.toList();
+    var heartRateTotal = 0.0;
+    var heartRateWeight = 0;
+    var rmssdTotal = 0.0;
+    var rmssdWeight = 0;
+    for (final reading in values) {
+      final weight = (reading['sample_count'] as num?)?.round() ?? 1;
+      final safeWeight = weight > 0 ? weight : 1;
+      heartRateTotal +=
+          (reading['heart_rate_bpm'] as num).toDouble() * safeWeight;
+      heartRateWeight += safeWeight;
+      final rmssd = reading['rmssd_ms'];
+      if (rmssd is num && rmssd > 0) {
+        rmssdTotal += rmssd.toDouble() * safeWeight;
+        rmssdWeight += safeWeight;
+      }
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.shadowSoft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Ringkasan fisiologis hari ini',
+            style: AppTheme.font(
+              size: 14,
+              weight: FontWeight.w800,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            values.isEmpty
+                ? 'Belum ada bacaan wearable nyata hari ini.'
+                : '${values.length} ringkasan bacaan wearable nyata hari ini.',
+            style: AppTheme.font(size: 10.5, color: AppTheme.textSecondary),
+          ),
+          if (values.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _PhysiologicalSummaryMetric(
+                    label: 'Rata-rata denyut',
+                    value: '${(heartRateTotal / heartRateWeight).round()}',
+                    unit: 'bpm',
+                    icon: Icons.favorite_rounded,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PhysiologicalSummaryMetric(
+                    label: 'Rata-rata HRV',
+                    value: rmssdWeight == 0
+                        ? '—'
+                        : (rmssdTotal / rmssdWeight).round().toString(),
+                    unit: 'ms · RMSSD',
+                    icon: Icons.monitor_heart_outlined,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'Ringkasan ini menjelaskan bacaan Anda, bukan diagnosis atau rentang normal.',
+            style: AppTheme.font(
+              size: 9.5,
+              color: AppTheme.textMuted,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhysiologicalSummaryMetric extends StatelessWidget {
+  const _PhysiologicalSummaryMetric({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final String unit;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: AppTheme.fieldFill,
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: AppTheme.primary),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.font(
+                    size: 9.5,
+                    weight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: AppTheme.font(
+                    size: 19,
+                    weight: FontWeight.w900,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const TextSpan(text: ' '),
+                TextSpan(
+                  text: unit,
+                  style: AppTheme.font(size: 9, color: AppTheme.textMuted),
+                ),
+              ],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
