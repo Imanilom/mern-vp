@@ -27,12 +27,12 @@ npm run preview
 
 The repository's Compose configuration builds this app as the production
 frontend, publishes it on host port `8080`, and proxies `/api/` requests to the
-Compose `api` service. From the repository root, with `.env.production` configured:
+Compose `api` service. From the repository root, with `.env` configured:
 
 ```sh
-docker compose --env-file .env.production up -d --build --remove-orphans
-docker compose --env-file .env.production ps
-docker compose --env-file .env.production logs vidyamedic-web --tail=50
+docker compose up -d --build --remove-orphans
+docker compose ps
+docker compose logs vidyamedic-web --tail=50
 ```
 
 The VPS Nginx frontend upstream points to `http://127.0.0.1:8080`. The API is

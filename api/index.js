@@ -48,6 +48,15 @@ dotenv.config();
 const mongoUri = process.env.MONGO;
 const localMongoUri = "mongodb://127.0.0.1:27017/healthdevice";
 
+function isLocalMongoUri(uri) {
+  if (!uri) return false;
+  try {
+    return ['localhost', '127.0.0.1', '::1', 'mongodb'].includes(new URL(uri).hostname);
+  } catch {
+    return false;
+  }
+}
+
 async function connectMongoDB() {
   const options = {
     serverSelectionTimeoutMS: 5000,
@@ -69,13 +78,13 @@ async function connectMongoDB() {
 
   try {
     await mongoose.connect(mongoUri, options);
-    const connType = (mongoUri.includes('127.0.0.1') || mongoUri.includes('localhost')) ? 'Local' : 'Cloud Atlas';
+    const connType = isLocalMongoUri(mongoUri) ? 'VPS/local' : 'remote';
     console.log(`Connected to MongoDB (${connType})!`);
     startLogTransportConsumer().catch((err) => console.error("[RabbitMQ Consumer] Launch error:", err.message));
     syncAllBaselineLearnedTau().catch((err) => console.error("[syncAllBaselineLearnedTau] Error:", err.message));
   } catch (err) {
-    console.error(`[MongoDB] Primary connection error (${mongoUri}):`, err.message);
-    const isRemote = !mongoUri.includes('127.0.0.1') && !mongoUri.includes('localhost');
+    console.error("[MongoDB] Primary connection error:", err.message);
+    const isRemote = !isLocalMongoUri(mongoUri);
     if (isRemote) {
       console.log(`[MongoDB] Attempting fallback connection to local MongoDB (${localMongoUri})...`);
       try {

@@ -2,23 +2,25 @@
 
 Jalankan perintah berikut di VPS dari root repository.
 
-## 1. Siapkan environment produksi
+## 1. Siapkan environment
 
-File `.env.production` berisi secret dan tidak boleh dimasukkan ke Git. Buat
-dari template hanya jika belum ada; jika sudah ada, pertahankan secret dan
+File `.env` berisi secret dan tidak boleh dimasukkan ke Git. Buat dari template
+hanya jika belum ada; jika sudah ada, pertahankan secret serta konfigurasi dan
 volume MongoDB yang sedang digunakan.
 
 ```bash
-cd ~/mern-vp
-test -f .env.production || cp .env.example .env.production
-nano .env.production
+cd /opt/apps/mern-vp
+test -f .env || cp .env.example .env
+nano .env
 ```
 
-Isi variabel aplikasi yang memang diperlukan. Pertahankan nilai `MONGO` yang
-sudah digunakan oleh deployment saat ini; konfigurasi MongoDB di
-`docker-compose.yml` tidak perlu diubah.
+Atur `MONGO` agar API menggunakan MongoDB VPS melalui host service Compose
+`mongodb`, database lokal yang benar, dan kredensial MongoDB yang sudah
+berlaku. Jangan menggunakan `127.0.0.1` atau `localhost` sebagai host dari
+dalam container API.
 
 ```dotenv
+MONGO=mongodb://<user>:<password-URL-encoded>@mongodb:27017/<database>?authSource=admin
 PORT=3030
 NODE_ENV=production
 JWT_SECRET=<secret-acak-minimal-32-karakter>
@@ -26,16 +28,15 @@ INTERNAL_KEY=<kunci-acak>
 ALLOWED_ORIGINS=https://vidyamedic.my.id,https://www.vidyamedic.my.id
 ```
 
-Jangan menimpa nilai `MONGO` atau mengubah kredensial dan volume MongoDB yang
-sudah ada.
+Jangan mengubah konfigurasi, kredensial, atau volume MongoDB yang sudah ada.
 
 ## 2. Perbarui dan jalankan container
 
 ```bash
 git pull origin main
-docker compose --env-file .env.production up -d --build --remove-orphans
-docker compose --env-file .env.production ps
-docker compose --env-file .env.production logs --tail=100 api
+docker compose up -d --build --remove-orphans
+docker compose ps
+docker compose logs --tail=100 api
 ```
 
 Compose mengikat API pada `127.0.0.1:3030` dan web pada `127.0.0.1:8080`.
@@ -75,7 +76,7 @@ sudo systemctl reload nginx
 ```bash
 curl --fail https://api.vidyamedic.my.id/api/health
 curl --fail https://vidyamedic.my.id/
-docker compose --env-file .env.production ps
+docker compose ps
 ```
 
 Health check yang diharapkan berisi `"success":true` dan `"status":"OK"`.

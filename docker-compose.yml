@@ -29,7 +29,7 @@ services:
       - ./data:/app/data
       - ./data:/data
     env_file:
-      - ./.env.production
+      - ./.env
     environment:
       PORT: 3030
       NODE_ENV: production
@@ -37,6 +37,7 @@ services:
       ALLOWED_ORIGINS: https://vidyamedic.my.id,https://www.vidyamedic.my.id
     depends_on:
       - rabbitmq
+      - mongodb
     dns:
       - 103.253.213.134
       - 203.175.8.227

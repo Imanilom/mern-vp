@@ -89,32 +89,37 @@ cd mern-vp
 
 ## TAHAP 4: Jalankan Aplikasi MERN
 
-### 1. Siapkan `.env.production`
+### 1. Siapkan `.env`
 File environment ini tidak ikut di-*commit*. Buat dari template dan isi
-kredensial kuat yang sudah digunakan/dirotasi di server:
+kredensial yang sudah digunakan di server:
 ```bash
-cd ~/mern-vp
-test -f .env.production || cp .env.example .env.production
-nano .env.production
+cd /opt/apps/mern-vp
+test -f .env || cp .env.example .env
+nano .env
 ```
-Konfigurasikan variabel aplikasi berikut. Pertahankan nilai `MONGO` yang sudah
-digunakan server; konfigurasi service MongoDB tetap seperti sebelumnya di
-`docker-compose.yml`:
+Konfigurasikan variabel aplikasi berikut. Agar API memakai MongoDB lokal VPS
+(service Compose `mongodb`) dan bukan Atlas, atur `MONGO` ke URI database lokal
+yang memang sudah berisi data/aplikasi. Gunakan kredensial MongoDB yang sudah
+berlaku dan database yang benar; jangan mengubah service, kredensial, atau
+volume MongoDB di `docker-compose.yml`:
 ```env
 PORT=3030
 NODE_ENV=production
-MONGO=<pertahankan nilai yang sudah digunakan server>
+MONGO=mongodb://<user-lokal>:<password-URL-encoded>@mongodb:27017/<database-lokal>?authSource=admin
 JWT_SECRET=<secret-acak-minimal-32-karakter>
 INTERNAL_KEY=<kunci-acak>
 ALLOWED_ORIGINS=https://vidyamedic.my.id,https://www.vidyamedic.my.id
 ```
-Jangan mengubah konfigurasi, kredensial, atau volume MongoDB yang sudah ada.
+Jangan gunakan `localhost` sebagai host Mongo pada URI API karena `localhost`
+di dalam container API bukan container MongoDB. Host `mongodb` mengarah ke
+service MongoDB VPS pada jaringan Compose. Jangan jalankan `docker compose
+down -v`; volume database harus tetap dipertahankan.
 
 ### 2. Jalankan Docker Compose
 Kembali ke folder utama proyek dan nyalakan Docker:
 ```bash
-docker compose --env-file .env.production up -d --build --remove-orphans
-docker compose --env-file .env.production ps
+docker compose up -d --build --remove-orphans
+docker compose ps
 ```
 Frontend Vidyamedic dan API hanya dipublikasikan di loopback VPS:
 `127.0.0.1:8080` dan `127.0.0.1:3030`. Host Nginx menjadi satu-satunya jalur
@@ -128,8 +133,8 @@ Setelah perubahan backend wearable tersedia di branch yang dipakai VPS, jalankan
 ```bash
 cd ~/mern-vp
 git pull
-docker compose --env-file .env.production up -d --build api
-docker compose --env-file .env.production logs --tail=100 api
+docker compose up -d --build api
+docker compose logs --tail=100 api
 ```
 Endpoint stream Polar menyimpan bacaan nyata ke MongoDB `PolarData` sebelum
 meneruskannya ke RabbitMQ. Log backend akan mencatat jumlah bacaan baru yang
