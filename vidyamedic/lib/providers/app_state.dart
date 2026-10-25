@@ -45,9 +45,11 @@ class AppState extends ChangeNotifier {
   ]) {
     movementAnalysis =
         WearableData.analyzeLocomotion(wearable.recentAcceleration);
-    final detectedActivity = movementAnalysis?.activity;
-    if (detectedActivity == null) return;
-    if (detectedActivity == activity) return;
+    final detectedActivity = movementAnalysis?.activity ??
+        WearableData.detectWalkingFromAcc(wearable.recentAcceleration);
+    final postureChanged = isLiveStream && _hasPostureTransitionSignal();
+    if (detectedActivity == null && !postureChanged) return;
+    if (!postureChanged && detectedActivity == activity) return;
     final recordedAt = DateTime.tryParse(
       latestSample?['recorded_at']?.toString() ??
           wearable.lastSync?.toIso8601String() ??
@@ -68,9 +70,16 @@ class AppState extends ChangeNotifier {
       return;
     }
     _lastMovementPromptAt = DateTime.now();
-    suggestedActivity = detectedActivity;
+    suggestedActivity = postureChanged ? 'perubahan posisi' : detectedActivity!;
+    isPostureChangePrompt = postureChanged;
     showActivityMovementPrompt = true;
     notifyListeners();
+  }
+
+  final _accelerationOrientationTracker = AccelerationOrientationTracker();
+
+  bool _hasPostureTransitionSignal() {
+    return _accelerationOrientationTracker.add(wearable.recentAcceleration);
   }
 
   late final PolarWearablePairingService wearableBridge;
@@ -115,6 +124,8 @@ class AppState extends ChangeNotifier {
     if (wearableBridge.isStreaming) {
       wearable.recentAcceleration = wearableBridge.recentAcceleration;
       _maybePromptForMovement(null, true);
+    } else {
+      _accelerationOrientationTracker.reset();
     }
     notifyListeners();
   }
@@ -671,6 +682,9 @@ class AppState extends ChangeNotifier {
             }
           }
         }
+      } else {
+        confirmedDailySections.clear();
+        isDailyDraftDirty = false;
       }
       notifyListeners();
     } else {
@@ -910,10 +924,11 @@ class AppState extends ChangeNotifier {
 
   // 7. Deteksi Gerakan ACC & Konfirmasi Aktivitas
   bool showActivityMovementPrompt = false;
+  bool isPostureChangePrompt = false;
   String suggestedActivity = 'Berjalan';
   LocomotionAnalysis? movementAnalysis;
   DateTime? _lastMovementPromptAt;
-  static const _movementPromptCooldown = Duration(minutes: 10);
+  static const _movementPromptCooldown = Duration(seconds: 30);
 
   // Status sinkronisasi
   DateTime? lastSubmitted;
@@ -1500,6 +1515,7 @@ class AppState extends ChangeNotifier {
       return false;
     }
     _isConfirmingActivity = true;
+    final previousActivity = activity;
     final res = await ApiService.createCheckIn({
       'recorded_at': DateTime.now().toUtc().toIso8601String(),
       'activity': activityCode,
@@ -1510,7 +1526,8 @@ class AppState extends ChangeNotifier {
               : 'unknown',
       'sleep': <String, dynamic>{},
       'symptoms': <String>[],
-      'note': 'Aktivitas dikonfirmasi setelah deteksi gerak accelerometer.',
+      'note':
+          'Aktivitas berubah dari $previousActivity menjadi $newActivity setelah terdeteksi perubahan akselerometer. Konfirmasi oleh pengguna.',
     });
     _isConfirmingActivity = false;
     if (!res.success) {
@@ -1520,6 +1537,7 @@ class AppState extends ChangeNotifier {
     }
     activity = newActivity;
     showActivityMovementPrompt = false;
+    isPostureChangePrompt = false;
     wearableBridge.setActivity(activityCode);
     confirmedDailySections.add('activity');
     dataError = null;
@@ -1531,6 +1549,7 @@ class AppState extends ChangeNotifier {
   void dismissActivityMovementPrompt() {
     update(() {
       showActivityMovementPrompt = false;
+      isPostureChangePrompt = false;
     });
   }
 

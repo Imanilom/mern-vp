@@ -145,6 +145,40 @@ void main() {
     expect(steps, 2);
   });
 
+  test('walking fallback uses repeated ACC peaks and ignores a still sensor',
+      () {
+    final walking = [
+      for (var index = 0; index < 250; index++)
+        [1 + 0.2 * math.sin(2 * math.pi * 1.4 * index / 50), 0.0, 0.0],
+    ];
+    final still = List.generate(250, (_) => [0.0, 0.0, 1.0]);
+
+    expect(WearableData.detectWalkingFromAcc(walking), 'Berjalan');
+    expect(WearableData.detectWalkingFromAcc(still), isNull);
+    expect(
+        WearableData.detectWalkingFromAcc(walking.take(100).toList()), isNull);
+  });
+
+  test('orientation tracker prompts after a sustained axis change', () {
+    final tracker = AccelerationOrientationTracker();
+    final upright = List.generate(50, (_) => [0.02, 0.01, 1.0]);
+    final rotated = List.generate(50, (_) => [1.0, 0.01, 0.02]);
+
+    expect(tracker.add(upright), isFalse);
+    expect(tracker.add(upright), isFalse);
+    expect(tracker.add(rotated), isFalse);
+    expect(tracker.add(rotated), isTrue);
+    expect(tracker.add(rotated), isFalse);
+  });
+
+  test('orientation tracker ignores short and unstable samples', () {
+    final tracker = AccelerationOrientationTracker();
+    expect(tracker.add(List.generate(20, (_) => [0, 0, 1])), isFalse);
+    expect(tracker.add(List.generate(50, (_) => [0, 0, 0])), isFalse);
+    expect(tracker.add(List.generate(50, (_) => [0, 0, 1])), isFalse);
+    expect(tracker.add(List.generate(50, (_) => [0, 0, 1])), isFalse);
+  });
+
   test('accelerometer cadence suggests walking or running for confirmation',
       () {
     List<List<double>> periodicAcceleration(double cadenceHz) => [

@@ -388,19 +388,23 @@ unrecorded rather than being filled with a default feeling or activity.
 
 `POST /api/patient-app/chat/gemini` requires an authenticated account and is
 rate-limited to 20 requests per 15 minutes. The request contains `question`,
-`local_summary`, and up to 15 selected `evidence` records. The server validates
-and filters those records, resolves the linked CAPAR account from the
-authenticated session (never from a client-supplied account ID), and generates
-a CAPAR 360 analysis before asking Gemini for the patient-facing answer.
+`local_summary`, up to 15 selected `evidence` records, and up to 8
+`conversation_history` messages (`role: user|assistant`, `text`). Evidence and
+history may be empty for an educational question. The server validates and
+filters both, resolves the linked CAPAR account from the authenticated session
+(never from a client-supplied account ID), and retrieves eligible population
+baselines when the question asks about a supported metric or comparison.
 
-Only selected patient-facing fields from the CAPAR result are passed to the
-second Gemini request. Account and doctor names/emails are omitted from the
-chat analysis prompt; chat history and provider API keys are not sent by the
-app. If no linked CAPAR account or longitudinal CAPAR records are available,
-the endpoint still answers from the selected evidence and local summary, and
-marks the CAPAR analysis as unavailable instead of generating an analysis from
-empty data. Configure `GEMINI_API_KEY` and optionally `GEMINI_MODEL` on the
-backend. The app permits up to three minutes for both AI stages.
+Population baselines are aggregated from mature, non-rejected per-user
+baselines with at least 20 samples, exclude the current user, and are returned
+only for groups of at least five other users. No individual population records
+or account identifiers are sent to Gemini. CAPAR analysis is also limited to
+selected patient-facing fields; if CAPAR analysis fails or is unavailable, the
+chat request continues without it. Conversation history is sent only after
+Gemini consent, is used as request context, and is not stored by this endpoint.
+Account/doctor names and provider API keys are not sent by the app. Configure
+`GEMINI_API_KEY` and optionally `GEMINI_MODEL` on the backend. The app permits
+up to three minutes for the backend request.
 
 ## CAPAR insights and scientific evidence
 

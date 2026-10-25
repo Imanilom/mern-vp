@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:polar/polar.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 
@@ -21,6 +22,9 @@ class WearablePairingScreen extends StatefulWidget {
 
 class _WearablePairingScreenState extends State<WearablePairingScreen> {
   String _activity = 'rest';
+  bool _activityConfirmed = false;
+  String? _activityPromptCancelledForDevice;
+  bool _isActivityPromptVisible = false;
   String? _preparingDeviceId;
   bool _isPreparingStream = false;
   AppState? _appState;
@@ -43,6 +47,7 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
       if (!mounted) return;
       final state = context.read<AppState>();
       _appState = state;
+      _activity = mapActivityToApi(state.activity);
       final bridge = state.wearableBridge;
       bridge.addListener(_handleBridgeChange);
       if (bridge.isConnected) {
@@ -69,6 +74,7 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
       _preparingDeviceId = null;
       return;
     }
+    if (_activityPromptCancelledForDevice == bridge.deviceId) return;
     if (_isPreparingStream || _preparingDeviceId == bridge.deviceId) return;
     _preparingDeviceId = bridge.deviceId;
     _isPreparingStream = true;
@@ -87,6 +93,13 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
       );
       _isPreparingStream = false;
       _preparingDeviceId = null;
+      return;
+    }
+
+    if (!await _confirmActivityBeforeRecording()) {
+      _isPreparingStream = false;
+      _preparingDeviceId = null;
+      _activityPromptCancelledForDevice = bridge.deviceId;
       return;
     }
 
@@ -113,6 +126,66 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
 
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  Future<bool> _confirmActivityBeforeRecording() async {
+    if (_activityConfirmed) return true;
+    if (_isActivityPromptVisible) return false;
+    _isActivityPromptVisible = true;
+    var selectedActivity = _activity;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Pilih aktivitas sebelum merekam'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Pastikan aktivitas atau posisi Anda saat ini agar bacaan wearable memiliki konteks yang benar.',
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedActivity,
+                decoration: const InputDecoration(labelText: 'Aktivitas saat ini'),
+                items: _activities
+                    .map((activity) => DropdownMenuItem(
+                          value: activity.$2,
+                          child: Text(activity.$1),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => selectedActivity = value);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Nanti'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Konfirmasi & mulai'),
+            ),
+          ],
+        ),
+      ),
+    );
+    _isActivityPromptVisible = false;
+    if (!mounted || confirmed != true) return false;
+    setState(() {
+      _activity = selectedActivity;
+      _activityConfirmed = true;
+      _activityPromptCancelledForDevice = null;
+    });
+    context.read<AppState>().setWearableActivityContext(_activity);
+    return true;
   }
 
   void _showPairingError(String message) {
@@ -173,6 +246,7 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
     final state = context.read<AppState>();
     final bridge = state.wearableBridge;
     if (!bridge.isConnected) return;
+    if (!await _confirmActivityBeforeRecording()) return;
 
     final deviceName =
         bridge.isDemoDevice ? 'VidyaMedic Dummy Sensor' : 'Polar H10';
@@ -367,12 +441,17 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
                           .toList(),
                       onChanged: (value) {
                         if (value != null) {
-                          setState(() => _activity = value);
+                          setState(() {
+                            _activity = value;
+                            _activityConfirmed = true;
+                            _activityPromptCancelledForDevice = null;
+                          });
                           context
                               .read<AppState>()
                               .setWearableActivityContext(value);
                         }
                       },
+                      isExpanded: true,
                     ),
                     const SizedBox(height: 12),
                     SizedBox(

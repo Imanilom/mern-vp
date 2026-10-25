@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nadiku/services/api_service.dart';
 import 'package:nadiku/services/wearable_pairing_service.dart';
@@ -25,7 +27,7 @@ void main() {
     expect(bridge.deviceName, contains('DEMO'));
     expect(bridge.startStreaming('walking'), isTrue);
 
-    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(const Duration(seconds: 60));
     expect(bridge.sessionMinimumHeartRate, isNotNull);
     expect(bridge.sessionMaximumHeartRate, isNotNull);
     expect(
@@ -37,6 +39,10 @@ void main() {
     expect(uploadedSamples, hasLength(1));
     expect(uploadedSamples.single['provider'], 'other');
     expect(uploadedSamples.single['is_simulated'], isTrue);
+    expect(
+      utf8.encode(jsonEncode(uploadedSamples.single)).length,
+      lessThan(10 * 1024),
+    );
     expect(uploadedSamples.single['heart_rate_bpm'], isA<int>());
     expect(
         uploadedSamples.single['rr_intervals_ms'], hasLength(greaterThan(9)));
@@ -61,6 +67,12 @@ void main() {
     );
     expect(
       publishedReadings.every((reading) => reading['signal_confidence'] == 1.0),
+      isTrue,
+    );
+    expect(
+      publishedBatches.every((batch) =>
+          (batch['readings'] as List).length <= 20 &&
+          utf8.encode(jsonEncode(batch)).length < 10 * 1024),
       isTrue,
     );
   });

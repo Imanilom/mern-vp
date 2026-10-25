@@ -10,8 +10,32 @@ import '../welcome_screen.dart';
 import 'wearable_pairing_screen.dart';
 
 /// Halaman Profil & Tata Kelola Kesehatan VidyaMedic
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key, this.openEditorFor});
+
+  final String? openEditorFor;
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final targetField = widget.openEditorFor;
+    if (targetField != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _openEditProfile(
+            context,
+            context.read<AppState>().userProfile,
+            focusField: targetField,
+          );
+        }
+      });
+    }
+  }
 
   Future<bool> _persistProfileChange(BuildContext context) async {
     final s = context.read<AppState>();
@@ -72,7 +96,11 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
-  void _openEditProfile(BuildContext context, UserProfile u) {
+  void _openEditProfile(
+    BuildContext context,
+    UserProfile u, {
+    String? focusField,
+  }) {
     final nameCtrl = TextEditingController(text: u.name);
     final heightCtrl =
         TextEditingController(text: u.heightCm?.toInt().toString() ?? '');
@@ -87,6 +115,8 @@ class ProfileScreen extends StatelessWidget {
     DateTime? birth = u.birthDate;
     String timeZone = u.timeZone;
     String? bloodType = u.bloodType.isEmpty ? null : u.bloodType;
+    final focusTargetKey = GlobalKey();
+    var focusScrollScheduled = false;
 
     showModalBottomSheet(
       context: context,
@@ -96,381 +126,476 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setMState) => Padding(
-          padding: EdgeInsets.fromLTRB(
-              20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4.5,
-                    decoration: BoxDecoration(
-                      color: AppTheme.borderLight,
-                      borderRadius: BorderRadius.circular(3),
+        builder: (ctx, setMState) {
+          if (focusField != null && !focusScrollScheduled) {
+            focusScrollScheduled = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final targetContext = focusTargetKey.currentContext;
+              if (targetContext != null) {
+                Scrollable.ensureVisible(
+                  targetContext,
+                  alignment: 0.2,
+                  duration: const Duration(milliseconds: 250),
+                );
+              }
+            });
+          }
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+                20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4.5,
+                      decoration: BoxDecoration(
+                        color: AppTheme.borderLight,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Edit Profil Pasien',
+                  const SizedBox(height: 14),
+                  if (focusField != null) ...[
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primarySoft,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Lengkapi bagian yang masih kosong: $focusField',
                         style: AppTheme.font(
-                            size: 17,
-                            weight: FontWeight.w800,
-                            color: AppTheme.primaryDark)),
-                    IconButton.filledTonal(
-                      style: IconButton.styleFrom(
-                        backgroundColor: AppTheme.fieldFill,
-                        padding: const EdgeInsets.all(6),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            size: 12,
+                            weight: FontWeight.w700,
+                            color: AppTheme.primaryDark),
                       ),
-                      icon: const Icon(Icons.close_rounded,
-                          size: 18, color: AppTheme.textPrimary),
-                      onPressed: () => Navigator.pop(ctx),
                     ),
                   ],
-                ),
-                const Divider(height: 20),
-                const FieldLabel('Nama Lengkap Pasien'),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Nama lengkap',
-                    prefixIcon: Icon(Icons.person_outline_rounded,
-                        size: 20, color: AppTheme.primary),
-                  ),
-                ),
-                const FieldLabel('Jenis Kelamin'),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () => setMState(() => gender = Gender.female),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            gradient: gender == Gender.female
-                                ? AppTheme.primaryGradient
-                                : null,
-                            color: gender == Gender.female
-                                ? null
-                                : AppTheme.fieldFill,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: gender == Gender.female
-                                  ? AppTheme.primary
-                                  : AppTheme.borderLight,
-                              width: 1.2,
-                            ),
-                            boxShadow: gender == Gender.female
-                                ? [
-                                    BoxShadow(
-                                      color: AppTheme.primary
-                                          .withValues(alpha: 0.25),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.female_rounded,
-                                  size: 18,
-                                  color: gender == Gender.female
-                                      ? Colors.white
-                                      : AppTheme.textPrimary),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Perempuan',
-                                style: AppTheme.font(
-                                  size: 13,
-                                  weight: FontWeight.w700,
-                                  color: gender == Gender.female
-                                      ? Colors.white
-                                      : AppTheme.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Edit Profil Pasien',
+                          style: AppTheme.font(
+                              size: 17,
+                              weight: FontWeight.w800,
+                              color: AppTheme.primaryDark)),
+                      IconButton.filledTonal(
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppTheme.fieldFill,
+                          padding: const EdgeInsets.all(6),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () => setMState(() => gender = Gender.male),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            gradient: gender == Gender.male
-                                ? AppTheme.primaryGradient
-                                : null,
-                            color: gender == Gender.male
-                                ? null
-                                : AppTheme.fieldFill,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: gender == Gender.male
-                                  ? AppTheme.primary
-                                  : AppTheme.borderLight,
-                              width: 1.2,
-                            ),
-                            boxShadow: gender == Gender.male
-                                ? [
-                                    BoxShadow(
-                                      color: AppTheme.primary
-                                          .withValues(alpha: 0.25),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.male_rounded,
-                                  size: 18,
-                                  color: gender == Gender.male
-                                      ? Colors.white
-                                      : AppTheme.textPrimary),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Laki-laki',
-                                style: AppTheme.font(
-                                  size: 13,
-                                  weight: FontWeight.w700,
-                                  color: gender == Gender.male
-                                      ? Colors.white
-                                      : AppTheme.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const FieldLabel('Tinggi Badan'),
-                          TextField(
-                            controller: heightCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              suffixText: 'cm',
-                              prefixIcon: Icon(Icons.height_rounded,
-                                  size: 20, color: AppTheme.primary),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const FieldLabel('Berat Badan'),
-                          TextField(
-                            controller: weightCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              suffixText: 'kg',
-                              prefixIcon: Icon(Icons.monitor_weight_outlined,
-                                  size: 20, color: AppTheme.primary),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const FieldLabel('Golongan Darah'),
-                          DropdownButtonFormField<String>(
-                            initialValue: bloodType,
-                            style: AppTheme.font(
-                                size: 13.5, color: AppTheme.textPrimary),
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.bloodtype_outlined,
-                                  size: 20, color: AppTheme.statusRed),
-                            ),
-                            items: const [
-                              'A+',
-                              'A-',
-                              'B+',
-                              'B-',
-                              'AB+',
-                              'AB-',
-                              'O+',
-                              'O-'
-                            ]
-                                .map((b) =>
-                                    DropdownMenuItem(value: b, child: Text(b)))
-                                .toList(),
-                            onChanged: (v) => setMState(() => bloodType = v),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const FieldLabel('Zona Waktu'),
-                          DropdownButtonFormField<String>(
-                            initialValue: timeZone,
-                            style: AppTheme.font(
-                                size: 13.5, color: AppTheme.textPrimary),
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.schedule_rounded,
-                                  size: 20, color: AppTheme.primary),
-                            ),
-                            items: const [
-                              'Asia/Jakarta',
-                              'Asia/Makassar',
-                              'Asia/Jayapura'
-                            ]
-                                .map((z) =>
-                                    DropdownMenuItem(value: z, child: Text(z)))
-                                .toList(),
-                            onChanged: (v) =>
-                                setMState(() => timeZone = v ?? timeZone),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const FieldLabel('Riwayat Alergi / Peringatan Obat'),
-                TextField(
-                  controller: allergiesCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Contoh: Penicillin, Kacang, Seafood',
-                    prefixIcon: Icon(Icons.warning_amber_rounded,
-                        size: 20, color: AppTheme.statusOrange),
-                  ),
-                ),
-                const FieldLabel('Kontak Darurat / Caregiver'),
-                TextField(
-                  controller: emergencyNameCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Nama Caregiver (Contoh: Budi - Suami)',
-                    prefixIcon: Icon(Icons.contact_emergency_outlined,
-                        size: 20, color: AppTheme.primaryDark),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: emergencyPhoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    hintText: 'Nomor Telepon Darurat',
-                    prefixIcon: Icon(Icons.phone_outlined,
-                        size: 20, color: AppTheme.primaryDark),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  width: double.infinity,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primary.withValues(alpha: 0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        icon: const Icon(Icons.close_rounded,
+                            size: 18, color: AppTheme.textPrimary),
+                        onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
                   ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                  const Divider(height: 20),
+                  const FieldLabel('Nama Lengkap Pasien'),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Nama lengkap',
+                      prefixIcon: Icon(Icons.person_outline_rounded,
+                          size: 20, color: AppTheme.primary),
                     ),
-                    onPressed: () async {
-                      final s = context.read<AppState>();
-                      s.update(() {
-                        s.userProfile = UserProfile(
-                          name: nameCtrl.text.trim().isEmpty
-                              ? u.name
-                              : nameCtrl.text.trim(),
-                          birthDate: birth,
-                          gender: gender,
-                          heightCm:
-                              double.tryParse(heightCtrl.text) ?? u.heightCm,
-                          weightKg:
-                              double.tryParse(weightCtrl.text) ?? u.weightKg,
-                          timeZone: timeZone,
-                          bloodType: bloodType ?? '',
-                          emergencyContactName: emergencyNameCtrl.text.trim(),
-                          emergencyContactPhone: emergencyPhoneCtrl.text.trim(),
-                          allergies: allergiesCtrl.text.trim(),
-                        );
-                      });
-                      final saved = await s.saveProfileToServer();
-                      if (!ctx.mounted) return;
-                      if (!saved) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          SnackBar(
-                              content: Text(s.dataError ??
-                                  'Profil gagal disimpan ke server.')),
-                        );
-                        return;
-                      }
-                      Navigator.pop(ctx);
-                      showSaved(context, 'Profil pasien berhasil diperbarui');
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  ),
+                  Container(
+                    key: focusField == 'Jenis kelamin' ? focusTargetKey : null,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.check_circle_rounded,
-                            size: 18, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text('Simpan Perubahan Profil',
-                            style: AppTheme.font(
-                                size: 14,
-                                weight: FontWeight.w800,
-                                color: Colors.white)),
+                        const FieldLabel('Jenis Kelamin'),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () =>
+                                    setMState(() => gender = Gender.female),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    gradient: gender == Gender.female
+                                        ? AppTheme.primaryGradient
+                                        : null,
+                                    color: gender == Gender.female
+                                        ? null
+                                        : AppTheme.fieldFill,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: gender == Gender.female
+                                          ? AppTheme.primary
+                                          : AppTheme.borderLight,
+                                      width: 1.2,
+                                    ),
+                                    boxShadow: gender == Gender.female
+                                        ? [
+                                            BoxShadow(
+                                              color: AppTheme.primary
+                                                  .withValues(alpha: 0.25),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.female_rounded,
+                                          size: 18,
+                                          color: gender == Gender.female
+                                              ? Colors.white
+                                              : AppTheme.textPrimary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Perempuan',
+                                        style: AppTheme.font(
+                                          size: 13,
+                                          weight: FontWeight.w700,
+                                          color: gender == Gender.female
+                                              ? Colors.white
+                                              : AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () =>
+                                    setMState(() => gender = Gender.male),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    gradient: gender == Gender.male
+                                        ? AppTheme.primaryGradient
+                                        : null,
+                                    color: gender == Gender.male
+                                        ? null
+                                        : AppTheme.fieldFill,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: gender == Gender.male
+                                          ? AppTheme.primary
+                                          : AppTheme.borderLight,
+                                      width: 1.2,
+                                    ),
+                                    boxShadow: gender == Gender.male
+                                        ? [
+                                            BoxShadow(
+                                              color: AppTheme.primary
+                                                  .withValues(alpha: 0.25),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.male_rounded,
+                                          size: 18,
+                                          color: gender == Gender.male
+                                              ? Colors.white
+                                              : AppTheme.textPrimary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Laki-laki',
+                                        style: AppTheme.font(
+                                          size: 13,
+                                          weight: FontWeight.w700,
+                                          color: gender == Gender.male
+                                              ? Colors.white
+                                              : AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                  Container(
+                    key: focusField == 'Tanggal lahir' ? focusTargetKey : null,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const FieldLabel('Tanggal Lahir'),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () async {
+                            final selected = await showDatePicker(
+                              context: ctx,
+                              initialDate: birth ?? DateTime(2000, 1, 1),
+                              firstDate: DateTime(1900),
+                              lastDate: DateUtils.dateOnly(DateTime.now()),
+                              helpText: 'Pilih tanggal lahir',
+                            );
+                            if (selected != null) {
+                              setMState(() => birth = selected);
+                            }
+                          },
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.cake_outlined,
+                                  size: 20, color: AppTheme.primary),
+                              suffixIcon: Icon(Icons.calendar_month_outlined),
+                            ),
+                            child: Text(
+                              birth == null
+                                  ? 'Pilih tanggal lahir'
+                                  : MaterialLocalizations.of(ctx)
+                                      .formatMediumDate(birth!),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          key: focusField == 'Tinggi badan'
+                              ? focusTargetKey
+                              : null,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const FieldLabel('Tinggi Badan'),
+                              TextField(
+                                controller: heightCtrl,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  suffixText: 'cm',
+                                  prefixIcon: Icon(Icons.height_rounded,
+                                      size: 20, color: AppTheme.primary),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          key: focusField == 'Berat badan'
+                              ? focusTargetKey
+                              : null,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const FieldLabel('Berat Badan'),
+                              TextField(
+                                controller: weightCtrl,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  suffixText: 'kg',
+                                  prefixIcon: Icon(
+                                      Icons.monitor_weight_outlined,
+                                      size: 20,
+                                      color: AppTheme.primary),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const FieldLabel('Golongan Darah'),
+                            DropdownButtonFormField<String>(
+                              initialValue: bloodType,
+                              style: AppTheme.font(
+                                  size: 13.5, color: AppTheme.textPrimary),
+                              decoration: const InputDecoration(
+                                prefixIcon: Icon(Icons.bloodtype_outlined,
+                                    size: 20, color: AppTheme.statusRed),
+                              ),
+                              items: const [
+                                'A+',
+                                'A-',
+                                'B+',
+                                'B-',
+                                'AB+',
+                                'AB-',
+                                'O+',
+                                'O-'
+                              ]
+                                  .map((b) => DropdownMenuItem(
+                                      value: b, child: Text(b)))
+                                  .toList(),
+                              onChanged: (v) => setMState(() => bloodType = v),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const FieldLabel('Zona Waktu'),
+                            DropdownButtonFormField<String>(
+                              initialValue: timeZone,
+                              style: AppTheme.font(
+                                  size: 13.5, color: AppTheme.textPrimary),
+                              decoration: const InputDecoration(
+                                prefixIcon: Icon(Icons.schedule_rounded,
+                                    size: 20, color: AppTheme.primary),
+                              ),
+                              items: const [
+                                'Asia/Jakarta',
+                                'Asia/Makassar',
+                                'Asia/Jayapura'
+                              ]
+                                  .map((z) => DropdownMenuItem(
+                                      value: z, child: Text(z)))
+                                  .toList(),
+                              onChanged: (v) =>
+                                  setMState(() => timeZone = v ?? timeZone),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const FieldLabel('Riwayat Alergi / Peringatan Obat'),
+                  TextField(
+                    controller: allergiesCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Contoh: Penicillin, Kacang, Seafood',
+                      prefixIcon: Icon(Icons.warning_amber_rounded,
+                          size: 20, color: AppTheme.statusOrange),
+                    ),
+                  ),
+                  const FieldLabel('Kontak Darurat / Caregiver'),
+                  TextField(
+                    controller: emergencyNameCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Nama Caregiver (Contoh: Budi - Suami)',
+                      prefixIcon: Icon(Icons.contact_emergency_outlined,
+                          size: 20, color: AppTheme.primaryDark),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: emergencyPhoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      hintText: 'Nomor Telepon Darurat',
+                      prefixIcon: Icon(Icons.phone_outlined,
+                          size: 20, color: AppTheme.primaryDark),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primary.withValues(alpha: 0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () async {
+                        final s = context.read<AppState>();
+                        s.update(() {
+                          s.userProfile = UserProfile(
+                            name: nameCtrl.text.trim().isEmpty
+                                ? u.name
+                                : nameCtrl.text.trim(),
+                            birthDate: birth,
+                            gender: gender,
+                            heightCm:
+                                double.tryParse(heightCtrl.text) ?? u.heightCm,
+                            weightKg:
+                                double.tryParse(weightCtrl.text) ?? u.weightKg,
+                            timeZone: timeZone,
+                            bloodType: bloodType ?? '',
+                            emergencyContactName: emergencyNameCtrl.text.trim(),
+                            emergencyContactPhone:
+                                emergencyPhoneCtrl.text.trim(),
+                            allergies: allergiesCtrl.text.trim(),
+                          );
+                        });
+                        final saved = await s.saveProfileToServer();
+                        if (!ctx.mounted) return;
+                        if (!saved) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(
+                                content: Text(s.dataError ??
+                                    'Profil gagal disimpan ke server.')),
+                          );
+                          return;
+                        }
+                        Navigator.pop(ctx);
+                        showSaved(context, 'Profil pasien berhasil diperbarui');
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check_circle_rounded,
+                              size: 18, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Text('Simpan Perubahan Profil',
+                              style: AppTheme.font(
+                                  size: 14,
+                                  weight: FontWeight.w800,
+                                  color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

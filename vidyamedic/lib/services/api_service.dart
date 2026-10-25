@@ -714,17 +714,48 @@ class ApiService {
     required String question,
     required List<Map<String, dynamic>> evidence,
     required String localSummary,
+    required List<Map<String, String>> conversationHistory,
   }) async {
     try {
+      final history = conversationHistory
+          .skip(conversationHistory.length > 8
+              ? conversationHistory.length - 8
+              : 0)
+          .map((message) => {
+                'role': message['role'] ?? '',
+                'text': (message['text'] ?? '').length > 300
+                    ? message['text']!.substring(0, 300)
+                    : message['text'] ?? '',
+              })
+          .toList();
+      final requestBody = <String, dynamic>{
+        'question': question,
+        'evidence': List<Map<String, dynamic>>.of(evidence),
+        'local_summary': localSummary,
+        'conversation_history': history,
+      };
+      var encodedBody = jsonEncode(requestBody);
+      while (utf8.encode(encodedBody).length > 9000) {
+        final requestEvidence =
+            requestBody['evidence'] as List<Map<String, dynamic>>;
+        if (history.isNotEmpty) {
+          history.removeAt(0);
+        } else if (requestEvidence.isNotEmpty) {
+          requestEvidence.removeLast();
+        } else if ((requestBody['local_summary'] as String).isNotEmpty) {
+          final summary = requestBody['local_summary'] as String;
+          requestBody['local_summary'] =
+              summary.substring(0, summary.length ~/ 2);
+        } else {
+          break;
+        }
+        encodedBody = jsonEncode(requestBody);
+      }
       final res = await http
           .post(
             Uri.parse(ApiConfig.personalChatGeminiEndpoint),
             headers: _headers(),
-            body: jsonEncode({
-              'question': question,
-              'evidence': evidence,
-              'local_summary': localSummary,
-            }),
+            body: encodedBody,
           )
           .timeout(const Duration(seconds: 180));
       return _handleResponse<String>(

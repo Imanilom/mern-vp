@@ -72,9 +72,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    final entry = find.text('Tanya Wawasan Personal');
-    await tester.ensureVisible(entry);
-    await tester.tap(entry);
+    await tester.tap(find.text('Tanya AI').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Wawasan Personal'), findsOneWidget);
@@ -134,7 +132,7 @@ void main() {
     expect(find.text('Aktifkan Gemini?'), findsOneWidget);
     expect(
       find.textContaining(
-          'akan dikirim ke backend VidyaMedic. Jika data longitudinal CAPAR tersedia'),
+          'hingga 8 pesan percakapan terakhir dikirim ke backend VidyaMedic'),
       findsOneWidget,
     );
 

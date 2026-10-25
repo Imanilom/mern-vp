@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
-import '../../services/api_service.dart';
 import '../../services/deviation_prompt_model.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
 import '../pedagogy/pedagogy_screen_what_changed.dart';
 import '../pedagogy/pedagogy_screen_action.dart';
+import '../pedagogy/pedagogy_screen_why.dart';
 import '../pedagogy/patient_journey_screen.dart';
+import '../pedagogy/capar_history_screen.dart';
+import '../pedagogy/pedagogy_screen_recovery.dart';
+import '../pedagogy/pedagogy_screen_where_am_i.dart';
 import '../input/guided_daily_flow_screen.dart';
 import '../input/symptom_input_screen.dart';
 import '../input/activity_input_screen.dart';
@@ -18,13 +22,13 @@ import '../input/event_marker_screen.dart';
 import '../input/free_note_screen.dart';
 import '../summary/daily_summary_screen.dart';
 import '../profile/profile_screen.dart';
-import '../profile/wearable_pairing_screen.dart';
 import '../actions/action_tracking_screen.dart';
 import '../chat/personal_health_chat_screen.dart';
 import '../impact/impact_dashboard_screen.dart';
 import '../gamification/gamification_screen.dart';
-import 'live_heart_rate_chart.dart';
 import 'profile_snapshot_card.dart';
+import 'wearable_monitoring_card.dart';
+import 'live_heart_rate_chart.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,6 +45,15 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _queuedDeviationSegmentId;
   bool _noDataDialogVisible = false;
   bool _noDataDialogHandled = false;
+
+  void _selectTab(int index) {
+    if (index < 0 || index >= 5) return;
+    setState(() => _currentIndex = index);
+    _queueMovementPrompt();
+    if (index == 0) {
+      _queueDeviationPrompt();
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -292,67 +305,79 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     _movementDialogVisible = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || _currentIndex != 0) {
+      if (!mounted || !context.mounted || _currentIndex != 0) {
         _movementDialogVisible = false;
         return;
       }
+      final navigator = Navigator.of(context, rootNavigator: true);
+      final messenger = ScaffoldMessenger.of(context);
       final selectedActivity = await showDialog<String>(
         context: context,
+        useRootNavigator: true,
         barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Terdeteksi perubahan gerak'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Pola akselerometer menyerupai ${appState.suggestedActivity.toLowerCase()}. Apakah Anda sedang ${appState.suggestedActivity.toLowerCase()}? Ini perkiraan sensor; konfirmasi Anda yang menentukan.',
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Aturan non-klinis: resultan √(x²+y²+z²), lalu delta terhadap rerata lokal; sumbu tidak dinormalisasi. Minimal ${ActivityMotionPolicy.demo.minimumSampleSeconds.toStringAsFixed(0)} detik, cadence ${ActivityMotionPolicy.demo.minimumCadenceHz.toStringAsFixed(1)}–${ActivityMotionPolicy.demo.maximumCadenceHz.toStringAsFixed(1)} Hz, berlari mulai ${ActivityMotionPolicy.demo.runningCadenceHz.toStringAsFixed(1)} Hz, prominence ≥${ActivityMotionPolicy.demo.minimumPeakProminenceG.toStringAsFixed(2)} g, variasi interval ≤${(ActivityMotionPolicy.demo.maximumIntervalVariation * 100).round()}%.',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-              ),
-              if (appState.movementAnalysis != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Terukur: ${appState.movementAnalysis!.cadenceHz.toStringAsFixed(2)} Hz; ${appState.movementAnalysis!.peakCount} puncak; RMS delta resultan ${appState.movementAnalysis!.rmsDeltaMagnitudeG.toStringAsFixed(3)} g.',
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                ),
-              ],
-              const SizedBox(height: 10),
-              ...kActivities
-                  .where((item) => item.$1 != 'Duduk' && item.$1 != 'Istirahat')
-                  .map(
+        builder: (_) => AlertDialog(
+          title: Text(appState.isPostureChangePrompt
+              ? 'Terdeteksi perubahan posisi'
+              : 'Terdeteksi perubahan gerak'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 460),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appState.isPostureChangePrompt
+                        ? 'Sensor mendeteksi perubahan orientasi/pergerakan. Sensor tidak dapat memastikan apakah Anda berubah dari duduk ke berdiri atau sebaliknya. Pilih kondisi Anda sekarang:'
+                        : 'Pola akselerometer menyerupai ${appState.suggestedActivity.toLowerCase()}. Apakah Anda sedang ${appState.suggestedActivity.toLowerCase()}? Ini perkiraan sensor; konfirmasi Anda yang menentukan.',
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    appState.isPostureChangePrompt
+                        ? 'Perkiraan non-klinis: arah rata-rata akselerasi selama sekitar 1 detik berubah ≥25° pada dua pembacaan berturut-turut. Silakan konfirmasi posisi/aktivitas Anda.'
+                        : 'Aturan non-klinis: resultan √(x²+y²+z²), lalu delta terhadap rerata lokal; sumbu tidak dinormalisasi. Minimal ${ActivityMotionPolicy.demo.minimumSampleSeconds.toStringAsFixed(0)} detik, cadence ${ActivityMotionPolicy.demo.minimumCadenceHz.toStringAsFixed(1)}–${ActivityMotionPolicy.demo.maximumCadenceHz.toStringAsFixed(1)} Hz, berlari mulai ${ActivityMotionPolicy.demo.runningCadenceHz.toStringAsFixed(1)} Hz, prominence ≥${ActivityMotionPolicy.demo.minimumPeakProminenceG.toStringAsFixed(2)} g, variasi interval ≤${(ActivityMotionPolicy.demo.maximumIntervalVariation * 100).round()}%.',
+                    style:
+                        const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  ),
+                  if (appState.movementAnalysis != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Terukur: ${appState.movementAnalysis!.cadenceHz.toStringAsFixed(2)} Hz; ${appState.movementAnalysis!.peakCount} puncak; RMS delta resultan ${appState.movementAnalysis!.rmsDeltaMagnitudeG.toStringAsFixed(3)} g.',
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF6B7280)),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  ...kActivities.map(
                     (item) => ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(item.$2, color: AppTheme.primary),
                       title: Text(item.$1),
-                      onTap: () => Navigator.pop(dialogContext, item.$1),
+                      onTap: () => navigator.pop(item.$1),
                     ),
                   ),
-            ],
+                ],
+              ),
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, '__keep_activity__'),
+              onPressed: () => navigator.pop('__keep_activity__'),
               child: Text('Saya tetap ${appState.activity.toLowerCase()}'),
             ),
           ],
         ),
       );
       _movementDialogVisible = false;
-      if (!mounted) return;
+      if (!mounted || !context.mounted || !navigator.mounted) return;
       if (selectedActivity == null || selectedActivity == '__keep_activity__') {
         appState.dismissActivityMovementPrompt();
         return;
       }
       final saved = await appState.confirmActivityTransition(selectedActivity);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted || !context.mounted || !messenger.mounted) return;
+      messenger.showSnackBar(
         SnackBar(
           content: Text(saved
               ? 'Aktivitas $selectedActivity dikonfirmasi dan tersimpan.'
@@ -365,13 +390,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      _PedagogyDashboard(
-          onNavigateToInput: () => setState(() => _currentIndex = 1),
-          onNavigateToCommunity: () => setState(() => _currentIndex = 4)),
-      const _InputFlowTab(),
-      const DailySummaryScreen(),
+      const _PedagogyDashboard(),
+      const _TodayOverviewTab(),
+      const _InsightsHubTab(),
+      const PersonalHealthChatScreen(),
       const ProfileScreen(),
-      const GamificationScreen(),
     ];
 
     return Scaffold(
@@ -401,11 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: SafeArea(
                     child: NavigationBar(
                       selectedIndex: _currentIndex,
-                      onDestinationSelected: (idx) {
-                        setState(() => _currentIndex = idx);
-                        _queueMovementPrompt();
-                        if (idx == 0) _queueDeviationPrompt();
-                      },
+                      onDestinationSelected: _selectTab,
                       backgroundColor: Colors.white,
                       indicatorColor: AppTheme.primarySoft,
                       elevation: 0,
@@ -420,28 +439,28 @@ class _HomeScreenState extends State<HomeScreen> {
                           label: 'Beranda',
                         ),
                         NavigationDestination(
-                          icon: Icon(Icons.edit_note_outlined, size: 24),
-                          selectedIcon: Icon(Icons.edit_note_rounded,
+                          icon: Icon(Icons.today_outlined, size: 22),
+                          selectedIcon: Icon(Icons.today_rounded,
                               color: AppTheme.primary, size: 25),
-                          label: 'Catat Harian',
+                          label: 'Hari Ini',
                         ),
                         NavigationDestination(
-                          icon: Icon(Icons.assessment_outlined, size: 22),
-                          selectedIcon: Icon(Icons.assessment_rounded,
+                          icon: Icon(Icons.insights_outlined, size: 22),
+                          selectedIcon: Icon(Icons.insights_rounded,
                               color: AppTheme.primary, size: 23),
-                          label: 'Ringkasan',
+                          label: 'Insight',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.auto_awesome_outlined, size: 22),
+                          selectedIcon: Icon(Icons.auto_awesome_rounded,
+                              color: AppTheme.primary, size: 23),
+                          label: 'Tanya AI',
                         ),
                         NavigationDestination(
                           icon: Icon(Icons.person_outline_rounded, size: 22),
                           selectedIcon: Icon(Icons.person_rounded,
                               color: AppTheme.primary, size: 23),
                           label: 'Profil',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.emoji_events_outlined, size: 22),
-                          selectedIcon: Icon(Icons.emoji_events_rounded,
-                              color: AppTheme.primary, size: 23),
-                          label: 'Komunitas',
                         ),
                       ],
                     ),
@@ -460,76 +479,39 @@ class _HomeScreenState extends State<HomeScreen> {
 // Tab 0: Dashboard Utama (Pemantauan Personal Ramah Pasien)
 // ---------------------------------------------------------------------------
 class _PedagogyDashboard extends StatelessWidget {
-  final VoidCallback onNavigateToInput;
-  final VoidCallback onNavigateToCommunity;
-  const _PedagogyDashboard({
-    required this.onNavigateToInput,
-    required this.onNavigateToCommunity,
-  });
+  const _PedagogyDashboard();
 
-  bool _profileComplete(Map<String, dynamic>? overview) {
-    final completion = overview?['profile_completion'];
-    return completion is Map &&
-        completion['total_fields'] is num &&
-        completion['completed_fields'] is num &&
-        (completion['total_fields'] as num) > 0 &&
-        (completion['completed_fields'] as num) >=
-            (completion['total_fields'] as num);
-  }
-
-  bool _hasCheckInToday(Map<String, dynamic>? overview) {
-    final checkIn = overview?['latest_check_in'];
-    if (checkIn is! Map) return false;
-    final recordedAt =
-        DateTime.tryParse(checkIn['recorded_at']?.toString() ?? '')?.toLocal();
-    return _isToday(recordedAt);
-  }
-
-  bool _hasRealWearableDataToday(List<Map<String, dynamic>> samples) {
-    return samples.any((sample) {
-      if (sample['is_simulated'] == true) return false;
-      final recordedAt =
-          DateTime.tryParse(sample['recorded_at']?.toString() ?? '')?.toLocal();
-      return _isToday(recordedAt);
+  Future<void> _openNextDailyEntry(BuildContext context, AppState state) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    state.update(() {
+      state.logDate = today;
     });
-  }
-
-  bool _isToday(DateTime? date) {
-    if (date == null) return false;
-    final now = DateTime.now();
-    return date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day;
+    await state.fetchDailySummary(today);
+    if (!context.mounted) return;
+    final sections = state.confirmedDailySections;
+    final nextStep = !sections.contains('activity')
+        ? 5
+        : !sections.contains('symptoms')
+            ? 6
+            : !sections.contains('sleep')
+                ? 7
+                : !sections.contains('measurements')
+                    ? 8
+                    : !sections.contains('note')
+                        ? 10
+                        : 11;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GuidedDailyFlowScreen(initialStep: nextStep),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final triage = s.triageLevel;
-    final w = s.wearable;
-    final bridge = s.wearableBridge;
-    final isLivePolarStreaming = bridge.isStreaming && !bridge.isDemoDevice;
-    final availableHeartRateReadings = [
-      ...s.personalChatWearableHistory,
-      ...s.wearableSamples,
-      if (isLivePolarStreaming) ...s.liveStreamReadings,
-    ];
-    final uniqueHeartRateReadings = <String, Map<String, dynamic>>{};
-    for (final reading in availableHeartRateReadings) {
-      if (reading['is_simulated'] == true ||
-          reading['heart_rate_bpm'] is! num) {
-        continue;
-      }
-      final key = '${reading['recorded_at']}:${reading['heart_rate_bpm']}';
-      uniqueHeartRateReadings[key] = reading;
-    }
-    final heartRateReadings = uniqueHeartRateReadings.values.toList()
-      ..sort((a, b) {
-        final aTime = DateTime.tryParse(a['recorded_at']?.toString() ?? '');
-        final bTime = DateTime.tryParse(b['recorded_at']?.toString() ?? '');
-        if (aTime == null || bTime == null) return 0;
-        return aTime.compareTo(bTime);
-      });
     final caparStatus =
         (s.rawCaparInsights?['capar'] as Map<String, dynamic>?)?['status'];
 
@@ -544,77 +526,23 @@ class _PedagogyDashboard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                Text(
-                  'VidyaMedic',
-                  style: AppTheme.font(
-                      size: 18.5,
-                      weight: FontWeight.w800,
-                      color: AppTheme.primaryDark,
-                      letterSpacing: -0.3),
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primarySoft,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Kesehatan Personal',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTheme.font(
-                        size: 9.5,
-                        weight: FontWeight.w800,
-                        color: AppTheme.primaryDark,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              'VidyaMedic',
+              style: AppTheme.font(
+                  size: 18.5,
+                  weight: FontWeight.w800,
+                  color: AppTheme.primaryDark,
+                  letterSpacing: -0.3),
             ),
             const SizedBox(height: 1),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                PulsingStatusDot(
-                  size: 6,
-                  color: bridge.isDemoDevice || w.isSimulated
-                      ? AppTheme.statusYellow
-                      : bridge.isStreaming ||
-                              bridge.isConnected ||
-                              w.hasServerSamples ||
-                              s.hasCaparRecords
-                          ? AppTheme.statusGreen
-                          : AppTheme.textMuted,
-                ),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    bridge.isDemoDevice || w.isSimulated
-                        ? 'Data demo simulasi (bukan pengukuran nyata)'
-                        : isLivePolarStreaming
-                            ? 'Streaming Polar H10 aktif • ${bridge.deviceName}'
-                            : bridge.isConnected
-                                ? 'Polar H10 tersambung • streaming belum dimulai'
-                                : w.hasServerSamples
-                                    ? 'Sampel wearable dari server • ${w.deviceName}'
-                                    : s.hasCaparRecords
-                                        ? 'Riwayat CAPAR tersedia dari server'
-                                        : 'Belum ada data wearable dari server',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTheme.font(
-                        size: 11,
-                        color: AppTheme.textSecondary,
-                        weight: FontWeight.w500),
-                  ),
-                ),
-              ],
+            Text(
+              'PEMANTAUAN KESEHATAN PERSONAL',
+              style: AppTheme.font(
+                size: 9,
+                weight: FontWeight.w700,
+                color: AppTheme.textMuted,
+                letterSpacing: 0.5,
+              ),
             ),
           ],
         ),
@@ -723,122 +651,20 @@ class _PedagogyDashboard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.statusGreenBg,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color:
-                                AppTheme.statusGreen.withValues(alpha: 0.35)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          PulsingStatusDot(
-                            size: 6,
-                            color: w.isSimulated
-                                ? AppTheme.statusYellow
-                                : bridge.isStreaming ||
-                                        bridge.isConnected ||
-                                        w.hasServerSamples ||
-                                        s.hasCaparRecords
-                                    ? AppTheme.statusGreen
-                                    : AppTheme.textMuted,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            w.isSimulated
-                                ? 'Data demo simulasi'
-                                : bridge.isStreaming && !bridge.isDemoDevice
-                                    ? 'Streaming Polar H10 aktif'
-                                    : bridge.isConnected
-                                        ? 'Polar H10 tersambung'
-                                        : w.hasServerSamples
-                                            ? 'Data server tersedia'
-                                            : s.hasCaparRecords
-                                                ? 'Riwayat CAPAR tersedia'
-                                                : 'Belum ada data',
-                            style: AppTheme.font(
-                              size: 10.5,
-                              weight: FontWeight.w700,
-                              color: w.isSimulated
-                                  ? AppTheme.statusYellow
-                                  : bridge.isStreaming ||
-                                          bridge.isConnected ||
-                                          w.hasServerSamples ||
-                                          s.hasCaparRecords
-                                      ? AppTheme.statusGreen
-                                      : AppTheme.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
 
+              const WearableMonitoringCard(),
+              const WearableVitalsGrid(),
+
               const ProfileSnapshotCard(),
 
-              Card(
-                margin: const EdgeInsets.only(top: 12),
-                child: ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppTheme.primarySoft,
-                    child: Icon(Icons.chat_bubble_outline,
-                        color: AppTheme.primary),
-                  ),
-                  title: Text(
-                    'Tanya Wawasan Personal',
-                    style: AppTheme.font(
-                      size: 14,
-                      weight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Tanya tentang catatan dan pola kesehatan Anda',
-                    style: AppTheme.font(
-                      size: 11.5,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PersonalHealthChatScreen(),
-                    ),
-                  ),
-                ),
-              ),
-
-              _HomeGamificationCard(
-                recordedToday: _hasRealWearableDataToday(s.wearableSamples),
-                onRecord: () => Navigator.push(
+              _TodayHealthLogCard(
+                onOpenDailyLog: () => _openNextDailyEntry(context, s),
+                onOpenEvents: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (_) => const WearablePairingScreen()),
-                ),
-                onCommunity: onNavigateToCommunity,
-              ),
-
-              _HomeProgressCard(
-                profileComplete: _profileComplete(s.overviewData),
-                dailyCheckInComplete: _hasCheckInToday(s.overviewData),
-                wearableComplete: _hasRealWearableDataToday(s.wearableSamples),
-                onCompleteProfile: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                ),
-                onDailyCheckIn: onNavigateToInput,
-                onRecordWearable: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const WearablePairingScreen()),
+                  MaterialPageRoute(builder: (_) => const EventMarkerScreen()),
                 ),
               ),
 
@@ -870,6 +696,7 @@ class _PedagogyDashboard extends StatelessWidget {
                 _AccMovementAlertBanner(
                   currentActivity: s.activity,
                   suggestedActivity: s.suggestedActivity,
+                  isPostureChange: s.isPostureChangePrompt,
                   analysis: s.movementAnalysis,
                   onConfirm: () =>
                       s.confirmActivityTransition(s.suggestedActivity),
@@ -879,273 +706,6 @@ class _PedagogyDashboard extends StatelessWidget {
               ],
 
               const SizedBox(height: 14),
-
-              // 2. Realtime Physiological Metrics Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0D5C43), Color(0xFF147A5A)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0B7A5A).withValues(alpha: 0.3),
-                      blurRadius: 14,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (w.isSimulated) ...[
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: Text(
-                          'DEMO · HR sintetis, bukan pengukuran tubuh',
-                          style: AppTheme.font(
-                              size: 10.5,
-                              color: Colors.white,
-                              weight: FontWeight.w700),
-                        ),
-                      ),
-                    ],
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.favorite,
-                                      color: AppTheme.faceRed, size: 20),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      'Detak Jantung',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTheme.font(
-                                          size: 13,
-                                          color: Colors.white
-                                              .withValues(alpha: 0.85),
-                                          weight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    w.heartRate > 0 ? '${w.heartRate}' : '—',
-                                    style: AppTheme.font(
-                                        size: 38,
-                                        weight: FontWeight.w900,
-                                        color: Colors.white,
-                                        height: 1.0),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'bpm',
-                                    style: AppTheme.font(
-                                        size: 14,
-                                        color: Colors.white70,
-                                        weight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                w.isSimulated
-                                    ? 'Data demo tidak dibandingkan dengan baseline'
-                                    : s.hasCaparMetrics
-                                        ? 'Deviasi personal: ${s.latestCaparMahalanobis?['distance'] ?? '—'}'
-                                        : 'Analisis baseline personal belum tersedia',
-                                style: AppTheme.font(
-                                    size: 11,
-                                    color: Colors.white.withValues(alpha: 0.9)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 1,
-                          height: 100,
-                          color: Colors.white.withValues(alpha: 0.18),
-                          margin: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      bridge.isConnected
-                                          ? bridge.deviceName
-                                          : w.hasServerSamples
-                                              ? w.deviceName
-                                              : 'Wearable belum tersedia',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTheme.font(
-                                          size: 13.5,
-                                          weight: FontWeight.w800,
-                                          color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                  isLivePolarStreaming
-                                      ? bridge.lastHeartRateAt == null
-                                          ? 'Data langsung: menunggu bacaan'
-                                          : 'Data langsung: ${fmtTime(TimeOfDay.fromDateTime(bridge.lastHeartRateAt!))}:${bridge.lastHeartRateAt!.second.toString().padLeft(2, '0')}'
-                                      : 'Tersinkron: ${w.lastSync == null ? 'Belum tersedia' : fmtTime(TimeOfDay.fromDateTime(w.lastSync!))}',
-                                  style: AppTheme.font(
-                                      size: 10.5, color: Colors.white70)),
-                              const SizedBox(height: 8),
-                              _metricRow('HRV (RMSSD)',
-                                  w.hrvRmssd > 0 ? '${w.hrvRmssd} ms' : '—'),
-                              _metricRow(
-                                  isLivePolarStreaming
-                                      ? 'Langkah estimasi (ACC)'
-                                      : w.stepsEstimatedFromAcc
-                                          ? 'Perkiraan langkah (ACC)'
-                                          : 'Langkah Harian',
-                                  w.steps > 0 ? '${w.steps} lk' : '—'),
-                              _metricRow(
-                                  isLivePolarStreaming
-                                      ? 'SpO₂ (tidak tersedia)'
-                                      : 'Kadar Oksigen (SpO₂)',
-                                  !isLivePolarStreaming && w.spO2 > 0
-                                      ? '${w.spO2}%'
-                                      : '—'),
-                              _metricRow(
-                                  isLivePolarStreaming
-                                      ? 'Suhu kulit (tidak tersedia)'
-                                      : 'Suhu Kulit',
-                                  !isLivePolarStreaming && w.skinTemp > 0
-                                      ? '${w.skinTemp}°C'
-                                      : '—'),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    LiveHeartRateChart(
-                      readings: heartRateReadings,
-                      isStreaming: isLivePolarStreaming,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          isLivePolarStreaming
-                              ? Icons.sensors_rounded
-                              : bridge.isConnected
-                                  ? Icons.bluetooth_connected_rounded
-                                  : Icons.bluetooth_disabled_rounded,
-                          size: 13,
-                          color: Colors.white70,
-                        ),
-                        const SizedBox(width: 5),
-                        Expanded(
-                          child: Text(
-                            isLivePolarStreaming
-                                ? 'Streaming aktif · ${bridge.sessionReadingCount} bacaan sesi'
-                                : bridge.isConnected
-                                    ? 'Perangkat terhubung · mulai streaming dari menu wearable'
-                                    : w.hasServerSamples
-                                        ? 'Menampilkan rekaman tersimpan terakhir'
-                                        : 'Hubungkan Polar H10 untuk mulai merekam',
-                            style: AppTheme.font(
-                              size: 9.5,
-                              color: Colors.white70,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (bridge.isUploading) ...[
-                          const SizedBox(width: 6),
-                          const SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (bridge.error != null) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        bridge.error!,
-                        style: AppTheme.font(
-                          size: 9,
-                          color: const Color(0xFFFFD5CD),
-                        ),
-                      ),
-                    ],
-                    if (!isLivePolarStreaming) ...[
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const WearablePairingScreen(),
-                            ),
-                          ),
-                          icon: const Icon(
-                            Icons.bluetooth_searching_rounded,
-                            size: 15,
-                          ),
-                          label: Text(
-                            bridge.isConnected
-                                ? 'Atur streaming Polar H10'
-                                : 'Hubungkan / mulai streaming',
-                          ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 5,
-                            ),
-                            textStyle: AppTheme.font(
-                              size: 10,
-                              weight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
               if (s.hasCaparRecoveryData) ...[
                 const SizedBox(height: 14),
                 // Show recovery only when CAPAR has evidence for a result.
@@ -1234,65 +794,6 @@ class _PedagogyDashboard extends StatelessWidget {
                   ),
                 ),
               ],
-
-              const SizedBox(height: 14),
-
-              // 4. Quick Daily Action Shortcuts
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickShortcutTile(
-                      context,
-                      label: 'Gejala',
-                      icon: Icons.sick_outlined,
-                      color: AppTheme.faceGreen,
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const SymptomInputScreen())),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _quickShortcutTile(
-                      context,
-                      label: 'Aktivitas',
-                      icon: Icons.directions_run_rounded,
-                      color: const Color(0xFF0284C7),
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const ActivityInputScreen())),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _quickShortcutTile(
-                      context,
-                      label: 'Tidur',
-                      icon: Icons.bedtime_outlined,
-                      color: const Color(0xFF7C5CDB),
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const SleepInputScreen())),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _quickShortcutTile(
-                      context,
-                      label: 'Event',
-                      icon: Icons.bookmark_add_outlined,
-                      color: const Color(0xFFD97706),
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const EventMarkerScreen())),
-                    ),
-                  ),
-                ],
-              ),
 
               const SizedBox(height: 14),
 
@@ -1450,181 +951,8 @@ class _PedagogyDashboard extends StatelessWidget {
               ),
 
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ActionTrackingScreen(),
-                        ),
-                      ),
-                      icon: const Icon(Icons.task_alt_outlined, size: 18),
-                      label: const Text('Tindakan'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ImpactDashboardScreen(),
-                        ),
-                      ),
-                      icon: const Icon(Icons.insights_outlined, size: 18),
-                      label: const Text('Dampak & keselamatan'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, '/scenarios'),
-                  icon: const Icon(Icons.science_outlined, size: 18),
-                  label: const Text('Skenario HCI A/B/C'),
-                ),
-              ),
-
-              // 7. Scientific Evidence RAG / Wawasan Medis Pasien
-              if (s.scientificCitations.isNotEmpty) ...[
-                const SectionTitle('Wawasan untuk Anda · berbasis paper ilmiah',
-                    padding: EdgeInsets.only(top: 22, bottom: 10)),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.borderLight),
-                    boxShadow: AppTheme.shadowSoft,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.menu_book_outlined,
-                              color: AppTheme.primary, size: 18),
-                          const SizedBox(width: 8),
-                          Text('Wawasan dari data yang tercatat',
-                              style: AppTheme.font(
-                                  size: 13,
-                                  weight: FontWeight.w700,
-                                  color: AppTheme.primaryDark)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Artikel dipilih dari konteks pemantauan dan informasi yang Anda catat. Keterkaitan topik tidak membuktikan penyebab atau diagnosis pada diri Anda.',
-                        style: AppTheme.font(
-                            size: 10.5,
-                            color: AppTheme.textMuted,
-                            height: 1.35),
-                      ),
-                      const SizedBox(height: 8),
-                      ...s.scientificCitations.take(2).map((c) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppTheme.fieldFill,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(c.title,
-                                      style: AppTheme.font(
-                                          size: 12.5, weight: FontWeight.w700)),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                      c.summary.trim().isNotEmpty
-                                          ? c.summary
-                                          : 'Literatur ini membahas ${c.matchedDimensions.isEmpty ? 'topik yang terkait dengan data pemantauan' : c.matchedDimensions.join(', ')}. Relevansi ini bersifat topikal, bukan bukti hubungan sebab-akibat.',
-                                      style: AppTheme.font(
-                                          size: 11.5,
-                                          color: AppTheme.textSecondary,
-                                          height: 1.3)),
-                                ],
-                              ),
-                            ),
-                          )),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _metricRow(String label, String val) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2.5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              '✓ $label',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTheme.font(size: 10.5, color: Colors.white70),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(val,
-              style: AppTheme.font(
-                  size: 10.5, weight: FontWeight.w700, color: Colors.white)),
-        ],
-      ),
-    );
-  }
-
-  Widget _quickShortcutTile(
-    BuildContext context, {
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.borderLight),
-          boxShadow: AppTheme.shadowSoft,
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 17, color: color),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTheme.font(
-                  size: 11,
-                  weight: FontWeight.w700,
-                  color: AppTheme.textPrimary),
-            ),
-          ],
         ),
       ),
     );
@@ -1754,6 +1082,7 @@ void _showActivitySelectionModal(BuildContext context, AppState s) {
 class _AccMovementAlertBanner extends StatelessWidget {
   final String currentActivity;
   final String suggestedActivity;
+  final bool isPostureChange;
   final LocomotionAnalysis? analysis;
   final Future<bool> Function() onConfirm;
   final VoidCallback onDismiss;
@@ -1762,6 +1091,7 @@ class _AccMovementAlertBanner extends StatelessWidget {
   const _AccMovementAlertBanner({
     required this.currentActivity,
     required this.suggestedActivity,
+    required this.isPostureChange,
     required this.analysis,
     required this.onConfirm,
     required this.onDismiss,
@@ -1799,7 +1129,9 @@ class _AccMovementAlertBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Terdeteksi pergerakan!',
+                      isPostureChange
+                          ? 'Terdeteksi perubahan posisi!'
+                          : 'Terdeteksi pergerakan!',
                       style: AppTheme.font(
                           size: 13,
                           weight: FontWeight.w700,
@@ -1807,7 +1139,9 @@ class _AccMovementAlertBanner extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Pola akselerometer menyerupai $suggestedActivity. Apakah Anda sedang $suggestedActivity? Ini perkiraan sensor, bukan kepastian.',
+                      isPostureChange
+                          ? 'Akselerometer menunjukkan perubahan orientasi/pergerakan. Sensor tidak dapat memastikan posisi duduk atau berdiri; pilih kondisi Anda untuk memperbarui catatan.'
+                          : 'Pola akselerometer menyerupai $suggestedActivity. Apakah Anda sedang $suggestedActivity? Ini perkiraan sensor, bukan kepastian.',
                       style: AppTheme.font(
                           size: 11.5,
                           color: const Color(0xFF7A5C00),
@@ -1824,14 +1158,15 @@ class _AccMovementAlertBanner extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            'Aturan non-klinis: resultan = √(x²+y²+z²), lalu delta resultan dibanding rerata lokal (tanpa normalisasi sumbu). Minimal ${ActivityMotionPolicy.demo.minimumSampleSeconds.toStringAsFixed(0)} detik; cadence ${ActivityMotionPolicy.demo.minimumCadenceHz.toStringAsFixed(1)}–${ActivityMotionPolicy.demo.maximumCadenceHz.toStringAsFixed(1)} Hz; berlari mulai ${ActivityMotionPolicy.demo.runningCadenceHz.toStringAsFixed(1)} Hz; prominence ≥${ActivityMotionPolicy.demo.minimumPeakProminenceG.toStringAsFixed(2)} g; variasi interval ≤${(ActivityMotionPolicy.demo.maximumIntervalVariation * 100).round()}%.',
-            style: AppTheme.font(
-              size: 10.5,
-              color: const Color(0xFF7A5C00),
-              height: 1.35,
+          if (!isPostureChange)
+            Text(
+              'Aturan non-klinis: resultan = √(x²+y²+z²), lalu delta resultan dibanding rerata lokal (tanpa normalisasi sumbu). Minimal ${ActivityMotionPolicy.demo.minimumSampleSeconds.toStringAsFixed(0)} detik; cadence ${ActivityMotionPolicy.demo.minimumCadenceHz.toStringAsFixed(1)}–${ActivityMotionPolicy.demo.maximumCadenceHz.toStringAsFixed(1)} Hz; berlari mulai ${ActivityMotionPolicy.demo.runningCadenceHz.toStringAsFixed(1)} Hz; prominence ≥${ActivityMotionPolicy.demo.minimumPeakProminenceG.toStringAsFixed(2)} g; variasi interval ≤${(ActivityMotionPolicy.demo.maximumIntervalVariation * 100).round()}%.',
+              style: AppTheme.font(
+                size: 10.5,
+                color: const Color(0xFF7A5C00),
+                height: 1.35,
+              ),
             ),
-          ),
           if (analysis != null) ...[
             const SizedBox(height: 4),
             Text(
@@ -1849,6 +1184,10 @@ class _AccMovementAlertBanner extends StatelessWidget {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () async {
+                    if (isPostureChange) {
+                      onSelectOther();
+                      return;
+                    }
                     final saved = await onConfirm();
                     if (!saved && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1867,7 +1206,10 @@ class _AccMovementAlertBanner extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
                   ),
-                  child: Text('Ya, Sedang $suggestedActivity',
+                  child: Text(
+                      isPostureChange
+                          ? 'Pilih kondisi sekarang'
+                          : 'Ya, Sedang $suggestedActivity',
                       style: AppTheme.font(
                           size: 12,
                           weight: FontWeight.w700,
@@ -1875,21 +1217,26 @@ class _AccMovementAlertBanner extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: onSelectOther,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF7A5C00),
-                  side: const BorderSide(color: Color(0xFFFFCC02)),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+              SizedBox(
+                width: 108,
+                child: OutlinedButton(
+                  onPressed: onSelectOther,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF7A5C00),
+                    side: const BorderSide(color: Color(0xFFFFCC02)),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text('Pilih Lain',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.font(
+                          size: 12,
+                          weight: FontWeight.w600,
+                          color: const Color(0xFF7A5C00))),
                 ),
-                child: Text('Pilih Lain',
-                    style: AppTheme.font(
-                        size: 12,
-                        weight: FontWeight.w600,
-                        color: const Color(0xFF7A5C00))),
               ),
             ],
           ),
@@ -1900,7 +1247,580 @@ class _AccMovementAlertBanner extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Tab 1: Peta Lengkap Input Mobile
+// Tab 1: Ringkasan aktivitas dan data hari ini
+// ---------------------------------------------------------------------------
+class _TodayOverviewTab extends StatelessWidget {
+  const _TodayOverviewTab();
+
+  Future<void> _openDailyFlow(BuildContext context, AppState state) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    state.update(() {
+      state.logDate = today;
+    });
+    await state.fetchDailySummary(today);
+    if (!context.mounted) return;
+    final sections = state.confirmedDailySections;
+    final nextStep = !sections.contains('activity')
+        ? 5
+        : !sections.contains('symptoms')
+            ? 6
+            : !sections.contains('sleep')
+                ? 7
+                : !sections.contains('measurements')
+                    ? 8
+                    : !sections.contains('note')
+                        ? 10
+                        : 11;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => GuidedDailyFlowScreen(initialStep: nextStep),
+      ),
+    );
+  }
+
+  Map<String, dynamic> _latestCheckIn(AppState state) {
+    final raw = state.dailySummaryData?['check_ins'];
+    if (raw is! List) return const {};
+    for (final item in raw.reversed) {
+      if (item is Map) return Map<String, dynamic>.from(item);
+    }
+    return const {};
+  }
+
+  List<Map<String, dynamic>> _todayReadings(AppState state) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final readings = <Map<String, dynamic>>[
+      ...state.personalChatWearableHistory,
+      ...state.wearableSamples,
+      if (state.wearableBridge.isStreaming &&
+          !state.wearableBridge.isDemoDevice)
+        ...state.liveStreamReadings,
+    ];
+    final unique = <String, Map<String, dynamic>>{};
+    for (final reading in readings) {
+      final recordedAt =
+          DateTime.tryParse(reading['recorded_at']?.toString() ?? '');
+      if (recordedAt == null ||
+          !DateUtils.isSameDay(recordedAt.toLocal(), today) ||
+          reading['is_simulated'] == true ||
+          reading['heart_rate_bpm'] is! num) {
+        continue;
+      }
+      unique['${recordedAt.toIso8601String()}:${reading['heart_rate_bpm']}'] =
+          reading;
+    }
+    return unique.values.toList()
+      ..sort((first, second) {
+        final firstAt =
+            DateTime.tryParse(first['recorded_at']?.toString() ?? '');
+        final secondAt =
+            DateTime.tryParse(second['recorded_at']?.toString() ?? '');
+        if (firstAt == null || secondAt == null) return 0;
+        return firstAt.compareTo(secondAt);
+      });
+  }
+
+  String _display(dynamic value, {String fallback = 'Belum dicatat'}) {
+    if (value == null || value.toString().trim().isEmpty) return fallback;
+    return value.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final checkIn = _latestCheckIn(state);
+    final sleep = checkIn['sleep'] is Map
+        ? Map<String, dynamic>.from(checkIn['sleep'] as Map)
+        : const <String, dynamic>{};
+    final symptoms = checkIn['symptoms'] is List
+        ? (checkIn['symptoms'] as List)
+            .map((item) => mapApiToSymptomLabel(item.toString()))
+            .join(', ')
+        : '';
+    final readings = _todayReadings(state);
+    final events = state.events
+        .where((event) =>
+            DateUtils.isSameDay(event.timestamp.toLocal(), DateTime.now()))
+        .toList()
+      ..sort((first, second) => second.timestamp.compareTo(first.timestamp));
+    final latestReading =
+        readings.isEmpty ? null : readings.last['heart_rate_bpm'] as num;
+
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: Text(
+          'Hari Ini',
+          style: AppTheme.font(
+              size: 17, weight: FontWeight.w800, color: AppTheme.primaryDark),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Perbarui data hari ini',
+            onPressed: state.isRefreshing ? null : state.refreshAllData,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: state.refreshAllData,
+        color: AppTheme.primary,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics()),
+          padding: const EdgeInsets.fromLTRB(20, 6, 20, 32),
+          children: [
+            Text(
+              DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.now()),
+              style: AppTheme.font(size: 12, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppTheme.primaryDark, AppTheme.primary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.favorite_rounded,
+                      color: Colors.white, size: 26),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          latestReading == null
+                              ? 'Belum ada sampel wearable hari ini'
+                              : 'Denyut terakhir ${latestReading.round()} bpm',
+                          style: AppTheme.font(
+                              size: 14,
+                              weight: FontWeight.w800,
+                              color: Colors.white),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          readings.isEmpty
+                              ? 'Hubungkan perangkat atau catat aktivitas Anda.'
+                              : '${readings.length} sampel nyata hari ini · bukan sinyal medis langsung',
+                          style: AppTheme.font(
+                              size: 10.5,
+                              color: Colors.white.withValues(alpha: 0.85)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Card(
+              margin: const EdgeInsets.only(top: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: LiveHeartRateChart(
+                  readings: readings,
+                  isStreaming: state.wearableBridge.isStreaming &&
+                      !state.wearableBridge.isDemoDevice,
+                ),
+              ),
+            ),
+            Card(
+              margin: const EdgeInsets.only(top: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Ringkasan pengamatan',
+                        style:
+                            AppTheme.font(size: 14, weight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    _TodayMetricRow(
+                      label: 'Aktivitas',
+                      value: _display(
+                        checkIn['activity'] == null
+                            ? null
+                            : mapApiToActivity(checkIn['activity'].toString()),
+                        fallback: state.activity,
+                      ),
+                    ),
+                    _TodayMetricRow(
+                      label: 'Denyut jantung',
+                      value: latestReading == null
+                          ? 'Belum ada sampel nyata'
+                          : '${latestReading.round()} bpm',
+                    ),
+                    _TodayMetricRow(
+                      label: 'RMSSD (HRV)',
+                      value: state.wearable.hrvRmssd > 0
+                          ? '${state.wearable.hrvRmssd} ms'
+                          : 'Belum tersedia',
+                    ),
+                    _TodayMetricRow(
+                      label: 'Tidur',
+                      value: sleep['duration_minutes'] is num
+                          ? '${((sleep['duration_minutes'] as num) / 60).toStringAsFixed(1)} jam'
+                          : 'Belum dicatat',
+                    ),
+                    _TodayMetricRow(
+                      label: 'Gejala',
+                      value: symptoms.isEmpty ? 'Belum dicatat' : symptoms,
+                    ),
+                    if (checkIn['stress_level'] != null)
+                      _TodayMetricRow(
+                        label: 'Stres yang dilaporkan',
+                        value: checkIn['stress_level'].toString(),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Card(
+              margin: const EdgeInsets.only(top: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('Event hari ini',
+                              style: AppTheme.font(
+                                  size: 14, weight: FontWeight.w800)),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const EventMarkerScreen(),
+                            ),
+                          ),
+                          child: const Text('Tambah'),
+                        ),
+                      ],
+                    ),
+                    if (events.isEmpty)
+                      Text('Belum ada event yang dicatat hari ini.',
+                          style: AppTheme.font(
+                              size: 12, color: AppTheme.textSecondary))
+                    else
+                      ...events.take(5).map(
+                            (event) => ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              leading: Icon(event.icon, color: event.color),
+                              title: Text(event.title),
+                              subtitle: Text(event.details),
+                              trailing: Text(
+                                DateFormat('HH:mm')
+                                    .format(event.timestamp.toLocal()),
+                              ),
+                            ),
+                          ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => _openDailyFlow(context, state),
+              icon: const Icon(Icons.edit_note_rounded),
+              label: const Text('Catat Hari Ini'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const DailySummaryScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.assignment_outlined),
+              label: const Text('Lihat ringkasan dan riwayat harian'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const _InputFlowTab(),
+                ),
+              ),
+              icon: const Icon(Icons.playlist_add_check_rounded),
+              label: const Text('Buka semua pilihan pencatatan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayMetricRow extends StatelessWidget {
+  const _TodayMetricRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(label,
+                  style:
+                      AppTheme.font(size: 12, color: AppTheme.textSecondary)),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(value,
+                  textAlign: TextAlign.end,
+                  style: AppTheme.font(
+                      size: 12,
+                      weight: FontWeight.w700,
+                      color: AppTheme.textPrimary)),
+            ),
+          ],
+        ),
+      );
+}
+
+// ---------------------------------------------------------------------------
+// Tab 2: Insight dan akses fitur analisis lanjutan
+// ---------------------------------------------------------------------------
+class _InsightsHubTab extends StatelessWidget {
+  const _InsightsHubTab();
+
+  void _open(BuildContext context, Widget screen) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => screen),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final recovery = state.recoveryProgress;
+    final citations = state.scientificCitations;
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: Text('Insight',
+            style: AppTheme.font(
+                size: 17,
+                weight: FontWeight.w800,
+                color: AppTheme.primaryDark)),
+        actions: [
+          IconButton(
+            tooltip: 'Buka Tanya AI',
+            onPressed: () => context
+                .findAncestorStateOfType<_HomeScreenState>()
+                ?._selectTab(3),
+            icon: const Icon(Icons.auto_awesome_rounded),
+          ),
+        ],
+      ),
+      body: ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 32),
+        children: [
+          Text(
+            'Pola, baseline, dan riwayat pemantauan Anda',
+            style: AppTheme.font(size: 12, color: AppTheme.textSecondary),
+          ),
+          Card(
+            margin: const EdgeInsets.only(top: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Gambaran saat ini',
+                      style: AppTheme.font(size: 14, weight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  _TodayMetricRow(
+                    label: 'Sampel wearable tersinkron',
+                    value: state.wearableSamples.length.toString(),
+                  ),
+                  _TodayMetricRow(
+                    label: 'Event tercatat',
+                    value: state.events.length.toString(),
+                  ),
+                  _TodayMetricRow(
+                    label: 'Baseline pribadi',
+                    value: state.hasCaparMetrics
+                        ? 'Tersedia untuk ditinjau'
+                        : 'Belum tersedia',
+                  ),
+                  _TodayMetricRow(
+                    label: 'Pemulihan CAPAR',
+                    value: recovery == null
+                        ? 'Belum tersedia'
+                        : '${recovery.round()}% · ringkasan model, bukan diagnosis',
+                  ),
+                  if (state.latestCaparMahalanobis?['distance'] != null)
+                    _TodayMetricRow(
+                      label: 'Deviasi terbaru (Mahalanobis)',
+                      value:
+                          state.latestCaparMahalanobis!['distance'].toString(),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text('Jelajahi insight',
+              style: AppTheme.font(size: 14, weight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          _InsightLinkCard(
+            icon: Icons.timeline_rounded,
+            title: 'Tren & perjalanan kesehatan',
+            subtitle: 'Grafik wearable, aktivitas, dan check-in historis',
+            onTap: () => _open(context, const PatientJourneyScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.event_note_outlined,
+            title: 'Kondisi pada tanggal tertentu',
+            subtitle: 'Tinjau ringkasan dan pengukuran pada hari pilihan',
+            onTap: () => _open(context, const WhereAmIScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.history_rounded,
+            title: 'Riwayat baseline dan CAPAR',
+            subtitle: 'Baseline, deviasi, pemulihan, dan catatan longitudinal',
+            onTap: () => _open(context, const CaparHistoryScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.bedtime_outlined,
+            title: 'Pemulihan',
+            subtitle: 'Tinjau lintasan pemulihan dan data yang tersedia',
+            onTap: () => _open(context, const RecoveryScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.location_searching_rounded,
+            title: 'Apa yang berubah?',
+            subtitle: 'Buka penjelasan perubahan terbaru dan konteksnya',
+            onTap: () => _open(context, const WhatChangedScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.lightbulb_outline_rounded,
+            title: 'Mengapa perubahan mungkin terjadi?',
+            subtitle:
+                'Tinjau faktor terkait sebagai asosiasi, bukan sebab pasti',
+            onTap: () => _open(context, const WhyScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.checklist_rounded,
+            title: 'Panduan tindakan',
+            subtitle: 'Panduan non-diagnostik berdasarkan data yang tersedia',
+            onTap: () => _open(context, const ActionGuidanceScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.task_alt_outlined,
+            title: 'Tindakan & tindak lanjut',
+            subtitle: 'Catat dan tinjau tindakan yang sudah dilakukan',
+            onTap: () => _open(context, const ActionTrackingScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.health_and_safety_outlined,
+            title: 'Dampak & keselamatan',
+            subtitle: 'Ketersediaan data, outcome, dan tata kelola',
+            onTap: () => _open(context, const ImpactDashboardScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.emoji_events_outlined,
+            title: 'Komunitas',
+            subtitle: 'Koin, papan skor, dan pengaturan keikutsertaan',
+            onTap: () => _open(context, const GamificationScreen()),
+          ),
+          _InsightLinkCard(
+            icon: Icons.science_outlined,
+            title: 'Skenario HCI A/B/C',
+            subtitle: 'Buka fitur skenario penelitian yang tersedia',
+            onTap: () => Navigator.pushNamed(context, '/scenarios'),
+          ),
+          if (citations.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Wawasan ilmiah terkait',
+                        style:
+                            AppTheme.font(size: 14, weight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Relevansi topik literatur tidak membuktikan sebab-akibat atau diagnosis pada diri Anda.',
+                      style: AppTheme.font(
+                          size: 11,
+                          color: AppTheme.textSecondary,
+                          height: 1.35),
+                    ),
+                    const SizedBox(height: 8),
+                    ...citations.take(4).map(
+                          (citation) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            leading: const Icon(Icons.menu_book_outlined,
+                                color: AppTheme.primary),
+                            title: Text(citation.title),
+                            subtitle: Text(citation.summary),
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _InsightLinkCard extends StatelessWidget {
+  const _InsightLinkCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: AppTheme.primarySoft,
+            child: Icon(icon, color: AppTheme.primary),
+          ),
+          title: Text(title,
+              style: AppTheme.font(size: 12.5, weight: FontWeight.w700)),
+          subtitle: Text(subtitle,
+              style: AppTheme.font(size: 10.5, color: AppTheme.textSecondary)),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: onTap,
+        ),
+      );
+}
+
+// ---------------------------------------------------------------------------
+// Tab 6: Peta Lengkap Input Mobile
 // ---------------------------------------------------------------------------
 class _InputFlowTab extends StatelessWidget {
   const _InputFlowTab();
@@ -2160,50 +2080,51 @@ class _FlowStepCard extends StatelessWidget {
   }
 }
 
-class _HomeProgressCard extends StatelessWidget {
-  const _HomeProgressCard({
-    required this.profileComplete,
-    required this.dailyCheckInComplete,
-    required this.wearableComplete,
-    required this.onCompleteProfile,
-    required this.onDailyCheckIn,
-    required this.onRecordWearable,
+class _TodayHealthLogCard extends StatelessWidget {
+  const _TodayHealthLogCard({
+    required this.onOpenDailyLog,
+    required this.onOpenEvents,
   });
 
-  final bool profileComplete;
-  final bool dailyCheckInComplete;
-  final bool wearableComplete;
-  final VoidCallback onCompleteProfile;
-  final VoidCallback onDailyCheckIn;
-  final VoidCallback onRecordWearable;
+  final VoidCallback onOpenDailyLog;
+  final VoidCallback onOpenEvents;
 
   @override
   Widget build(BuildContext context) {
-    final missions = <(String, String, bool, IconData, VoidCallback)>[
-      (
-        'Lengkapi profil dasar',
-        'Agar ringkasan personal lebih sesuai',
-        profileComplete,
-        Icons.person_outline_rounded,
-        onCompleteProfile,
-      ),
-      (
-        'Catat kondisi hari ini',
-        'Tambahkan tidur, aktivitas, atau keluhan',
-        dailyCheckInComplete,
-        Icons.edit_note_rounded,
-        onDailyCheckIn,
-      ),
-      (
-        'Rekam data wearable',
-        'Gunakan Polar H10 untuk data nyata',
-        wearableComplete,
-        Icons.favorite_border_rounded,
-        onRecordWearable,
-      ),
+    final state = context.watch<AppState>();
+    final isCurrentDay = DateUtils.isSameDay(state.logDate, DateTime.now());
+    final todayEvents = state.events
+        .where((event) => DateUtils.isSameDay(event.timestamp, DateTime.now()))
+        .toList();
+    final symptoms = state.symptoms.where((value) => value != kNoSymptom);
+    final symptomSummary =
+        isCurrentDay && state.confirmedDailySections.contains('symptoms')
+            ? symptoms.isEmpty
+                ? 'Tidak ada keluhan'
+                : symptoms.join(', ')
+            : 'Belum dicatat';
+    final activitySummary =
+        isCurrentDay && state.confirmedDailySections.contains('activity')
+            ? [
+                state.activity,
+                if (state.stress != null) 'Stres ${state.stress!.label}',
+              ].join(' · ')
+            : 'Belum dicatat';
+    final sleepSummary = isCurrentDay &&
+            state.confirmedDailySections.contains('sleep') &&
+            state.sleepMinutes > 0
+        ? '${state.sleepMinutes ~/ 60} jam ${state.sleepMinutes % 60} menit · ${state.sleepQuality.label}'
+        : 'Belum dicatat';
+    const dailySections = [
+      'activity',
+      'symptoms',
+      'sleep',
+      'measurements',
+      'note',
     ];
-    final completed = missions.where((mission) => mission.$3).length;
-    final nextMission = missions.indexWhere((mission) => !mission.$3);
+    final completedSections = isCurrentDay
+        ? dailySections.where(state.confirmedDailySections.contains).length
+        : 0;
 
     return Card(
       margin: const EdgeInsets.only(top: 12),
@@ -2219,282 +2140,121 @@ class _HomeProgressCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primarySoft,
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: const Icon(Icons.flag_outlined,
-                      color: AppTheme.primary, size: 20),
+                const CircleAvatar(
+                  backgroundColor: AppTheme.primarySoft,
+                  child: Icon(Icons.today_outlined, color: AppTheme.primary),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text('Catatan Hari Ini',
+                          style:
+                              AppTheme.font(size: 14, weight: FontWeight.w800)),
                       Text(
-                        'Misi pemantauan',
-                        style: AppTheme.font(size: 14, weight: FontWeight.w800),
-                      ),
-                      Text(
-                        '$completed dari ${missions.length} langkah selesai',
+                        DateFormat('EEEE, d MMMM yyyy', 'id_ID')
+                            .format(DateTime.now()),
                         style: AppTheme.font(
-                            size: 11, color: AppTheme.textSecondary),
+                            size: 10.5, color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
                 ),
-                Text(
-                  '${(completed / missions.length * 100).round()}%',
-                  style: AppTheme.font(
-                      size: 15,
-                      weight: FontWeight.w800,
-                      color: AppTheme.primary),
+                IconButton(
+                  tooltip: 'Tambah event',
+                  onPressed: onOpenEvents,
+                  icon: const Icon(Icons.add_circle_outline_rounded),
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            _todayLogRow('Perasaan & gejala', symptomSummary),
+            _todayLogRow('Aktivitas', activitySummary),
+            _todayLogRow('Tidur', sleepSummary),
+            _todayLogRow(
+              'Event',
+              todayEvents.isEmpty
+                  ? 'Belum ada event'
+                  : todayEvents.map((event) => event.title).join(', '),
+            ),
             const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Progres catatan hari ini',
+                    style: AppTheme.font(size: 11, weight: FontWeight.w700),
+                  ),
+                ),
+                Text(
+                  '$completedSections/${dailySections.length}',
+                  style: AppTheme.font(
+                    size: 11,
+                    weight: FontWeight.w800,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
-                value: completed / missions.length,
-                minHeight: 7,
+                value: completedSections / dailySections.length,
+                minHeight: 5,
                 backgroundColor: AppTheme.fieldFill,
                 color: AppTheme.primary,
               ),
             ),
-            const SizedBox(height: 7),
-            Text(
-              'Progres ini merangkum kelengkapan data, bukan skor kesehatan.',
-              style: AppTheme.font(
-                  size: 10.5, color: AppTheme.textMuted, height: 1.3),
+            if (isCurrentDay &&
+                state.confirmedDailySections.contains('note') &&
+                state.note.trim().isNotEmpty) ...[
+              const SizedBox(height: 5),
+              Text(
+                state.note,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: AppTheme.font(
+                    size: 11, color: AppTheme.textSecondary, height: 1.35),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onOpenDailyLog,
+                icon: const Icon(Icons.edit_note_rounded, size: 18),
+                label: const Text('Lengkapi catatan'),
+              ),
             ),
-            const SizedBox(height: 7),
-            ...missions.map((mission) {
-              final isNext = missions.indexOf(mission) == nextMission;
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                minLeadingWidth: 26,
-                leading: Icon(
-                  mission.$3 ? Icons.check_circle_rounded : mission.$4,
-                  color: mission.$3 ? AppTheme.statusGreen : AppTheme.textMuted,
-                  size: 20,
-                ),
-                title: Text(
-                  mission.$1,
-                  style: AppTheme.font(
-                      size: 11.5,
-                      weight: isNext ? FontWeight.w800 : FontWeight.w600),
-                ),
-                subtitle: Text(
-                  mission.$2,
-                  style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
-                ),
-                trailing: mission.$3
-                    ? const Icon(Icons.done,
-                        size: 18, color: AppTheme.statusGreen)
-                    : Icon(
-                        isNext
-                            ? Icons.arrow_forward_rounded
-                            : Icons.chevron_right_rounded,
-                        size: 18,
-                        color: AppTheme.primary,
-                      ),
-                onTap: mission.$5,
-              );
-            }),
           ],
         ),
       ),
     );
   }
-}
 
-class _HomeGamificationCard extends StatefulWidget {
-  const _HomeGamificationCard({
-    required this.recordedToday,
-    required this.onRecord,
-    required this.onCommunity,
-  });
-
-  final bool recordedToday;
-  final VoidCallback onRecord;
-  final VoidCallback onCommunity;
-
-  @override
-  State<_HomeGamificationCard> createState() => _HomeGamificationCardState();
-}
-
-class _HomeGamificationCardState extends State<_HomeGamificationCard> {
-  int? _coins;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCoins();
-  }
-
-  Future<void> _loadCoins() async {
-    if (!ApiService.isAuthenticated) {
-      if (mounted) setState(() => _loading = false);
-      return;
-    }
-    final response = await ApiService.getGamification();
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _coins =
-          response.success ? (response.data?['coins'] as num?)?.toInt() : null;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final title = widget.recordedToday
-        ? 'Hebat, sudah ada rekaman hari ini!'
-        : 'Satu rekaman, satu koin hari ini';
-    final description = widget.recordedToday
-        ? 'Konsistensi Anda membantu membangun riwayat tubuh personal.'
-        : 'Pakai Polar H10 untuk mulai mengumpulkan koin dan mengenali pola tubuh Anda.';
-
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B7A5A), Color(0xFF159A72)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B7A5A).withValues(alpha: 0.16),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
+  Widget _todayLogRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.monetization_on_rounded,
-                  color: Color(0xFFFFD166),
-                  size: 27,
-                ),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTheme.font(
-                        size: 14,
-                        weight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      description,
-                      style: AppTheme.font(
-                        size: 11,
-                        color: Colors.white.withValues(alpha: 0.88),
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                children: [
-                  Text(
-                    _loading ? '…' : (_coins?.toString() ?? '—'),
-                    style: AppTheme.font(
-                      size: 21,
-                      weight: FontWeight.w900,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    'KOIN',
-                    style: AppTheme.font(
-                      size: 9,
-                      weight: FontWeight.w800,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          SizedBox(
+            width: 112,
+            child: Text(label,
+                style: AppTheme.font(size: 10.5, color: AppTheme.textMuted)),
           ),
-          const SizedBox(height: 13),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: widget.recordedToday ? null : widget.onRecord,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF0B7A5A),
-                    disabledBackgroundColor:
-                        Colors.white.withValues(alpha: 0.7),
-                    disabledForegroundColor: const Color(0xFF0B7A5A),
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                  ),
-                  icon: Icon(
-                    widget.recordedToday
-                        ? Icons.check_circle_rounded
-                        : Icons.favorite_rounded,
-                    size: 18,
-                  ),
-                  label: Text(
-                    widget.recordedToday
-                        ? 'Misi hari ini selesai'
-                        : 'Mulai rekam',
-                    maxLines: 1,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 9),
-              SizedBox(
-                width: 108,
-                child: OutlinedButton(
-                  onPressed: widget.onCommunity,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(0, 50),
-                    side:
-                        BorderSide(color: Colors.white.withValues(alpha: 0.6)),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 11,
-                    ),
-                  ),
-                  child: const FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text('Papan skor'),
-                  ),
-                ),
-              ),
-            ],
+          Expanded(
+            child: Text(
+              value,
+              style: AppTheme.font(
+                  size: 10.5,
+                  color: value == 'Belum dicatat' || value == 'Belum ada event'
+                      ? AppTheme.textMuted
+                      : AppTheme.textPrimary,
+                  weight: FontWeight.w600),
+            ),
           ),
         ],
       ),

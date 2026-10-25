@@ -9,10 +9,12 @@ class LiveHeartRateChart extends StatelessWidget {
     super.key,
     required this.readings,
     required this.isStreaming,
+    this.darkBackground = false,
   });
 
   final List<Map<String, dynamic>> readings;
   final bool isStreaming;
+  final bool darkBackground;
 
   List<double> get _heartRates => readings
       .where((reading) => reading['is_simulated'] != true)
@@ -25,6 +27,16 @@ class LiveHeartRateChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final heartRates = _heartRates;
+    final foregroundColor =
+        darkBackground ? Colors.white : AppTheme.textSecondary;
+    final mutedColor = darkBackground ? Colors.white70 : AppTheme.textMuted;
+    final lineColor = darkBackground ? Colors.white : AppTheme.primary;
+    final fillColor = darkBackground
+        ? Colors.white.withValues(alpha: 0.12)
+        : AppTheme.primary.withValues(alpha: 0.1);
+    final gridColor = darkBackground
+        ? Colors.white.withValues(alpha: 0.18)
+        : AppTheme.borderLight;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -33,7 +45,7 @@ class LiveHeartRateChart extends StatelessWidget {
             Icon(
               isStreaming ? Icons.graphic_eq_rounded : Icons.show_chart_rounded,
               size: 15,
-              color: isStreaming ? Colors.white : AppTheme.primary,
+              color: isStreaming ? AppTheme.primary : mutedColor,
             ),
             const SizedBox(width: 6),
             Expanded(
@@ -44,7 +56,7 @@ class LiveHeartRateChart extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: isStreaming ? Colors.white : AppTheme.textSecondary,
+                  color: foregroundColor,
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
                 ),
@@ -54,7 +66,7 @@ class LiveHeartRateChart extends StatelessWidget {
             Text(
               '${heartRates.length} sampel',
               style: TextStyle(
-                color: isStreaming ? Colors.white70 : AppTheme.textMuted,
+                color: mutedColor,
                 fontSize: 9.5,
               ),
             ),
@@ -70,7 +82,7 @@ class LiveHeartRateChart extends StatelessWidget {
                     ? 'Menunggu data denyut berikutnya dari sensor…'
                     : 'Grafik akan muncul setelah rekaman nyata tersedia.',
                 style: TextStyle(
-                  color: isStreaming ? Colors.white70 : AppTheme.textMuted,
+                  color: mutedColor,
                   fontSize: 10,
                 ),
                 textAlign: TextAlign.center,
@@ -85,13 +97,9 @@ class LiveHeartRateChart extends StatelessWidget {
               key: const ValueKey('heart-rate-line-chart'),
               painter: _HeartRatePainter(
                 heartRates: heartRates,
-                lineColor: isStreaming ? Colors.white : AppTheme.primary,
-                fillColor: isStreaming
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : AppTheme.primary.withValues(alpha: 0.1),
-                gridColor: isStreaming
-                    ? Colors.white.withValues(alpha: 0.18)
-                    : AppTheme.borderLight,
+                lineColor: lineColor,
+                fillColor: fillColor,
+                gridColor: gridColor,
               ),
             ),
           ),

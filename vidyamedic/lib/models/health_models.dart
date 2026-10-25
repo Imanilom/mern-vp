@@ -621,6 +621,57 @@ class WearableData {
     List<List<double>>? recentAcceleration,
   }) : recentAcceleration = recentAcceleration ?? [];
 
+  static List<double>? estimateAccelerationOrientation(
+    List<List<double>> samples, {
+    int windowSize = 50,
+  }) {
+    if (windowSize <= 0 || samples.length < windowSize) return null;
+    final window = samples.skip(samples.length - windowSize);
+    final mean = List<double>.filled(3, 0);
+    var count = 0;
+    for (final sample in window) {
+      if (sample.length < 3 || !sample.take(3).every((axis) => axis.isFinite)) {
+        continue;
+      }
+      for (var axis = 0; axis < 3; axis++) {
+        mean[axis] += sample[axis];
+      }
+      count++;
+    }
+    if (count < windowSize * 0.8) return null;
+    for (var axis = 0; axis < 3; axis++) {
+      mean[axis] /= count;
+    }
+    final magnitude =
+        math.sqrt(mean.fold<double>(0, (sum, value) => sum + value * value));
+    if (magnitude < 0.5) return null;
+    return mean.map((value) => value / magnitude).toList();
+  }
+
+  static double? accelerationOrientationChangeDegrees(
+    List<double> first,
+    List<double> second,
+  ) {
+    if (first.length < 3 ||
+        second.length < 3 ||
+        !first.take(3).every((axis) => axis.isFinite) ||
+        !second.take(3).every((axis) => axis.isFinite)) {
+      return null;
+    }
+    final firstMagnitude =
+        math.sqrt(first.take(3).fold<double>(0, (sum, v) => sum + v * v));
+    final secondMagnitude =
+        math.sqrt(second.take(3).fold<double>(0, (sum, v) => sum + v * v));
+    if (firstMagnitude == 0 || secondMagnitude == 0) return null;
+    final dotProduct = List<int>.generate(3, (axis) => axis).fold<double>(
+      0,
+      (sum, axis) => sum + first[axis] * second[axis],
+    );
+    final cosine =
+        (dotProduct / (firstMagnitude * secondMagnitude)).clamp(-1.0, 1.0);
+    return math.acos(cosine) * 180 / math.pi;
+  }
+
   /// Calculate estimated steps from tri-axial accelerometer magnitude peak detection
   static int calculateStepsFromAcc(List<List<double>> accSamples,
       {double peakThreshold = 1.15}) {
@@ -645,6 +696,15 @@ class WearableData {
       }
     }
     return stepCount;
+  }
+
+  static String? detectWalkingFromAcc(List<List<double>> accSamples) {
+    const windowSize = 250;
+    if (accSamples.length < windowSize) return null;
+    final recentSamples = accSamples.sublist(accSamples.length - windowSize);
+    final estimatedSteps =
+        calculateStepsFromAcc(recentSamples, peakThreshold: 1.12);
+    return estimatedSteps >= 3 ? 'Berjalan' : null;
   }
 
   static String? inferLocomotionActivity(
@@ -774,6 +834,54 @@ class WearableData {
 
   Map<String, dynamic> toSamplePayload() {
     throw StateError('Wearable samples must come from a connected device.');
+  }
+}
+
+class AccelerationOrientationTracker {
+  AccelerationOrientationTracker({
+    this.windowSize = 50,
+    this.minimumChangeDegrees = 25,
+    this.requiredConsecutiveChanges = 2,
+  });
+
+  final int windowSize;
+  final double minimumChangeDegrees;
+  final int requiredConsecutiveChanges;
+  List<double>? _referenceOrientation;
+  int _consecutiveChanges = 0;
+
+  bool add(List<List<double>> samples) {
+    final orientation = WearableData.estimateAccelerationOrientation(
+      samples,
+      windowSize: windowSize,
+    );
+    if (orientation == null) return false;
+
+    final reference = _referenceOrientation;
+    if (reference == null) {
+      _referenceOrientation = orientation;
+      return false;
+    }
+
+    final changeDegrees = WearableData.accelerationOrientationChangeDegrees(
+      reference,
+      orientation,
+    );
+    if (changeDegrees == null || changeDegrees < minimumChangeDegrees) {
+      _consecutiveChanges = 0;
+      return false;
+    }
+
+    _consecutiveChanges++;
+    if (_consecutiveChanges < requiredConsecutiveChanges) return false;
+    _referenceOrientation = orientation;
+    _consecutiveChanges = 0;
+    return true;
+  }
+
+  void reset() {
+    _referenceOrientation = null;
+    _consecutiveChanges = 0;
   }
 }
 

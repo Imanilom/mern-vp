@@ -51,6 +51,8 @@ class PolarWearablePairingService extends ChangeNotifier {
   final List<Map<String, dynamic>> _pendingStreamBatches = [];
   static const _savedDeviceIdKey = 'vidyamedic_polar_device_id';
   static const _savedDeviceNameKey = 'vidyamedic_polar_device_name';
+  static const _maxStreamReadingsPerRequest = 20;
+  static const _maxAccelerationSamplesPerRequest = 128;
   int? _lastStreamReadingTimestampMs;
 
   StreamSubscription<PolarDeviceInfo>? _scanSubscription;
@@ -66,6 +68,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   Timer? _autoReconnectTimer;
   DateTime? _windowStartedAt;
   DateTime? _lastHeartRateAt;
+  DateTime? _lastAccelerationNotifyAt;
   String _deviceId = '';
   String _connectingDeviceId = '';
   int _connectionAttempt = 0;
@@ -640,6 +643,7 @@ class PolarWearablePairingService extends ChangeNotifier {
 
   void _handleAcceleration(PolarAccData data) {
     if (!isStreaming) return;
+    if (data.samples.isEmpty) return;
     for (final sample in data.samples) {
       final vector = [
         sample.x / 1000.0,
@@ -657,6 +661,13 @@ class PolarWearablePairingService extends ChangeNotifier {
       if (_recentAcceleration.length > 500) {
         _recentAcceleration.removeRange(0, _recentAcceleration.length - 500);
       }
+    }
+    final now = DateTime.now();
+    if (_lastAccelerationNotifyAt == null ||
+        now.difference(_lastAccelerationNotifyAt!) >=
+            const Duration(milliseconds: 200)) {
+      _lastAccelerationNotifyAt = now;
+      _notify();
     }
   }
 
@@ -687,6 +698,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     _sessionAccelerationCount = 0;
     _sessionWindowCount = 0;
     _loggedAccelerationData = false;
+    _lastAccelerationNotifyAt = null;
     _lastStreamReadingTimestampMs = null;
     _streamReadings.clear();
     _recentStreamReadings.clear();
@@ -806,13 +818,20 @@ class PolarWearablePairingService extends ChangeNotifier {
   Future<void> flushStream({bool force = false}) async {
     if (!isStreaming && !force) return;
     if (_streamReadings.isNotEmpty) {
-      _pendingStreamBatches.add({
-        'provider': _isDummyDevice ? 'other' : 'polar_h10',
-        'is_simulated': _isDummyDevice,
-        'device_id': _deviceId,
-        'activity': _activity,
-        'readings': List<Map<String, dynamic>>.from(_streamReadings),
-      });
+      final readings = List<Map<String, dynamic>>.from(_streamReadings);
+      for (var start = 0;
+          start < readings.length;
+          start += _maxStreamReadingsPerRequest) {
+        final end =
+            math.min(start + _maxStreamReadingsPerRequest, readings.length);
+        _pendingStreamBatches.add({
+          'provider': _isDummyDevice ? 'other' : 'polar_h10',
+          'is_simulated': _isDummyDevice,
+          'device_id': _deviceId,
+          'activity': _activity,
+          'readings': readings.sublist(start, end),
+        });
+      }
       _streamReadings.clear();
     }
     if (_isUploadingStream) {
@@ -922,7 +941,8 @@ class PolarWearablePairingService extends ChangeNotifier {
     final rr = _rrIntervals.length <= 256
         ? List<int>.from(_rrIntervals)
         : _rrIntervals.sublist(_rrIntervals.length - 256);
-    final acceleration = _downsampleAcceleration(_acceleration, 512);
+    final acceleration = _downsampleAcceleration(
+        _acceleration, _maxAccelerationSamplesPerRequest);
     return {
       'provider': _isDummyDevice ? 'other' : 'polar_h10',
       'is_simulated': _isDummyDevice,

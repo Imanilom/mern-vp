@@ -120,7 +120,7 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Aktifkan Gemini?'),
         content: const Text(
-          'Jika Anda setuju, pertanyaan dan bukti kesehatan terpilih akan dikirim ke backend VidyaMedic. Jika data longitudinal CAPAR tersedia, backend membuat analisis komprehensif tanpa nama/email akun dan dokter, lalu mengirim ringkasannya bersama bukti ke Google Gemini untuk menyusun jawaban. Jika tidak, jawaban menggunakan bukti terpilih tanpa analisis CAPAR. Riwayat chat dan Gemini API key tidak dikirim dari aplikasi. Pemrosesan Gemini mengikuti kebijakan privasi Google. Anda dapat tetap memakai chatbot lokal atau menonaktifkan Gemini kapan saja.',
+          'Jika Anda setuju, pertanyaan, bukti kesehatan terpilih, dan hingga 8 pesan percakapan terakhir dikirim ke backend VidyaMedic. Backend dapat mengambil ringkasan agregat baseline matang dari setidaknya 5 akun lain, serta analisis CAPAR Anda bila tersedia, lalu meneruskan konteks yang relevan ke Google Gemini. Riwayat tidak disimpan oleh backend chatbot dan Gemini API key tidak dikirim dari aplikasi. Pemrosesan Gemini mengikuti kebijakan privasi Google. Anda dapat tetap memakai chatbot lokal atau menonaktifkan Gemini kapan saja.',
         ),
         actions: [
           TextButton(
@@ -186,30 +186,34 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
     );
     var answer = response.text;
     var usedGemini = false;
-    if (_useGemini &&
-        !response.hasInsufficientData &&
-        response.supportingRecords > 0 &&
-        _model.isSafeForGemini(question)) {
+    if (_useGemini && _model.isSafeForGemini(question)) {
       final evidence = _model.buildGeminiEvidence(
         question: question,
         state: state,
         history: previousMessages,
       );
-      if (evidence.isNotEmpty) {
-        final geminiResponse = await ApiService.generatePersonalChatAnswer(
-          question: question,
-          evidence: evidence,
-          localSummary: response.text,
-        );
-        if (!mounted) return;
-        if (geminiResponse.success && geminiResponse.data != null) {
-          answer = geminiResponse.data!;
-          usedGemini = true;
-        } else {
-          answer = '${response.text}\n\n'
-              'Analisis AI backend tidak tersedia: ${geminiResponse.message ?? 'kesalahan tidak diketahui'}. '
-              'Saya menampilkan ringkasan lokal dari catatan yang ditemukan.';
-        }
+      final geminiResponse = await ApiService.generatePersonalChatAnswer(
+        question: question,
+        evidence: evidence,
+        localSummary: response.text,
+        conversationHistory: previousMessages
+            .map((message) => {
+                  'role': message.role.name,
+                  'text': message.text,
+                })
+            .toList(),
+      );
+      if (!mounted) return;
+      if (geminiResponse.success && geminiResponse.data != null) {
+        answer = geminiResponse.data!;
+        usedGemini = true;
+      } else {
+        final fallbackMessage = response.supportingRecords > 0
+            ? 'Saya menampilkan ringkasan lokal dari catatan yang ditemukan.'
+            : 'Saya tidak menemukan data lokal yang cukup untuk menjawabnya.';
+        answer = '${response.text}\n\n'
+            'Analisis AI backend tidak tersedia: ${geminiResponse.message ?? 'kesalahan tidak diketahui'}. '
+            '$fallbackMessage';
       }
     }
     final assistantMessage = PersonalChatMessage(
@@ -393,8 +397,8 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
         ),
         child: Text(
           _useGemini
-              ? 'Gemini aktif dengan persetujuan Anda: bukti terpilih dikirim ke backend; bila data longitudinal tersedia, ringkasan analisis CAPAR juga diteruskan ke Google Gemini. Riwayat chat tidak dikirim. Ketuk ikon Gemini untuk mematikan. Bukan diagnosis.'
-              : 'RAG lokal mencari catatan check-in dan sampel wearable yang relevan. Tidak ada data yang dikirim ke AI pihak ketiga selama Gemini nonaktif. Ketuk ikon Gemini bila ingin mengaktifkannya. Riwayat tersimpan lokal dan tidak dienkripsi oleh fitur ini; bukan diagnosis.',
+              ? 'Gemini aktif dengan persetujuan Anda: pertanyaan, bukti terpilih, dan hingga 8 pesan terakhir dikirim ke backend. Backend juga dapat memakai baseline populasi agregat dan analisis CAPAR bila tersedia. Ketuk ikon Gemini untuk mematikan. Bukan diagnosis.'
+              : 'Retrieval lokal mencari catatan check-in dan sampel wearable yang relevan. Tidak ada data yang dikirim ke AI pihak ketiga selama Gemini nonaktif. Ketuk ikon Gemini bila ingin mengaktifkannya. Riwayat tersimpan lokal dan tidak dienkripsi oleh fitur ini; bukan diagnosis.',
           style: AppTheme.font(
             size: 11,
             color: AppTheme.textSecondary,
