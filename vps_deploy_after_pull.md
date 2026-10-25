@@ -14,12 +14,11 @@ test -f .env.production || cp .env.example .env.production
 nano .env.production
 ```
 
-Pastikan nilai berikut sudah diisi:
+Isi variabel aplikasi yang memang diperlukan. Pertahankan nilai `MONGO` yang
+sudah digunakan oleh deployment saat ini; konfigurasi MongoDB di
+`docker-compose.yml` tidak perlu diubah.
 
 ```dotenv
-MONGO_INITDB_ROOT_USERNAME=<user-mongodb>
-MONGO_INITDB_ROOT_PASSWORD=<password-kuat>
-MONGO=mongodb://<user-mongodb>:<password-url-encoded>@mongodb:27017/healthdevice?authSource=admin
 PORT=3030
 NODE_ENV=production
 JWT_SECRET=<secret-acak-minimal-32-karakter>
@@ -27,9 +26,8 @@ INTERNAL_KEY=<kunci-acak>
 ALLOWED_ORIGINS=https://vidyamedic.my.id,https://www.vidyamedic.my.id
 ```
 
-Jangan mengganti kredensial MongoDB jika volume data yang sudah ada
-diinisialisasi dengan user/password berbeda. Jika password berisi karakter
-khusus, URL-encode nilainya pada `MONGO`.
+Jangan menimpa nilai `MONGO` atau mengubah kredensial dan volume MongoDB yang
+sudah ada.
 
 ## 2. Perbarui dan jalankan container
 

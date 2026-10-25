@@ -97,19 +97,18 @@ cd ~/mern-vp
 test -f .env.production || cp .env.example .env.production
 nano .env.production
 ```
-Konfigurasikan variabel berikut. Gunakan password MongoDB URL-encoded pada
-connection string jika password memiliki karakter khusus:
+Konfigurasikan variabel aplikasi berikut. Pertahankan nilai `MONGO` yang sudah
+digunakan server; konfigurasi service MongoDB tetap seperti sebelumnya di
+`docker-compose.yml`:
 ```env
 PORT=3030
 NODE_ENV=production
-MONGO_INITDB_ROOT_USERNAME=admin
-MONGO_INITDB_ROOT_PASSWORD=<password-kuat>
-MONGO=mongodb://admin:<password-url-encoded>@mongodb:27017/healthdevice?authSource=admin
+MONGO=<pertahankan nilai yang sudah digunakan server>
 JWT_SECRET=<secret-acak-minimal-32-karakter>
 INTERNAL_KEY=<kunci-acak>
 ALLOWED_ORIGINS=https://vidyamedic.my.id,https://www.vidyamedic.my.id
 ```
-Jangan menimpa secret database yang sudah dipakai oleh volume MongoDB aktif.
+Jangan mengubah konfigurasi, kredensial, atau volume MongoDB yang sudah ada.
 
 ### 2. Jalankan Docker Compose
 Kembali ke folder utama proyek dan nyalakan Docker:

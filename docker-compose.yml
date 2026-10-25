@@ -11,21 +11,13 @@ services:
     container_name: mern-vp-mongodb
     restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?Set this in .env.production}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?Set this in .env.production}
+      MONGO_INITDB_ROOT_USERNAME: capar_admin
+      MONGO_INITDB_ROOT_PASSWORD: SecurePassword123! # Ganti dengan password yang lebih kuat
     ports:
       # HANYA ekspos ke localhost VPS (127.0.0.1) agar tidak bisa diakses dari internet publik
       - "127.0.0.1:27017:27017"
     volumes:
       - mongodb_data:/data/db
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - mongosh --quiet --username "$${MONGO_INITDB_ROOT_USERNAME}" --password "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval 'db.adminCommand("ping").ok'
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
 
   api:
     build: ./api
@@ -44,10 +36,7 @@ services:
       TRUST_PROXY: loopback,linklocal,uniquelocal
       ALLOWED_ORIGINS: https://vidyamedic.my.id,https://www.vidyamedic.my.id
     depends_on:
-      rabbitmq:
-        condition: service_started
-      mongodb:
-        condition: service_healthy
+      - rabbitmq
     dns:
       - 103.253.213.134
       - 203.175.8.227
