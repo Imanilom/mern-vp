@@ -75,10 +75,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
             durMin = (e['duration_minutes'] as num).toInt();
           } else if (startTimeRaw != null && endTimeRaw != null) {
             DateTime? st = startTimeRaw is num
-                ? DateTime.fromMillisecondsSinceEpoch((startTimeRaw as num).toInt())
+                ? DateTime.fromMillisecondsSinceEpoch((startTimeRaw).toInt())
                 : DateTime.tryParse(startTimeRaw.toString());
             DateTime? et = endTimeRaw is num
-                ? DateTime.fromMillisecondsSinceEpoch((endTimeRaw as num).toInt())
+                ? DateTime.fromMillisecondsSinceEpoch((endTimeRaw).toInt())
                 : DateTime.tryParse(endTimeRaw.toString());
             if (st != null && et != null) durMin = et.difference(st).inMinutes;
           }

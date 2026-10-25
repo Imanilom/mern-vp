@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import HeartRateChart from '../components/HeartRateChart';
+import MetricTrendChart from '../components/MetricTrendChart';
 import DataTable from '../components/DataTable';
 import MetricCard from '../components/MetricCard';
 import SectionHeading from '../components/SectionHeading';
@@ -164,6 +165,19 @@ export default function MonitoringPage({
           </button>
         </section>
       </div>
+      <section className="panel rmssd-trend-panel">
+        <div className="panel-heading">
+          <div><h2>HRV — RMSSD</h2><p>Ringkasan wearable nyata yang memiliki nilai RMSSD</p></div>
+          <span className="panel-icon green-icon"><Activity size={18} /></span>
+        </div>
+        <MetricTrendChart
+          field="rmssd_ms"
+          label="RMSSD"
+          samples={samples}
+          unit="ms"
+        />
+        <p className="baseline-footnote">RMSSD dihitung dari interval RR wearable. Check-in harian tidak berisi interval RR dan tidak digunakan untuk menghitungnya.</p>
+      </section>
       <section className="panel historical-panel wearable-history-panel">
         <div className="panel-heading">
           <div><h2>Riwayat wearable</h2><p>Rekaman 30 hari terakhir, dikelompokkan per 30 menit</p></div>

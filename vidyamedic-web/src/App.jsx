@@ -14,16 +14,20 @@ import { INITIAL_DASHBOARD, NAV_ITEMS } from './constants/navigation';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import { formatDate, getInitial } from './utils/formatters';
+import DashboardPage from './pages/DashboardPage';
+import DevicePrivacyPage from './pages/DevicePrivacyPage';
 import EarlyDetectionPage from './pages/EarlyDetectionPage';
+import InsightsPage from './pages/InsightsPage';
 import MonitoringPage from './pages/MonitoringPage';
 import PredictionPage from './pages/PredictionPage';
 import ProfilePage from './pages/ProfilePage';
+import ReportsPage from './pages/ReportsPage';
 
 export default function App() {
   const [account, setAccount] = useState(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [active, setActive] = useState('monitoring');
+  const [active, setActive] = useState('dashboard');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dashboard, setDashboard] = useState(INITIAL_DASHBOARD);
   const [loading, setLoading] = useState(false);
@@ -100,12 +104,20 @@ export default function App() {
 
   const sectionName = NAV_ITEMS.find((item) => item.id === active)?.label || 'Monitoring';
   let pageContent;
-  if (active === 'profil') {
+  if (active === 'dashboard') {
+    pageContent = <DashboardPage account={account} dashboard={dashboard} onNavigate={setActive} />;
+  } else if (active === 'profil') {
     pageContent = <ProfilePage account={account} dashboard={dashboard} onSave={saveProfile} />;
   } else if (active === 'deteksi') {
     pageContent = <EarlyDetectionPage dashboard={dashboard} />;
   } else if (active === 'prediksi') {
-    pageContent = <PredictionPage dashboard={dashboard} />;
+    pageContent = <PredictionPage dashboard={dashboard} onNavigate={setActive} />;
+  } else if (active === 'insight') {
+    pageContent = <InsightsPage dashboard={dashboard} />;
+  } else if (active === 'laporan') {
+    pageContent = <ReportsPage dashboard={dashboard} />;
+  } else if (active === 'perangkat') {
+    pageContent = <DevicePrivacyPage dashboard={dashboard} onNavigate={setActive} />;
   } else {
     pageContent = (
       <MonitoringPage

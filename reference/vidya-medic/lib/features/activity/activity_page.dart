@@ -67,7 +67,7 @@ class _ActivityPageState extends ConsumerState<ActivityPage> {
           children: [
             Text(
               "Konteks Aktivitas",
-              style: HtmTypography.titleMedium?.copyWith(color: htmColors.ink),
+              style: HtmTypography.titleMedium.copyWith(color: htmColors.ink),
             ),
             Text(
               "Pelabelan untuk personalized baseline yang akurat",

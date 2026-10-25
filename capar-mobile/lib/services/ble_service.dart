@@ -78,8 +78,9 @@ class BleService extends ChangeNotifier {
     if (_isManualDisconnect ||
         isConnected ||
         _isDisposed ||
-        targetDeviceId.isEmpty)
+        targetDeviceId.isEmpty) {
       return;
+    }
     _autoReconnectTimer?.cancel();
     isReconnecting = true;
     if (!_isDisposed) notifyListeners();

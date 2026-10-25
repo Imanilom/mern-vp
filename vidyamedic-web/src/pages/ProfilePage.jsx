@@ -61,8 +61,8 @@ export default function ProfilePage({ account, dashboard, onSave }) {
     <>
       <SectionHeading
         description="Kelola informasi dasar dan preferensi pemantauan kesehatan."
-        eyebrow="AKUN ANDA"
-        title="Profil"
+        eyebrow="VIDYAMEDIC / PROFIL KESEHATAN"
+        title="Profil kesehatan"
       />
       <div className="profile-layout">
         <aside className="panel profile-summary">

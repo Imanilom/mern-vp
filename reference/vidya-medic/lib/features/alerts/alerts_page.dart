@@ -177,7 +177,7 @@ class AlertsPage extends ConsumerWidget {
           children: [
             Text(
               "Peringatan & Anomali",
-              style: HtmTypography.titleMedium?.copyWith(color: htmColors.ink),
+              style: HtmTypography.titleMedium.copyWith(color: htmColors.ink),
             ),
             eventsAsync.when(
               data: (events) {

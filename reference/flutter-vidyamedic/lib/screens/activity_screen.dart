@@ -4,7 +4,7 @@ import '../api_service.dart';
 import '../auth_service.dart';
 
 class ActivityScreen extends StatefulWidget {
-  const ActivityScreen({Key? key}) : super(key: key);
+  const ActivityScreen({super.key});
 
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();

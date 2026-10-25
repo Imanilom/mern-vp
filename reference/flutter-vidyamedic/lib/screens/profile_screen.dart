@@ -3,7 +3,7 @@ import 'login_screen.dart';
 import '../auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -134,9 +134,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Column(
                 children: [
-                  _buildSettingTile(Icons.notifications_none, 'Notifikasi', trailing: Switch(value: true, onChanged: (v) {}, activeColor: const Color(0xFF073B4C))),
+                  _buildSettingTile(Icons.notifications_none, 'Notifikasi', trailing: Switch(value: true, onChanged: (v) {}, activeThumbColor: const Color(0xFF073B4C))),
                   const Divider(height: 1),
-                  _buildSettingTile(Icons.battery_saver, 'Mode Hemat Baterai', trailing: Switch(value: false, onChanged: (v) {}, activeColor: const Color(0xFF073B4C))),
+                  _buildSettingTile(Icons.battery_saver, 'Mode Hemat Baterai', trailing: Switch(value: false, onChanged: (v) {}, activeThumbColor: const Color(0xFF073B4C))),
                   const Divider(height: 1),
                   _buildSettingTile(Icons.sync, 'Frekuensi Sinkronisasi', trailing: const Text('Real-time', style: TextStyle(color: Colors.grey, fontSize: 12))),
                   const Divider(height: 1),

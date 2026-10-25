@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class HealthQuestionnairePage extends StatefulWidget {
+  const HealthQuestionnairePage({super.key});
+
   @override
   _HealthQuestionnairePageState createState() => _HealthQuestionnairePageState();
 }
@@ -530,7 +532,7 @@ class _HealthQuestionnairePageState extends State<HealthQuestionnairePage> {
                   Text('Hours'),
                   SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: timeData['hours'],
+                    initialValue: timeData['hours'],
                     items: List.generate(25, (index) => index)
                         .map((hour) => DropdownMenuItem(
                               value: hour,
@@ -559,7 +561,7 @@ class _HealthQuestionnairePageState extends State<HealthQuestionnairePage> {
                   Text('Minutes'),
                   SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: timeData['minutes'],
+                    initialValue: timeData['minutes'],
                     items: List.generate(60, (index) => index)
                         .map((minute) => DropdownMenuItem(
                               value: minute,

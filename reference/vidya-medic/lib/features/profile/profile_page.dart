@@ -106,7 +106,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       children: [
                         Text(
                           p.name,
-                          style: HtmTypography.titleMedium?.copyWith(color: htmColors.ink),
+                          style: HtmTypography.titleMedium.copyWith(color: htmColors.ink),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),

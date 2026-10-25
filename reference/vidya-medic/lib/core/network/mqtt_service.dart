@@ -6,13 +6,11 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 import '../../shared/models/models.dart';
 import '../notifications/notification_service.dart';
 
-/**
- * MqttService — Layanan koneksi langsung MQTT ke RabbitMQ Broker.
- * 
- * Alur:
- * Sensor (Polar H10) -> Flutter App -> MqttService -> RabbitMQ Broker (Port 1883/8883)
- * -> Queue 'Sensor' -> Data Ingestion Worker (Node.js) -> MongoDB (Raw Data)
- */
+/// MqttService — Layanan koneksi langsung MQTT ke RabbitMQ Broker.
+/// 
+/// Alur:
+/// Sensor (Polar H10) -> Flutter App -> MqttService -> RabbitMQ Broker (Port 1883/8883)
+/// -> Queue 'Sensor' -> Data Ingestion Worker (Node.js) -> MongoDB (Raw Data)
 class MqttService extends ChangeNotifier {
   MqttServerClient? _client;
   bool isConnected = false;

@@ -100,19 +100,19 @@ class HomePage extends ConsumerWidget {
                   profileAsync.when(
                     data: (profile) => Text(
                       "$greeting, ${profile.name}",
-                      style: HtmTypography.titleMedium?.copyWith(color: htmColors.ink),
+                      style: HtmTypography.titleMedium.copyWith(color: htmColors.ink),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
                     loading: () => Text(
                       "$greeting, ...",
-                      style: HtmTypography.titleMedium?.copyWith(color: htmColors.ink),
+                      style: HtmTypography.titleMedium.copyWith(color: htmColors.ink),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
                     error: (_, _) => Text(
                       "$greeting, Peserta",
-                      style: HtmTypography.titleMedium?.copyWith(color: htmColors.ink),
+                      style: HtmTypography.titleMedium.copyWith(color: htmColors.ink),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -257,7 +257,7 @@ class HomePage extends ConsumerWidget {
   Widget _sectionLabel(BuildContext context, String label) {
     return Text(
       label,
-      style: HtmTypography.titleMedium?.copyWith(color: HtmColors.of(context).ink),
+      style: HtmTypography.titleMedium.copyWith(color: HtmColors.of(context).ink),
     );
   }
 }

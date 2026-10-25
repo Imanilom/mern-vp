@@ -216,7 +216,7 @@ class CsvHelper {
     }
   }
 
-  List<double> _rrIntervals = [];
+  final List<double> _rrIntervals = [];
   
   void _updateRRMS(double rrValue) {
     if (rrValue > 0 && rrValue < 2000) {
@@ -549,6 +549,8 @@ class CombinedRowData {
 }
 
 class PolarEnhancedMonitor extends StatefulWidget {
+  const PolarEnhancedMonitor({super.key});
+
   @override
   _PolarEnhancedMonitorState createState() => _PolarEnhancedMonitorState();
 }
@@ -597,7 +599,7 @@ class _PolarEnhancedMonitorState extends State<PolarEnhancedMonitor> with Ticker
 
   String? selectedActivity;
   List<String> availableActivities = [];
-  TextEditingController _newActivityController = TextEditingController();
+  final TextEditingController _newActivityController = TextEditingController();
 
   Map<DataType, List<FlSpot>> chartData = {
     DataType.hr: [],
@@ -1684,7 +1686,7 @@ Future<void> _stopBackgroundRecording() async {
                                 leading: Icon(icon, color: color, size: 20),
                                 title: Text('${item.value.toStringAsFixed(type == DataType.hr ? 0 : 2)} $unit'),
                                 subtitle: Text(
-                                  '${item.timestamp.toString().substring(0, 19)}',
+                                  item.timestamp.toString().substring(0, 19),
                                   style: TextStyle(fontSize: 12),
                                 ),
                                 trailing: type == DataType.acc && item.additionalData.isNotEmpty

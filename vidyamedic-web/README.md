@@ -1,8 +1,9 @@
 # Vidyamedic Web
 
-React web app for patient-facing Vidyamedic with four sections: Monitoring,
-Profil, Deteksi Dini, and Prediksi. It reuses the authenticated `/api` patient
-endpoints provided by the existing backend.
+React web app for patient-facing Vidyamedic with Dashboard, Monitoring,
+Profil Kesehatan, Business Intelligence, AI & Deteksi Dini, Rekomendasi &
+Keputusan, Laporan, and Perangkat & Privasi sections. It reuses the
+authenticated `/api` patient endpoints provided by the existing backend.
 
 ## Run locally
 
@@ -39,6 +40,10 @@ The old `capar-web` service is replaced; `--remove-orphans` removes its
 superseded container from the Compose project.
 
 Patient data is loaded from authenticated API responses; the app does not
-generate substitute health measurements. The Prediksi page reflects the
-backend's prediction availability and does not invent a forecast when the
-backend withholds one.
+generate substitute health measurements. The Rekomendasi & Keputusan page
+reflects the backend's prediction availability and does not invent a forecast
+when the backend withholds one.
+
+The Laporan page can print the currently loaded history or export it as CSV.
+Wearable RMSSD values are measurements derived from RR intervals and are not
+calculated from daily check-ins.

@@ -129,7 +129,7 @@ class BackgroundCsvHelper {
   String? _currentDeviceId;
   String? _currentActivity;
 
-  List<double> _rrIntervals = [];
+  final List<double> _rrIntervals = [];
   final List<Map<String, dynamic>> _pendingUploads = [];
   static final String _uploadUrl = EnvConfig.uploadUrl;
   bool _isUploading = false;

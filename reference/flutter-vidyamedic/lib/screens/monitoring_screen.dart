@@ -6,7 +6,7 @@ import '../background_service.dart';
 import '../mqtt_gps_service.dart';
 
 class MonitoringScreen extends StatefulWidget {
-  const MonitoringScreen({Key? key}) : super(key: key);
+  const MonitoringScreen({super.key});
 
   @override
   State<MonitoringScreen> createState() => _MonitoringScreenState();
@@ -307,11 +307,11 @@ class _MonitoringScreenState extends State<MonitoringScreen>
     final items = [
       _LiveItem('Heart Rate', '${_currentHr.round()}', 'BPM', const Color(0xFFEF476F), Icons.favorite),
       _LiveItem('RR Interval', '${_currentRr.round()}', 'ms', const Color(0xFFFFD166), Icons.timeline),
-      _LiveItem('HRV (RMSSD)', '${_currentRrms.toStringAsFixed(1)}', 'ms', const Color(0xFF06D6A0), Icons.bar_chart),
+      _LiveItem('HRV (RMSSD)', _currentRrms.toStringAsFixed(1), 'ms', const Color(0xFF06D6A0), Icons.bar_chart),
       _LiveItem('ECG', '${_currentEcg.round()}', 'µV', const Color(0xFF64DFDF), Icons.monitor_heart),
-      _LiveItem('ACC–X', '${_currentAccX.toStringAsFixed(2)}', 'g', Colors.orange, Icons.swap_horiz),
-      _LiveItem('ACC–Y', '${_currentAccY.toStringAsFixed(2)}', 'g', Colors.purple.shade300, Icons.swap_vert),
-      _LiveItem('ACC–Z', '${_currentAccZ.toStringAsFixed(2)}', 'g', Colors.pink.shade300, Icons.height),
+      _LiveItem('ACC–X', _currentAccX.toStringAsFixed(2), 'g', Colors.orange, Icons.swap_horiz),
+      _LiveItem('ACC–Y', _currentAccY.toStringAsFixed(2), 'g', Colors.purple.shade300, Icons.swap_vert),
+      _LiveItem('ACC–Z', _currentAccZ.toStringAsFixed(2), 'g', Colors.pink.shade300, Icons.height),
     ];
 
     return GridView.count(

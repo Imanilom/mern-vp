@@ -1,22 +1,34 @@
-import { Check, CircleHelp, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, CircleHelp, ShieldCheck, Sparkles } from 'lucide-react';
 import SectionHeading from '../components/SectionHeading';
 import { getStatusLabel } from '../utils/formatters';
 
-export default function PredictionPage({ dashboard }) {
+export default function PredictionPage({ dashboard, onNavigate }) {
   const forecast = dashboard.insights?.capar?.forecast;
   const predictionExposed = dashboard.insights?.capar?.transition_learning?.prediction_exposed === true;
+  const pedagogy = dashboard.insights?.capar?.pedagogy || {};
+  const action = pedagogy.action?.message || pedagogy.follow_up?.message;
 
   return (
     <>
       <SectionHeading
-        description="Kami hanya menampilkan prediksi personal bila model memenuhi validasi dan confidence yang dipersyaratkan."
-        eyebrow="PREDIKSI PERSONAL"
-        title="Prediksi"
+        description="Tindak lanjut yang tersedia dari analisis personal, dengan batas yang jelas saat bukti belum memadai."
+        eyebrow="VIDYAMEDIC / REKOMENDASI"
+        title="Rekomendasi & keputusan"
       />
+      <div className="recommendation-banner">
+        <span className="panel-icon green-icon"><ShieldCheck size={18} /></span>
+        <div>
+          <span className="eyebrow">TINDAK LANJUT BERDASARKAN DATA</span>
+          <p>{action || 'Belum ada rekomendasi personal dari backend. Lanjutkan pencatatan wearable dan check-in secara berkala.'}</p>
+        </div>
+        <button className="text-button" onClick={() => onNavigate('deteksi')}>
+          Tinjau data <ArrowRight size={14} />
+        </button>
+      </div>
       <div className="prediction-hero">
         <div className="prediction-orb"><Sparkles size={27} /></div>
-        <span className="eyebrow">TRANSPARAN & BERHATI-HATI</span>
-        <h2>{predictionExposed ? 'Prediksi tersedia' : 'Prediksi personal belum tersedia'}</h2>
+        <span className="eyebrow">STATUS PREDIKSI PERSONAL</span>
+        <h2>{predictionExposed ? 'Informasi prediksi tersedia' : 'Prediksi personal belum tersedia'}</h2>
         <p>{forecast?.reason || 'Belum ada prediksi personal yang dapat ditampilkan. Vidyamedic tidak mengarang prediksi saat data atau validasi model belum memadai.'}</p>
         <div className="prediction-status">
           <span className="status-dot" />

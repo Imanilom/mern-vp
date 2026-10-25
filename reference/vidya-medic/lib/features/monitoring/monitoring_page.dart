@@ -126,7 +126,7 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
           children: [
             Text(
               "Monitoring Real-time",
-              style: HtmTypography.titleMedium?.copyWith(color: htmColors.ink),
+              style: HtmTypography.titleMedium.copyWith(color: htmColors.ink),
             ),
             Row(
               children: [

@@ -1,15 +1,22 @@
 import {
+  BarChart3,
+  FileText,
   LayoutDashboard,
   ShieldCheck,
   Sparkles,
+  SlidersHorizontal,
   UserRound,
 } from 'lucide-react';
 
 export const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'monitoring', label: 'Monitoring', icon: LayoutDashboard },
-  { id: 'profil', label: 'Profil', icon: UserRound },
-  { id: 'deteksi', label: 'Deteksi Dini', icon: ShieldCheck },
-  { id: 'prediksi', label: 'Prediksi', icon: Sparkles },
+  { id: 'profil', label: 'Profil Kesehatan', icon: UserRound },
+  { id: 'insight', label: 'Business Intelligence', icon: BarChart3 },
+  { id: 'deteksi', label: 'AI & Deteksi Dini', icon: ShieldCheck },
+  { id: 'prediksi', label: 'Rekomendasi & Keputusan', icon: Sparkles },
+  { id: 'laporan', label: 'Laporan', icon: FileText },
+  { id: 'perangkat', label: 'Perangkat & Privasi', icon: SlidersHorizontal },
 ];
 
 export const INITIAL_PROFILE = {

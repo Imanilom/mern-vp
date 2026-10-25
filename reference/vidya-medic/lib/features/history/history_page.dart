@@ -77,7 +77,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           children: [
             Text(
               "Riwayat Trajectory",
-              style: HtmTypography.titleMedium?.copyWith(color: htmColors.ink),
+              style: HtmTypography.titleMedium.copyWith(color: htmColors.ink),
             ),
             Text(
               "Rekam jejak kondisi kesehatan Anda",
