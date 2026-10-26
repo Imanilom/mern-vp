@@ -152,12 +152,38 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .contribution-input-grid select { min-height: 36px; padding: 0 9px; color: #496353; background: #fff; border: 1px solid #e2eae4; border-radius: 8px; font: inherit; }
 .contribution-factor-option { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; color: #60776b; background: #fff; border: 1px solid #e8efea; border-radius: 8px; font-size: 9px; }
 .contribution-ranking { display: flex; flex-wrap: wrap; gap: 9px 22px; margin: 10px 0 0; padding-left: 22px; color: #4b6e5a; font-size: 9px; }
+.contribution-ranking li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 130px; }
+.contribution-ranking li > div { display: flex; gap: 2px; }
+.factor-rank-button { width: 25px; height: 25px; }
+.factor-rank-button:disabled { opacity: .35; }
+.personal-factor-ranking { margin-top: 15px; }
+.personal-factor-ranking.compact { margin-top: 15px; }
+.personal-factor-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.personal-factor-list li { display: grid; grid-template-columns: 27px minmax(90px, 1fr) auto; align-items: center; gap: 10px; padding: 9px 11px; background: #f8faf9; border: 1px solid #edf1ee; border-radius: 9px; }
+.personal-factor-rank { display: grid; width: 24px; height: 24px; color: #34735b; background: #e8f5ef; border-radius: 8px; font-size: 10px; font-weight: 800; place-items: center; }
+.personal-factor-name { color: #506d5d; font-size: 10px; font-weight: 700; }
+.personal-factor-evidence { color: #89978f; font-size: 9px; text-align: right; }
 .contribution-hint { margin: 0; color: #89978f; font-size: 8px; }
 .report-audit-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 13px; padding: 11px 13px; color: #75887d; background: #f0f6f2; border: 1px solid #e5eee8; border-radius: 10px; font-size: 9px; line-height: 1.55; }
 .report-audit-note svg { flex: 0 0 auto; color: #609276; }
 .administration-grid { margin-top: 15px; }
 .recommendation-supervision, .recommendation-outcomes { margin-top: 15px; }
 .recommendation-review { margin-top: 13px; }
+.recommendation-action-list { margin-top: 15px; }
+.recommendation-actions { display: grid; gap: 9px; }
+.recommendation-action-item { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 12px; background: #f8faf9; border: 1px solid #edf1ee; border-radius: 10px; }
+.recommendation-action-item > div { min-width: 0; }
+.recommendation-action-item strong { color: #456452; font-size: 10px; }
+.recommendation-action-item p { margin: 5px 0; color: #7b8c82; font-size: 9px; line-height: 1.5; }
+.recommendation-action-item small { color: #96a39b; font-size: 8px; }
+.monitoring-live-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.monitoring-device-status { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: -11px 0 14px; color: #71867b; font-size: 9px; }
+.device-status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; color: #7b7060; background: #fbf6ea; border-radius: 20px; font-weight: 700; }
+.device-status-pill i { width: 7px; height: 7px; background: #c9a05c; border-radius: 50%; }
+.device-status-pill.recent { color: #397257; background: #eaf6ef; }
+.device-status-pill.recent i { background: #51a578; }
+.monitoring-context-warning { margin: 15px 0; }
+.monitoring-context-warning .text-button { margin-left: 5px; }
 .device-settings-panel .settings-detail strong svg { vertical-align: -2px; color: #28845f; }
 .device-settings-panel .settings-note svg { flex: 0 0 auto; vertical-align: -3px; color: #7d9889; }
 .metric-card { min-width: 0; padding: 17px 17px 15px; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: var(--shadow); }
@@ -453,6 +479,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .activity-dialog { max-height: calc(100vh - 40px); overflow-y: auto; margin: auto; }
   .distribution-grid { grid-template-columns: 1fr; }
   .contribution-input-grid { grid-template-columns: 1fr; }
+  .monitoring-live-metrics { grid-template-columns: 1fr; }
+  .personal-factor-list li { grid-template-columns: 25px minmax(70px, 1fr); }
+  .personal-factor-evidence { grid-column: 2; text-align: left; }
   .recovery-intelligence-layout { gap: 15px; }
   .recovery-donut { flex-basis: 112px; width: 112px; height: 112px; }
   .recovery-donut > div { width: 82px; height: 82px; }
@@ -579,5 +608,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .report-actions { flex-wrap: wrap; }
   .recommendation-banner { flex-wrap: wrap; }
   .recommendation-banner > div { flex-basis: calc(100% - 50px); }
+  .recommendation-action-item { align-items: flex-start; flex-direction: column; }
   .recommendation-banner .text-button { margin-left: 43px; }
 }

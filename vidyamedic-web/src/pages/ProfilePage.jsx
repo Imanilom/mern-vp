@@ -13,6 +13,7 @@ import SectionHeading from '../components/SectionHeading';
 import { getInitial, numberOrNull } from '../utils/formatters';
 import DataTable from '../components/DataTable';
 import MetricCard from '../components/MetricCard';
+import PersonalFactorRanking from '../components/PersonalFactorRanking';
 import { describeMotionBaseline } from '../utils/baselineObservations';
 
 export default function ProfilePage({ account, dashboard, onSave }) {
@@ -223,6 +224,7 @@ export default function ProfilePage({ account, dashboard, onSave }) {
             Rerata ACC menggambarkan gerak yang terekam sensor pada baseline aktivitas tersebut. Label observasi membandingkan ACC antar-konteks baseline milik Anda; ACC tidak memastikan jenis gerak atau aktivitas dan dapat dipengaruhi posisi perangkat serta kualitas sensor.
           </p>
         </section>
+        <PersonalFactorRanking checkIns={dashboard.checkIns || []} />
         <section className="panel profile-journey-note">
           <div className="panel-heading">
             <div><h2>Rekam perjalanan longitudinal</h2><p>Periode data yang sedang dimuat: {dashboard.periodDays || 30} hari</p></div>

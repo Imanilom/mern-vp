@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import {
   Activity,
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   Check,
   CircleHelp,
   Clock3,
@@ -655,7 +657,51 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error }) {
             </div>
             {effectiveRankedFactors.length > 0 && (
               <ol className="contribution-ranking">
-                {effectiveRankedFactors.map((factor) => <li key={factor}>{factorNames[factor]}</li>)}
+                {effectiveRankedFactors.map((factor, index) => (
+                  <li key={factor}>
+                    <span>{factorNames[factor]}</span>
+                    <div>
+                      <button
+                        aria-label={`Naikkan ${factorNames[factor]} dalam ranking`}
+                        className="icon-button factor-rank-button"
+                        disabled={index === 0}
+                        onClick={() => setRankedFactors((current) => {
+                          const next = [...current];
+                          const currentIndex = next.indexOf(factor);
+                          if (currentIndex > 0) {
+                            [next[currentIndex - 1], next[currentIndex]] = [
+                              next[currentIndex],
+                              next[currentIndex - 1],
+                            ];
+                          }
+                          return next;
+                        })}
+                        type="button"
+                      >
+                        <ArrowUp size={13} />
+                      </button>
+                      <button
+                        aria-label={`Turunkan ${factorNames[factor]} dalam ranking`}
+                        className="icon-button factor-rank-button"
+                        disabled={index === effectiveRankedFactors.length - 1}
+                        onClick={() => setRankedFactors((current) => {
+                          const next = [...current];
+                          const currentIndex = next.indexOf(factor);
+                          if (currentIndex >= 0 && currentIndex < next.length - 1) {
+                            [next[currentIndex + 1], next[currentIndex]] = [
+                              next[currentIndex],
+                              next[currentIndex + 1],
+                            ];
+                          }
+                          return next;
+                        })}
+                        type="button"
+                      >
+                        <ArrowDown size={13} />
+                      </button>
+                    </div>
+                  </li>
+                ))}
               </ol>
             )}
           </fieldset>

@@ -9,6 +9,7 @@ import {
 import DataTable from '../components/DataTable';
 import MetricCard from '../components/MetricCard';
 import SectionHeading from '../components/SectionHeading';
+import PersonalFactorRanking from '../components/PersonalFactorRanking';
 import { formatDate, getStatusLabel, numberOrNull } from '../utils/formatters';
 import { describeMotionBaseline } from '../utils/baselineObservations';
 import {
@@ -358,6 +359,7 @@ export default function InsightsPage({
           />
         </div>
       </section>
+      <PersonalFactorRanking checkIns={dashboard.checkIns || []} compact />
       <section className="panel recovery-intelligence">
         <div className="panel-heading">
           <div><h2>Recovery Intelligence · Markov CAPAR</h2><p>Estimasi transisi state personal tiga langkah dari riwayat CAPAR, bukan diagnosis klinis</p></div>

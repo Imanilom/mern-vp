@@ -62,7 +62,24 @@ export default function ReportsPage({
     symptoms: Array.isArray(row.symptoms) ? row.symptoms.join('; ') : '',
     decision_status: '',
     evidence_status: '',
-    detail: row.deviation_follow_up?.note || '',
+    detail: [
+      row.deviation_follow_up?.note || '',
+      row.deviation_follow_up?.ranked_context_factors?.length
+        ? `Ranking kontribusi pengguna: ${row.deviation_follow_up.ranked_context_factors.join(' > ')}`
+        : '',
+    ].filter(Boolean).join(' · '),
+  }));
+  const actionRows = (dashboard.patientActions || []).map((row) => ({
+    recorded_at: row.createdAt,
+    record_type: 'Tindak lanjut',
+    activity: row.action_type || '',
+    heart_rate_bpm: '',
+    rmssd_ms: '',
+    sleep_minutes: '',
+    symptoms: '',
+    decision_status: row.status || '',
+    evidence_status: row.decision?.level || '',
+    detail: [row.title, row.details].filter(Boolean).join(' · '),
   }));
   const decisionRows = (dashboard.insights?.capar?.deviation_explanations || [])
     .map((item) => ({
@@ -79,7 +96,7 @@ export default function ReportsPage({
       evidence_status: item.reasoning_uncertainty?.evidence_status || item.explanation_status || '',
       detail: item.reasoning_uncertainty?.interpretation || item.interpretation || '',
     }));
-  const rows = [...wearableRows, ...checkInRows, ...decisionRows]
+  const rows = [...wearableRows, ...checkInRows, ...decisionRows, ...actionRows]
     .sort((first, second) => new Date(second.recorded_at) - new Date(first.recorded_at));
   const columns = [
     { key: 'recorded_at', label: 'Waktu', render: (row) => `${formatDate(row.recorded_at, { day: 'numeric', month: 'short', year: 'numeric' })} ${formatTime(row.recorded_at)}` },

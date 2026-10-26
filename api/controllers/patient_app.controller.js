@@ -97,11 +97,6 @@ async function getAccount(req) {
   if (!mongoose.isValidObjectId(accountId)) {
     throw errorHandler(401, 'Sesi pengguna tidak valid. Silakan masuk kembali.');
   }
-  (checkIn.deviation_follow_up?.ranked_context_factors || []).forEach((type, index) => {
-    add(type, recordedAt, 'patient_reported_factor_ranking', null, {
-      user_reported_rank: index + 1,
-    });
-  });
 
   let account;
   let accountType;
@@ -3494,6 +3489,11 @@ function collectPatientContextBeforeEvent({
 
   for (const checkIn of checkIns) {
     const recordedAt = checkIn.recorded_at;
+    (checkIn.deviation_follow_up?.ranked_context_factors || []).forEach((type, index) => {
+      add(type, recordedAt, 'patient_reported_factor_ranking', null, {
+        user_reported_rank: index + 1,
+      });
+    });
     if (['walking', 'running', 'exercise'].includes(checkIn.activity)) {
       add('physical_activity', recordedAt, 'patient_check_in');
     }

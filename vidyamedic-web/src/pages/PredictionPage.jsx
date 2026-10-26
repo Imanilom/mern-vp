@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Check, CircleHelp, LoaderCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import SectionHeading from '../components/SectionHeading';
-import { getStatusLabel } from '../utils/formatters';
+import { formatDate, getStatusLabel } from '../utils/formatters';
 
 export default function PredictionPage({
   dashboard,
@@ -30,6 +30,8 @@ export default function PredictionPage({
     COMPLETED: 'Selesai',
     FAILED: 'Gagal',
   };
+  const allActions = [...(dashboard.patientActions || [])]
+    .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
   const episodes = capar.episode_history || [];
   const recoveredEpisodes = episodes.filter((episode) => episode.outcome === 'recovered').length;
   const unresolvedEpisodes = episodes.filter((episode) => episode.outcome === 'unresolved').length;
@@ -58,6 +60,19 @@ export default function PredictionPage({
       setActionError(error.message || 'Rekomendasi gagal dicatat.');
     } finally {
       setSavingAction(false);
+    }
+
+    async function advanceTrackedAction(actionId, status) {
+      if (!onUpdateActionStatus) return;
+      setSavingAction(true);
+      setActionError('');
+      try {
+        await onUpdateActionStatus(actionId, status);
+      } catch (error) {
+        setActionError(error.message || 'Status tindak lanjut gagal diperbarui.');
+      } finally {
+        setSavingAction(false);
+      }
     }
   }
 
@@ -163,6 +178,60 @@ export default function PredictionPage({
           Prioritas dan penanggung jawab ditampilkan hanya bila tersedia dari CAPAR; halaman ini tidak membuat eskalasi otomatis.
         </p>
       </section>
+      <section className="panel recommendation-action-list">
+        <div className="panel-heading">
+          <div><h2>Daftar rekomendasi & tindak lanjut</h2><p>Catatan tindakan yang tersimpan pada akun ini</p></div>
+          <span className="panel-icon"><Check size={18} /></span>
+        </div>
+        {allActions.length ? (
+          <div className="recommendation-actions">
+            {allActions.map((item) => {
+              const nextStatus = item.status === 'CREATED'
+                ? 'DELIVERED'
+                : item.status === 'DELIVERED'
+                  ? 'ACKNOWLEDGED'
+                  : item.status === 'ACKNOWLEDGED'
+                    ? 'COMPLETED'
+                    : null;
+              const nextActionLabel = {
+                DELIVERED: 'Siapkan tindak lanjut',
+                ACKNOWLEDGED: 'Saya akan menindaklanjuti',
+                COMPLETED: 'Tandai selesai',
+              }[nextStatus];
+              return (
+                <article className="recommendation-action-item" key={item._id}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p>{item.details || 'Tidak ada rincian tambahan.'}</p>
+                    <small>
+                      {item.createdAt
+                        ? `${formatDate(item.createdAt, { day: 'numeric', month: 'short', year: 'numeric' })} · `
+                        : ''}
+                      Status: {actionStatusLabel[item.status] || item.status}
+                    </small>
+                  </div>
+                  {nextStatus && (
+                    <button
+                      className="button button-light"
+                      disabled={savingAction}
+                      onClick={() => advanceTrackedAction(item._id, nextStatus)}
+                      type="button"
+                    >
+                      {nextActionLabel}
+                    </button>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="empty-state small-empty">
+            <strong>Belum ada rekomendasi yang dicatat sebagai tindakan</strong>
+            <p>Rekomendasi dari CAPAR dapat dicatat dan diikuti statusnya melalui halaman ini.</p>
+          </div>
+        )}
+        {actionError && <p className="form-error" role="alert">{actionError}</p>}
+      </section>
       <section className="panel recommendation-outcomes">
         <div className="panel-heading">
           <div><h2>Evaluasi hasil yang tercatat</h2><p>Outcome episode CAPAR dalam 30 hari terakhir</p></div>
@@ -171,7 +240,7 @@ export default function PredictionPage({
         <div className="quality-metrics">
           <div><span>Episode pulih tercatat</span><strong>{capar.status === 'available' ? recoveredEpisodes : '—'}</strong></div>
           <div><span>Episode belum terselesaikan</span><strong>{capar.status === 'available' ? unresolvedEpisodes : '—'}</strong></div>
-          <div><span>Hasil tindakan rekomendasi</span><strong>Tidak disediakan API</strong></div>
+          <div><span>Tindakan tersimpan</span><strong>{allActions.length}</strong></div>
         </div>
         <p className="baseline-footnote">
           Outcome episode bukan bukti bahwa rekomendasi tertentu menyebabkan perubahan tersebut.
