@@ -794,10 +794,10 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
           <X size={18} />
         </button>
         <span className="eyebrow">KONFIRMASI KONTRIBUSI</span>
-        <h2 id="activity-dialog-title">Apa yang Anda alami saat event ini?</h2>
+        <h2 id="activity-dialog-title">Konfirmasi kontribusi pada event</h2>
         <p>
-          Klarifikasi aktivitas dan gejala pada waktu observasi ini. Jawaban Anda membantu menilai kecocokan konteks
-          dengan HR, ACC, dan baseline; jawaban tidak mengubah hasil pengukuran sensor.
+          Catat aktivitas dan gejala, lalu urutkan mood, makan, dan stres yang menurut Anda berkontribusi.
+          Masukan Anda dibandingkan dengan HR, ACC, dan baseline; jawaban tidak mengubah hasil pengukuran sensor.
         </p>
         {motion && (
           <div className="notice notice-info activity-motion-evidence">
@@ -915,7 +915,7 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
         </fieldset>
         {availableFactors.length > 0 && (
           <fieldset className="contribution-fieldset">
-            <legend>Urutkan faktor yang menurut Anda paling berkontribusi</legend>
+            <legend>Urutkan faktor yang menurut Anda berkontribusi pada event</legend>
             <p className="contribution-hint">Pilih dari faktor yang tercatat. Urutan pilihan menjadi ranking kontribusi pengguna.</p>
             <div className="contribution-choice-row">
               {availableFactors.map((factor) => (

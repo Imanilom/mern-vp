@@ -10,10 +10,10 @@ import DataTable from '../components/DataTable';
 import MetricCard from '../components/MetricCard';
 import SectionHeading from '../components/SectionHeading';
 import PersonalFactorRanking from '../components/PersonalFactorRanking';
+import RecoveryTrend from '../components/RecoveryTrend';
 import { formatDate, getStatusLabel, numberOrNull } from '../utils/formatters';
 import { describeMotionBaseline } from '../utils/baselineObservations';
 import {
-  groupRecoveryMetricsByDay,
   groupPhysiologyByActivity,
   groupPhysiologyByCircadianPeriod,
   groupPhysiologyByFeeling,
@@ -128,45 +128,6 @@ function PhysiologyDistribution({ title, rows, labelKey, label, associationNote 
         <p className="baseline-footnote">Belum ada data wearable nyata untuk pengelompokan ini.</p>
       )}
       {associationNote && <p className="baseline-footnote">{associationNote}</p>}
-    </section>
-  );
-}
-
-function formatWibDate(value, options) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? 'Belum tersedia'
-    : new Intl.DateTimeFormat('id-ID', { ...options, timeZone: 'Asia/Jakarta' }).format(date);
-}
-
-function RecoveryTrend({ episodes }) {
-  const days = groupRecoveryMetricsByDay(episodes);
-  return (
-    <section className="panel recovery-trend-panel">
-      <div className="panel-heading">
-        <div><h2>Periksa tren pemulihan hari ke hari</h2><p>Rerata AUC deviasi dan waktu ke pemulihan (TTR) per hari, hanya bila tercatat CAPAR</p></div>
-        <span className="panel-icon green-icon"><Activity size={17} /></span>
-      </div>
-      {days.length ? (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead><tr><th>Tanggal (WIB)</th><th>Rerata AUC</th><th>Rerata TTR</th><th>Episode tercatat</th></tr></thead>
-            <tbody>{days.map((day) => (
-              <tr key={day.dateKey}>
-                <td>{formatWibDate(day.date, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                <td>{day.auc == null ? '—' : day.auc.toFixed(2)}</td>
-                <td>{day.ttrMinutes == null ? '—' : `${day.ttrMinutes.toFixed(1)} menit`}</td>
-                <td>{day.episodes}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="empty-state small-empty">
-          <strong>Belum ada AUC atau TTR CAPAR untuk dibandingkan</strong>
-          <p>Nilai tidak diisi dari data lain dan akan muncul setelah episode menyimpan metrik pemulihan.</p>
-        </div>
-      )}
     </section>
   );
 }

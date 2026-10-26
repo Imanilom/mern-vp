@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Check, CircleHelp, LoaderCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import SectionHeading from '../components/SectionHeading';
+import RecoveryTrend from '../components/RecoveryTrend';
 import { formatDate, getStatusLabel } from '../utils/formatters';
 
 export default function PredictionPage({
@@ -61,18 +62,18 @@ export default function PredictionPage({
     } finally {
       setSavingAction(false);
     }
+  }
 
-    async function advanceTrackedAction(actionId, status) {
-      if (!onUpdateActionStatus) return;
-      setSavingAction(true);
-      setActionError('');
-      try {
-        await onUpdateActionStatus(actionId, status);
-      } catch (error) {
-        setActionError(error.message || 'Status tindak lanjut gagal diperbarui.');
-      } finally {
-        setSavingAction(false);
-      }
+  async function advanceTrackedAction(actionId, status) {
+    if (!onUpdateActionStatus) return;
+    setSavingAction(true);
+    setActionError('');
+    try {
+      await onUpdateActionStatus(actionId, status);
+    } catch (error) {
+      setActionError(error.message || 'Status tindak lanjut gagal diperbarui.');
+    } finally {
+      setSavingAction(false);
     }
   }
 
@@ -232,6 +233,7 @@ export default function PredictionPage({
         )}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
       </section>
+      <RecoveryTrend episodes={episodes} />
       <section className="panel recommendation-outcomes">
         <div className="panel-heading">
           <div><h2>Evaluasi hasil yang tercatat</h2><p>Outcome episode CAPAR dalam 30 hari terakhir</p></div>
