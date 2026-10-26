@@ -59,6 +59,32 @@ test('deviation follow-up asks more contextual questions as personal deviation i
   }).status, 'already_answered');
 });
 
+test('activity clarification is requested for out-of-baseline motion even when HR/state is normal', () => {
+  const prompt = buildPatientDeviationFollowUpPrompt({
+    deviation: {
+      available: true,
+      state: 'within_personal_region',
+      features: [{ feature: 'mean_hr', value: 72, baseline_mean: 70 }],
+    },
+    motionDeviation: {
+      status: 'outside_baseline',
+      feature: 'motion_intensity',
+      value: 0.42,
+      baseline_mean: 0.1,
+      baseline_std: 0.08,
+      z_score: 4,
+      deviation_level: 'significant',
+    },
+    segmentId: 'segment-motion-only',
+  });
+
+  assert.equal(prompt.status, 'requested');
+  assert.equal(prompt.trigger, 'motion_above_activity_baseline');
+  assert.equal(prompt.motion_only, true);
+  assert.equal(prompt.triggered_by_segment_id, 'segment-motion-only');
+  assert.equal(prompt.motion_evidence.z_score, 4);
+});
+
 test('red flag action bypasses quality and sensor status', () => {
   const action = recommendPatientAction({
     dataQualityAvailable: false,

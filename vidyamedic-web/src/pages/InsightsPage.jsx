@@ -21,6 +21,15 @@ import {
 
 const PERIODS = [7, 30, 90];
 
+const RECOVERY_MARKOV_STATES = [
+  { key: 'BASELINE_COMPATIBLE', label: 'Baseline kompatibel', color: '#5ba67e' },
+  { key: 'DEVIATION_CANDIDATE', label: 'Kandidat deviasi', color: '#e3ae4d' },
+  { key: 'PERSISTENT_DEVIATION', label: 'Deviasi menetap', color: '#d87970' },
+  { key: 'RECOVERY', label: 'Pemulihan', color: '#8c7bc2' },
+  { key: 'RECOVERED', label: 'Pulih', color: '#45a6a1' },
+  { key: 'UNRESOLVED', label: 'Belum terselesaikan', color: '#9b7773' },
+];
+
 function dailyAverages(samples, field) {
   const days = new Map();
   for (const sample of samples) {
@@ -365,22 +374,36 @@ export default function InsightsPage({
           <div><h2>Recovery Intelligence · Markov CAPAR</h2><p>Estimasi transisi state personal tiga langkah dari riwayat CAPAR, bukan diagnosis klinis</p></div>
           <span className="panel-icon green-icon"><ShieldCheck size={17} /></span>
         </div>
-        {recoveryIntelligence?.status === 'available' && recoveryIntelligence.probabilities ? (
-          <div className="recovery-intelligence-layout">
-            <div
-              aria-label={`Proporsi pemulihan atau baseline ${recoveryIntelligence.probabilities.recovered_or_baseline_compatible} persen dan observasi lanjutan ${recoveryIntelligence.probabilities.further_observation} persen`}
-              className="recovery-donut"
-              role="img"
-              style={{ '--recovery-share': `${recoveryIntelligence.probabilities.recovered_or_baseline_compatible}%` }}
-            >
-              <div><strong>{recoveryIntelligence.probabilities.recovered_or_baseline_compatible}%</strong><span>pulih / baseline</span></div>
+        {recoveryIntelligence?.status === 'available' && recoveryIntelligence.state_distribution ? (
+          <>
+            <div className="recovery-markov-circles">
+              {RECOVERY_MARKOV_STATES.map((state) => {
+                const percentage = numberOrNull(recoveryIntelligence.state_distribution[state.key]);
+                if (percentage == null) return null;
+                const share = Math.max(0, Math.min(100, percentage));
+                return (
+                  <div className="recovery-markov-state" key={state.key}>
+                    <div
+                      aria-label={`${state.label}: ${share}%`}
+                      className="recovery-markov-ring"
+                      role="img"
+                      style={{
+                        '--state-color': state.color,
+                        '--state-share': `${share}%`,
+                      }}
+                    >
+                      <div><strong>{share}%</strong></div>
+                    </div>
+                    <span>{state.label}</span>
+                  </div>
+                );
+              })}
             </div>
-            <div className="recovery-intelligence-stats">
-              <div><span>Pulih / baseline kompatibel</span><strong>{recoveryIntelligence.probabilities.recovered_or_baseline_compatible}%</strong></div>
-              <div><span>Butuh observasi lanjutan</span><strong>{recoveryIntelligence.probabilities.further_observation}%</strong></div>
-              <small>{recoveryIntelligence.observed_transitions} transisi teramati · horizon {recoveryIntelligence.horizon_windows} langkah</small>
+            <div className="recovery-markov-meta">
+              <span>State saat ini: <strong>{getStatusLabel(recoveryIntelligence.current_state)}</strong></span>
+              <span>{recoveryIntelligence.observed_transitions} transisi personal · horizon {recoveryIntelligence.horizon_windows} langkah</span>
             </div>
-          </div>
+          </>
         ) : (
           <div className="empty-state small-empty">
             <strong>Data tidak cukup untuk estimasi Markov personal</strong>
@@ -388,7 +411,7 @@ export default function InsightsPage({
           </div>
         )}
         <p className="baseline-footnote">
-          Persentase hanya merangkum state yang diproyeksikan dari transisi CAPAR personal; “data tidak cukup” merupakan status tanpa persentase.
+          Lingkaran menampilkan distribusi state hasil proyeksi transisi CAPAR personal; “data tidak cukup” merupakan status tanpa persentase.
           {recoveryIntelligence?.disclaimer ? ` ${recoveryIntelligence.disclaimer}` : ''}
         </p>
       </section>

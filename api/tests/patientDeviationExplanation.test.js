@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildPatientObservedExpected,
   explainPatientDeviation,
   attributePatientContext,
   assessPatientReasoningUncertainty,
@@ -20,6 +21,54 @@ const baseline = {
     motion_intensity: { n: 50, mean: 0.1, std: 0.05 },
   },
 };
+
+test('observed versus expected compares the latest sensor window with its matching personal baseline', () => {
+  const result = buildPatientObservedExpected({
+    features: { hr_mean: 82, motion_index: 0.3, rmssd: 28 },
+    baseline,
+    activity: 'sitting',
+    timePeriod: 'afternoon',
+    recordedAt: '2026-10-26T05:00:00.000Z',
+    mahalanobis: {
+      available: true,
+      activity: 'sitting',
+      time_period: 'afternoon',
+      state: 'within_personal_region',
+      distance: 1.2,
+      squared_distance: 1.44,
+      feature_keys: ['mean_hr', 'motion_intensity'],
+      thresholds: { mild: 4 },
+      features: [
+        { feature: 'mean_hr', contribution_share: 0.6 },
+        { feature: 'motion_intensity', contribution_share: 0.4 },
+      ],
+    },
+    previousMahalanobis: {
+      available: true,
+      activity: 'sitting',
+      time_period: 'afternoon',
+      feature_keys: ['mean_hr', 'motion_intensity'],
+      distance: 0.8,
+    },
+  });
+
+  assert.equal(result.activity, 'sitting');
+  assert.equal(result.distance_to_reference_pct, 36);
+  assert.equal(result.distance_trend, 'increasing');
+  assert.deepEqual(result.features.find((item) => item.feature === 'hr_mean'), {
+    feature: 'hr_mean',
+    baseline_key: 'mean_hr',
+    label: 'HR rata-rata',
+    unit: 'bpm',
+    value: 82,
+    baseline_mean: 70,
+    baseline_std: 5,
+    delta_from_baseline: 12,
+    z_score: 2.4,
+    deviation_level: 'significant',
+    contribution_share: 0.6,
+  });
+});
 
 test('deviation explanation reports signed z-scores and Mahalanobis contributors', () => {
   const mahalanobis = {

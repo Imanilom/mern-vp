@@ -13,25 +13,38 @@ export const PATIENT_ACTIONS = {
 
 export function buildPatientDeviationFollowUpPrompt({
   deviation,
+  motionDeviation = null,
   segmentId = null,
   alreadyAnswered = false,
   episode = null,
 } = {}) {
-  if (!deviation?.available || deviation.state === 'within_personal_region') {
+  const motionOutsideBaseline = motionDeviation?.status === 'outside_baseline';
+  const deviationOutsideBaseline = deviation?.available
+    && deviation.state !== 'within_personal_region';
+  if (!deviationOutsideBaseline && !motionOutsideBaseline) {
     return { status: 'not_required' };
   }
 
-  const highDeviation = deviation.state === 'strongly_displaced';
+  const motionOnly = motionOutsideBaseline && !deviationOutsideBaseline;
+  const highDeviation = deviation?.state === 'strongly_displaced';
+  const trigger = motionOnly
+    ? 'motion_above_activity_baseline'
+    : highDeviation
+      ? 'high_personal_deviation'
+      : 'personal_deviation';
   if (alreadyAnswered) {
     return {
       status: 'already_answered',
+      trigger,
+      motion_only: motionOnly,
       triggered_by_segment_id: segmentId,
       deviation_level: highDeviation ? 'high' : 'moderate',
       onset_time: episode?.onset_time ?? null,
-      peak_time: episode?.peak_time ?? deviation.recorded_at ?? null,
-      deviation_distance: deviation.distance ?? null,
-      reference_thresholds: deviation.thresholds ?? null,
-      main_factors: deviation.features ?? [],
+      peak_time: episode?.peak_time ?? deviation?.recorded_at ?? motionDeviation?.recorded_at ?? null,
+      deviation_distance: deviation?.distance ?? null,
+      reference_thresholds: deviation?.thresholds ?? null,
+      main_factors: deviation?.features ?? [],
+      motion_evidence: motionOutsideBaseline ? motionDeviation : null,
     };
   }
 
@@ -116,15 +129,17 @@ export function buildPatientDeviationFollowUpPrompt({
 
   return {
     status: 'requested',
-    trigger: highDeviation ? 'high_personal_deviation' : 'personal_deviation',
+    trigger,
+    motion_only: motionOnly,
     triggered_by_segment_id: segmentId,
     deviation_level: highDeviation ? 'high' : 'moderate',
-    deviation_state: deviation.state,
+    deviation_state: deviation?.state || 'within_personal_region',
     onset_time: episode?.onset_time ?? null,
-    peak_time: episode?.peak_time ?? deviation.recorded_at ?? null,
-    deviation_distance: deviation.distance ?? null,
-    reference_thresholds: deviation.thresholds ?? null,
-    main_factors: deviation.features ?? [],
+    peak_time: episode?.peak_time ?? deviation?.recorded_at ?? motionDeviation?.recorded_at ?? null,
+    deviation_distance: deviation?.distance ?? null,
+    reference_thresholds: deviation?.thresholds ?? null,
+    main_factors: deviation?.features ?? [],
+    motion_evidence: motionOutsideBaseline ? motionDeviation : null,
     questions,
     response_endpoint: 'POST /api/patient-app/check-ins',
     response_field: 'deviation_follow_up',

@@ -97,6 +97,114 @@ function round(value, digits = 3) {
   return Number(value.toFixed(digits));
 }
 
+export function buildPatientObservedExpected({
+  features,
+  baseline,
+  mahalanobis,
+  previousMahalanobis = null,
+  recordedAt = null,
+  activity = null,
+  timePeriod = null,
+  policyOverrides = {},
+} = {}) {
+  if (!features || !baseline?.stats) return null;
+
+  const minimumBaselineSamples = getPatientDecisionPolicy(
+    'patient_deviation_minimum_baseline_samples',
+    policyOverrides
+  ).value;
+  const minimumBaselineStd = getPatientDecisionPolicy(
+    'patient_deviation_minimum_baseline_std',
+    policyOverrides
+  ).value;
+  const mildZScore = getPatientDecisionPolicy(
+    'patient_deviation_mild_z_score',
+    policyOverrides
+  ).value;
+  const significantZScore = getPatientDecisionPolicy(
+    'patient_deviation_significant_z_score',
+    policyOverrides
+  ).value;
+  const featureDefinitions = [
+    { feature: 'hr_mean', baseline_key: 'mean_hr', label: 'HR rata-rata', unit: 'bpm' },
+    { feature: 'hr_delta', baseline_key: 'delta_hr', label: 'Rentang HR', unit: 'bpm' },
+    { feature: 'hr_slope', baseline_key: 'slope_hr', label: 'Perubahan HR', unit: 'bpm/window' },
+    { feature: 'rmssd', baseline_key: 'rmssd', label: 'RMSSD', unit: 'ms' },
+    { feature: 'sdnn', baseline_key: 'sdnn', label: 'SDNN', unit: 'ms' },
+    { feature: 'dfa_alpha1', baseline_key: 'dfa_alpha1', label: 'DFA α1', unit: '' },
+    { feature: 'motion_index', baseline_key: 'motion_intensity', label: 'Gerak ACC', unit: '' },
+  ];
+  const observations = featureDefinitions.flatMap((definition) => {
+    const value = features[definition.feature];
+    const stats = baseline.stats[definition.baseline_key];
+    if (
+      !Number.isFinite(value)
+      || !stats
+      || stats.n < minimumBaselineSamples
+      || !Number.isFinite(stats.mean)
+    ) {
+      return [];
+    }
+    const zScore = Number.isFinite(stats.std) && stats.std >= minimumBaselineStd
+      ? round((value - stats.mean) / stats.std)
+      : null;
+    const contribution = mahalanobis?.features?.find(
+      (item) => item.feature === definition.baseline_key
+    );
+    return [{
+      ...definition,
+      value: round(value),
+      baseline_mean: round(stats.mean),
+      baseline_std: Number.isFinite(stats.std) ? round(stats.std) : null,
+      delta_from_baseline: round(value - stats.mean),
+      z_score: zScore,
+      deviation_level: zScore == null
+        ? 'unavailable'
+        : Math.abs(zScore) >= significantZScore
+          ? 'significant'
+          : Math.abs(zScore) >= mildZScore
+            ? 'mild'
+            : 'within_personal_variation',
+      contribution_share: contribution?.contribution_share ?? null,
+    }];
+  });
+  const mildThreshold = mahalanobis?.thresholds?.mild;
+  const distanceToReferencePct = Number.isFinite(mahalanobis?.squared_distance)
+    && Number.isFinite(mildThreshold)
+    && mildThreshold > 0
+    ? round((mahalanobis.squared_distance / mildThreshold) * 100, 1)
+    : null;
+  const previousIsComparable = previousMahalanobis?.available
+    && mahalanobis?.available
+    && previousMahalanobis.activity === mahalanobis.activity
+    && previousMahalanobis.time_period === mahalanobis.time_period
+    && previousMahalanobis.feature_keys?.join('|') === mahalanobis.feature_keys?.join('|');
+  const distanceChange = previousIsComparable
+    ? round(mahalanobis.distance - previousMahalanobis.distance)
+    : null;
+
+  return {
+    status: observations.length ? 'available' : 'insufficient_data',
+    recorded_at: recordedAt,
+    activity,
+    time_period: timePeriod,
+    state: mahalanobis?.state ?? 'insufficient_data',
+    distance: mahalanobis?.distance ?? null,
+    distance_to_reference_pct: distanceToReferencePct,
+    distance_change: distanceChange,
+    distance_trend: distanceChange == null
+      ? 'unavailable'
+      : distanceChange > 0
+        ? 'increasing'
+        : distanceChange < 0
+          ? 'decreasing'
+          : 'stable',
+    features: observations,
+    feature_contributions: mahalanobis?.features ?? [],
+    policy: getPatientDecisionPolicyBundle(EXPLANATION_POLICY_RULES, policyOverrides),
+  };
+}
+
 export function explainPatientDeviation(
   features,
   baseline,

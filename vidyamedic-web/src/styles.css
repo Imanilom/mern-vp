@@ -135,15 +135,14 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .distribution-row { display: grid; gap: 4px; padding: 8px; background: #fff; border-radius: 8px; color: #708278; font-size: 9px; }
 .distribution-row strong { color: #395e4b; text-transform: capitalize; }
 .distribution-row small { color: #98a49e; font-size: 8px; }
-.recovery-intelligence-layout { display: flex; align-items: center; gap: 25px; padding: 8px 4px; }
-.recovery-donut { display: grid; flex: 0 0 142px; width: 142px; height: 142px; background: conic-gradient(#5ba67e 0 var(--recovery-share), #e7b95f var(--recovery-share) 100%); border-radius: 50%; place-items: center; }
-.recovery-donut > div { display: grid; align-content: center; width: 103px; height: 103px; background: #fff; border-radius: 50%; text-align: center; }
-.recovery-donut strong { color: #386c51; font-size: 23px; }
-.recovery-donut span { color: #87958d; font-size: 8px; }
-.recovery-intelligence-stats { display: grid; flex: 1; gap: 10px; }
-.recovery-intelligence-stats > div { display: flex; justify-content: space-between; gap: 12px; color: #71867b; font-size: 10px; }
-.recovery-intelligence-stats strong { color: #436b53; }
-.recovery-intelligence-stats small { color: #98a49e; font-size: 8px; }
+.recovery-markov-circles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 15px; margin: 9px 0 16px; }
+.recovery-markov-state { display: grid; justify-items: center; align-content: start; gap: 8px; color: #71867b; font-size: 9px; text-align: center; }
+.recovery-markov-ring { display: grid; width: 92px; height: 92px; padding: 7px; background: conic-gradient(var(--state-color) 0 var(--state-share), #e9efeb var(--state-share) 100%); border-radius: 50%; place-items: center; }
+.recovery-markov-ring > div { display: grid; width: 100%; height: 100%; background: #fff; border-radius: 50%; place-items: center; }
+.recovery-markov-ring strong { color: var(--state-color); font-family: Manrope, sans-serif; font-size: 18px; }
+.recovery-markov-state > span { max-width: 110px; line-height: 1.4; }
+.recovery-markov-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin-bottom: 13px; color: #87958d; font-size: 9px; }
+.recovery-markov-meta strong { color: #526c5e; }
 .contribution-fieldset { min-width: 0; margin: 12px 0 0; padding: 10px; border: 1px solid #e9efeb; border-radius: 9px; }
 .contribution-fieldset legend { padding: 0 4px; color: #567264; font-size: 9px; font-weight: 700; }
 .contribution-choice-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 5px; }
@@ -378,6 +377,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .observed-delta { grid-column: 1 / -1; padding-top: 9px; color: #71867a; border-top: 1px solid #e9efec; font-size: 9px; }
 .motion-observation { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; padding: 10px 11px; color: #637d70; background: #eff7f1; border-radius: 9px; font-size: 9px; line-height: 1.6; }
 .motion-observation svg { flex: 0 0 auto; color: #4c9a7b; }
+.observation-distance { display: grid; gap: 5px; margin-top: 12px; padding: 11px; color: #62796c; background: #f7f9f8; border: 1px solid #edf1ef; border-radius: 9px; font-size: 9px; line-height: 1.5; }
+.observation-distance strong { color: #3d5e4c; font-size: 10px; }
+.observation-distance small { color: #87958e; }
 .observation-conflict { margin-top: 10px; margin-bottom: 0; font-size: 9px; }
 .observation-no-hr { margin-top: 14px; margin-bottom: 0; font-size: 9px; }
 .observation-confirm { margin-top: 13px; }
@@ -514,6 +516,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .activity-dialog-backdrop { overflow-y: auto; }
   .activity-dialog { max-height: calc(100vh - 40px); overflow-y: auto; margin: auto; }
   .distribution-grid { grid-template-columns: 1fr; }
+  .recovery-markov-circles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 8px; }
   .contribution-input-grid { grid-template-columns: 1fr; }
   .monitoring-live-metrics { grid-template-columns: 1fr; }
   .personal-factor-list li { grid-template-columns: 25px minmax(70px, 1fr); }
@@ -521,11 +524,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .personal-factor-editor-add { align-items: stretch; flex-wrap: wrap; }
   .personal-factor-editor-add label { flex-basis: 100%; }
   .personal-factor-evidence { grid-column: 2; text-align: left; }
-  .recovery-intelligence-layout { gap: 15px; }
-  .recovery-donut { flex-basis: 112px; width: 112px; height: 112px; }
-  .recovery-donut > div { width: 82px; height: 82px; }
-  .recovery-donut strong { font-size: 18px; }
-  .recovery-intelligence-stats > div { font-size: 9px; }
+  .recovery-markov-circles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .recovery-markov-ring { width: 82px; height: 82px; }
+  .recovery-markov-ring strong { font-size: 16px; }
   .panel { padding: 15px; border-radius: 13px; }
   .chart-wrap { height: 190px; }
   .hr-chart { height: 144px; }

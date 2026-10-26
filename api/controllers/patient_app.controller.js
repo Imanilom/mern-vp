@@ -42,6 +42,7 @@ import {
 import {
   attributePatientContext,
   assessPatientReasoningUncertainty,
+  buildPatientObservedExpected,
   explainPatientDeviation,
   isPatientCaparNocturnalTime,
   mapPatientContextToRagAxes,
@@ -1187,6 +1188,75 @@ export async function getPatientAppCaparInsights(req, res) {
       (item) => item.window_start >= dayAgo.getTime()
     );
     const latestMahalanobis = recentMahalanobis[0] || null;
+    const latestMahalanobisSegment = latestMahalanobis?.segment_id
+      ? eligibleSegments.find((segment) => (
+        segment._id.toString() === latestMahalanobis.segment_id.toString()
+      )) || null
+      : null;
+    const latestMahalanobisIndex = latestMahalanobis
+      ? recentMahalanobis.indexOf(latestMahalanobis)
+      : -1;
+    const previousComparableMahalanobis = latestMahalanobisIndex >= 0
+      ? recentMahalanobis
+        .slice(latestMahalanobisIndex + 1)
+        .find((item) => (
+          item.available
+          && item.activity === latestMahalanobis.activity
+          && item.time_period === latestMahalanobis.time_period
+          && latestMahalanobis.window_start - item.window_start <= 10 * 60 * 1000
+        )) || null
+      : null;
+    const latestMotionBaseline = latestMahalanobis
+      ? baselineByContext.get(`${latestMahalanobis.activity}:${latestMahalanobis.time_period}`)
+      : null;
+    const motionStats = latestMotionBaseline?.stats?.motion_intensity;
+    const motionValue = latestMahalanobisSegment?.features?.motion_intensity;
+    const minimumDeviationBaselineSamples = getPatientDecisionPolicy(
+      'patient_deviation_minimum_baseline_samples'
+    ).value;
+    const minimumDeviationBaselineStd = getPatientDecisionPolicy(
+      'patient_deviation_minimum_baseline_std'
+    ).value;
+    const mildMotionZScore = getPatientDecisionPolicy(
+      'patient_deviation_mild_z_score'
+    ).value;
+    const motionZScore = Number.isFinite(motionValue)
+      && motionStats?.n >= minimumDeviationBaselineSamples
+      && isMaturePatientBaseline(latestMotionBaseline)
+      && Number.isFinite(motionStats?.mean)
+      && Number.isFinite(motionStats?.std)
+      && motionStats.std >= minimumDeviationBaselineStd
+      ? (motionValue - motionStats.mean) / motionStats.std
+      : null;
+    const motionDeviation = motionZScore != null && motionZScore >= mildMotionZScore
+      ? {
+        status: 'outside_baseline',
+        feature: 'motion_intensity',
+        value: motionValue,
+        baseline_mean: motionStats.mean,
+        baseline_std: motionStats.std,
+        z_score: motionZScore,
+        deviation_level: motionZScore >= getPatientDecisionPolicy(
+          'patient_deviation_significant_z_score'
+        ).value ? 'significant' : 'mild',
+        unit: '',
+        recorded_at: new Date(latestMahalanobisSegment.window_start),
+      }
+      : null;
+    const latestObservation = latestMahalanobisSegment
+      && latestMotionBaseline
+      && isPatientAnalyticsSegment(latestMahalanobisSegment)
+      && isMaturePatientBaseline(latestMotionBaseline)
+      ? buildPatientObservedExpected({
+        features: toPatientAnalysisFeatures(latestMahalanobisSegment),
+        baseline: latestMotionBaseline,
+        mahalanobis: latestMahalanobis,
+        previousMahalanobis: previousComparableMahalanobis,
+        recordedAt: new Date(latestMahalanobisSegment.window_start),
+        activity: latestMahalanobis.activity,
+        timePeriod: latestMahalanobis.time_period,
+      })
+      : null;
     const comparableMahalanobis = latestMahalanobis?.available
       ? mahalanobis.filter((item) => (
         item.available
@@ -1255,7 +1325,7 @@ export async function getPatientAppCaparInsights(req, res) {
     const recentPatientCheckIn = historicalCheckIns.find((checkIn) => (
       new Date(checkIn.recorded_at).getTime() >= dayAgo.getTime()
     )) || null;
-    const followUpAlreadyAnswered = latestMahalanobis?.available
+    const followUpAlreadyAnswered = latestMahalanobis?.segment_id
       ? Boolean(await PatientAppCheckIn.exists({
         ...accountScopeFilter(accountScopes),
         'deviation_follow_up.segment_id': latestMahalanobis.segment_id,
@@ -1263,6 +1333,7 @@ export async function getPatientAppCaparInsights(req, res) {
       : false;
     let deviationFollowUp = buildPatientDeviationFollowUpPrompt({
       deviation: latestMahalanobis,
+      motionDeviation,
       segmentId: latestMahalanobis?.segment_id?.toString() || null,
       alreadyAnswered: followUpAlreadyAnswered,
       episode: recoverySummary.latest_episode,
@@ -1644,6 +1715,7 @@ export async function getPatientAppCaparInsights(req, res) {
         };
       }),
       mahalanobis: mahalanobis.slice(0, 100),
+      latest_observation: latestObservation,
       polar_data: polarData.map((reading) => ({
         ...reading,
         recorded_at: new Date(reading.timestamp * 1000),

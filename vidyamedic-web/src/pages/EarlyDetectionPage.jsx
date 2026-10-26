@@ -23,6 +23,13 @@ const EVIDENCE_LABELS = {
   signal_quality: 'Kualitas sinyal',
 };
 
+const EVIDENCE_STATUS_LABELS = {
+  evidence_available_with_limits: 'Bukti tersedia dengan batasan',
+  limited_evidence: 'Bukti masih terbatas',
+  insufficient_evidence: 'Bukti belum memadai',
+  conflicting_evidence: 'Bukti yang tersedia tidak selaras',
+};
+
 const CONTEXT_LABELS = {
   mood: 'Mood',
   physical_activity: 'Aktivitas fisik',
@@ -143,7 +150,7 @@ function checkInContext(checkIn) {
   return details;
 }
 
-function EvidenceCoverage({ uncertainty, checkIns = [], eventTime }) {
+function EvidenceCoverage({ uncertainty, checkIns = [], eventTime, deviation = null }) {
   const dimensions = uncertainty?.evidence_dimensions || {};
   const entries = Object.entries(EVIDENCE_LABELS).map(([key, label]) => ({
     key,
@@ -177,7 +184,7 @@ function EvidenceCoverage({ uncertainty, checkIns = [], eventTime }) {
         <>
           <div className="evidence-coverage-summary">
             <strong>{percentage}%</strong>
-            <span>{available} dari {entries.length} dimensi tersedia</span>
+            <span>cakupan data · {available} dari {entries.length} dimensi tersedia</span>
           </div>
           <div
             aria-label={`Cakupan dimensi bukti ${percentage} persen`}
@@ -205,11 +212,30 @@ function EvidenceCoverage({ uncertainty, checkIns = [], eventTime }) {
         </div>
       )}
       <p className="baseline-footnote">
-        Persentase ini adalah cakupan dimensi data, bukan tingkat keyakinan atau probabilitas bahwa suatu penyebab benar.
+        {EVIDENCE_STATUS_LABELS[uncertainty?.evidence_status]
+          || 'Status kecukupan bukti belum tersedia'}. Persentase menunjukkan cakupan dimensi data, bukan tingkat keyakinan atau probabilitas penyebab.
       </p>
       {uncertainty?.interpretation && <p className="evidence-interpretation">{uncertainty.interpretation}</p>}
       <div className="evidence-context">
-        <strong>Catatan mood, aktivitas, dan gaya hidup sebelum event</strong>
+        <strong>Aktivitas dan gejala di sekitar event</strong>
+        {deviation?.user_reported_context && (
+          <div className="evidence-context-item">
+            <span>Konfirmasi pengguna · {activityLabel(deviation.user_reported_context.activity || 'aktivitas belum dicatat')}</span>
+            <small>
+              {[
+                deviation.user_reported_context.symptoms?.length
+                  ? `Gejala: ${deviation.user_reported_context.symptoms.map(symptomLabel).join(', ')}`
+                  : 'Gejala: tidak dilaporkan',
+                deviation.user_reported_context.feeling
+                  ? `Mood: ${deviation.user_reported_context.feeling.replaceAll('_', ' ')}`
+                  : null,
+                deviation.user_reported_context.stress_level == null
+                  ? null
+                  : `Stres: ${deviation.user_reported_context.stress_level}/3`,
+              ].filter(Boolean).join(' · ')}
+            </small>
+          </div>
+        )}
         {associatedCheckIns.length ? associatedCheckIns.map((checkIn) => {
           const details = checkInContext(checkIn);
           return (
@@ -221,7 +247,8 @@ function EvidenceCoverage({ uncertainty, checkIns = [], eventTime }) {
             </div>
           );
         }) : (
-          <p>Tidak ada check-in yang tercatat dalam 6 jam sebelumnya.</p>
+          !deviation?.user_reported_context
+            && <p>Tidak ada check-in yang tercatat dalam 6 jam sebelum waktu observasi.</p>
         )}
         <small>Faktor gaya hidup dan mood berasal dari laporan pengguna; kedekatan waktu hanya menunjukkan asosiasi, bukan kontribusi kausal.</small>
       </div>
@@ -284,30 +311,67 @@ function QualityGateCard({ capar, deviation, followUp }) {
   );
 }
 
-function ObservationCard({ deviation, factors, followUp, onAskActivity }) {
-  const hr = factors.find((factor) => ['hr_mean', 'mean_hr'].includes(factor.feature));
-  const motion = factors.find((factor) => ['motion_index', 'motion_intensity'].includes(factor.feature));
+function ObservationCard({
+  deviation,
+  factors,
+  followUp,
+  latestObservation,
+  eventIsLatest,
+  onAskActivity,
+}) {
+  const observationFeatures = latestObservation?.features || [];
+  const hr = observationFeatures.find((factor) => factor.feature === 'hr_mean')
+    || factors.find((factor) => ['hr_mean', 'mean_hr'].includes(factor.feature));
+  const motion = followUp?.motion_evidence
+    || observationFeatures.find((factor) => factor.feature === 'motion_index')
+    || factors.find((factor) => ['motion_index', 'motion_intensity'].includes(factor.feature))
+    || deviation?.motion_evidence;
+  const rmssd = observationFeatures.find((factor) => factor.feature === 'rmssd');
   const conflictList = deviation?.evidence_conflicts || [];
   const contexts = deviation?.temporally_associated_context || [];
-  const activity = deviation?.activity || contexts.find((item) => item.activity)?.activity;
+  const activity = latestObservation?.activity
+    || deviation?.activity
+    || contexts.find((item) => item.activity)?.activity;
   const motionIsOutsideBaseline = ['mild', 'significant'].includes(motion?.deviation_level);
+  const hrIsOutsideBaseline = ['mild', 'significant'].includes(hr?.deviation_level);
+  const reportedActivity = deviation?.user_reported_context?.activity;
+  const reportedRest = ['rest', 'resting', 'sitting', 'sit', 'duduk', 'istirahat']
+    .includes(String(reportedActivity || '').toLowerCase());
+  const movementMismatch = reportedRest && motionIsOutsideBaseline;
+  const restingHrMismatch = reportedRest && hrIsOutsideBaseline && hr?.z_score > 0;
   const shouldAsk = followUp?.status === 'requested'
     && Boolean(followUp?.triggered_by_segment_id);
-  const alertClassification = String(deviation?.classification || '').toLowerCase() === 'alert';
+  const alertClassification = eventIsLatest
+    && String(deviation?.classification || '').toLowerCase() === 'alert';
+  const earlyTrend = latestObservation?.state === 'within_personal_region'
+    && latestObservation?.distance_trend === 'increasing';
   const candidate = followUp?.status === 'requested'
+    || ['moderately_displaced', 'strongly_displaced'].includes(latestObservation?.state)
+    || hrIsOutsideBaseline
+    || motionIsOutsideBaseline
     || String(deviation?.state || '').toLowerCase().includes('candidate')
     || String(deviation?.mahalanobis?.state || '').toLowerCase().includes('candidate');
   const status = alertClassification
     ? 'CAPAR mencatat alert'
     : candidate
       ? 'Kandidat penyimpangan · belum alert'
-      : deviation?.explanation_status === 'available'
-        ? 'Perubahan teramati · tinjau konteks'
-        : 'Belum cukup data untuk interpretasi';
+      : earlyTrend
+        ? 'Perubahan awal teramati · belum alert'
+        : latestObservation?.status === 'available'
+          ? 'Dalam rentang baseline personal'
+          : deviation?.explanation_status === 'available'
+            ? 'Perubahan teramati · tinjau konteks'
+            : 'Belum cukup data untuk interpretasi';
   const hasObservation = Boolean(
-    deviation || (followUp?.status === 'requested' && factors.length),
+    latestObservation?.status === 'available'
+      || deviation
+      || followUp?.motion_evidence
+      || (followUp?.status === 'requested' && factors.length),
   );
-
+  const observationTime = latestObservation?.recorded_at
+    || (followUp?.status === 'requested'
+      ? followUp.peak_time || followUp.onset_time
+      : deviation?.occurred_at);
   return (
     <section className="panel observation-card">
       <div className="panel-heading">
@@ -321,34 +385,40 @@ function ObservationCard({ deviation, factors, followUp, onAskActivity }) {
           <div className="observation-time">
             <Clock3 size={14} />
             <span>
-              {formatDate(followUp?.status === 'requested'
-                ? followUp.peak_time || followUp.onset_time
-                : deviation?.occurred_at, { day: 'numeric', month: 'long', year: 'numeric' })}
-              {' · '}{formatTime(followUp?.status === 'requested'
-                ? followUp.peak_time || followUp.onset_time
-                : deviation?.occurred_at)}
+              {formatDate(observationTime, { day: 'numeric', month: 'long', year: 'numeric' })}
+              {' · '}{formatTime(observationTime)}
             </span>
-            {activity && <strong>Aktivitas: {activity}</strong>}
+            {activity && <strong>Aktivitas terukur: {activityLabel(activity)}</strong>}
           </div>
           {hr ? (
             <div className="observed-expected">
               <div>
-                <span>Terukur (HR)</span>
+                <span>Aktual · HR</span>
                 <strong>{number(hr.value, 0)} <small>{hr.unit || 'bpm'}</small></strong>
               </div>
               <div className="observed-divider"><span>vs</span></div>
               <div>
-                <span>Baseline aktivitas sama</span>
+                <span>Ekspektasi · baseline {activityLabel(activity || 'aktivitas sama')}</span>
                 <strong>{number(hr.baseline_mean, 0)} <small>{hr.unit || 'bpm'}</small></strong>
               </div>
               <div className="observed-delta">
                 Selisih {number(hr.delta_from_baseline ?? hr.delta, 1)} {hr.unit || 'bpm'} dari rerata pribadi
+                {hr.z_score == null ? '' : ` · z ${number(hr.z_score, 2)}`}
               </div>
             </div>
           ) : (
             <div className="notice notice-info observation-no-hr">
               <CircleHelp size={16} />
               <span>Nilai HR terukur dan baseline aktivitas yang sama belum tersedia untuk perbandingan ini.</span>
+            </div>
+          )}
+          {rmssd && (
+            <div className="motion-observation">
+              <HeartPulse size={16} />
+              <span>
+                RMSSD aktual {number(rmssd.value, 1)} ms · ekspektasi baseline {activityLabel(activity || 'aktivitas sama')} {number(rmssd.baseline_mean, 1)} ms
+                {rmssd.z_score == null ? '' : ` · z ${number(rmssd.z_score, 2)}`}
+              </span>
             </div>
           )}
           {motion && (
@@ -367,6 +437,36 @@ function ObservationCard({ deviation, factors, followUp, onAskActivity }) {
               </span>
             </div>
           )}
+          {movementMismatch && (
+            <div className="notice notice-warning observation-conflict">
+              <AlertCircle size={16} />
+              <span>Anda melaporkan istirahat/duduk, tetapi ACC terukur lebih tinggi dari baseline konteks tersebut. Ini adalah ketidakcocokan yang perlu diklarifikasi, bukan bukti pasti bahwa Anda bergerak.</span>
+            </div>
+          )}
+          {restingHrMismatch && (
+            <div className="notice notice-warning observation-conflict">
+              <AlertCircle size={16} />
+              <span>HR terukur lebih tinggi dari baseline saat Anda melaporkan istirahat/duduk. Ini ditampilkan sebagai perubahan yang perlu ditinjau, bukan diagnosis atau alert klinis.</span>
+            </div>
+          )}
+          {latestObservation?.status === 'available' && (
+            <div className="observation-distance">
+              <strong>
+                Jarak vektor dari baseline: {number(latestObservation.distance, 2)}
+              </strong>
+              {latestObservation.distance_to_reference_pct != null && (
+                <span>{number(latestObservation.distance_to_reference_pct, 0)}% dari ambang statistik awal</span>
+              )}
+              {latestObservation.distance_trend !== 'unavailable' && (
+                <span>Jarak {latestObservation.distance_trend === 'increasing'
+                  ? 'meningkat'
+                  : latestObservation.distance_trend === 'decreasing'
+                    ? 'menurun'
+                    : 'tetap'} dibanding segmen sebelumnya yang sebanding.</span>
+              )}
+              <small>Jarak dan persentase ini menunjukkan posisi statistik terhadap baseline personal; bukan skor risiko atau probabilitas.</small>
+            </div>
+          )}
           {conflictList.length > 0 && (
             <div className="notice notice-warning observation-conflict">
               <AlertCircle size={16} />
@@ -376,11 +476,15 @@ function ObservationCard({ deviation, factors, followUp, onAskActivity }) {
           {shouldAsk && (
             <div className="observation-resolution">
               <div>
-                <strong>Resolusi bukti · klarifikasi diperlukan</strong>
-                <p>Konfirmasi aktivitas dan gejala yang Anda rasakan agar sistem dapat membandingkan laporan dengan HR, ACC, serta baseline. Jawaban Anda tidak mengubah bacaan sensor.</p>
+                <strong>{followUp.motion_evidence
+                  ? 'ACC berbeda dari baseline · aktivitas perlu dikonfirmasi'
+                  : 'Resolusi bukti · klarifikasi diperlukan'}</strong>
+                <p>{followUp.motion_evidence
+                  ? 'Sinyal ACC meningkat dibanding baseline aktivitas yang sama. HR boleh tetap normal; konfirmasi apakah Anda duduk, bergerak, atau perangkat ikut bergerak agar konteksnya tidak salah dibaca.'
+                  : 'Konfirmasi aktivitas dan gejala yang Anda rasakan agar sistem dapat membandingkan laporan dengan HR, ACC, serta baseline. Jawaban Anda tidak mengubah bacaan sensor.'}</p>
               </div>
               <button className="button button-primary observation-confirm" onClick={onAskActivity} type="button">
-                Klarifikasi aktivitas & gejala
+                {followUp.motion_evidence ? 'Konfirmasi aktivitas' : 'Klarifikasi aktivitas & gejala'}
               </button>
             </div>
           )}
@@ -429,19 +533,37 @@ function SignalContributionCard({
   reportedRankings = [],
   profileRanking = [],
   reportedContext = null,
+  latestObservation = null,
 }) {
+  const displayedFactors = useMemo(() => factors.length
+    ? factors
+    : (latestObservation?.feature_contributions || []).map((factor) => {
+      const observation = latestObservation.features?.find((item) => (
+        item.baseline_key === factor.feature
+      ));
+      return {
+        ...factor,
+        label: observation?.label || factor.feature,
+        unit: observation?.unit || '',
+        value: observation?.value ?? factor.value,
+        baseline_mean: observation?.baseline_mean ?? factor.baseline_mean,
+        delta_from_baseline: observation?.delta_from_baseline ?? factor.delta,
+      };
+    }), [factors, latestObservation]);
   const contributors = useMemo(
-    () => factors
+    () => displayedFactors
       .filter((factor) => numberOrNull(factor.contribution_share) != null)
       .sort((first, second) => second.contribution_share - first.contribution_share)
       .slice(0, 5),
-    [factors],
+    [displayedFactors],
   );
 
   return (
     <section className="panel signal-contribution-card">
       <div className="panel-heading">
-        <div><h2>Kontribusi sinyal terhadap event</h2><p>Komponen yang membentuk jarak statistik dari baseline</p></div>
+        <div><h2>Kontribusi sinyal terhadap event</h2><p>{factors.length
+          ? 'Komponen pada event yang membentuk jarak statistik dari baseline'
+          : 'Kontribusi pada segmen terbaru yang tersedia; bukan penyebab event'}</p></div>
         <span className="panel-icon green-icon"><HeartPulse size={18} /></span>
       </div>
       {contributors.length ? (
@@ -903,6 +1025,7 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
   const isLinkRequired = status === 'link_required';
   const isInsufficient = !status || status === 'insufficient_data';
   const deviationExplanations = capar.deviation_explanations || [];
+  const latestObservation = capar.latest_observation || null;
   const followUp = pedagogy.follow_up || {};
   const matchedDeviation = followUp.status === 'requested'
     ? deviationExplanations.find((item) => isWithinTenMinutes(
@@ -913,12 +1036,21 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
   const deviation = matchedDeviation || (
     followUp.status === 'requested' ? null : deviationExplanations[0] || null
   );
+  const isLatestEvent = Boolean(
+    deviation
+    && latestObservation
+    && isWithinTenMinutes(deviation.occurred_at, latestObservation.recorded_at)
+  );
   const uncertainty = deviation?.reasoning_uncertainty
     || (followUp.status === 'requested' ? null : pedagogy.why?.reasoning_uncertainty);
   const factors = followUp.status === 'requested'
     ? followUp.main_factors || []
-    : deviation?.main_deviation_factors || pedagogy.why?.main_factors || [];
-  const motionFactor = factors.find((factor) => ['motion_index', 'motion_intensity'].includes(factor.feature));
+    : isLatestEvent
+      ? deviation?.main_deviation_factors || []
+      : [];
+  const motionFactor = followUp.motion_evidence
+    || factors.find((factor) => ['motion_index', 'motion_intensity'].includes(factor.feature))
+    || latestObservation?.features?.find((factor) => factor.feature === 'motion_index');
   const profileRanking = dashboard.profile?.profile?.personal_factor_ranking || [];
 
   async function submitContribution(contribution) {
@@ -1005,6 +1137,8 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
           deviation={deviation}
           factors={factors}
           followUp={followUp}
+          latestObservation={latestObservation}
+          eventIsLatest={isLatestEvent}
           onAskActivity={() => {
             setSubmitError('');
             setDialogOpen(true);
@@ -1015,7 +1149,8 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
           checkIns={dashboard.checkIns}
           eventTime={followUp.status === 'requested'
             ? followUp.peak_time || followUp.onset_time
-            : deviation?.occurred_at}
+            : deviation?.occurred_at || latestObservation?.recorded_at}
+          deviation={deviation}
           uncertainty={uncertainty}
         />
         <SignalContributionCard
@@ -1024,6 +1159,7 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
           profileRanking={profileRanking}
           reportedContext={deviation?.user_reported_context}
           reportedRankings={deviation?.user_reported_factor_ranking || []}
+          latestObservation={latestObservation}
         />
       </div>
       <BayesianReasoningCard

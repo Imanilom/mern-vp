@@ -635,24 +635,30 @@ context and a quality-accepted sensor activity label indicate opposite
 activity states; neither source is selected as authoritative. Missing context
 is treated as missing evidence, not conflicting evidence.
 
-`capar.pedagogy` provides the six patient-facing questions:
+The CAPAR response provides these patient-facing observation fields:
 
 1. `where_am_i`: current state relative to the matching personal multivariate
    baseline, including Mahalanobis distance and reference thresholds when a
    usable estimate exists.
-2. `what_changed`: current state, signed feature z-scores/deltas, recent trend,
+2. `latest_observation`: quality-gated current segment compared with its
+   mature baseline for the same activity and time period. It includes measured
+   and expected feature values, signed z-scores, Mahalanobis distance relative
+   to the statistical reference threshold, and direction versus the prior
+   comparable segment when available. The distance percentage is not a risk
+   probability, confidence score, or clinical alert.
+3. `what_changed`: current state, signed feature z-scores/deltas, recent trend,
    and multivariate deviation.
-3. `why`: Mahalanobis feature contribution decomposition, rule-based context
+4. `why`: Mahalanobis feature contribution decomposition, rule-based context
    attribution from the prior six hours, and matching population-level
    literature.
-4. `how_long`: latest episode and the k-of-m persistence summary (4 of the
+5. `how_long`: latest episode and the k-of-m persistence summary (4 of the
    latest 5 quality-gated windows with no more than 10 minutes between
    observations), including dwell time and deviation AUC.
-5. `recovery`: Mahalanobis distance trend/derivative, estimated recovery
+6. `recovery`: Mahalanobis distance trend/derivative, estimated recovery
    progress, time-to-recovery when available, and recorded relapse indicators.
-6. `action`: rule-based `green`, `yellow`, `orange`, or `red` patient guidance,
+7. `action`: rule-based `green`, `yellow`, `orange`, or `red` patient guidance,
    with reasons and the evidence-quality state.
-7. `follow_up`: a structured prompt for the app to ask after a personal
+8. `follow_up`: a structured prompt for the app to ask after a personal
    deviation. Moderate displacement asks about current symptoms and recent
    activity/context; strong displacement additionally asks which factors the
    patient thinks may be related, symptom timing, and optional notes. This is
@@ -666,7 +672,11 @@ is treated as missing evidence, not conflicting evidence.
    `POST /api/patient-app/check-ins` payload. The response's segment ID is
    verified against the authenticated patient's CAPAR data before saving.
    Patient-selected factors are subjective context, not algorithmically
-   established causes. The strong-displacement threshold is a statistical
+   established causes. A quality-gated acceleration (motion) value above a
+   mature, matching personal activity/time baseline can also request activity
+   clarification when HR and the overall Mahalanobis state remain within
+   baseline. This is contextual clarification, not a clinical alert or proof
+   of activity. The strong-displacement threshold is a statistical
    reference, not a clinical severity or emergency threshold.
 
 Deviation follow-up check-ins may also store a patient's reported
