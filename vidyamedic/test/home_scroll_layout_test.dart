@@ -158,6 +158,8 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.takeException(), isNull);
+    expect(find.text('VIDYAMEDIC'), findsOneWidget);
+    expect(find.text('RINGKASAN FISIOLOGIS'), findsOneWidget);
     expect(find.text('Monitoring wearable'), findsOneWidget);
     expect(find.text('Detak Jantung'), findsOneWidget);
     expect(find.text('HRV (RMSSD)'), findsOneWidget);

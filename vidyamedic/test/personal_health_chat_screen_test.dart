@@ -75,7 +75,13 @@ void main() {
     await tester.tap(find.text('Tanya AI').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Wawasan Personal'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text('Tanya AI'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows recovery shortcuts when personal data is missing',

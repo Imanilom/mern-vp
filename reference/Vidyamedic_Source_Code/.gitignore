@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+*.sqlite3
+*.sqlite3-*
+node_modules/
+.expo/
+.env
+.DS_Store

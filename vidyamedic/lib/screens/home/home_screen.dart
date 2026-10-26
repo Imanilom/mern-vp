@@ -518,6 +518,16 @@ class _PedagogyDashboard extends StatelessWidget {
     final triage = s.triageLevel;
     final caparStatus =
         (s.rawCaparInsights?['capar'] as Map<String, dynamic>?)?['status'];
+    final hour = DateTime.now().hour;
+    final greeting = hour < 11
+        ? 'Selamat pagi'
+        : hour < 15
+            ? 'Selamat siang'
+            : hour < 18
+                ? 'Selamat sore'
+                : 'Selamat malam';
+    final displayName =
+        s.userProfile.name.trim().isEmpty ? 'Anda' : s.userProfile.name.trim();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -531,16 +541,16 @@ class _PedagogyDashboard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'VidyaMedic',
+              'VIDYAMEDIC',
               style: AppTheme.font(
                   size: 18.5,
                   weight: FontWeight.w800,
                   color: AppTheme.primaryDark,
-                  letterSpacing: -0.3),
+                  letterSpacing: 0.8),
             ),
             const SizedBox(height: 1),
             Text(
-              'PEMANTAUAN KESEHATAN PERSONAL',
+              'PERSONAL HEALTH INTELLIGENCE',
               style: AppTheme.font(
                 size: 9,
                 weight: FontWeight.w700,
@@ -640,7 +650,7 @@ class _PedagogyDashboard extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Halo, ${s.userProfile.name} 👋',
+                                  '$greeting, $displayName',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTheme.font(
@@ -648,7 +658,7 @@ class _PedagogyDashboard extends StatelessWidget {
                                       weight: FontWeight.w800,
                                       color: AppTheme.textPrimary),
                                 ),
-                                DateLine(date: s.logDate),
+                                DateLine(date: DateTime.now()),
                               ],
                             ),
                           ),
@@ -659,8 +669,106 @@ class _PedagogyDashboard extends StatelessWidget {
                 ),
               ),
 
-              const WearableMonitoringCard(),
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.heroGradient,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'RINGKASAN FISIOLOGIS',
+                            style: TextStyle(
+                              color: Color(0xFFB7E7E2),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 9, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            s.hasCaparMetrics
+                                ? 'CAPAR tersedia'
+                                : 'Data terbatas',
+                            style: AppTheme.font(
+                              size: 9.5,
+                              weight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      s.hasCaparMetrics
+                          ? triage.title
+                          : 'Belum ada kesimpulan klinis',
+                      style: AppTheme.font(
+                        size: 18,
+                        weight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      s.hasCaparMetrics
+                          ? triage.description
+                          : 'Data fisiologis dan konteks personal masih dikumpulkan. '
+                              'Status ini bukan penilaian diagnosis.',
+                      style: AppTheme.font(
+                        size: 11.5,
+                        color: Colors.white.withValues(alpha: 0.86),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton.icon(
+                      onPressed: () => context
+                          .findAncestorStateOfType<_HomeScreenState>()
+                          ?._selectTab(1),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        backgroundColor: Colors.white.withValues(alpha: 0.12),
+                      ),
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                      label: const Text('Lihat data hari ini'),
+                    ),
+                  ],
+                ),
+              ),
+
               const WearableVitalsGrid(),
+              if (s.showActivityMovementPrompt) ...[
+                const SizedBox(height: 12),
+                _AccMovementAlertBanner(
+                  currentActivity: s.activity,
+                  suggestedActivity: s.suggestedActivity,
+                  isPostureChange: s.isPostureChangePrompt,
+                  analysis: s.movementAnalysis,
+                  onConfirm: () =>
+                      s.confirmActivityTransition(s.suggestedActivity),
+                  onDismiss: () => s.dismissActivityMovementPrompt(),
+                  onSelectOther: () => _showActivitySelectionModal(context, s),
+                ),
+              ],
+              const WearableMonitoringCard(),
               const PhysiologicalSummaryCard(),
 
               const ProfileSnapshotCard(),
@@ -692,21 +800,6 @@ class _PedagogyDashboard extends StatelessWidget {
                       height: 1.4,
                     ),
                   ),
-                ),
-              ],
-
-              // ACC Sudden Movement Alert Banner (Duduk -> Pergerakan ACC)
-              if (s.showActivityMovementPrompt) ...[
-                const SizedBox(height: 12),
-                _AccMovementAlertBanner(
-                  currentActivity: s.activity,
-                  suggestedActivity: s.suggestedActivity,
-                  isPostureChange: s.isPostureChangePrompt,
-                  analysis: s.movementAnalysis,
-                  onConfirm: () =>
-                      s.confirmActivityTransition(s.suggestedActivity),
-                  onDismiss: () => s.dismissActivityMovementPrompt(),
-                  onSelectOther: () => _showActivitySelectionModal(context, s),
                 ),
               ],
 
@@ -1411,7 +1504,9 @@ class _TodayOverviewTab extends StatelessWidget {
             Text(
               'Ringkasan hari ini',
               style: AppTheme.font(
-                  size: 17, weight: FontWeight.w800, color: AppTheme.primaryDark),
+                  size: 17,
+                  weight: FontWeight.w800,
+                  color: AppTheme.primaryDark),
             ),
             const SizedBox(height: 4),
             Text(

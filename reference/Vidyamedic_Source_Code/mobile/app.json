@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Vidyamedic Demo",
+    "slug": "vidyamedic-demo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {"supportsTablet": true, "bundleIdentifier": "com.example.vidyamedicdemo"},
+    "android": {"package": "com.example.vidyamedicdemo"}
+  }
+}

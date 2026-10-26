@@ -1,34 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Elegant green design system for VidyaMedic.
-/// Layout & component shapes follow mockup.pdf; the mockup's blue accent
-/// is replaced by a deep emerald palette per user request.
+/// Navy and teal design system based on the VIDYAMEDIC mobile mockup.
 class AppTheme {
-  // Brand greens & Emerald palette
-  static const Color primary = Color(0xFF0B7A5A); // Emerald (buttons, selected)
-  static const Color primaryDark = Color(0xFF064E3B); // Forest (headings accent)
-  static const Color primaryDeep = Color(0xFF043327); // Ultra deep forest
-  static const Color primaryLight = Color(0xFF34B38A); // Progress bar / accents
-  static const Color primarySoft = Color(0xFFE8F5EF); // Selected tile background
-  static const Color primaryContainer = Color(0xFFD3EEE2); // Badges / tonal button
-  static const Color accent = Color(0xFF10B981);
-  static const Color accentMint = Color(0xFF6EE7B7);
-  static const Color accentTeal = Color(0xFF14B8A6);
+  static const Color primary = Color(0xFF168C87);
+  static const Color primaryDark = Color(0xFF182B42);
+  static const Color primaryDeep = Color(0xFF142336);
+  static const Color primaryLight = Color(0xFF45B7AE);
+  static const Color primarySoft = Color(0xFFE8F6F3);
+  static const Color primaryContainer = Color(0xFFD2EBE7);
+  static const Color accent = Color(0xFF168C87);
+  static const Color accentMint = Color(0xFF73D0C4);
+  static const Color accentTeal = Color(0xFF168C87);
 
   // Neutrals & Surfaces
-  static const Color background = Color(0xFFF6F9F8);
+  static const Color background = Color(0xFFF3F7FA);
   static const Color surface = Colors.white;
   static const Color surfaceCard = Colors.white;
-  static const Color fieldFill = Color(0xFFF1F5F3);
-  static const Color border = Color(0xFFDAE4E0);
-  static const Color borderLight = Color(0xFFEAF0ED);
-  static const Color divider = Color(0xFFEEF3F0);
+  static const Color fieldFill = Color(0xFFF1F5F8);
+  static const Color border = Color(0xFFE1E9F0);
+  static const Color borderLight = Color(0xFFE7EDF2);
+  static const Color divider = Color(0xFFEEF2F6);
 
   // Text
-  static const Color textPrimary = Color(0xFF11221D);
-  static const Color textSecondary = Color(0xFF52655F);
-  static const Color textMuted = Color(0xFF90A39C);
+  static const Color textPrimary = Color(0xFF243A50);
+  static const Color textSecondary = Color(0xFF5E7086);
+  static const Color textMuted = Color(0xFF8798AA);
   static const Color textInverted = Colors.white;
 
   // Face / status colors
@@ -49,25 +46,25 @@ class AppTheme {
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF0B7A5A), Color(0xFF064E3B)],
+    colors: [Color(0xFF168C87), Color(0xFF126E74)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient heroGradient = LinearGradient(
-    colors: [Color(0xFF064E3B), Color(0xFF0F766E), Color(0xFF0B7A5A)],
+    colors: [Color(0xFF1B4055), Color(0xFF176F75), Color(0xFF168C87)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient cardGlowGradient = LinearGradient(
-    colors: [Color(0xFFFFFFFF), Color(0xFFF4FAF7)],
+    colors: [Color(0xFFFFFFFF), Color(0xFFF4F8FA)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
 
   static const LinearGradient accentMintGradient = LinearGradient(
-    colors: [Color(0xFF34B38A), Color(0xFF10B981)],
+    colors: [Color(0xFF45B7AE), Color(0xFF168C87)],
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
   );
@@ -75,7 +72,7 @@ class AppTheme {
   // Premium Multi-layer Shadows
   static List<BoxShadow> shadowSoft = [
     BoxShadow(
-      color: const Color(0xFF064E3B).withValues(alpha: 0.04),
+      color: const Color(0xFF182B42).withValues(alpha: 0.04),
       blurRadius: 10,
       offset: const Offset(0, 3),
     ),
@@ -88,7 +85,7 @@ class AppTheme {
 
   static List<BoxShadow> shadowCard = [
     BoxShadow(
-      color: const Color(0xFF064E3B).withValues(alpha: 0.06),
+      color: const Color(0xFF182B42).withValues(alpha: 0.06),
       blurRadius: 20,
       offset: const Offset(0, 8),
       spreadRadius: -2,
@@ -140,7 +137,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         iconTheme: const IconThemeData(color: textPrimary),
         titleTextStyle: font(size: 16.5, weight: FontWeight.w700, color: textPrimary),
       ),

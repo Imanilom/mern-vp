@@ -1273,7 +1273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Profil & Tata Kelola Medis',
+          'Profil Saya',
           style: AppTheme.font(
               size: 17, weight: FontWeight.w800, color: AppTheme.primaryDark),
         ),

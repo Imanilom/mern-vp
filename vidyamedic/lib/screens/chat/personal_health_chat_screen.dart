@@ -425,7 +425,7 @@ class _PersonalHealthChatScreenState extends State<PersonalHealthChatScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text(_isDoctorChat ? 'Wawasan Pasien' : 'Wawasan Personal'),
+        title: Text(_isDoctorChat ? 'Wawasan Pasien' : 'Tanya AI'),
         actions: [
           IconButton(
             tooltip: _useGemini
