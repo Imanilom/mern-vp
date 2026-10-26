@@ -278,6 +278,13 @@ export async function updatePatientAppProfile(req, res) {
   } = accountData;
   const updates = validateProfileUpdate(req.body);
   const profileUpdates = { ...updates };
+  const aiProcessingConsent = profileUpdates.ai_processing_consent;
+  delete profileUpdates.ai_processing_consent;
+  if (aiProcessingConsent) {
+    profileUpdates['ai_processing_consent.granted'] = aiProcessingConsent.granted;
+    profileUpdates['ai_processing_consent.recorded_at'] = new Date();
+    profileUpdates['ai_processing_consent.version'] = 'ai-health-processing-v1';
+  }
   const notificationPreferences = profileUpdates.notification_preferences;
   delete profileUpdates.notification_preferences;
   if (notificationPreferences) {
@@ -867,6 +874,62 @@ export async function linkPatientAppToCaparUser(req, res) {
 export async function getPatientAppCaparInsights(req, res) {
   const { account, accountId, accountScopes, accountType } = await getAccount(req);
   const now = new Date();
+  const profile = await findExistingPatientAppProfile(accountScopes);
+  if (profile?.ai_processing_consent?.granted !== true) {
+    res.json({
+      success: true,
+      data: {
+        generated_at: now,
+        timezone: 'UTC',
+        disclaimer: 'Analisis CAPAR dan Bayesian belum dijalankan karena persetujuan pemrosesan AI belum diberikan.',
+        capar: {
+          status: 'consent_required',
+          source: 'CAPAR analysis withheld pending explicit consent',
+          trajectory_24h: [],
+          trajectory_30d: [],
+          mahalanobis: [],
+          baseline_contexts: [],
+          polar_data: [],
+          episode_history: [],
+          deviation_explanations: [],
+          cognitive_memories: [],
+          data_inventory: {
+            baselines: 0,
+            segments_returned: 0,
+            polar_records_returned: 0,
+            episode_analyses_returned: 0,
+            anomaly_events_returned: 0,
+            cognitive_memories_returned: 0,
+          },
+          recovery: {
+            resolved_episodes_30d: 0,
+            median_recovery_minutes: null,
+            observed_episode_recovery_rate_pct: null,
+            recovery_rate_denominator: 0,
+          },
+          pedagogy: {},
+          reasoning_pipeline: {
+            probabilistic_posterior: {
+              status: 'consent_required',
+              reason: 'Persetujuan pemrosesan AI diperlukan sebelum analisis dijalankan.',
+              feature_keys: [],
+              individual_probability_exposed: false,
+            },
+          },
+        },
+        consent: {
+          required: true,
+          granted: false,
+        },
+        patient_context: {
+          patient_app_wearable_samples_used_by_capar: false,
+          polar_records_loaded_for_patient_app: false,
+          polar_records_used_for_current_mahalanobis: false,
+        },
+      },
+    });
+    return;
+  }
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const [latestCheckIn, recentEvents] = await Promise.all([
@@ -1392,6 +1455,9 @@ export async function getPatientAppCaparInsights(req, res) {
             feeling: eventFeedbackCheckIn.feeling || null,
             meal: eventFeedbackCheckIn.lifestyle?.meal ?? null,
             stress_level: eventFeedbackCheckIn.stress_level ?? null,
+            symptoms: eventFeedbackCheckIn.symptoms || [],
+            symptom_onset: eventFeedbackCheckIn.deviation_follow_up?.symptom_onset || null,
+            symptom_severity: eventFeedbackCheckIn.symptom_severity ?? null,
           }
           : null,
         mahalanobis: eventMahalanobis?.available
@@ -1475,6 +1541,11 @@ export async function getPatientAppCaparInsights(req, res) {
       followUp: deviationFollowUp,
       feedbackCheckIn,
       evidenceConflicts: latestDeviationExplanation?.evidence_conflicts || [],
+      profileContext: {
+        goal: profile.goal || null,
+        monitoring_priority: profile.monitoring_priority || null,
+        personal_factor_ranking: profile.personal_factor_ranking || [],
+      },
     });
 
     capar = {
@@ -3743,6 +3814,12 @@ function profileData(profile) {
     medication_reviewed: profile.medication_reviewed,
     data_sharing: profile.data_sharing,
     goal: profile.goal,
+    monitoring_priority: profile.monitoring_priority,
+    ai_processing_consent: profile.ai_processing_consent || {
+      granted: false,
+      recorded_at: null,
+      version: '',
+    },
     notification_preferences: profile.notification_preferences,
     wearable_provider: profile.wearable_provider,
     personal_factor_ranking: profile.personal_factor_ranking || [],

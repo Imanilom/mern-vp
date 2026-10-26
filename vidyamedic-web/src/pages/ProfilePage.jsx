@@ -37,6 +37,13 @@ export default function ProfilePage({ account, dashboard, onSave }) {
   const [newPersonalFactor, setNewPersonalFactor] = useState('');
   const [savingFactorRanking, setSavingFactorRanking] = useState(false);
   const [factorRankingMessage, setFactorRankingMessage] = useState('');
+  const [personalSettings, setPersonalSettings] = useState({
+    goal: 'daily_monitoring',
+    monitoring_priority: 'activity_rest',
+    ai_processing_consent: false,
+  });
+  const [savingPersonalSettings, setSavingPersonalSettings] = useState(false);
+  const [personalSettingsMessage, setPersonalSettingsMessage] = useState('');
   const profile = dashboard.profile?.profile || {};
   const capar = dashboard.insights?.capar || {};
   const baselines = capar.baseline?.contexts || [];
@@ -66,6 +73,11 @@ export default function ProfilePage({ account, dashboard, onSave }) {
       weight_kg: profile.weight_kg ?? '',
     });
     setPersonalFactorRanking(profile.personal_factor_ranking || []);
+    setPersonalSettings({
+      goal: profile.goal || INITIAL_PROFILE.goal,
+      monitoring_priority: profile.monitoring_priority || INITIAL_PROFILE.monitoring_priority,
+      ai_processing_consent: profile.ai_processing_consent?.granted === true,
+    });
   }, [dashboard.profile]);
 
   function change(key, value) {
@@ -86,7 +98,6 @@ export default function ProfilePage({ account, dashboard, onSave }) {
         blood_type: form.blood_type,
         emergency_contact_name: form.emergency_contact_name,
         emergency_contact_phone: form.emergency_contact_phone,
-        goal: form.goal,
         wearable_provider: form.wearable_provider,
       });
       setMessage('Profil berhasil disimpan.');
@@ -126,6 +137,25 @@ export default function ProfilePage({ account, dashboard, onSave }) {
       setFactorRankingMessage(error.message || 'Ranking faktor belum dapat disimpan.');
     } finally {
       setSavingFactorRanking(false);
+    }
+  }
+
+  async function savePersonalSettings() {
+    setSavingPersonalSettings(true);
+    setPersonalSettingsMessage('');
+    try {
+      await onSave({
+        goal: personalSettings.goal,
+        monitoring_priority: personalSettings.monitoring_priority,
+        ai_processing_consent: {
+          granted: personalSettings.ai_processing_consent,
+        },
+      });
+      setPersonalSettingsMessage('Tujuan, prioritas, dan persetujuan berhasil disimpan.');
+    } catch (error) {
+      setPersonalSettingsMessage(error.message || 'Preferensi belum dapat disimpan.');
+    } finally {
+      setSavingPersonalSettings(false);
     }
   }
 
@@ -193,15 +223,6 @@ export default function ProfilePage({ account, dashboard, onSave }) {
               </select>
             </label>
             <label>
-              Tujuan pemantauan
-              <select onChange={(event) => change('goal', event.target.value)} value={form.goal || 'daily_monitoring'}>
-                <option value="daily_monitoring">Pemantauan harian</option>
-                <option value="early_awareness">Kesadaran dini</option>
-                <option value="fitness">Kebugaran</option>
-                <option value="other">Lainnya</option>
-              </select>
-            </label>
-            <label>
               Kontak darurat
               <input onChange={(event) => change('emergency_contact_name', event.target.value)} placeholder="Nama kontak" value={form.emergency_contact_name || ''} />
             </label>
@@ -259,6 +280,99 @@ export default function ProfilePage({ account, dashboard, onSave }) {
             value={recovery.median_recovery_minutes ?? '—'}
           />
         </div>
+        <section className="panel profile-personal-settings">
+          <div className="panel-heading">
+            <div>
+              <h2>Riwayat & tujuan</h2>
+              <p>Preferensi untuk mengarahkan fokus penjelasan dan tindak lanjut personal.</p>
+            </div>
+            <span className="panel-icon"><Activity size={18} /></span>
+          </div>
+          <div className="profile-personal-settings-grid">
+            <label>
+              Tujuan pemantauan
+              <select
+                onChange={(event) => setPersonalSettings((current) => ({ ...current, goal: event.target.value }))}
+                value={personalSettings.goal}
+              >
+                <option value="patterns_recovery">Pola & recovery</option>
+                <option value="daily_monitoring">Pemantauan harian</option>
+                <option value="early_awareness">Kesadaran dini</option>
+                <option value="fitness">Kebugaran</option>
+                <option value="other">Lainnya</option>
+              </select>
+            </label>
+            <label>
+              Prioritas personal
+              <select
+                onChange={(event) => setPersonalSettings((current) => ({ ...current, monitoring_priority: event.target.value }))}
+                value={personalSettings.monitoring_priority}
+              >
+                <option value="activity_rest">Aktivitas & istirahat</option>
+                <option value="sleep_recovery">Tidur & pemulihan</option>
+                <option value="symptoms">Gejala yang dirasakan</option>
+                <option value="daily_patterns">Pola harian</option>
+                <option value="other">Lainnya</option>
+              </select>
+            </label>
+          </div>
+          <div className="profile-consent-row">
+            <label className="profile-consent-control">
+              <input
+                checked={personalSettings.ai_processing_consent}
+                onChange={(event) => setPersonalSettings((current) => ({
+                  ...current,
+                  ai_processing_consent: event.target.checked,
+                }))}
+                type="checkbox"
+              />
+              <span>
+                <strong>Persetujuan pemrosesan untuk analisis AI/CAPAR</strong>
+                <small>
+                  Izinkan pemrosesan segmen wearable, baseline, check-in, dan episode untuk deteksi dini serta reasoning Bayesian.
+                  Persetujuan dapat ditarik kapan saja; penarikan menghentikan analisis berikutnya.
+                </small>
+              </span>
+            </label>
+            <div className="profile-consent-status">
+              <span>Status</span>
+              <strong>{profile.ai_processing_consent?.granted === true ? 'Aktif' : 'Belum diberikan'}</strong>
+              {profile.ai_processing_consent?.recorded_at && (
+                <small>Terakhir diperbarui {new Intl.DateTimeFormat('id-ID', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }).format(new Date(profile.ai_processing_consent.recorded_at))}</small>
+              )}
+            </div>
+          </div>
+          <div className="detail-row profile-clinical-status">
+            <span>Interpretasi klinis</span><strong>Belum diverifikasi</strong>
+          </div>
+          <p className="baseline-footnote">
+            Tujuan dan prioritas membantu menyusun konteks penjelasan, bukan mengubah probabilitas/model Bayesian. Persetujuan ini mengendalikan analisis AI/CAPAR; data wearable dan check-in tetap dapat dicatat.
+          </p>
+          {personalSettingsMessage && (
+            <div className={personalSettingsMessage.includes('berhasil') ? 'form-success' : 'form-error'} role="status">
+              {personalSettingsMessage.includes('berhasil') ? <Check size={15} /> : <AlertCircle size={15} />}
+              {personalSettingsMessage}
+            </div>
+          )}
+          <div className="form-actions">
+            <span>Perubahan efektif setelah disimpan.</span>
+            <button
+              className="button button-primary"
+              disabled={savingPersonalSettings}
+              onClick={savePersonalSettings}
+              type="button"
+            >
+              {savingPersonalSettings ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}
+              {savingPersonalSettings ? 'Menyimpan...' : 'Simpan tujuan & persetujuan'}
+            </button>
+          </div>
+        </section>
         <section className="panel historical-panel profile-baseline-panel">
           <div className="panel-heading">
             <div><h2>Baseline fisiologis berdasarkan aktivitas</h2><p>Rerata HR, HRV, DFA α1, dan ACC per aktivitas/waktu berdasarkan statistik CAPAR.</p></div>

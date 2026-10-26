@@ -61,6 +61,11 @@ test('reasoning pipeline exposes real stages without inventing a posterior', () 
 
 test('reasoning pipeline reports Bayesian candidate validation without exposing probabilities', () => {
   const pipeline = buildPatientReasoningPipeline({
+    profileContext: {
+      goal: 'patterns_recovery',
+      monitoring_priority: 'activity_rest',
+      personal_factor_ranking: ['stress', 'meal'],
+    },
     bayesianModel: {
       status: 'validation_required',
       method: 'personal_gaussian_naive_bayes',
@@ -75,6 +80,12 @@ test('reasoning pipeline reports Bayesian candidate validation without exposing 
   assert.equal(pipeline.probabilistic_posterior.status, 'validation_required');
   assert.equal(pipeline.probabilistic_posterior.distribution, null);
   assert.equal(pipeline.probabilistic_posterior.individual_probability_exposed, false);
+  assert.deepEqual(pipeline.probabilistic_posterior.interpretation_context, {
+    goal: 'patterns_recovery',
+    monitoring_priority: 'activity_rest',
+    personal_factor_ranking: ['stress', 'meal'],
+    used_in_posterior: false,
+  });
   assert.equal('candidate_probability_internal' in pipeline.probabilistic_posterior, false);
   assert.equal(pipeline.stages.find((stage) => stage.stage_id === 'latent_state_estimation').posterior_probability, null);
 });

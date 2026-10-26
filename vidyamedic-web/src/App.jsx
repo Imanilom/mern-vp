@@ -92,20 +92,22 @@ export default function App() {
     ];
     await api.createCheckIn({
       recorded_at: new Date().toISOString(),
-      activity: contribution.wasMoving ? 'other' : 'sitting',
+      activity: contribution.wasMoving ? contribution.movementType : 'sitting',
       feeling: contribution.feeling || null,
       ...(contribution.stressLevel ? { stress_level: contribution.stressLevel } : {}),
+      ...(contribution.symptomSeverity ? { symptom_severity: contribution.symptomSeverity } : {}),
       ...(contribution.meal !== 'unknown' ? {
         lifestyle: { meal: contribution.meal === 'yes' },
       } : {}),
-      symptoms: [],
+      symptoms: contribution.symptoms || [],
       deviation_follow_up: {
         segment_id: segmentId,
         perceived_factors: perceivedFactors.length ? perceivedFactors : ['no_known_factor'],
         ranked_context_factors: contribution.rankedFactors,
+        ...(contribution.symptomOnset ? { symptom_onset: contribution.symptomOnset } : {}),
         note: contribution.wasMoving
-          ? 'Pengguna mengonfirmasi sedang bergerak saat sinyal gerak wearable meningkat.'
-          : 'Pengguna mengonfirmasi tidak sedang bergerak meskipun sinyal gerak wearable meningkat.',
+          ? `Pengguna mengonfirmasi aktivitas ${contribution.movementType} saat event terdeteksi.`
+          : 'Pengguna mengonfirmasi sedang duduk/istirahat saat event terdeteksi.',
       },
     });
     setToast('Konfirmasi kontribusi tersimpan sebagai masukan pengguna untuk CAPAR.');
@@ -162,6 +164,7 @@ export default function App() {
     pageContent = (
       <EarlyDetectionPage
         dashboard={dashboard}
+        onNavigate={setActive}
         onContributionConfirmation={submitContributionConfirmation}
       />
     );

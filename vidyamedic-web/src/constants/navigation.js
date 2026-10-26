@@ -28,6 +28,7 @@ export const INITIAL_PROFILE = {
   emergency_contact_name: '',
   emergency_contact_phone: '',
   goal: 'daily_monitoring',
+  monitoring_priority: 'activity_rest',
   wearable_provider: 'none',
 };
 

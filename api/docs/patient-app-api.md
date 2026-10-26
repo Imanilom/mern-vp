@@ -46,7 +46,9 @@ Profile patch fields: `date_of_birth` (ISO date or null), `timezone` (IANA, e.g.
 `emergency_contact_name`, `emergency_contact_phone`,
 `clinical_note`, `medications` (`[{ "name", "dosage", "schedule" }]`),
 `medication_reviewed`, `allergies_reviewed`, `goal`
-(`daily_monitoring`, `early_awareness`, `fitness`, `other`),
+(`daily_monitoring`, `patterns_recovery`, `early_awareness`, `fitness`, `other`),
+`monitoring_priority` (`activity_rest`, `sleep_recovery`, `symptoms`,
+`daily_patterns`, `other`), `ai_processing_consent` (`{ "granted": boolean }`),
 `wearable_provider` (`none`, `polar_h10`, `apple_watch`, `garmin`, `fitbit`,
 `other`), and `notification_preferences` (`morning_summary`,
 `morning_summary_time`, `important_alerts`, `health_education`, `quiet_start`,
@@ -56,6 +58,14 @@ timezone (or `Asia/Jakarta` if no timezone is set). Enabling it also requires
 the user's device notification permission.
 `data_sharing` records explicit opt-in flags for clinician or family sharing;
 both default to `false`.
+AI/CAPAR processing consent defaults to `false`. The API records the server-side
+consent timestamp and version when the user grants or withdraws consent.
+`GET /api/patient-app/capar-insights` returns `capar.status: "consent_required"`
+and does not load or analyze CAPAR data until explicit consent is granted.
+Withdrawing consent immediately blocks subsequent CAPAR insight analysis requests;
+wearable and check-in recording remains available. Monitoring goals and
+priorities are explanatory preferences only and are not Bayesian model features
+or evidence.
 
 The production API base URL is `https://api.vidyamedic.my.id/api`. Browser
 origins allowed by the API are the Vidyamedic web domains

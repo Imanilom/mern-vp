@@ -290,13 +290,9 @@ function ObservationCard({ deviation, factors, followUp, onAskActivity }) {
   const conflictList = deviation?.evidence_conflicts || [];
   const contexts = deviation?.temporally_associated_context || [];
   const activity = deviation?.activity || contexts.find((item) => item.activity)?.activity;
-  const motionDelta = numberOrNull(motion?.delta_from_baseline ?? motion?.delta);
   const motionIsOutsideBaseline = ['mild', 'significant'].includes(motion?.deviation_level);
   const shouldAsk = followUp?.status === 'requested'
-    && followUp?.triggered_by_segment_id
-    && (numberOrNull(hr?.delta_from_baseline ?? hr?.delta) || 0) > 0
-    && motionDelta > 0
-    && motionIsOutsideBaseline;
+    && Boolean(followUp?.triggered_by_segment_id);
   const alertClassification = String(deviation?.classification || '').toLowerCase() === 'alert';
   const candidate = followUp?.status === 'requested'
     || String(deviation?.state || '').toLowerCase().includes('candidate')
@@ -378,14 +374,42 @@ function ObservationCard({ deviation, factors, followUp, onAskActivity }) {
             </div>
           )}
           {shouldAsk && (
-            <button className="button button-primary observation-confirm" onClick={onAskActivity} type="button">
-              Konfirmasi kontribusi
-            </button>
+            <div className="observation-resolution">
+              <div>
+                <strong>Resolusi bukti · klarifikasi diperlukan</strong>
+                <p>Konfirmasi aktivitas dan gejala yang Anda rasakan agar sistem dapat membandingkan laporan dengan HR, ACC, serta baseline. Jawaban Anda tidak mengubah bacaan sensor.</p>
+              </div>
+              <button className="button button-primary observation-confirm" onClick={onAskActivity} type="button">
+                Klarifikasi aktivitas & gejala
+              </button>
+            </div>
           )}
-          {factors.length > 0 && !shouldAsk && followUp?.status === 'requested' && (
-            <p className="baseline-footnote">
-              CAPAR meminta tindak lanjut. Jawab di aplikasi Vidyamedic untuk mengirim respons lengkap yang terhubung ke segmen.
-            </p>
+          {followUp?.status === 'already_answered' && (
+            <div className="observation-resolution answered">
+              <strong>Klarifikasi sudah tercatat</strong>
+              <p>Masukan Anda telah ditautkan ke event ini dan tersedia sebagai konteks laporan, terpisah dari hasil sensor.</p>
+            </div>
+          )}
+          {deviation?.user_reported_context && (
+            <div className="observation-user-feedback">
+              <strong>Klarifikasi pengguna</strong>
+              <span>Aktivitas: {activityLabel(deviation.user_reported_context.activity || 'belum dicatat')}</span>
+              {deviation.user_reported_context.symptoms?.length > 0 && (
+                <span>Gejala: {deviation.user_reported_context.symptoms.map(symptomLabel).join(', ')}</span>
+              )}
+              {deviation.user_reported_context.symptom_onset && (
+                <span>Waktu gejala: {deviation.user_reported_context.symptom_onset.replaceAll('_', ' ')}</span>
+              )}
+              {deviation.user_reported_context.feeling && (
+                <span>Mood: {deviation.user_reported_context.feeling.replaceAll('_', ' ')}</span>
+              )}
+              {deviation.user_reported_context.stress_level != null && (
+                <span>Stres: {deviation.user_reported_context.stress_level}/3</span>
+              )}
+              {deviation.user_reported_context.meal != null && (
+                <span>Makan: {deviation.user_reported_context.meal ? 'ya' : 'tidak'}</span>
+              )}
+            </div>
           )}
         </>
       ) : (
@@ -516,7 +540,7 @@ function SignalContributionCard({
   );
 }
 
-function BayesianReasoningCard({ model = {} }) {
+function BayesianReasoningCard({ model = {}, profile = {} }) {
   const statusLabel = model.status === 'validation_required'
     ? 'Model kandidat · validasi diperlukan'
     : model.status === 'insufficient_data'
@@ -525,6 +549,29 @@ function BayesianReasoningCard({ model = {} }) {
   const training = model.training_samples || {};
   const validation = model.validation_samples || {};
   const validationMetrics = model.validation || {};
+  const goalLabels = {
+    patterns_recovery: 'Pola & recovery',
+    daily_monitoring: 'Pemantauan harian',
+    early_awareness: 'Kesadaran dini',
+    fitness: 'Kebugaran',
+    other: 'Lainnya',
+  };
+  const priorityLabels = {
+    activity_rest: 'Aktivitas & istirahat',
+    sleep_recovery: 'Tidur & pemulihan',
+    symptoms: 'Gejala',
+    daily_patterns: 'Pola harian',
+    other: 'Lainnya',
+  };
+  const profileContext = model.interpretation_context || profile;
+  const factorLabels = {
+    mood: 'Mood',
+    meal: 'Makan',
+    stress: 'Stres',
+    physical_activity: 'Aktivitas fisik',
+    sleep: 'Tidur',
+    other: 'Faktor lain',
+  };
 
   return (
     <section className="panel bayesian-reasoning-card">
@@ -534,6 +581,15 @@ function BayesianReasoningCard({ model = {} }) {
           <p>Model kandidat berbasis segmen CAPAR berlabel dan baseline aktivitas/waktu personal</p>
         </div>
         <span className="quality-state">{statusLabel}</span>
+      </div>
+      <div className="bayesian-profile-context">
+        <strong>Konteks tujuan personal</strong>
+        <span>Tujuan: {goalLabels[profileContext.goal] || 'Belum dipilih'}</span>
+        <span>Prioritas: {priorityLabels[profileContext.monitoring_priority] || 'Belum dipilih'}</span>
+        <span>Faktor personal: {(profileContext.personal_factor_ranking || [])
+          .map((factor) => factorLabels[factor] || factor.replaceAll('_', ' '))
+          .join(' → ') || 'Belum diurutkan'}</span>
+        <small>Preferensi ini membantu memberi konteks pada penjelasan, tetapi tidak menjadi fitur, prior, likelihood, atau bukti untuk menghitung posterior Bayesian.</small>
       </div>
       {model.status ? (
         <>
@@ -570,9 +626,13 @@ function BayesianReasoningCard({ model = {} }) {
 
 function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, motion }) {
   const [wasMoving, setWasMoving] = useState(null);
+  const [movementType, setMovementType] = useState('');
   const [feeling, setFeeling] = useState('');
   const [meal, setMeal] = useState('unknown');
   const [stressLevel, setStressLevel] = useState('');
+  const [symptoms, setSymptoms] = useState([]);
+  const [symptomOnset, setSymptomOnset] = useState('unknown');
+  const [symptomSeverity, setSymptomSeverity] = useState('');
   const [rankedFactors, setRankedFactors] = useState([]);
   const availableFactors = [
     ...(feeling ? ['mood'] : []),
@@ -585,6 +645,11 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
     setRankedFactors((current) => current.includes(factor)
       ? current.filter((item) => item !== factor)
       : [...current, factor]);
+  }
+  function toggleSymptom(symptom) {
+    setSymptoms((current) => current.includes(symptom)
+      ? current.filter((item) => item !== symptom)
+      : [...current, symptom]);
   }
 
   return (
@@ -609,9 +674,8 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
         <span className="eyebrow">KONFIRMASI KONTRIBUSI</span>
         <h2 id="activity-dialog-title">Apa yang Anda alami saat event ini?</h2>
         <p>
-          Sinyal ACC berada di atas baseline aktivitas personal pada event ini.
-          Apakah Anda memang sedang bergerak? Jawaban Anda digunakan untuk memeriksa kecocokan konteks,
-          bukan untuk mengubah hasil pengukuran sensor.
+          Klarifikasi aktivitas dan gejala pada waktu observasi ini. Jawaban Anda membantu menilai kecocokan konteks
+          dengan HR, ACC, dan baseline; jawaban tidak mengubah hasil pengukuran sensor.
         </p>
         {motion && (
           <div className="notice notice-info activity-motion-evidence">
@@ -645,6 +709,19 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
               Tidak, istirahat / duduk
             </button>
           </div>
+          {wasMoving === true && (
+            <label className="contribution-activity-type">
+              Jenis aktivitas
+              <select value={movementType} onChange={(event) => setMovementType(event.target.value)}>
+                <option value="">Pilih aktivitas</option>
+                <option value="walking">Berjalan</option>
+                <option value="running">Berlari</option>
+                <option value="exercise">Olahraga</option>
+                <option value="work">Bekerja sambil bergerak</option>
+                <option value="other">Aktivitas lain</option>
+              </select>
+            </label>
+          )}
         </fieldset>
         <div className="contribution-input-grid">
           <label>Mood
@@ -672,6 +749,48 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
             </select>
           </label>
         </div>
+        <fieldset className="contribution-fieldset">
+          <legend>Gejala pada sekitar waktu event (opsional)</legend>
+          <div className="contribution-choice-row">
+            {[
+              ['palpitations', 'Jantung berdebar'],
+              ['breathlessness', 'Sesak napas'],
+              ['chest_pain', 'Nyeri dada'],
+              ['dizziness', 'Pusing'],
+              ['fatigue', 'Kelelahan'],
+              ['other', 'Gejala lain'],
+            ].map(([symptom, label]) => (
+              <label className="contribution-factor-option" key={symptom}>
+                <input
+                  checked={symptoms.includes(symptom)}
+                  onChange={() => toggleSymptom(symptom)}
+                  type="checkbox"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          {symptoms.length > 0 && (
+            <div className="contribution-input-grid">
+              <label>Gejala mulai dirasakan
+                <select value={symptomOnset} onChange={(event) => setSymptomOnset(event.target.value)}>
+                  <option value="before_deviation">Sebelum perubahan</option>
+                  <option value="around_deviation">Sekitar waktu perubahan</option>
+                  <option value="after_deviation">Setelah perubahan</option>
+                  <option value="unknown">Tidak yakin</option>
+                </select>
+              </label>
+              <label>Tingkat gejala (opsional)
+                <select value={symptomSeverity} onChange={(event) => setSymptomSeverity(event.target.value)}>
+                  <option value="">Tidak diukur</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
+                    <option key={level} value={level}>{level} / 10</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+        </fieldset>
         {availableFactors.length > 0 && (
           <fieldset className="contribution-fieldset">
             <legend>Urutkan faktor yang menurut Anda paling berkontribusi</legend>
@@ -747,12 +866,16 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
         <div className="activity-dialog-actions">
           <button
             className="button button-primary"
-            disabled={saving || wasMoving == null}
+            disabled={saving || wasMoving == null || (wasMoving && !movementType)}
             onClick={() => onSubmit({
               wasMoving,
+              movementType: wasMoving ? movementType : '',
               feeling,
               meal,
               stressLevel: stressLevel ? Number(stressLevel) : null,
+              symptoms,
+              symptomOnset: symptoms.length ? symptomOnset : null,
+              symptomSeverity: symptomSeverity ? Number(symptomSeverity) : null,
               rankedFactors: effectiveRankedFactors,
             })}
             type="button"
@@ -766,7 +889,7 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
   );
 }
 
-export default function EarlyDetectionPage({ dashboard, onContributionConfirmation }) {
+export default function EarlyDetectionPage({ dashboard, onContributionConfirmation, onNavigate }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -776,6 +899,7 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
   const recovery = capar.recovery || {};
   const redFlags = pedagogy.red_flags || {};
   const status = capar.status;
+  const isConsentRequired = status === 'consent_required';
   const isLinkRequired = status === 'link_required';
   const isInsufficient = !status || status === 'insufficient_data';
   const deviationExplanations = capar.deviation_explanations || [];
@@ -828,6 +952,24 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
           <span>Akun CAPAR belum terhubung. Hubungkan akun melalui Profil atau aplikasi Vidyamedic agar riwayat CAPAR dapat ditampilkan.</span>
         </div>
       )}
+      {isConsentRequired && (
+        <section className="panel consent-required-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Persetujuan pemrosesan AI diperlukan</h2>
+              <p>CAPAR, deteksi dini, dan reasoning Bayesian belum dijalankan untuk akun ini.</p>
+            </div>
+            <span className="panel-icon"><ShieldCheck size={18} /></span>
+          </div>
+          <p>
+            Buka Profil Kesehatan untuk meninjau dan menyimpan persetujuan pemrosesan.
+            Data wearable dan check-in tetap dapat dicatat; persetujuan ini hanya mengaktifkan analisis AI/CAPAR.
+          </p>
+          <button className="button button-primary" onClick={() => onNavigate?.('profil')} type="button">
+            Tinjau persetujuan
+          </button>
+        </section>
+      )}
       {isInsufficient && !isLinkRequired && (
         <div className="notice notice-info">
           <CircleHelp size={18} />
@@ -844,7 +986,7 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
         </div>
       )}
       <div className="detection-banner">
-        <div className={`detection-emblem ${isInsufficient || isLinkRequired ? 'muted' : ''}`}>
+        <div className={`detection-emblem ${isInsufficient || isLinkRequired || isConsentRequired ? 'muted' : ''}`}>
           <ShieldCheck size={28} />
         </div>
         <div>
@@ -857,6 +999,7 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
           {formatDate(dashboard.insights?.generated_at, { day: 'numeric', month: 'short', year: 'numeric' })}
         </span>
       </div>
+      {!isConsentRequired && <>
       <div className="content-grid detection-grid">
         <ObservationCard
           deviation={deviation}
@@ -883,7 +1026,10 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
           reportedRankings={deviation?.user_reported_factor_ranking || []}
         />
       </div>
-      <BayesianReasoningCard model={capar.reasoning_pipeline?.probabilistic_posterior} />
+      <BayesianReasoningCard
+        model={capar.reasoning_pipeline?.probabilistic_posterior}
+        profile={dashboard.profile?.profile || {}}
+      />
       <div className="content-grid detection-grid">
         <section className="panel">
           <div className="panel-heading">
@@ -934,6 +1080,7 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
         </section>
       </div>
       <HistoricalDetails capar={capar} checkIns={dashboard.checkIns} />
+      </>}
       {dialogOpen && (
         <ContributionConfirmationDialog
           error={submitError}

@@ -303,6 +303,39 @@ test('profile stores a unique ordered ranking of supported personal factors', ()
   );
 });
 
+test('profile validates preferences and explicit AI processing consent', () => {
+  assert.deepEqual(
+    validateProfileUpdate({
+      goal: 'patterns_recovery',
+      monitoring_priority: 'activity_rest',
+      ai_processing_consent: { granted: true },
+    }),
+    {
+      goal: 'patterns_recovery',
+      monitoring_priority: 'activity_rest',
+      ai_processing_consent: { granted: true },
+    },
+  );
+  assert.deepEqual(
+    validateProfileUpdate({ ai_processing_consent: { granted: false } }),
+    { ai_processing_consent: { granted: false } },
+  );
+  assert.throws(
+    () => validateProfileUpdate({ monitoring_priority: 'clinical_diagnosis' }),
+    { statusCode: 400 },
+  );
+  assert.throws(
+    () => validateProfileUpdate({ ai_processing_consent: { granted: 'yes' } }),
+    { statusCode: 400 },
+  );
+  assert.throws(
+    () => validateProfileUpdate({
+      ai_processing_consent: { granted: true, recorded_at: new Date().toISOString() },
+    }),
+    { statusCode: 400 },
+  );
+});
+
 test('profile validates the morning summary reminder time', () => {
   assert.deepEqual(
     validateProfileUpdate({

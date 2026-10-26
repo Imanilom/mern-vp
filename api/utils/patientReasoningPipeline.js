@@ -25,6 +25,7 @@ export function buildPatientReasoningPipeline({
   followUp = null,
   feedbackCheckIn = null,
   evidenceConflicts = [],
+  profileContext = {},
 } = {}) {
   const features = latestSegment?.features || {};
   const availableFeatures = Object.keys(features).filter(
@@ -96,6 +97,12 @@ export function buildPatientReasoningPipeline({
       training_samples: bayesianModel?.training_samples || { stable: 0, deviation: 0 },
       validation_samples: bayesianModel?.validation_samples || { stable: 0, deviation: 0 },
       validation: bayesianModel?.validation || null,
+      interpretation_context: {
+        goal: profileContext.goal || null,
+        monitoring_priority: profileContext.monitoring_priority || null,
+        personal_factor_ranking: profileContext.personal_factor_ranking || [],
+        used_in_posterior: false,
+      },
       individual_probability_exposed: false,
       validation_gate: 'External calibration and governance approval are required before any probability is shown.',
     },

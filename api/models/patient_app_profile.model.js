@@ -56,8 +56,18 @@ const PatientAppProfileSchema = new mongoose.Schema(
     },
     goal: {
       type: String,
-      enum: ['daily_monitoring', 'early_awareness', 'fitness', 'other'],
+      enum: ['daily_monitoring', 'patterns_recovery', 'early_awareness', 'fitness', 'other'],
       default: 'daily_monitoring',
+    },
+    monitoring_priority: {
+      type: String,
+      enum: ['activity_rest', 'sleep_recovery', 'symptoms', 'daily_patterns', 'other'],
+      default: 'activity_rest',
+    },
+    ai_processing_consent: {
+      granted: { type: Boolean, default: false },
+      recorded_at: { type: Date, default: null },
+      version: { type: String, trim: true, maxlength: 80, default: '' },
     },
     notification_preferences: {
       morning_summary: { type: Boolean, default: false },

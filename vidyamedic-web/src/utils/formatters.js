@@ -33,6 +33,7 @@ export function getStatusLabel(status) {
   const labels = {
     available: 'Data CAPAR tersedia',
     insufficient_data: 'Data belum cukup',
+    consent_required: 'Persetujuan AI diperlukan',
     link_required: 'Akun CAPAR belum tertaut',
     recovered: 'Pemulihan tercatat',
     recovering: 'Dalam pemantauan',

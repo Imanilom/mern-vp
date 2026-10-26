@@ -18,6 +18,8 @@ const profileFields = new Set([
   'medication_reviewed',
   'data_sharing',
   'goal',
+  'monitoring_priority',
+  'ai_processing_consent',
   'notification_preferences',
   'wearable_provider',
   'personal_factor_ranking',
@@ -217,9 +219,30 @@ export function validateProfileUpdate(body) {
     });
   }
   if ('goal' in body) {
-    const goals = ['daily_monitoring', 'early_awareness', 'fitness', 'other'];
+    const goals = ['daily_monitoring', 'patterns_recovery', 'early_awareness', 'fitness', 'other'];
     if (!goals.includes(body.goal)) throw errorHandler(400, `goal harus salah satu dari: ${goals.join(', ')}.`);
     result.goal = body.goal;
+  }
+  if ('monitoring_priority' in body) {
+    const priorities = ['activity_rest', 'sleep_recovery', 'symptoms', 'daily_patterns', 'other'];
+    if (!priorities.includes(body.monitoring_priority)) {
+      throw errorHandler(400, `monitoring_priority harus salah satu dari: ${priorities.join(', ')}.`);
+    }
+    result.monitoring_priority = body.monitoring_priority;
+  }
+  if ('ai_processing_consent' in body) {
+    requireObject(body.ai_processing_consent, 'ai_processing_consent');
+    rejectUnknownFields(
+      body.ai_processing_consent,
+      new Set(['granted']),
+      'Field ai_processing_consent',
+    );
+    if (typeof body.ai_processing_consent.granted !== 'boolean') {
+      throw errorHandler(400, 'ai_processing_consent.granted harus berupa boolean.');
+    }
+    result.ai_processing_consent = {
+      granted: body.ai_processing_consent.granted,
+    };
   }
   if ('data_sharing' in body) {
     requireObject(body.data_sharing, 'data_sharing');
