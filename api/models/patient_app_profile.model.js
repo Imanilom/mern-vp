@@ -72,6 +72,13 @@ const PatientAppProfileSchema = new mongoose.Schema(
       enum: ['none', 'polar_h10', 'apple_watch', 'garmin', 'fitbit', 'other'],
       default: 'none',
     },
+    personal_factor_ranking: {
+      type: [{
+        type: String,
+        enum: ['mood', 'meal', 'stress', 'physical_activity', 'sleep', 'other'],
+      }],
+      default: [],
+    },
   },
   { timestamps: true, versionKey: false }
 );

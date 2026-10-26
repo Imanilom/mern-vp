@@ -1,25 +1,42 @@
 import { useEffect, useState } from 'react';
 import {
+  ArrowDown,
+  ArrowUp,
   AlertCircle,
   Check,
   LoaderCircle,
   LockKeyhole,
   Activity,
   Layers3,
+  ListOrdered,
+  Plus,
   ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 import { INITIAL_PROFILE } from '../constants/navigation';
 import SectionHeading from '../components/SectionHeading';
 import { getInitial, numberOrNull } from '../utils/formatters';
 import DataTable from '../components/DataTable';
 import MetricCard from '../components/MetricCard';
-import PersonalFactorRanking from '../components/PersonalFactorRanking';
 import { describeMotionBaseline } from '../utils/baselineObservations';
+
+const PERSONAL_FACTORS = [
+  { value: 'mood', label: 'Mood' },
+  { value: 'meal', label: 'Makan' },
+  { value: 'stress', label: 'Stres' },
+  { value: 'physical_activity', label: 'Aktivitas fisik' },
+  { value: 'sleep', label: 'Tidur' },
+  { value: 'other', label: 'Faktor lain' },
+];
 
 export default function ProfilePage({ account, dashboard, onSave }) {
   const [form, setForm] = useState(INITIAL_PROFILE);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [personalFactorRanking, setPersonalFactorRanking] = useState([]);
+  const [newPersonalFactor, setNewPersonalFactor] = useState('');
+  const [savingFactorRanking, setSavingFactorRanking] = useState(false);
+  const [factorRankingMessage, setFactorRankingMessage] = useState('');
   const profile = dashboard.profile?.profile || {};
   const capar = dashboard.insights?.capar || {};
   const baselines = capar.baseline?.contexts || [];
@@ -48,6 +65,7 @@ export default function ProfilePage({ account, dashboard, onSave }) {
       height_cm: profile.height_cm ?? '',
       weight_kg: profile.weight_kg ?? '',
     });
+    setPersonalFactorRanking(profile.personal_factor_ranking || []);
   }, [dashboard.profile]);
 
   function change(key, value) {
@@ -76,6 +94,38 @@ export default function ProfilePage({ account, dashboard, onSave }) {
       setMessage(error.message || 'Profil belum dapat disimpan.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  function addPersonalFactor() {
+    if (!newPersonalFactor || personalFactorRanking.includes(newPersonalFactor)) return;
+    setPersonalFactorRanking((current) => [...current, newPersonalFactor]);
+    setNewPersonalFactor('');
+    setFactorRankingMessage('');
+  }
+
+  function movePersonalFactor(factor, offset) {
+    setPersonalFactorRanking((current) => {
+      const index = current.indexOf(factor);
+      const target = index + offset;
+      if (index < 0 || target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+    setFactorRankingMessage('');
+  }
+
+  async function savePersonalFactorRanking() {
+    setSavingFactorRanking(true);
+    setFactorRankingMessage('');
+    try {
+      await onSave({ personal_factor_ranking: personalFactorRanking });
+      setFactorRankingMessage('Ranking faktor personal berhasil disimpan.');
+    } catch (error) {
+      setFactorRankingMessage(error.message || 'Ranking faktor belum dapat disimpan.');
+    } finally {
+      setSavingFactorRanking(false);
     }
   }
 
@@ -224,7 +274,105 @@ export default function ProfilePage({ account, dashboard, onSave }) {
             Rerata ACC menggambarkan gerak yang terekam sensor pada baseline aktivitas tersebut. Label observasi membandingkan ACC antar-konteks baseline milik Anda; ACC tidak memastikan jenis gerak atau aktivitas dan dapat dipengaruhi posisi perangkat serta kualitas sensor.
           </p>
         </section>
-        <PersonalFactorRanking checkIns={dashboard.checkIns || []} />
+        <section className="panel personal-factor-editor">
+          <div className="panel-heading">
+            <div>
+              <h2>Ranking faktor personal</h2>
+              <p>Atur faktor yang menurut Anda paling berpengaruh untuk ditampilkan bersama kontribusi sinyal AI.</p>
+            </div>
+            <span className="panel-icon"><ListOrdered size={18} /></span>
+          </div>
+          <div className="personal-factor-editor-add">
+            <label htmlFor="personal-factor-select">Tambah faktor</label>
+            <select
+              id="personal-factor-select"
+              onChange={(event) => setNewPersonalFactor(event.target.value)}
+              value={newPersonalFactor}
+            >
+              <option value="">Pilih faktor</option>
+              {PERSONAL_FACTORS
+                .filter((factor) => !personalFactorRanking.includes(factor.value))
+                .map((factor) => (
+                  <option key={factor.value} value={factor.value}>{factor.label}</option>
+                ))}
+            </select>
+            <button
+              className="button button-light"
+              disabled={!newPersonalFactor}
+              onClick={addPersonalFactor}
+              type="button"
+            >
+              <Plus size={15} /> Tambah
+            </button>
+          </div>
+          {personalFactorRanking.length ? (
+            <ol className="personal-factor-edit-list">
+              {personalFactorRanking.map((factor, index) => (
+                <li key={factor}>
+                  <span className="personal-factor-rank">{index + 1}</span>
+                  <strong>{PERSONAL_FACTORS.find((item) => item.value === factor)?.label || factor}</strong>
+                  <div>
+                    <button
+                      aria-label={`Naikkan ${factor} dalam ranking`}
+                      className="icon-button factor-rank-button"
+                      disabled={index === 0}
+                      onClick={() => movePersonalFactor(factor, -1)}
+                      type="button"
+                    >
+                      <ArrowUp size={14} />
+                    </button>
+                    <button
+                      aria-label={`Turunkan ${factor} dalam ranking`}
+                      className="icon-button factor-rank-button"
+                      disabled={index === personalFactorRanking.length - 1}
+                      onClick={() => movePersonalFactor(factor, 1)}
+                      type="button"
+                    >
+                      <ArrowDown size={14} />
+                    </button>
+                    <button
+                      aria-label={`Hapus ${factor} dari ranking`}
+                      className="icon-button factor-rank-button"
+                      onClick={() => {
+                        setPersonalFactorRanking((current) => current.filter((item) => item !== factor));
+                        setFactorRankingMessage('');
+                      }}
+                      type="button"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="empty-state small-empty">
+              <strong>Belum ada ranking faktor</strong>
+              <p>Tambahkan mood, makan, stres, aktivitas, tidur, atau faktor lain sesuai urutan personal Anda.</p>
+            </div>
+          )}
+          <p className="baseline-footnote">
+            Ranking ini hanya preferensi/laporan Anda. AI menampilkannya terpisah dari kontribusi statistik sinyal dan tidak menganggapnya sebagai hubungan sebab-akibat.
+          </p>
+          {factorRankingMessage && (
+            <div className={factorRankingMessage.includes('berhasil') ? 'form-success' : 'form-error'} role="status">
+              {factorRankingMessage.includes('berhasil') ? <Check size={15} /> : <AlertCircle size={15} />}
+              {factorRankingMessage}
+            </div>
+          )}
+          <div className="form-actions">
+            <span>Perubahan tersimpan pada profil setelah menekan simpan.</span>
+            <button
+              className="button button-primary"
+              disabled={savingFactorRanking}
+              onClick={savePersonalFactorRanking}
+              type="button"
+            >
+              {savingFactorRanking ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}
+              {savingFactorRanking ? 'Menyimpan...' : 'Simpan ranking'}
+            </button>
+          </div>
+        </section>
         <section className="panel profile-journey-note">
           <div className="panel-heading">
             <div><h2>Rekam perjalanan longitudinal</h2><p>Periode data yang sedang dimuat: {dashboard.periodDays || 30} hari</p></div>

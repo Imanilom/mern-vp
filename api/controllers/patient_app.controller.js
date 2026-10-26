@@ -3745,6 +3745,7 @@ function profileData(profile) {
     goal: profile.goal,
     notification_preferences: profile.notification_preferences,
     wearable_provider: profile.wearable_provider,
+    personal_factor_ranking: profile.personal_factor_ranking || [],
     updated_at: profile.updatedAt,
   };
 }

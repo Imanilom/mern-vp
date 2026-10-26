@@ -20,6 +20,15 @@ const profileFields = new Set([
   'goal',
   'notification_preferences',
   'wearable_provider',
+  'personal_factor_ranking',
+]);
+const personalFactorTypes = new Set([
+  'mood',
+  'meal',
+  'stress',
+  'physical_activity',
+  'sleep',
+  'other',
 ]);
 
 const checkInFields = new Set([
@@ -235,6 +244,24 @@ export function validateProfileUpdate(body) {
       throw errorHandler(400, `wearable_provider harus salah satu dari: ${providers.join(', ')}.`);
     }
     result.wearable_provider = body.wearable_provider;
+  }
+  if ('personal_factor_ranking' in body) {
+    const ranking = validateStringList(
+      body.personal_factor_ranking,
+      'personal_factor_ranking',
+      personalFactorTypes.size,
+      40,
+    );
+    if (
+      ranking.some((factor) => !personalFactorTypes.has(factor))
+      || new Set(ranking).size !== ranking.length
+    ) {
+      throw errorHandler(
+        400,
+        'personal_factor_ranking harus berisi faktor personal valid yang unik.',
+      );
+    }
+    result.personal_factor_ranking = ranking;
   }
   if ('notification_preferences' in body) {
     const preferences = body.notification_preferences;

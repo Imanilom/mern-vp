@@ -158,6 +158,14 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .factor-rank-button:disabled { opacity: .35; }
 .personal-factor-ranking { margin-top: 15px; }
 .personal-factor-ranking.compact { margin-top: 15px; }
+.personal-factor-editor { margin-top: 15px; }
+.personal-factor-editor-add { display: flex; align-items: end; gap: 9px; margin: 14px 0; }
+.personal-factor-editor-add label { display: grid; flex: 1; gap: 5px; color: #71847a; font-size: 9px; }
+.personal-factor-editor-add select { min-height: 38px; padding: 0 10px; color: #496353; background: #fff; border: 1px solid #e2eae4; border-radius: 8px; font: inherit; }
+.personal-factor-edit-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.personal-factor-edit-list li { display: grid; grid-template-columns: 27px minmax(90px, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; background: #f8faf9; border: 1px solid #edf1ee; border-radius: 9px; }
+.personal-factor-edit-list li > strong { color: #506d5d; font-size: 10px; }
+.personal-factor-edit-list li > div { display: flex; gap: 2px; }
 .personal-factor-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
 .personal-factor-list li { display: grid; grid-template-columns: 27px minmax(90px, 1fr) auto; align-items: center; gap: 10px; padding: 9px 11px; background: #f8faf9; border: 1px solid #edf1ee; border-radius: 9px; }
 .personal-factor-rank { display: grid; width: 24px; height: 24px; color: #34735b; background: #e8f5ef; border-radius: 8px; font-size: 10px; font-weight: 800; place-items: center; }
@@ -394,6 +402,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .activity-dialog-close { position: absolute; top: 12px; right: 12px; }
 .activity-dialog h2 { margin: 8px 25px 9px 0; color: var(--ink); font-family: Manrope, sans-serif; font-size: 18px; }
 .activity-dialog p { margin: 0 0 11px; color: #71847a; font-size: 10px; line-height: 1.7; }
+.activity-motion-evidence { display: flex; align-items: center; gap: 8px; margin: 12px 0; padding: 10px; font-size: 9px; }
+.activity-motion-evidence svg { flex: 0 0 auto; }
 .activity-dialog-actions { display: grid; gap: 8px; margin-top: 17px; }
 .activity-dialog-actions .button { width: 100%; min-height: 42px; }
 .activity-saving { display: block; margin-top: 10px; color: #71847a; font-size: 9px; text-align: center; }
@@ -481,6 +491,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .contribution-input-grid { grid-template-columns: 1fr; }
   .monitoring-live-metrics { grid-template-columns: 1fr; }
   .personal-factor-list li { grid-template-columns: 25px minmax(70px, 1fr); }
+  .personal-factor-edit-list li { grid-template-columns: 25px minmax(70px, 1fr) auto; }
+  .personal-factor-editor-add { align-items: stretch; flex-wrap: wrap; }
+  .personal-factor-editor-add label { flex-basis: 100%; }
   .personal-factor-evidence { grid-column: 2; text-align: left; }
   .recovery-intelligence-layout { gap: 15px; }
   .recovery-donut { flex-basis: 112px; width: 112px; height: 112px; }

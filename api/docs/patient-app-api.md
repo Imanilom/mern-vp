@@ -138,6 +138,12 @@ is the patient's own ranking, stored separately from statistical signal
 contributions; it must not be interpreted as causal attribution. Mood, meal,
 and stress details can be included in their regular check-in fields.
 
+`PATCH /api/patient-app/profile` also accepts `personal_factor_ranking` as an
+ordered, unique list of the same factor identifiers. This is the patient's
+standing personal ranking, can be cleared with an empty list, and is displayed
+beside event-specific rankings and measured signal contributions in AI insights.
+It is patient-reported context, not a model weight or causal contribution.
+
 ## Event markers
 
 - `POST /api/patient-app/events`

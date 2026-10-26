@@ -38,6 +38,10 @@ export default function MonitoringPage({
 }) {
   const overview = dashboard.overview?.overview || {};
   const samples = dashboard.history || [];
+  const historicalSamples = samples
+    .filter((item) => !item.is_simulated)
+    .sort((first, second) => new Date(second.recorded_at) - new Date(first.recorded_at))
+    .slice(0, 100);
   const latestRealSample = [...samples]
     .filter((item) => !item.is_simulated && Number.isFinite(new Date(item.recorded_at).getTime()))
     .sort((first, second) => new Date(second.recorded_at) - new Date(first.recorded_at))[0];

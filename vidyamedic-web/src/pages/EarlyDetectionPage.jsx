@@ -290,10 +290,13 @@ function ObservationCard({ deviation, factors, followUp, onAskActivity }) {
   const conflictList = deviation?.evidence_conflicts || [];
   const contexts = deviation?.temporally_associated_context || [];
   const activity = deviation?.activity || contexts.find((item) => item.activity)?.activity;
+  const motionDelta = numberOrNull(motion?.delta_from_baseline ?? motion?.delta);
+  const motionIsOutsideBaseline = ['mild', 'significant'].includes(motion?.deviation_level);
   const shouldAsk = followUp?.status === 'requested'
     && followUp?.triggered_by_segment_id
     && (numberOrNull(hr?.delta_from_baseline ?? hr?.delta) || 0) > 0
-    && (numberOrNull(motion?.delta_from_baseline ?? motion?.delta) || 0) > 0;
+    && motionDelta > 0
+    && motionIsOutsideBaseline;
   const alertClassification = String(deviation?.classification || '').toLowerCase() === 'alert';
   const candidate = followUp?.status === 'requested'
     || String(deviation?.state || '').toLowerCase().includes('candidate')
@@ -356,10 +359,15 @@ function ObservationCard({ deviation, factors, followUp, onAskActivity }) {
             <div className="motion-observation">
               <Activity size={16} />
               <span>
-                Sinyal gerak berbeda dari baseline
-                {motion.unit ? ` (${number(motion.value, 2)} ${motion.unit})` : ''}
-                {motion.z_score != null ? ` · z ${number(motion.z_score, 2)}` : ''}.
-                {' '}Ini menunjukkan gerakan terukur, bukan memastikan jenis aktivitas.
+                ACC terukur {number(motion.value, 2)}{motion.unit ? ` ${motion.unit}` : ''}
+                {motion.baseline_mean == null
+                  ? ''
+                  : ` · baseline aktivitas sama ${number(motion.baseline_mean, 2)}${motion.unit ? ` ${motion.unit}` : ''}`}
+                {motion.z_score == null ? '' : ` · z ${number(motion.z_score, 2)}`}.
+                {' '}{motionIsOutsideBaseline
+                  ? 'Gerak berada di luar variasi baseline personal.'
+                  : 'Gerak belum ditandai berada di luar variasi baseline personal.'}
+                {' '}ACC menunjukkan gerakan terukur, bukan memastikan jenis aktivitas.
               </span>
             </div>
           )}
@@ -395,6 +403,7 @@ function SignalContributionCard({
   factors = [],
   contextContributors = [],
   reportedRankings = [],
+  profileRanking = [],
   reportedContext = null,
 }) {
   const contributors = useMemo(
@@ -460,6 +469,17 @@ function SignalContributionCard({
             <div className="context-contributor-item" key={`${item.rank}:${item.factor}`}>
               <span>{item.rank}. {CONTEXT_LABELS[item.factor] || item.factor.replaceAll('_', ' ')}</span>
               <small>Masukan pengguna untuk dibandingkan dengan sinyal terukur; bukan kontribusi kausal.</small>
+            </div>
+          ))}
+        </div>
+      )}
+      {profileRanking.length > 0 && (
+        <div className="context-contributor-list reported-factor-ranking">
+          <strong>Ranking faktor personal dari Profil Kesehatan</strong>
+          {profileRanking.map((factor, index) => (
+            <div className="context-contributor-item" key={`${index}:${factor}`}>
+              <span>{index + 1}. {CONTEXT_LABELS[factor] || factor.replaceAll('_', ' ')}</span>
+              <small>Preferensi yang Anda simpan; ditampilkan terpisah dari bobot statistik CAPAR.</small>
             </div>
           ))}
         </div>
@@ -548,7 +568,7 @@ function BayesianReasoningCard({ model = {} }) {
   );
 }
 
-function ContributionConfirmationDialog({ onClose, onSubmit, saving, error }) {
+function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, motion }) {
   const [wasMoving, setWasMoving] = useState(null);
   const [feeling, setFeeling] = useState('');
   const [meal, setMeal] = useState('unknown');
@@ -589,9 +609,22 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error }) {
         <span className="eyebrow">KONFIRMASI KONTRIBUSI</span>
         <h2 id="activity-dialog-title">Apa yang Anda alami saat event ini?</h2>
         <p>
-          CAPAR melihat perubahan fisiologis dan sinyal gerak. Catat apakah Anda bergerak,
-          lalu pilih informasi mood, makan, atau stres yang relevan pada waktu event.
+          Sinyal ACC berada di atas baseline aktivitas personal pada event ini.
+          Apakah Anda memang sedang bergerak? Jawaban Anda digunakan untuk memeriksa kecocokan konteks,
+          bukan untuk mengubah hasil pengukuran sensor.
         </p>
+        {motion && (
+          <div className="notice notice-info activity-motion-evidence">
+            <Activity size={16} />
+            <span>
+              ACC terukur {number(motion.value, 2)}{motion.unit ? ` ${motion.unit}` : ''}
+              {motion.baseline_mean == null
+                ? ''
+                : ` · baseline ${number(motion.baseline_mean, 2)}${motion.unit ? ` ${motion.unit}` : ''}`}
+              {motion.z_score == null ? '' : ` · z ${number(motion.z_score, 2)}`}
+            </span>
+          </div>
+        )}
         <fieldset className="contribution-fieldset">
           <legend>Aktivitas saat itu</legend>
           <div className="contribution-choice-row">
@@ -761,6 +794,8 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
   const factors = followUp.status === 'requested'
     ? followUp.main_factors || []
     : deviation?.main_deviation_factors || pedagogy.why?.main_factors || [];
+  const motionFactor = factors.find((factor) => ['motion_index', 'motion_intensity'].includes(factor.feature));
+  const profileRanking = dashboard.profile?.profile?.personal_factor_ranking || [];
 
   async function submitContribution(contribution) {
     const segmentId = followUp.triggered_by_segment_id;
@@ -843,6 +878,7 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
         <SignalContributionCard
           contextContributors={deviation?.candidate_context_contributors || []}
           factors={factors}
+          profileRanking={profileRanking}
           reportedContext={deviation?.user_reported_context}
           reportedRankings={deviation?.user_reported_factor_ranking || []}
         />
@@ -904,6 +940,7 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
           onClose={() => setDialogOpen(false)}
           onSubmit={submitContribution}
           saving={saving}
+          motion={motionFactor}
         />
       )}
     </>

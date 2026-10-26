@@ -282,6 +282,27 @@ test('profile only accepts known and bounded patient fields', () => {
   assert.throws(() => validateProfileUpdate({ timezone: 'Not/AZone' }), { statusCode: 400 });
 });
 
+test('profile stores a unique ordered ranking of supported personal factors', () => {
+  assert.deepEqual(
+    validateProfileUpdate({
+      personal_factor_ranking: ['meal', 'stress', 'other'],
+    }),
+    { personal_factor_ranking: ['meal', 'stress', 'other'] },
+  );
+  assert.deepEqual(
+    validateProfileUpdate({ personal_factor_ranking: [] }),
+    { personal_factor_ranking: [] },
+  );
+  assert.throws(
+    () => validateProfileUpdate({ personal_factor_ranking: ['meal', 'meal'] }),
+    { statusCode: 400 },
+  );
+  assert.throws(
+    () => validateProfileUpdate({ personal_factor_ranking: ['food'] }),
+    { statusCode: 400 },
+  );
+});
+
 test('profile validates the morning summary reminder time', () => {
   assert.deepEqual(
     validateProfileUpdate({
