@@ -56,6 +56,8 @@ import {
   summarizePatientRecovery,
 } from '../utils/patientPedagogy.js';
 import { buildPatientReasoningPipeline } from '../utils/patientReasoningPipeline.js';
+import { fitPatientBayesianEventState } from '../utils/patientBayesianEventState.js';
+import { buildPatientRecoveryMarkovForecast } from '../utils/patientRecoveryMarkov.js';
 import { withWearableBaselineComparison } from '../utils/patientWearableHistory.js';
 import { assessRRQuality, extractRRFeatures } from '../utils/rrBaselinePipeline.js';
 import {
@@ -95,6 +97,11 @@ async function getAccount(req) {
   if (!mongoose.isValidObjectId(accountId)) {
     throw errorHandler(401, 'Sesi pengguna tidak valid. Silakan masuk kembali.');
   }
+  (checkIn.deviation_follow_up?.ranked_context_factors || []).forEach((type, index) => {
+    add(type, recordedAt, 'patient_reported_factor_ranking', null, {
+      user_reported_rank: index + 1,
+    });
+  });
 
   let account;
   let accountType;
@@ -955,7 +962,7 @@ export async function getPatientAppCaparInsights(req, res) {
         'episode_id analysis_id onset_timestamp status current_state activity classification peak_score duration_ms'
       ).lean(),
       StateTransition.find({ user_id: { $in: caparDataIds } })
-        .select('total_transitions')
+        .select('from_UNKNOWN from_BASELINE_COMPATIBLE from_DEVIATION_CANDIDATE from_PERSISTENT_DEVIATION from_RECOVERY from_RECOVERED total_transitions')
         .lean(),
       AnomalyEvent.find({
         user_id: { $in: caparDataIds },
@@ -988,6 +995,15 @@ export async function getPatientAppCaparInsights(req, res) {
       (segment) => segment.window_start >= dayAgo.getTime()
     );
     const latestStatus = currentSegments[0]?.rr_status || currentSegments[0]?.classification || null;
+    const markovActivity = mapScenarioActivity(
+      currentSegments[0]?.activity_label || 'Unknown'
+    ) || 'Unknown';
+    const recoveryMarkovForecast = buildPatientRecoveryMarkovForecast({
+      transitions: transitionDocs.filter((transition) => transition.activity === markovActivity),
+      currentState: latestStatus,
+      horizon: 3,
+      activityContext: markovActivity,
+    });
     const physiology = [];
     if (eligibleSegments.some((segment) => Number.isFinite(segment.features?.mean_hr))) {
       physiology.push('heart_rate');
@@ -1032,6 +1048,7 @@ export async function getPatientAppCaparInsights(req, res) {
       }).sort({ window_start: -1 }).limit(2000).lean()
       : [];
     const stableByContext = new Map();
+    const bayesianTrainingByContext = new Map();
     for (const segment of baselineSegments) {
       if (!isPatientBaselineSegment(segment)) continue;
       const contextKey = `${segment.activity_label}:${patientCaparTimePeriod(segment.window_start)}`;
@@ -1040,6 +1057,33 @@ export async function getPatientAppCaparInsights(req, res) {
       if (samples.length < 1000) {
         samples.push(patientMahalanobisFeatureVector(segment));
         stableByContext.set(contextKey, samples);
+      }
+      const labeledSamples = bayesianTrainingByContext.get(contextKey) || {
+        stable: [],
+        deviation: [],
+      };
+      if (labeledSamples.stable.length < 2000) {
+        labeledSamples.stable.push({
+          recorded_at: segment.window_start,
+          features: patientMahalanobisFeatureVector(segment),
+        });
+        bayesianTrainingByContext.set(contextKey, labeledSamples);
+      }
+    }
+    for (const segment of deviationSegments) {
+      if (!isPatientAnalyticsSegment(segment)) continue;
+      const contextKey = `${segment.activity_label}:${patientCaparTimePeriod(segment.window_start)}`;
+      if (!baselineByContext.has(contextKey)) continue;
+      const labeledSamples = bayesianTrainingByContext.get(contextKey) || {
+        stable: [],
+        deviation: [],
+      };
+      if (labeledSamples.deviation.length < 2000) {
+        labeledSamples.deviation.push({
+          recorded_at: segment.window_start,
+          features: patientMahalanobisFeatureVector(segment),
+        });
+        bayesianTrainingByContext.set(contextKey, labeledSamples);
       }
     }
 
@@ -1212,6 +1256,11 @@ export async function getPatientAppCaparInsights(req, res) {
           Math.abs(a.window_start - peakTime) - Math.abs(b.window_start - peakTime)
         ))
         .find((candidate) => Math.abs(candidate.window_start - peakTime) <= 10 * 60 * 1000);
+      const eventFeedbackCheckIn = segment?._id
+        ? historicalCheckIns.find((checkIn) => (
+          checkIn.deviation_follow_up?.segment_id?.toString() === segment._id.toString()
+        )) || null
+        : null;
       const timePeriod = patientCaparTimePeriod(peakTime);
       const contextKey = `${event.activity || segment?.activity_label}:${timePeriod}`;
       const baseline = baselineByContext.get(contextKey);
@@ -1335,6 +1384,21 @@ export async function getPatientAppCaparInsights(req, res) {
         reasoning_uncertainty: reasoningUncertainty,
         evidence_conflicts: conflicts,
         main_deviation_factors: deviation.factors,
+        user_reported_factor_ranking: (
+          eventFeedbackCheckIn?.deviation_follow_up?.ranked_context_factors || []
+        ).map((factor, index) => ({
+          factor,
+          rank: index + 1,
+          source: 'patient_reported',
+        })),
+        user_reported_context: eventFeedbackCheckIn
+          ? {
+            activity: eventFeedbackCheckIn.activity || null,
+            feeling: eventFeedbackCheckIn.feeling || null,
+            meal: eventFeedbackCheckIn.lifestyle?.meal ?? null,
+            stress_level: eventFeedbackCheckIn.stress_level ?? null,
+          }
+          : null,
         mahalanobis: eventMahalanobis?.available
           ? {
             distance: eventMahalanobis.distance,
@@ -1386,6 +1450,16 @@ export async function getPatientAppCaparInsights(req, res) {
     const latestPipelineContextKey = latestMahalanobis
       ? `${latestMahalanobis.activity}:${latestMahalanobis.time_period}`
       : null;
+    const latestBayesianSamples = latestPipelineContextKey
+      ? bayesianTrainingByContext.get(latestPipelineContextKey)
+      : null;
+    const latestBayesianModel = latestBayesianSamples
+      ? fitPatientBayesianEventState({
+        stableSamples: latestBayesianSamples.stable,
+        deviationSamples: latestBayesianSamples.deviation,
+        currentFeatures: patientMahalanobisFeatureVector(latestPipelineSegment),
+      })
+      : null;
     const reasoningPipeline = buildPatientReasoningPipeline({
       recentSegments,
       acceptedSegments: eligibleSegments,
@@ -1394,6 +1468,7 @@ export async function getPatientAppCaparInsights(req, res) {
       matchingBaseline: latestPipelineContextKey
         ? baselineByContext.get(latestPipelineContextKey) ?? null
         : null,
+      bayesianModel: latestBayesianModel,
       polarData,
       checkIns: historicalCheckIns,
       patientEvents: historicalPatientEvents,
@@ -1591,6 +1666,7 @@ export async function getPatientAppCaparInsights(req, res) {
           (total, transition) => total + (transition.total_transitions || 0),
           0
         ),
+        recovery_intelligence: recoveryMarkovForecast,
         prediction_exposed: false,
       },
       forecast: {
@@ -1880,6 +1956,7 @@ export async function getPatientAppCaparHistory(req, res) {
         'mean_rr',
         'sdnn',
         'rmssd',
+        'dfa_alpha1',
         'motion_intensity',
       ]
         .filter((key) => baseline.stats?.[key]?.n > 0)
@@ -3421,6 +3498,12 @@ function collectPatientContextBeforeEvent({
       add('physical_activity', recordedAt, 'patient_check_in');
     }
     if (checkIn.stress_level >= 2) add('stress', recordedAt, 'patient_check_in');
+    if (checkIn.feeling) {
+      add('mood', recordedAt, 'patient_check_in', null, { feeling: checkIn.feeling });
+    }
+    if (checkIn.deviation_follow_up?.perceived_factors?.includes('physical_activity')) {
+      add('physical_activity', recordedAt, 'patient_reported_context');
+    }
     if (checkIn.sleep?.duration_minutes != null) add('sleep_duration', recordedAt, 'patient_check_in');
     if (checkIn.lifestyle?.caffeine) add('caffeine', recordedAt, 'patient_check_in');
     if (checkIn.lifestyle?.smoking) add('smoking', recordedAt, 'patient_check_in');

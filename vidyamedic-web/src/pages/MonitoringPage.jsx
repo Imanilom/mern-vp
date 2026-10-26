@@ -44,6 +44,8 @@ export default function MonitoringPage({
   const currentSample = overview.latest_wearable_sample
     || [...samples].reverse().find((item) => !item.is_simulated);
   const capar = dashboard.insights?.capar || {};
+  const caparTimeline = capar.trajectory_24h || [];
+  const latestCapar = caparTimeline.at(-1);
   const today = new Date().toDateString();
   const todayHeartRates = samples
     .filter((item) => !item.is_simulated)
@@ -81,7 +83,7 @@ export default function MonitoringPage({
           <span>Data terakhir berasal dari simulasi dan tidak digunakan sebagai pengukuran nyata.</span>
         </div>
       )}
-      <div className="metric-grid">
+      <div className="metric-grid monitoring-metrics">
         <MetricCard
           icon={Heart}
           label="Denyut jantung terakhir"
@@ -97,6 +99,16 @@ export default function MonitoringPage({
           tone="green"
           unit="bpm"
           value={meanHr}
+        />
+        <MetricCard
+          icon={Activity}
+          label="RR interval CAPAR"
+          note={latestCapar ? 'Segmen CAPAR terbaru' : 'Belum tersedia dari CAPAR'}
+          tone="blue"
+          unit="ms"
+          value={numberOrNull(latestCapar?.features?.mean_rr) == null
+            ? null
+            : Math.round(latestCapar.features.mean_rr)}
         />
         <MetricCard
           icon={ShieldCheck}
@@ -116,10 +128,38 @@ export default function MonitoringPage({
         />
       </div>
 
+      <section className="panel monitoring-quality-panel">
+        <div className="panel-heading">
+          <div><h2>Kualitas & kelengkapan sinyal</h2><p>Gate analitik CAPAR dan data wearable yang diterima</p></div>
+          <span className="panel-icon green-icon"><ShieldCheck size={17} /></span>
+        </div>
+        <div className="quality-metrics">
+          <div>
+            <span>Q-signal segmen terakhir</span>
+            <strong>{numberOrNull(latestCapar?.quality) == null
+              ? '—'
+              : `${Math.round(latestCapar.quality * 100)}%`}</strong>
+          </div>
+          <div>
+            <span>Status gate baseline</span>
+            <strong>{latestCapar?.personal_state
+              ? getStatusLabel(latestCapar.personal_state)
+              : 'Belum tersedia'}</strong>
+          </div>
+          <div>
+            <span>Sampel wearable nyata</span>
+            <strong>{samples.filter((item) => !item.is_simulated).length}</strong>
+          </div>
+        </div>
+        <p className="baseline-footnote">
+          Nilai kelengkapan atau gate hanya ditampilkan jika dikirim CAPAR; kualitas sinyal saja bukan ukuran kelengkapan seluruh data.
+        </p>
+      </section>
+
       <div className="content-grid monitoring-grid">
         <section className="panel chart-panel">
           <div className="panel-heading">
-            <div><h2>Tren denyut jantung</h2><p>Riwayat 30 hari · sampel nyata</p></div>
+            <div><h2>Tren denyut jantung</h2><p>Riwayat {dashboard.periodDays || 30} hari · sampel nyata</p></div>
             <span className="live-label"><i /> Data personal</span>
           </div>
           <HeartRateChart samples={samples} />
@@ -165,6 +205,26 @@ export default function MonitoringPage({
           </button>
         </section>
       </div>
+      <section className="panel historical-panel monitoring-timeline">
+        <div className="panel-heading">
+          <div><h2>Timeline fisiologis & konteks CAPAR</h2><p>Segmen layak analisis dalam 24 jam terakhir</p></div>
+          <span className="panel-icon"><Clock3 size={18} /></span>
+        </div>
+        <DataTable
+          columns={[
+            { key: 'recorded_at', label: 'Waktu', render: (row) => `${formatDate(row.recorded_at, { day: 'numeric', month: 'short' })} ${formatTime(row.recorded_at)}` },
+            { key: 'activity', label: 'Aktivitas / konteks', render: (row) => row.activity || 'Tidak dicatat' },
+            { key: 'hr', label: 'HR', render: (row) => numberOrNull(row.features?.mean_hr) == null ? '—' : `${Math.round(row.features.mean_hr)} bpm` },
+            { key: 'rr', label: 'RR', render: (row) => numberOrNull(row.features?.mean_rr) == null ? '—' : `${Math.round(row.features.mean_rr)} ms` },
+            { key: 'rmssd', label: 'HRV / RMSSD', render: (row) => numberOrNull(row.features?.rmssd) == null ? '—' : `${Math.round(row.features.rmssd)} ms` },
+            { key: 'quality', label: 'Q-signal', render: (row) => numberOrNull(row.quality) == null ? '—' : `${Math.round(row.quality * 100)}%` },
+            { key: 'personal_state', label: 'Relasi baseline', render: (row) => getStatusLabel(row.personal_state) },
+          ]}
+          rows={[...caparTimeline].reverse().slice(0, 30)}
+          rowKey={(row) => `${row.recorded_at}:${row.activity || ''}`}
+          emptyMessage="Belum ada segmen CAPAR dalam 24 jam terakhir."
+        />
+      </section>
       <section className="panel rmssd-trend-panel">
         <div className="panel-heading">
           <div><h2>HRV — RMSSD</h2><p>Ringkasan wearable nyata yang memiliki nilai RMSSD</p></div>

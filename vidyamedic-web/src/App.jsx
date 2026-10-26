@@ -33,22 +33,24 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [toast, setToast] = useState('');
+  const [periodDays, setPeriodDays] = useState(30);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (requestedPeriod = periodDays) => {
     setLoading(true);
     setLoadError('');
     try {
-      const data = await api.loadDashboard();
+      const data = await api.loadDashboard(requestedPeriod);
       setDashboard(data);
-      if (data.errors.length === 5) {
-        setLoadError(data.errors[0]?.message || 'Data dari server belum dapat dimuat.');
+      if (data.errors.length > 0) {
+        const detail = data.errors[0]?.message || 'Data dari server belum dapat dimuat.';
+        setLoadError(`Sebagian data belum berhasil dimuat. ${detail}`);
       }
     } catch (error) {
       setLoadError(error.message || 'Gagal memuat data Vidyamedic.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [periodDays]);
 
   useEffect(() => {
     let alive = true;
@@ -68,8 +70,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (authenticated) refresh();
-  }, [authenticated, refresh]);
+    if (authenticated) refresh(periodDays);
+  }, [authenticated, periodDays, refresh]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -80,6 +82,54 @@ export default function App() {
   async function saveProfile(body) {
     await api.updateProfile(body);
     setToast('Profil berhasil disimpan.');
+    await refresh();
+  }
+
+  async function submitContributionConfirmation(segmentId, contribution) {
+    const perceivedFactors = [
+      ...(contribution.wasMoving ? ['physical_activity'] : []),
+      ...contribution.rankedFactors,
+    ];
+    await api.createCheckIn({
+      recorded_at: new Date().toISOString(),
+      activity: contribution.wasMoving ? 'other' : 'sitting',
+      feeling: contribution.feeling || null,
+      ...(contribution.stressLevel ? { stress_level: contribution.stressLevel } : {}),
+      ...(contribution.meal !== 'unknown' ? {
+        lifestyle: { meal: contribution.meal === 'yes' },
+      } : {}),
+      symptoms: [],
+      deviation_follow_up: {
+        segment_id: segmentId,
+        perceived_factors: perceivedFactors.length ? perceivedFactors : ['no_known_factor'],
+        ranked_context_factors: contribution.rankedFactors,
+        note: contribution.wasMoving
+          ? 'Pengguna mengonfirmasi sedang bergerak saat sinyal gerak wearable meningkat.'
+          : 'Pengguna mengonfirmasi tidak sedang bergerak meskipun sinyal gerak wearable meningkat.',
+      },
+    });
+    setToast('Konfirmasi kontribusi tersimpan sebagai masukan pengguna untuk CAPAR.');
+    await refresh();
+  }
+
+  async function createRecommendationAction(data) {
+    const result = await api.createPatientAction(data);
+    const action = result.data;
+    if (!action?._id) throw new Error('Tindakan tersimpan tanpa ID yang dapat dilacak.');
+    try {
+      const delivered = await api.updatePatientActionStatus(action._id, 'DELIVERED');
+      setToast('Rekomendasi tercatat dan siap ditindaklanjuti.');
+      await refresh();
+      return delivered.data;
+    } catch (error) {
+      await refresh();
+      throw error;
+    }
+  }
+
+  async function updateRecommendationActionStatus(actionId, status) {
+    await api.updatePatientActionStatus(actionId, status);
+    setToast(status === 'COMPLETED' ? 'Tindak lanjut ditandai selesai.' : 'Tindak lanjut dikonfirmasi.');
     await refresh();
   }
 
@@ -109,14 +159,42 @@ export default function App() {
   } else if (active === 'profil') {
     pageContent = <ProfilePage account={account} dashboard={dashboard} onSave={saveProfile} />;
   } else if (active === 'deteksi') {
-    pageContent = <EarlyDetectionPage dashboard={dashboard} />;
+    pageContent = (
+      <EarlyDetectionPage
+        dashboard={dashboard}
+        onContributionConfirmation={submitContributionConfirmation}
+      />
+    );
   } else if (active === 'prediksi') {
-    pageContent = <PredictionPage dashboard={dashboard} onNavigate={setActive} />;
+    pageContent = (
+      <PredictionPage
+        dashboard={dashboard}
+        onCreateAction={createRecommendationAction}
+        onNavigate={setActive}
+        onUpdateActionStatus={updateRecommendationActionStatus}
+      />
+    );
   } else if (active === 'insight') {
-    pageContent = <InsightsPage dashboard={dashboard} />;
+    pageContent = (
+      <InsightsPage
+        dashboard={dashboard}
+        onPeriodChange={(days) => {
+          setPeriodDays(days);
+        }}
+        periodDays={periodDays}
+      />
+    );
   } else if (active === 'laporan') {
-    pageContent = <ReportsPage dashboard={dashboard} />;
-  } else if (active === 'perangkat') {
+    pageContent = (
+      <ReportsPage
+        dashboard={dashboard}
+        onPeriodChange={(days) => {
+          setPeriodDays(days);
+        }}
+        periodDays={periodDays}
+      />
+    );
+  } else if (active === 'administrasi') {
     pageContent = <DevicePrivacyPage dashboard={dashboard} onNavigate={setActive} />;
   } else {
     pageContent = (

@@ -5,7 +5,7 @@ import {
   Heart,
   ShieldCheck,
 } from 'lucide-react';
-import HeartRateChart from '../components/HeartRateChart';
+import HourlyPhysiologyChart from '../components/HourlyPhysiologyChart';
 import MetricCard from '../components/MetricCard';
 import SectionHeading from '../components/SectionHeading';
 import { formatDate, formatTime, getStatusLabel, numberOrNull } from '../utils/formatters';
@@ -46,21 +46,42 @@ export default function DashboardPage({ account, dashboard, onNavigate }) {
   }).length;
   const latestCheckIn = overview.latest_check_in;
   const profileName = account?.name || 'Peserta';
+  const episodes = capar.episode_history || [];
+  const pendingFollowUp = capar.pedagogy?.follow_up?.status === 'requested';
+  const unresolvedEpisodes = episodes.filter((episode) => episode.outcome === 'unresolved').length;
+  const pendingActions = Number(pendingFollowUp) + unresolvedEpisodes;
+  const latestRealSample = currentSample && !currentSample.is_simulated ? currentSample : null;
+  const lastSampleAgeMinutes = latestRealSample
+    ? Number.isFinite(new Date(latestRealSample.recorded_at).getTime())
+      ? Math.max(0, Math.round((Date.now() - new Date(latestRealSample.recorded_at).getTime()) / 60000))
+      : null
+    : null;
+  const wearableStatus = lastSampleAgeMinutes == null
+    ? 'Belum ada sinkronisasi'
+    : lastSampleAgeMinutes <= 10
+      ? 'Data baru diterima'
+      : `Terakhir ${lastSampleAgeMinutes} menit lalu`;
+  const signalQuality = numberOrNull(
+    latestRealSample?.signal_quality ?? latestRealSample?.data_quality?.q_signal,
+  );
+  const attentionCount = (capar.deviation_explanations || []).filter(
+    (item) => item.explanation_status === 'available',
+  ).length;
 
   return (
     <>
       <SectionHeading
         description={`Ringkasan kesehatan personal untuk ${profileName}. Data hanya ditampilkan saat tersedia dari catatan Anda.`}
         eyebrow="VIDYAMEDIC / DASHBOARD"
-        title="Health intelligence"
+        title="Dashboard"
       />
       <section className="hero-banner">
         <div>
-          <span className="eyebrow">RINGKASAN PERSONAL</span>
-          <h2>Memahami pola kesehatan Anda, selangkah demi selangkah</h2>
+          <span className="eyebrow">PUSAT KENDALI KESEHATAN</span>
+          <h2>Ringkasan kondisi hari ini dan perjalanan kesehatan Anda</h2>
           <p>
-            Lihat pengukuran wearable, check-in, dan status analisis personal
-            dalam satu tempat. Ringkasan ini bukan diagnosis.
+            KPI personal, tren fisiologis, episode, kualitas data, dan tindak lanjut
+            yang tersedia dari akun Anda.
           </p>
         </div>
         <button className="button button-light" onClick={() => onNavigate('deteksi')}>
@@ -95,6 +116,14 @@ export default function DashboardPage({ account, dashboard, onNavigate }) {
           value={getStatusLabel(capar.status)}
         />
         <MetricCard
+          icon={Activity}
+          label="Episode terdokumentasi"
+          note={`${attentionCount} memerlukan tinjauan konteks`}
+          tone="gold"
+          unit=""
+          value={capar.status === 'available' ? episodes.length : '—'}
+        />
+        <MetricCard
           icon={CalendarDays}
           label="Check-in 7 hari"
           note={latestCheckIn
@@ -105,16 +134,68 @@ export default function DashboardPage({ account, dashboard, onNavigate }) {
           value={overview.check_ins_last_7_days ?? '—'}
         />
       </div>
+      <div className="content-grid dashboard-grid dashboard-status-grid">
+        <section className="panel">
+          <div className="panel-heading">
+            <div><h2>Perhatian & tindak lanjut</h2><p>Item yang perlu ditinjau berdasarkan catatan CAPAR</p></div>
+            <span className="panel-icon gold-icon"><ShieldCheck size={17} /></span>
+          </div>
+          {capar.status !== 'available' ? (
+            <div className="dashboard-no-followup">
+              <ShieldCheck size={17} />
+              <span>Status CAPAR belum tersedia; tindak lanjut belum dapat ditentukan.</span>
+            </div>
+          ) : pendingActions ? (
+            <div className="dashboard-followups">
+              {pendingFollowUp && (
+                <div className="dashboard-followup-item">
+                  <span className="followup-dot" />
+                  <div>
+                    <strong>Konfirmasi kontribusi perubahan</strong>
+                    <p>CAPAR menunggu masukan aktivitas, mood, makan, atau stres yang Anda rasakan.</p>
+                  </div>
+                  <button className="text-button" onClick={() => onNavigate('deteksi')}>Tinjau</button>
+                </div>
+              )}
+              {unresolvedEpisodes > 0 && (
+                <div className="dashboard-followup-item">
+                  <span className="followup-dot" />
+                  <div>
+                    <strong>{unresolvedEpisodes} episode belum terselesaikan</strong>
+                    <p>Status mengikuti dokumentasi episode CAPAR, bukan diagnosis.</p>
+                  </div>
+                  <button className="text-button" onClick={() => onNavigate('insight')}>Lihat BI</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="dashboard-no-followup">
+              <ShieldCheck size={17} />
+              <span>Tidak ada tindak lanjut terbuka yang dikirim CAPAR.</span>
+            </div>
+          )}
+        </section>
+        <section className="panel">
+          <div className="panel-heading">
+            <div><h2>Perangkat & kualitas data</h2><p>Status berdasarkan rekaman wearable terakhir</p></div>
+            <span className="panel-icon green-icon"><Activity size={17} /></span>
+          </div>
+          <div className="detail-row"><span>Perangkat pilihan</span><strong>{overview.wearable_provider || 'Belum dipilih'}</strong></div>
+          <div className="detail-row"><span>Sinkronisasi</span><strong>{wearableStatus}</strong></div>
+          <div className="detail-row"><span>Kualitas sinyal terakhir</span><strong>{signalQuality == null ? 'Belum tersedia' : `${Math.round(signalQuality * 100)}%`}</strong></div>
+          <p className="baseline-footnote">Status sinkronisasi tidak membuktikan perangkat sedang terhubung langsung.</p>
+        </section>
+      </div>
       <div className="content-grid dashboard-grid">
         <section className="panel chart-panel">
           <div className="panel-heading">
             <div>
-              <h2>Tren denyut jantung</h2>
-              <p>30 hari terakhir · bacaan wearable nyata</p>
+              <h2>Tren fisiologis per jam</h2>
+              <p>Pola 24 jam · hari ini atau rerata dari hari yang memiliki data</p>
             </div>
-            <span className="live-label"><i /> Data personal</span>
+            <span className="live-label"><i /> Pola harian</span>
           </div>
-          <HeartRateChart samples={dashboard.history || []} />
+          <HourlyPhysiologyChart samples={dashboard.history || []} />
         </section>
         <section className="panel dashboard-latest">
           <div className="panel-heading">
@@ -125,7 +206,8 @@ export default function DashboardPage({ account, dashboard, onNavigate }) {
             <>
               <div className="latest-content">
                 <div className="latest-number">
-                  {Math.round(currentSample.heart_rate_bpm || 0)}<span>bpm</span>
+                  {currentSample.is_simulated ? '—' : Math.round(currentSample.heart_rate_bpm || 0)}
+                  {!currentSample.is_simulated && <span>bpm</span>}
                 </div>
                 <div className="latest-date">
                   {formatDate(currentSample.recorded_at, { day: 'numeric', month: 'long', year: 'numeric' })}

@@ -16,7 +16,7 @@ export const NAV_ITEMS = [
   { id: 'deteksi', label: 'AI & Deteksi Dini', icon: ShieldCheck },
   { id: 'prediksi', label: 'Rekomendasi & Keputusan', icon: Sparkles },
   { id: 'laporan', label: 'Laporan', icon: FileText },
-  { id: 'perangkat', label: 'Perangkat & Privasi', icon: SlidersHorizontal },
+  { id: 'administrasi', label: 'Administrasi', icon: SlidersHorizontal },
 ];
 
 export const INITIAL_PROFILE = {
@@ -37,5 +37,6 @@ export const INITIAL_DASHBOARD = {
   insights: null,
   history: [],
   checkIns: [],
+  patientActions: [],
   errors: [],
 };

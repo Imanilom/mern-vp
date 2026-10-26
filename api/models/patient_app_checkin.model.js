@@ -59,6 +59,8 @@ const PatientAppCheckInSchema = new mongoose.Schema(
           type: String,
           enum: [
             'physical_activity',
+            'mood',
+            'meal',
             'stress',
             'poor_sleep',
             'medication',
@@ -69,6 +71,13 @@ const PatientAppCheckInSchema = new mongoose.Schema(
             'no_known_factor',
             'prefer_not_to_say',
           ],
+        }],
+        default: [],
+      },
+      ranked_context_factors: {
+        type: [{
+          type: String,
+          enum: ['mood', 'meal', 'stress', 'physical_activity', 'sleep', 'other'],
         }],
         default: [],
       },

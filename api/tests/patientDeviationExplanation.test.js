@@ -89,6 +89,22 @@ test('context attribution reports association hypotheses without causal claims',
   assert.equal(result.elevated_heart_rate_without_motion, true);
 });
 
+test('mood and meal remain patient-reported temporal associations in factor attribution', () => {
+  const result = attributePatientContext({
+    factors: [{ feature: 'hr_mean', z_score: 2 }],
+    contexts: [
+      { type: 'mood', source: 'patient_reported_factor_ranking', user_reported_rank: 2 },
+      { type: 'meal', source: 'patient_reported_factor_ranking', user_reported_rank: 1 },
+    ],
+  });
+  const byType = new Map(result.candidates.map((candidate) => [candidate.type, candidate]));
+
+  assert.equal(byType.get('mood').association, 'temporally_associated');
+  assert.equal(byType.get('meal_timing').association, 'temporally_associated');
+  assert.equal(byType.get('mood').causal_claim, false);
+  assert.equal(byType.get('meal_timing').causal_claim, false);
+});
+
 test('reasoning uncertainty exposes evidence coverage without inventing confidence', () => {
   const explanation = explainPatientDeviation({
     hr_mean: 80,

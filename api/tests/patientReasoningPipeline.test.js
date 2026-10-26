@@ -40,8 +40,11 @@ test('reasoning pipeline exposes real stages without inventing a posterior', () 
     pipeline.stages.map((stage) => [stage.stage_id, stage])
   );
 
-  assert.equal(pipeline.processing_model, 'rule_and_statistical_mvp');
-  assert.equal(pipeline.probabilistic_posterior.notation, 'P(X_t | T(t))');
+  assert.equal(pipeline.processing_model, 'rule_statistical_with_bayesian_candidate');
+  assert.equal(
+    pipeline.probabilistic_posterior.notation,
+    'P(CAPAR deviation | physiological features, personal activity/time baseline)',
+  );
   assert.equal(pipeline.probabilistic_posterior.distribution, null);
   assert.equal(stages.quality_gate.rejected_windows, 0);
   assert.deepEqual(stages.feature_engine.available_features, ['mean_hr', 'rmssd']);
@@ -54,6 +57,26 @@ test('reasoning pipeline exposes real stages without inventing a posterior', () 
   assert.equal(stages.decision_policy.action_level, 'green');
   assert.equal(stages.feedback.intervention_response_status, 'self_report_recorded');
   assert.equal(stages.feedback.patient_reported_action_recorded, true);
+});
+
+test('reasoning pipeline reports Bayesian candidate validation without exposing probabilities', () => {
+  const pipeline = buildPatientReasoningPipeline({
+    bayesianModel: {
+      status: 'validation_required',
+      method: 'personal_gaussian_naive_bayes',
+      feature_keys: ['mean_hr', 'rmssd'],
+      training_samples: { stable: 80, deviation: 80 },
+      validation_samples: { stable: 20, deviation: 20 },
+      validation: { brier_score: 0.12 },
+      candidate_probability_internal: 0.99,
+    },
+  });
+
+  assert.equal(pipeline.probabilistic_posterior.status, 'validation_required');
+  assert.equal(pipeline.probabilistic_posterior.distribution, null);
+  assert.equal(pipeline.probabilistic_posterior.individual_probability_exposed, false);
+  assert.equal('candidate_probability_internal' in pipeline.probabilistic_posterior, false);
+  assert.equal(pipeline.stages.find((stage) => stage.stage_id === 'latent_state_estimation').posterior_probability, null);
 });
 
 test('pipeline abstains when no sensor, baseline, state, or patient action exists', () => {

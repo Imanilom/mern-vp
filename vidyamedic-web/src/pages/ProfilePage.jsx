@@ -4,17 +4,38 @@ import {
   Check,
   LoaderCircle,
   LockKeyhole,
+  Activity,
+  Layers3,
   ShieldCheck,
 } from 'lucide-react';
 import { INITIAL_PROFILE } from '../constants/navigation';
 import SectionHeading from '../components/SectionHeading';
-import { getInitial } from '../utils/formatters';
+import { getInitial, numberOrNull } from '../utils/formatters';
+import DataTable from '../components/DataTable';
+import MetricCard from '../components/MetricCard';
+import { describeMotionBaseline } from '../utils/baselineObservations';
 
 export default function ProfilePage({ account, dashboard, onSave }) {
   const [form, setForm] = useState(INITIAL_PROFILE);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const profile = dashboard.profile?.profile || {};
+  const capar = dashboard.insights?.capar || {};
+  const baselines = capar.baseline?.contexts || [];
+  const episodes = capar.episode_history || [];
+  const recovery = capar.recovery || {};
+  const baselineColumns = [
+    { key: 'activity', label: 'Aktivitas' },
+    { key: 'time_period', label: 'Waktu' },
+    { key: 'level', label: 'Kematangan', render: (row) => row.level === 'mature' || row.level === 'mature_legacy' ? 'Matang' : 'Provisional' },
+    { key: 'segment_count', label: 'Segmen' },
+    { key: 'mean_hr', label: 'Rerata HR', render: (row) => row.feature_stats?.mean_hr?.mean == null ? '—' : `${Math.round(row.feature_stats.mean_hr.mean)} bpm` },
+    { key: 'rmssd', label: 'RMSSD', render: (row) => row.feature_stats?.rmssd?.mean == null ? '—' : `${Number(row.feature_stats.rmssd.mean.toFixed(1))} ms` },
+    { key: 'dfa_alpha1', label: 'DFA α1', render: (row) => numberOrNull(row.feature_stats?.dfa_alpha1?.mean) == null ? '—' : Number(row.feature_stats.dfa_alpha1.mean.toFixed(3)) },
+    { key: 'motion_intensity', label: 'Rerata ACC', render: (row) => numberOrNull(row.feature_stats?.motion_intensity?.mean) == null ? '—' : Number(row.feature_stats.motion_intensity.mean.toFixed(3)) },
+    { key: 'motion_observation', label: 'Observasi gerak', render: (row) => describeMotionBaseline(row, baselines) },
+    { key: 'quality', label: 'Kualitas baseline', render: (row) => row.quality == null ? '—' : `${Math.round(row.quality * 100)}%` },
+  ];
 
   useEffect(() => {
     setForm({
@@ -153,6 +174,67 @@ export default function ProfilePage({ account, dashboard, onSave }) {
           </div>
         </form>
       </div>
+      <section className="profile-longitudinal-section">
+        <div className="panel-heading profile-section-heading">
+          <div>
+            <h2>Baseline & perjalanan kesehatan</h2>
+            <p>Nilai personal berdasarkan aktivitas, waktu, dan kematangan data CAPAR.</p>
+          </div>
+          <span className="panel-icon green-icon"><Layers3 size={18} /></span>
+        </div>
+        <div className="metric-grid profile-history-metrics">
+          <MetricCard
+            icon={Layers3}
+            label="Konteks baseline"
+            note={`${capar.baseline?.mature_contexts ?? baselines.filter((item) => item.level === 'mature' || item.level === 'mature_legacy').length} baseline matang`}
+            tone="green"
+            unit=""
+            value={capar.baseline?.total_contexts ?? baselines.length}
+          />
+          <MetricCard
+            icon={Activity}
+            label="Episode historis"
+            note="Episode yang dikirim CAPAR"
+            tone="gold"
+            unit=""
+            value={episodes.length}
+          />
+          <MetricCard
+            icon={ShieldCheck}
+            label="Median pemulihan"
+            note="Riwayat terdokumentasi · 30 hari"
+            tone="blue"
+            unit={recovery.median_recovery_minutes == null ? '' : 'menit'}
+            value={recovery.median_recovery_minutes ?? '—'}
+          />
+        </div>
+        <section className="panel historical-panel profile-baseline-panel">
+          <div className="panel-heading">
+            <div><h2>Baseline fisiologis berdasarkan aktivitas</h2><p>Rerata HR, HRV, DFA α1, dan ACC per aktivitas/waktu berdasarkan statistik CAPAR.</p></div>
+            <span className="panel-icon"><Activity size={17} /></span>
+          </div>
+          <DataTable
+            columns={baselineColumns}
+            rows={baselines}
+            rowKey={(row) => `${row.activity}:${row.time_period}`}
+            emptyMessage="Baseline personal belum tersedia. Data akan tampil setelah CAPAR membentuk konteks yang memadai."
+          />
+          <p className="baseline-footnote profile-motion-note">
+            Rerata ACC menggambarkan gerak yang terekam sensor pada baseline aktivitas tersebut. Label observasi membandingkan ACC antar-konteks baseline milik Anda; ACC tidak memastikan jenis gerak atau aktivitas dan dapat dipengaruhi posisi perangkat serta kualitas sensor.
+          </p>
+        </section>
+        <section className="panel profile-journey-note">
+          <div className="panel-heading">
+            <div><h2>Rekam perjalanan longitudinal</h2><p>Periode data yang sedang dimuat: {dashboard.periodDays || 30} hari</p></div>
+            <span className="panel-icon green-icon"><Activity size={17} /></span>
+          </div>
+          <p>
+            {episodes.length
+              ? `${episodes.length} episode CAPAR dan ${dashboard.checkIns?.length || 0} check-in tersedia pada riwayat yang dimuat.`
+              : 'Riwayat fisiologis dan check-in akan tersedia di halaman Monitoring dan Laporan saat data tercatat.'}
+          </p>
+        </section>
+      </section>
     </>
   );
 }

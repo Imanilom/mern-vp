@@ -132,6 +132,12 @@ The list endpoint is newest-first and caps `limit` at 100; its `pagination.next_
 as the next `before` value. `daily-summary` returns patient check-ins, event
 markers, and wearable samples recorded on the requested UTC calendar day.
 
+Deviation follow-up accepts `ranked_context_factors` as an ordered, unique list
+of `mood`, `meal`, `stress`, `physical_activity`, `sleep`, or `other`. The order
+is the patient's own ranking, stored separately from statistical signal
+contributions; it must not be interpreted as causal attribution. Mood, meal,
+and stress details can be included in their regular check-in fields.
+
 ## Event markers
 
 - `POST /api/patient-app/events`
@@ -438,6 +444,13 @@ state-transition summaries, and EMA responses; baseline contexts include
 maturity and available feature summaries.
 Data remains scoped to the authenticated account and linked CAPAR identity.
 The existing insights endpoint retains its summary-oriented recent time ranges.
+`capar-insights` also returns `transition_learning.recovery_intelligence`, a
+three-step forecast from account-scoped personal CAPAR state-transition counts
+for the latest activity class, using the existing allowed transitions and
+Dirichlet alpha 0.1. It requires at least 10 observed transitions in that
+activity class and data from the current state. The API returns no probabilities
+when those conditions are not met; a
+`data tidak cukup` display is a status, never an invented percentage.
 
 ### Decision policy provenance
 
@@ -476,16 +489,29 @@ used by the existing CAPAR/statistical pipeline. `evidence_fusion.sources`
 separates wearable, patient-reported symptoms, patient context, and clinical
 records. `clinical_records.status` is `not_integrated` until a governed
 clinical/laboratory source is connected; missing evidence is never synthesized.
+`processing_model` identifies the rule/statistical pipeline with its Bayesian
+candidate model; a candidate status does not mean a probability is active.
 
 The `latent_state_estimation` stage exposes an available personal-baseline
 wearable statistical state (and its distance) only when a matching
 quality-gated Mahalanobis result exists. Patient context may inform explanation
 and safety/action policy, but is not represented as an input to this state
-estimate. The requested notation `P(X_t | T(t))` is included
-under `probabilistic_posterior` as a design target, but its `distribution` is
-`null` and its status is `not_calibrated`. Feature contributions, literature,
-or context proximity are not converted into probabilities or diagnostic
-confidence. State references and decisions retain their existing
+estimate. `probabilistic_posterior` now fits a personal Gaussian Naive Bayes
+candidate for CAPAR-labeled stable/deviation segments within the same activity
+and time-period baseline. It uses a Laplace-smoothed label-frequency prior,
+Gaussian feature likelihoods, and a chronological holdout; the reported Brier
+score and sample counts are validation diagnostics, not confidence or clinical
+performance claims. The model assumes conditional feature independence and
+uses CAPAR-generated labels, not independent clinical adjudication.
+
+The candidate's individual `distribution` remains `null` and
+`individual_probability_exposed` remains `false` until external calibration,
+bias review, and governance approval. `status` is `validation_required` when a
+candidate can be fitted, or `insufficient_data` when quality-gated labels are
+missing. Feature contributions, literature, or context proximity are not
+converted into probabilities or diagnostic confidence. Mood, meals, stress,
+sleep, and other reported context remain separate temporal evidence and are
+not model inputs or causal attributions. State references and decisions retain their existing
 `NON-CLINICAL / PLACEHOLDER` policy metadata. The feedback stage distinguishes
 a completed patient follow-up from optional patient-reported `action_taken` and
 `response_after_action` fields. These fields describe what the patient says they

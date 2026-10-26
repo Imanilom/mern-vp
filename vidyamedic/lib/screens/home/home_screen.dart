@@ -1326,6 +1326,24 @@ class _TodayOverviewTab extends StatelessWidget {
       });
   }
 
+  double? _todayAverage(
+    List<Map<String, dynamic>> readings,
+    String field, {
+    bool positiveOnly = false,
+  }) {
+    var weightedTotal = 0.0;
+    var totalWeight = 0.0;
+    for (final reading in readings) {
+      final value = reading[field];
+      if (value is! num || (positiveOnly && value <= 0)) continue;
+      final sampleCount = reading['sample_count'];
+      final weight = sampleCount is num && sampleCount > 0 ? sampleCount : 1;
+      weightedTotal += value * weight;
+      totalWeight += weight;
+    }
+    return totalWeight == 0 ? null : weightedTotal / totalWeight;
+  }
+
   String _display(dynamic value, {String fallback = 'Belum dicatat'}) {
     if (value == null || value.toString().trim().isEmpty) return fallback;
     return value.toString();
@@ -1344,6 +1362,15 @@ class _TodayOverviewTab extends StatelessWidget {
             .join(', ')
         : '';
     final readings = _todayReadings(state);
+    final averageHeartRate = _todayAverage(readings, 'heart_rate_bpm');
+    final averageRmssd =
+        _todayAverage(readings, 'rmssd_ms', positiveOnly: true);
+    final todayCheckInCount = state.personalChatCheckIns.where((item) {
+      final date = DateTime.tryParse(item['recorded_at']?.toString() ?? '');
+      return date != null &&
+          DateUtils.isSameDay(date.toLocal(), DateTime.now());
+    }).length;
+    final todayEpisodes = _todayCaparEpisodes(state);
     final events = state.events
         .where((event) =>
             DateUtils.isSameDay(event.timestamp.toLocal(), DateTime.now()))
@@ -1380,7 +1407,76 @@ class _TodayOverviewTab extends StatelessWidget {
               DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.now()),
               style: AppTheme.font(size: 12, color: AppTheme.textSecondary),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            Text(
+              'Ringkasan hari ini',
+              style: AppTheme.font(
+                  size: 17, weight: FontWeight.w800, color: AppTheme.primaryDark),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Sekilas data yang sudah tercatat hari ini.',
+              style: AppTheme.font(size: 12, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _TodayMetricCard(
+                    icon: Icons.favorite_rounded,
+                    title: 'Rata-rata denyut',
+                    value: averageHeartRate == null
+                        ? '—'
+                        : '${averageHeartRate.round()} bpm',
+                    note: readings.isEmpty
+                        ? 'Belum ada sampel wearable nyata'
+                        : '${readings.length} sampel wearable nyata',
+                    color: AppTheme.statusRed,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _TodayMetricCard(
+                    icon: Icons.monitor_heart_rounded,
+                    title: 'RMSSD hari ini',
+                    value: averageRmssd == null
+                        ? '—'
+                        : '${averageRmssd.toStringAsFixed(1)} ms',
+                    note: averageRmssd == null
+                        ? 'Belum tersedia dari wearable'
+                        : 'Rata-rata sampel nyata',
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _TodayMetricCard(
+                    icon: Icons.edit_note_rounded,
+                    title: 'Check-in',
+                    value: todayCheckInCount.toString(),
+                    note: todayCheckInCount == 0
+                        ? 'Belum ada catatan hari ini'
+                        : 'Catatan tersimpan hari ini',
+                    color: const Color(0xFF3568A8),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _TodayMetricCard(
+                    icon: Icons.insights_rounded,
+                    title: 'Episode CAPAR',
+                    value: todayEpisodes.length.toString(),
+                    note: 'tercatat hari ini',
+                    color: const Color(0xFF9A6A20),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1603,7 +1699,7 @@ class _TodayOverviewTab extends StatelessWidget {
               ),
             ),
             _TodayEpisodesCard(
-              episodes: _todayCaparEpisodes(state),
+              episodes: todayEpisodes,
               onOpenHistory: () => Navigator.push(
                 context,
                 MaterialPageRoute<void>(
@@ -1662,6 +1758,87 @@ List<Map<String, dynamic>> _todayCaparEpisodes(AppState state) {
       if (firstAt == null || secondAt == null) return 0;
       return secondAt.compareTo(firstAt);
     });
+}
+
+class _TodayMetricCard extends StatelessWidget {
+  const _TodayMetricCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.note,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final String note;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minHeight: 132),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.borderLight),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(icon, size: 17, color: color),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.font(
+                      size: 11,
+                      weight: FontWeight.w700,
+                      color: AppTheme.textSecondary,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTheme.font(
+                size: 20,
+                weight: FontWeight.w800,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              note,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTheme.font(
+                size: 10,
+                color: AppTheme.textMuted,
+                height: 1.25,
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _TodayEpisodesCard extends StatelessWidget {

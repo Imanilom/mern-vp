@@ -286,11 +286,23 @@ export function attributePatientContext({
   if (types.has('mental_stress') || types.has('stress')) {
     add('stress', 2, 'patient_reported_stress_context');
   }
+  if (types.has('mood')) {
+    add('mood', 1, 'patient_reported_mood_context');
+  }
   if (types.has('sleep_duration') || types.has('sleep')) {
     add('sleep', 1, 'sleep_context_recorded');
   }
-  for (const type of ['caffeine', 'medication', 'meal_timing', 'illness', 'pain_discomfort']) {
-    if (types.has(type)) add(type, 1, `patient_context_${type}`);
+  for (const [contextType, candidateType] of [
+    ['caffeine', 'caffeine'],
+    ['medication', 'medication'],
+    ['meal', 'meal_timing'],
+    ['meal_timing', 'meal_timing'],
+    ['illness', 'illness'],
+    ['pain_discomfort', 'pain_discomfort'],
+  ]) {
+    if (types.has(contextType)) {
+      add(candidateType, 1, `patient_context_${candidateType}`);
+    }
   }
 
   const candidates = [...hypotheses.values()]
@@ -298,12 +310,20 @@ export function attributePatientContext({
       ...item,
       association:
         (item.type === 'physical_activity' && highMotion && elevatedHeartRate)
-        || (item.type !== 'physical_activity' && elevatedHeartRate)
+        || (
+          item.type !== 'physical_activity'
+          && !['mood', 'meal_timing'].includes(item.type)
+          && elevatedHeartRate
+        )
           ? 'consistent_with'
           : 'temporally_associated',
       evidence_level:
         (item.type === 'physical_activity' && highMotion && elevatedHeartRate)
-        || (item.type !== 'physical_activity' && elevatedHeartRate)
+        || (
+          item.type !== 'physical_activity'
+          && !['mood', 'meal_timing'].includes(item.type)
+          && elevatedHeartRate
+        )
           ? 'concordant_rule_evidence'
           : 'context_only',
       causal_claim: false,

@@ -518,6 +518,7 @@ test('deviation follow-up answers require a segment reference and known patient-
       response_after_action: 'Merasa lebih nyaman setelah beberapa waktu',
     },
   });
+
   assert.deepEqual(result.deviation_follow_up, {
     segment_id: '507f1f77bcf86cd799439011',
     perceived_factors: ['stress', 'poor_sleep'],
@@ -563,6 +564,39 @@ test('deviation follow-up answers require a segment reference and known patient-
     deviation_follow_up: {
       segment_id: '507f1f77bcf86cd799439011',
       location: { latitude: 91, longitude: 106.8 },
+    },
+  }), { statusCode: 400 });
+});
+
+test('deviation follow-up preserves a unique patient-ranked factor order', () => {
+  const result = validateCheckIn({
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    feeling: 'poor',
+    stress_level: 2,
+    lifestyle: { meal: true },
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      perceived_factors: ['mood', 'meal', 'stress'],
+      ranked_context_factors: ['stress', 'mood', 'meal'],
+    },
+  });
+
+  assert.deepEqual(
+    result.deviation_follow_up.ranked_context_factors,
+    ['stress', 'mood', 'meal'],
+  );
+  assert.throws(() => validateCheckIn({
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      ranked_context_factors: ['mood', 'mood'],
+    },
+  }), { statusCode: 400 });
+  assert.throws(() => validateCheckIn({
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      ranked_context_factors: ['causation'],
     },
   }), { statusCode: 400 });
 });

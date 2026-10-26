@@ -973,6 +973,7 @@ export function validateCheckIn(body) {
     const allowed = new Set([
       'segment_id',
       'perceived_factors',
+      'ranked_context_factors',
       'symptom_onset',
       'note',
       'meal_count',
@@ -993,6 +994,8 @@ export function validateCheckIn(body) {
       : validateStringList(followUp.perceived_factors, 'deviation_follow_up.perceived_factors', 10, 40);
     const allowedFactors = [
       'physical_activity',
+      'mood',
+      'meal',
       'stress',
       'poor_sleep',
       'medication',
@@ -1016,6 +1019,32 @@ export function validateCheckIn(body) {
       segment_id: followUp.segment_id,
       perceived_factors: perceivedFactors,
     };
+    if ('ranked_context_factors' in followUp) {
+      const rankedFactors = validateStringList(
+        followUp.ranked_context_factors,
+        'deviation_follow_up.ranked_context_factors',
+        6,
+        40
+      );
+      const allowedRankedFactors = [
+        'mood',
+        'meal',
+        'stress',
+        'physical_activity',
+        'sleep',
+        'other',
+      ];
+      if (
+        rankedFactors.some((factor) => !allowedRankedFactors.includes(factor))
+        || new Set(rankedFactors).size !== rankedFactors.length
+      ) {
+        throw errorHandler(
+          400,
+          'deviation_follow_up.ranked_context_factors harus berisi faktor unik yang valid.'
+        );
+      }
+      resultFollowUp.ranked_context_factors = rankedFactors;
+    }
     if ('symptom_onset' in followUp) {
       const validOnset = ['before_deviation', 'around_deviation', 'after_deviation', 'unknown'];
       if (!validOnset.includes(followUp.symptom_onset)) {

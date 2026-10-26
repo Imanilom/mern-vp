@@ -12,6 +12,7 @@ export function buildPatientReasoningPipeline({
   acceptedSegments = [],
   latestSegment = null,
   latestMahalanobis = null,
+  bayesianModel = null,
   matchingBaseline = null,
   polarData = [],
   checkIns = [],
@@ -81,12 +82,22 @@ export function buildPatientReasoningPipeline({
 
   return {
     architecture_version: '1.0.0',
-    processing_model: 'rule_and_statistical_mvp',
+    processing_model: 'rule_statistical_with_bayesian_candidate',
     probabilistic_posterior: {
-      notation: 'P(X_t | T(t))',
-      status: 'not_calibrated',
+      notation: 'P(CAPAR deviation | physiological features, personal activity/time baseline)',
+      method: bayesianModel?.method || 'personal_gaussian_naive_bayes',
+      status: bayesianModel?.status || 'insufficient_data',
       distribution: null,
-      reason: 'No validated and calibrated individual-level probabilistic model is configured; no probability is inferred from feature contribution shares.',
+      reason: bayesianModel?.reason
+        || 'Insufficient quality-gated, activity/time-matched CAPAR labels to fit a Bayesian candidate model.',
+      feature_keys: bayesianModel?.feature_keys || [],
+      prior: bayesianModel?.prior || null,
+      likelihood: bayesianModel?.likelihood || null,
+      training_samples: bayesianModel?.training_samples || { stable: 0, deviation: 0 },
+      validation_samples: bayesianModel?.validation_samples || { stable: 0, deviation: 0 },
+      validation: bayesianModel?.validation || null,
+      individual_probability_exposed: false,
+      validation_gate: 'External calibration and governance approval are required before any probability is shown.',
     },
     stages: [
       {
@@ -152,6 +163,7 @@ export function buildPatientReasoningPipeline({
         patient_context_used_in_state_estimate: false,
         distance: stateAvailable ? latestMahalanobis.distance : null,
         posterior_probability: null,
+        probabilistic_model_status: bayesianModel?.status || 'insufficient_data',
         thresholds_are_clinical: false,
       },
       {

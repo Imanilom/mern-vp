@@ -83,6 +83,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.text('Hari Ini').last);
     await tester.pumpAndSettle();
+    expect(find.text('Ringkasan hari ini'), findsOneWidget);
+    expect(find.text('88 bpm'), findsOneWidget);
+    expect(find.text('47.6 ms'), findsOneWidget);
+    expect(find.text('Check-in'), findsOneWidget);
+    expect(find.text('Episode CAPAR'), findsOneWidget);
     expect(find.text('Aktivitas hari ini'), findsOneWidget);
     expect(find.text('Berjalan'), findsWidgets);
     await tester.scrollUntilVisible(
