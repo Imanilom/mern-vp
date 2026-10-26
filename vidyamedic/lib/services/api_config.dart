@@ -133,6 +133,8 @@ class ApiConfig {
       '$baseUrl/patient-app/wearable/history';
   static String get personalChatGeminiEndpoint =>
       '$baseUrl/patient-app/chat/gemini';
+  static String get personalChatPatientsEndpoint =>
+      '$baseUrl/patient-app/chat/patients';
   static String get wearableStreamEndpoint =>
       '$baseUrl/patient-app/wearable/stream';
 }

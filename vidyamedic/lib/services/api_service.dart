@@ -709,12 +709,43 @@ class ApiService {
     }
   }
 
+  /// GET /api/patient-app/chat/patients
+  static Future<ApiResponse<List<Map<String, dynamic>>>>
+      getDoctorChatPatients() async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse(ApiConfig.personalChatPatientsEndpoint),
+            headers: _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<List<Map<String, dynamic>>>(
+        res,
+        (data) {
+          if (data is! List) {
+            throw const FormatException('Daftar pasien chat tidak valid.');
+          }
+          return data
+              .whereType<Map>()
+              .map((patient) => Map<String, dynamic>.from(patient))
+              .toList();
+        },
+      );
+    } catch (error) {
+      return ApiResponse.error(
+        'Daftar pasien yang ditugaskan gagal dimuat: $error',
+        statusCode: 0,
+      );
+    }
+  }
+
   /// POST /api/patient-app/chat/gemini
   static Future<ApiResponse<String>> generatePersonalChatAnswer({
     required String question,
     required List<Map<String, dynamic>> evidence,
     required String localSummary,
     required List<Map<String, String>> conversationHistory,
+    String? targetUserId,
   }) async {
     try {
       final history = conversationHistory
@@ -733,6 +764,7 @@ class ApiService {
         'evidence': List<Map<String, dynamic>>.of(evidence),
         'local_summary': localSummary,
         'conversation_history': history,
+        if (targetUserId != null) 'target_user_id': targetUserId,
       };
       var encodedBody = jsonEncode(requestBody);
       while (utf8.encode(encodedBody).length > 9000) {

@@ -395,21 +395,31 @@ unrecorded rather than being filled with a default feeling or activity.
 rate-limited to 20 requests per 15 minutes. The request contains `question`,
 `local_summary`, up to 15 selected `evidence` records, and up to 8
 `conversation_history` messages (`role: user|assistant`, `text`). Evidence and
-history may be empty for an educational question. The server validates and
-filters both, resolves the linked CAPAR account from the authenticated session
-(never from a client-supplied account ID), and retrieves eligible population
-baselines when the question asks about a supported metric or comparison.
+history may be empty for an educational question. A `target_user_id` is accepted
+only for a doctor account. The doctor app first calls
+`GET /api/patient-app/chat/patients`; the response contains only users assigned
+to the authenticated doctor. The server rechecks that assignment for every
+chat request and rejects unassigned patients. Patient/user accounts cannot
+choose another account. The server validates and filters inputs, then
+aggregates the selected account's historical CAPAR raw data, segments,
+baselines, anomaly events, and manual activity logs by the authorized account
+ID. Time filters in the question are applied; absent a time range, the full
+available history is summarized. Activity duration is computed from manual
+start/end times, including overnight intervals.
+Manual activity summarization is capped at the 20,000 most recent matching
+records; the response context marks this as partial when the cap is reached.
 
 Population baselines are aggregated from mature, non-rejected per-user
 baselines with at least 20 samples, exclude the current user, and are returned
 only for groups of at least five other users. No individual population records
 or account identifiers are sent to Gemini. CAPAR analysis is also limited to
 selected patient-facing fields; if CAPAR analysis fails or is unavailable, the
-chat request continues without it. Conversation history is sent only after
-Gemini consent, is used as request context, and is not stored by this endpoint.
-Account/doctor names and provider API keys are not sent by the app. Configure
-`GEMINI_API_KEY` and optionally `GEMINI_MODEL` on the backend. The app permits
-up to three minutes for the backend request.
+chat request continues with the available history and clearly marks partial
+retrieval. Conversation history is sent only after Gemini consent, is used as
+request context, and is not stored by this endpoint. Patient names and provider
+API keys are not sent to Gemini. Configure `GEMINI_API_KEY` and optionally
+`GEMINI_MODEL` on the backend. The app permits up to three minutes for the
+backend request.
 
 ## CAPAR insights and scientific evidence
 

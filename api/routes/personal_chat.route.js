@@ -1,6 +1,9 @@
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { generatePersonalChatAnswer } from '../controllers/personal_chat.controller.js';
+import {
+  generatePersonalChatAnswer,
+  listDoctorChatPatients,
+} from '../controllers/personal_chat.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
 
 const router = express.Router();
@@ -17,5 +20,6 @@ const geminiChatLimiter = rateLimit({
 });
 
 router.post('/gemini', verifyToken, geminiChatLimiter, generatePersonalChatAnswer);
+router.get('/patients', verifyToken, listDoctorChatPatients);
 
 export default router;

@@ -155,6 +155,7 @@ class AppState extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated || ApiService.isAuthenticated;
   Map<String, dynamic>? get currentAccount =>
       _currentAccount ?? ApiService.currentUser;
+  bool get isDoctorAccount => currentAccount?['role'] == 'doctor';
 
   Future<void> initialize() async {
     await ApiService.init();
@@ -163,12 +164,31 @@ class AppState extends ChangeNotifier {
     _isAuthenticated = true;
     _currentAccount = ApiService.currentUser;
     notifyListeners();
-    unawaited(wearableBridge.restoreSavedDeviceAndAutoConnect());
+    if (!isDoctorAccount) {
+      unawaited(wearableBridge.restoreSavedDeviceAndAutoConnect());
+    }
     unawaited(_validateStoredSession());
   }
 
   Future<void> _validateStoredSession() async {
     try {
+      if (isDoctorAccount) {
+        final patients = await ApiService.getDoctorChatPatients();
+        if (!patients.success) {
+          if (patients.statusCode == 401 || patients.statusCode == 403) {
+            await ApiService.clearSession();
+            _isAuthenticated = false;
+            _currentAccount = null;
+            notifyListeners();
+          } else {
+            dataError =
+                patients.message ?? 'Sesi dokter belum dapat diverifikasi.';
+            notifyListeners();
+          }
+        }
+        return;
+      }
+
       final profile = await ApiService.getProfile();
       if (!profile.success) {
         if (profile.statusCode == 401 || profile.statusCode == 403) {
@@ -254,7 +274,9 @@ class AppState extends ChangeNotifier {
         userProfile.name = _currentAccount!['name'].toString();
       }
       notifyListeners();
-      unawaited(wearableBridge.restoreSavedDeviceAndAutoConnect());
+      if (!isDoctorAccount) {
+        unawaited(wearableBridge.restoreSavedDeviceAndAutoConnect());
+      }
       await refreshAllData();
       return true;
     } else {
@@ -306,6 +328,10 @@ class AppState extends ChangeNotifier {
 
   Future<void> refreshAllData() async {
     if (!isAuthenticated) return;
+    if (isDoctorAccount) {
+      dataError = null;
+      return;
+    }
     isRefreshing = true;
     dataError = null;
     notifyListeners();
@@ -767,6 +793,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> fetchPersonalChatHistory() async {
     if (!isAuthenticated || isLoadingPersonalChatHistory) return;
+    if (isDoctorAccount) {
+      personalChatHistoryError = null;
+      personalChatHistoryLoaded = true;
+      return;
+    }
     isLoadingPersonalChatHistory = true;
     notifyListeners();
     final now = DateTime.now();
