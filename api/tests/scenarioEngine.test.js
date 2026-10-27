@@ -6,6 +6,7 @@ import {
   isScenarioRealRecordedSample,
   mapScenarioActivity,
   scenarioBaselineActivityAliases,
+  SCENARIO_DEFINITIONS,
 } from '../utils/scenarioEngine.js';
 
 const baseline = {
@@ -13,6 +14,12 @@ const baseline = {
   time_period: 'morning',
   is_mature: false,
 };
+
+test('HCI A/B/C definitions retain their original interactions', () => {
+  assert.equal(SCENARIO_DEFINITIONS.a.title, 'Satu arah');
+  assert.equal(SCENARIO_DEFINITIONS.b.title, 'Dua arah nonadaptif');
+  assert.equal(SCENARIO_DEFINITIONS.c.title, 'Dua arah adaptif');
+});
 
 function windows(count, start = Date.UTC(2026, 0, 5, 8)) {
   return Array.from({ length: count }, (_, index) => ({

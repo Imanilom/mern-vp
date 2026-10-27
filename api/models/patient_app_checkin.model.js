@@ -86,6 +86,31 @@ const PatientAppCheckInSchema = new mongoose.Schema(
         enum: ['before_deviation', 'around_deviation', 'after_deviation', 'unknown', null],
         default: null,
       },
+      activity_before_event: {
+        type: String,
+        enum: ['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'work', 'meal', 'other', 'unknown', null],
+        default: null,
+      },
+      strenuous_activity: {
+        type: String,
+        enum: ['yes', 'no', 'uncertain', null],
+        default: null,
+      },
+      activity_intensity: {
+        type: String,
+        enum: ['light', 'moderate', 'heavy', 'very_heavy', 'not_applicable', 'uncertain', null],
+        default: null,
+      },
+      mental_activity: {
+        type: String,
+        enum: ['none', 'focused_work', 'stressful_work', 'conversation', 'other', 'unknown', null],
+        default: null,
+      },
+      measurement_condition: {
+        type: String,
+        enum: ['worn_as_usual', 'adjusted_during_event', 'loose_or_moving', 'not_worn', 'unknown', null],
+        default: null,
+      },
       note: { type: String, trim: true, maxlength: 500, default: '' },
       action_taken: { type: String, trim: true, maxlength: 300, default: '' },
       response_after_action: { type: String, trim: true, maxlength: 500, default: '' },

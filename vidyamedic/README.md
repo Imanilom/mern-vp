@@ -56,6 +56,12 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
 - SUS dihitung dengan pembalikan butir standar; nilai NASA-TLX yang disimpan adalah rata-rata enam dimensi tanpa pembobotan, bukan skor NASA-TLX berbobot.
 - Baseline eksperimen memerlukan minimal satu hari dan 10 menit window valid berkualitas; kekurangan bukti menghasilkan `UNRESOLVED`, bukan label normal. Persyaratan ini tidak mengubah kematangan baseline CAPAR produksi.
 
+### Human In the Loop
+- Halaman Human In the Loop merupakan alur observasi dan klarifikasi tersendiri, terpisah dari eksperimen HCI A/B/C.
+- Baseline dan profil dibuat per aktivitas/waktu. B/C hanya memakai baseline CAPAR yang matang dan cocok dengan konteks observasi.
+- Deviasi HIL memakai `latest_observation.features[].z_score` dari CAPAR; fitur di atas baseline (z-score > 0) ditampilkan tanpa tau tambahan. Quality gate dan kematangan baseline tetap berlaku; ini observasi statistik, bukan diagnosis.
+- Alur one-way feedback dan klarifikasi pasien tetap membatasi interpretasi; status `UNRESOLVED` dipertahankan bila bukti belum cukup.
+
 ### 8. 👤 Profil Medis & Kartu Darurat
 - Data demografis, BMI status calculator, dan golongan darah.
 - Riwayat kondisi medis dan manajemen pengobatan aktif.

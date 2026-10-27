@@ -104,6 +104,9 @@ export default function App() {
         segment_id: segmentId,
         perceived_factors: perceivedFactors.length ? perceivedFactors : ['no_known_factor'],
         ranked_context_factors: contribution.rankedFactors,
+        activity_before_event: contribution.activityBeforeEvent,
+        mental_activity: contribution.mentalActivity,
+        measurement_condition: contribution.measurementCondition,
         ...(contribution.symptomOnset ? { symptom_onset: contribution.symptomOnset } : {}),
         note: contribution.wasMoving
           ? `Pengguna mengonfirmasi aktivitas ${contribution.movementType} saat event terdeteksi.`

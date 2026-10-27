@@ -589,6 +589,11 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
             style: AppTheme.font(
                 size: 11.5, weight: FontWeight.w700, color: color),
           ),
+          const SizedBox(height: 4),
+          Text(
+            isCapar ? 'Sumbu X: Waktu · Sumbu Y: Jarak deviasi' : 'Sumbu X: Waktu · Sumbu Y: HR (bpm)',
+            style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
+          ),
           const SizedBox(height: 8),
           if (isLoading)
             const SizedBox(
@@ -627,9 +632,17 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
               height: 190,
               width: double.infinity,
               child: CustomPaint(
-                painter: TrendChartPainter(points: points, color: color),
+                painter: TrendChartPainter(
+                  points: points,
+                  color: color,
+                  yAxisLabel: isCapar ? 'Deviasi' : 'HR (bpm)',
+                ),
               ),
             ),
+          if (!isCapar && !isDemo && !isStreaming) ...[
+            const SizedBox(height: 8),
+            _activitySequence(points),
+          ],
           if (isDemo) ...[
             const SizedBox(height: 8),
             Text(
@@ -663,6 +676,39 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
         ],
       ),
     );
+  }
+
+  Widget _activitySequence(List<ChartPoint> points) {
+    final sequence = <String>[];
+    String? previous;
+    for (final point in points) {
+      final label = _activityLabel(point.activity);
+      if (label == null || label == previous) continue;
+      sequence.add(label);
+      previous = label;
+    }
+    if (sequence.isEmpty) return const SizedBox.shrink();
+    return Text(
+      'Aktivitas terekam: ${sequence.join(' → ')}',
+      style: AppTheme.font(
+        size: 10.5,
+        color: AppTheme.textSecondary,
+        height: 1.35,
+      ),
+    );
+  }
+
+  String? _activityLabel(String? activity) {
+    final normalized = activity?.trim().toLowerCase();
+    return switch (normalized) {
+      'rest' || 'sitting' || 'duduk' || 'istirahat' => 'Duduk/istirahat',
+      'standing' || 'berdiri' => 'Berdiri',
+      'walking' || 'light' || 'berjalan' => 'Berjalan',
+      'running' || 'berlari' => 'Berlari',
+      'exercise' || 'moderate' || 'intense' || 'olahraga' => 'Olahraga',
+      'work' || 'bekerja' => 'Bekerja',
+      _ => null,
+    };
   }
 
   Widget _chartChoice(String label, HistoryChart chart) => ChoiceChip(
@@ -737,7 +783,12 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
           final date = _date(record['recorded_at']);
           final value = record[field];
           if (date == null || value is! num || !value.isFinite) return null;
-          return ChartPoint(date, value.toDouble());
+          return ChartPoint(
+            date,
+            value.toDouble(),
+            activity: record['activity']?.toString() ??
+                record['activity_label']?.toString(),
+          );
         })
         .whereType<ChartPoint>()
         .toList()
@@ -941,6 +992,7 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
       'decision_policy': 'Kebijakan tindakan',
       'patient_pedagogy': 'Panduan pasien',
       'feedback': 'Umpan balik',
+      'resolution': 'Resolusi bukti',
     };
     String statusLabel(String? status) => switch (status) {
           'available' || 'passed' || 'mature' => 'Tersedia',
@@ -950,8 +1002,11 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
           'conflicting_evidence' => 'Bukti berbeda',
           'insufficient_data' => 'Data belum cukup',
           'awaiting_patient_context' => 'Menunggu konteks Anda',
+          'awaiting_clarification' => 'Menunggu klarifikasi',
           'patient_feedback_recorded' => 'Konteks pasien tercatat',
           'no_feedback_recorded' => 'Belum ada umpan balik',
+          'reinterpreted_with_limits' => 'Ditinjau ulang dengan batasan',
+          'unresolved' => 'Belum terselesaikan',
           'not_required' => 'Tidak diperlukan saat ini',
           'not_calibrated' => 'Belum tervalidasi / terkalibrasi',
           'not_integrated' => 'Belum terintegrasi',
@@ -1006,6 +1061,9 @@ class _PatientJourneyScreenState extends State<PatientJourneyScreen> {
         case 'feedback':
           return 'Langkah tercatat: ${stage['patient_reported_action_recorded'] == true ? 'ya' : 'belum'} • '
               'Respons pribadi: ${stage['patient_reported_response_recorded'] == true ? 'tercatat' : 'belum tercatat'}';
+        case 'resolution':
+          return stage['interpretation']?.toString() ??
+              'Menunggu bukti lanjutan yang memadai';
         default:
           return '';
       }

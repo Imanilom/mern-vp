@@ -432,6 +432,36 @@ function buildUser360Prompt(ctx, { includeIdentity = true } = {}) {
     const timeStr = fmtTimeOnly(s.window_start);
     return `  [${timeStr}] Akt=${s.activity_label || 'N/A'}, State=${fsmLabel(s.rr_status)}, Score=${fmtFloat(s.anomaly_score)}, HR=${fmtFloat(f.mean_hr, 1)} bpm, RMSSD=${fmtFloat(f.rmssd, 1)} ms`;
   }).join('\n') || '  (Tidak ada data segmen)';
+  const chronologicalSegments = recentSegments
+    .filter(segment => Number.isFinite(segment.window_start))
+    .slice()
+    .sort((left, right) => left.window_start - right.window_start)
+    .slice(-8);
+  const observedChangeLines = chronologicalSegments.map(segment => {
+    const features = segment.features || {};
+    return `  [${fmtDateTime(segment.window_start)}] Aktivitas=${segment.activity_label || 'tidak tercatat'}; state=${fsmLabel(segment.rr_status)}; skor deviasi CAPAR=${fmtFloat(segment.anomaly_score, 2)}; HR rata-rata=${fmtFloat(features.mean_hr, 1)} bpm; RMSSD=${fmtFloat(features.rmssd, 1)} ms`;
+  }).join('\n') || '  Tidak ada rangkaian segmen untuk dibandingkan.';
+  const firstObserved = chronologicalSegments[0];
+  const lastObserved = chronologicalSegments.at(-1);
+  const hasComparablePoints = chronologicalSegments.length > 1;
+  const scoreDelta = hasComparablePoints
+    && Number.isFinite(firstObserved?.anomaly_score)
+    && Number.isFinite(lastObserved?.anomaly_score)
+    ? lastObserved.anomaly_score - firstObserved.anomaly_score
+    : null;
+  const hrDelta = hasComparablePoints
+    && Number.isFinite(firstObserved?.features?.mean_hr)
+    && Number.isFinite(lastObserved?.features?.mean_hr)
+    ? lastObserved.features.mean_hr - firstObserved.features.mean_hr
+    : null;
+  const deltaNarrative = (delta, unit) => delta == null
+    ? 'perubahan tidak dapat dihitung karena titik pembanding tidak lengkap'
+    : `${delta > 0 ? 'naik' : delta < 0 ? 'turun' : 'tidak berubah'} ${Math.abs(delta).toFixed(2)}${unit}`;
+  const observedChangeSummary = firstObserved && lastObserved
+    ? chronologicalSegments.length < 2
+      ? 'Hanya tersedia satu segmen; arah perubahan skor deviasi dan HR belum dapat ditentukan.'
+      : `Dalam ${chronologicalSegments.length} segmen berurutan dari ${fmtDateTime(firstObserved.window_start)} sampai ${fmtDateTime(lastObserved.window_start)}, skor deviasi CAPAR ${deltaNarrative(scoreDelta, '')} dan HR rata-rata ${deltaNarrative(hrDelta, ' bpm')}. Aktivitas berubah dari ${firstObserved.activity_label || 'tidak tercatat'} menjadi ${lastObserved.activity_label || 'tidak tercatat'}. Ini membandingkan titik observasi yang tersedia, bukan diagnosis atau bukti penyebab.`
+    : 'Belum ada cukup segmen berurutan untuk menjelaskan arah perubahan deviasi dan HR.';
 
   // 6. Saved Phenotype Profile (Q1-Q10 Framework Answers)
   let phenoSection = '';
@@ -519,6 +549,11 @@ Outcome    : ${selectedEpisode.physiological_outcome || 'N/A'}
 [BAGIAN 5] SAMPEL MONITORING REAL-TIME TERAKHIR
 ══════════════════════════════════════════════════════════════
 ${segLines}
+
+Rangkaian 8 segmen terbaru dalam urutan waktu:
+${observedChangeLines}
+Ringkasan perubahan terhitung dari titik awal ke titik akhir:
+${observedChangeSummary}
 ${phenoSection}
 ══════════════════════════════════════════════════════════════
 [LANDASAN ILMIAH & BATASAN KLINIS]
@@ -532,6 +567,8 @@ Tugas Anda adalah:
 1. Mengevaluasi apakah sistem otonom mampu mempertahankan/memperoleh kembali homeostasis secara konsisten sesuai konteks.
 2. Membentuk "Digital Autonomic Phenotype" personal.
 3. Melakukan "Risk Stratification" dan memberikan rekomendasi pemeriksaan medis konfirmasi jika diperlukan.
+4. Menarasikan perubahan deviasi secara berurutan (meningkat, menurun, atau belum dapat ditentukan) memakai nilai HR, skor, aktivitas, dan waktu yang benar-benar tersedia. Bedakan perubahan satu segmen dari deviasi persisten.
+5. Kenaikan skor deviasi hanya menunjukkan jarak statistik yang meningkat pada observasi tersedia, bukan otomatis kondisi klinis memburuk. Jika aktivitas berbeda atau titik pembanding tidak cukup, nyatakan perbandingan belum dapat dipastikan; jangan mengarang nilai atau penyebab.
 
 TAKSONOMI DIGITAL AUTONOMIC PHENOTYPE:
 1. "Efficient Autonomic Recovery": TTR pendek konsisten, rebound vagal kuat, no relapse.
@@ -555,6 +592,7 @@ Berikan analisis komprehensif 360° dalam format JSON berikut:
 
 {
   "user_profile_summary": "Ringkasan profil dan pola pemakaian aplikasi/wearable oleh user: seberapa aktif merekam, rentang waktu monitoring (format tanggal bersih Indonesia), kepatuhan, dan rata-rata metrik kardiovaskular harian. (3-4 kalimat)",
+  "observed_change_summary": "Narasi berurutan mengenai apakah skor deviasi dan HR meningkat, menurun, atau belum dapat ditentukan; cantumkan rentang waktu, aktivitas, serta nilai hanya bila tersedia, dan tegaskan batas interpretasi. (2-4 kalimat)",
   "baseline_portfolio_evaluation": "Evaluasi portofolio baseline: jelaskan baseline apa saja yang dimiliki dan sudah mature, baseline apa yang masih kurang/belum tercapai (gaps), kecukupan data, serta kesiapan ambang tau personal. (3-4 kalimat)",
   "anomaly_burden_analysis": "Analisis beban anomali (Anomaly Burden): jelaskan apakah user memiliki riwayat anomali, seberapa sering (Caution vs Alert), aktivitas apa yang paling rentan, dan apakah ada kecenderungan relapse atau pemulihan lambat. (3-4 kalimat)",
   "autonomic_phenotype": "Pilih 1 dari 8 nama taksonomi fenotipe otonom di atas yang paling tepat",
@@ -983,6 +1021,7 @@ function buildExportedPrompt({ baseline, segment, event, fsmStates, thresholds }
 Output JSON:
 {
   "user_profile_summary": "Data manual exported.",
+  "observed_change_summary": "Data export hanya mencakup segmen terpilih; perubahan longitudinal belum dapat disimpulkan.",
   "baseline_portfolio_evaluation": "Baseline parsial untuk aktivitas ${fmt(baseline?.activity)}.",
   "anomaly_burden_analysis": "Episode terisolasi dari file export.",
   "autonomic_phenotype": "Efficient Autonomic Recovery",

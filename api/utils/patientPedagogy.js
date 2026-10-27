@@ -70,10 +70,31 @@ export function buildPatientDeviationFollowUpPrompt({
     },
     {
       id: 'recent_context',
-      question: 'Apa yang sedang atau baru saja Anda lakukan?',
+      question: 'Aktivitas apa yang Anda lakukan saat perubahan terdeteksi?',
       response_field: 'activity',
       input_type: 'single_select',
       options: ['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'work', 'meal', 'other'],
+    },
+    {
+      id: 'activity_before_event',
+      question: 'Apa aktivitas fisik Anda sebelum perubahan terdeteksi?',
+      response_field: 'deviation_follow_up.activity_before_event',
+      input_type: 'single_select',
+      options: ['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'work', 'meal', 'other', 'unknown'],
+    },
+    {
+      id: 'mental_activity',
+      question: 'Bagaimana aktivitas atau beban mental Anda saat itu?',
+      response_field: 'deviation_follow_up.mental_activity',
+      input_type: 'single_select',
+      options: ['none', 'focused_work', 'stressful_work', 'conversation', 'other', 'unknown'],
+    },
+    {
+      id: 'measurement_condition',
+      question: 'Bagaimana kondisi perangkat saat perubahan terukur?',
+      response_field: 'deviation_follow_up.measurement_condition',
+      input_type: 'single_select',
+      options: ['worn_as_usual', 'adjusted_during_event', 'loose_or_moving', 'not_worn', 'unknown'],
     },
     {
       id: 'possible_factors',

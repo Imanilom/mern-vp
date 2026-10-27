@@ -12,9 +12,11 @@ class WearablePairingScreen extends StatefulWidget {
   const WearablePairingScreen({
     super.key,
     this.startStreamingAndReturnHome = true,
+    this.activityOverride,
   });
 
   final bool startStreamingAndReturnHome;
+  final String? activityOverride;
 
   @override
   State<WearablePairingScreen> createState() => _WearablePairingScreenState();
@@ -47,7 +49,8 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
       if (!mounted) return;
       final state = context.read<AppState>();
       _appState = state;
-      _activity = mapActivityToApi(state.activity);
+      _activity = widget.activityOverride ?? mapActivityToApi(state.activity);
+      _activityConfirmed = widget.activityOverride != null;
       final bridge = state.wearableBridge;
       bridge.addListener(_handleBridgeChange);
       if (bridge.isConnected) {
@@ -129,6 +132,11 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
   }
 
   Future<bool> _confirmActivityBeforeRecording() async {
+    if (widget.activityOverride != null) {
+      _activity = widget.activityOverride!;
+      context.read<AppState>().setWearableActivityContext(_activity);
+      return true;
+    }
     if (_activityConfirmed) return true;
     if (_isActivityPromptVisible) return false;
     _isActivityPromptVisible = true;
@@ -149,7 +157,8 @@ class _WearablePairingScreenState extends State<WearablePairingScreen> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: selectedActivity,
-                decoration: const InputDecoration(labelText: 'Aktivitas saat ini'),
+                decoration:
+                    const InputDecoration(labelText: 'Aktivitas saat ini'),
                 items: _activities
                     .map((activity) => DropdownMenuItem(
                           value: activity.$2,

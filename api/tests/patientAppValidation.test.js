@@ -655,7 +655,95 @@ test('deviation follow-up preserves a unique patient-ranked factor order', () =>
   }), { statusCode: 400 });
 });
 
+test('deviation follow-up validates activity, mental context, and measurement condition', () => {
+  const result = validateCheckIn({
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    activity: 'sitting',
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      activity_before_event: 'walking',
+      mental_activity: 'focused_work',
+      measurement_condition: 'worn_as_usual',
+    },
+  });
+  assert.equal(result.deviation_follow_up.activity_before_event, 'walking');
+  assert.equal(result.deviation_follow_up.mental_activity, 'focused_work');
+  assert.equal(result.deviation_follow_up.measurement_condition, 'worn_as_usual');
+
+  for (const [field, value] of [
+    ['activity_before_event', 'cycling'],
+    ['mental_activity', 'panic'],
+    ['measurement_condition', 'sensor_broken'],
+  ]) {
+    assert.throws(() => validateCheckIn({
+      recorded_at: '2026-10-05T08:15:00.000Z',
+      deviation_follow_up: {
+        segment_id: '507f1f77bcf86cd799439011',
+        [field]: value,
+      },
+    }), { statusCode: 400 });
+  }
+});
+
+test('Human In the Loop activity clarification validates strenuous activity and intensity', () => {
+  const result = validateCheckIn({
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      strenuous_activity: 'yes',
+      activity_intensity: 'heavy',
+      perceived_factors: ['physical_activity'],
+    },
+  });
+  assert.equal(result.deviation_follow_up.strenuous_activity, 'yes');
+  assert.equal(result.deviation_follow_up.activity_intensity, 'heavy');
+
+  assert.equal(
+    validateCheckIn({
+      recorded_at: '2026-10-05T08:15:00.000Z',
+      deviation_follow_up: {
+        segment_id: '507f1f77bcf86cd799439011',
+        strenuous_activity: 'yes',
+        activity_intensity: 'uncertain',
+      },
+    }).deviation_follow_up.activity_intensity,
+    'uncertain',
+  );
+  assert.equal(
+    validateCheckIn({
+      recorded_at: '2026-10-05T08:15:00.000Z',
+      deviation_follow_up: {
+        segment_id: '507f1f77bcf86cd799439011',
+        strenuous_activity: 'no',
+        activity_intensity: 'not_applicable',
+      },
+    }).deviation_follow_up.strenuous_activity,
+    'no',
+  );
+  for (const followUp of [
+    { strenuous_activity: 'maybe' },
+    { strenuous_activity: 'yes', activity_intensity: 'not_applicable' },
+    { strenuous_activity: 'no', activity_intensity: 'heavy' },
+  ]) {
+    assert.throws(() => validateCheckIn({
+      recorded_at: '2026-10-05T08:15:00.000Z',
+      deviation_follow_up: {
+        segment_id: '507f1f77bcf86cd799439011',
+        ...followUp,
+      },
+    }), { statusCode: 400 });
+  }
+});
+
 test('patient event markers and wearable samples validate their source values', () => {
+  const hilScenario = validatePatientEvent({
+    event_type: 'hil_scenario',
+    occurred_at: '2026-10-05T07:30:00.000Z',
+    details: 'Human In the Loop: one-way feedback ditampilkan.',
+    value: 'scenario=B;segment=507f1f77bcf86cd799439011',
+  });
+  assert.equal(hilScenario.event_type, 'hil_scenario');
+
   const event = validatePatientEvent({
     event_type: 'medication',
     occurred_at: '2026-10-05T07:30:00.000Z',

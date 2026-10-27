@@ -351,6 +351,7 @@ const patientEventTypes = new Set([
   'illness',
   'posture_change',
   'activity_correction',
+  'hil_scenario',
   'menstruation',
   'other',
   'ema',
@@ -1025,6 +1026,11 @@ export function validateCheckIn(body) {
       'perceived_factors',
       'ranked_context_factors',
       'symptom_onset',
+      'activity_before_event',
+      'strenuous_activity',
+      'activity_intensity',
+      'mental_activity',
+      'measurement_condition',
       'note',
       'meal_count',
       'location',
@@ -1101,6 +1107,79 @@ export function validateCheckIn(body) {
         throw errorHandler(400, 'deviation_follow_up.symptom_onset tidak valid.');
       }
       resultFollowUp.symptom_onset = followUp.symptom_onset;
+    }
+    if ('activity_before_event' in followUp) {
+      const activitiesWithUnknown = [...activities, 'unknown'];
+      if (!activitiesWithUnknown.includes(followUp.activity_before_event)) {
+        throw errorHandler(400, 'deviation_follow_up.activity_before_event tidak valid.');
+      }
+      resultFollowUp.activity_before_event = followUp.activity_before_event;
+    }
+    if ('strenuous_activity' in followUp) {
+      if (!['yes', 'no', 'uncertain'].includes(followUp.strenuous_activity)) {
+        throw errorHandler(400, 'deviation_follow_up.strenuous_activity tidak valid.');
+      }
+      resultFollowUp.strenuous_activity = followUp.strenuous_activity;
+    }
+    if ('activity_intensity' in followUp) {
+      const intensities = [
+        'light',
+        'moderate',
+        'heavy',
+        'very_heavy',
+        'not_applicable',
+        'uncertain',
+      ];
+      if (!intensities.includes(followUp.activity_intensity)) {
+        throw errorHandler(400, 'deviation_follow_up.activity_intensity tidak valid.');
+      }
+      resultFollowUp.activity_intensity = followUp.activity_intensity;
+    }
+    if (
+      resultFollowUp.strenuous_activity === 'yes'
+      && resultFollowUp.activity_intensity === 'not_applicable'
+    ) {
+      throw errorHandler(
+        400,
+        'Aktivitas berat memerlukan intensitas yang dapat dinilai atau ditandai tidak yakin.'
+      );
+    }
+    if (
+      resultFollowUp.strenuous_activity === 'no'
+      && resultFollowUp.activity_intensity
+      && resultFollowUp.activity_intensity !== 'not_applicable'
+    ) {
+      throw errorHandler(
+        400,
+        'Intensitas harus not_applicable bila tidak ada aktivitas berat.'
+      );
+    }
+    if ('mental_activity' in followUp) {
+      const mentalActivities = [
+        'none',
+        'focused_work',
+        'stressful_work',
+        'conversation',
+        'other',
+        'unknown',
+      ];
+      if (!mentalActivities.includes(followUp.mental_activity)) {
+        throw errorHandler(400, 'deviation_follow_up.mental_activity tidak valid.');
+      }
+      resultFollowUp.mental_activity = followUp.mental_activity;
+    }
+    if ('measurement_condition' in followUp) {
+      const measurementConditions = [
+        'worn_as_usual',
+        'adjusted_during_event',
+        'loose_or_moving',
+        'not_worn',
+        'unknown',
+      ];
+      if (!measurementConditions.includes(followUp.measurement_condition)) {
+        throw errorHandler(400, 'deviation_follow_up.measurement_condition tidak valid.');
+      }
+      resultFollowUp.measurement_condition = followUp.measurement_condition;
     }
     if ('note' in followUp) {
       resultFollowUp.note = optionalString(followUp.note, 'deviation_follow_up.note', 500);

@@ -1597,6 +1597,9 @@ class AppState extends ChangeNotifier {
     required int mealCount,
     required String notes,
     required String contextActivity,
+    required String activityBeforeEvent,
+    required String mentalActivity,
+    required String measurementCondition,
     Map<String, dynamic>? location,
     String actionTaken = '',
     String responseAfterAction = '',
@@ -1622,6 +1625,9 @@ class AppState extends ChangeNotifier {
         'segment_id': segmentId,
         'perceived_factors': factors,
         'meal_count': mealCount,
+        'activity_before_event': activityBeforeEvent,
+        'mental_activity': mentalActivity,
+        'measurement_condition': measurementCondition,
         if (location != null) 'location': location,
         if (symptomOnset.isNotEmpty) 'symptom_onset': symptomOnset,
         if (notes.trim().isNotEmpty) 'note': notes.trim(),
@@ -1644,6 +1650,91 @@ class AppState extends ChangeNotifier {
     dataError = res.message ?? 'Jawaban tindak lanjut gagal disimpan.';
     notifyListeners();
     return false;
+  }
+
+  Future<bool> submitHumanInTheLoopClarification({
+    required String segmentId,
+    required String strenuousActivity,
+    required String activityIntensity,
+  }) async {
+    if (!isAuthenticated ||
+        !RegExp(r'^[a-f\d]{24}$', caseSensitive: false).hasMatch(segmentId)) {
+      dataError = 'Event yang perlu diklarifikasi tidak tersedia.';
+      notifyListeners();
+      return false;
+    }
+    if (!const {'yes', 'no', 'uncertain'}.contains(strenuousActivity) ||
+        !const {
+          'light',
+          'moderate',
+          'heavy',
+          'very_heavy',
+          'not_applicable',
+          'uncertain',
+        }.contains(activityIntensity)) {
+      dataError = 'Jawaban klarifikasi aktivitas tidak valid.';
+      notifyListeners();
+      return false;
+    }
+    if ((strenuousActivity == 'yes' && activityIntensity == 'not_applicable') ||
+        (strenuousActivity == 'no' && activityIntensity != 'not_applicable')) {
+      dataError = 'Pilih intensitas yang sesuai dengan jawaban aktivitas.';
+      notifyListeners();
+      return false;
+    }
+
+    final perceivedFactors = strenuousActivity == 'yes'
+        ? <String>['physical_activity']
+        : strenuousActivity == 'uncertain'
+            ? <String>['prefer_not_to_say']
+            : <String>[];
+    final response = await ApiService.createCheckIn({
+      'recorded_at': DateTime.now().toUtc().toIso8601String(),
+      'deviation_follow_up': {
+        'segment_id': segmentId,
+        'strenuous_activity': strenuousActivity,
+        'activity_intensity': activityIntensity,
+        'perceived_factors': perceivedFactors,
+        'note': 'Klarifikasi eksperimen Human In the Loop, skenario C.',
+      },
+    });
+    if (!response.success) {
+      dataError =
+          response.message ?? 'Klarifikasi Human In the Loop gagal disimpan.';
+      notifyListeners();
+      return false;
+    }
+    dataError = null;
+    notifyListeners();
+    await fetchCaparInsights();
+    return true;
+  }
+
+  Future<bool> recordHumanInTheLoopScenario({
+    required String scenario,
+    String? segmentId,
+  }) async {
+    if (!isAuthenticated || !const {'B', 'C'}.contains(scenario)) {
+      dataError = 'Skenario Human In the Loop tidak dapat dicatat.';
+      notifyListeners();
+      return false;
+    }
+    final mode = scenario == 'B' ? 'one-way feedback' : 'human in the loop';
+    final response = await ApiService.createEvent({
+      'event_type': 'hil_scenario',
+      'occurred_at': DateTime.now().toUtc().toIso8601String(),
+      'details': 'Human In the Loop: skenario $scenario ($mode) dimulai.',
+      'value': 'scenario=$scenario;segment=${segmentId ?? 'unavailable'}',
+    });
+    if (!response.success) {
+      dataError =
+          response.message ?? 'Skenario Human In the Loop gagal dicatat.';
+      notifyListeners();
+      return false;
+    }
+    dataError = null;
+    await fetchRecentEvents();
+    return true;
   }
 
   void toggleSymptom(String label) => update(() {

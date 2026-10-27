@@ -387,6 +387,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .observation-resolution strong, .observation-user-feedback strong { color: #506d5d; font-size: 10px; }
 .observation-resolution p { margin: 5px 0 0; color: #71847a; font-size: 9px; line-height: 1.6; }
 .observation-resolution.answered { background: #f8faf9; }
+.observation-resolution.unresolved { background: #fff8e9; border-color: #f0dfb8; }
 .observation-user-feedback { display: grid; gap: 5px; margin-top: 10px; padding: 10px 11px; background: #fbfcfb; border: 1px solid #edf1ee; border-radius: 9px; }
 .observation-user-feedback span { color: #71847a; font-size: 9px; line-height: 1.5; }
 .contribution-activity-type { display: grid; gap: 5px; margin-top: 11px; color: #71847a; font-size: 9px; }

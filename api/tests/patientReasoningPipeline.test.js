@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPatientReasoningPipeline } from '../utils/patientReasoningPipeline.js';
+import {
+  buildPatientReasoningPipeline,
+  buildPatientReasoningResolution,
+} from '../utils/patientReasoningPipeline.js';
 
 test('reasoning pipeline exposes real stages without inventing a posterior', () => {
   const pipeline = buildPatientReasoningPipeline({
@@ -137,4 +140,104 @@ test('conflicting observed sources remain visible in the fusion stage', () => {
   assert.equal(fusion.status, 'conflicting_evidence');
   assert.deepEqual(fusion.conflicts, [conflict]);
   assert.equal(fusion.causality_established, false);
+});
+
+test('resolution waits for clarification and reinterprets only with relevant, sufficient evidence', () => {
+  const awaiting = buildPatientReasoningResolution({
+    followUpStatus: 'requested',
+  });
+  assert.equal(awaiting.status, 'awaiting_clarification');
+  assert.equal(awaiting.reinterpreted, false);
+
+  const feedbackCheckIn = {
+    activity: 'sitting',
+    symptoms: [],
+    deviation_follow_up: {
+      activity_before_event: 'walking',
+      mental_activity: 'focused_work',
+      measurement_condition: 'worn_as_usual',
+      perceived_factors: ['physical_activity'],
+    },
+  };
+  const reconsidered = buildPatientReasoningResolution({
+    followUpStatus: 'already_answered',
+    feedbackCheckIn,
+    explanationStatus: 'available',
+    qualityGatePassed: true,
+    baselineMature: true,
+  });
+  assert.equal(reconsidered.status, 'reinterpreted_with_limits');
+  assert.equal(reconsidered.reinterpreted, true);
+
+  const insufficient = buildPatientReasoningResolution({
+    followUpStatus: 'already_answered',
+    feedbackCheckIn: {
+      ...feedbackCheckIn,
+      deviation_follow_up: {
+        ...feedbackCheckIn.deviation_follow_up,
+        measurement_condition: 'unknown',
+      },
+    },
+    explanationStatus: 'available',
+    qualityGatePassed: true,
+    baselineMature: true,
+  });
+  assert.equal(insufficient.status, 'unresolved');
+  assert.equal(insufficient.reinterpreted, false);
+  assert.equal(insufficient.next_step, 'observe_next_quality_gated_window');
+});
+
+test('resolution remains unresolved for conflicting evidence even after clarification', () => {
+  const result = buildPatientReasoningResolution({
+    followUpStatus: 'already_answered',
+    feedbackCheckIn: {
+      activity: 'sitting',
+      deviation_follow_up: {
+        activity_before_event: 'walking',
+        measurement_condition: 'worn_as_usual',
+      },
+    },
+    explanationStatus: 'available',
+    qualityGatePassed: true,
+    baselineMature: true,
+    conflicts: [{ type: 'activity_mismatch' }],
+  });
+
+  assert.equal(result.status, 'unresolved');
+  assert.equal(result.evidence_status, 'conflicting_evidence');
+});
+
+test('strenuous-activity clarification is relevant context but cannot bypass evidence gates', () => {
+  const feedbackCheckIn = {
+    deviation_follow_up: {
+      strenuous_activity: 'yes',
+      activity_intensity: 'heavy',
+      perceived_factors: ['physical_activity'],
+    },
+  };
+  const insufficient = buildPatientReasoningResolution({
+    followUpStatus: 'already_answered',
+    feedbackCheckIn,
+    explanationStatus: 'available',
+    qualityGatePassed: true,
+    baselineMature: true,
+  });
+  assert.equal(insufficient.status, 'unresolved');
+  assert.equal(insufficient.reinterpreted, false);
+
+  const reviewed = buildPatientReasoningResolution({
+    followUpStatus: 'already_answered',
+    feedbackCheckIn: {
+      ...feedbackCheckIn,
+      deviation_follow_up: {
+        ...feedbackCheckIn.deviation_follow_up,
+        measurement_condition: 'worn_as_usual',
+      },
+    },
+    explanationStatus: 'available',
+    qualityGatePassed: true,
+    baselineMature: true,
+  });
+  assert.equal(reviewed.status, 'reinterpreted_with_limits');
+  assert.equal(reviewed.reinterpreted, true);
 });

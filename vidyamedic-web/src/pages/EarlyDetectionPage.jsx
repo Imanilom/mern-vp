@@ -122,6 +122,7 @@ function checkInContext(checkIn) {
   };
   const lifestyle = checkIn.lifestyle || {};
   const factors = checkIn.deviation_follow_up?.perceived_factors || [];
+  const followUp = checkIn.deviation_follow_up || {};
 
   if (checkIn.feeling) details.push(`Mood: ${feelings[checkIn.feeling] || checkIn.feeling}`);
   if (checkIn.stress_level != null) details.push(`Stres dilaporkan: ${checkIn.stress_level}/3`);
@@ -138,6 +139,15 @@ function checkInContext(checkIn) {
   }
   if (checkIn.sleep?.quality) {
     details.push(`Kualitas tidur: ${sleepQualities[checkIn.sleep.quality] || checkIn.sleep.quality}`);
+  }
+  if (followUp.activity_before_event) {
+    details.push(`Aktivitas sebelumnya: ${activityLabel(followUp.activity_before_event)}`);
+  }
+  if (followUp.mental_activity) {
+    details.push(`Aktivitas mental: ${followUp.mental_activity.replaceAll('_', ' ')}`);
+  }
+  if (followUp.measurement_condition) {
+    details.push(`Kondisi perangkat: ${followUp.measurement_condition.replaceAll('_', ' ')}`);
   }
   if (factors.length) {
     details.push(`Faktor yang dirasakan: ${factors.map((factor) => (
@@ -315,6 +325,7 @@ function ObservationCard({
   deviation,
   factors,
   followUp,
+  resolution,
   latestObservation,
   eventIsLatest,
   onAskActivity,
@@ -486,6 +497,23 @@ function ObservationCard({
               <button className="button button-primary observation-confirm" onClick={onAskActivity} type="button">
                 {followUp.motion_evidence ? 'Konfirmasi aktivitas' : 'Klarifikasi aktivitas & gejala'}
               </button>
+            </div>
+          )}
+          {resolution && (
+            <div className={`observation-resolution ${resolution.status === 'unresolved' ? 'unresolved' : ''}`}>
+              <strong>
+                {resolution.status === 'awaiting_clarification'
+                  ? 'Menunggu klarifikasi'
+                  : resolution.status === 'reinterpreted_with_limits'
+                    ? 'Konteks ditinjau ulang dengan batasan'
+                    : resolution.status === 'not_required'
+                      ? 'Klarifikasi tidak diperlukan'
+                      : 'Unresolved · bukti belum cukup'}
+              </strong>
+              <p>{resolution.interpretation || 'Bukti belum cukup untuk memilih satu penjelasan.'}</p>
+              {resolution.next_step?.startsWith('observe_next') && (
+                <p>Tindak lanjut: amati pengukuran berikutnya yang lolos quality gate pada konteks yang sebanding.</p>
+              )}
             </div>
           )}
           {followUp?.status === 'already_answered' && (
@@ -749,6 +777,9 @@ function BayesianReasoningCard({ model = {}, profile = {} }) {
 function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, motion }) {
   const [wasMoving, setWasMoving] = useState(null);
   const [movementType, setMovementType] = useState('');
+  const [activityBeforeEvent, setActivityBeforeEvent] = useState('unknown');
+  const [mentalActivity, setMentalActivity] = useState('unknown');
+  const [measurementCondition, setMeasurementCondition] = useState('unknown');
   const [feeling, setFeeling] = useState('');
   const [meal, setMeal] = useState('unknown');
   const [stressLevel, setStressLevel] = useState('');
@@ -845,6 +876,40 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
             </label>
           )}
         </fieldset>
+        <div className="contribution-input-grid">
+          <label>Aktivitas fisik sebelum perubahan
+            <select value={activityBeforeEvent} onChange={(event) => setActivityBeforeEvent(event.target.value)}>
+              <option value="unknown">Tidak diketahui</option>
+              <option value="rest">Istirahat</option>
+              <option value="sitting">Duduk</option>
+              <option value="standing">Berdiri</option>
+              <option value="walking">Berjalan</option>
+              <option value="running">Berlari</option>
+              <option value="exercise">Olahraga</option>
+              <option value="work">Bekerja</option>
+              <option value="other">Aktivitas lain</option>
+            </select>
+          </label>
+          <label>Aktivitas atau beban mental
+            <select value={mentalActivity} onChange={(event) => setMentalActivity(event.target.value)}>
+              <option value="unknown">Tidak diketahui</option>
+              <option value="none">Tidak ada aktivitas mental khusus</option>
+              <option value="focused_work">Fokus / pekerjaan mental</option>
+              <option value="stressful_work">Pekerjaan atau situasi menekan</option>
+              <option value="conversation">Percakapan</option>
+              <option value="other">Lainnya</option>
+            </select>
+          </label>
+          <label>Kondisi perangkat saat pengukuran
+            <select value={measurementCondition} onChange={(event) => setMeasurementCondition(event.target.value)}>
+              <option value="unknown">Tidak diketahui</option>
+              <option value="worn_as_usual">Dipakai seperti biasa</option>
+              <option value="adjusted_during_event">Posisi perangkat berubah</option>
+              <option value="loose_or_moving">Perangkat longgar / ikut bergerak</option>
+              <option value="not_worn">Perangkat tidak dipakai</option>
+            </select>
+          </label>
+        </div>
         <div className="contribution-input-grid">
           <label>Mood
             <select value={feeling} onChange={(event) => setFeeling(event.target.value)}>
@@ -992,6 +1057,9 @@ function ContributionConfirmationDialog({ onClose, onSubmit, saving, error, moti
             onClick={() => onSubmit({
               wasMoving,
               movementType: wasMoving ? movementType : '',
+              activityBeforeEvent,
+              mentalActivity,
+              measurementCondition,
               feeling,
               meal,
               stressLevel: stressLevel ? Number(stressLevel) : null,
@@ -1137,6 +1205,7 @@ export default function EarlyDetectionPage({ dashboard, onContributionConfirmati
           deviation={deviation}
           factors={factors}
           followUp={followUp}
+          resolution={pedagogy.reasoning_resolution || deviation?.reasoning_resolution}
           latestObservation={latestObservation}
           eventIsLatest={isLatestEvent}
           onAskActivity={() => {

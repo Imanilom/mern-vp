@@ -190,6 +190,12 @@ function ResultPanel({ result, meta, profileSummary, selectedUser }) {
       {activeTab === 'overview' && (
         <Card title="Profil Pengguna & Pola Penggunaan Wearable" icon="fa-user-check" accent="var(--blue)" tag="LONGITUDINAL 360°">
           <AIInsightBlock text={r.user_profile_summary} color="var(--blue)" />
+          <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 8, background: '#F0F9FF', border: '1px solid #BAE6FD' }}>
+            <div style={{ fontSize: 10, color: '#0369A1', fontWeight: 800, marginBottom: 7 }}>
+              PERUBAHAN DEVIASI & HR SECARA BERURUTAN
+            </div>
+            <AIInsightBlock text={r.observed_change_summary} color="#0284C7" />
+          </div>
           {profileSummary && (
             <div style={{
               display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10,

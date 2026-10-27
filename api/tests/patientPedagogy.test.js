@@ -48,6 +48,9 @@ test('deviation follow-up asks more contextual questions as personal deviation i
     { feature: 'rmssd', contribution_pct: 42 },
   ]);
   assert.ok(high.questions.some((question) => question.id === 'possible_factors'));
+  assert.ok(high.questions.some((question) => question.id === 'activity_before_event'));
+  assert.ok(high.questions.some((question) => question.id === 'mental_activity'));
+  assert.ok(high.questions.some((question) => question.id === 'measurement_condition'));
   assert.ok(high.questions.some((question) => question.id === 'symptom_timing'));
   assert.equal(high.questions.find((question) => question.id === 'current_symptoms').allow_empty, true);
   assert.match(high.safety_notice, /tidak membuktikan penyebab/);

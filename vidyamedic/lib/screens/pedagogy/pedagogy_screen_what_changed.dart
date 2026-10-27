@@ -69,6 +69,9 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
   bool _hasRequiredContext() {
     final mealCount = int.tryParse(_mealCountController.text.trim());
     return (_singleAnswers['recent_context']?.isNotEmpty ?? false) &&
+        (_singleAnswers['activity_before_event']?.isNotEmpty ?? false) &&
+        (_singleAnswers['mental_activity']?.isNotEmpty ?? false) &&
+        (_singleAnswers['measurement_condition']?.isNotEmpty ?? false) &&
         (_multipleAnswers['possible_factors']?.isNotEmpty ?? false) &&
         mealCount != null &&
         mealCount >= 0 &&
@@ -86,6 +89,10 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
             rawFollowUp['reasoning_uncertainty'] is Map
         ? Map<String, dynamic>.from(rawFollowUp['reasoning_uncertainty'] as Map)
         : null;
+    final rawResolution =
+        state.rawCaparInsights?['capar']?['pedagogy']?['reasoning_resolution'];
+    final resolution =
+        rawResolution is Map ? Map<String, dynamic>.from(rawResolution) : null;
     final isRequested = state.followUpPrompt.status == 'requested' &&
         state.followUpPrompt.segmentId != null;
 
@@ -94,163 +101,173 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
       child: MockupScaffold(
         title: 'Apa yang Berubah?',
         body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _serverCard(
-            title: 'Hasil analisis CAPAR',
-            values: [
-              _detail('Status personal', deviation?['state']),
-              _detail('Jarak Mahalanobis', deviation?['distance']),
-              _detail('Aktivitas', deviation?['activity']),
-              _detail('Kualitas sinyal', deviation?['signal_quality']),
-              if (state.followUpPrompt.onsetTime != null)
-                'Onset: ${state.followUpPrompt.onsetTime!.toLocal()}',
-              if (state.followUpPrompt.peakTime != null)
-                'Puncak: ${state.followUpPrompt.peakTime!.toLocal()}',
-              if (state.followUpPrompt.mainFactors.isNotEmpty)
-                'Fitur berkontribusi terbesar: ${_factorLabel(state.followUpPrompt.mainFactors.first)}',
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (!isRequested)
-            _messageCard(
-              state.followUpPrompt.status == 'already_answered'
-                  ? 'Jawaban follow-up untuk deviasi terbaru sudah tercatat di backend.'
-                  : 'Tidak ada pertanyaan lanjutan yang diminta CAPAR saat ini.',
-            )
-          else ...[
-            _messageCard(
-              state.followUpPrompt.message ??
-                  'CAPAR meminta konteks tambahan terkait deviasi ini. Jawaban Anda dicatat sebagai persepsi, bukan bukti penyebab.',
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _serverCard(
+              title: 'Hasil analisis CAPAR',
+              values: [
+                _detail('Status personal', deviation?['state']),
+                _detail('Jarak Mahalanobis', deviation?['distance']),
+                _detail('Aktivitas', deviation?['activity']),
+                _detail('Kualitas sinyal', deviation?['signal_quality']),
+                if (state.followUpPrompt.onsetTime != null)
+                  'Onset: ${state.followUpPrompt.onsetTime!.toLocal()}',
+                if (state.followUpPrompt.peakTime != null)
+                  'Puncak: ${state.followUpPrompt.peakTime!.toLocal()}',
+                if (state.followUpPrompt.mainFactors.isNotEmpty)
+                  'Fitur berkontribusi terbesar: ${_factorLabel(state.followUpPrompt.mainFactors.first)}',
+              ],
             ),
-            if (uncertainty != null) ...[
-              const SizedBox(height: 8),
-              _uncertaintyMessage(uncertainty),
-            ],
-            if (state.rawCaparInsights?['capar']?['pedagogy']?['follow_up']
-                    ?['safety_notice'] !=
-                null) ...[
-              const SizedBox(height: 8),
-              _messageCard(state.rawCaparInsights!['capar']['pedagogy']
-                      ['follow_up']['safety_notice']
-                  .toString()),
-            ],
-            const SizedBox(height: 12),
-            ...questions.map(_buildQuestion),
-            _questionCard(
-              'Jumlah makan hari ini (wajib)',
-              TextField(
-                controller: _mealCountController,
-                keyboardType: TextInputType.number,
-                maxLength: 2,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  hintText: 'Masukkan 0 sampai 20',
-                  suffixText: 'kali',
-                  counterText: '',
+            const SizedBox(height: 14),
+            if (!isRequested) ...[
+              _messageCard(
+                state.followUpPrompt.status == 'already_answered'
+                    ? 'Jawaban follow-up untuk deviasi terbaru sudah tercatat di backend.'
+                    : 'Tidak ada pertanyaan lanjutan yang diminta CAPAR saat ini.',
+              ),
+              if (resolution != null) ...[
+                const SizedBox(height: 8),
+                _resolutionCard(resolution),
+              ],
+            ] else ...[
+              _messageCard(
+                state.followUpPrompt.message ??
+                    'CAPAR meminta konteks tambahan terkait deviasi ini. Jawaban Anda dicatat sebagai persepsi, bukan bukti penyebab.',
+              ),
+              if (uncertainty != null) ...[
+                const SizedBox(height: 8),
+                _uncertaintyMessage(uncertainty),
+              ],
+              if (resolution != null) ...[
+                const SizedBox(height: 8),
+                _resolutionCard(resolution),
+              ],
+              if (state.rawCaparInsights?['capar']?['pedagogy']?['follow_up']
+                      ?['safety_notice'] !=
+                  null) ...[
+                const SizedBox(height: 8),
+                _messageCard(state.rawCaparInsights!['capar']['pedagogy']
+                        ['follow_up']['safety_notice']
+                    .toString()),
+              ],
+              const SizedBox(height: 12),
+              ...questions.map(_buildQuestion),
+              _questionCard(
+                'Jumlah makan hari ini (wajib)',
+                TextField(
+                  controller: _mealCountController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 2,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'Masukkan 0 sampai 20',
+                    suffixText: 'kali',
+                    counterText: '',
+                  ),
                 ),
               ),
-            ),
-            _questionCard(
-              'Lokasi saat mengisi konteks (opsional)',
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _location?.placeName ??
-                        (_isCapturingLocation
-                            ? 'Mengambil lokasi perangkat...'
-                            : _locationMessage ??
-                                'Lokasi belum disertakan. Izin lokasi diperlukan untuk mengambil koordinat dan nama tempat.'),
-                    style:
-                        AppTheme.font(size: 12, color: AppTheme.textSecondary),
-                  ),
-                  if (_location != null) ...[
-                    const SizedBox(height: 4),
+              _questionCard(
+                'Lokasi saat mengisi konteks (opsional)',
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      'Lat ${_location!.latitude.toStringAsFixed(5)}, Lon ${_location!.longitude.toStringAsFixed(5)}',
-                      style: AppTheme.font(size: 11, color: AppTheme.textMuted),
+                      _location?.placeName ??
+                          (_isCapturingLocation
+                              ? 'Mengambil lokasi perangkat...'
+                              : _locationMessage ??
+                                  'Lokasi belum disertakan. Izin lokasi diperlukan untuk mengambil koordinat dan nama tempat.'),
+                      style: AppTheme.font(
+                          size: 12, color: AppTheme.textSecondary),
+                    ),
+                    if (_location != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Lat ${_location!.latitude.toStringAsFixed(5)}, Lon ${_location!.longitude.toStringAsFixed(5)}',
+                        style:
+                            AppTheme.font(size: 11, color: AppTheme.textMuted),
+                      ),
+                    ],
+                    if (_locationMessage != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _locationMessage!,
+                        style:
+                            AppTheme.font(size: 11, color: AppTheme.textMuted),
+                      ),
+                    ],
+                    TextButton.icon(
+                      onPressed: _isCapturingLocation ? null : _captureLocation,
+                      icon: const Icon(Icons.my_location),
+                      label: Text(_location == null
+                          ? 'Ambil lokasi sekarang'
+                          : 'Perbarui lokasi'),
                     ),
                   ],
-                  if (_locationMessage != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      _locationMessage!,
-                      style: AppTheme.font(size: 11, color: AppTheme.textMuted),
-                    ),
-                  ],
-                  TextButton.icon(
-                    onPressed: _isCapturingLocation ? null : _captureLocation,
-                    icon: const Icon(Icons.my_location),
-                    label: Text(_location == null
-                        ? 'Ambil lokasi sekarang'
-                        : 'Perbarui lokasi'),
-                  ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            _messageCard(
-              'Opsional: jika Anda sudah melakukan suatu langkah atas keputusan sendiri, catat apa yang dilakukan dan bagaimana Anda merasakannya setelah itu. Ini adalah laporan pribadi, bukan penilaian efektivitas atau anjuran tindakan.',
-            ),
-            _questionCard(
-              'Langkah yang saya lakukan (opsional)',
-              TextField(
-                controller: _textAnswers.putIfAbsent(
-                    'action_taken_feedback', TextEditingController.new),
-                maxLines: 2,
-                maxLength: 300,
-                decoration: const InputDecoration(
-                    hintText: 'Catat langkah yang sudah dilakukan'),
-              ),
-            ),
-            _questionCard(
-              'Respons yang saya rasakan setelahnya (opsional)',
-              TextField(
-                controller: _textAnswers.putIfAbsent(
-                    'response_after_action_feedback',
-                    TextEditingController.new),
-                maxLines: 2,
-                maxLength: 500,
-                decoration: const InputDecoration(
-                    hintText: 'Catat perubahan yang Anda rasakan'),
-              ),
-            ),
-            if (!_hasRequiredContext())
+              const SizedBox(height: 8),
               _messageCard(
-                'Untuk merekam konteks deviasi, pilih aktivitas, sedikitnya satu faktor (atau “tidak tahu”), dan jumlah makan.',
+                'Opsional: jika Anda sudah melakukan suatu langkah atas keputusan sendiri, catat apa yang dilakukan dan bagaimana Anda merasakannya setelah itu. Ini adalah laporan pribadi, bukan penilaian efektivitas atau anjuran tindakan.',
               ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ||
-                        (isRequested && !_hasRequiredContext())
-                    ? null
-                    : () => _submit(state),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Kirim jawaban ke server'),
+              _questionCard(
+                'Langkah yang saya lakukan (opsional)',
+                TextField(
+                  controller: _textAnswers.putIfAbsent(
+                      'action_taken_feedback', TextEditingController.new),
+                  maxLines: 2,
+                  maxLength: 300,
+                  decoration: const InputDecoration(
+                      hintText: 'Catat langkah yang sudah dilakukan'),
+                ),
               ),
+              _questionCard(
+                'Respons yang saya rasakan setelahnya (opsional)',
+                TextField(
+                  controller: _textAnswers.putIfAbsent(
+                      'response_after_action_feedback',
+                      TextEditingController.new),
+                  maxLines: 2,
+                  maxLength: 500,
+                  decoration: const InputDecoration(
+                      hintText: 'Catat perubahan yang Anda rasakan'),
+                ),
+              ),
+              if (!_hasRequiredContext())
+                _messageCard(
+                  'Pilih aktivitas saat event, aktivitas sebelumnya, kondisi mental, kondisi perangkat, sedikitnya satu faktor (atau “tidak tahu”), dan jumlah makan. Jika tidak yakin, pilih “Tidak diketahui”.',
+                ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed:
+                      _isSubmitting || (isRequested && !_hasRequiredContext())
+                          ? null
+                          : () => _submit(state),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Kirim jawaban ke server'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: isRequested
+                  ? null
+                  : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const WhyScreen()),
+                      ),
+              child: const Text('Lihat faktor CAPAR yang berkontribusi'),
             ),
           ],
-          const SizedBox(height: 14),
-          OutlinedButton(
-            onPressed: isRequested
-                ? null
-                : () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const WhyScreen()),
-                    ),
-            child: const Text('Lihat faktor CAPAR yang berkontribusi'),
-          ),
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -422,6 +439,14 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
       'around_deviation': 'Sekitar waktu deviasi',
       'after_deviation': 'Setelah deviasi',
       'unknown': 'Tidak tahu',
+      'none': 'Tidak ada aktivitas mental khusus',
+      'focused_work': 'Fokus / pekerjaan mental',
+      'stressful_work': 'Pekerjaan atau situasi menekan',
+      'conversation': 'Percakapan',
+      'worn_as_usual': 'Dipakai seperti biasa',
+      'adjusted_during_event': 'Posisi perangkat berubah',
+      'loose_or_moving': 'Perangkat longgar / ikut bergerak',
+      'not_worn': 'Perangkat tidak dipakai',
     };
     return labels[option] ?? option;
   }
@@ -460,6 +485,9 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
       actionTaken: actionTaken,
       responseAfterAction: responseAfterAction,
       contextActivity: activity!,
+      activityBeforeEvent: _singleAnswers['activity_before_event']!,
+      mentalActivity: _singleAnswers['mental_activity']!,
+      measurementCondition: _singleAnswers['measurement_condition']!,
       location: _location?.toJson(),
     );
     if (!mounted) return;
@@ -473,11 +501,65 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
       return;
     }
     showSaved(context, 'Jawaban follow-up tersimpan di server');
-    Navigator.pop(context);
+  }
+
+  Widget _resolutionCard(Map<String, dynamic> resolution) {
+    final status = resolution['status']?.toString() ?? 'unresolved';
+    final isUnresolved = status == 'unresolved';
+    final isAwaiting = status == 'awaiting_clarification';
+    final title = switch (status) {
+      'reinterpreted_with_limits' => 'Konteks ditinjau ulang dengan batasan',
+      'awaiting_clarification' => 'Menunggu klarifikasi',
+      'not_required' => 'Klarifikasi tidak diperlukan',
+      _ => 'Resolusi belum dapat ditetapkan',
+    };
+    final interpretation = resolution['interpretation']?.toString() ??
+        'Bukti belum cukup untuk memilih satu penjelasan.';
+    final nextStep = resolution['next_step']?.toString();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isUnresolved
+            ? AppTheme.statusYellowBg
+            : isAwaiting
+                ? AppTheme.primarySoft
+                : AppTheme.statusGreenBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isUnresolved
+              ? AppTheme.statusYellow.withValues(alpha: 0.35)
+              : AppTheme.borderLight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: AppTheme.font(size: 12.5, weight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(
+            interpretation,
+            style: AppTheme.font(
+                size: 12, color: AppTheme.textSecondary, height: 1.35),
+          ),
+          if (nextStep == 'observe_next_quality_gated_window' ||
+              nextStep == 'observe_next_comparable_window') ...[
+            const SizedBox(height: 5),
+            Text(
+              'Tindak lanjut: amati pengukuran berikutnya yang lolos quality gate dan bandingkan pada konteks yang sebanding.',
+              style: AppTheme.font(
+                  size: 11, color: AppTheme.textSecondary, height: 1.35),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   String _factorLabel(Map<String, dynamic> factor) {
-    final label = factor['label'] ?? factor['feature'] ?? factor['key'] ?? 'Fitur';
+    final label =
+        factor['label'] ?? factor['feature'] ?? factor['key'] ?? 'Fitur';
     final contribution =
         factor['contribution_pct'] ?? factor['contribution'] ?? factor['share'];
     return contribution == null ? '$label' : '$label ($contribution)';

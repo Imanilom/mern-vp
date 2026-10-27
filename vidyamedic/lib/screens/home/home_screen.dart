@@ -30,6 +30,7 @@ import '../actions/action_tracking_screen.dart';
 import '../chat/personal_health_chat_screen.dart';
 import '../impact/impact_dashboard_screen.dart';
 import '../gamification/gamification_screen.dart';
+import '../scenarios/human_in_the_loop_screen.dart';
 import 'profile_snapshot_card.dart';
 import 'wearable_monitoring_card.dart';
 import 'live_heart_rate_chart.dart';
@@ -2535,6 +2536,12 @@ class _InsightsHubTabState extends State<_InsightsHubTab> {
             title: 'Skenario HCI A/B/C',
             subtitle: 'Buka fitur skenario penelitian yang tersedia',
             onTap: () => Navigator.pushNamed(context, '/scenarios'),
+          ),
+          _InsightLinkCard(
+            icon: Icons.groups_2_outlined,
+            title: 'Human In the Loop',
+            subtitle: 'Klarifikasi, evaluasi bukti, dan observasi lanjutan',
+            onTap: () => _open(context, const HumanInTheLoopScreen()),
           ),
           if (citations.isNotEmpty) ...[
             const SizedBox(height: 14),

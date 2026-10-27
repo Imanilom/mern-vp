@@ -56,7 +56,10 @@ import {
   summarizePatientPersistence,
   summarizePatientRecovery,
 } from '../utils/patientPedagogy.js';
-import { buildPatientReasoningPipeline } from '../utils/patientReasoningPipeline.js';
+import {
+  buildPatientReasoningPipeline,
+  buildPatientReasoningResolution,
+} from '../utils/patientReasoningPipeline.js';
 import { fitPatientBayesianEventState } from '../utils/patientBayesianEventState.js';
 import { buildPatientRecoveryMarkovForecast } from '../utils/patientRecoveryMarkov.js';
 import { withWearableBaselineComparison } from '../utils/patientWearableHistory.js';
@@ -1450,6 +1453,7 @@ export async function getPatientAppCaparInsights(req, res) {
       };
       const eventActivityClass = activityClass(event.activity);
       const sensorActivityClass = activityClass(segment?.activity_label);
+      const reportedActivityClass = activityClass(eventFeedbackCheckIn?.activity);
       const conflicts = eventActivityClass
         && sensorActivityClass
         && eventActivityClass !== sensorActivityClass
@@ -1469,6 +1473,27 @@ export async function getPatientAppCaparInsights(req, res) {
           interpretation: 'Observed context and sensor activity labels disagree; neither source is treated as authoritative.',
         }]
         : [];
+      if (
+        reportedActivityClass
+        && sensorActivityClass
+        && reportedActivityClass !== sensorActivityClass
+      ) {
+        conflicts.push({
+          type: 'patient_reported_activity_sensor_disagreement',
+          description: 'The activity reported during event clarification differs from the sensor activity label.',
+          evidence: [
+            {
+              source: 'patient_check_in',
+              value: eventFeedbackCheckIn.activity,
+            },
+            {
+              source: 'segment_activity_label',
+              value: segment.activity_label,
+            },
+          ],
+          interpretation: 'Klarifikasi aktivitas dan label sensor masih berbeda; sistem tidak memilih salah satunya sebagai penjelasan.',
+        });
+      }
       const reasoningUncertainty = assessPatientReasoningUncertainty({
         explanation: deviation,
         contextAttribution,
@@ -1476,6 +1501,20 @@ export async function getPatientAppCaparInsights(req, res) {
         personalBaselineAvailable: Boolean(
           qualityAccepted && baseline && isMaturePatientBaseline(baseline)
         ),
+        conflicts,
+      });
+      const eventFollowUpStatus = eventFeedbackCheckIn
+        ? 'already_answered'
+        : deviationFollowUp.status === 'requested'
+          && deviationFollowUp.triggered_by_segment_id?.toString() === segment?._id?.toString()
+          ? 'requested'
+          : 'not_required';
+      const reasoningResolution = buildPatientReasoningResolution({
+        followUpStatus: eventFollowUpStatus,
+        feedbackCheckIn: eventFeedbackCheckIn,
+        explanationStatus: deviation.status,
+        qualityGatePassed: qualityAccepted,
+        baselineMature: Boolean(baseline && isMaturePatientBaseline(baseline)),
         conflicts,
       });
       const evidenceAxes = mapPatientContextToRagAxes([
@@ -1501,6 +1540,7 @@ export async function getPatientAppCaparInsights(req, res) {
 
       return {
         event_id: event._id,
+        segment_id: segment?._id?.toString() || null,
         occurred_at: new Date(eventTime),
         peak_at: peakTime ? new Date(peakTime) : null,
         activity: event.activity || segment?.activity_label || null,
@@ -1511,6 +1551,7 @@ export async function getPatientAppCaparInsights(req, res) {
         explanation_status: deviation.status,
         explanation_reason: deviation.reason || null,
         reasoning_uncertainty: reasoningUncertainty,
+        reasoning_resolution: reasoningResolution,
         evidence_conflicts: conflicts,
         main_deviation_factors: deviation.factors,
         user_reported_factor_ranking: (
@@ -1529,6 +1570,18 @@ export async function getPatientAppCaparInsights(req, res) {
             symptoms: eventFeedbackCheckIn.symptoms || [],
             symptom_onset: eventFeedbackCheckIn.deviation_follow_up?.symptom_onset || null,
             symptom_severity: eventFeedbackCheckIn.symptom_severity ?? null,
+            activity_before_event:
+              eventFeedbackCheckIn.deviation_follow_up?.activity_before_event || null,
+            strenuous_activity:
+              eventFeedbackCheckIn.deviation_follow_up?.strenuous_activity || null,
+            activity_intensity:
+              eventFeedbackCheckIn.deviation_follow_up?.activity_intensity || null,
+            mental_activity:
+              eventFeedbackCheckIn.deviation_follow_up?.mental_activity || null,
+            measurement_condition:
+              eventFeedbackCheckIn.deviation_follow_up?.measurement_condition || null,
+            perceived_factors:
+              eventFeedbackCheckIn.deviation_follow_up?.perceived_factors || [],
           }
           : null,
         mahalanobis: eventMahalanobis?.available
@@ -1560,9 +1613,25 @@ export async function getPatientAppCaparInsights(req, res) {
           : 'Belum ada konteks perilaku yang tercatat pada enam jam sebelum deviasi; pemicu belum dapat dipastikan.',
       };
     });
-    const latestDeviationExplanation = deviationExplanations[0] || null;
+    const hasActiveFollowUp = ['requested', 'already_answered'].includes(
+      deviationFollowUp.status
+    );
+    const followUpSegmentId = deviationFollowUp.triggered_by_segment_id?.toString();
+    const latestDeviationExplanation = hasActiveFollowUp
+      ? deviationExplanations.find((explanation) => (
+        explanation.segment_id === followUpSegmentId
+      )) || null
+      : deviationExplanations[0] || null;
     const latestReasoningUncertainty =
       latestDeviationExplanation?.reasoning_uncertainty || null;
+    const latestReasoningResolution =
+      latestDeviationExplanation?.reasoning_resolution
+      || (hasActiveFollowUp
+        ? buildPatientReasoningResolution({
+          followUpStatus: deviationFollowUp.status,
+          feedbackCheckIn,
+        })
+        : null);
     if (deviationFollowUp.status === 'requested' && latestReasoningUncertainty) {
       deviationFollowUp = {
         ...deviationFollowUp,
@@ -1611,6 +1680,7 @@ export async function getPatientAppCaparInsights(req, res) {
       decision: patientAction,
       followUp: deviationFollowUp,
       feedbackCheckIn,
+      resolution: latestReasoningResolution,
       evidenceConflicts: latestDeviationExplanation?.evidence_conflicts || [],
       profileContext: {
         goal: profile.goal || null,
@@ -1798,6 +1868,7 @@ export async function getPatientAppCaparInsights(req, res) {
         action: patientAction,
         red_flags: patientRedFlags,
         follow_up: deviationFollowUp,
+        reasoning_resolution: latestReasoningResolution,
       },
       transition_learning: {
         observed_transitions: transitionDocs.reduce(

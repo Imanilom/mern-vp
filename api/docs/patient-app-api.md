@@ -410,6 +410,14 @@ The request must contain at least one non-empty patient input (for example
 activity/lifestyle, symptoms/feeling, sleep, a measurement, or a note); a
 timestamp with only empty containers is rejected. Omitted fields remain
 unrecorded rather than being filled with a default feeling or activity.
+Event-linked `deviation_follow_up` check-ins can also record
+`activity_before_event`, `mental_activity`, and `measurement_condition`.
+These fields capture patient-reported context; they do not alter sensor values
+or prove a cause. CAPAR reports a clarification as `reinterpreted_with_limits`
+only when the new context is relevant, the measurement condition is reported as
+`worn_as_usual`, and quality-gated physiology plus a mature matching baseline
+are available without unresolved conflicts. Otherwise its resolution remains
+`unresolved` and recommends another comparable, quality-gated observation.
 
 ## Personal health chat
 
@@ -689,6 +697,21 @@ integer range. The follow-up prompt can include CAPAR onset, peak, Mahalanobis
 distance, reference thresholds, and feature-contribution details so the app
 can explain why it requested context. Reference thresholds remain statistical,
 not clinical.
+
+The separate Human In the Loop experiment records B/C presentation assignments
+as `hil_scenario` patient events. Scenario C answers may be attached to a
+deviation follow-up check-in using `strenuous_activity` (`yes`, `no`, or
+`uncertain`) and `activity_intensity` (`light`, `moderate`, `heavy`,
+`very_heavy`, `not_applicable`, or `uncertain`). These are patient-reported
+context; a response does not itself change the event interpretation or establish
+causation. A changed interpretation still requires the regular sensor-quality,
+matching-baseline, and evidence gates.
+
+`capar.latest_observation.features` includes per-feature `z_score` values
+computed against the matching activity/time baseline. The Human In the Loop
+screen describes features above baseline when `z_score > 0` without applying an
+additional tau threshold. This display rule does not alter CAPAR's existing
+production classification thresholds or clinical-safety rules.
 
 Patient-reported chest pain, severe breathlessness (severity >= 7), or any
 symptom severity >= 9 bypasses wearable scoring and returns a red emergency

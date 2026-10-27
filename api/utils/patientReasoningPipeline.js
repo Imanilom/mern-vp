@@ -7,6 +7,106 @@ const PATIENT_PEDAGOGY_SECTIONS = [
   'action',
 ];
 
+export function buildPatientReasoningResolution({
+  followUpStatus = 'not_required',
+  feedbackCheckIn = null,
+  explanationStatus = 'insufficient_data',
+  qualityGatePassed = false,
+  baselineMature = false,
+  conflicts = [],
+} = {}) {
+  if (followUpStatus === 'requested') {
+    return {
+      status: 'awaiting_clarification',
+      reason: 'patient_context_requested',
+      feedback_recorded: false,
+      reinterpreted: false,
+      next_step: 'collect_patient_context',
+      interpretation: 'Klarifikasi diperlukan sebelum konteks event ditinjau kembali.',
+    };
+  }
+
+  const followUp = feedbackCheckIn?.deviation_follow_up || {};
+  const measurementCondition = followUp.measurement_condition || null;
+  const hasRelevantContext = Boolean(
+    (followUp.activity_before_event && followUp.activity_before_event !== 'unknown')
+    || (followUp.strenuous_activity && followUp.strenuous_activity !== 'uncertain')
+    || (followUp.mental_activity && followUp.mental_activity !== 'unknown')
+    || (followUp.measurement_condition && followUp.measurement_condition !== 'unknown')
+    || feedbackCheckIn?.activity
+    || feedbackCheckIn?.symptoms?.length
+    || followUp.perceived_factors?.some((factor) => ![
+      'no_known_factor',
+      'prefer_not_to_say',
+    ].includes(factor))
+  );
+  const reasons = [];
+  if (!feedbackCheckIn) reasons.push('patient_context_not_recorded');
+  if (!hasRelevantContext) reasons.push('no_relevant_new_context');
+  if (!qualityGatePassed) reasons.push('sensor_quality_gate_not_passed');
+  if (!baselineMature) reasons.push('matching_baseline_not_mature');
+  if (explanationStatus !== 'available') reasons.push('physiological_evidence_insufficient');
+  if (measurementCondition !== 'worn_as_usual') {
+    reasons.push(measurementCondition
+      ? 'measurement_condition_requires_review'
+      : 'measurement_condition_not_recorded');
+  }
+  if (conflicts.length) reasons.push('evidence_conflict_remains');
+
+  const canReinterpret = Boolean(
+    feedbackCheckIn
+    && hasRelevantContext
+    && qualityGatePassed
+    && baselineMature
+    && explanationStatus === 'available'
+    && measurementCondition === 'worn_as_usual'
+    && conflicts.length === 0
+  );
+  if (canReinterpret) {
+    return {
+      status: 'reinterpreted_with_limits',
+      reason: 'relevant_context_and_quality_gated_evidence_available',
+      feedback_recorded: true,
+      reinterpreted: true,
+      next_step: 'observe_next_comparable_window',
+      interpretation: 'Konteks baru yang relevan telah dipertimbangkan bersama sinyal dan baseline yang memadai. Ini memperbarui konteks interpretasi, bukan menetapkan penyebab.',
+    };
+  }
+
+  if (
+    !feedbackCheckIn
+    && followUpStatus === 'not_required'
+    && qualityGatePassed
+    && baselineMature
+    && explanationStatus === 'available'
+    && conflicts.length === 0
+  ) {
+    return {
+      status: 'not_required',
+      reason: 'no_unresolved_context_mismatch',
+      feedback_recorded: false,
+      reinterpreted: false,
+      next_step: 'continue_observation',
+      interpretation: 'Belum ada klarifikasi yang diperlukan untuk observasi ini.',
+    };
+  }
+
+  return {
+    status: 'unresolved',
+    reason: reasons[0] || 'evidence_remains_insufficient',
+    reasons,
+    evidence_status: conflicts.length
+      ? 'conflicting_evidence'
+      : !qualityGatePassed || !baselineMature || explanationStatus !== 'available'
+        ? 'insufficient_evidence'
+        : 'limited_evidence',
+    feedback_recorded: Boolean(feedbackCheckIn),
+    reinterpreted: false,
+    next_step: 'observe_next_quality_gated_window',
+    interpretation: 'Bukti belum cukup atau masih bertentangan untuk memperbarui interpretasi. Status tetap unresolved; sistem tidak memilih satu penjelasan dan menunggu observasi lanjutan yang sebanding.',
+  };
+}
+
 export function buildPatientReasoningPipeline({
   recentSegments = [],
   acceptedSegments = [],
@@ -24,6 +124,7 @@ export function buildPatientReasoningPipeline({
   decision = null,
   followUp = null,
   feedbackCheckIn = null,
+  resolution = null,
   evidenceConflicts = [],
   profileContext = {},
 } = {}) {
@@ -217,6 +318,17 @@ export function buildPatientReasoningPipeline({
             ? 'partially_recorded'
             : 'not_collected',
         interpretation_limit: 'Patient-reported action and response are descriptive context, not evidence of treatment effect or causality.',
+      },
+      {
+        stage_id: 'resolution',
+        status: resolution?.status ?? 'unresolved',
+        reason: resolution?.reason ?? 'resolution_not_available',
+        evidence_status: resolution?.evidence_status ?? null,
+        feedback_recorded: resolution?.feedback_recorded ?? feedbackAvailable,
+        reinterpreted: resolution?.reinterpreted ?? false,
+        next_step: resolution?.next_step ?? 'observe_next_quality_gated_window',
+        interpretation: resolution?.interpretation
+          ?? 'Status resolusi belum tersedia; jangan menyimpulkan penyebab.',
       },
     ],
   };

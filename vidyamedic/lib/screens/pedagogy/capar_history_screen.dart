@@ -396,8 +396,15 @@ class _CaparHistoryScreenState extends State<CaparHistoryScreen> {
                         height: 190,
                         width: double.infinity,
                         child: CustomPaint(
-                          painter:
-                              TrendChartPainter(points: points, color: color),
+                          painter: TrendChartPainter(
+                            points: points,
+                            color: color,
+                            yAxisLabel: switch (_chartMetric) {
+                              'heart_rate' => 'HR (bpm)',
+                              'deviation' => 'Deviasi',
+                              _ => 'Skor EMA',
+                            },
+                          ),
                         ),
                       ),
                       Text(

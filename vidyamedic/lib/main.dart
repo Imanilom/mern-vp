@@ -10,6 +10,7 @@ import 'screens/welcome_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/summary/daily_summary_screen.dart';
 import 'screens/scenarios/scenario_lab_screen.dart';
+import 'screens/scenarios/human_in_the_loop_screen.dart';
 import 'services/morning_summary_reminder.dart';
 
 final GlobalKey<NavigatorState> _appNavigatorKey = GlobalKey<NavigatorState>();
@@ -72,6 +73,7 @@ class VidyaMedicApp extends StatelessWidget {
         ),
         routes: {
           '/scenarios': (_) => const ScenarioLabScreen(),
+          '/human-in-the-loop': (_) => const HumanInTheLoopScreen(),
           '/scenarios/a': (_) =>
               const ScenarioLabScreen(initialScenarioId: 'a'),
           '/scenarios/b': (_) =>
