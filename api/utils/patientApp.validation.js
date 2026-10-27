@@ -435,7 +435,17 @@ export function validatePatientEvent(body) {
   requireObject(body, 'Event');
   rejectUnknownFields(
     body,
-    new Set(['event_type', 'occurred_at', 'details', 'value', 'intensity', 'unit']),
+    new Set([
+      'event_type',
+      'occurred_at',
+      'event_time',
+      'affected_interval',
+      'confidence',
+      'details',
+      'value',
+      'intensity',
+      'unit',
+    ]),
     'Field event'
   );
   if (!patientEventTypes.has(body.event_type)) {
@@ -446,8 +456,95 @@ export function validatePatientEvent(body) {
     occurred_at: parseDate(body.occurred_at, 'occurred_at'),
     details: body.details === undefined ? '' : optionalString(body.details, 'details', 300),
   };
+  if (body.event_type === 'activity_correction' && isPlainObject(body.value)) {
+    rejectUnknownFields(
+      body.value,
+      new Set(['activity', 'contextual_factors', 'note']),
+      'Field koreksi aktivitas'
+    );
+    if (!['unsure', 'sitting', 'standing', 'walking', 'rest', 'other']
+      .includes(body.value.activity)) {
+      throw errorHandler(400, 'Aktivitas koreksi tidak valid.');
+    }
+    if (!['certain', 'unsure'].includes(body.confidence)) {
+      throw errorHandler(400, 'confidence harus certain atau unsure.');
+    }
+    if (body.value.activity === 'unsure' && body.confidence !== 'unsure') {
+      throw errorHandler(400, 'Aktivitas unsure harus memiliki confidence unsure.');
+    }
+    requireObject(body.value.contextual_factors, 'contextual_factors');
+    rejectUnknownFields(
+      body.value.contextual_factors,
+      new Set(['mood', 'caffeine', 'meal', 'other_factors']),
+      'Field faktor konteks'
+    );
+    const factors = body.value.contextual_factors;
+    const allowedFactors = {
+      mood: ['unsure', 'good', 'neutral', 'stressed', 'low_mood', 'tired'],
+      caffeine: ['unsure', 'none', 'consumed'],
+      meal: ['unsure', 'none', 'recent'],
+    };
+    for (const [field, values] of Object.entries(allowedFactors)) {
+      if (!values.includes(factors[field])) {
+        throw errorHandler(400, `${field} bukan pilihan faktor konteks yang valid.`);
+      }
+    }
+    const otherFactors = validateStringList(
+      factors.other_factors,
+      'other_factors',
+      8,
+      32
+    );
+    const note = body.value.note === undefined
+      ? ''
+      : optionalString(body.value.note, 'value.note', 500);
+    if (!body.affected_interval || !isPlainObject(body.affected_interval)) {
+      throw errorHandler(400, 'affected_interval wajib diisi untuk koreksi aktivitas.');
+    }
+    rejectUnknownFields(
+      body.affected_interval,
+      new Set(['start', 'end']),
+      'Field affected_interval'
+    );
+    const eventTime = parseDate(body.event_time, 'event_time');
+    const start = parseDate(body.affected_interval.start, 'affected_interval.start');
+    const end = parseDate(body.affected_interval.end, 'affected_interval.end');
+    if (start > end) {
+      throw errorHandler(400, 'affected_interval.start harus sebelum atau sama dengan end.');
+    }
+    if (end.getTime() - start.getTime() > 12 * 60 * 60 * 1000) {
+      throw errorHandler(400, 'Interval terdampak maksimal 12 jam.');
+    }
+    if (end.getTime() > Date.now() + 5 * 60 * 1000) {
+      throw errorHandler(400, 'Interval aktivitas tidak boleh berada di masa depan.');
+    }
+    if (eventTime < start || eventTime > end) {
+      throw errorHandler(400, 'event_time harus berada di dalam affected_interval.');
+    }
+    result.event_time = eventTime;
+    result.affected_interval = { start, end };
+    result.confidence = body.confidence;
+    result.value = {
+      activity: body.value.activity,
+      contextual_factors: {
+        mood: factors.mood,
+        caffeine: factors.caffeine,
+        meal: factors.meal,
+        other_factors: otherFactors,
+      },
+      note,
+    };
+  } else if ('event_time' in body || 'affected_interval' in body || 'confidence' in body) {
+    throw errorHandler(400, 'Rentang dan keyakinan hanya boleh dikirim untuk koreksi aktivitas terstruktur.');
+  }
   if ('value' in body) {
-    if (body.event_type === 'ema') {
+    if (body.event_type === 'activity_correction' && isPlainObject(body.value)) {
+      result.value = {
+        activity: body.value.activity,
+        contextual_factors: result.value.contextual_factors,
+        note: result.value.note,
+      };
+    } else if (body.event_type === 'ema') {
       result.value = validateGuidedSessionEma(body.value);
     } else if (typeof body.value === 'string') {
       result.value = optionalString(body.value, 'value', 120);
@@ -913,6 +1010,118 @@ export function validateWearableStream(body) {
     activity: body.activity,
     readings,
   };
+}
+
+export function validateHilRealtimeEvaluation(body) {
+  requireObject(body, 'Evaluasi HIL realtime');
+  rejectUnknownFields(
+    body,
+    new Set([
+      'activity',
+      'device_id',
+      'readings',
+      'dfa_rr_intervals_ms',
+      'previous_mean_hr',
+      'previous_elevated',
+    ]),
+    'Field evaluasi HIL'
+  );
+  if (!['sitting', 'standing', 'walking'].includes(body.activity)) {
+    throw errorHandler(400, 'activity harus sitting, standing, atau walking.');
+  }
+  const deviceId = optionalString(body.device_id, 'device_id', 120);
+  if (!deviceId) throw errorHandler(400, 'device_id wajib diisi.');
+  if (!Array.isArray(body.readings) || body.readings.length < 1 || body.readings.length > 100) {
+    throw errorHandler(400, 'readings harus berisi 1-100 pengukuran sensor.');
+  }
+
+  const readings = body.readings.map((reading, index) => {
+    requireObject(reading, `readings[${index}]`);
+    rejectUnknownFields(
+      reading,
+      new Set([
+        'recorded_at',
+        'heart_rate_bpm',
+        'rr_interval_ms',
+        'acceleration_g',
+        'sensor_contact',
+        'signal_confidence',
+      ]),
+      `Field readings[${index}]`
+    );
+    const heartRate = optionalNumber(
+      reading.heart_rate_bpm,
+      `readings[${index}].heart_rate_bpm`,
+      20,
+      250
+    );
+    const rrInterval = optionalNumber(
+      reading.rr_interval_ms,
+      `readings[${index}].rr_interval_ms`,
+      250,
+      3000
+    );
+    const signalConfidence = optionalNumber(
+      reading.signal_confidence,
+      `readings[${index}].signal_confidence`,
+      0,
+      1
+    );
+    if (!Number.isInteger(heartRate)) {
+      throw errorHandler(400, `readings[${index}].heart_rate_bpm harus bilangan bulat.`);
+    }
+    if (reading.sensor_contact !== true) {
+      throw errorHandler(400, `readings[${index}].sensor_contact harus true.`);
+    }
+    if (!Array.isArray(reading.acceleration_g) || reading.acceleration_g.length !== 3) {
+      throw errorHandler(400, `readings[${index}].acceleration_g harus berisi [x, y, z].`);
+    }
+    return {
+      recorded_at: parseDate(reading.recorded_at, `readings[${index}].recorded_at`),
+      heart_rate_bpm: heartRate,
+      rr_interval_ms: rrInterval,
+      acceleration_g: reading.acceleration_g.map((value, axis) =>
+        optionalNumber(value, `readings[${index}].acceleration_g[${axis}]`, -16, 16)
+      ),
+      sensor_contact: true,
+      signal_confidence: signalConfidence,
+    };
+  });
+  for (let index = 1; index < readings.length; index++) {
+    if (readings[index].recorded_at < readings[index - 1].recorded_at) {
+      throw errorHandler(400, 'readings harus berurutan berdasarkan recorded_at.');
+    }
+  }
+
+  let dfaRrIntervals = null;
+  if ('dfa_rr_intervals_ms' in body) {
+    if (
+      !Array.isArray(body.dfa_rr_intervals_ms)
+      || body.dfa_rr_intervals_ms.length > 1200
+    ) {
+      throw errorHandler(400, 'dfa_rr_intervals_ms harus berisi maksimal 1200 interval RR.');
+    }
+    dfaRrIntervals = body.dfa_rr_intervals_ms.map((value, index) =>
+      optionalNumber(value, `dfa_rr_intervals_ms[${index}]`, 250, 3000)
+    );
+  }
+
+  const result = {
+    activity: body.activity,
+    device_id: deviceId,
+    readings,
+    dfa_rr_intervals_ms: dfaRrIntervals,
+  };
+  if ('previous_mean_hr' in body) {
+    result.previous_mean_hr = optionalNumber(body.previous_mean_hr, 'previous_mean_hr', 20, 250);
+  }
+  if ('previous_elevated' in body) {
+    if (typeof body.previous_elevated !== 'boolean') {
+      throw errorHandler(400, 'previous_elevated harus berupa boolean.');
+    }
+    result.previous_elevated = body.previous_elevated;
+  }
+  return result;
 }
 
 export function validateCheckIn(body) {

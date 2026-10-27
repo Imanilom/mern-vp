@@ -32,11 +32,53 @@ class _GuidedBaselineReviewScreenState
     'other': 'Aktivitas lain',
   };
 
-  final Map<int, String> _correctedActivities = {};
+  final TextEditingController _correctionNoteController =
+      TextEditingController();
   int _step = 3;
   bool _savingCorrection = false;
   bool _correctionSaved = false;
+  String _correctionActivity = 'unsure';
+  String _correctionConfidence = 'unsure';
+  String _mood = 'unsure';
+  String _caffeine = 'unsure';
+  String _meal = 'unsure';
+  final Set<String> _otherFactors = {};
+  DateTime? _intervalStart;
+  DateTime? _intervalEnd;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final times = <DateTime>[];
+    for (final stage in widget.stageResults) {
+      for (final key in ['started_at', 'finished_at']) {
+        final time = DateTime.tryParse(stage[key]?.toString() ?? '');
+        if (time != null) times.add(time);
+      }
+      final readings = stage['recorded_readings'];
+      if (readings is List) {
+        for (final reading in readings.whereType<Map>()) {
+          final time =
+              DateTime.tryParse(reading['recorded_at']?.toString() ?? '');
+          if (time != null) times.add(time);
+        }
+      }
+    }
+    if (times.isNotEmpty) {
+      times.sort();
+      _intervalStart = times.first;
+      _intervalEnd = times.last.isAfter(times.first)
+          ? times.last
+          : times.first.add(const Duration(minutes: 1));
+    }
+  }
+
+  @override
+  void dispose() {
+    _correctionNoteController.dispose();
+    super.dispose();
+  }
 
   Map<String, dynamic>? get _capar {
     final raw = context.read<AppState>().rawCaparInsights?['capar'];
@@ -141,15 +183,26 @@ class _GuidedBaselineReviewScreenState
 
   Future<void> _saveCorrections() async {
     if (_savingCorrection || _correctionSaved) return;
-    final corrections = _correctedActivities.entries
-        .where((entry) =>
-            entry.value != widget.stageResults[entry.key]['activity'])
-        .map((entry) {
-      final stage = widget.stageResults[entry.key];
-      final from = _activityOptions[stage['activity']] ?? 'Konteks';
-      final to = _activityOptions[entry.value] ?? 'Aktivitas lain';
-      return '${stage['label'] ?? from}: $from → $to';
-    }).toList();
+    final start = _intervalStart;
+    final end = _intervalEnd;
+    if (start == null || end == null || end.isBefore(start)) {
+      setState(() => _error = 'Pilih rentang waktu aktivitas yang valid.');
+      return;
+    }
+    if (end.isAfter(DateTime.now())) {
+      setState(
+          () => _error = 'Rentang waktu tidak boleh berada di masa depan.');
+      return;
+    }
+    if (end.difference(start) > const Duration(hours: 12)) {
+      setState(() => _error = 'Rentang aktivitas maksimal 12 jam.');
+      return;
+    }
+    if (_correctionActivity == 'unsure') _correctionConfidence = 'unsure';
+    final eventTime = start.add(Duration(
+      milliseconds: end.difference(start).inMilliseconds ~/ 2,
+    ));
+    final note = _correctionNoteController.text.trim();
 
     setState(() {
       _savingCorrection = true;
@@ -157,13 +210,25 @@ class _GuidedBaselineReviewScreenState
     });
     final response = await ApiService.createEvent({
       'event_type': 'activity_correction',
-      'occurred_at': DateTime.now().toUtc().toIso8601String(),
-      'details': corrections.isEmpty
-          ? 'Pengguna meninjau konteks sesi baseline dan tidak mengirim koreksi.'
-          : 'Koreksi konteks sesi baseline: ${corrections.join('; ')}. Koreksi ini merupakan laporan pengguna, bukan perubahan hasil sensor.',
-      'value': corrections.isEmpty
-          ? 'baseline_context_reviewed'
-          : 'baseline_context_correction',
+      'occurred_at': eventTime.toUtc().toIso8601String(),
+      'event_time': eventTime.toUtc().toIso8601String(),
+      'affected_interval': {
+        'start': start.toUtc().toIso8601String(),
+        'end': end.toUtc().toIso8601String(),
+      },
+      'confidence': _correctionConfidence,
+      'details':
+          'Koreksi konteks sesi baseline dilaporkan pengguna; tidak mengubah data sensor.',
+      'value': {
+        'activity': _correctionActivity,
+        'contextual_factors': {
+          'mood': _mood,
+          'caffeine': _caffeine,
+          'meal': _meal,
+          'other_factors': _otherFactors.toList(),
+        },
+        'note': note,
+      },
       'unit': 'baseline_context_feedback',
     });
     if (!mounted) return;
@@ -178,6 +243,80 @@ class _GuidedBaselineReviewScreenState
       await context.read<AppState>().fetchRecentEvents();
     }
   }
+
+  Future<void> _selectIntervalDateTime({required bool start}) async {
+    final current = start ? _intervalStart : _intervalEnd;
+    final initial = (current ?? DateTime.now()).toLocal();
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial.isAfter(now) ? now : initial,
+      firstDate: DateTime(2000),
+      lastDate: now,
+      helpText: start
+          ? 'Pilih tanggal mulai aktivitas'
+          : 'Pilih tanggal akhir aktivitas',
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      helpText:
+          start ? 'Pilih waktu mulai aktivitas' : 'Pilih waktu akhir aktivitas',
+    );
+    if (time == null || !mounted) return;
+    final selected = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    setState(() {
+      if (start) {
+        _intervalStart = selected;
+      } else {
+        _intervalEnd = selected;
+      }
+      _correctionSaved = false;
+      _error = null;
+    });
+  }
+
+  String _formatDateTime(DateTime? value) {
+    if (value == null) return 'Pilih waktu';
+    final local = value.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/'
+        '${local.year} ${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _factorDropdown({
+    required String label,
+    required String value,
+    required List<DropdownMenuItem<String>> items,
+    required ValueChanged<String?> onChanged,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: DropdownButtonFormField<String>(
+          initialValue: value,
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+            isDense: true,
+          ),
+          items: items,
+          onChanged: (next) {
+            if (next == null) return;
+            setState(() {
+              onChanged(next);
+              _correctionSaved = false;
+            });
+          },
+        ),
+      );
 
   Future<void> _openEma() async {
     final saved = await Navigator.of(context).push<bool>(
@@ -320,7 +459,7 @@ class _GuidedBaselineReviewScreenState
               4 =>
                 'Bandingkan hasil sesi dengan referensi CAPAR yang tersedia.',
               5 =>
-                'Pastikan konteks aktivitas sesuai dengan yang Anda lakukan.',
+                'Koreksi konteks pada rentang waktu yang Anda pilih dan catat faktor pengalaman.',
               _ =>
                 'Pahami hasil, ketersediaan data, dan batas interpretasinya.',
             },
@@ -606,59 +745,215 @@ class _GuidedBaselineReviewScreenState
         children: [
           _infoCard(
             Icons.fact_check_outlined,
-            'Periksa label aktivitas',
-            'Jika label konteks tidak sesuai aktivitas yang Anda lakukan, pilih konteks yang benar. Koreksi ini adalah laporan Anda di tahap input (L1); nilai sensor tetap tidak diubah.',
+            'Konfirmasi atau koreksi konteks rekaman',
+            'Pilih rentang waktu yang terdampak dan aktivitas yang sebenarnya. Anda boleh memilih “Tidak yakin” atau hanya melaporkan faktor konteks. Laporan dicatat pada L1; sensor tidak diubah dan interpretasi L2–L3 hanya ditinjau bila relevan.',
           ),
-          ...widget.stageResults.asMap().entries.where((entry) {
-            final result = entry.value;
-            return result['skipped'] != true && result['incomplete'] != true;
-          }).map((entry) {
-            final index = entry.key;
-            final result = entry.value;
-            final current = result['activity']?.toString() ?? 'other';
-            final selected = _correctedActivities[index] ?? current;
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(result['label']?.toString() ?? 'Konteks',
-                        style:
-                            AppTheme.font(size: 12, weight: FontWeight.w800)),
-                    const SizedBox(height: 6),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Rentang waktu laporan',
+                      style: AppTheme.font(size: 12, weight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Waktu laporan direkam server saat disimpan. Waktu event berada di tengah interval yang Anda pilih.',
+                    style: AppTheme.font(
+                        size: 10.5, color: AppTheme.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          key: const Key('baseline-correction-start-time'),
+                          onPressed: _savingCorrection
+                              ? null
+                              : () => _selectIntervalDateTime(start: true),
+                          icon: const Icon(Icons.play_arrow_rounded),
+                          label: Text(
+                            'Mulai\n${_formatDateTime(_intervalStart)}',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          key: const Key('baseline-correction-end-time'),
+                          onPressed: _savingCorrection
+                              ? null
+                              : () => _selectIntervalDateTime(start: false),
+                          icon: const Icon(Icons.stop_rounded),
+                          label: Text(
+                            'Selesai\n${_formatDateTime(_intervalEnd)}',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    key: const Key('baseline-correction-activity'),
+                    initialValue: _correctionActivity,
+                    decoration: const InputDecoration(
+                      labelText: 'Aktivitas sebenarnya (opsional)',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: {
+                      'unsure': 'Tidak yakin',
+                      ..._activityOptions,
+                    }
+                        .entries
+                        .map((entry) => DropdownMenuItem(
+                              value: entry.key,
+                              child: Text(entry.value),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _correctionActivity = value;
+                        _correctionConfidence =
+                            value == 'unsure' ? 'unsure' : 'certain';
+                        _correctionSaved = false;
+                        _error = null;
+                      });
+                    },
+                  ),
+                  if (_correctionActivity != 'unsure') ...[
+                    const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      initialValue: selected,
+                      initialValue: _correctionConfidence,
                       decoration: const InputDecoration(
-                        labelText: 'Aktivitas yang sebenarnya',
+                        labelText: 'Keyakinan terhadap koreksi',
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
-                      items: _activityOptions.entries
-                          .map((entry) => DropdownMenuItem(
-                                value: entry.key,
-                                child: Text(entry.value),
-                              ))
-                          .toList(),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'certain', child: Text('Yakin')),
+                        DropdownMenuItem(
+                            value: 'unsure', child: Text('Kurang yakin')),
+                      ],
                       onChanged: (value) {
                         if (value == null) return;
                         setState(() {
-                          _correctedActivities[index] = value;
+                          _correctionConfidence = value;
                           _correctionSaved = false;
-                          _error = null;
                         });
                       },
                     ),
                   ],
-                ),
+                  const SizedBox(height: 16),
+                  Text('Faktor lain pada rentang ini',
+                      style: AppTheme.font(size: 12, weight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  _factorDropdown(
+                    label: 'Suasana hati',
+                    value: _mood,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'unsure',
+                          child: Text('Tidak yakin / tidak diisi')),
+                      DropdownMenuItem(
+                          value: 'good', child: Text('Baik / tenang')),
+                      DropdownMenuItem(value: 'neutral', child: Text('Netral')),
+                      DropdownMenuItem(
+                          value: 'stressed', child: Text('Stres / cemas')),
+                      DropdownMenuItem(
+                          value: 'low_mood',
+                          child: Text('Suasana hati rendah')),
+                      DropdownMenuItem(value: 'tired', child: Text('Lelah')),
+                    ],
+                    onChanged: (value) => _mood = value!,
+                  ),
+                  _factorDropdown(
+                    label: 'Konsumsi kafein',
+                    value: _caffeine,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'unsure',
+                          child: Text('Tidak yakin / tidak diisi')),
+                      DropdownMenuItem(value: 'none', child: Text('Tidak')),
+                      DropdownMenuItem(value: 'consumed', child: Text('Ya')),
+                    ],
+                    onChanged: (value) => _caffeine = value!,
+                  ),
+                  _factorDropdown(
+                    label: 'Makan pada/sekitar rentang waktu ini',
+                    value: _meal,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'unsure',
+                          child: Text('Tidak yakin / tidak diisi')),
+                      DropdownMenuItem(value: 'none', child: Text('Tidak')),
+                      DropdownMenuItem(value: 'recent', child: Text('Ya')),
+                    ],
+                    onChanged: (value) => _meal = value!,
+                  ),
+                  Text('Faktor tambahan (opsional)',
+                      style: AppTheme.font(size: 11, weight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      for (final (code, label) in const [
+                        ('stress', 'Stres'),
+                        ('poor_sleep', 'Kurang tidur'),
+                        ('illness', 'Sedang sakit'),
+                        ('medication', 'Obat/intervensi'),
+                        ('symptoms', 'Gejala'),
+                        ('other', 'Lainnya'),
+                      ])
+                        FilterChip(
+                          key: Key('baseline-correction-factor-$code'),
+                          label: Text(label),
+                          selected: _otherFactors.contains(code),
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _otherFactors.add(code);
+                              } else {
+                                _otherFactors.remove(code);
+                              }
+                              _correctionSaved = false;
+                            });
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    key: const Key('baseline-correction-note'),
+                    controller: _correctionNoteController,
+                    maxLength: 500,
+                    maxLines: 3,
+                    onChanged: (_) => setState(() => _correctionSaved = false),
+                    decoration: const InputDecoration(
+                      labelText: 'Catatan pengalaman (opsional)',
+                      hintText: 'Tambahkan konteks lain yang ingin dicatat',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  Text(
+                    'Jika aktivitas tidak diketahui, pilih “Tidak yakin”. Faktor boleh dibiarkan kosong/tidak yakin. Catatan ini adalah laporan Anda, bukan bukti penyebab.',
+                    style: AppTheme.font(
+                        size: 10.5, color: AppTheme.textSecondary, height: 1.4),
+                  ),
+                ],
               ),
-            );
-          }),
+            ),
+          ),
           if (_correctionSaved)
             _infoCard(
               Icons.check_circle_outline_rounded,
-              'Konteks sudah ditinjau',
-              'Koreksi yang Anda kirim disimpan sebagai laporan pengguna, terpisah dari hasil wearable.',
+              'Laporan konteks tersimpan',
+              'Waktu laporan, waktu event, rentang aktivitas, pilihan “tidak yakin”, dan faktor pengalaman disimpan terpisah dari hasil wearable.',
             ),
         ],
       );

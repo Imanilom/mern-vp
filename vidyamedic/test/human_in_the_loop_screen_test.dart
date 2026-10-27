@@ -9,7 +9,64 @@ Widget _app(AppState state) => ChangeNotifierProvider<AppState>.value(
       child: const MaterialApp(home: HumanInTheLoopScreen()),
     );
 
+ListTile _scenarioTile(WidgetTester tester, String code) =>
+    tester.widget<ListTile>(
+      find.descendant(
+        of: find.byKey(Key('hil-scenario-$code')),
+        matching: find.byType(ListTile),
+      ),
+    );
+
+Future<void> _acceptHilConsent(WidgetTester tester) async {
+  final openConsent = find.byKey(const Key('hil-research-consent-open'));
+  await tester.ensureVisible(openConsent);
+  await tester.tap(openConsent);
+  await tester.pumpAndSettle();
+  final checkbox = find.byKey(const Key('hil-research-consent-check'));
+  await tester.ensureVisible(checkbox);
+  await tester.pumpAndSettle();
+  await tester.tap(checkbox);
+  await tester.pump();
+  final accept = find.byKey(const Key('hil-research-consent-accept'));
+  await tester.ensureVisible(accept);
+  await tester.pumpAndSettle();
+  await tester.tap(accept);
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  testWidgets('baseline profile opens the ordered three-step HCI flow',
+      (tester) async {
+    final state = AppState()
+      ..rawCaparInsights = {
+        'capar': {
+          'baseline': {'contexts': []},
+        },
+      };
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    expect(find.byKey(const Key('hil-baseline-activity')), findsNothing);
+    expect(find.byKey(const Key('hil-baseline-step-1')), findsOneWidget);
+    expect(find.byKey(const Key('hil-baseline-step-2')), findsOneWidget);
+    expect(find.byKey(const Key('hil-baseline-step-3')), findsOneWidget);
+
+    final startButton = find.byKey(const Key('hil-start-guided-baseline'));
+    expect(tester.widget<FilledButton>(startButton).onPressed, isNull);
+    await _acceptHilConsent(tester);
+    await tester.ensureVisible(startButton);
+    expect(tester.widget<FilledButton>(startButton).onPressed, isNotNull);
+    await tester.tap(startButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Perekaman baseline terpandu'), findsOneWidget);
+    expect(find.text('KONTEKS 1 DARI 3'), findsOneWidget);
+    expect(find.text('Duduk'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets(
       'Human In the Loop locks B/C until matching activity baseline is mature',
       (tester) async {
@@ -60,25 +117,15 @@ void main() {
     await tester.pumpWidget(_app(state));
 
     expect(find.text('Human In the Loop'), findsOneWidget);
+    expect(find.textContaining('terpisah dari eksperimen HCI'), findsNothing);
     expect(find.textContaining('Pembentukan baseline per aktivitas'),
         findsOneWidget);
     expect(find.textContaining('One-way feedback'), findsOneWidget);
     expect(find.textContaining('Human in the loop'), findsOneWidget);
     expect(find.byKey(const Key('hil-scenarios-locked')), findsOneWidget);
-    expect(
-        tester
-            .widget<OutlinedButton>(
-              find.byKey(const Key('hil-scenario-B')),
-            )
-            .onPressed,
-        isNull);
-    expect(
-        tester
-            .widget<OutlinedButton>(
-              find.byKey(const Key('hil-scenario-C')),
-            )
-            .onPressed,
-        isNull);
+    expect(_scenarioTile(tester, 'B').onTap, isNull);
+    expect(_scenarioTile(tester, 'C').onTap, isNull);
+    expect(find.byKey(const Key('hil-consent-required')), findsOneWidget);
 
     expect(find.text('Deteksi perubahan dari z-score'), findsOneWidget);
     expect(find.text('Periksa kualitas dan baseline'), findsOneWidget);
@@ -148,20 +195,11 @@ void main() {
     await tester.pumpWidget(_app(state));
 
     expect(find.byKey(const Key('hil-scenarios-locked')), findsNothing);
-    expect(
-        tester
-            .widget<OutlinedButton>(
-              find.byKey(const Key('hil-scenario-B')),
-            )
-            .onPressed,
-        isNotNull);
-    expect(
-        tester
-            .widget<OutlinedButton>(
-              find.byKey(const Key('hil-scenario-C')),
-            )
-            .onPressed,
-        isNotNull);
+    expect(_scenarioTile(tester, 'B').onTap, isNull);
+    expect(_scenarioTile(tester, 'C').onTap, isNull);
+    await _acceptHilConsent(tester);
+    expect(_scenarioTile(tester, 'B').onTap, isNotNull);
+    expect(_scenarioTile(tester, 'C').onTap, isNotNull);
 
     await tester.ensureVisible(find.byKey(const Key('hil-scenario-B')));
     await tester.tap(find.byKey(const Key('hil-scenario-B')));
@@ -179,6 +217,7 @@ void main() {
     expect(find.byKey(const Key('hil-human-loop-form')), findsOneWidget);
     expect(find.textContaining('aktivitas fisik berat'), findsOneWidget);
     expect(find.byKey(const Key('hil-submit-clarification')), findsOneWidget);
+    expect(find.byKey(const Key('hil-open-live-monitor')), findsOneWidget);
   });
 
   testWidgets('a mature baseline for another activity cannot unlock the event',
@@ -214,22 +253,8 @@ void main() {
 
     await tester.pumpWidget(_app(state));
 
-    expect(
-      tester
-          .widget<OutlinedButton>(
-            find.byKey(const Key('hil-scenario-B')),
-          )
-          .onPressed,
-      isNull,
-    );
-    expect(
-      tester
-          .widget<OutlinedButton>(
-            find.byKey(const Key('hil-scenario-C')),
-          )
-          .onPressed,
-      isNull,
-    );
+    expect(_scenarioTile(tester, 'B').onTap, isNull);
+    expect(_scenarioTile(tester, 'C').onTap, isNull);
     expect(find.textContaining('Berjalan'), findsWidgets);
   });
 }

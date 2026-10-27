@@ -7,11 +7,21 @@ import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
 import '../../services/wearable_pairing_service.dart';
 import '../../theme/app_theme.dart';
+import 'human_in_the_loop_baseline_summary_screen.dart';
 import 'guided_baseline_review_screen.dart';
 import '../profile/wearable_pairing_screen.dart';
 
 class GuidedBaselineSessionScreen extends StatefulWidget {
-  const GuidedBaselineSessionScreen({super.key});
+  const GuidedBaselineSessionScreen({
+    super.key,
+    this.includeRecoveryStage = true,
+    this.showHciReview = true,
+    this.baselineContextsAtStart = const [],
+  });
+
+  final bool includeRecoveryStage;
+  final bool showHciReview;
+  final List<Map<String, dynamic>> baselineContextsAtStart;
 
   @override
   State<GuidedBaselineSessionScreen> createState() =>
@@ -20,7 +30,7 @@ class GuidedBaselineSessionScreen extends StatefulWidget {
 
 class _GuidedBaselineSessionScreenState
     extends State<GuidedBaselineSessionScreen> {
-  static const _stages = <(String, String, String)>[
+  static const _baselineStages = <(String, String, String)>[
     ('sitting', 'Duduk', 'Duduk tenang dan usahakan posisi tetap nyaman.'),
     ('standing', 'Berdiri', 'Berdiri hanya jika terasa aman dan nyaman.'),
     (
@@ -30,6 +40,11 @@ class _GuidedBaselineSessionScreenState
     ),
     ('sitting', 'Duduk kembali', 'Duduk dan biarkan tubuh beristirahat.'),
   ];
+
+  List<(String, String, String)> get _stages => widget.includeRecoveryStage
+      ? _baselineStages
+      : _baselineStages.take(3).toList();
+
   static const _stageDuration = Duration(minutes: 5);
 
   int _stageIndex = 0;
@@ -40,23 +55,34 @@ class _GuidedBaselineSessionScreenState
   bool _emaSaved = false;
   bool _reviewOpened = false;
   String? _error;
+  DateTime? _stageStartedAt;
+  late final PolarWearablePairingService _wearableBridge;
   final List<Map<String, dynamic>> _stageResults = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _wearableBridge = context.read<AppState>().wearableBridge;
+  }
 
   @override
   void dispose() {
     _timer?.cancel();
-    final wearable = context.read<AppState>().wearableBridge;
-    if (wearable.isStreaming) unawaited(wearable.stopStreaming());
+    if (_wearableBridge.isStreaming) {
+      unawaited(_wearableBridge.stopStreaming());
+    }
     super.dispose();
   }
 
   Future<bool> _confirmParticipation() async {
+    final activitySequence =
+        _stages.map((stage) => stage.$2.toLowerCase()).join(', ');
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Sesi pengukuran personal'),
-        content: const Text(
-          'Sesi ini merekam data Polar H10 nyata selama 5 menit per konteks: duduk, berdiri, berjalan santai, lalu duduk kembali. Aktivitas berdiri dan berjalan bersifat sukarela; Anda dapat melewati tahap atau menghentikan sesi kapan saja. Jangan lakukan gerakan yang terasa tidak aman. Lima menit belum menjamin baseline matang; CAPAR dapat memerlukan rekaman berkualitas pada beberapa waktu/hari.',
+        content: Text(
+          'Sesi ini merekam data Polar H10 nyata selama 5 menit per konteks: $activitySequence. Aktivitas berdiri dan berjalan bersifat sukarela; Anda dapat melewati tahap atau menghentikan sesi kapan saja. Jangan lakukan gerakan yang terasa tidak aman. Lima menit belum menjamin baseline matang; CAPAR dapat memerlukan rekaman berkualitas pada beberapa waktu/hari.',
         ),
         actions: [
           TextButton(
@@ -114,6 +140,7 @@ class _GuidedBaselineSessionScreenState
       _error = null;
       _remainingSeconds = _stageDuration.inSeconds;
       _stageRunning = true;
+      _stageStartedAt = DateTime.now().toUtc();
     });
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -144,6 +171,8 @@ class _GuidedBaselineSessionScreenState
     final result = <String, dynamic>{
       'activity': activity,
       'label': _stages[_stageIndex].$2,
+      'started_at': _stageStartedAt?.toIso8601String(),
+      'finished_at': DateTime.now().toUtc().toIso8601String(),
       'is_simulated': wearable.isDemoDevice,
       'skipped': skipped && !wasRunning,
       'incomplete': skipped && wasRunning,
@@ -157,7 +186,6 @@ class _GuidedBaselineSessionScreenState
               .map((reading) => Map<String, dynamic>.from(reading))
               .toList()
           : <Map<String, dynamic>>[],
-      'finished_at': DateTime.now().toIso8601String(),
     };
     final streamError = wearable.streamError ?? wearable.sampleError;
     setState(() {
@@ -165,14 +193,36 @@ class _GuidedBaselineSessionScreenState
       _stageIndex++;
       _remainingSeconds = _stageDuration.inSeconds;
       _finishingStage = false;
+      _stageStartedAt = null;
       if (streamError != null) {
         _error = 'Sebagian data gagal dikirim: $streamError';
       }
     });
     if (_stageIndex == _stages.length && mounted) {
       await context.read<AppState>().fetchCaparInsights();
-      if (mounted) await _openReviewScreen();
+      if (!mounted) return;
+      if (widget.showHciReview) {
+        await _openReviewScreen();
+      } else {
+        await _openHumanInTheLoopSummary();
+      }
     }
+  }
+
+  Future<void> _openHumanInTheLoopSummary() async {
+    if (_reviewOpened || !mounted) return;
+    _reviewOpened = true;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => HumanInTheLoopBaselineSummaryScreen(
+          stageResults: _stageResults
+              .map((result) => Map<String, dynamic>.from(result))
+              .toList(),
+          existingBaselineContexts: widget.baselineContextsAtStart,
+        ),
+      ),
+    );
+    if (mounted) _reviewOpened = false;
   }
 
   Future<void> _openReviewScreen() async {
@@ -401,7 +451,9 @@ class _GuidedBaselineSessionScreenState
                 ),
                 title: Text(
                   _emaSaved
-                      ? 'Tahap 3–6 selesai · EMA tersimpan'
+                      ? widget.includeRecoveryStage
+                          ? 'Tahap 3–6 selesai · EMA tersimpan'
+                          : 'Tiga langkah selesai · EMA tersimpan'
                       : 'Rekaman selesai',
                   style: AppTheme.font(size: 14, weight: FontWeight.w800),
                 ),

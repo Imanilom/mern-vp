@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -39,7 +38,6 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
   List<Map<String, dynamic>> _sessions = [];
   List<Map<String, dynamic>> _events = [];
   List<Map<String, dynamic>> _questionnaires = [];
-  List<Map<String, dynamic>> _caparBaselines = [];
   Map<String, dynamic>? _selectedSession;
   String _activity = 'unsure';
   String _initialActivity = 'unsure';
@@ -50,10 +48,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
   bool _busy = false;
   bool _initialRouteHandled = false;
   bool _requiresRealRecording = false;
-  bool _caparLoading = true;
   String? _error;
-  String? _caparError;
-  String _caparStatus = 'insufficient_data';
 
   @override
   void initState() {
@@ -95,7 +90,6 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       _sessions = history;
       _loading = false;
     });
-    unawaited(_loadCaparBaselines());
     final currentModeSessions = history
         .where((session) => session['scenario_id'] == _activeScenarioId)
         .toList();
@@ -107,28 +101,6 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       _initialRouteHandled = true;
       await _startScenario(initialScenarioId);
     }
-  }
-
-  Future<void> _loadCaparBaselines() async {
-    setState(() => _caparLoading = true);
-    final response = await ApiService.getCaparInsights();
-    if (!mounted) return;
-    final payload = _map(response.data?['capar']);
-    final baseline = _map(payload['baseline']);
-    final contexts = baseline['contexts'];
-    final error = !response.success || response.data == null
-        ? response.message ?? 'Data baseline CAPAR gagal dimuat.'
-        : contexts is! List
-            ? 'Data baseline CAPAR belum tersedia dalam format yang dikenali.'
-            : null;
-    setState(() {
-      if (contexts is List) {
-        _caparBaselines = _maps(contexts);
-        _caparStatus = payload['status']?.toString() ?? 'insufficient_data';
-      }
-      _caparError = error;
-      _caparLoading = false;
-    });
   }
 
   Future<void> _openSession(Map<String, dynamic> item) async {
@@ -165,8 +137,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     final interpretation = _currentInterpretation(session.data!);
     final contextActivity =
         _map(interpretation?['context'])['activity']?.toString();
-    final latestCorrection =
-        corrections.isEmpty ? null : corrections.last;
+    final latestCorrection = corrections.isEmpty ? null : corrections.last;
     final selectedActivity = _scenarioActivityValue(
       latestCorrection?['value'] ?? contextActivity,
     );
@@ -305,13 +276,6 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_caparError != null) ...[
-                  Text(
-                    'Pembaruan data CAPAR gagal: $_caparError',
-                    style: const TextStyle(color: Color(0xFF9F2D20)),
-                  ),
-                  const SizedBox(height: 8),
-                ],
                 if (message != null && message.isNotEmpty) ...[
                   Text(message),
                   const SizedBox(height: 12),
@@ -319,7 +283,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                 if (requestedContext.isNotEmpty)
                   Text('Konteks sesi ini: $requestedContext.'),
                 const Text(
-                  'Data CAPAR yang sudah tersimpan tetap digunakan dan ditampilkan, tetapi perbandingan personal dapat belum tersedia sampai baseline pada konteks yang sama cukup matang.',
+                  'Data CAPAR yang tersimpan tetap digunakan untuk evaluasi. Perbandingan personal dapat belum tersedia sampai baseline pada konteks yang sama cukup matang.',
                 ),
                 const SizedBox(height: 12),
                 const Text(
@@ -329,8 +293,6 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                 const Text(
                   'Usahakan sinyal dan kontak sensor baik, rekam pada beberapa hari, dan kumpulkan window yang stabil. CAPAR menilai jumlah window efektif, sebaran hari, kualitas sinyal, dan kestabilan; banyaknya segmen saja tidak menjamin baseline matang. Setelah merekam, tunggu analisis CAPAR selesai lalu buka halaman ini lagi.',
                 ),
-                const SizedBox(height: 14),
-                _baselineContextList(compact: true),
               ],
             ),
           ),
@@ -616,7 +578,6 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _introCard(),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
                     _errorCard(_error!),
@@ -630,8 +591,6 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                       style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
                   ..._scenarios.map(_scenarioCard),
-                  const SizedBox(height: 8),
-                  _caparBaselineCard(),
                   const SizedBox(height: 8),
                   _dataWorkspaceCard(),
                   const SizedBox(height: 8),
@@ -669,16 +628,6 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     );
   }
 
-  Widget _introCard() => Card(
-        color: const Color(0xFFEFF8F4),
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: Text(
-            'VidyaMedic berisi tiga mode interaksi A, B, dan C. Semua mode memakai halaman pencatatan serta data Polar H10/CAPAR yang benar-benar direkam. Tidak ada hasil sensor simulasi; sesi hanya dapat dimulai setelah rekaman tersimpan dan window CAPAR lolos quality gate. Interpretasi yang belum memiliki baseline tetap UNRESOLVED, bukan normal.',
-          ),
-        ),
-      );
-
   Widget _scenarioCard(Map<String, dynamic> scenario) {
     final id = scenario['id']?.toString() ?? '';
     final selected = id == _activeScenarioId;
@@ -703,156 +652,6 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
         onTap: _busy || id.isEmpty ? null : () => _selectScenario(id),
       ),
     );
-  }
-
-  Widget _caparBaselineCard() => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Data CAPAR untuk VidyaMedic',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              if (_caparError != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Pembaruan terakhir gagal: $_caparError',
-                  style: const TextStyle(color: Color(0xFF9F2D20)),
-                ),
-              ],
-              const SizedBox(height: 4),
-              const Text(
-                'Baseline CAPAR yang tersimpan dipakai bersama di aplikasi ini. Data tetap ditampilkan meskipun masih belajar atau belum cukup untuk perbandingan skenario.',
-              ),
-              const SizedBox(height: 10),
-              _baselineContextList(),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: _busy ? null : () => _showBaselineGuidance(),
-                  icon: const Icon(Icons.info_outline),
-                  label: const Text('Cara melengkapi baseline'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-
-  Widget _baselineContextList({bool compact = false}) {
-    if (_caparBaselines.isEmpty) {
-      final message = _caparLoading
-          ? 'Memuat baseline CAPAR...'
-          : _caparError ??
-              (_caparStatus == 'link_required'
-                  ? 'Akun CAPAR belum tertaut. Tautkan akun agar baseline yang sudah ada dapat ditampilkan.'
-                  : 'Belum ada baseline CAPAR tersimpan untuk akun ini. Rekam data wearable untuk mulai membentuk baseline.');
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_caparError != null)
-            Text(
-              'Data CAPAR tidak dapat dimuat: $_caparError',
-              style: const TextStyle(color: Color(0xFF9F2D20)),
-            )
-          else if (!_caparLoading)
-            Text(message),
-          if (_caparStatus == 'link_required')
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text(
-                'Buka Profil untuk menautkan akun CAPAR sebelum merekam baseline lama.',
-                style: TextStyle(fontSize: 12),
-              ),
-            ),
-        ],
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: _caparBaselines.map((baseline) {
-        final maturity = _map(baseline['maturity_detail']);
-        final level = maturity['level']?.toString() ??
-            baseline['level']?.toString() ??
-            'belum diketahui';
-        final isMature = level == 'mature' || level == 'mature_legacy';
-        final failedGates = maturity['failed_gates'] is List
-            ? (maturity['failed_gates'] as List).whereType<String>().toList()
-            : <String>[];
-        final effectiveWindows = maturity['n_effective'];
-        final distinctDays = maturity['distinct_days'];
-        final quality = baseline['quality'];
-        final details = <String>[
-          '${baseline['segment_count'] ?? 0} segmen',
-          if (effectiveWindows is num)
-            '${effectiveWindows.toStringAsFixed(1)} window efektif',
-          if (distinctDays is num) '$distinctDays hari memenuhi syarat',
-        ];
-        return Container(
-          width: double.infinity,
-          margin: EdgeInsets.only(bottom: compact ? 6 : 8),
-          padding: EdgeInsets.all(compact ? 9 : 11),
-          decoration: BoxDecoration(
-            color: isMature ? const Color(0xFFEFF8F4) : const Color(0xFFFFF8E8),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color:
-                  isMature ? const Color(0xFFB7DDCA) : const Color(0xFFF0D48A),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${_activityLabel(baseline['activity']?.toString())} · ${_timePeriodLabel(baseline['time_period']?.toString())}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'Baseline ${isMature ? 'matang' : 'belum matang'} ($level) · ${details.join(' · ')}${quality is num ? ' · kualitas ${(quality * 100).toStringAsFixed(0)}%' : ''}',
-                style: const TextStyle(fontSize: 12),
-              ),
-              if (failedGates.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Perlu ditingkatkan: ${failedGates.map(_humanizeMaturityGate).join('; ')}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                )
-              else if (!isMature)
-                const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Rincian syarat maturity belum tersedia pada data CAPAR lama.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  String _humanizeMaturityGate(String gate) {
-    final separator = gate.indexOf('=');
-    if (separator < 0) return gate;
-    final key = gate.substring(0, separator);
-    final label = switch (key) {
-      'n_eff' => 'Window efektif',
-      'hari_eligible' => 'Hari rekaman yang memenuhi syarat',
-      'dominasi_hari' => 'Sebaran rekaman antarhari',
-      'q_signal' => 'Kualitas sinyal',
-      'q_complete' => 'Kelengkapan data',
-      'q_stability' => 'Kestabilan rekaman',
-      'BQ' => 'Kualitas baseline keseluruhan',
-      _ => key,
-    };
-    return '$label: ${gate.substring(separator + 1).trim()}';
   }
 
   Widget _dataWorkspaceCard() => Card(
@@ -944,8 +743,8 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     final quality = _map(observation['quality']);
     final baseline = _map(interpretation?['baseline']);
     final evidence = _map(interpretation?['statistical_evidence']);
-    final hasCorrectionChanges = _activity != _initialActivity ||
-        _confidence != _initialConfidence;
+    final hasCorrectionChanges =
+        _activity != _initialActivity || _confidence != _initialConfidence;
     final statusLabel = switch (status) {
       'BASELINE_COMPATIBLE' => 'Kompatibel dengan baseline statistik',
       'DEVIATION_CANDIDATE' => 'Kandidat deviasi statistik',

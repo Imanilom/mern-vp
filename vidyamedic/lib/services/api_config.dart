@@ -137,4 +137,6 @@ class ApiConfig {
       '$baseUrl/patient-app/chat/patients';
   static String get wearableStreamEndpoint =>
       '$baseUrl/patient-app/wearable/stream';
+  static String get hilRealtimeEvaluationEndpoint =>
+      '$baseUrl/patient-app/wearable/hil-realtime';
 }

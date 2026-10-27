@@ -38,6 +38,17 @@ const PatientAppEventSchema = new mongoose.Schema(
       ],
     },
     occurred_at: { type: Date, required: true, default: Date.now },
+    event_time: { type: Date, default: null },
+    report_time: { type: Date, required: true, default: Date.now },
+    affected_interval: {
+      start: { type: Date, default: null },
+      end: { type: Date, default: null },
+    },
+    confidence: {
+      type: String,
+      enum: ['certain', 'unsure', null],
+      default: null,
+    },
     details: { type: String, trim: true, maxlength: 300, default: '' },
     value: { type: mongoose.Schema.Types.Mixed, default: null },
     intensity: {

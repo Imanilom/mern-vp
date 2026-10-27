@@ -53,6 +53,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   static const _savedDeviceNameKey = 'vidyamedic_polar_device_name';
   static const _maxStreamReadingsPerRequest = 20;
   static const _maxAccelerationSamplesPerRequest = 128;
+  static const _maxRecentStreamReadings = 1024;
   int? _lastStreamReadingTimestampMs;
 
   StreamSubscription<PolarDeviceInfo>? _scanSubscription;
@@ -636,8 +637,11 @@ class PolarWearablePairingService extends ChangeNotifier {
       _streamReadings.add(reading);
       _recentStreamReadings.add(reading);
     }
-    if (_recentStreamReadings.length > 300) {
-      _recentStreamReadings.removeRange(0, _recentStreamReadings.length - 300);
+    if (_recentStreamReadings.length > _maxRecentStreamReadings) {
+      _recentStreamReadings.removeRange(
+        0,
+        _recentStreamReadings.length - _maxRecentStreamReadings,
+      );
     }
   }
 

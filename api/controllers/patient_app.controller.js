@@ -64,6 +64,7 @@ import { fitPatientBayesianEventState } from '../utils/patientBayesianEventState
 import { buildPatientRecoveryMarkovForecast } from '../utils/patientRecoveryMarkov.js';
 import { withWearableBaselineComparison } from '../utils/patientWearableHistory.js';
 import { assessRRQuality, extractRRFeatures } from '../utils/rrBaselinePipeline.js';
+import { analyzeHilRealtimeEvaluation } from '../utils/hilRealtimeAnalysis.js';
 import {
   validateCheckIn,
   validateCheckInQuery,
@@ -76,6 +77,7 @@ import {
   validatePatientImpactSummaryQuery,
   validateWearableStream,
   validateWearableSample,
+  validateHilRealtimeEvaluation,
   validateScenarioEvent,
   validateScenarioQuestionnaire,
   validateScenarioId,
@@ -3405,6 +3407,25 @@ export async function streamPatientAppWearableData(req, res) {
       message: 'Streaming wearable gagal disimpan atau diteruskan ke backend.',
     });
   }
+}
+
+export async function evaluatePatientAppHilRealtime(req, res) {
+  const { accountScopes } = await getAccount(req);
+  const evaluation = validateHilRealtimeEvaluation(req.body);
+  const baselineActivityAliases = {
+    sitting: ['sitting', 'Sitting', 'sit', 'Duduk'],
+    standing: ['standing', 'Standing', 'stand', 'Berdiri'],
+    walking: ['walking', 'Walking', 'walk', 'Berjalan'],
+  }[evaluation.activity];
+  const accountIds = [
+    ...new Set(accountScopes.map((scope) => scope.account_id.toString())),
+  ];
+  const baselines = await Baseline.find({
+    user_id: { $in: accountIds },
+    activity: { $in: baselineActivityAliases },
+  }).lean();
+  const analysis = analyzeHilRealtimeEvaluation(evaluation, baselines);
+  res.json({ success: true, data: analysis });
 }
 
 function buildPatientEpisodeHistory({ episodes, episodeMetadata, anomalyEvents }) {

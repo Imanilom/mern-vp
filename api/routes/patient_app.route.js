@@ -29,6 +29,7 @@ import {
   linkPatientAppToCaparUser,
   registerPatientAppAccount,
   streamPatientAppWearableData,
+  evaluatePatientAppHilRealtime,
   startPatientScenarioSession,
   getPatientScenarioSession,
   updatePatientAppProfile,
@@ -55,6 +56,14 @@ const scenarioWriteLimiter = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: { success: false, message: 'Terlalu banyak perubahan skenario. Coba lagi nanti.' },
+});
+
+const hilRealtimeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { success: false, message: 'Terlalu banyak permintaan evaluasi HIL realtime.' },
 });
 
 router.post('/register', registrationLimiter, registerPatientAppAccount);
@@ -116,6 +125,12 @@ router.get('/actions', verifyToken, listPatientAppActions);
 router.patch('/actions/:actionId/status', verifyToken, updatePatientAppActionStatus);
 router.post('/wearable/samples', verifyToken, createPatientAppWearableSample);
 router.post('/wearable/stream', verifyToken, streamPatientAppWearableData);
+router.post(
+  '/wearable/hil-realtime',
+  verifyToken,
+  hilRealtimeLimiter,
+  evaluatePatientAppHilRealtime
+);
 router.get('/wearable/samples', verifyToken, listPatientAppWearableSamples);
 router.get('/wearable/history', verifyToken, getPatientAppWearableHistory);
 

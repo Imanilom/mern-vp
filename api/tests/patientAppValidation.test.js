@@ -15,6 +15,7 @@ import {
   validateRegistration,
   validateWearableStream,
   validateWearableSample,
+  validateHilRealtimeEvaluation,
   validateWearableHistoryQuery,
   validateGamificationSettings,
   registrationEmailPattern,
@@ -742,6 +743,7 @@ test('patient event markers and wearable samples validate their source values', 
     details: 'Human In the Loop: one-way feedback ditampilkan.',
     value: 'scenario=B;segment=507f1f77bcf86cd799439011',
   });
+
   assert.equal(hilScenario.event_type, 'hil_scenario');
 
   const event = validatePatientEvent({
@@ -835,6 +837,67 @@ test('patient event markers and wearable samples validate their source values', 
   );
 });
 
+test('structured activity corrections preserve event interval and uncertainty', () => {
+  const end = new Date(Date.now() - 60_000);
+  const start = new Date(end.getTime() - 30 * 60_000);
+  const eventTime = new Date(start.getTime() + 15 * 60_000);
+  const correction = validatePatientEvent({
+    event_type: 'activity_correction',
+    occurred_at: eventTime.toISOString(),
+    event_time: eventTime.toISOString(),
+    affected_interval: {
+      start: start.toISOString(),
+      end: end.toISOString(),
+    },
+    confidence: 'unsure',
+    details: 'Laporan konteks sesi baseline.',
+    value: {
+      activity: 'unsure',
+      contextual_factors: {
+        mood: 'stressed',
+        caffeine: 'consumed',
+        meal: 'recent',
+        other_factors: ['poor_sleep', 'medication'],
+      },
+      note: 'Catatan pengalaman peserta.',
+    },
+  });
+
+  assert.equal(correction.event_time.toISOString(), eventTime.toISOString());
+  assert.equal(correction.occurred_at.toISOString(), eventTime.toISOString());
+  assert.deepEqual(correction.affected_interval, { start, end });
+  assert.equal(correction.confidence, 'unsure');
+  assert.equal(correction.value.activity, 'unsure');
+  assert.deepEqual(correction.value.contextual_factors.other_factors, [
+    'poor_sleep',
+    'medication',
+  ]);
+  assert.equal(correction.value.note, 'Catatan pengalaman peserta.');
+
+  assert.throws(
+    () => validatePatientEvent({
+      event_type: 'activity_correction',
+      occurred_at: eventTime.toISOString(),
+      event_time: eventTime.toISOString(),
+      affected_interval: {
+        start: start.toISOString(),
+        end: end.toISOString(),
+      },
+      confidence: 'certain',
+      value: {
+        activity: 'unsure',
+        contextual_factors: {
+          mood: 'unsure',
+          caffeine: 'unsure',
+          meal: 'unsure',
+          other_factors: [],
+        },
+      },
+    }),
+    { statusCode: 400 }
+  );
+});
+
 test('Polar H10 streaming batches require authenticated-safe sensor provenance and valid readings', () => {
   const reading = {
     recorded_at: '2026-10-05T08:15:00.000Z',
@@ -901,6 +964,51 @@ test('Polar H10 streaming batches require authenticated-safe sensor provenance a
     ...payload,
     readings: [{ ...reading, sensor_contact: false }],
   }), { statusCode: 400 });
+});
+
+test('HIL realtime evaluation accepts bounded real sensor windows and five-minute RR batches', () => {
+  const timestamp = new Date().toISOString();
+  const reading = {
+    recorded_at: timestamp,
+    heart_rate_bpm: 72,
+    rr_interval_ms: 830,
+    acceleration_g: [0.02, -0.01, 0.98],
+    sensor_contact: true,
+    signal_confidence: 0.95,
+  };
+  const payload = {
+    activity: 'sitting',
+    device_id: 'polar-h10-01',
+    readings: [reading, { ...reading, recorded_at: new Date(Date.now() + 1000).toISOString() }],
+    dfa_rr_intervals_ms: Array(64).fill(830),
+    previous_mean_hr: 90,
+    previous_elevated: true,
+  };
+  const result = validateHilRealtimeEvaluation(payload);
+  assert.equal(result.activity, 'sitting');
+  assert.equal(result.readings.length, 2);
+  assert.equal(result.dfa_rr_intervals_ms.length, 64);
+  assert.equal(result.previous_elevated, true);
+
+  assert.throws(
+    () => validateHilRealtimeEvaluation({ ...payload, user_id: 'another-user' }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilRealtimeEvaluation({ ...payload, activity: 'running' }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilRealtimeEvaluation({
+      ...payload,
+      readings: [reading, { ...reading, recorded_at: new Date(Date.now() - 1000).toISOString() }],
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilRealtimeEvaluation({ ...payload, dfa_rr_intervals_ms: Array(1201).fill(830) }),
+    { statusCode: 400 }
+  );
 });
 
 test('check-in query bounds pagination and validates date ranges', () => {

@@ -1,14 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
+import 'guided_baseline_session_screen.dart';
+import 'human_in_the_loop_live_monitor_screen.dart';
 import '../pedagogy/patient_journey_screen.dart';
 import '../pedagogy/pedagogy_screen_what_changed.dart';
-import '../profile/wearable_pairing_screen.dart';
 
 class HumanInTheLoopScreen extends StatefulWidget {
   const HumanInTheLoopScreen({super.key});
@@ -22,25 +21,14 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     ('Duduk', 'sitting'),
     ('Berdiri', 'standing'),
     ('Berjalan', 'walking'),
-    ('Berlari', 'running'),
-    ('Olahraga', 'exercise'),
-    ('Kerja / fokus', 'work'),
-    ('Tidur', 'sleep'),
-    ('Istirahat', 'rest'),
-    ('Lainnya', 'other'),
   ];
 
   String? _selectedScenario;
-  String _selectedBaselineActivity = 'sitting';
-  String? _recordingBaselineActivity;
   String _strenuousActivity = 'uncertain';
   String _activityIntensity = 'uncertain';
   bool _isSubmittingClarification = false;
   bool _clarificationSaved = false;
-  DateTime? _activityCaptureStartedAt;
-  Timer? _captureTimer;
-  AppState? _appState;
-  Duration _captureDuration = Duration.zero;
+  bool _hasResearchConsent = false;
 
   Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
@@ -54,176 +42,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       if (stage['stage_id'] == id) return stage;
     }
     return null;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final state = context.read<AppState>();
-      _appState = state;
-      state.wearableBridge.addListener(_handleWearableChange);
-      if (state.wearableBridge.isStreaming &&
-          _baselineActivities.any(
-            (activity) => activity.$2 == state.wearableBridge.activity,
-          )) {
-        _beginCaptureClock(state.wearableBridge.activity);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _captureTimer?.cancel();
-    _appState?.wearableBridge.removeListener(_handleWearableChange);
-    super.dispose();
-  }
-
-  void _handleWearableChange() {
-    final bridge = _appState?.wearableBridge;
-    if (bridge == null || !mounted) return;
-    if (bridge.isStreaming &&
-        _baselineActivities.any((activity) => activity.$2 == bridge.activity)) {
-      if (_recordingBaselineActivity != bridge.activity) {
-        _endCaptureClock();
-        _beginCaptureClock(bridge.activity);
-      }
-    } else if (_activityCaptureStartedAt != null) {
-      _endCaptureClock();
-      unawaited(_appState?.fetchCaparInsights());
-    }
-  }
-
-  void _beginCaptureClock(String activity) {
-    if (_activityCaptureStartedAt != null) return;
-    setState(() {
-      _recordingBaselineActivity = activity;
-      _activityCaptureStartedAt = DateTime.now();
-      _captureDuration = Duration.zero;
-    });
-    _captureTimer?.cancel();
-    _captureTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted || _activityCaptureStartedAt == null) return;
-      setState(() {
-        _captureDuration =
-            DateTime.now().difference(_activityCaptureStartedAt!);
-      });
-    });
-  }
-
-  void _endCaptureClock() {
-    _captureTimer?.cancel();
-    _captureTimer = null;
-    if (!mounted) return;
-    setState(() {
-      _activityCaptureStartedAt = null;
-      _recordingBaselineActivity = null;
-      _captureDuration = Duration.zero;
-    });
-  }
-
-  Future<void> _recordSelectedActivityBaseline() async {
-    final state = context.read<AppState>();
-    final bridge = state.wearableBridge;
-    final selectedActivity = _selectedBaselineActivity;
-    if (bridge.isStreaming) {
-      final message = bridge.activity == selectedActivity
-          ? 'Perekaman baseline aktivitas ini sedang berjalan.'
-          : 'Hentikan rekaman aktivitas lain sebelum memulai baseline.';
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
-      return;
-    }
-    if (bridge.isConnected && bridge.isDemoDevice) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Sensor demo tidak dapat membentuk baseline fisiologis. Gunakan wearable nyata.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    if (!bridge.isConnected) {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => WearablePairingScreen(
-            activityOverride: selectedActivity,
-          ),
-        ),
-      );
-    } else {
-      final ready = await bridge.waitForSensorStreams();
-      if (!mounted) return;
-      if (!ready) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              bridge.error ?? 'Stream sensor belum siap untuk merekam.',
-            ),
-          ),
-        );
-        return;
-      }
-      if (!await state.connectWearable(
-        bridge.deviceName.isEmpty ? 'Polar H10' : bridge.deviceName,
-      )) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              state.dataError ?? 'Preferensi wearable gagal disimpan.',
-            ),
-          ),
-        );
-        return;
-      }
-      state.setWearableActivityContext(selectedActivity);
-      if (!bridge.startStreaming(selectedActivity)) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(bridge.error ?? 'Streaming wearable gagal dimulai.'),
-          ),
-        );
-        return;
-      }
-    }
-
-    if (!mounted) return;
-    if (bridge.isDemoDevice && bridge.isStreaming) {
-      await bridge.stopStreaming();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Sensor demo dihentikan. Gunakan wearable nyata untuk membentuk baseline.',
-          ),
-        ),
-      );
-      return;
-    }
-    if (bridge.isStreaming && bridge.activity == selectedActivity) {
-      _beginCaptureClock(selectedActivity);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            bridge.error ??
-                'Perekaman baseline belum dimulai. Periksa koneksi wearable.',
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _stopActivityBaseline() async {
-    final state = context.read<AppState>();
-    await state.wearableBridge.stopStreaming();
-    _endCaptureClock();
-    await state.fetchCaparInsights();
   }
 
   Future<void> _submitClarification(String? segmentId) async {
@@ -257,6 +75,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   }
 
   Future<void> _selectScenario(String scenario, String? segmentId) async {
+    if (!_hasResearchConsent) return;
     setState(() {
       _selectedScenario = scenario;
       _clarificationSaved = false;
@@ -286,6 +105,113 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   Future<void> _openHistory(BuildContext context) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const PatientJourneyScreen()),
+    );
+  }
+
+  Future<void> _openGuidedBaseline() async {
+    if (!_hasResearchConsent) {
+      _showConsentRequired();
+      return;
+    }
+    final appState = context.read<AppState>();
+    await appState.fetchCaparInsights();
+    if (!mounted) return;
+    final rawCapar = appState.rawCaparInsights?['capar'];
+    if (rawCapar is! Map) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            appState.dataError ??
+                'Baseline akun tidak dapat dimuat. Periksa koneksi lalu coba lagi.',
+          ),
+        ),
+      );
+      return;
+    }
+    final baseline = rawCapar['baseline'];
+    final contexts = baseline is Map && baseline['contexts'] is List
+        ? (baseline['contexts'] as List)
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList()
+        : <Map<String, dynamic>>[];
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => GuidedBaselineSessionScreen(
+          includeRecoveryStage: false,
+          showHciReview: false,
+          baselineContextsAtStart: contexts,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await context.read<AppState>().fetchCaparInsights();
+  }
+
+  Future<void> _requestResearchConsent() async {
+    var checked = false;
+    final consentGiven = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          key: const Key('hil-research-consent-dialog'),
+          title: const Text('Persetujuan sesi Human in the Loop'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tujuan sesi ini adalah menguji alur Human in the Loop dan pemantauan personal. Jika Anda setuju, data wearable (HR, interval RR, dan akselerasi), konteks aktivitas, serta jawaban klarifikasi digunakan untuk menampilkan dan mengevaluasi feedback sesi ini.',
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Keikutsertaan bersifat sukarela. Anda dapat menolak atau menghentikan sesi kapan saja. Data yang sudah tersimpan tetap mengikuti pengaturan dan kebijakan privasi akun Anda. Hasil aplikasi adalah informasi observasional, bukan diagnosis atau pengganti layanan kesehatan.',
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Dengan menyetujui, Anda mengizinkan penggunaan data tersebut dalam sesi Human in the Loop pada aplikasi ini. Persetujuan ini tidak menggantikan persetujuan etik institusi yang mungkin diwajibkan untuk penelitian.',
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  key: const Key('hil-research-consent-check'),
+                  contentPadding: EdgeInsets.zero,
+                  value: checked,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text(
+                    'Saya telah membaca informasi di atas dan setuju mengikuti sesi Human in the Loop.',
+                  ),
+                  onChanged: (value) =>
+                      setDialogState(() => checked = value ?? false),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('hil-research-consent-decline'),
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Tidak setuju'),
+            ),
+            FilledButton(
+              key: const Key('hil-research-consent-accept'),
+              onPressed:
+                  checked ? () => Navigator.pop(dialogContext, true) : null,
+              child: const Text('Setuju dan lanjut'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || consentGiven == null) return;
+    setState(() => _hasResearchConsent = consentGiven);
+  }
+
+  void _showConsentRequired() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Baca dan berikan persetujuan sebelum memulai sesi HIL.'),
+      ),
     );
   }
 
@@ -335,13 +261,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     return const {'mature', 'mature_legacy'}.contains(level);
   }
 
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours.toString().padLeft(2, '0');
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$hours:$minutes:$seconds';
-  }
-
   List<Map<String, dynamic>> _positiveZScoreFeatures(
     Map<String, dynamic> observation,
   ) {
@@ -378,33 +297,39 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     required String code,
     required String title,
     required String detail,
+    required bool selected,
     required bool enabled,
     required VoidCallback onPressed,
   }) =>
-      SizedBox(
-        width: double.infinity,
-        child: OutlinedButton(
-          key: Key('hil-scenario-$code'),
-          onPressed: enabled ? onPressed : null,
-          style: OutlinedButton.styleFrom(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.all(12),
+      Card(
+        key: Key('hil-scenario-$code'),
+        color: selected ? const Color(0xFFEFF8F4) : null,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            color: selected ? const Color(0xFF16805D) : Colors.transparent,
+            width: 1.5,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('$code · $title',
-                  style: AppTheme.font(size: 12, weight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              Text(detail,
-                  style: AppTheme.font(
-                    size: 10.5,
-                    color:
-                        enabled ? AppTheme.textSecondary : AppTheme.textMuted,
-                    height: 1.4,
-                  )),
-            ],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          leading: CircleAvatar(
+            backgroundColor: selected ? const Color(0xFF16805D) : null,
+            foregroundColor: selected ? Colors.white : null,
+            child: Text(code),
           ),
+          title: Text(title),
+          subtitle: Text(
+            detail,
+            style: AppTheme.font(
+              size: 10.5,
+              color: enabled ? AppTheme.textSecondary : AppTheme.textMuted,
+              height: 1.4,
+            ),
+          ),
+          trailing: Icon(selected ? Icons.check_circle : Icons.chevron_right),
+          onTap: enabled ? onPressed : null,
         ),
       );
 
@@ -462,10 +387,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         observation['segment_id']?.toString() ?? state.followUpPrompt.segmentId;
     final hasSegment = segmentId != null &&
         RegExp(r'^[a-f\d]{24}$', caseSensitive: false).hasMatch(segmentId);
-    final bridge = state.wearableBridge;
-    final isRecordingBaseline =
-        bridge.isStreaming && _recordingBaselineActivity != null;
-
     return MockupScaffold(
       title: 'Human In the Loop',
       subtitle: Text(
@@ -475,7 +396,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _introCard(),
+          _researchConsentCard(),
           const SizedBox(height: 12),
           _sectionTitle('Pilih skenario eksperimen'),
           _scenarioButton(
@@ -483,27 +404,40 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             title: 'Pembentukan baseline per aktivitas',
             detail:
                 'Bentuk profil aktivitas satu per satu. Data dibandingkan dengan baseline CAPAR untuk aktivitas dan waktu yang sama.',
-            enabled: true,
+            selected: _selectedScenario == 'A',
+            enabled: _hasResearchConsent,
             onPressed: () => setState(() => _selectedScenario = 'A'),
           ),
-          const SizedBox(height: 7),
           _scenarioButton(
             code: 'B',
             title: 'One-way feedback',
             detail:
                 'Tampilkan narasi deviasi yang terukur tanpa meminta klarifikasi.',
-            enabled: scenariosReady,
+            selected: _selectedScenario == 'B',
+            enabled: scenariosReady && _hasResearchConsent,
             onPressed: () => _selectScenario('B', segmentId),
           ),
-          const SizedBox(height: 7),
           _scenarioButton(
             code: 'C',
             title: 'Human in the loop',
             detail:
                 'Tampilkan deviasi, tanyakan aktivitas berat dan intensitasnya, lalu pertahankan unresolved bila bukti belum cukup.',
-            enabled: scenariosReady,
+            selected: _selectedScenario == 'C',
+            enabled: scenariosReady && _hasResearchConsent,
             onPressed: () => _selectScenario('C', segmentId),
           ),
+          if (!_hasResearchConsent)
+            Padding(
+              padding: const EdgeInsets.only(top: 7, bottom: 10),
+              child: Text(
+                'Skenario dan perekaman dinonaktifkan sampai persetujuan sesi diberikan.',
+                key: const Key('hil-consent-required'),
+                style: AppTheme.font(
+                  size: 10.5,
+                  color: AppTheme.statusOrange,
+                ),
+              ),
+            ),
           if (!scenariosReady)
             Padding(
               padding: const EdgeInsets.only(top: 7, bottom: 10),
@@ -519,15 +453,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           const SizedBox(height: 10),
           _activityBaselineCard(
             contexts: baselineContexts,
-            selectedActivity: _selectedBaselineActivity,
-            recordingActivity: _recordingBaselineActivity,
-            isRecording: isRecordingBaseline,
-            duration: _captureDuration,
-            onActivityChanged: (value) => setState(
-              () => _selectedBaselineActivity = value,
-            ),
-            onRecord: _recordSelectedActivityBaseline,
-            onStop: _stopActivityBaseline,
+            onStart: _openGuidedBaseline,
+            canStart: _hasResearchConsent,
           ),
           if (_selectedScenario == 'B') ...[
             const SizedBox(height: 10),
@@ -545,6 +472,25 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               segmentId: segmentId,
               hasSegment: hasSegment,
               resolutionStatus: resolutionStatus,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('hil-open-live-monitor'),
+                onPressed: _hasResearchConsent
+                    ? () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => HumanInTheLoopLiveMonitorScreen(
+                              baselineContexts: baselineContexts,
+                              initialActivity: observationActivity,
+                            ),
+                          ),
+                        )
+                    : null,
+                icon: const Icon(Icons.monitor_heart_outlined),
+                label: const Text('Mulai pemantauan live HIL'),
+              ),
             ),
           ],
           const SizedBox(height: 14),
@@ -642,15 +588,82 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             style: AppTheme.font(size: 13, weight: FontWeight.w800)),
       );
 
+  Widget _researchConsentCard() => Container(
+        key: const Key('hil-research-consent-card'),
+        width: double.infinity,
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: _hasResearchConsent ? AppTheme.statusGreenBg : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _hasResearchConsent
+                ? AppTheme.statusGreen
+                : AppTheme.borderLight,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  _hasResearchConsent
+                      ? Icons.verified_user_outlined
+                      : Icons.assignment_outlined,
+                  color: _hasResearchConsent
+                      ? AppTheme.statusGreen
+                      : AppTheme.primary,
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Persetujuan peserta',
+                        style: AppTheme.font(
+                          size: 12,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _hasResearchConsent
+                            ? 'Persetujuan diberikan untuk sesi ini. Anda tetap dapat menghentikan sesi kapan saja.'
+                            : 'Baca informasi sesi dan berikan persetujuan secara sukarela sebelum baseline atau skenario dimulai.',
+                        style: AppTheme.font(
+                          size: 10.5,
+                          color: AppTheme.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                key: const Key('hil-research-consent-open'),
+                onPressed: _requestResearchConsent,
+                child: Text(
+                  _hasResearchConsent
+                      ? 'Tinjau atau ubah persetujuan'
+                      : 'Baca dan berikan persetujuan',
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
   Widget _activityBaselineCard({
     required List<Map<String, dynamic>> contexts,
-    required String selectedActivity,
-    required String? recordingActivity,
-    required bool isRecording,
-    required Duration duration,
-    required ValueChanged<String> onActivityChanged,
-    required VoidCallback onRecord,
-    required VoidCallback onStop,
+    required VoidCallback onStart,
+    required bool canStart,
   }) {
     return Container(
       key: const Key('hil-activity-baseline'),
@@ -668,7 +681,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               style: AppTheme.font(size: 12, weight: FontWeight.w800)),
           const SizedBox(height: 5),
           Text(
-            'Pilih konteks yang benar-benar sedang dilakukan. Setiap aktivitas dan waktu memiliki baseline sendiri; satu sesi tidak otomatis membuat baseline matang.',
+            'Rekam baseline secara berurutan: duduk, berdiri, lalu berjalan. Setiap langkah berlangsung 5 menit; tahap berdiri dan berjalan boleh dilewati jika tidak nyaman.',
             style: AppTheme.font(
               size: 10.5,
               color: AppTheme.textSecondary,
@@ -676,36 +689,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             ),
           ),
           const SizedBox(height: 9),
-          DropdownButtonFormField<String>(
-            key: const Key('hil-baseline-activity'),
-            initialValue: selectedActivity,
-            decoration:
-                const InputDecoration(labelText: 'Aktivitas yang direkam'),
-            items: _baselineActivities
-                .map((activity) => DropdownMenuItem(
-                      value: activity.$2,
-                      child: Text(activity.$1),
-                    ))
-                .toList(),
-            onChanged: isRecording
-                ? null
-                : (value) {
-                    if (value != null) onActivityChanged(value);
-                  },
-          ),
-          if (isRecording) ...[
-            const SizedBox(height: 9),
-            Text(
-              'Merekam ${_baselineActivities.firstWhere((activity) => activity.$2 == recordingActivity).$1} · ${_formatDuration(duration)}',
-              key: const Key('hil-baseline-recording'),
-              style: AppTheme.font(size: 11, weight: FontWeight.w700),
-            ),
-          ],
-          const SizedBox(height: 9),
-          Text('Status profil aktivitas',
-              style: AppTheme.font(size: 10.5, weight: FontWeight.w800)),
-          const SizedBox(height: 5),
-          ..._baselineActivities.map((activity) {
+          ...List.generate(_baselineActivities.length, (index) {
+            final activity = _baselineActivities[index];
             final contextsForActivity = contexts
                 .where((context) =>
                     _normalizeActivity(context['activity']?.toString()) ==
@@ -721,17 +706,40 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               (total, context) =>
                   total + ((context['segment_count'] as num?)?.toInt() ?? 0),
             );
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
+            return Container(
+              key: Key('hil-baseline-step-${index + 1}'),
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+              decoration: BoxDecoration(
+                color: isMature
+                    ? AppTheme.statusGreen.withValues(alpha: 0.08)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isMature ? AppTheme.statusGreen : AppTheme.borderLight,
+                ),
+              ),
               child: Row(
                 children: [
+                  CircleAvatar(
+                    radius: 13,
+                    backgroundColor:
+                        isMature ? AppTheme.statusGreen : AppTheme.primarySoft,
+                    foregroundColor:
+                        isMature ? Colors.white : AppTheme.primaryDark,
+                    child: isMature
+                        ? const Icon(Icons.check_rounded, size: 16)
+                        : Text(
+                            '${index + 1}',
+                            style: AppTheme.font(
+                                size: 10, weight: FontWeight.w800),
+                          ),
+                  ),
+                  const SizedBox(width: 9),
                   Expanded(
                     child: Text(
                       activity.$1,
-                      style: AppTheme.font(
-                        size: 10,
-                        color: AppTheme.textPrimary,
-                      ),
+                      style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
                     ),
                   ),
                   Text(
@@ -755,19 +763,31 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           const SizedBox(height: 9),
           SizedBox(
             width: double.infinity,
-            child: isRecording
-                ? OutlinedButton.icon(
-                    key: const Key('hil-stop-activity-baseline'),
-                    onPressed: onStop,
-                    icon: const Icon(Icons.stop_circle_outlined),
-                    label: const Text('Akhiri rekaman aktivitas'),
-                  )
-                : FilledButton.icon(
-                    key: const Key('hil-record-activity-baseline'),
-                    onPressed: onRecord,
-                    icon: const Icon(Icons.sensors_rounded),
-                    label: const Text('Mulai rekam baseline aktivitas'),
+            child: Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('hil-start-guided-baseline'),
+                    onPressed: canStart ? onStart : null,
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: const Text('Mulai langkah baseline'),
                   ),
+                ),
+                if (!canStart)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Text(
+                      'Berikan persetujuan terlebih dahulu untuk memulai perekaman.',
+                      key: const Key('hil-baseline-consent-required'),
+                      style: AppTheme.font(
+                        size: 9.5,
+                        color: AppTheme.statusOrange,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -966,24 +986,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               style: AppTheme.font(size: 10, color: AppTheme.textMuted),
             ),
           ],
-        ),
-      );
-
-  Widget _introCard() => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppTheme.primarySoft,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.primaryLight),
-        ),
-        child: Text(
-          'Skenario Human In the Loop terpisah dari eksperimen HCI A/B/C yang lama. Bentuk baseline secara terpisah untuk tiap aktivitas dan waktu. B/C hanya dapat menilai observasi saat ada baseline matang yang cocok; z-score positif menandai deviasi tanpa tau tambahan. Tidak perlu melakukan aktivitas berat untuk pengujian.',
-          style: AppTheme.font(
-            size: 11.5,
-            color: AppTheme.textPrimary,
-            height: 1.45,
-          ),
         ),
       );
 

@@ -68,5 +68,37 @@ void main() {
       ),
       findsOneWidget,
     );
+
+    await tester.ensureVisible(next);
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tahap 5/6'), findsOneWidget);
+    expect(
+        find.text('Konfirmasi atau koreksi konteks rekaman'), findsOneWidget);
+    expect(
+      find.byKey(const Key('baseline-correction-start-time')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('baseline-correction-end-time')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('baseline-correction-activity')),
+      findsOneWidget,
+    );
+    for (var index = 0; index < 6; index++) {
+      await tester.drag(find.byType(ListView).first, const Offset(0, -600));
+      await tester.pump();
+    }
+    expect(
+      find.byKey(const Key('baseline-correction-factor-poor_sleep')),
+      findsOneWidget,
+    );
+    expect(find.text('Tidak yakin'), findsOneWidget);
+    expect(find.text('Suasana hati'), findsOneWidget);
+    expect(find.text('Konsumsi kafein'), findsOneWidget);
+    expect(find.text('Makan pada/sekitar rentang waktu ini'), findsOneWidget);
   });
 }

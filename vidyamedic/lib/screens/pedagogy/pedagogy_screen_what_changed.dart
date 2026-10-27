@@ -78,10 +78,121 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
         mealCount <= 20;
   }
 
+  Map<String, dynamic> _map(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+
+  List<Map<String, dynamic>> _baselineContexts(AppState state) {
+    final capar = _map(state.rawCaparInsights?['capar']);
+    return _maps(_map(capar['baseline'])['contexts']);
+  }
+
+  List<Map<String, dynamic>> _maps(dynamic value) => value is List
+      ? value.whereType<Map>().map(_map).toList()
+      : <Map<String, dynamic>>[];
+
+  String _normalizeActivity(String? value) {
+    final activity = value?.trim().toLowerCase() ?? '';
+    return switch (activity) {
+      'duduk' || 'sit' || 'sitting' => 'sitting',
+      'berdiri' || 'stand' || 'standing' => 'standing',
+      'berjalan' || 'walk' || 'walking' => 'walking',
+      _ => activity,
+    };
+  }
+
+  String _activityLabel(String? value) => switch (_normalizeActivity(value)) {
+        'sitting' => 'Duduk',
+        'standing' => 'Berdiri',
+        'walking' => 'Berjalan',
+        '' => 'Belum diketahui',
+        _ => value ?? 'Belum diketahui',
+      };
+
+  String _baselineStatusLabel(String? value) => switch (value) {
+        'mature' || 'mature_legacy' => 'matang',
+        'provisional' => 'provisional',
+        'cold_start' => 'baru terbentuk',
+        null || '' => 'status belum tersedia',
+        _ => value.replaceAll('_', ' '),
+      };
+
+  String _baselineFeatureSummary(
+    List<Map<String, dynamic>> baselines,
+    String feature,
+    String unit,
+  ) {
+    final means = baselines
+        .map((baseline) =>
+            _map(_map(baseline['feature_stats'])[feature])['mean'])
+        .whereType<num>()
+        .where((value) => value.isFinite)
+        .map((value) => value.toDouble())
+        .toList();
+    if (means.isEmpty) return 'Belum tersedia';
+    final average = means.reduce((a, b) => a + b) / means.length;
+    return '${average.toStringAsFixed(1)}${unit.isEmpty ? '' : ' $unit'} · ${means.length} konteks';
+  }
+
+  Widget _baselineCard(List<Map<String, dynamic>> contexts, String? activity) {
+    final normalizedActivity = _normalizeActivity(activity);
+    final hasActivityFilter = normalizedActivity.isNotEmpty;
+    final matching = contexts
+        .where((baseline) =>
+            _normalizeActivity(baseline['activity']?.toString()) ==
+            normalizedActivity)
+        .toList();
+    final shown = hasActivityFilter ? matching : contexts;
+    final activities = shown
+        .map((baseline) => _activityLabel(baseline['activity']?.toString()))
+        .toSet()
+        .join(', ');
+    final statuses = shown
+        .map((baseline) => _baselineStatusLabel(baseline['level']?.toString()))
+        .toSet()
+        .join(', ');
+
+    return _serverCard(
+      key: const Key('observed-change-baselines'),
+      title: 'Baseline aktivitas tersimpan',
+      values: shown.isEmpty
+          ? [
+              if (hasActivityFilter)
+                'Belum ada baseline ${_activityLabel(activity)} tersimpan untuk aktivitas ini.'
+              else
+                'Belum ada baseline yang tersimpan untuk akun ini.',
+              if (hasActivityFilter && contexts.isNotEmpty)
+                'Baseline aktivitas lain tersedia: ${contexts.length} konteks.',
+            ]
+          : [
+              'Aktivitas: $activities',
+              'Jumlah konteks baseline: ${shown.length} · status: $statuses',
+              if (hasActivityFilter) ...[
+                'Rerata HR: ${_baselineFeatureSummary(shown, 'mean_hr', 'bpm')}',
+                'Rerata RR: ${_baselineFeatureSummary(shown, 'mean_rr', 'ms')}',
+                'RMSSD: ${_baselineFeatureSummary(shown, 'rmssd', 'ms')}',
+                'DFA α1: ${_baselineFeatureSummary(shown, 'dfa_alpha1', '')}',
+              ],
+              for (final baseline in shown)
+                '${_activityLabel(baseline['activity']?.toString())} · '
+                    '${baseline['time_period'] ?? 'periode tidak diketahui'}: '
+                    '${_baselineStatusLabel(baseline['level']?.toString())}'
+                    '${baseline['segment_count'] is num ? ' · ${baseline['segment_count']} segmen' : ''}',
+              if (shown.any((baseline) => !const {'mature', 'mature_legacy'}
+                  .contains(baseline['level']?.toString().toLowerCase())))
+                'Baseline provisional tetap ditampilkan dan digunakan sebagai referensi deskriptif; CAPAR tidak menganggapnya baseline matang untuk menetapkan deviasi.',
+            ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final deviation = state.latestCaparMahalanobis;
+    final baselineContexts = _baselineContexts(state);
+    final rawCapar = _map(state.rawCaparInsights?['capar']);
+    final latestObservation = _map(rawCapar['latest_observation']);
+    final observedActivity = deviation?['activity']?.toString() ??
+        latestObservation['activity']?.toString();
     final questions = state.followUpPrompt.questions;
     final rawFollowUp =
         (state.rawCaparInsights?['capar']?['pedagogy']?['follow_up']);
@@ -104,6 +215,7 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _serverCard(
+              key: const Key('observed-change-analysis'),
               title: 'Hasil analisis CAPAR',
               values: [
                 _detail('Status personal', deviation?['state']),
@@ -118,6 +230,8 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
                   'Fitur berkontribusi terbesar: ${_factorLabel(state.followUpPrompt.mainFactors.first)}',
               ],
             ),
+            const SizedBox(height: 10),
+            _baselineCard(baselineContexts, observedActivity),
             const SizedBox(height: 14),
             if (!isRequested) ...[
               _messageCard(
@@ -356,8 +470,13 @@ class _WhatChangedScreenState extends State<WhatChangedScreen> {
         ),
       );
 
-  Widget _serverCard({required String title, required List<String> values}) =>
+  Widget _serverCard({
+    Key? key,
+    required String title,
+    required List<String> values,
+  }) =>
       Container(
+        key: key,
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(

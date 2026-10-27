@@ -709,6 +709,28 @@ class ApiService {
     }
   }
 
+  /// POST /api/patient-app/wearable/hil-realtime
+  /// Evaluates a HIL window synchronously without waiting for RabbitMQ workers.
+  static Future<ApiResponse<Map<String, dynamic>>> evaluateHilRealtime(
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final url = Uri.parse(ApiConfig.hilRealtimeEvaluationEndpoint);
+      final res = await http
+          .post(url, headers: _headers(), body: jsonEncode(payload))
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error(
+        'Evaluasi HIL realtime ke backend gagal: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
   /// GET /api/patient-app/chat/patients
   static Future<ApiResponse<List<Map<String, dynamic>>>>
       getDoctorChatPatients() async {

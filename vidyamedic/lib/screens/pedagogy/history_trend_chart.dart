@@ -9,19 +9,27 @@ class ChartPoint {
   final DateTime time;
   final double value;
   final String? activity;
+  final String? observationStatus;
 
-  const ChartPoint(this.time, this.value, {this.activity});
+  const ChartPoint(
+    this.time,
+    this.value, {
+    this.activity,
+    this.observationStatus,
+  });
 }
 
 class TrendChartPainter extends CustomPainter {
   final List<ChartPoint> points;
   final Color color;
   final String yAxisLabel;
+  final double? baselineMean;
 
   const TrendChartPainter({
     required this.points,
     required this.color,
     this.yAxisLabel = 'HR (bpm)',
+    this.baselineMean,
   });
 
   @override
@@ -32,7 +40,10 @@ class TrendChartPainter extends CustomPainter {
     const bottom = 40.0;
     final chart =
         Rect.fromLTRB(left, top, size.width - right, size.height - bottom);
-    final values = points.map((point) => point.value);
+    final values = [
+      ...points.map((point) => point.value),
+      if (baselineMean != null) baselineMean!,
+    ];
     final firstTime = points.first.time.millisecondsSinceEpoch;
     final lastTime = points.last.time.millisecondsSinceEpoch;
     final timeRange = lastTime - firstTime;
@@ -67,11 +78,27 @@ class TrendChartPainter extends CustomPainter {
           canvas, value.toStringAsFixed(1), Offset(0, y - 6), labelStyle);
     }
 
+    if (baselineMean != null) {
+      final y =
+          chart.bottom - ((baselineMean! - minimum) / range) * chart.height;
+      final baselinePaint = Paint()
+        ..color = AppTheme.textMuted
+        ..strokeWidth = 1.5;
+      for (var x = chart.left; x < chart.right; x += 8) {
+        canvas.drawLine(
+          Offset(x, y),
+          Offset(math.min(x + 4, chart.right), y),
+          baselinePaint,
+        );
+      }
+    }
+
     for (var index = 1; index < points.length; index++) {
       final currentActivity =
           points[index].activity ?? points[index - 1].activity;
       final linePaint = Paint()
-        ..color = _activityColor(currentActivity, color)
+        ..color = _observationColor(points[index].observationStatus) ??
+            _activityColor(currentActivity, color)
         ..strokeWidth = 2.5
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(pointOffset(index - 1), pointOffset(index), linePaint);
@@ -80,7 +107,9 @@ class TrendChartPainter extends CustomPainter {
       canvas.drawCircle(
         pointOffset(index),
         3,
-        Paint()..color = _activityColor(points[index].activity, color),
+        Paint()
+          ..color = _observationColor(points[index].observationStatus) ??
+              _activityColor(points[index].activity, color),
       );
     }
 
@@ -183,9 +212,18 @@ class TrendChartPainter extends CustomPainter {
     };
   }
 
+  Color? _observationColor(String? status) => switch (status) {
+        'normal' => AppTheme.statusGreen,
+        'candidate_deviation' => AppTheme.statusRed,
+        'recovery' => AppTheme.statusOrange,
+        'not_assessable' => AppTheme.textMuted,
+        _ => null,
+      };
+
   @override
   bool shouldRepaint(covariant TrendChartPainter oldDelegate) =>
       oldDelegate.points != points ||
       oldDelegate.color != color ||
-      oldDelegate.yAxisLabel != yAxisLabel;
+      oldDelegate.yAxisLabel != yAxisLabel ||
+      oldDelegate.baselineMean != baselineMean;
 }
