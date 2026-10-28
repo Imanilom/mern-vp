@@ -11,7 +11,7 @@ class ApiConfig {
   // Default base URLs depending on runtime environment
   static String get defaultBaseUrl {
     if (kIsWeb) {
-      return _productionBaseUrl;
+      return kDebugMode ? 'http://localhost:3030/api' : _productionBaseUrl;
     }
     try {
       if (Platform.isAndroid) {

@@ -8,6 +8,7 @@ import {
 } from '../utils/logTransport.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
 import PolarData from '../models/data.model.js';
+import { calculateRollingRmssd } from '../utils/polarRmssd.js';
 
 test('buildTransportEnvelope normalizes sensor payload for backend transport', () => {
   const envelope = buildTransportEnvelope({
@@ -99,6 +100,48 @@ test('patient app real stream builds Mongo PolarData docs with pending pipeline 
   assert.equal(document.device_id, 'polar-h10-01');
   assert.equal(document.processStatus, 'PENDING');
   assert.equal(document.isChecked, false);
+});
+
+test('PolarData stream derives rolling RRMS from neighboring RR intervals', () => {
+  const accountId = new PolarData.base.Types.ObjectId();
+  const baseTimestamp = 1792857600;
+  const envelope = buildTransportEnvelope({
+    user_id: accountId.toString(),
+    device_id: 'polar-h10-01',
+    readings: [
+      { timestamp: baseTimestamp, heart_rate: 75, rr_interval: 800, activity: 'Duduk' },
+      { timestamp: baseTimestamp + 1, heart_rate: 74, rr_interval: 810, activity: 'Duduk' },
+      { timestamp: baseTimestamp + 2, heart_rate: 73, rr_interval: 830, activity: 'Duduk' },
+    ],
+  });
+
+  const documents = buildPolarDataDocuments(envelope, accountId);
+  assert.equal(documents[0].rrms, null);
+  assert.equal(documents[1].rrms, 10);
+  assert.equal(documents[2].rrms, 15.81);
+
+  envelope.readings[1].rmssd = 0;
+  assert.equal(buildPolarDataDocuments(envelope, accountId)[1].rrms, 0);
+  envelope.readings[1].rmssd = null;
+
+  const withPrior = buildPolarDataDocuments(
+    envelope,
+    accountId,
+    [{ timestamp: baseTimestamp - 1, rr_interval: 790, activity: 'Duduk' }]
+  );
+  assert.equal(withPrior[0].rrms, 10);
+});
+
+test('rolling RMSSD resets after activity changes and long gaps', () => {
+  const timestamp = 1710000000;
+  const rmssd = calculateRollingRmssd([
+    { timestamp, rr_interval: 800, activity: 'Duduk' },
+    { timestamp: timestamp + 1, rr_interval: 810, activity: 'Duduk' },
+    { timestamp: timestamp + 40, rr_interval: 820, activity: 'Duduk' },
+    { timestamp: timestamp + 41, rr_interval: 830, activity: 'Duduk' },
+    { timestamp: timestamp + 42, rr_interval: 840, activity: 'Berjalan' },
+  ]);
+  assert.deepEqual(rmssd, [null, 10, null, 10, null]);
 });
 
 test('patient app demo stream is excluded from clinical PolarData', () => {

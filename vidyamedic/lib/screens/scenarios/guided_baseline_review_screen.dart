@@ -24,14 +24,6 @@ class GuidedBaselineReviewScreen extends StatefulWidget {
 
 class _GuidedBaselineReviewScreenState
     extends State<GuidedBaselineReviewScreen> {
-  static const _activityOptions = <String, String>{
-    'sitting': 'Duduk',
-    'standing': 'Berdiri',
-    'walking': 'Berjalan',
-    'rest': 'Istirahat',
-    'other': 'Aktivitas lain',
-  };
-
   final TextEditingController _correctionNoteController =
       TextEditingController();
   int _step = 3;
@@ -292,29 +284,44 @@ class _GuidedBaselineReviewScreenState
         '${local.minute.toString().padLeft(2, '0')}';
   }
 
-  Widget _factorDropdown({
+  Widget _choiceGroup({
+    required String groupId,
     required String label,
     required String value,
-    required List<DropdownMenuItem<String>> items,
-    required ValueChanged<String?> onChanged,
+    required List<(String, String, IconData)> options,
+    required ValueChanged<String> onChanged,
+    Key? key,
   }) =>
       Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: DropdownButtonFormField<String>(
-          initialValue: value,
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
-            isDense: true,
-          ),
-          items: items,
-          onChanged: (next) {
-            if (next == null) return;
-            setState(() {
-              onChanged(next);
-              _correctionSaved = false;
-            });
-          },
+        key: key,
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: AppTheme.font(size: 11, weight: FontWeight.w800)),
+            const SizedBox(height: 7),
+            Wrap(
+              spacing: 7,
+              runSpacing: 4,
+              children: [
+                for (final (code, optionLabel, icon) in options)
+                  ChoiceChip(
+                    key: Key('baseline-correction-$groupId-$code'),
+                    avatar: Icon(icon, size: 17),
+                    label: Text(optionLabel),
+                    selected: value == code,
+                    onSelected: _savingCorrection
+                        ? null
+                        : (_) => setState(() {
+                              onChanged(code);
+                              _correctionSaved = false;
+                              _error = null;
+                            }),
+                  ),
+              ],
+            ),
+          ],
         ),
       );
 
@@ -795,123 +802,105 @@ class _GuidedBaselineReviewScreenState
                     ],
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
+                  _choiceGroup(
                     key: const Key('baseline-correction-activity'),
-                    initialValue: _correctionActivity,
-                    decoration: const InputDecoration(
-                      labelText: 'Aktivitas sebenarnya (opsional)',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    items: {
-                      'unsure': 'Tidak yakin',
-                      ..._activityOptions,
-                    }
-                        .entries
-                        .map((entry) => DropdownMenuItem(
-                              value: entry.key,
-                              child: Text(entry.value),
-                            ))
-                        .toList(),
+                    groupId: 'activity',
+                    label: 'Aktivitas sebenarnya · opsional',
+                    value: _correctionActivity,
+                    options: const [
+                      ('unsure', 'Tidak yakin', Icons.help_outline_rounded),
+                      ('sitting', 'Duduk', Icons.chair_alt_rounded),
+                      ('standing', 'Berdiri', Icons.accessibility_new_rounded),
+                      ('walking', 'Berjalan', Icons.directions_walk_rounded),
+                      ('rest', 'Istirahat', Icons.self_improvement_rounded),
+                      ('other', 'Aktivitas lain', Icons.more_horiz_rounded),
+                    ],
                     onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _correctionActivity = value;
-                        _correctionConfidence =
-                            value == 'unsure' ? 'unsure' : 'certain';
-                        _correctionSaved = false;
-                        _error = null;
-                      });
+                      _correctionActivity = value;
+                      _correctionConfidence =
+                          value == 'unsure' ? 'unsure' : 'certain';
                     },
                   ),
                   if (_correctionActivity != 'unsure') ...[
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      initialValue: _correctionConfidence,
-                      decoration: const InputDecoration(
-                        labelText: 'Keyakinan terhadap koreksi',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                            value: 'certain', child: Text('Yakin')),
-                        DropdownMenuItem(
-                            value: 'unsure', child: Text('Kurang yakin')),
+                    _choiceGroup(
+                      groupId: 'confidence',
+                      label: 'Seberapa yakin?',
+                      value: _correctionConfidence,
+                      options: const [
+                        ('certain', 'Yakin', Icons.check_circle_outline),
+                        ('unsure', 'Kurang yakin', Icons.help_outline_rounded),
                       ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _correctionConfidence = value;
-                          _correctionSaved = false;
-                        });
-                      },
+                      onChanged: (value) => _correctionConfidence = value,
                     ),
                   ],
                   const SizedBox(height: 16),
-                  Text('Faktor lain pada rentang ini',
-                      style: AppTheme.font(size: 12, weight: FontWeight.w800)),
-                  const SizedBox(height: 8),
-                  _factorDropdown(
+                  Text('Faktor yang dirasakan',
+                      style: AppTheme.font(size: 13, weight: FontWeight.w800)),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Pilih yang sesuai; jawaban boleh dikosongkan atau “Tidak yakin”.',
+                    style: AppTheme.font(
+                        size: 10.5, color: AppTheme.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 10),
+                  _choiceGroup(
+                    groupId: 'mood',
                     label: 'Suasana hati',
                     value: _mood,
-                    items: const [
-                      DropdownMenuItem(
-                          value: 'unsure',
-                          child: Text('Tidak yakin / tidak diisi')),
-                      DropdownMenuItem(
-                          value: 'good', child: Text('Baik / tenang')),
-                      DropdownMenuItem(value: 'neutral', child: Text('Netral')),
-                      DropdownMenuItem(
-                          value: 'stressed', child: Text('Stres / cemas')),
-                      DropdownMenuItem(
-                          value: 'low_mood',
-                          child: Text('Suasana hati rendah')),
-                      DropdownMenuItem(value: 'tired', child: Text('Lelah')),
+                    options: const [
+                      ('unsure', 'Tidak yakin', Icons.help_outline_rounded),
+                      ('good', 'Baik/tenang', Icons.sentiment_satisfied_alt),
+                      ('neutral', 'Netral', Icons.sentiment_neutral),
+                      ('stressed', 'Stres/cemas', Icons.mood_bad_outlined),
+                      ('low_mood', 'Mood rendah', Icons.cloud_outlined),
+                      ('tired', 'Lelah', Icons.bedtime_outlined),
                     ],
-                    onChanged: (value) => _mood = value!,
+                    onChanged: (value) => _mood = value,
                   ),
-                  _factorDropdown(
+                  _choiceGroup(
+                    groupId: 'caffeine',
                     label: 'Konsumsi kafein',
                     value: _caffeine,
-                    items: const [
-                      DropdownMenuItem(
-                          value: 'unsure',
-                          child: Text('Tidak yakin / tidak diisi')),
-                      DropdownMenuItem(value: 'none', child: Text('Tidak')),
-                      DropdownMenuItem(value: 'consumed', child: Text('Ya')),
+                    options: const [
+                      ('unsure', 'Tidak yakin', Icons.help_outline_rounded),
+                      ('none', 'Tidak', Icons.block_outlined),
+                      ('consumed', 'Ya', Icons.coffee_outlined),
                     ],
-                    onChanged: (value) => _caffeine = value!,
+                    onChanged: (value) => _caffeine = value,
                   ),
-                  _factorDropdown(
+                  _choiceGroup(
+                    groupId: 'meal',
                     label: 'Makan pada/sekitar rentang waktu ini',
                     value: _meal,
-                    items: const [
-                      DropdownMenuItem(
-                          value: 'unsure',
-                          child: Text('Tidak yakin / tidak diisi')),
-                      DropdownMenuItem(value: 'none', child: Text('Tidak')),
-                      DropdownMenuItem(value: 'recent', child: Text('Ya')),
+                    options: const [
+                      ('unsure', 'Tidak yakin', Icons.help_outline_rounded),
+                      ('none', 'Tidak', Icons.block_outlined),
+                      ('recent', 'Ya', Icons.restaurant_outlined),
                     ],
-                    onChanged: (value) => _meal = value!,
+                    onChanged: (value) => _meal = value,
                   ),
-                  Text('Faktor tambahan (opsional)',
+                  Text('Faktor tambahan · pilih semua yang sesuai',
                       style: AppTheme.font(size: 11, weight: FontWeight.w700)),
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 6,
                     runSpacing: 4,
                     children: [
-                      for (final (code, label) in const [
-                        ('stress', 'Stres'),
-                        ('poor_sleep', 'Kurang tidur'),
-                        ('illness', 'Sedang sakit'),
-                        ('medication', 'Obat/intervensi'),
-                        ('symptoms', 'Gejala'),
-                        ('other', 'Lainnya'),
+                      for (final (code, label, icon) in const [
+                        ('stress', 'Stres', Icons.psychology_outlined),
+                        ('poor_sleep', 'Kurang tidur', Icons.bedtime_outlined),
+                        ('illness', 'Sedang sakit', Icons.sick_outlined),
+                        (
+                          'medication',
+                          'Obat/intervensi',
+                          Icons.medication_outlined
+                        ),
+                        ('symptoms', 'Gejala', Icons.healing_outlined),
+                        ('other', 'Lainnya', Icons.more_horiz_rounded),
                       ])
                         FilterChip(
                           key: Key('baseline-correction-factor-$code'),
+                          avatar: Icon(icon, size: 17),
                           label: Text(label),
                           selected: _otherFactors.contains(code),
                           onSelected: (selected) {

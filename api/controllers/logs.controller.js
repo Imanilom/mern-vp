@@ -9,7 +9,13 @@ import {
   isDuplicateTimestamp,
   buildDuplicateKeySet,
 } from '../utils/validateLog.js';
-import { buildTransportEnvelope, publishLogTransport } from '../utils/logTransport.js';
+import {
+  buildPolarDataDocuments,
+  buildTransportEnvelope,
+  getPriorPolarReadings,
+  publishLogTransport,
+} from '../utils/logTransport.js';
+import { calculateRollingRmssd } from '../utils/polarRmssd.js';
 import { io } from '../index.js';
 
 // Multer: simpan sementara di uploads/
@@ -37,44 +43,12 @@ export const createTransportLog = async (req, res) => {
 
     let insertedCount = 0;
     if (targetUserId && mongoose.Types.ObjectId.isValid(targetUserId) && envelope.readings.length > 0) {
-      let baseTs = Math.floor(Date.now() / 1000);
-      const docs = envelope.readings.map((r, idx) => {
-        let rawTs = (r.timestamp && r.timestamp > 100000) ? r.timestamp : (baseTs + idx);
-        let secTs = rawTs > 10000000000 ? Math.floor(rawTs / 1000) : rawTs;
-        const now = new Date(secTs * 1000);
-        // Konversi eksplisit ke WIB (UTC+7) agar konsisten
-        const wibTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-        
-        const dateStr = `${String(wibTime.getUTCDate()).padStart(2, '0')}-${String(wibTime.getUTCMonth() + 1).padStart(2, '0')}-${wibTime.getUTCFullYear()}`;
-        const timeStr = `${String(wibTime.getUTCHours()).padStart(2, '0')}:${String(wibTime.getUTCMinutes()).padStart(2, '0')}:${String(wibTime.getUTCSeconds()).padStart(2, '0')}`;
-
-        let act = r.activity || r.motion_state || 'Duduk';
-        const validActivities = [
-          'Tidur', 'Berbaring', 'Duduk', 'Berdiri', 'Berjalan', 'Berjalan Cepat', 
-          'Naik Tangga', 'Bersepeda', 'Berenang', 'Senam', 'Yoga', 'Berlari', 
-          'Lari Cepat', 'Olahraga Berat', 'Makan', 'Memasak', 'Berkendara', 'Bekerja', 'Lainnya'
-        ];
-        if (!validActivities.includes(act)) act = 'Lainnya';
-
-        return {
-          user_id: targetUserId,
-          timestamp: secTs,
-          date_created: dateStr,
-          time_created: timeStr,
-          hr: r.heart_rate || r.hr || 0,
-          rr: r.rr_interval || r.rr || 0,
-          rrms: r.rmssd || r.rrms || null,
-          activity: act,
-          device_id: envelope.device_id || 'UNKNOWN',
-          isChecked: false,
-          processStatus: 'PENDING',
-          acc_x: r.acc_x ?? r.accX ?? 0,
-          acc_y: r.acc_y ?? r.accY ?? 0,
-          acc_z: r.acc_z ?? r.accZ ?? 0,
-          step_count: r.step_count ?? r.stepCount ?? 0,
-          ecg: r.ecg ?? 0,
-        };
-      }).filter(d => d.hr >= 30 && d.hr <= 220 && d.rr >= 300 && d.rr <= 2000);
+      const priorReadings = await getPriorPolarReadings(envelope, targetUserId);
+      const docs = buildPolarDataDocuments(
+        envelope,
+        targetUserId,
+        priorReadings
+      );
 
         if (docs.length === 0) {
           console.warn(`[HTTP -> MongoDB] All ${envelope.readings.length} readings were filtered out (invalid HR/RR)`);
@@ -246,6 +220,39 @@ export const createLog = async (req, res) => {
       });
     }
 
+    const readingsByStream = new Map();
+    for (const item of deduplicated) {
+      const key = `${item.user_id.toString()}_${item.device_id || 'UNKNOWN'}`;
+      const group = readingsByStream.get(key) || [];
+      group.push(item);
+      readingsByStream.set(key, group);
+    }
+    for (const items of readingsByStream.values()) {
+      const orderedItems = [...items].sort((left, right) => left.timestamp - right.timestamp);
+      const streamEnvelope = {
+        user_id: orderedItems[0].user_id,
+        device_id: orderedItems[0].device_id || 'UNKNOWN',
+        readings: orderedItems.map((item) => ({
+          timestamp: item.timestamp,
+          rr_interval: item.rr,
+          activity: item.activity,
+        })),
+      };
+      const priorReadings = await getPriorPolarReadings(
+        streamEnvelope,
+        streamEnvelope.user_id
+      );
+      const rmssdValues = calculateRollingRmssd([
+        ...priorReadings,
+        ...streamEnvelope.readings,
+      ]);
+      orderedItems.forEach((item, index) => {
+        if (item.rrms == null) {
+          item.rrms = rmssdValues[priorReadings.length + index];
+        }
+      });
+    }
+
     // ── Langkah 5: Publish payload transport JSON (opsional) ─────────────
     const transportEnvelope = buildTransportEnvelope({
       user_id: userIdsInBatch[0],
@@ -259,7 +266,7 @@ export const createLog = async (req, res) => {
         activity: item.activity,
         battery: null,
         signal_quality: null,
-        rmssd: item.rrms || item.rr,
+        rmssd: item.rrms,
         dfa_alpha1: null,
       })),
     });
@@ -278,7 +285,7 @@ export const createLog = async (req, res) => {
           activity: item.activity,
           battery: null,
           signal_quality: null,
-          rmssd: item.rrms || item.rr,
+          rmssd: item.rrms,
           dfa_alpha1: null,
         })),
       });

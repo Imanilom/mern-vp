@@ -56,6 +56,10 @@ export function validateLogRow(row, userId) {
     return { valid: false, errors, data: null };
   }
 
+  const parsedRmssd = row.rrms == null || row.rrms === ''
+    ? Number.NaN
+    : Number(row.rrms);
+
   // --- Data valid, kembalikan objek yang sudah dinormalisasi ---
   const data = {
     user_id: userId,
@@ -64,7 +68,9 @@ export function validateLogRow(row, userId) {
     time_created: row.time_created || null,
     hr,
     rr,
-    rrms: Number(row.rrms) || rr, // fallback ke rr jika rrms tidak ada
+    rrms: Number.isFinite(parsedRmssd) && parsedRmssd >= 0
+      ? parsedRmssd
+      : null,
     acc_x: Number(row.acc_x) || 0,
     acc_y: Number(row.acc_y) || 0,
     acc_z: Number(row.acc_z) || 0,

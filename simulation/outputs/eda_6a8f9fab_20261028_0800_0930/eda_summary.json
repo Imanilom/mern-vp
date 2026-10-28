@@ -1,0 +1,113 @@
+{
+  "participant_id": "6a8f9fab…",
+  "timezone": "Asia/Jakarta (UTC+07:00)",
+  "window_start": "2026-10-28T08:00:00+07:00",
+  "window_end_exclusive": "2026-10-28T09:30:00+07:00",
+  "source": "test.polardatas",
+  "documents_fetched_by_query": 6894,
+  "documents_in_window": 6894,
+  "window_first_record": "2026-10-28T08:07:22.193000+07:00",
+  "window_last_record": "2026-10-28T09:07:15.919000+07:00",
+  "missing_values": {
+    "hr": 0,
+    "rr": 0,
+    "rrms": 6894,
+    "acc_x": 0,
+    "acc_y": 0,
+    "acc_z": 0,
+    "step_count": 0
+  },
+  "activity_counts": {
+    "Berjalan": 6598,
+    "Duduk": 296
+  },
+  "process_status_counts": {
+    "DONE": 6894
+  },
+  "metrics": {
+    "hr": {
+      "n": 6894,
+      "mean": 115.76501305483029,
+      "std": 8.75992584223587,
+      "median": 117.0,
+      "min": 89.0,
+      "max": 131.0
+    },
+    "rr": {
+      "n": 6894,
+      "mean": 521.4341456338846,
+      "std": 41.538488742626335,
+      "median": 514.0,
+      "min": 451.0,
+      "max": 703.0
+    },
+    "rrms": {
+      "n": 0,
+      "mean": null,
+      "std": null,
+      "median": null,
+      "min": null,
+      "max": null
+    },
+    "acc_x": {
+      "n": 6894,
+      "mean": 0.8635242239628663,
+      "std": 0.16982993749002467,
+      "median": 0.831,
+      "min": 0.54,
+      "max": 1.406
+    },
+    "acc_y": {
+      "n": 6894,
+      "mean": -0.030893240498984627,
+      "std": 0.10458484895911754,
+      "median": -0.031,
+      "min": -0.414,
+      "max": 0.276
+    },
+    "acc_z": {
+      "n": 6894,
+      "mean": 0.4757818392805338,
+      "std": 0.18491482737358392,
+      "median": 0.502,
+      "min": -0.146,
+      "max": 0.895
+    },
+    "step_count": {
+      "n": 6894,
+      "mean": 0.0,
+      "std": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    }
+  },
+  "derived_rmssd_from_rr": {
+    "method": "RMSSD of adjacent RR intervals within each minute",
+    "valid_minutes": 46,
+    "mean": 6.2731481067655475,
+    "median": 6.599524357227379,
+    "min": 1.7149858514250884,
+    "max": 12.13572668071284,
+    "note": "Nilai turunan untuk EDA; tidak menggantikan rrms yang tersimpan."
+  },
+  "sampling": {
+    "interval_count": 6893,
+    "median_interval_seconds": 0.463,
+    "p95_interval_seconds": 0.9643999999999996,
+    "gaps_over_30_seconds": 4,
+    "duplicate_timestamps": 0
+  },
+  "quality_flags": {
+    "hr_outside_model_range_30_220": 0,
+    "rr_outside_model_range_300_2000": 0,
+    "hr_iqr_outliers_descriptive_only": 0,
+    "rr_iqr_outliers_descriptive_only": 38
+  },
+  "interpretation_note": "EDA deskriptif untuk pemeriksaan data; penanda rentang/IQR bukan diagnosis atau kesimpulan klinis.",
+  "plots": [
+    "01_timeseries.png",
+    "02_distributions.png",
+    "03_activity_quality.png"
+  ]
+}

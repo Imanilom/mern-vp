@@ -2,6 +2,8 @@ import amqp from 'amqplib';
 import mongoose from 'mongoose';
 import { analyzeAndCorrectRR, checkQualityGate } from './dataQualityGate.js';
 import { sendMobileNotification } from './notificationService.js';
+import PolarData from '../models/data.model.js';
+import { calculateRollingRmssd } from './polarRmssd.js';
 import { io } from '../index.js';
 
 function normalizeTransportReading(reading) {
@@ -43,7 +45,11 @@ export function buildTransportEnvelope(payload) {
   };
 }
 
-export function buildPolarDataDocuments(envelope, userId = envelope?.user_id) {
+export function buildPolarDataDocuments(
+  envelope,
+  userId = envelope?.user_id,
+  priorReadings = []
+) {
   if (!mongoose.isValidObjectId(userId) || envelope?.is_simulated === true) {
     return [];
   }
@@ -55,14 +61,19 @@ export function buildPolarDataDocuments(envelope, userId = envelope?.user_id) {
     'Bekerja', 'Lainnya',
   ]);
 
-  return (Array.isArray(envelope.readings) ? envelope.readings : [])
-    .flatMap((reading) => {
+  const readings = Array.isArray(envelope.readings) ? envelope.readings : [];
+  const history = Array.isArray(priorReadings) ? priorReadings : [];
+  const rollingRmssd = calculateRollingRmssd([...history, ...readings]);
+  const fallbackTimestamp = Math.floor(Date.now() / 1000);
+
+  return readings
+    .flatMap((reading, index) => {
       const rawTimestamp = reading.timestamp == null
         ? Number.NaN
         : Number(reading.timestamp);
       const timestamp = Number.isFinite(rawTimestamp)
         ? rawTimestamp > 10000000000 ? rawTimestamp / 1000 : rawTimestamp
-        : Math.floor(Date.now() / 1000);
+        : fallbackTimestamp + index;
       const heartRate = Number(reading.heart_rate);
       const rrInterval = Number(reading.rr_interval);
       if (
@@ -81,6 +92,13 @@ export function buildPolarDataDocuments(envelope, userId = envelope?.user_id) {
       const activity = validActivities.has(reading.activity)
         ? reading.activity
         : 'Lainnya';
+      const providedRmssd = reading.rmssd == null
+        ? Number.NaN
+        : Number(reading.rmssd);
+      const derivedRmssd = rollingRmssd[history.length + index];
+      const rmssd = Number.isFinite(providedRmssd) && providedRmssd >= 0
+        ? providedRmssd
+        : derivedRmssd;
 
       return [{
         user_id: userId,
@@ -89,7 +107,7 @@ export function buildPolarDataDocuments(envelope, userId = envelope?.user_id) {
         time_created: `${String(wibTime.getUTCHours()).padStart(2, '0')}:${String(wibTime.getUTCMinutes()).padStart(2, '0')}:${String(wibTime.getUTCSeconds()).padStart(2, '0')}`,
         hr: heartRate,
         rr: rrInterval,
-        rrms: reading.rmssd ?? null,
+        rrms: rmssd,
         activity,
         device_id: envelope.device_id || 'UNKNOWN',
         isChecked: false,
@@ -101,6 +119,41 @@ export function buildPolarDataDocuments(envelope, userId = envelope?.user_id) {
         ecg: reading.ecg ?? 0,
       }];
     });
+}
+
+export async function getPriorPolarReadings(envelope, userId = envelope?.user_id) {
+  if (!mongoose.isValidObjectId(userId)) return [];
+  const readings = Array.isArray(envelope?.readings) ? envelope.readings : [];
+  const timestamps = readings
+    .map((reading) => {
+      const raw = Number(reading.timestamp ?? reading.ts ?? reading.time);
+      return Number.isFinite(raw)
+        ? (raw > 10_000_000_000 ? raw / 1000 : raw)
+        : null;
+    })
+    .filter((timestamp) => timestamp !== null);
+  if (timestamps.length === 0) return [];
+
+  const firstTimestamp = Math.min(...timestamps);
+  const deviceId = envelope.device_id ?? envelope.deviceId ?? 'UNKNOWN';
+  const documents = await PolarData.find({
+    user_id: userId,
+    device_id: deviceId,
+    timestamp: {
+      $gte: firstTimestamp - 60,
+      $lt: firstTimestamp,
+    },
+  })
+    .sort({ timestamp: -1 })
+    .limit(240)
+    .select('timestamp rr activity')
+    .lean();
+
+  return documents.reverse().map((document) => ({
+    timestamp: document.timestamp,
+    rr_interval: document.rr,
+    activity: document.activity,
+  }));
 }
 
 export function buildPatientAppDemoSampleOperations(envelope) {
@@ -401,7 +454,12 @@ export async function startLogTransportConsumer() {
       }
 
       if (targetUserId && Array.isArray(envelope.readings) && envelope.readings.length > 0) {
-        const docs = buildPolarDataDocuments(envelope, targetUserId);
+        const priorReadings = await getPriorPolarReadings(envelope, targetUserId);
+        const docs = buildPolarDataDocuments(
+          envelope,
+          targetUserId,
+          priorReadings
+        );
         if (docs.length === 0) {
           console.warn(`[RabbitMQ -> MongoDB] All ${envelope.readings.length} readings for user ${targetUserId} were filtered out (invalid HR/RR)`);
           ch.ack(msg);

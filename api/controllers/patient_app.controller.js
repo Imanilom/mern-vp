@@ -27,6 +27,7 @@ import User from '../models/user.model.js';
 import { errorHandler } from '../utils/error.js';
 import {
   buildPolarDataDocuments,
+  getPriorPolarReadings,
   publishLogTransport,
 } from '../utils/logTransport.js';
 import {
@@ -3334,7 +3335,15 @@ export async function streamPatientAppWearableData(req, res) {
   let persistedCount = 0;
   try {
     if (!stream.is_simulated) {
-      const documents = buildPolarDataDocuments(transportPayload, dataOwnerId);
+      const priorReadings = await getPriorPolarReadings(
+        transportPayload,
+        dataOwnerId
+      );
+      const documents = buildPolarDataDocuments(
+        transportPayload,
+        dataOwnerId,
+        priorReadings
+      );
       console.info(
         `[PatientAppWearable] Received ${stream.readings.length} real readings from ${stream.device_id}; ${documents.length} passed HR/RR validation for account ${dataOwnerId}.`
       );

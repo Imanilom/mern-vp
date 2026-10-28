@@ -88,15 +88,47 @@ void main() {
       find.byKey(const Key('baseline-correction-activity')),
       findsOneWidget,
     );
-    for (var index = 0; index < 6; index++) {
-      await tester.drag(find.byType(ListView).first, const Offset(0, -600));
-      await tester.pump();
-    }
     expect(
-      find.byKey(const Key('baseline-correction-factor-poor_sleep')),
+      find.byKey(const Key('baseline-correction-activity-unsure')),
       findsOneWidget,
     );
-    expect(find.text('Tidak yakin'), findsOneWidget);
+    expect(
+      find.byKey(const Key('baseline-correction-activity-sitting')),
+      findsOneWidget,
+    );
+    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+
+    final moodOption = find.byKey(
+      const Key('baseline-correction-mood-stressed'),
+    );
+    await tester.ensureVisible(moodOption);
+    await tester.pumpAndSettle();
+    await tester.tap(moodOption);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(moodOption).selected, isTrue);
+
+    final caffeineOption = find.byKey(
+      const Key('baseline-correction-caffeine-consumed'),
+    );
+    await tester.ensureVisible(caffeineOption);
+    await tester.pumpAndSettle();
+    await tester.tap(caffeineOption);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(caffeineOption).selected, isTrue);
+
+    final factorOption = find.byKey(
+      const Key('baseline-correction-factor-poor_sleep'),
+    );
+    await tester.ensureVisible(factorOption);
+    await tester.pumpAndSettle();
+    expect(
+      factorOption,
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('baseline-correction-mood-unsure')),
+      findsOneWidget,
+    );
     expect(find.text('Suasana hati'), findsOneWidget);
     expect(find.text('Konsumsi kafein'), findsOneWidget);
     expect(find.text('Makan pada/sekitar rentang waktu ini'), findsOneWidget);
