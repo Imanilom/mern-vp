@@ -61,6 +61,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   StreamSubscription<PolarDeviceDisconnectedEvent>? _disconnectSubscription;
   StreamSubscription<PolarSdkFeatureReadyEvent>? _featureSubscription;
   StreamSubscription<PolarHrData>? _heartRateSubscription;
+  StreamSubscription<PolarEcgData>? _ecgSubscription;
   StreamSubscription<PolarAccData>? _accelerationSubscription;
   Timer? _sampleFlushTimer;
   Timer? _streamFlushTimer;
@@ -84,8 +85,11 @@ class PolarWearablePairingService extends ChangeNotifier {
   int _validRrCount = 0;
   bool _sensorContact = false;
   List<double>? _latestAcceleration;
+  double? _latestEcgMv;
+  DateTime? _lastEcgAt;
   bool _hasHeartRateStream = false;
   bool _hasAccelerationStream = false;
+  bool _hasEcgStream = false;
   bool _isUploadingSample = false;
   bool _isUploadingStream = false;
   bool _isDummyDevice = false;
@@ -352,6 +356,9 @@ class PolarWearablePairingService extends ChangeNotifier {
     connectionError = null;
     _hasHeartRateStream = false;
     _hasAccelerationStream = false;
+    _hasEcgStream = false;
+    _latestEcgMv = null;
+    _lastEcgAt = null;
     _sensorStreamsCompleter = Completer<bool>();
     final attempt = ++_connectionAttempt;
     _connectingDeviceId = deviceId;
@@ -483,8 +490,9 @@ class PolarWearablePairingService extends ChangeNotifier {
           await _polar.getAvailableOnlineStreamDataTypes(identifier);
       _hasHeartRateStream = available.contains(PolarDataType.hr);
       _hasAccelerationStream = available.contains(PolarDataType.acc);
+      _hasEcgStream = available.contains(PolarDataType.ecg);
       debugPrint(
-        '[Polar H10] Tipe stream tersedia: HR/RR=$_hasHeartRateStream, ACC=$_hasAccelerationStream.',
+        '[Polar H10] Tipe stream tersedia: HR/RR=$_hasHeartRateStream, ACC=$_hasAccelerationStream, ECG=$_hasEcgStream.',
       );
       if (_hasHeartRateStream) {
         await _heartRateSubscription?.cancel();
@@ -522,6 +530,21 @@ class PolarWearablePairingService extends ChangeNotifier {
       } else {
         connectionError =
             'Polar H10 tidak menyediakan aliran akselerometer yang dibutuhkan.';
+      }
+
+      if (_hasEcgStream) {
+        await _ecgSubscription?.cancel();
+        _ecgSubscription = _polar.startEcgStreaming(identifier).listen(
+          _handleEcg,
+          onError: (Object error) {
+            debugPrint('[Polar H10] Aliran ECG terputus: $error');
+          },
+          cancelOnError: false,
+        );
+      } else {
+        _latestEcgMv = null;
+        _lastEcgAt = null;
+        debugPrint('[Polar H10] Perangkat tidak menyediakan aliran ECG.');
       }
       _completeSensorStreamsReady(sensorStreamsReady);
       _notify();
@@ -596,6 +619,12 @@ class PolarWearablePairingService extends ChangeNotifier {
         } else {
           var beatTime = eventTime;
           final records = <Map<String, dynamic>>[];
+          final ecgAge =
+              _lastEcgAt == null ? null : eventTime.difference(_lastEcgAt!);
+          final hasRecentEcg = _latestEcgMv != null &&
+              ecgAge != null &&
+              ecgAge >= Duration.zero &&
+              ecgAge <= const Duration(seconds: 2);
           for (var index = sample.rrsMs.length - 1; index >= 0; index--) {
             final rr = sample.rrsMs[index];
             beatTime = beatTime.subtract(Duration(milliseconds: rr));
@@ -607,6 +636,7 @@ class PolarWearablePairingService extends ChangeNotifier {
               'acceleration_g': List<double>.from(_latestAcceleration!),
               'sensor_contact': true,
               'signal_confidence': 1.0,
+              if (hasRecentEcg) 'ecg': _latestEcgMv,
             });
           }
           _appendStreamReadings(records.reversed);
@@ -659,6 +689,7 @@ class PolarWearablePairingService extends ChangeNotifier {
         _loggedAccelerationData = true;
         debugPrint('[Polar H10] Sampel akselerometer diterima.');
       }
+
       _acceleration.add(vector);
       _recentAcceleration.add(vector);
       _sessionAccelerationCount++;
@@ -673,6 +704,12 @@ class PolarWearablePairingService extends ChangeNotifier {
       _lastAccelerationNotifyAt = now;
       _notify();
     }
+  }
+
+  void _handleEcg(PolarEcgData data) {
+    if (!isStreaming || data.samples.isEmpty) return;
+    _latestEcgMv = (data.samples.last.voltage / 1000.0).clamp(-1.0, 1.0);
+    _lastEcgAt = DateTime.now().toUtc();
   }
 
   void setActivity(String activity) {
@@ -803,6 +840,7 @@ class PolarWearablePairingService extends ChangeNotifier {
         'acceleration_g': latestAcceleration,
         'sensor_contact': true,
         'signal_confidence': 1.0,
+        'ecg': 0.15 * math.sin(phase * 2 * math.pi / 4),
       };
       _appendStreamReadings([reading]);
     }
@@ -989,6 +1027,8 @@ class PolarWearablePairingService extends ChangeNotifier {
   void _cancelSensorStreams() {
     _heartRateSubscription?.cancel();
     _heartRateSubscription = null;
+    _ecgSubscription?.cancel();
+    _ecgSubscription = null;
     _accelerationSubscription?.cancel();
     _accelerationSubscription = null;
   }
@@ -1011,6 +1051,8 @@ class PolarWearablePairingService extends ChangeNotifier {
     _deviceId = '';
     _deviceName = '';
     _isDummyDevice = false;
+    _latestEcgMv = null;
+    _lastEcgAt = null;
     _recentAcceleration.clear();
     _notify();
   }

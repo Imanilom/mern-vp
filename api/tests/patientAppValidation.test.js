@@ -906,6 +906,7 @@ test('Polar H10 streaming batches require authenticated-safe sensor provenance a
     acceleration_g: [0.02, -0.01, 0.98],
     sensor_contact: true,
     signal_confidence: 1,
+    ecg: 0.125,
   };
   const payload = {
     provider: 'polar_h10',
@@ -919,6 +920,18 @@ test('Polar H10 streaming batches require authenticated-safe sensor provenance a
   assert.equal(result.readings[0].recorded_at.toISOString(), '2026-10-05T08:15:00.000Z');
   assert.equal(result.readings[0].rr_interval_ms, 830);
   assert.deepEqual(result.readings[0].acceleration_g, [0.02, -0.01, 0.98]);
+  assert.equal(result.readings[0].ecg, 0.125);
+  assert.equal(
+    validateWearableStream({
+      ...payload,
+      readings: [{ ...reading, ecg: 0 }],
+    }).readings[0].ecg,
+    0
+  );
+  assert.throws(() => validateWearableStream({
+    ...payload,
+    readings: [{ ...reading, ecg: 21 }],
+  }), { statusCode: 400 });
   const demoPayload = validateWearableStream({
     ...payload,
     provider: 'other',

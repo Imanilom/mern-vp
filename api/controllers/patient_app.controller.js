@@ -3329,6 +3329,7 @@ export async function streamPatientAppWearableData(req, res) {
       acc_x: reading.acceleration_g[0],
       acc_y: reading.acceleration_g[1],
       acc_z: reading.acceleration_g[2],
+      ecg: reading.ecg,
       is_simulated: stream.is_simulated,
     })),
   };

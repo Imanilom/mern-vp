@@ -70,6 +70,16 @@ void main() {
       isTrue,
     );
     expect(
+      publishedReadings.every((reading) => reading['ecg'] is num),
+      isTrue,
+    );
+    expect(
+      publishedReadings.any(
+        (reading) => (reading['ecg'] as num).abs() > 0.001,
+      ),
+      isTrue,
+    );
+    expect(
       publishedBatches.every((batch) =>
           (batch['readings'] as List).length <= 20 &&
           utf8.encode(jsonEncode(batch)).length < 10 * 1024),

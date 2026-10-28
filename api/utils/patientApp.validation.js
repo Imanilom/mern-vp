@@ -967,7 +967,15 @@ export function validateWearableStream(body) {
     requireObject(reading, `readings[${index}]`);
     rejectUnknownFields(
       reading,
-      new Set(['recorded_at', 'heart_rate_bpm', 'rr_interval_ms', 'acceleration_g', 'sensor_contact', 'signal_confidence']),
+      new Set([
+        'recorded_at',
+        'heart_rate_bpm',
+        'rr_interval_ms',
+        'acceleration_g',
+        'sensor_contact',
+        'signal_confidence',
+        'ecg',
+      ]),
       `Field readings[${index}]`
     );
     const heartRate = optionalNumber(reading.heart_rate_bpm, `readings[${index}].heart_rate_bpm`, 20, 250);
@@ -993,6 +1001,9 @@ export function validateWearableStream(body) {
     const acceleration = reading.acceleration_g.map((value, axis) =>
       optionalNumber(value, `readings[${index}].acceleration_g[${axis}]`, -16, 16)
     );
+    const ecg = 'ecg' in reading
+      ? optionalNumber(reading.ecg, `readings[${index}].ecg`, -20, 20)
+      : null;
     return {
       recorded_at: parseDate(reading.recorded_at, `readings[${index}].recorded_at`),
       heart_rate_bpm: heartRate,
@@ -1000,6 +1011,7 @@ export function validateWearableStream(body) {
       acceleration_g: acceleration,
       sensor_contact: true,
       signal_confidence: signalConfidence,
+      ecg,
     };
   });
 

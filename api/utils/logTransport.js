@@ -24,7 +24,7 @@ function normalizeTransportReading(reading) {
     acc_x: reading.acc_x ?? reading.accX ?? 0,
     acc_y: reading.acc_y ?? reading.accY ?? 0,
     acc_z: reading.acc_z ?? reading.accZ ?? 0,
-    ecg: reading.ecg ?? 0,
+    ecg: reading.ecg ?? null,
     step_count: reading.step_count ?? reading.stepCount ?? 0,
     is_simulated: reading.is_simulated === true,
   };
@@ -116,7 +116,7 @@ export function buildPolarDataDocuments(
         acc_y: reading.acc_y ?? 0,
         acc_z: reading.acc_z ?? 0,
         step_count: reading.step_count ?? 0,
-        ecg: reading.ecg ?? 0,
+        ecg: reading.ecg ?? null,
       }];
     });
 }
