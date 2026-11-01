@@ -3346,6 +3346,10 @@ export async function createPatientAppWearableSample(req, res) {
       'rr_min_beats_for_dfa',
     ]),
   };
+  const meanRr = rrQuality.rr_clean.length
+    ? rrQuality.rr_clean.reduce((sum, rr) => sum + rr, 0)
+      / rrQuality.rr_clean.length
+    : null;
 
   const sample = new PatientAppWearableSample({
     ...sampleData,
@@ -3370,9 +3374,7 @@ export async function createPatientAppWearableSample(req, res) {
       std_hr: null,
       delta_hr: derived.hr_delta,
       slope_hr: derived.hr_slope,
-      mean_rr: rrQuality.rr_clean.length
-        ? rrQuality.rr_clean.reduce((sum, rr) => sum + rr, 0) / rrQuality.rr_clean.length
-        : null,
+      mean_rr: meanRr,
       sdnn: derived.sdnn,
       rmssd: derived.rmssd,
       motion_intensity: derived.motion_index,
@@ -3596,7 +3598,7 @@ export async function createPatientAppWearableSample(req, res) {
           hr_mean: derived.hr_mean,
           hr_delta: derived.hr_delta,
           hr_slope: derived.hr_slope,
-          mean_rr: segmentFeatures.mean_rr,
+          mean_rr: meanRr,
           sdnn: derived.sdnn,
           rmssd: derived.rmssd,
           pnn50: derived.pnn50,
