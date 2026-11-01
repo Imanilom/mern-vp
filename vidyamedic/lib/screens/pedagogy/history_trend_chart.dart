@@ -24,12 +24,14 @@ class TrendChartPainter extends CustomPainter {
   final Color color;
   final String yAxisLabel;
   final double? baselineMean;
+  final Duration? timeDisplayOffset;
 
   const TrendChartPainter({
     required this.points,
     required this.color,
     this.yAxisLabel = 'HR (bpm)',
     this.baselineMean,
+    this.timeDisplayOffset,
   });
 
   @override
@@ -141,7 +143,7 @@ class TrendChartPainter extends CustomPainter {
     }
     final xAxisTitle = TextPainter(
       text: TextSpan(
-        text: 'Waktu',
+        text: timeDisplayOffset == null ? 'Waktu' : 'Waktu (UTC+7)',
         style: AppTheme.font(
           size: 9,
           weight: FontWeight.w700,
@@ -184,8 +186,8 @@ class TrendChartPainter extends CustomPainter {
   }
 
   String _timeLabel(DateTime date, DateTime lastDate) {
-    final local = date.toLocal();
-    final lastLocal = lastDate.toLocal();
+    final local = _displayTime(date);
+    final lastLocal = _displayTime(lastDate);
     if (local.year == lastLocal.year &&
         local.month == lastLocal.month &&
         local.day == lastLocal.day) {
@@ -195,6 +197,10 @@ class TrendChartPainter extends CustomPainter {
     return '${local.day.toString().padLeft(2, '0')}/'
         '${local.month.toString().padLeft(2, '0')}';
   }
+
+  DateTime _displayTime(DateTime date) => timeDisplayOffset == null
+      ? date.toLocal()
+      : date.toUtc().add(timeDisplayOffset!);
 
   Color _activityColor(String? activity, Color fallback) {
     final normalized = activity?.trim().toLowerCase();

@@ -3,8 +3,21 @@ import 'package:provider/provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nadiku/providers/app_state.dart';
 import 'package:nadiku/screens/scenarios/human_in_the_loop_live_monitor_screen.dart';
+import 'package:nadiku/utils/hil_time.dart';
 
 void main() {
+  test('HIL timestamps display the UTC instant as WIB without shifting storage',
+      () {
+    expect(
+      formatHilWibDateTime(DateTime.parse('2026-11-01T03:00:00.000Z')),
+      '01/11/2026 10:00 WIB',
+    );
+    expect(
+      hilWibPickerDateTimeToUtc(DateTime(2026, 11, 1, 10)),
+      DateTime.utc(2026, 11, 1, 3),
+    );
+  });
+
   testWidgets('simulation shows clarification and recovers toward baseline',
       (tester) async {
     final state = AppState();
@@ -109,6 +122,36 @@ void main() {
     expect(find.text('Kandidat deviasi'), findsOneWidget);
   });
 
+  testWidgets('live monitor includes a sensor realtime graph', (tester) async {
+    final state = AppState();
+    addTearDown(state.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: const MaterialApp(
+          home: HumanInTheLoopLiveMonitorScreen(
+            initialActivity: 'sitting',
+            baselineContexts: [],
+          ),
+        ),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('hil-live-realtime-chart')),
+      300,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.byKey(const Key('hil-live-realtime-chart')), findsOneWidget);
+    expect(
+      find.text('Grafik HR realtime · 30 detik terakhir'),
+      findsOneWidget,
+    );
+  });
+
   test('30-second window reports mean HR, slope, and stable acceleration', () {
     final start = DateTime.utc(2026, 10, 27);
     final readings = List.generate(4, (index) {
@@ -141,6 +184,43 @@ void main() {
       HilLiveAnalysis.isElevatedAtStableMotion(80, 70, 10, true),
       isFalse,
     );
+  });
+
+  test('realtime graph filters old and low-quality samples', () {
+    final now = DateTime.utc(2026, 11, 1, 3);
+    final points = HilLiveAnalysis.buildRealtimeHrPoints(
+      readings: [
+        {
+          'recorded_at':
+              now.subtract(const Duration(seconds: 31)).toIso8601String(),
+          'heart_rate_bpm': 120,
+          'sensor_contact': true,
+          'signal_confidence': 1.0,
+        },
+        {
+          'recorded_at':
+              now.subtract(const Duration(seconds: 2)).toIso8601String(),
+          'heart_rate_bpm': 120,
+          'sensor_contact': true,
+          'signal_confidence': 1.0,
+        },
+        {
+          'recorded_at':
+              now.subtract(const Duration(seconds: 1)).toIso8601String(),
+          'heart_rate_bpm': 120,
+          'sensor_contact': true,
+          'signal_confidence': 0.2,
+        },
+      ],
+      cutoff: now.subtract(const Duration(seconds: 30)),
+      baselineMeanHr: 70,
+      threshold: 10,
+      activity: 'sitting',
+    );
+
+    expect(points, hasLength(2));
+    expect(points.first.observationStatus, 'candidate_deviation');
+    expect(points.last.observationStatus, 'not_assessable');
   });
 
   test('observation status uses provisional baseline only with quality gate',

@@ -457,6 +457,9 @@ export function validateHilExplanation(value) {
     throw errorHandler(400, 'segment_id snapshot HIL tidak valid.');
   }
   const activity = optionalString(value.activity, 'value.activity', 48);
+  if (!activity) {
+    throw errorHandler(400, 'activity snapshot HIL wajib diisi.');
+  }
   const explanation = optionalString(value.explanation, 'value.explanation', 1200);
   const status = optionalString(value.status, 'value.status', 64);
   const qualityStatus = optionalString(value.quality_status, 'value.quality_status', 48);
@@ -477,12 +480,150 @@ export function validateHilExplanation(value) {
   };
 }
 
+export function validateHilScenarioLog(value) {
+  requireObject(value, 'Log skenario HIL');
+  rejectUnknownFields(
+    value,
+    new Set([
+      'run_id',
+      'scenario',
+      'event_type',
+      'activity',
+      'sample_ids',
+      'sample_id',
+      'recommendation',
+      'clarification',
+      'explanation',
+    ]),
+    'Field log skenario HIL'
+  );
+  const runId = optionalString(value.run_id, 'run_id', 80);
+  if (!/^[a-zA-Z0-9._:-]{8,80}$/.test(runId)) {
+    throw errorHandler(400, 'run_id harus berisi 8-80 karakter yang valid.');
+  }
+  const eventTypes = new Set([
+    'scenario_started',
+    'records_loaded',
+    'deviation_detected',
+    'feedback_presented',
+    'clarification_requested',
+    'clarification_submitted',
+    'zero_shot_generated',
+    'zero_shot_failed',
+  ]);
+  const activities = new Set(['sitting', 'standing', 'walking']);
+  if (!['B', 'C'].includes(value.scenario) || !eventTypes.has(value.event_type)) {
+    throw errorHandler(400, 'Skenario atau jenis log HIL tidak valid.');
+  }
+  if (!activities.has(value.activity)) {
+    throw errorHandler(400, 'activity log HIL harus sitting, standing, atau walking.');
+  }
+  if (
+    (value.scenario === 'B'
+      && ['clarification_requested', 'clarification_submitted', 'zero_shot_generated', 'zero_shot_failed']
+        .includes(value.event_type))
+    || (value.scenario === 'C' && value.event_type === 'feedback_presented')
+  ) {
+    throw errorHandler(400, 'Jenis log tidak sesuai dengan skenario HIL.');
+  }
+
+  const sampleIds = value.sample_ids ?? [];
+  const sampleEvents = new Set([
+    'deviation_detected',
+    'feedback_presented',
+    'clarification_requested',
+    'clarification_submitted',
+    'zero_shot_generated',
+    'zero_shot_failed',
+  ]);
+  if (sampleEvents.has(value.event_type) && !value.sample_id) {
+    throw errorHandler(400, `${value.event_type} memerlukan sample_id.`);
+  }
+  if (!Array.isArray(sampleIds) || sampleIds.length > 100) {
+    throw errorHandler(400, 'sample_ids harus berisi maksimal 100 ID sampel.');
+  }
+  if (sampleIds.some((id) => typeof id !== 'string' || !/^[a-f\d]{24}$/i.test(id))) {
+    throw errorHandler(400, 'sample_ids memuat ID sampel yang tidak valid.');
+  }
+  if (new Set(sampleIds).size !== sampleIds.length) {
+    throw errorHandler(400, 'sample_ids tidak boleh duplikat.');
+  }
+  if (value.event_type === 'records_loaded' && sampleIds.length === 0) {
+    throw errorHandler(400, 'Log records_loaded memerlukan sampel wearable.');
+  }
+  if (
+    value.event_type === 'clarification_submitted'
+    && (typeof value.clarification !== 'string' || !value.clarification.trim())
+  ) {
+    throw errorHandler(400, 'clarification_submitted memerlukan klarifikasi.');
+  }
+  if (
+    value.event_type === 'feedback_presented'
+    && (typeof value.recommendation !== 'string' || !value.recommendation.trim())
+  ) {
+    throw errorHandler(400, 'feedback_presented memerlukan rekomendasi.');
+  }
+  if (
+    value.event_type === 'zero_shot_generated'
+    && (typeof value.explanation !== 'string' || !value.explanation.trim())
+  ) {
+    throw errorHandler(400, 'zero_shot_generated memerlukan penjelasan.');
+  }
+
+  const result = {
+    run_id: runId,
+    scenario: value.scenario,
+    event_type: value.event_type,
+    activity: value.activity,
+    sample_ids: sampleIds,
+  };
+  if ('sample_id' in value) {
+    if (
+      typeof value.sample_id !== 'string'
+      || !/^[a-f\d]{24}$/i.test(value.sample_id)
+    ) {
+      throw errorHandler(400, 'sample_id log HIL tidak valid.');
+    }
+    result.sample_id = value.sample_id;
+  }
+  for (const field of ['recommendation', 'clarification', 'explanation']) {
+    if (field in value) {
+      result[field] = optionalString(
+        value[field],
+        field,
+        field === 'explanation' ? 1200 : 500
+      );
+    }
+  }
+  if (
+    !['scenario_started', 'records_loaded'].includes(value.event_type)
+    && !result.sample_id
+  ) {
+    throw errorHandler(400, `Log ${value.event_type} harus terikat pada sampel wearable.`);
+  }
+  if (
+    ['clarification_submitted', 'zero_shot_generated', 'zero_shot_failed']
+      .includes(value.event_type)
+    && !result.clarification
+  ) {
+    throw errorHandler(400, `Log ${value.event_type} memerlukan klarifikasi peserta.`);
+  }
+  if (
+    ['zero_shot_generated', 'zero_shot_failed'].includes(value.event_type)
+    && !result.explanation
+  ) {
+    throw errorHandler(400, `Log ${value.event_type} memerlukan ringkasan hasil.`);
+  }
+  return result;
+}
+
 export function validatePatientEvent(body) {
   requireObject(body, 'Event');
   rejectUnknownFields(
     body,
     new Set([
       'event_type',
+      'run_id',
       'occurred_at',
       'event_time',
       'affected_interval',
@@ -502,6 +643,16 @@ export function validatePatientEvent(body) {
     occurred_at: parseDate(body.occurred_at, 'occurred_at'),
     details: body.details === undefined ? '' : optionalString(body.details, 'details', 300),
   };
+  if ('run_id' in body) {
+    const runId = optionalString(body.run_id, 'run_id', 100);
+    if (
+      body.event_type !== 'hil_scenario'
+      || !/^[a-zA-Z0-9._:-]{8,100}$/.test(runId)
+    ) {
+      throw errorHandler(400, 'run_id hanya boleh berupa ID valid untuk event HIL.');
+    }
+    result.run_id = runId;
+  }
   if (body.event_type === 'activity_correction' && isPlainObject(body.value)) {
     rejectUnknownFields(
       body.value,
@@ -1084,6 +1235,7 @@ export function validateHilRealtimeEvaluation(body) {
     new Set([
       'activity',
       'device_id',
+      'run_id',
       'readings',
       'dfa_rr_intervals_ms',
       'previous_mean_hr',
@@ -1096,6 +1248,10 @@ export function validateHilRealtimeEvaluation(body) {
   }
   const deviceId = optionalString(body.device_id, 'device_id', 120);
   if (!deviceId) throw errorHandler(400, 'device_id wajib diisi.');
+  const runId = optionalString(body.run_id, 'run_id', 100);
+  if (!/^[a-zA-Z0-9._:-]{8,100}$/.test(runId)) {
+    throw errorHandler(400, 'run_id evaluasi HIL harus berisi 8-100 karakter valid.');
+  }
   if (!Array.isArray(body.readings) || body.readings.length < 1 || body.readings.length > 100) {
     throw errorHandler(400, 'readings harus berisi 1-100 pengukuran sensor.');
   }
@@ -1111,6 +1267,7 @@ export function validateHilRealtimeEvaluation(body) {
         'acceleration_g',
         'sensor_contact',
         'signal_confidence',
+        'ecg',
       ]),
       `Field readings[${index}]`
     );
@@ -1150,6 +1307,9 @@ export function validateHilRealtimeEvaluation(body) {
       ),
       sensor_contact: true,
       signal_confidence: signalConfidence,
+      ecg: 'ecg' in reading
+        ? optionalNumber(reading.ecg, `readings[${index}].ecg`, -20, 20)
+        : null,
     };
   });
   for (let index = 1; index < readings.length; index++) {
@@ -1174,6 +1334,7 @@ export function validateHilRealtimeEvaluation(body) {
   const result = {
     activity: body.activity,
     device_id: deviceId,
+    run_id: runId,
     readings,
     dfa_rr_intervals_ms: dfaRrIntervals,
   };

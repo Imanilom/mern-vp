@@ -8,6 +8,8 @@ import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppEvent from '../models/patient_app_event.model.js';
 import PatientHilExplanation from '../models/patient_hil_explanation.model.js';
 import PatientHilBaseline from '../models/patient_hil_baseline.model.js';
+import PatientHilScenarioLog from '../models/patient_hil_scenario_log.model.js';
+import PatientHilRealtimeEvaluation from '../models/patient_hil_realtime_evaluation.model.js';
 import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
 import PatientGamificationProfile from '../models/patient_gamification_profile.model.js';
@@ -89,6 +91,7 @@ import {
   validateWearableStream,
   validateWearableSample,
   validateHilExplanation,
+  validateHilScenarioLog,
   validateHilRealtimeEvaluation,
   validateScenarioEvent,
   validateScenarioQuestionnaire,
@@ -109,6 +112,7 @@ import {
   SCENARIO_RULE_VERSION,
 } from '../utils/scenarioEngine.js';
 import {
+  buildPatientHilRealtimeBaselines,
   buildPatientHilBaselineWindow,
   PATIENT_HIL_BASELINE_POLICY,
   summarizePatientHilBaselines,
@@ -2106,6 +2110,216 @@ export async function listPatientHilExplanations(req, res) {
   res.json({ success: true, data: explanations });
 }
 
+export async function createPatientHilScenarioLog(req, res) {
+  const { dataOwnerId, dataOwnerType, accountScopes } = await getAccount(req);
+  const log = validateHilScenarioLog(req.body);
+  const accountFilter = accountScopeFilter(accountScopes);
+  const storedLog = {
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+    run_id: log.run_id,
+    scenario: log.scenario,
+    event_type: log.event_type,
+    activity: log.activity,
+    source: 'patient_app_wearable_sample',
+    recommendation: log.recommendation ?? '',
+    clarification: log.clarification ?? '',
+    explanation: log.explanation ?? '',
+  };
+  const runFilter = {
+    ...accountFilter,
+    run_id: log.run_id,
+    scenario: log.scenario,
+  };
+  const previousLogs = await PatientHilScenarioLog.find(runFilter)
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .lean();
+  const priorEvent = (eventType, sampleId = null) => previousLogs.some((entry) => (
+    entry.event_type === eventType
+    && (sampleId === null || entry.sample_id?.toString() === sampleId)
+  ));
+  if (log.event_type === 'scenario_started') {
+    if (previousLogs.length) {
+      throw errorHandler(409, 'run_id skenario HIL sudah pernah digunakan.');
+    }
+  } else if (!priorEvent('scenario_started')) {
+    throw errorHandler(409, 'Skenario HIL harus dimulai sebelum event lain disimpan.');
+  }
+
+  const baselineWindows = await PatientHilBaseline.find({
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+    recording_purpose: 'hil_baseline',
+    activity: log.activity,
+  }).lean();
+  const [baseline] = summarizePatientHilBaselines(baselineWindows);
+  if (
+    ['scenario_started', 'records_loaded'].includes(log.event_type)
+    && baseline?.scenario_readiness?.ready !== true
+  ) {
+    throw errorHandler(409, `Baseline HIL ${log.activity} belum siap.`);
+  }
+
+  if (log.event_type === 'records_loaded') {
+    const samples = await PatientAppWearableSample.find({
+      $and: [
+        accountFilter,
+        {
+          _id: { $in: log.sample_ids },
+          provider: 'polar_h10',
+          is_simulated: false,
+          recording_purpose: { $ne: 'hil_baseline' },
+          activity: log.activity,
+          'data_quality.status': 'accepted',
+          sensor_contact: true,
+        },
+      ],
+    })
+      .select('_id recorded_at activity heart_rate_bpm data_quality')
+      .sort({ recorded_at: 1 })
+      .lean();
+    if (samples.length !== log.sample_ids.length) {
+      throw errorHandler(
+        400,
+        'Riwayat harus berisi sampel Polar nyata yang valid dan sesuai aktivitas.'
+      );
+    }
+    storedLog.history = samples.map((sample) => ({
+      sample_id: sample._id,
+      recorded_at: sample.recorded_at,
+      activity: sample.activity,
+      heart_rate_bpm: sample.heart_rate_bpm,
+      q_signal: sample.data_quality?.q_signal ?? null,
+      q_complete: sample.data_quality?.q_complete ?? null,
+      quality_status: sample.data_quality?.status,
+    }));
+  } else if (log.sample_id) {
+    const sampleWasLoaded = previousLogs.some((entry) => (
+      entry.event_type === 'records_loaded'
+      && entry.activity === log.activity
+      && entry.history.some((sample) => sample.sample_id?.toString() === log.sample_id)
+    ));
+    if (!sampleWasLoaded) {
+      throw errorHandler(409, 'Sampel harus dimuat dalam riwayat skenario sebelum dianalisis.');
+    }
+    const requiredPriorEvent = {
+      deviation_detected: 'records_loaded',
+      feedback_presented: 'deviation_detected',
+      clarification_requested: 'deviation_detected',
+      clarification_submitted: 'clarification_requested',
+      zero_shot_generated: 'clarification_submitted',
+      zero_shot_failed: 'clarification_submitted',
+    }[log.event_type];
+    if (
+      requiredPriorEvent
+      && !priorEvent(requiredPriorEvent, requiredPriorEvent === 'records_loaded' ? null : log.sample_id)
+    ) {
+      throw errorHandler(409, 'Urutan event skenario HIL tidak valid.');
+    }
+
+    const sample = await PatientAppWearableSample.findOne({
+      $and: [
+        accountFilter,
+        {
+          _id: log.sample_id,
+          provider: 'polar_h10',
+          is_simulated: false,
+          recording_purpose: { $ne: 'hil_baseline' },
+          activity: log.activity,
+          'data_quality.status': 'accepted',
+          sensor_contact: true,
+        },
+      ],
+    })
+      .select('_id recorded_at activity heart_rate_bpm data_quality')
+      .lean();
+    if (!sample || !Number.isFinite(sample.heart_rate_bpm)) {
+      throw errorHandler(
+        400,
+        'Sampel deviasi harus berasal dari rekaman Polar nyata yang valid.'
+      );
+    }
+
+    const baselineReady = baseline?.scenario_readiness?.ready === true;
+    const baselineMean = baseline?.feature_stats?.mean_hr?.mean;
+    const baselineStd = baseline?.feature_stats?.mean_hr?.standard_deviation;
+    const signalQuality = sample.data_quality?.q_signal;
+    const completeness = sample.data_quality?.q_complete;
+    const qualityAccepted = Number.isFinite(signalQuality)
+      && signalQuality >= PATIENT_HIL_BASELINE_POLICY.minimum_quality
+      && Number.isFinite(completeness)
+      && completeness >= PATIENT_HIL_BASELINE_POLICY.minimum_quality;
+    const threshold = Number.isFinite(baselineStd)
+      ? Math.max(10, baselineStd * 2)
+      : 10;
+    const assessable = baselineReady
+      && Number.isFinite(baselineMean)
+      && qualityAccepted;
+    const candidate = assessable
+      && sample.heart_rate_bpm > baselineMean + threshold;
+    if (
+      ['deviation_detected', 'feedback_presented', 'clarification_requested',
+        'clarification_submitted', 'zero_shot_generated', 'zero_shot_failed']
+        .includes(log.event_type)
+      && !candidate
+    ) {
+      throw errorHandler(409, 'Sampel ini tidak memenuhi ambang deviasi HIL.');
+    }
+
+    Object.assign(storedLog, {
+      sample_id: sample._id,
+      observed_at: sample.recorded_at,
+      heart_rate_bpm: sample.heart_rate_bpm,
+      baseline_mean_hr: Number.isFinite(baselineMean) ? baselineMean : null,
+      baseline_std_hr: Number.isFinite(baselineStd) ? baselineStd : null,
+      threshold_bpm: threshold,
+      z_score: Number.isFinite(baselineStd) && baselineStd > 0
+        ? (sample.heart_rate_bpm - baselineMean) / baselineStd
+        : null,
+      q_signal: signalQuality,
+      q_complete: completeness,
+      quality_status: qualityAccepted ? 'accepted' : 'warning',
+      algorithm_status: !assessable
+        ? 'not_assessable'
+        : candidate
+          ? 'candidate_deviation'
+          : 'normal',
+    });
+  }
+
+  const saved = await PatientHilScenarioLog.create({
+    ...storedLog,
+  });
+  res.status(201).json({ success: true, data: saved });
+}
+
+export async function listPatientHilScenarioLogs(req, res) {
+  const { accountScopes } = await getAccount(req);
+  const unknownQueryFields = Object.keys(req.query)
+    .filter((field) => !['limit', 'run_id'].includes(field));
+  if (unknownQueryFields.length) {
+    throw errorHandler(400, `Query tidak dikenal: ${unknownQueryFields.join(', ')}.`);
+  }
+  const limit = req.query.limit === undefined ? 100 : Number(req.query.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw errorHandler(400, 'limit harus berupa bilangan bulat antara 1 dan 100.');
+  }
+  const query = accountScopeFilter(accountScopes);
+  if (req.query.run_id !== undefined) {
+    const runId = String(req.query.run_id);
+    if (!/^[a-zA-Z0-9._:-]{8,80}$/.test(runId)) {
+      throw errorHandler(400, 'run_id tidak valid.');
+    }
+    query.run_id = runId;
+  }
+  const logs = await PatientHilScenarioLog.find(query)
+    .sort({ createdAt: 1 })
+    .limit(limit)
+    .lean();
+  res.json({ success: true, data: logs });
+}
+
 export async function getPatientAppHilBaselines(req, res) {
   const { dataOwnerId, dataOwnerType, accountScopes } = await getAccount(req);
   if (Object.keys(req.query).length) {
@@ -3771,22 +3985,69 @@ export async function streamPatientAppWearableData(req, res) {
 }
 
 export async function evaluatePatientAppHilRealtime(req, res) {
-  const { accountScopes } = await getAccount(req);
+  const { dataOwnerId, dataOwnerType } = await getAccount(req);
   const evaluation = validateHilRealtimeEvaluation(req.body);
-  const baselineActivityAliases = {
-    sitting: ['sitting', 'Sitting', 'sit', 'Duduk'],
-    standing: ['standing', 'Standing', 'stand', 'Berdiri'],
-    walking: ['walking', 'Walking', 'walk', 'Berjalan'],
-  }[evaluation.activity];
-  const accountIds = [
-    ...new Set(accountScopes.map((scope) => scope.account_id.toString())),
-  ];
-  const baselines = await Baseline.find({
-    user_id: { $in: accountIds },
-    activity: { $in: baselineActivityAliases },
+  const hilBaselineWindows = await PatientHilBaseline.find({
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+    recording_purpose: 'hil_baseline',
+    activity: evaluation.activity,
   }).lean();
+  const baselines = buildPatientHilRealtimeBaselines(
+    hilBaselineWindows,
+    evaluation.activity
+  );
   const analysis = analyzeHilRealtimeEvaluation(evaluation, baselines);
-  res.json({ success: true, data: analysis });
+  const saved = await PatientHilRealtimeEvaluation.create({
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+    run_id: evaluation.run_id,
+    activity: evaluation.activity,
+    device_id: evaluation.device_id,
+    evaluation_kind: evaluation.dfa_rr_intervals_ms?.length
+      ? 'five_minute_rr_batch'
+      : 'hr_window',
+    evaluated_at: analysis.evaluated_at,
+    readings: evaluation.readings,
+    dfa_rr_intervals_ms: evaluation.dfa_rr_intervals_ms ?? [],
+    previous_mean_hr: evaluation.previous_mean_hr ?? null,
+    previous_elevated: evaluation.previous_elevated ?? false,
+    analysis,
+  });
+  res.json({
+    success: true,
+    data: {
+      ...analysis,
+      evaluation_id: saved._id,
+      run_id: saved.run_id,
+    },
+  });
+}
+
+export async function listPatientAppHilRealtimeEvaluations(req, res) {
+  const { accountScopes } = await getAccount(req);
+  const unknownQueryFields = Object.keys(req.query)
+    .filter((field) => !['limit', 'run_id'].includes(field));
+  if (unknownQueryFields.length) {
+    throw errorHandler(400, `Query tidak dikenal: ${unknownQueryFields.join(', ')}.`);
+  }
+  const limit = req.query.limit === undefined ? 100 : Number(req.query.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw errorHandler(400, 'limit harus berupa bilangan bulat antara 1 dan 100.');
+  }
+  const query = accountScopeFilter(accountScopes);
+  if (req.query.run_id !== undefined) {
+    const runId = String(req.query.run_id);
+    if (!/^[a-zA-Z0-9._:-]{8,100}$/.test(runId)) {
+      throw errorHandler(400, 'run_id tidak valid.');
+    }
+    query.run_id = runId;
+  }
+  const data = await PatientHilRealtimeEvaluation.find(query)
+    .sort({ evaluated_at: req.query.run_id === undefined ? -1 : 1 })
+    .limit(limit)
+    .lean();
+  res.json({ success: true, data });
 }
 
 export async function getPatientAppHiladClusters(req, res) {

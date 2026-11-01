@@ -7,6 +7,7 @@ import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/hil_time.dart';
 import 'guided_baseline_ema_screen.dart';
 
 class GuidedBaselineReviewScreen extends StatefulWidget {
@@ -238,8 +239,8 @@ class _GuidedBaselineReviewScreenState
 
   Future<void> _selectIntervalDateTime({required bool start}) async {
     final current = start ? _intervalStart : _intervalEnd;
-    final initial = (current ?? DateTime.now()).toLocal();
-    final now = DateTime.now();
+    final now = hilWibPickerDateTime(DateTime.now());
+    final initial = current == null ? now : hilWibPickerDateTime(current);
     final date = await showDatePicker(
       context: context,
       initialDate: initial.isAfter(now) ? now : initial,
@@ -266,9 +267,9 @@ class _GuidedBaselineReviewScreenState
     );
     setState(() {
       if (start) {
-        _intervalStart = selected;
+        _intervalStart = hilWibPickerDateTimeToUtc(selected);
       } else {
-        _intervalEnd = selected;
+        _intervalEnd = hilWibPickerDateTimeToUtc(selected);
       }
       _correctionSaved = false;
       _error = null;
@@ -277,11 +278,7 @@ class _GuidedBaselineReviewScreenState
 
   String _formatDateTime(DateTime? value) {
     if (value == null) return 'Pilih waktu';
-    final local = value.toLocal();
-    return '${local.day.toString().padLeft(2, '0')}/'
-        '${local.month.toString().padLeft(2, '0')}/'
-        '${local.year} ${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
+    return formatHilWibDateTime(value);
   }
 
   Widget _choiceGroup({

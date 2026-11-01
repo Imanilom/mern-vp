@@ -427,6 +427,53 @@ class ApiService {
     }
   }
 
+  /// POST /api/patient-app/hil-scenario-logs
+  static Future<ApiResponse<Map<String, dynamic>>> createHilScenarioLog(
+    Map<String, dynamic> log,
+  ) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(ApiConfig.hilScenarioLogsEndpoint),
+            headers: _headers(),
+            body: jsonEncode(log),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal menyimpan log skenario HIL: $e',
+          statusCode: 0);
+    }
+  }
+
+  /// GET /api/patient-app/hil-scenario-logs
+  static Future<ApiResponse<List<dynamic>>> getHilScenarioLogs({
+    String? runId,
+    int limit = 100,
+  }) async {
+    try {
+      final query = <String, String>{
+        'limit': limit.toString(),
+        if (runId != null) 'run_id': runId,
+      };
+      final uri = Uri.parse(ApiConfig.hilScenarioLogsEndpoint)
+          .replace(queryParameters: query);
+      final res = await http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<List<dynamic>>(
+        res,
+        (data) => data as List<dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal mengambil log skenario HIL: $e',
+          statusCode: 0);
+    }
+  }
+
   /// GET /api/patient-app/hil-baselines
   static Future<ApiResponse<Map<String, dynamic>>> getHilBaselines() async {
     try {
@@ -786,6 +833,33 @@ class ApiService {
     } catch (e) {
       return ApiResponse.error(
         'Evaluasi HIL realtime ke backend gagal: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
+  /// GET /api/patient-app/wearable/hil-realtime?run_id=...&limit=100
+  static Future<ApiResponse<List<dynamic>>> getHilRealtimeEvaluations({
+    String? runId,
+    int limit = 100,
+  }) async {
+    try {
+      final uri = Uri.parse(ApiConfig.hilRealtimeEvaluationsEndpoint).replace(
+        queryParameters: {
+          'limit': limit.toString(),
+          if (runId != null) 'run_id': runId,
+        },
+      );
+      final res = await http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<List<dynamic>>(
+        res,
+        (data) => data as List<dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error(
+        'Gagal mengambil histori evaluasi HIL realtime: $e',
         statusCode: 0,
       );
     }

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../providers/app_state.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/hil_time.dart';
 import '../pedagogy/history_trend_chart.dart';
 import '../profile/wearable_pairing_screen.dart';
 
@@ -49,6 +50,44 @@ class HilLiveAnalysis {
     return meanHr > baselineMeanHr + threshold
         ? 'candidate_deviation'
         : 'normal';
+  }
+
+  static List<ChartPoint> buildRealtimeHrPoints({
+    required List<Map<String, dynamic>> readings,
+    required DateTime cutoff,
+    required double? baselineMeanHr,
+    required double threshold,
+    required String activity,
+  }) {
+    final points = <ChartPoint>[];
+    for (final reading in readings) {
+      final time = DateTime.tryParse(reading['recorded_at']?.toString() ?? '');
+      final hr = reading['heart_rate_bpm'];
+      if (time == null || hr is! num || !hr.isFinite || hr < 20 || hr > 250) {
+        continue;
+      }
+      if (time.toUtc().isBefore(cutoff.toUtc())) continue;
+      final confidence = reading['signal_confidence'];
+      final qualityGatePassed = reading['sensor_contact'] == true &&
+          confidence is num &&
+          confidence.isFinite &&
+          confidence >= 0.6;
+      points.add(
+        ChartPoint(
+          time,
+          hr.toDouble(),
+          activity: activity,
+          observationStatus: classifyObservation(
+            meanHr: hr.toDouble(),
+            baselineMeanHr: baselineMeanHr,
+            threshold: threshold,
+            qualityGatePassed: qualityGatePassed,
+          ),
+        ),
+      );
+    }
+    points.sort((a, b) => a.time.compareTo(b.time));
+    return points.length <= 100 ? points : points.sublist(points.length - 100);
   }
 
   static HilLiveWindow analyzeWindow(
@@ -206,6 +245,9 @@ class HumanInTheLoopLiveMonitorScreen extends StatefulWidget {
 
 class _HumanInTheLoopLiveMonitorScreenState
     extends State<HumanInTheLoopLiveMonitorScreen> {
+  late final String _runId =
+      'hil-live-${DateTime.now().toUtc().microsecondsSinceEpoch}';
+
   static const _activityOptions = <(String, String, String)>[
     ('sitting', 'Duduk', 'chair'),
     ('standing', 'Berdiri', 'accessibility_new'),
@@ -359,7 +401,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     );
     _hrObservationPoints.add(
       ChartPoint(
-        DateTime.now(),
+        DateTime.now().toUtc(),
         meanHr,
         activity: _activity,
         observationStatus: status,
@@ -840,6 +882,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     final response = await ApiService.evaluateHilRealtime({
       'activity': _activity,
       'device_id': _appState.wearableBridge.deviceId,
+      'run_id': _runId,
       'readings': readings,
       if (dfaRrIntervals != null) 'dfa_rr_intervals_ms': dfaRrIntervals,
       if (previousMeanHr != null) 'previous_mean_hr': previousMeanHr,
@@ -856,6 +899,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     }
 
     final result = response.data!;
+    final evaluationId = result['evaluation_id']?.toString();
     final metrics = _map(result['metrics']);
     final interpretation = _map(result['interpretation']);
     final baseline = _map(result['baseline']);
@@ -889,7 +933,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     setState(() {
       _latestStatus = label;
       _latestDetail =
-          '$detail${baseline['level'] == 'provisional' ? ' Baseline masih provisional dan digunakan sebagai referensi sementara.' : ''}$dfaText';
+          '$detail${baseline['level'] == 'provisional' ? ' Baseline masih provisional dan digunakan sebagai referensi sementara.' : ''}$dfaText ${evaluationId == null ? 'Log evaluasi tersimpan di MongoDB.' : 'Log MongoDB: $evaluationId.'}';
       if (meanHr is num) _latestMeanHr = meanHr.toDouble();
       if (slope is num) _latestSlope = slope.toDouble();
       if (dfaAlpha is num) {
@@ -1053,6 +1097,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     }
     final response = await ApiService.createEvent({
       'event_type': 'hil_scenario',
+      'run_id': _runId,
       'occurred_at': DateTime.now().toUtc().toIso8601String(),
       'details': eventDetails,
       'value': eventName,
@@ -1211,6 +1256,8 @@ class _HumanInTheLoopLiveMonitorScreenState
           ),
           const SizedBox(height: 12),
           _sectionTitle('Hasil pemantauan'),
+          _realtimeSignalChart(),
+          const SizedBox(height: 8),
           _observationChart(),
           const SizedBox(height: 8),
           _infoCard(
@@ -1352,6 +1399,7 @@ class _HumanInTheLoopLiveMonitorScreenState
                     points: points,
                     color: AppTheme.primary,
                     baselineMean: _baselineMeanHr,
+                    timeDisplayOffset: hilWibOffset,
                   ),
                 ),
               ),
@@ -1387,6 +1435,68 @@ class _HumanInTheLoopLiveMonitorScreenState
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _realtimeSignalChart() {
+    final points = HilLiveAnalysis.buildRealtimeHrPoints(
+      readings: _appState.wearableBridge.recentStreamReadings,
+      cutoff: DateTime.now().toUtc().subtract(const Duration(seconds: 30)),
+      baselineMeanHr: _baselineMeanHr,
+      threshold: _hrElevationThreshold,
+      activity: _activity,
+    );
+    return Card(
+      key: const Key('hil-live-realtime-chart'),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Grafik HR realtime · 30 detik terakhir',
+              style: AppTheme.font(
+                size: 12,
+                weight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            if (points.isEmpty)
+              Text(
+                _isSimulation
+                    ? 'Grafik realtime menampilkan sensor langsung, bukan data simulasi.'
+                    : 'Grafik akan tampil saat pembacaan HR Polar H10 diterima.',
+                style: AppTheme.font(
+                  size: 10.5,
+                  color: AppTheme.textSecondary,
+                ),
+              )
+            else
+              SizedBox(
+                height: 190,
+                child: CustomPaint(
+                  key: const Key('hil-live-realtime-chart-plot'),
+                  size: const Size(double.infinity, 190),
+                  painter: TrendChartPainter(
+                    points: points,
+                    color: AppTheme.primary,
+                    baselineMean: _baselineMeanHr,
+                    timeDisplayOffset: hilWibOffset,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 6),
+            Text(
+              '${points.length} pembacaan sensor · garis putus-putus: baseline HR HIL',
+              style: AppTheme.font(
+                size: 9.5,
+                color: AppTheme.textMuted,
+              ),
+            ),
           ],
         ),
       ),

@@ -5,6 +5,7 @@ import {
   createPatientAppEvent,
   createPatientAppAction,
   createPatientHilExplanation,
+  createPatientHilScenarioLog,
   createPatientScenarioEvent,
   createPatientScenarioQuestionnaire,
   createPatientAppWearableSample,
@@ -24,6 +25,7 @@ import {
   listPatientAppCheckIns,
   listPatientAppEvents,
   listPatientHilExplanations,
+  listPatientHilScenarioLogs,
   listPatientAppActions,
   listPatientAppWearableSamples,
   listPatientScenarioEvents,
@@ -34,6 +36,7 @@ import {
   retrainPatientAppHiladModel,
   streamPatientAppWearableData,
   evaluatePatientAppHilRealtime,
+  listPatientAppHilRealtimeEvaluations,
   getPatientAppHiladClusters,
   getPatientAppHiladStatus,
   startPatientScenarioSession,
@@ -129,6 +132,8 @@ router.post('/events', verifyToken, createPatientAppEvent);
 router.get('/events', verifyToken, listPatientAppEvents);
 router.post('/hil-explanations', verifyToken, scenarioWriteLimiter, createPatientHilExplanation);
 router.get('/hil-explanations', verifyToken, listPatientHilExplanations);
+router.post('/hil-scenario-logs', verifyToken, scenarioWriteLimiter, createPatientHilScenarioLog);
+router.get('/hil-scenario-logs', verifyToken, listPatientHilScenarioLogs);
 router.get('/hil-baselines', verifyToken, getPatientAppHilBaselines);
 router.post('/actions', verifyToken, createPatientAppAction);
 router.get('/actions', verifyToken, listPatientAppActions);
@@ -140,6 +145,12 @@ router.post(
   verifyToken,
   hilRealtimeLimiter,
   evaluatePatientAppHilRealtime
+);
+router.get(
+  '/wearable/hil-realtime',
+  verifyToken,
+  hilRealtimeLimiter,
+  listPatientAppHilRealtimeEvaluations
 );
 router.get('/wearable/hilad/status', verifyToken, hilRealtimeLimiter, getPatientAppHiladStatus);
 router.get('/wearable/hilad/clusters', verifyToken, hilRealtimeLimiter, getPatientAppHiladClusters);

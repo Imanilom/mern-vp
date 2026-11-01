@@ -132,3 +132,26 @@ export function summarizePatientHilBaselines(windows) {
     };
   });
 }
+
+export function buildPatientHilRealtimeBaselines(windows, activity) {
+  const baseline = summarizePatientHilBaselines(windows).find(
+    (context) => context.activity === activity
+      && context.scenario_readiness.ready === true
+  );
+  if (!baseline) return [];
+
+  const stats = Object.fromEntries(
+    Object.entries(baseline.feature_stats).map(([feature, summary]) => [
+      feature,
+      {
+        mean: summary.mean,
+        std: summary.standard_deviation,
+      },
+    ])
+  );
+  return [{
+    stats,
+    is_mature: false,
+    maturity_detail: { level: 'provisional' },
+  }];
+}

@@ -174,6 +174,10 @@ separate from sensor-derived findings.
 
 - `POST /api/patient-app/hil-explanations`
 - `GET /api/patient-app/hil-explanations?limit=50` (`limit`: 1-100)
+- `POST /api/patient-app/hil-scenario-logs`
+- `GET /api/patient-app/hil-scenario-logs?run_id=<id>&limit=100`
+- `POST /api/patient-app/wearable/hil-realtime` (hasil evaluasi dan input tersimpan di `patient_hil_realtime_evaluations`)
+- `GET /api/patient-app/wearable/hil-realtime?run_id=<id>&limit=100`
 - `GET /api/patient-app/hil-baselines`
 
 ### Explanation history
@@ -182,7 +186,18 @@ The authenticated POST accepts a version-1 snapshot for scenario `B` or `C`,
 including `segment_id`, `activity`, `explanation`, `status`, `quality_status`,
 `baseline_ready`, and up to three `factors`. Records are stored separately in
 the account-scoped `patient_hil_explanations` collection rather than as general
-event markers.
+event markers. A non-empty `activity` is mandatory; blank or whitespace-only
+activity is rejected with a validation response before attempting MongoDB
+creation.
+
+Scenario B/C runs append each workflow step to the account-scoped
+`patient_hil_scenario_logs` collection. Logs include the run and scenario,
+activity, actual wearable sample IDs/history, server-calculated baseline
+comparison and quality, one-way recommendation or participant clarification,
+and zero-shot explanation. The server verifies all referenced samples belong
+to the authenticated account, are real accepted recordings, and calculates
+the deviation against the matching HIL baseline. `GET` can retrieve a run's
+ordered log for review or research export.
 
 ### Activity baselines
 
@@ -199,6 +214,29 @@ Samples recorded by the guided HIL baseline session are tagged
 `recording_purpose: "hil_baseline"` and are not sent through the CAPAR streaming
 endpoint or converted into CAPAR segments; standard wearable recordings keep
 the existing CAPAR ingestion path.
+Scenario B/C use recorded, non-simulated wearable samples and HIL baseline
+statistics; they do not inject synthetic HR or create CAPAR segments. A
+candidate elevated-HR deviation is flagged only when the sample passes quality
+checks and exceeds baseline by at least `max(10 bpm, 2 * baseline SD)`. The
+rule is for an experiment workflow, not a medical threshold. Scenario C sends
+the clarification and numeric evidence for zero-shot text generation only
+after the participant confirms that transfer in the app.
+
+### Realtime HIL evaluation history
+
+`POST /api/patient-app/wearable/hil-realtime` requires a client-generated
+`run_id` and stores each validated HR window or five-minute RR batch with its
+account, activity, device, UTC timestamps, quality measurements, and complete
+server-computed analysis in `patient_hil_realtime_evaluations`. The matching
+HIL baseline is read only from `patient_hil_baselines`; CAPAR baselines are not
+used by this HIL endpoint. `GET /api/patient-app/wearable/hil-realtime` lists
+the authenticated account's recent evaluations; pass `run_id` to retrieve one
+run in chronological order. ECG samples remain in the existing wearable stream
+collection and are not duplicated into evaluation records.
+
+MongoDB stores BSON dates as UTC instants. HIL screens display them as WIB
+(UTC+7) without shifting the stored timestamp, so exported/API timestamps remain
+interoperable.
 
 ## Patient actions and impact summary
 

@@ -128,6 +128,8 @@ class ApiConfig {
   static String get eventsEndpoint => '$baseUrl/patient-app/events';
   static String get hilExplanationsEndpoint =>
       '$baseUrl/patient-app/hil-explanations';
+  static String get hilScenarioLogsEndpoint =>
+      '$baseUrl/patient-app/hil-scenario-logs';
   static String get hilBaselinesEndpoint => '$baseUrl/patient-app/hil-baselines';
   static String get actionsEndpoint => '$baseUrl/patient-app/actions';
   static String get wearableSamplesEndpoint =>
@@ -141,5 +143,7 @@ class ApiConfig {
   static String get wearableStreamEndpoint =>
       '$baseUrl/patient-app/wearable/stream';
   static String get hilRealtimeEvaluationEndpoint =>
+      '$baseUrl/patient-app/wearable/hil-realtime';
+  static String get hilRealtimeEvaluationsEndpoint =>
       '$baseUrl/patient-app/wearable/hil-realtime';
 }

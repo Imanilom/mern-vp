@@ -37,6 +37,7 @@ const PatientAppEventSchema = new mongoose.Schema(
         'ema',
       ],
     },
+    run_id: { type: String, trim: true, maxlength: 100, default: null },
     occurred_at: { type: Date, required: true, default: Date.now },
     event_time: { type: Date, default: null },
     report_time: { type: Date, required: true, default: Date.now },

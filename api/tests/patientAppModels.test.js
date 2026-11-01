@@ -7,6 +7,8 @@ import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
 import PatientHilExplanation from '../models/patient_hil_explanation.model.js';
 import PatientHilBaseline from '../models/patient_hil_baseline.model.js';
+import PatientHilScenarioLog from '../models/patient_hil_scenario_log.model.js';
+import PatientHilRealtimeEvaluation from '../models/patient_hil_realtime_evaluation.model.js';
 import PatientGamificationProfile from '../models/patient_gamification_profile.model.js';
 import PatientRecordingCoin from '../models/patient_recording_coin.model.js';
 import PatientScenarioEvent from '../models/patient_scenario_event.model.js';
@@ -72,6 +74,7 @@ test('patient check-in, events, and wearable schemas retain patient provenance',
     'standard'
   );
   assert.ok(PatientAppWearableSample.schema.path('motion_index'));
+  assert.ok(PatientAppEvent.schema.path('run_id'));
   assert.ok(PatientAppWearableSample.schema.indexes().some(([keys, options]) => (
     keys.account_id === 1
     && keys.account_type === 1
@@ -202,4 +205,61 @@ test('HIL baseline windows are isolated from CAPAR baseline documents', () => {
     && keys.window_start === 1
     && options.unique === true
   )));
+});
+
+test('HIL scenario paper logs are append-only and account-scoped', () => {
+  assert.equal(
+    PatientHilScenarioLog.collection.collectionName,
+    'patient_hil_scenario_logs'
+  );
+  assert.ok(PatientHilScenarioLog.schema.path('run_id'));
+  assert.ok(PatientHilScenarioLog.schema.path('event_type'));
+  assert.ok(
+    PatientHilScenarioLog.schema.path('event_type').enumValues.includes(
+      'zero_shot_failed'
+    )
+  );
+  assert.ok(PatientHilScenarioLog.schema.path('history'));
+  assert.ok(PatientHilScenarioLog.schema.path('clarification'));
+  assert.ok(PatientHilScenarioLog.schema.path('explanation'));
+  assert.ok(PatientHilScenarioLog.schema.indexes().some(([keys]) => (
+    keys.account_id === 1
+    && keys.account_type === 1
+    && keys.run_id === 1
+    && keys.createdAt === 1
+  )));
+});
+
+test('HIL realtime evaluations persist scoped readings and analysis separately', async () => {
+  assert.equal(
+    PatientHilRealtimeEvaluation.collection.collectionName,
+    'patient_hil_realtime_evaluations'
+  );
+  assert.ok(PatientHilRealtimeEvaluation.schema.path('readings'));
+  assert.ok(PatientHilRealtimeEvaluation.schema.path('analysis'));
+  assert.ok(PatientHilRealtimeEvaluation.schema.indexes().some(([keys]) => (
+    keys.account_id === 1
+    && keys.account_type === 1
+    && keys.run_id === 1
+    && keys.evaluated_at === 1
+  )));
+  const evaluation = new PatientHilRealtimeEvaluation({
+    account_id: new PatientHilRealtimeEvaluation.base.Types.ObjectId(),
+    account_type: 'user',
+    run_id: 'hil-live-1793508969984',
+    activity: 'sitting',
+    device_id: 'polar-h10-01',
+    evaluation_kind: 'hr_window',
+    evaluated_at: new Date(),
+    readings: [{
+      recorded_at: new Date(),
+      heart_rate_bpm: 72,
+      rr_interval_ms: 830,
+      acceleration_g: [0, 0, 1],
+      sensor_contact: true,
+      signal_confidence: 0.9,
+    }],
+    analysis: { interpretation: { status: 'normal' } },
+  });
+  await evaluation.validate();
 });

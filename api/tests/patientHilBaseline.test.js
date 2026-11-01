@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildPatientHilBaselineWindow,
+  buildPatientHilRealtimeBaselines,
   summarizePatientHilBaselines,
 } from '../utils/patientHilBaseline.js';
 
@@ -77,6 +78,25 @@ test('HIL baseline readiness requires five quality-gated minutes per activity', 
   const [notReady] = summarizePatientHilBaselines(windows.slice(0, 4));
   assert.equal(notReady.scenario_readiness.ready, false);
   assert.equal(notReady.scenario_readiness.valid_duration_seconds, 240);
+});
+
+test('real-time HIL analysis uses only ready isolated HIL feature statistics', () => {
+  const start = Date.parse('2026-11-01T04:00:00.000Z');
+  const windows = Array.from({ length: 5 }, (_, index) => ({
+    recording_purpose: 'hil_baseline',
+    activity: 'sitting',
+    window_start: start + index * 60_000,
+    recorded_at: new Date(start + index * 60_000),
+    quality: { q_signal: 0.9, q_complete: 0.9 },
+    features: { mean_hr: 70 + index, mean_rr: 820 },
+  }));
+  const [baseline] = buildPatientHilRealtimeBaselines(windows, 'sitting');
+
+  assert.equal(baseline.stats.mean_hr.mean, 72);
+  assert.equal(baseline.stats.mean_hr.std, Math.sqrt(2));
+  assert.equal(baseline.is_mature, false);
+  assert.deepEqual(buildPatientHilRealtimeBaselines(windows.slice(0, 4), 'sitting'), []);
+  assert.deepEqual(buildPatientHilRealtimeBaselines(windows, 'walking'), []);
 });
 
 test('HIL baseline windows deduplicate minutes and exclude low-quality windows', () => {

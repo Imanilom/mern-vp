@@ -1801,10 +1801,14 @@ class AppState extends ChangeNotifier {
     required String scenario,
     required Map<String, dynamic> explanationSnapshot,
   }) async {
+    final activity = explanationSnapshot['activity'];
     if (!isAuthenticated ||
         !const {'B', 'C'}.contains(scenario) ||
-        explanationSnapshot['scenario'] != scenario) {
-      dataError = 'Skenario Human In the Loop tidak dapat dicatat.';
+        explanationSnapshot['scenario'] != scenario ||
+        activity is! String ||
+        activity.trim().isEmpty) {
+      dataError =
+          'Skenario Human In the Loop tidak dapat dicatat: aktivitas wajib dipilih.';
       notifyListeners();
       return false;
     }

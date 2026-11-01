@@ -19,6 +19,7 @@ import {
   validateWearableHistoryQuery,
   validateGamificationSettings,
   validateHilExplanation,
+  validateHilScenarioLog,
   registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
 
@@ -414,6 +415,7 @@ test('HIL scenario events persist a bounded explanation snapshot', () => {
   const event = validatePatientEvent({
     event_type: 'hil_scenario',
     occurred_at: '2026-11-01T04:15:00.000Z',
+    run_id: 'hil-live-1793508969984',
     details: 'Snapshot penjelasan skenario C.',
     value: {
       version: 1,
@@ -428,6 +430,7 @@ test('HIL scenario events persist a bounded explanation snapshot', () => {
     },
   });
   assert.equal(event.event_type, 'hil_scenario');
+  assert.equal(event.run_id, 'hil-live-1793508969984');
   assert.equal(event.value.scenario, 'C');
   assert.equal(event.value.explanation, 'Deteksi belum cukup untuk menyimpulkan perubahan fisiologis.');
   assert.deepEqual(event.value.factors, ['mean_hr', 'rmssd']);
@@ -456,6 +459,14 @@ test('HIL scenario events persist a bounded explanation snapshot', () => {
       },
     }),
     { statusCode: 400 },
+  );
+  assert.throws(
+    () => validatePatientEvent({
+      event_type: 'medication',
+      occurred_at: '2026-11-01T04:15:00.000Z',
+      run_id: 'hil-live-1793508969984',
+    }),
+    { statusCode: 400 }
   );
 });
 
@@ -1078,10 +1089,12 @@ test('HIL realtime evaluation accepts bounded real sensor windows and five-minut
     acceleration_g: [0.02, -0.01, 0.98],
     sensor_contact: true,
     signal_confidence: 0.95,
+    ecg: 0.15,
   };
   const payload = {
     activity: 'sitting',
     device_id: 'polar-h10-01',
+    run_id: 'hil-live-1793508969984',
     readings: [reading, { ...reading, recorded_at: new Date(Date.now() + 1000).toISOString() }],
     dfa_rr_intervals_ms: Array(64).fill(830),
     previous_mean_hr: 90,
@@ -1089,9 +1102,11 @@ test('HIL realtime evaluation accepts bounded real sensor windows and five-minut
   };
   const result = validateHilRealtimeEvaluation(payload);
   assert.equal(result.activity, 'sitting');
+  assert.equal(result.run_id, 'hil-live-1793508969984');
   assert.equal(result.readings.length, 2);
   assert.equal(result.dfa_rr_intervals_ms.length, 64);
   assert.equal(result.previous_elevated, true);
+  assert.equal(result.readings[0].ecg, 0.15);
 
   assert.throws(
     () => validateHilRealtimeEvaluation({ ...payload, user_id: 'another-user' }),
@@ -1099,6 +1114,17 @@ test('HIL realtime evaluation accepts bounded real sensor windows and five-minut
   );
   assert.throws(
     () => validateHilRealtimeEvaluation({ ...payload, activity: 'running' }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilRealtimeEvaluation({ ...payload, run_id: undefined }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilRealtimeEvaluation({
+      ...payload,
+      readings: [{ ...reading, ecg: 21 }],
+    }),
     { statusCode: 400 }
   );
   assert.throws(
@@ -1179,11 +1205,83 @@ test('HIL explanation snapshots are versioned and bounded', () => {
     baseline_ready: true,
     factors: ['mean_hr'],
   });
+
+  test('HIL scenario logs accept real sample references and bound research payloads', () => {
+    const run = validateHilScenarioLog({
+      run_id: 'hil-B-1793508969984',
+      scenario: 'B',
+      event_type: 'deviation_detected',
+      activity: 'sitting',
+      sample_id: '507f1f77bcf86cd799439011',
+    });
+    assert.equal(run.event_type, 'deviation_detected');
+    assert.deepEqual(run.sample_ids, []);
+
+    const loaded = validateHilScenarioLog({
+      run_id: 'hil-C-1793508969984',
+      scenario: 'C',
+      event_type: 'records_loaded',
+      activity: 'sitting',
+      sample_ids: [
+        '507f1f77bcf86cd799439011',
+        '507f1f77bcf86cd799439012',
+      ],
+    });
+    assert.equal(loaded.sample_ids.length, 2);
+
+    assert.throws(
+      () => validateHilScenarioLog({
+        run_id: 'short',
+        scenario: 'B',
+        event_type: 'scenario_started',
+        activity: 'sitting',
+      }),
+      { statusCode: 400 }
+    );
+    assert.throws(
+      () => validateHilScenarioLog({
+        run_id: 'hil-C-1793508969984',
+        scenario: 'C',
+        event_type: 'records_loaded',
+        activity: 'sitting',
+        sample_ids: ['not-an-object-id'],
+      }),
+      { statusCode: 400 }
+    );
+    assert.throws(
+      () => validateHilScenarioLog({
+        run_id: 'hil-B-1793508969984',
+        scenario: 'B',
+        event_type: 'clarification_requested',
+        activity: 'sitting',
+        sample_id: '507f1f77bcf86cd799439011',
+      }),
+      { statusCode: 400 }
+    );
+    assert.throws(
+      () => validateHilScenarioLog({
+        run_id: 'hil-C-1793508969984',
+        scenario: 'C',
+        event_type: 'zero_shot_generated',
+        activity: 'sitting',
+        sample_id: '507f1f77bcf86cd799439011',
+      }),
+      { statusCode: 400 }
+    );
+  });
   assert.equal(snapshot.scenario, 'C');
   assert.equal(snapshot.segment_id, '507f1f77bcf86cd799439011');
   assert.equal(snapshot.baseline_ready, true);
   assert.deepEqual(snapshot.factors, ['mean_hr']);
 
+  assert.throws(
+    () => validateHilExplanation({ ...snapshot, activity: '' }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilExplanation({ ...snapshot, activity: '   ' }),
+    { statusCode: 400 }
+  );
   assert.throws(
     () => validateHilExplanation({ ...snapshot, version: 2 }),
     { statusCode: 400 }

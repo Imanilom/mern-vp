@@ -7,8 +7,10 @@ import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/hil_time.dart';
 import '../../widgets/custom_widgets.dart';
 import 'guided_baseline_session_screen.dart';
+import 'hil_recorded_scenario_screen.dart';
 import 'human_in_the_loop_live_monitor_screen.dart';
 import '../pedagogy/patient_journey_screen.dart';
 import '../pedagogy/pedagogy_screen_what_changed.dart';
@@ -53,11 +55,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
 
-  String _boundedText(dynamic value, int maxLength) {
-    final text = value?.toString() ?? '';
-    return text.length <= maxLength ? text : text.substring(0, maxLength);
-  }
-
   Map<String, dynamic>? _stage(List<Map<String, dynamic>> stages, String id) {
     for (final stage in stages) {
       if (stage['stage_id'] == id) return stage;
@@ -95,29 +92,33 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     }
   }
 
-  Future<void> _selectScenario(
-    String scenario,
-    Map<String, dynamic> explanationSnapshot,
-  ) async {
+  Future<void> _selectScenario(String scenario) async {
     if (!_hasResearchConsent) return;
     setState(() {
       _selectedScenario = scenario;
       _clarificationSaved = false;
     });
-    final saved = await context.read<AppState>().recordHumanInTheLoopScenario(
+    final appState = context.read<AppState>();
+    final latestObservation = _map(
+      _map(appState.rawCaparInsights?['capar'])['latest_observation'],
+    );
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => HilRecordedScenarioScreen(
           scenario: scenario,
-          explanationSnapshot: explanationSnapshot,
-        );
-    if (!mounted || saved) return;
-    final error = context.read<AppState>().dataError;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Skenario $scenario ditampilkan, tetapi assignment belum tercatat: '
-          '${error ?? 'periksa koneksi dan sesi akun.'}',
+          baselineContexts: appState.hilBaselineContexts,
+          initialActivity: _normalizeActivity(
+            latestObservation['activity']?.toString(),
+          ),
         ),
       ),
     );
+    if (!mounted) return;
+    setState(() => _selectedScenario = null);
+    await Future.wait([
+      appState.fetchHilExplanationHistory(limit: 100),
+      appState.fetchRecentEvents(limit: 100),
+    ]);
   }
 
   Future<void> _showScenarioHistory(EventItem event) async {
@@ -141,8 +142,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${MaterialLocalizations.of(context).formatShortDate(event.timestamp.toLocal())} · '
-                '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(event.timestamp.toLocal()))}',
+                formatHilWibDateTime(event.timestamp),
               ),
               if (snapshot['activity'] != null) ...[
                 const SizedBox(height: 8),
@@ -219,9 +219,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             ...history.map((event) {
               final snapshot = _map(event.value);
               final scenario = snapshot['scenario']?.toString();
-              final time = MaterialLocalizations.of(context).formatShortDate(
-                event.timestamp.toLocal(),
-              );
+              final time = formatHilWibDateTime(event.timestamp);
               return ListTile(
                 key: Key('hil-scenario-history-${event.id}'),
                 contentPadding: EdgeInsets.zero,
@@ -618,27 +616,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         observation['segment_id']?.toString() ?? state.followUpPrompt.segmentId;
     final hasSegment = segmentId != null &&
         RegExp(r'^[a-f\d]{24}$', caseSensitive: false).hasMatch(segmentId);
-    final explanationFactors = factors
-        .map((factor) => _boundedText(
-              factor['physiology'] ?? factor['feature'] ?? 'sinyal',
-              80,
-            ))
-        .toList();
-    final narrative = _scenarioNarrative(latestObservation, positiveZScores);
-    String scenarioExplanation(String scenario) => scenario == 'B'
-        ? narrative
-        : '$narrative ${interpretation ?? _statusLabel(resolutionStatus)}';
-    Map<String, dynamic> scenarioSnapshot(String scenario) => {
-          'version': 1,
-          'scenario': scenario,
-          'segment_id': hasSegment ? segmentId : null,
-          'activity': latestObservation['activity']?.toString() ?? '',
-          'explanation': scenarioExplanation(scenario),
-          'status': resolutionStatus,
-          'quality_status': quality['status']?.toString() ?? 'unavailable',
-          'baseline_ready': scenariosReady,
-          'factors': explanationFactors,
-        };
     return MockupScaffold(
       title: 'Human In the Loop',
       trailing: IconButton(
@@ -684,7 +661,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 'Tampilkan narasi satu arah. Skenario dapat dibuka setelah tersedia 5 menit baseline HIL berkualitas untuk duduk, berdiri, dan berjalan.',
             selected: _selectedScenario == 'B',
             enabled: scenariosReady && _hasResearchConsent,
-            onPressed: () => _selectScenario('B', scenarioSnapshot('B')),
+            onPressed: () => _selectScenario('B'),
           ),
           _scenarioButton(
             code: 'C',
@@ -693,7 +670,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 'Tampilkan hasil, minta klarifikasi, dan pertahankan unresolved bila bukti statistik belum cukup. Memerlukan 5 menit baseline HIL untuk setiap aktivitas.',
             selected: _selectedScenario == 'C',
             enabled: scenariosReady && _hasResearchConsent,
-            onPressed: () => _selectScenario('C', scenarioSnapshot('C')),
+            onPressed: () => _selectScenario('C'),
           ),
           if (!_hasResearchConsent)
             Padding(

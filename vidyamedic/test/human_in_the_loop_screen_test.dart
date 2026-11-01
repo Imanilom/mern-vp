@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:nadiku/models/health_models.dart';
 import 'package:nadiku/providers/app_state.dart';
 import 'package:nadiku/screens/scenarios/human_in_the_loop_screen.dart';
+import 'package:nadiku/screens/scenarios/hil_recorded_scenario_screen.dart';
 
 Widget _app(AppState state) => ChangeNotifierProvider<AppState>.value(
       value: state,
@@ -341,7 +342,7 @@ void main() {
   });
 
   testWidgets(
-      'five-minute HIL baselines for all activities unlock B/C without CAPAR',
+      'five-minute HIL baselines for all activities unlock recorded B/C',
       (tester) async {
     final state = AppState()
       ..rawCaparInsights = {
@@ -408,24 +409,33 @@ void main() {
     await _acceptHilConsent(tester);
     expect(_scenarioTile(tester, 'B').onTap, isNotNull);
     expect(_scenarioTile(tester, 'C').onTap, isNotNull);
+  });
 
-    await tester.ensureVisible(find.byKey(const Key('hil-scenario-B')));
-    await tester.tap(find.byKey(const Key('hil-scenario-B')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('hil-one-way-result')), findsOneWidget);
-    expect(find.textContaining('HR rata-rata z=0.40'), findsWidgets);
-    expect(find.textContaining('tanpa tau tambahan'), findsWidgets);
-    expect(find.textContaining('RMSSD'), findsNothing);
-    expect(find.byKey(const Key('hil-human-loop-form')), findsNothing);
-
-    await tester.ensureVisible(find.byKey(const Key('hil-scenario-C')));
-    await tester.tap(find.byKey(const Key('hil-scenario-C')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('hil-one-way-result')), findsNothing);
-    expect(find.byKey(const Key('hil-human-loop-form')), findsOneWidget);
-    expect(find.textContaining('aktivitas fisik berat'), findsOneWidget);
-    expect(find.byKey(const Key('hil-submit-clarification')), findsOneWidget);
-    expect(find.byKey(const Key('hil-open-live-monitor')), findsOneWidget);
+  test('recorded HIL deviation uses a quality-gated personal threshold', () {
+    expect(HilRecordedScenarioAnalysis.threshold(3), 10);
+    expect(HilRecordedScenarioAnalysis.threshold(8), 16);
+    expect(
+      HilRecordedScenarioAnalysis.isElevatedCandidate(
+        heartRate: 91,
+        baselineMean: 70,
+        thresholdBpm: 20,
+        qSignal: 0.9,
+        qComplete: 0.9,
+        qualityAccepted: true,
+      ),
+      isTrue,
+    );
+    expect(
+      HilRecordedScenarioAnalysis.isElevatedCandidate(
+        heartRate: 91,
+        baselineMean: 70,
+        thresholdBpm: 20,
+        qSignal: 0.4,
+        qComplete: 0.9,
+        qualityAccepted: true,
+      ),
+      isFalse,
+    );
   });
 
   testWidgets('CAPAR maturity alone cannot unlock HIL scenarios',
