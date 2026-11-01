@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/app_state.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
 import 'guided_baseline_session_screen.dart';
@@ -29,6 +32,19 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   bool _isSubmittingClarification = false;
   bool _clarificationSaved = false;
   bool _hasResearchConsent = false;
+  bool _isUpdatingAiConsent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final appState = context.read<AppState>();
+      if (appState.isAuthenticated && appState.rawCaparInsights == null) {
+        unawaited(appState.fetchCaparInsights());
+      }
+    });
+  }
 
   Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
@@ -148,6 +164,70 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     await context.read<AppState>().fetchCaparInsights();
   }
 
+  Future<void> _grantAiProcessingConsent() async {
+    var confirmed = false;
+    final granted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Persetujuan pemrosesan data kesehatan'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Untuk memuat baseline CAPAR dan menghitung kesiapan Human in the Loop, Vidyamedic memproses data wearable dan fitur kesehatan Anda. Persetujuan ini terpisah dari persetujuan penelitian HIL dan tidak mengubah data baseline yang sudah tersimpan.',
+              ),
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: confirmed,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text(
+                  'Saya menyetujui pemrosesan data kesehatan dengan AI.',
+                ),
+                onChanged: (value) =>
+                    setDialogState(() => confirmed = value == true),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed:
+                  confirmed ? () => Navigator.pop(dialogContext, true) : null,
+              child: const Text('Setuju dan muat baseline'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (granted != true || !mounted) return;
+
+    setState(() => _isUpdatingAiConsent = true);
+    final response = await ApiService.updateProfile({
+      'ai_processing_consent': {'granted': true},
+    });
+    if (!mounted) return;
+    if (!response.success) {
+      setState(() => _isUpdatingAiConsent = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            response.message ?? 'Persetujuan pemrosesan AI gagal disimpan.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    await context.read<AppState>().fetchCaparInsights();
+    if (!mounted) return;
+    setState(() => _isUpdatingAiConsent = false);
+  }
+
   Future<void> _requestResearchConsent() async {
     var checked = false;
     final consentGiven = await showDialog<bool>(
@@ -249,12 +329,12 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     String activity,
   ) {
     final normalized = _normalizeActivity(baseline['activity']?.toString());
-    final aliases = switch (activity) {
-      'sitting' || 'standing' => {'sitting', 'standing', 'rest'},
-      'walking' => {'walking', 'light'},
-      _ => {activity},
-    };
-    return aliases.contains(normalized);
+    if (activity == 'sitting' || activity == 'standing') {
+      return normalized == activity || normalized == 'rest';
+    }
+    return activity == 'walking'
+        ? normalized == 'walking' || normalized == 'light'
+        : normalized == activity;
   }
 
   bool _isScenarioBaselineReady(Map<String, dynamic> baseline) {
@@ -338,6 +418,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final capar = _map(state.rawCaparInsights?['capar']);
+    final caparStatus = capar['status']?.toString();
     final pedagogy = _map(capar['pedagogy']);
     final resolution = _map(pedagogy['reasoning_resolution']);
     final followUp = _map(pedagogy['follow_up']);
@@ -356,6 +437,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       latestObservation['activity']?.toString(),
     );
     final scenariosReady = baselineContexts.any(_isScenarioBaselineReady);
+    final aiConsentRequired = caparStatus == 'consent_required';
     final followUpStatus =
         followUp['status']?.toString() ?? state.followUpPrompt.status;
     final resolutionStatus = resolution['status']?.toString() ??
@@ -383,6 +465,20 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         RegExp(r'^[a-f\d]{24}$', caseSensitive: false).hasMatch(segmentId);
     return MockupScaffold(
       title: 'Human In the Loop',
+      trailing: IconButton(
+        key: const Key('hil-refresh-baseline'),
+        tooltip: 'Muat ulang baseline',
+        onPressed: state.isCaparLoading
+            ? null
+            : () => unawaited(state.fetchCaparInsights()),
+        icon: state.isCaparLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.refresh_rounded),
+      ),
       subtitle: Text(
         'Baseline per aktivitas, deteksi z-score, dan klarifikasi peserta',
         style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
@@ -449,6 +545,11 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             contexts: baselineContexts,
             onStart: _openGuidedBaseline,
             canStart: _hasResearchConsent,
+            isLoading: state.isCaparLoading,
+            aiConsentRequired: aiConsentRequired,
+            isUpdatingAiConsent: _isUpdatingAiConsent,
+            onGrantAiConsent: _grantAiProcessingConsent,
+            loadError: state.dataError,
           ),
           if (_selectedScenario == 'B') ...[
             const SizedBox(height: 10),
@@ -658,6 +759,11 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     required List<Map<String, dynamic>> contexts,
     required VoidCallback onStart,
     required bool canStart,
+    required bool isLoading,
+    required bool aiConsentRequired,
+    required bool isUpdatingAiConsent,
+    required VoidCallback onGrantAiConsent,
+    String? loadError,
   }) {
     return Container(
       key: const Key('hil-activity-baseline'),
@@ -682,16 +788,58 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               height: 1.4,
             ),
           ),
+          if (aiConsentRequired) ...[
+            const SizedBox(height: 8),
+            Container(
+              key: const Key('hil-ai-consent-required'),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.statusYellowBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Baseline belum dapat ditampilkan karena persetujuan pemrosesan AI belum diberikan. Persetujuan penelitian HIL saja tidak mengaktifkan analisis CAPAR.',
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton(
+                    key: const Key('hil-grant-ai-consent'),
+                    onPressed: isUpdatingAiConsent ? null : onGrantAiConsent,
+                    child: Text(
+                      isUpdatingAiConsent
+                          ? 'Menyimpan persetujuan...'
+                          : 'Tinjau persetujuan dan muat baseline',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (isLoading && contexts.isEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ] else if (loadError != null && contexts.isEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Baseline gagal dimuat: $loadError',
+                key: const Key('hil-baseline-load-error'),
+                style: AppTheme.font(size: 10.5, color: AppTheme.statusOrange),
+              ),
+            ),
+          ],
           const SizedBox(height: 9),
           ...List.generate(_baselineActivities.length, (index) {
             final activity = _baselineActivities[index];
             final contextsForActivity = contexts
-                .where((context) =>
-                    _matchesBaselineActivity(context, activity.$2))
+                .where(
+                    (context) => _matchesBaselineActivity(context, activity.$2))
                 .toList();
-            final readyContexts = contextsForActivity
-                .where(_isScenarioBaselineReady)
-                .toList();
+            final readyContexts =
+                contextsForActivity.where(_isScenarioBaselineReady).toList();
             final isReady = readyContexts.isNotEmpty;
             final count = contextsForActivity.fold<int>(
               0,
@@ -703,8 +851,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               (total, context) =>
                   total +
                   ((_map(context['scenario_readiness'])['valid_window_count']
-                          as num?)
-                      ?.toInt() ??
+                              as num?)
+                          ?.toInt() ??
                       0),
             );
             return Container(
@@ -744,11 +892,13 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                     ),
                   ),
                   Text(
-                    contextsForActivity.isEmpty
-                        ? 'Belum ada data'
-                        : isReady
-                            ? 'Siap HIL · $validMinutes menit · $count segmen'
-                            : 'Belum siap HIL · $count segmen CAPAR',
+                    aiConsentRequired
+                        ? 'Menunggu persetujuan AI'
+                        : contextsForActivity.isEmpty
+                            ? 'Belum ada data'
+                            : isReady
+                                ? 'Siap HIL · $validMinutes menit · $count segmen'
+                                : 'Belum siap HIL · $count segmen CAPAR',
                     style: AppTheme.font(
                       size: 9.5,
                       weight: FontWeight.w600,

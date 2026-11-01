@@ -136,6 +136,47 @@ void main() {
     expect(find.text('Dua arah nonadaptif'), findsNothing);
   });
 
+  testWidgets('A shows stored immature activity baseline counts', (tester) async {
+    final state = AppState()
+      ..rawCaparInsights = {
+        'capar': {
+          'status': 'available',
+          'baseline': {
+            'contexts': [
+              {'activity': 'Berdiri', 'level': 'provisional', 'segment_count': 4},
+              {'activity': 'Berjalan', 'level': 'provisional', 'segment_count': 2},
+              {'activity': 'Duduk', 'level': 'provisional', 'segment_count': 2},
+            ],
+          },
+        },
+      };
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    expect(find.text('Belum ada data'), findsNothing);
+    expect(find.text('Belum siap HIL · 4 segmen CAPAR'), findsOneWidget);
+    expect(find.text('Belum siap HIL · 2 segmen CAPAR'), findsNWidgets(2));
+  });
+
+  testWidgets('A explains when AI consent prevents loading stored baselines',
+      (tester) async {
+    final state = AppState()
+      ..rawCaparInsights = {
+        'capar': {
+          'status': 'consent_required',
+          'baseline': {'contexts': []},
+        },
+      };
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    expect(find.byKey(const Key('hil-ai-consent-required')), findsOneWidget);
+    expect(find.byKey(const Key('hil-grant-ai-consent')), findsOneWidget);
+    expect(find.text('Belum ada data'), findsNothing);
+  });
+
   testWidgets('five-minute HIL baseline enables B and C without CAPAR maturity',
       (tester) async {
     final state = AppState()

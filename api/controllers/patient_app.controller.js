@@ -101,6 +101,7 @@ import {
   isScenarioQualityGatedSegment,
   isScenarioRealRecordedSample,
   mapScenarioActivity,
+  scenarioRecordingMatchesBaselineActivity,
   scenarioBaselineActivityAliases,
   SCENARIO_DEFINITIONS,
   SCENARIO_RULE_VERSION,
@@ -1115,7 +1116,7 @@ export async function getPatientAppCaparInsights(req, res) {
         ingestion_source: 'mobile_wearable_bridge',
         sensor_contact: true,
         'data_quality.status': 'accepted',
-      }).select('_id provider source ingestion_source sensor_contact data_quality.status')
+      }).select('_id provider source ingestion_source sensor_contact data_quality.status activity posture')
         .lean()
       : [];
     const acceptedScenarioSampleIds = new Set(
@@ -1123,23 +1124,14 @@ export async function getPatientAppCaparInsights(req, res) {
         .filter(isScenarioRealRecordedSample)
         .map((sample) => sample._id.toString())
     );
+    const scenarioSampleById = new Map(
+      scenarioSamples.map((sample) => [sample._id.toString(), sample])
+    );
     const qualityGatedScenarioSegments = scenarioSegments.filter((segment) =>
       segment.patient_app_sample_id
       && acceptedScenarioSampleIds.has(segment.patient_app_sample_id.toString())
       && isScenarioQualityGatedSegment(segment)
     );
-    const scenarioSegmentsByContext = new Map();
-    for (const segment of qualityGatedScenarioSegments) {
-      const contextKey = [
-        segment.user_id.toString(),
-        segment.activity_label,
-        patientCaparTimePeriod(segment.window_start),
-      ].join(':');
-      const contextSegments = scenarioSegmentsByContext.get(contextKey) || [];
-      contextSegments.push(segment);
-      scenarioSegmentsByContext.set(contextKey, contextSegments);
-    }
-
     const eligibleSegments = recentSegments.filter(isPatientAnalyticsSegment);
     const currentSegments = eligibleSegments.filter(
       (segment) => segment.window_start >= dayAgo.getTime()
@@ -1800,15 +1792,27 @@ export async function getPatientAppCaparInsights(req, res) {
               : 'mature_legacy'
             : baseline.maturity_detail?.level || 'provisional',
           scenario_readiness: (() => {
-            const contextKey = [
-              baseline.user_id.toString(),
-              baseline.activity,
-              baseline.time_period,
-            ].join(':');
-            const matchingSegments =
-              scenarioSegmentsByContext.get(contextKey) || [];
-            return matchingSegments.length
-              ? assessScenarioBaseline(baseline, matchingSegments)
+            const matchingSegments = qualityGatedScenarioSegments.filter(
+              (segment) => {
+                const sample = scenarioSampleById.get(
+                  segment.patient_app_sample_id.toString()
+                );
+                return segment.user_id.toString() === baseline.user_id.toString()
+                  && patientCaparTimePeriod(segment.window_start) === baseline.time_period
+                  && scenarioRecordingMatchesBaselineActivity(
+                    sample,
+                    baseline.activity
+                  );
+              }
+            );
+            const uniqueSegments = [
+              ...new Map(matchingSegments.map((segment) => [
+                Math.floor(segment.window_start / 60_000),
+                segment,
+              ])).values(),
+            ];
+            return uniqueSegments.length
+              ? assessScenarioBaseline(baseline, uniqueSegments)
               : assessScenarioBaseline(null);
           })(),
           quality: baseline.maturity_detail?.bq ?? null,

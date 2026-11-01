@@ -6,6 +6,7 @@ import {
   isScenarioRealRecordedSample,
   isScenarioQualityGatedSegment,
   mapScenarioActivity,
+  scenarioRecordingMatchesBaselineActivity,
   scenarioBaselineActivityAliases,
   SCENARIO_DEFINITIONS,
 } from '../utils/scenarioEngine.js';
@@ -164,6 +165,37 @@ test('scenario baseline lookup matches legacy Indonesian CAPAR activity labels',
 
   const walkingAliases = scenarioBaselineActivityAliases('Light', 'walking');
   assert.ok(walkingAliases.includes('Berjalan'));
+});
+
+test('scenario readiness matches source activity or posture without mixing sitting and standing', () => {
+  assert.equal(
+    scenarioRecordingMatchesBaselineActivity(
+      { activity: 'sitting', posture: 'sitting' },
+      'Duduk'
+    ),
+    true
+  );
+  assert.equal(
+    scenarioRecordingMatchesBaselineActivity(
+      { activity: 'rest', posture: 'standing' },
+      'Berdiri'
+    ),
+    true
+  );
+  assert.equal(
+    scenarioRecordingMatchesBaselineActivity(
+      { activity: 'standing', posture: 'standing' },
+      'Duduk'
+    ),
+    false
+  );
+  assert.equal(
+    scenarioRecordingMatchesBaselineActivity(
+      { activity: 'walking', posture: 'unknown' },
+      'Berjalan'
+    ),
+    true
+  );
 });
 
 test('scenario interpretation distinguishes a stored immature production baseline from experiment readiness', () => {

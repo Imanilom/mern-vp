@@ -241,6 +241,25 @@ export function mapScenarioActivity(activity) {
   return CAPAR_ACTIVITY_LABELS[activity] ?? null;
 }
 
+export function scenarioRecordingMatchesBaselineActivity(sample, activity) {
+  const normalize = (value) => value?.trim().toLowerCase() ?? '';
+  const recordingActivity = normalize(sample?.activity);
+  const posture = normalize(sample?.posture);
+  const baselineActivity = normalize(activity);
+  if (['duduk', 'sitting'].includes(baselineActivity)) {
+    return ['duduk', 'sitting', 'sit'].includes(recordingActivity)
+      || posture === 'sitting';
+  }
+  if (['berdiri', 'standing'].includes(baselineActivity)) {
+    return ['berdiri', 'standing', 'stand'].includes(recordingActivity)
+      || posture === 'standing';
+  }
+  if (['berjalan', 'walking'].includes(baselineActivity)) {
+    return ['berjalan', 'walking', 'walk'].includes(recordingActivity);
+  }
+  return recordingActivity === baselineActivity;
+}
+
 export function scenarioBaselineActivityAliases(activity, recordedActivity = null) {
   const canonicalActivity = mapScenarioActivity(activity);
   const aliases = {
