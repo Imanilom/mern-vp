@@ -373,7 +373,42 @@ and measured acceleration, then publishes them to the configured RabbitMQ
 `Sensor` queue. Vidyamedic flushes this stream every 10 seconds. The response
 is `202` with `published` and `reading_count`; if RabbitMQ is unavailable the
 endpoint returns `503` without claiming success. The CAPAR consumer stores
-accepted real readings in the shared CAPAR data collection.
+accepted real readings in the shared CAPAR data collection. For real Polar
+batches, a synchronous personal-baseline evaluation is also returned as
+`data.real_time_analysis` and shown on the mobile Home screen. The evaluation
+includes signal-quality gates, baseline comparisons, and timestamp-level
+statistical attributions. These attributions are a baseline-deviation proxy,
+not CAM, causal explanations, a validated classifier output, or a diagnosis.
+The evaluation is withheld when signal quality or baseline data is insufficient.
+
+When AI-processing consent is enabled, the streaming endpoint also evaluates
+completed, quality-gated 60-second Polar windows with a per-account,
+per-activity LSTM autoencoder. The first 20 valid minute windows are treated as
+normal training examples; this is a warm-up assumption, not a clinical
+confirmation that those recordings are normal. The model uses a chronological hold-out set and applies 1.25 times the 95th
+percentile of its reconstruction errors as the
+candidate threshold. Until a model is trained, the result reports `warming_up`
+or `training`, rather than treating missing model output as normal.
+
+The mobile result includes the reconstruction error and its timestamp-level
+residual attribution. Users can label a window as `normal`, `anomaly`,
+`spurious_attention`, or `correct_attention`; anomaly/spurious labels are
+excluded from future normal-only autoencoder training; only unlabeled
+quality-gated windows and reviewer-confirmed `normal` windows are retained. A
+training refresh is queued after enough additional eligible
+windows. For aggregate review, authenticated endpoints are available at
+`GET /api/patient-app/wearable/hilad/status?activity=sitting`,
+`GET /api/patient-app/wearable/hilad/clusters?activity=sitting`,
+`POST /api/patient-app/wearable/hilad/windows/:windowId/feedback`, and
+`POST /api/patient-app/wearable/hilad/retrain` (`{ "activity": "sitting" }`).
+Clustering combines normalized multivariate DTW and cosine distance between
+reconstruction-attribution sequences, embeds distance profiles with UMAP,
+selects K-means cluster count using an elbow heuristic, then propagates
+reviewer spuriousness labels over cluster similarity. This adapts HILAD to an
+unsupervised detector: reconstruction residual is not classifier CAM, and
+retraining uses normal-only reconstruction examples rather than the paper's
+classifier-specific CoRM masking. All outputs are research/monitoring signals,
+not diagnoses or treatment recommendations.
 
 For interface testing, the explicit dummy device may also publish stream
 batches using `provider: "other"` and `is_simulated: true`. These messages use

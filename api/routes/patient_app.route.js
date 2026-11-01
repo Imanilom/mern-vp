@@ -28,9 +28,13 @@ import {
   listPatientScenarioSessions,
   linkPatientAppToCaparUser,
   registerPatientAppAccount,
+  retrainPatientAppHiladModel,
   streamPatientAppWearableData,
   evaluatePatientAppHilRealtime,
+  getPatientAppHiladClusters,
+  getPatientAppHiladStatus,
   startPatientScenarioSession,
+  submitPatientAppHiladFeedback,
   getPatientScenarioSession,
   updatePatientAppProfile,
   updatePatientAppGamification,
@@ -130,6 +134,20 @@ router.post(
   verifyToken,
   hilRealtimeLimiter,
   evaluatePatientAppHilRealtime
+);
+router.get('/wearable/hilad/status', verifyToken, hilRealtimeLimiter, getPatientAppHiladStatus);
+router.get('/wearable/hilad/clusters', verifyToken, hilRealtimeLimiter, getPatientAppHiladClusters);
+router.post(
+  '/wearable/hilad/windows/:windowId/feedback',
+  verifyToken,
+  hilRealtimeLimiter,
+  submitPatientAppHiladFeedback
+);
+router.post(
+  '/wearable/hilad/retrain',
+  verifyToken,
+  hilRealtimeLimiter,
+  retrainPatientAppHiladModel
 );
 router.get('/wearable/samples', verifyToken, listPatientAppWearableSamples);
 router.get('/wearable/history', verifyToken, getPatientAppWearableHistory);

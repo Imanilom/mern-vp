@@ -108,6 +108,9 @@ export function buildPolarDataDocuments(
         hr: heartRate,
         rr: rrInterval,
         rrms: rmssd,
+        signal_quality: Number.isFinite(Number(reading.signal_quality))
+          ? Math.max(0, Math.min(1, Number(reading.signal_quality)))
+          : null,
         activity,
         device_id: envelope.device_id || 'UNKNOWN',
         isChecked: false,

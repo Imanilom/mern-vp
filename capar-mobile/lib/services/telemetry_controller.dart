@@ -33,6 +33,7 @@ class TelemetryController extends ChangeNotifier {
   int _idCounter = 0;
   bool _isSyncing = false;
   bool _isStreaming = false; // false sampai startStreaming() dipanggil dari pairing
+  Map<String, dynamic>? _latestRealtimeAnalysis;
 
   /// Auto-flush timer — kirim data setiap 10 detik meskipun buffer < 5
   Timer? _flushTimer;
@@ -43,6 +44,23 @@ class TelemetryController extends ChangeNotifier {
   List<PendingDataRecord> get pendingQueue => List.unmodifiable(_queue);
   int get pendingCount => _queue.where((r) => r.status == 'pending').length;
   bool get isStreaming => _isStreaming;
+  Map<String, dynamic>? get latestRealtimeAnalysis => _latestRealtimeAnalysis;
+
+  Future<bool> submitHiladFeedback({
+    required String windowId,
+    required String label,
+  }) async {
+    final success = await ApiService.submitHiladFeedback(
+      windowId: windowId,
+      label: label,
+    );
+    if (success) {
+      debugPrint(
+        '[TelemetryController] HILAD feedback "$label" saved for $windowId.',
+      );
+    }
+    return success;
+  }
 
   // ─── Streaming Control ───────────────────────────────────────────────────────
 
@@ -178,12 +196,18 @@ class TelemetryController extends ChangeNotifier {
               'signal_confidence': 1.0,
             };
           }).toList();
-          final success = await ApiService.sendSensorData(
+          final response = await ApiService.sendSensorData(
             deviceId: deviceId,
             activity: entry.key,
             readings: readings,
           );
+          final success = response?['success'] == true;
           if (success) {
+            final data = response?['data'];
+            final analysis = data is Map ? data['real_time_analysis'] : null;
+            if (analysis is Map) {
+              _latestRealtimeAnalysis = Map<String, dynamic>.from(analysis);
+            }
             _queue.removeWhere((record) => batch.contains(record));
             debugPrint(
               '[TelemetryController] ${readings.length} readings diterima API.',

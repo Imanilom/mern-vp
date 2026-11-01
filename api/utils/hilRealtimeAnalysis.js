@@ -99,7 +99,31 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
 
   const hrBaseline = comparisons.mean_hr.baseline_mean;
   const hrStd = comparisons.mean_hr.baseline_std;
+  const baselineAvailable = hrBaseline !== null;
+  const canAttribute = baselineAvailable && hrQualityAccepted;
   const hrThreshold = hrStd === null ? 10 : Math.max(10, hrStd * 2);
+  const attributionScale = hrStd !== null && hrStd > 0 ? hrStd : hrThreshold;
+  const rawAttributions = canAttribute
+    ? readings.map((reading) => Math.abs(
+      (reading.heart_rate_bpm - hrBaseline) / attributionScale
+    ))
+    : readings.map(() => null);
+  const attributionTotal = rawAttributions.reduce(
+    (sum, value) => sum + (value ?? 0),
+    0
+  );
+  const temporalAttributions = readings.map((reading, index) => ({
+    recorded_at: reading.recorded_at,
+    feature: 'heart_rate_bpm',
+    value: reading.heart_rate_bpm,
+    baseline_mean: hrBaseline,
+    z_score: rawAttributions[index] === null
+      ? null
+      : (reading.heart_rate_bpm - hrBaseline) / attributionScale,
+    importance: attributionTotal > 0
+      ? rawAttributions[index] / attributionTotal
+      : 0,
+  }));
   const hrElevated = meanHr !== null && hrBaseline !== null
     && meanHr > hrBaseline + hrThreshold;
   const previousHr = evaluation.previous_mean_hr;
@@ -109,7 +133,6 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
   const recoveryTrend = evaluation.previous_elevated === true
     && approachingBaseline;
 
-  const baselineAvailable = hrBaseline !== null;
   const qualityAccepted = hrQualityAccepted;
   const isCandidate = hrElevated
     || FEATURES.slice(1).some((feature) => comparisons[feature].candidate);
@@ -176,6 +199,12 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
       hr_threshold: hrThreshold,
     },
     comparisons,
+    explanation: {
+      available: canAttribute,
+      method: 'personal_baseline_deviation_proxy',
+      temporal_attributions: temporalAttributions,
+      note: 'Attribution statistik untuk membantu tinjauan; bukan CAM, kausalitas, atau diagnosis.',
+    },
     interpretation: {
       status,
       detail,

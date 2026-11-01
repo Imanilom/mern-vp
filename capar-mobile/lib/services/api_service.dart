@@ -177,12 +177,12 @@ class ApiService {
   }
 
   // Upload sensor data through the authenticated patient-app API.
-  static Future<bool> sendSensorData({
+  static Future<Map<String, dynamic>?> sendSensorData({
     required String deviceId,
     required String activity,
     required List<Map<String, dynamic>> readings,
   }) async {
-    if (readings.isEmpty) return false;
+    if (readings.isEmpty) return null;
 
     try {
       final headers = await _getHeaders();
@@ -202,14 +202,91 @@ class ApiService {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = json.decode(response.body);
-        return data['success'] == true;
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['success'] == true) {
+          return decoded;
+        }
       }
       debugPrint(
         '[ApiService] Wearable stream rejected (${response.statusCode}): ${response.body}',
       );
     } catch (e) {
       debugPrint('[ApiService] Send sensor data error: $e');
+    }
+    return null;
+  }
+
+  static Future<bool> submitHiladFeedback({
+    required String windowId,
+    required String label,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse(
+              '$baseUrl/patient-app/wearable/hilad/windows/$windowId/feedback',
+            ),
+            headers: await _getHeaders(),
+            body: json.encode({'label': label}),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = json.decode(response.body);
+        return decoded is Map<String, dynamic> && decoded['success'] == true;
+      }
+      debugPrint(
+        '[ApiService] HILAD feedback rejected (${response.statusCode}): ${response.body}',
+      );
+    } catch (e) {
+      debugPrint('[ApiService] HILAD feedback error: $e');
+    }
+    return false;
+  }
+
+  static Future<Map<String, dynamic>?> fetchHiladClusters({
+    required String activity,
+  }) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse(
+              '$baseUrl/patient-app/wearable/hilad/clusters?activity=${Uri.encodeQueryComponent(activity)}',
+            ),
+            headers: await _getHeaders(),
+          )
+          .timeout(const Duration(seconds: 20));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map<String, dynamic> ? decoded['data'] : null;
+        if (data is Map<String, dynamic>) return data;
+      }
+      debugPrint(
+        '[ApiService] HILAD clusters rejected (${response.statusCode}): ${response.body}',
+      );
+    } catch (e) {
+      debugPrint('[ApiService] Fetch HILAD clusters error: $e');
+    }
+    return null;
+  }
+
+  static Future<bool> requestHiladRetraining({required String activity}) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/patient-app/wearable/hilad/retrain'),
+            headers: await _getHeaders(),
+            body: json.encode({'activity': activity}),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = json.decode(response.body);
+        return decoded is Map<String, dynamic> && decoded['success'] == true;
+      }
+      debugPrint(
+        '[ApiService] HILAD retraining rejected (${response.statusCode}): ${response.body}',
+      );
+    } catch (e) {
+      debugPrint('[ApiService] HILAD retraining request error: $e');
     }
     return false;
   }

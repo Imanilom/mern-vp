@@ -36,6 +36,16 @@ test('HIL synchronous evaluator calculates HR features and uses provisional base
   assert.equal(result.baseline.level, 'provisional');
   assert.equal(result.interpretation.status, 'normal');
   assert.equal(result.interpretation.provisional_baseline, true);
+  assert.equal(result.explanation.method, 'personal_baseline_deviation_proxy');
+  assert.equal(result.explanation.temporal_attributions.length, 6);
+  assert.ok(
+    Math.abs(
+      result.explanation.temporal_attributions.reduce(
+        (sum, point) => sum + point.importance,
+        0
+      ) - 1
+    ) < 1e-10
+  );
 });
 
 test('HIL synchronous evaluator labels high HR and subsequent recovery trends', () => {
@@ -78,6 +88,10 @@ test('HIL synchronous evaluator withholds interpretation when baseline or signal
     readings: readings(),
   }, []);
   assert.equal(noBaseline.interpretation.status, 'not_assessable');
+  assert.equal(
+    noBaseline.explanation.temporal_attributions[0].z_score,
+    null
+  );
 
   const poorQuality = analyzeHilRealtimeEvaluation({
     activity: 'sitting',
@@ -87,4 +101,9 @@ test('HIL synchronous evaluator withholds interpretation when baseline or signal
     })),
   }, [provisionalBaseline]);
   assert.equal(poorQuality.interpretation.status, 'not_assessable');
+  assert.equal(poorQuality.explanation.available, false);
+  assert.equal(
+    poorQuality.explanation.temporal_attributions[0].z_score,
+    null
+  );
 });

@@ -121,6 +121,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // ── Live Stream Chart ──────────────────────────────────────────
               const RealtimeChartWidget(),
               const SizedBox(height: 16),
+              _buildRealtimeAnalysisCard(
+                ref.watch(telemetryControllerProvider).latestRealtimeAnalysis,
+              ),
+              const SizedBox(height: 16),
 
               // ── State Switcher Pills ────────────────────────────────────────
               _buildStateSwitcher(),
@@ -150,6 +154,347 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildRealtimeAnalysisCard(Map<String, dynamic>? analysis) {
+    if (analysis == null) return const SizedBox.shrink();
+
+    final interpretation = analysis['interpretation'] is Map
+        ? Map<String, dynamic>.from(analysis['interpretation'] as Map)
+        : <String, dynamic>{};
+    final metrics = analysis['metrics'] is Map
+        ? Map<String, dynamic>.from(analysis['metrics'] as Map)
+        : <String, dynamic>{};
+    final status = interpretation['status']?.toString() ?? 'not_assessable';
+    final (label, detail, color, icon) = switch (status) {
+      'candidate_deviation' => (
+        'Kandidat perubahan',
+        'Ada perbedaan dari baseline pribadi. Tinjau konteksnya; ini bukan diagnosis.',
+        AppColors.amber,
+        Icons.visibility_rounded,
+      ),
+      'recovery_trend' || 'recovered' => (
+        'Tren pemulihan',
+        'Metrik bergerak mendekati baseline pribadi.',
+        AppColors.teal,
+        Icons.trending_down_rounded,
+      ),
+      'normal' => (
+        'Dalam rentang baseline',
+        'Belum terlihat deviasi pada metrik yang dapat dibandingkan.',
+        AppColors.green,
+        Icons.check_circle_outline_rounded,
+      ),
+      _ => (
+        'Belum dapat dievaluasi',
+        'Jumlah/kualitas sinyal atau baseline belum cukup untuk interpretasi.',
+        AppColors.gray,
+        Icons.info_outline_rounded,
+      ),
+    };
+    final meanHr = metrics['mean_hr'];
+    final baseline = analysis['baseline'] is Map
+        ? Map<String, dynamic>.from(analysis['baseline'] as Map)
+        : <String, dynamic>{};
+    final baselineLevel = baseline['level']?.toString();
+    final lstm = analysis['lstm_autoencoder'] is Map
+        ? Map<String, dynamic>.from(analysis['lstm_autoencoder'] as Map)
+        : <String, dynamic>{};
+    final lstmStatus = lstm['status']?.toString() ?? 'warming_up';
+    final windowId = lstm['window_id']?.toString();
+    final activity = lstm['activity']?.toString();
+    final attributions = lstm['temporal_attributions'] is List
+        ? (lstm['temporal_attributions'] as List).whereType<num>().toList()
+        : <num>[];
+    var peakAttributionSecond = -1;
+    for (var index = 0; index < attributions.length; index += 1) {
+      if (peakAttributionSecond < 0 ||
+          attributions[index] > attributions[peakAttributionSecond]) {
+        peakAttributionSecond = index;
+      }
+    }
+    final reconstructionScore = lstm['reconstruction_score'];
+    final anomalyThreshold = lstm['anomaly_threshold'];
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 21),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Evaluasi rekaman Polar · $label',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  detail,
+                  style: const TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+                if (meanHr is num) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Rata-rata HR ${meanHr.toStringAsFixed(1)} bpm'
+                    '${baselineLevel == null ? '' : ' · baseline $baselineLevel'}',
+                    style: const TextStyle(color: AppColors.gray, fontSize: 10),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                Text(
+                  'LSTM autoencoder · ${_hiladStatusLabel(lstmStatus, lstm)}',
+                  style: const TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (lstmStatus == 'evaluated') ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    'Reconstruction error ${reconstructionScore is num ? reconstructionScore.toStringAsFixed(4) : '-'}'
+                    ' · ambang ${anomalyThreshold is num ? anomalyThreshold.toStringAsFixed(4) : '-'}'
+                    '${peakAttributionSecond < 0 ? '' : ' · titik paling berpengaruh ~detik $peakAttributionSecond'}',
+                    style: const TextStyle(color: AppColors.gray, fontSize: 10),
+                  ),
+                  if (windowId != null) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _hiladFeedbackButton(windowId, 'normal', 'Normal'),
+                        _hiladFeedbackButton(windowId, 'anomaly', 'Anomali'),
+                        _hiladFeedbackButton(
+                          windowId,
+                          'spurious_attention',
+                          'Perhatian keliru',
+                        ),
+                        _hiladFeedbackButton(
+                          windowId,
+                          'correct_attention',
+                          'Perhatian sesuai',
+                        ),
+                      ],
+                    ),
+                  ],
+                ] else ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    lstm['message']?.toString() ??
+                        'Model belum siap memberi skor.',
+                    style: const TextStyle(color: AppColors.gray, fontSize: 10),
+                  ),
+                ],
+                if (activity != null)
+                  TextButton(
+                    onPressed: () => _showHiladClusters(activity),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 30),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Tinjau klaster pola dan atribusi'),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _hiladStatusLabel(String status, Map<String, dynamic> result) {
+    switch (status) {
+      case 'evaluated':
+        return result['is_anomaly_candidate'] == true
+            ? 'perlu tinjauan manusia'
+            : 'sesuai pola latih';
+      case 'training':
+        return 'pelatihan awal berjalan';
+      case 'consent_required':
+        return 'menunggu persetujuan AI';
+      case 'failed':
+        return 'pelatihan gagal; perlu pemeriksaan';
+      default:
+        return 'mengumpulkan window 1 menit';
+    }
+  }
+
+  Widget _hiladFeedbackButton(String windowId, String label, String title) {
+    return OutlinedButton(
+      onPressed: () async {
+        final saved = await ref
+            .read(telemetryControllerProvider)
+            .submitHiladFeedback(windowId: windowId, label: label);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              saved ? 'Umpan balik tersimpan.' : 'Umpan balik gagal disimpan.',
+            ),
+          ),
+        );
+      },
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: const Size(0, 30),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(title, style: const TextStyle(fontSize: 9)),
+    );
+  }
+
+  Future<void> _showHiladClusters(String activity) async {
+    final result = await ApiService.fetchHiladClusters(activity: activity);
+    if (!mounted) return;
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Klaster HILAD belum dapat dimuat.')),
+      );
+      return;
+    }
+    final clusters = result['clusters'] is List
+        ? (result['clusters'] as List)
+              .whereType<Map>()
+              .map((cluster) => Map<String, dynamic>.from(cluster))
+              .toList()
+        : <Map<String, dynamic>>[];
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Klaster pola HILAD'),
+        content: SizedBox(
+          width: 420,
+          child: clusters.isEmpty
+              ? const Text('Belum ada window model untuk dikelompokkan.')
+              : ListView(
+                  shrinkWrap: true,
+                  children: clusters.map((cluster) {
+                    final score = cluster['propagated_spuriousness_score'];
+                    final windows = cluster['windows'] is List
+                        ? (cluster['windows'] as List)
+                              .whereType<Map>()
+                              .map((window) => Map<String, dynamic>.from(window))
+                              .toList()
+                        : <Map<String, dynamic>>[];
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${cluster['cluster_id']} · ${cluster['count']} window',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              score is num
+                                  ? 'Skor spuriousness terpropagasi ${score.toStringAsFixed(2)}'
+                                  : 'Belum ada label reviewer untuk propagasi',
+                            ),
+                            Text(
+                              'Label: ${cluster['reviewer_label']?.toString() ?? 'belum ditinjau'}',
+                            ),
+                            Wrap(
+                              spacing: 6,
+                              children: [
+                                TextButton(
+                                  onPressed: windows.isEmpty
+                                      ? null
+                                      : () => _annotateHiladCluster(
+                                            windows,
+                                            'spurious_attention',
+                                          ),
+                                  child: const Text('Perhatian keliru'),
+                                ),
+                                TextButton(
+                                  onPressed: windows.isEmpty
+                                      ? null
+                                      : () => _annotateHiladCluster(
+                                            windows,
+                                            'correct_attention',
+                                          ),
+                                  child: const Text('Perhatian sesuai'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              final queued = await ApiService.requestHiladRetraining(
+                activity: activity,
+              );
+              if (!mounted || !dialogContext.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    queued
+                        ? 'Pelatihan ulang HILAD masuk antrean.'
+                        : 'Pelatihan ulang gagal; periksa jumlah window.',
+                  ),
+                ),
+              );
+            },
+            child: const Text('Latih ulang'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _annotateHiladCluster(
+    List<Map<String, dynamic>> windows,
+    String label,
+  ) async {
+    var saved = 0;
+    for (final window in windows) {
+      final windowId = window['id']?.toString();
+      if (windowId == null) continue;
+      final success = await ref
+          .read(telemetryControllerProvider)
+          .submitHiladFeedback(windowId: windowId, label: label);
+      if (success) saved += 1;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Umpan balik tersimpan untuk $saved window.')),
     );
   }
 

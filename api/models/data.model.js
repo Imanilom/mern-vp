@@ -33,6 +33,12 @@ const logSchema = new mongoose.Schema({
   rrms: {
     type: Number,
   },
+  signal_quality: {
+    type: Number,
+    min: 0,
+    max: 1,
+    default: null,
+  },
   acc_x: {
     type: Number,
     default: 0,

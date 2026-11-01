@@ -67,6 +67,13 @@ import { withWearableBaselineComparison } from '../utils/patientWearableHistory.
 import { assessRRQuality, extractRRFeatures } from '../utils/rrBaselinePipeline.js';
 import { analyzeHilRealtimeEvaluation } from '../utils/hilRealtimeAnalysis.js';
 import {
+  analyzePolarRecordingWithHilad,
+  annotateHiladWindow,
+  getHiladClusters,
+  hiladModelStatus,
+  retrainHiladModel,
+} from '../utils/hiladPipeline.js';
+import {
   validateCheckIn,
   validateCheckInQuery,
   validateWearableHistoryQuery,
@@ -98,6 +105,16 @@ import {
 } from '../utils/scenarioEngine.js';
 import { calculateScenarioQuestionnaireScore } from '../utils/scenarioQuestionnaire.js';
 import { parsePatientCaparHistoryQuery } from '../utils/patientCaparHistory.js';
+
+const REALTIME_BASELINE_ACTIVITY_ALIASES = {
+  rest: ['rest', 'Rest', 'Istirahat', 'Light'],
+  sitting: ['sitting', 'Sitting', 'sit', 'Duduk'],
+  standing: ['standing', 'Standing', 'stand', 'Berdiri'],
+  walking: ['walking', 'Walking', 'walk', 'Berjalan'],
+  running: ['running', 'Running', 'Berlari', 'Intense'],
+  exercise: ['exercise', 'Exercise', 'Olahraga Berat', 'Moderate', 'Intense'],
+  sleep: ['sleep', 'Sleep', 'Tidur', 'Berbaring', 'Rest'],
+};
 
 async function getAccount(req) {
   const accountId = req.user?.id;
@@ -153,6 +170,22 @@ async function getAccount(req) {
 
 function accountScopeFilter(accountScopes) {
   return { $or: accountScopes };
+}
+
+async function evaluatePolarRecordingBatch(dataOwnerId, stream) {
+  const baselineActivities = REALTIME_BASELINE_ACTIVITY_ALIASES[stream.activity] || [];
+  const baselines = baselineActivities.length
+    ? await Baseline.find({
+      user_id: dataOwnerId,
+      activity: { $in: baselineActivities },
+    }).lean()
+    : [];
+
+  return analyzeHilRealtimeEvaluation({
+    activity: stream.activity,
+    device_id: stream.device_id,
+    readings: stream.readings,
+  }, baselines);
 }
 
 function requireValidScenarioSessionId(sessionId) {
@@ -3299,7 +3332,7 @@ export async function createPatientAppWearableSample(req, res) {
 }
 
 export async function streamPatientAppWearableData(req, res) {
-  const { dataOwnerId, dataOwnerType } = await getAccount(req);
+  const { dataOwnerId, dataOwnerType, accountScopes } = await getAccount(req);
   const stream = validateWearableStream(req.body);
   const streamActivity = {
     rest: 'Istirahat',
@@ -3307,9 +3340,11 @@ export async function streamPatientAppWearableData(req, res) {
     standing: 'Berdiri',
     walking: 'Berjalan',
     exercise: 'Olahraga Berat',
+    running: 'Berlari',
     sleep: 'Tidur',
     other: 'Lainnya',
   }[stream.activity] ?? 'Lainnya';
+  let realTimeAnalysis = null;
   const transportPayload = {
     user_id: dataOwnerId.toString(),
     account_type: dataOwnerType,
@@ -3369,6 +3404,38 @@ export async function streamPatientAppWearableData(req, res) {
       console.info(
         `[PatientAppWearable] MongoDB PolarData confirmed ${persistedCount}/${documents.length} readings for account ${dataOwnerId}; ${writeResult.upsertedCount} inserted, ${writeResult.matchedCount} already existed.`
       );
+      try {
+        realTimeAnalysis = await evaluatePolarRecordingBatch(dataOwnerId, stream);
+      } catch (analysisError) {
+        console.error(
+          `[PatientAppWearable] Real-time evaluation failed for account ${dataOwnerId}: ${analysisError.message}`
+        );
+      }
+      try {
+        const hilad = await analyzePolarRecordingWithHilad({
+          accountId: dataOwnerId,
+          accountScopes,
+          activity: stream.activity,
+          deviceId: stream.device_id,
+        });
+        realTimeAnalysis ||= {
+          source: 'polar_stream_evaluation',
+          evaluated_at: new Date(),
+        };
+        realTimeAnalysis.lstm_autoencoder = hilad;
+      } catch (hiladError) {
+        console.error(
+          `[PatientAppWearable] HILAD evaluation failed for account ${dataOwnerId}: ${hiladError.message}`
+        );
+        realTimeAnalysis ||= {
+          source: 'polar_stream_evaluation',
+          evaluated_at: new Date(),
+        };
+        realTimeAnalysis.lstm_autoencoder = {
+          status: 'unavailable',
+          message: 'Evaluasi LSTM-AE sementara tidak tersedia.',
+        };
+      }
     }
 
     const result = await publishLogTransport(transportPayload);
@@ -3385,6 +3452,7 @@ export async function streamPatientAppWearableData(req, res) {
             persisted_count: persistedCount,
             reading_count: stream.readings.length,
             device_id: stream.device_id,
+            real_time_analysis: realTimeAnalysis,
             message,
           },
         });
@@ -3398,6 +3466,7 @@ export async function streamPatientAppWearableData(req, res) {
           published: false,
           persisted_count: persistedCount,
           reading_count: stream.readings.length,
+          real_time_analysis: realTimeAnalysis,
         },
       });
     }
@@ -3408,6 +3477,7 @@ export async function streamPatientAppWearableData(req, res) {
         persisted_count: persistedCount,
         reading_count: result.envelope.readings.length,
         device_id: stream.device_id,
+        real_time_analysis: realTimeAnalysis,
       },
     });
   } catch (error) {
@@ -3436,6 +3506,79 @@ export async function evaluatePatientAppHilRealtime(req, res) {
   }).lean();
   const analysis = analyzeHilRealtimeEvaluation(evaluation, baselines);
   res.json({ success: true, data: analysis });
+}
+
+export async function getPatientAppHiladClusters(req, res) {
+  const { dataOwnerId, accountScopes } = await getAccount(req);
+  const activity = req.query.activity;
+  const profile = await PatientAppProfile.findOne({ $or: accountScopes })
+    .select('ai_processing_consent').lean();
+  if (profile?.ai_processing_consent?.granted !== true) {
+    return res.status(403).json({
+      success: false,
+      message: 'Persetujuan pemrosesan AI diperlukan untuk melihat analisis HILAD.',
+    });
+  }
+  const data = await getHiladClusters({ accountId: dataOwnerId, activity });
+  return res.json({ success: true, data });
+}
+
+export async function getPatientAppHiladStatus(req, res) {
+  const { dataOwnerId, accountScopes } = await getAccount(req);
+  const profile = await PatientAppProfile.findOne({ $or: accountScopes })
+    .select('ai_processing_consent').lean();
+  if (profile?.ai_processing_consent?.granted !== true) {
+    return res.status(403).json({
+      success: false,
+      message: 'Persetujuan pemrosesan AI diperlukan untuk melihat status model.',
+    });
+  }
+  const data = await hiladModelStatus({
+    accountId: dataOwnerId,
+    activity: req.query.activity,
+  });
+  return res.json({ success: true, data });
+}
+
+export async function submitPatientAppHiladFeedback(req, res) {
+  const { dataOwnerId, accountId, accountScopes } = await getAccount(req);
+  const profile = await PatientAppProfile.findOne({ $or: accountScopes })
+    .select('ai_processing_consent').lean();
+  if (profile?.ai_processing_consent?.granted !== true) {
+    return res.status(403).json({
+      success: false,
+      message: 'Persetujuan pemrosesan AI diperlukan untuk mengirim umpan balik HILAD.',
+    });
+  }
+  const { label, note = '' } = req.body || {};
+  if (typeof note !== 'string' || note.length > 300) {
+    throw errorHandler(400, 'note harus berupa teks maksimal 300 karakter.');
+  }
+  const data = await annotateHiladWindow({
+    accountId: dataOwnerId,
+    windowId: req.params.windowId,
+    reviewerId: accountId,
+    label,
+    note,
+  });
+  return res.json({ success: true, data: { window_id: data._id, feedback_label: data.feedback_label } });
+}
+
+export async function retrainPatientAppHiladModel(req, res) {
+  const { dataOwnerId, accountScopes } = await getAccount(req);
+  const profile = await PatientAppProfile.findOne({ $or: accountScopes })
+    .select('ai_processing_consent').lean();
+  if (profile?.ai_processing_consent?.granted !== true) {
+    return res.status(403).json({
+      success: false,
+      message: 'Persetujuan pemrosesan AI diperlukan untuk melatih model.',
+    });
+  }
+  const data = await retrainHiladModel({
+    accountId: dataOwnerId,
+    activity: req.body?.activity,
+  });
+  return res.status(202).json({ success: true, data });
 }
 
 function buildPatientEpisodeHistory({ episodes, episodeMetadata, anomalyEvents }) {
