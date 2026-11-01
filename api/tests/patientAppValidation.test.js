@@ -381,6 +381,24 @@ test('guided baseline EMA is stored as bounded structured patient input', () => 
   assert.equal(event.value.feeling, 'same');
   assert.equal(event.value.samples.length, 4);
   assert.equal(event.value.samples[2].minimum_hr, null);
+  const singleActivityEvent = validatePatientEvent({
+    event_type: 'ema',
+    occurred_at: '2026-10-08T08:15:00.000Z',
+    value: {
+      ...event.value,
+      samples: event.value.samples.slice(0, 1),
+    },
+  });
+  assert.equal(singleActivityEvent.value.samples.length, 1);
+  const threeActivityEvent = validatePatientEvent({
+    event_type: 'ema',
+    occurred_at: '2026-10-08T08:15:00.000Z',
+    value: {
+      ...event.value,
+      samples: event.value.samples.slice(0, 3),
+    },
+  });
+  assert.equal(threeActivityEvent.value.samples.length, 3);
   assert.throws(
     () => validatePatientEvent({
       event_type: 'ema',

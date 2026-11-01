@@ -371,8 +371,8 @@ function validateGuidedSessionEma(value) {
     throw errorHandler(400, 'Jawaban perasaan EMA tidak valid.');
   }
   const note = value.note === undefined ? '' : optionalString(value.note, 'value.note', 120);
-  if (!Array.isArray(value.samples) || value.samples.length !== 4) {
-    throw errorHandler(400, 'EMA sesi baseline harus mencatat empat konteks aktivitas.');
+  if (!Array.isArray(value.samples) || value.samples.length < 1 || value.samples.length > 4) {
+    throw errorHandler(400, 'EMA sesi baseline harus mencatat 1 sampai 4 konteks aktivitas.');
   }
   const activities = new Set(['sitting', 'standing', 'walking']);
   const samples = value.samples.map((sample, index) => {
