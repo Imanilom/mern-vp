@@ -47,6 +47,16 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('hil-live-simulation-banner')), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('hil-live-recommendation')),
+      300,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.textContaining('Kurangi aktivitas'), findsOneWidget);
+    expect(find.text('Kandidat deviasi HR terdeteksi.'), findsOneWidget);
     expect(
       find.byKey(const Key('hil-live-zero-shot-analyze')),
       findsNothing,

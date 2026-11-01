@@ -38,6 +38,11 @@ class HilLiveAnalysis {
   ) =>
       motionIsStable && meanHr > baselineMeanHr + threshold;
 
+  static const deviationRecommendation =
+      'Kurangi aktivitas dan beristirahatlah sejenak, lalu ukur ulang. '
+      'Jika muncul gejala berat seperti nyeri dada, sesak berat, atau pingsan, '
+      'segera cari bantuan medis. Ini rekomendasi umum, bukan diagnosis.';
+
   static String classifyObservation({
     required double meanHr,
     required double? baselineMeanHr,
@@ -259,6 +264,7 @@ class _HumanInTheLoopLiveMonitorScreenState
   String _latestStatus =
       'Mulai pemantauan untuk mengevaluasi HR setiap 30 detik.';
   String? _latestDetail;
+  String? _latestRecommendation;
   String? _recoveryLabel;
   double? _latestMeanHr;
   double? _latestSlope;
@@ -275,6 +281,7 @@ class _HumanInTheLoopLiveMonitorScreenState
   bool _isPromptVisible = false;
   bool _promptedForCurrentEpisode = false;
   bool _hadElevatedHr = false;
+  bool _deviationRecommendationRecordedForCurrentEpisode = false;
   bool _isSavingClarification = false;
   bool _isGeneratingInsight = false;
   int _backendEvaluationGeneration = 0;
@@ -388,6 +395,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     _hrObservationPoints.clear();
     _zeroShotInsight = null;
     _zeroShotInsightError = null;
+    _latestRecommendation = null;
   }
 
   void _recordHrObservation(HilLiveWindow window, double meanHr) {
@@ -582,6 +590,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     _highHrStableWindows = 0;
     _promptedForCurrentEpisode = false;
     _hadElevatedHr = false;
+    _deviationRecommendationRecordedForCurrentEpisode = false;
     _previousWindowMeanHr = null;
     _recoveryLabel = null;
     _isMonitoring = true;
@@ -642,6 +651,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     _highHrStableWindows = 0;
     _promptedForCurrentEpisode = false;
     _hadElevatedHr = false;
+    _deviationRecommendationRecordedForCurrentEpisode = false;
     _previousWindowMeanHr = null;
     _recoveryLabel = null;
     _collectDfaReadings();
@@ -749,22 +759,19 @@ class _HumanInTheLoopLiveMonitorScreenState
         : null;
     final previousMeanHr = _previousWindowMeanHr;
     final previousElevated = _hadElevatedHr;
+    final isNewDeviation = elevated && !_hadElevatedHr;
     final approachingBaseline = _previousWindowMeanHr != null &&
         meanHr < _previousWindowMeanHr! &&
         (meanHr - baselineHr).abs() <
             (_previousWindowMeanHr! - baselineHr).abs();
     if (elevated) _hadElevatedHr = true;
 
-    final status = _hadElevatedHr && approachingBaseline
-        ? meanHr <= baselineHr + _hrElevationThreshold
-            ? 'HR kembali ke rentang baseline personal.'
-            : 'HR menurun menuju baseline personal.'
-        : elevated
-            ? window.motionIsStable
-                ? (window.hrSlopeBpmPerMinute ?? 0) > 0
-                    ? 'HR naik saat akselerasi relatif stabil.'
-                    : 'HR tetap tinggi saat akselerasi relatif stabil.'
-                : 'HR berada di atas rentang personal.'
+    final status = elevated
+        ? 'Kandidat deviasi HR terdeteksi.'
+        : _hadElevatedHr && approachingBaseline
+            ? meanHr <= baselineHr + _hrElevationThreshold
+                ? 'HR kembali ke rentang baseline personal.'
+                : 'HR menurun menuju baseline personal.'
             : 'HR berada di sekitar rentang baseline personal.';
     final detail = [
       'Rerata 30 dtk ${meanHr.toStringAsFixed(1)} bpm; baseline ${baselineHr.toStringAsFixed(1)} bpm.',
@@ -775,7 +782,7 @@ class _HumanInTheLoopLiveMonitorScreenState
       if (window.accelerationVariability != null)
         'Variasi magnitudo akselerasi ${window.accelerationVariability!.toStringAsFixed(3)} g.',
       if (elevated && window.motionIsStable)
-        'Pola ini meminta klarifikasi aktivitas; bukan bukti penyebab atau diagnosis.',
+        'Deviasi ini terdeteksi saat akselerasi relatif stabil; hal ini bukan bukti penyebab atau diagnosis.',
       if (!_hasMatureBaseline)
         'Baseline belum mature; perbandingan ini bersifat sementara.',
       if (_isSimulation) 'SIMULASI: data sintetis, bukan rekaman sensor.',
@@ -788,8 +795,17 @@ class _HumanInTheLoopLiveMonitorScreenState
       _latestSlope = window.hrSlopeBpmPerMinute;
       _latestStatus = status;
       _latestDetail = detail;
-      _recoveryLabel = _hadElevatedHr && approachingBaseline ? status : null;
+      if (elevated) {
+        _latestRecommendation = HilLiveAnalysis.deviationRecommendation;
+      }
+      _recoveryLabel =
+          !elevated && _hadElevatedHr && approachingBaseline ? status : null;
     });
+
+    if (isNewDeviation && !_isSimulation) {
+      _deviationRecommendationRecordedForCurrentEpisode = true;
+      unawaited(_recordDeviationRecommendation(window, baselineHr));
+    }
 
     if (HilLiveAnalysis.isElevatedAtStableMotion(
       meanHr,
@@ -813,7 +829,12 @@ class _HumanInTheLoopLiveMonitorScreenState
       _hadElevatedHr = false;
       _highHrStableWindows = 0;
       _promptedForCurrentEpisode = false;
+      _deviationRecommendationRecordedForCurrentEpisode = false;
+      _latestRecommendation = null;
       unawaited(_recordRecoveryEvent(window, baselineHr));
+    } else if (_isSimulation && !elevated && approachingBaseline) {
+      _hadElevatedHr = false;
+      _latestRecommendation = null;
     }
     if (submitBackend && !_isSimulation) {
       unawaited(_submitHilRealtime(
@@ -917,7 +938,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     final dfaZ = dfaComparison['z_score'];
     final label = switch (status) {
       'normal' => 'Backend: dalam rentang baseline',
-      'candidate_deviation' => 'Backend: kandidat deviasi',
+      'candidate_deviation' => 'Backend: kandidat deviasi HR terdeteksi',
       'recovery_trend' => 'Backend: tren pemulihan menuju baseline',
       'recovered' => 'Backend: kembali ke rentang baseline',
       _ => 'Backend: belum dapat dinilai',
@@ -929,6 +950,8 @@ class _HumanInTheLoopLiveMonitorScreenState
         : dfaRrIntervals != null
             ? ' DFA α1 belum tersedia; dibutuhkan minimal 64 RR valid berkualitas.'
             : '';
+    final isNewBackendDeviation =
+        status == 'candidate_deviation' && !_hadElevatedHr;
 
     setState(() {
       _latestStatus = label;
@@ -949,8 +972,14 @@ class _HumanInTheLoopLiveMonitorScreenState
         _latestDfaComparison =
             'Batch backend selesai; data DFA α1 belum cukup atau kualitasnya tidak memenuhi syarat.';
       }
-      if (status == 'candidate_deviation') _hadElevatedHr = true;
-      if (status == 'recovered') _hadElevatedHr = false;
+      if (status == 'candidate_deviation') {
+        _hadElevatedHr = true;
+        _latestRecommendation = HilLiveAnalysis.deviationRecommendation;
+      }
+      if (status == 'recovered') {
+        _hadElevatedHr = false;
+        _latestRecommendation = null;
+      }
       _recoveryLabel = interpretation['is_recovery'] == true ? label : null;
       if (_hrObservationPoints.isNotEmpty && meanHr is num) {
         final previousPoint = _hrObservationPoints.last;
@@ -968,6 +997,25 @@ class _HumanInTheLoopLiveMonitorScreenState
         );
       }
     });
+    final baselineMeanHr = baseline['mean_hr'];
+    if (isNewBackendDeviation &&
+        !_deviationRecommendationRecordedForCurrentEpisode &&
+        meanHr is num &&
+        baselineMeanHr is num) {
+      _deviationRecommendationRecordedForCurrentEpisode = true;
+      unawaited(_recordDeviationRecommendation(
+        HilLiveWindow(
+          meanHr: meanHr.toDouble(),
+          hrSlopeBpmPerMinute: slope is num ? slope.toDouble() : null,
+          accelerationVariability: null,
+          sampleCount: readings.length,
+        ),
+        baselineMeanHr.toDouble(),
+      ));
+    }
+    if (status == 'recovered') {
+      _deviationRecommendationRecordedForCurrentEpisode = false;
+    }
     if (dfaAlpha is num && dfaRrIntervals != null) {
       unawaited(_recordDfaEvent(
         dfaAlpha.toDouble(),
@@ -1064,6 +1112,24 @@ class _HumanInTheLoopLiveMonitorScreenState
         'base': baselineHr,
         'slope': window.hrSlopeBpmPerMinute,
         'label': _recoveryLabel,
+      },
+    );
+  }
+
+  Future<void> _recordDeviationRecommendation(
+    HilLiveWindow window,
+    double baselineHr,
+  ) async {
+    await _saveHilEvent(
+      eventName: 'deviation_recommendation',
+      details:
+          'Kandidat deviasi HR; rekomendasi: kurangi aktivitas, istirahat sejenak, lalu ukur ulang. Cari bantuan medis untuk gejala berat.',
+      value: {
+        'mode': _testMode,
+        'ctx': _activity,
+        'hr': window.meanHr,
+        'base': baselineHr,
+        'threshold': _hrElevationThreshold,
       },
     );
   }
@@ -1322,6 +1388,14 @@ class _HumanInTheLoopLiveMonitorScreenState
           ),
           const SizedBox(height: 8),
           _infoCard(
+            key: const Key('hil-live-recommendation'),
+            icon: Icons.lightbulb_outline,
+            title: 'Rekomendasi tindakan',
+            detail: _latestRecommendation ??
+                'Belum ada kandidat deviasi. Rekomendasi akan muncul otomatis saat HR melewati ambang observasi baseline.',
+          ),
+          const SizedBox(height: 8),
+          _infoCard(
             key: const Key('hil-live-dfa-result'),
             icon: Icons.multiline_chart,
             title: 'DFA α1 · batch 5 menit',
@@ -1336,7 +1410,7 @@ class _HumanInTheLoopLiveMonitorScreenState
             ),
           const SizedBox(height: 12),
           Text(
-            'Sinyal HR yang tinggi saat akselerasi stabil hanya memicu pertanyaan kepada peserta. Sistem tidak menyatakan aktivitas berat sebagai penyebab; jawaban dan pemulihan HR disimpan sebagai konteks pengamatan.',
+            'Kandidat deviasi langsung menampilkan rekomendasi umum dan dicatat sebagai event HIL. Klarifikasi aktivitas tetap tersedia untuk konteks skenario C. Hasil adalah observasi, bukan diagnosis.',
             style: AppTheme.font(
               size: 11,
               color: AppTheme.textSecondary,
