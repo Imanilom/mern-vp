@@ -9,6 +9,7 @@ import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/hil_time.dart';
 import '../pedagogy/history_trend_chart.dart';
+import '../profile/wearable_pairing_screen.dart';
 
 class HilRecordedScenarioAnalysis {
   static double threshold(double? baselineStandardDeviation) =>
@@ -30,6 +31,32 @@ class HilRecordedScenarioAnalysis {
       qComplete != null &&
       qComplete >= 0.6 &&
       heartRate > baselineMean + thresholdBpm;
+
+  static Map<String, dynamic>? latestDeviationSample({
+    required List<Map<String, dynamic>> samples,
+    required double? baselineMean,
+    required double thresholdBpm,
+  }) {
+    for (final sample in samples.reversed) {
+      final quality = sample['data_quality'];
+      final dataQuality =
+          quality is Map ? Map<String, dynamic>.from(quality) : const {};
+      final qSignal = dataQuality['q_signal'];
+      final qComplete = dataQuality['q_complete'];
+      final heartRate = sample['heart_rate_bpm'];
+      if (isElevatedCandidate(
+        heartRate: heartRate is num ? heartRate.toDouble() : null,
+        baselineMean: baselineMean,
+        thresholdBpm: thresholdBpm,
+        qSignal: qSignal is num ? qSignal.toDouble() : null,
+        qComplete: qComplete is num ? qComplete.toDouble() : null,
+        qualityAccepted: dataQuality['status'] == 'accepted',
+      )) {
+        return sample;
+      }
+    }
+    return null;
+  }
 }
 
 class HilRecordedScenarioScreen extends StatefulWidget {
@@ -58,12 +85,16 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
 
   late final String _runId =
       'hil-${widget.scenario}-${DateTime.now().toUtc().microsecondsSinceEpoch}';
-  late String _activity = _activities.any((item) => item.$1 == widget.initialActivity)
-      ? widget.initialActivity
-      : 'sitting';
+  late String _activity =
+      _activities.any((item) => item.$1 == widget.initialActivity)
+          ? widget.initialActivity
+          : 'sitting';
   final TextEditingController _clarificationController =
       TextEditingController();
   final List<Map<String, dynamic>> _logs = [];
+  final Set<String> _loadedSampleIds = {};
+  final Set<String> _autoAttemptedDeviationSampleIds = {};
+  final Set<String> _handledDeviationSampleIds = {};
   List<Map<String, dynamic>> _samples = [];
   String? _selectedSampleId;
   String? _error;
@@ -71,17 +102,35 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   String? _zeroShotExplanation;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isRefreshingSamples = false;
+  bool _isStartingLiveMonitoring = false;
+  bool _isLiveMonitoring = false;
+  bool _isStoppingLiveMonitoring = false;
+  bool _ownsStream = false;
   bool _clarificationRequested = false;
   bool _isGeneratingExplanation = false;
+  Timer? _refreshTimer;
+  late final AppState _appState;
 
   @override
   void initState() {
     super.initState();
+    _appState = context.read<AppState>();
     unawaited(_startRun());
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
+    if (_isLiveMonitoring && !_isStoppingLiveMonitoring) {
+      unawaited(_saveLog(
+        'live_recording_stopped',
+        explanation: 'Perekaman dihentikan ketika halaman skenario ditutup.',
+      ));
+    }
+    if (_ownsStream && _appState.wearableBridge.isStreaming) {
+      unawaited(_appState.wearableBridge.stopStreaming());
+    }
     _clarificationController.dispose();
     super.dispose();
   }
@@ -97,7 +146,82 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }
 
   String _activityLabel(String activity) =>
-      _activities.firstWhere((item) => item.$1 == activity).$2;
+      _activities
+          .where((item) => item.$1 == activity)
+          .map((item) => item.$2)
+          .firstOrNull ??
+      activity;
+
+  String _eventLabel(String eventType) => switch (eventType) {
+        'scenario_started' => 'Skenario dibuka',
+        'activity_selected' => 'Aktivitas dipilih',
+        'live_recording_started' => 'Rekaman sensor dimulai',
+        'live_recording_stopped' => 'Rekaman sensor dihentikan',
+        'live_recording_interrupted' => 'Rekaman sensor terputus',
+        'records_loaded' => 'Data sensor dimuat',
+        'deviation_detected' => 'Perubahan di luar pola biasa terdeteksi',
+        'feedback_presented' => 'Saran ditampilkan',
+        'clarification_requested' => 'Sistem meminta klarifikasi',
+        'clarification_submitted' => 'Klarifikasi dikirim',
+        'zero_shot_generated' => 'Ringkasan otomatis dibuat',
+        'zero_shot_failed' => 'Ringkasan otomatis gagal dibuat',
+        _ => eventType.replaceAll('_', ' '),
+      };
+
+  DateTime? _eventTimestamp(Map<String, dynamic> log) => DateTime.tryParse(
+        (log['createdAt'] ?? log['created_at'] ?? log['occurred_at'])
+                ?.toString() ??
+            '',
+      );
+
+  String _eventTimeLabel(Map<String, dynamic> log) {
+    final time = _eventTimestamp(log);
+    return time == null ? 'Waktu tidak tersedia' : formatHilWibDateTime(time);
+  }
+
+  String _eventSummary(Map<String, dynamic> log) {
+    final activity = _activityLabel(_normalizeActivity(log['activity']));
+    final parts = <String>['Aktivitas: $activity'];
+    final hr = log['heart_rate_bpm'];
+    final baseline = log['baseline_mean_hr'];
+    if (hr is num) parts.add('Denyut terukur ${hr.toStringAsFixed(1)} bpm');
+    if (baseline is num) {
+      parts.add('pembanding pribadi ${baseline.toStringAsFixed(1)} bpm');
+    }
+    final clarification = log['clarification']?.toString().trim();
+    if (clarification?.isNotEmpty == true) {
+      parts.add('Jawaban: $clarification');
+    }
+    final recommendation = log['recommendation']?.toString().trim();
+    if (recommendation?.isNotEmpty == true) parts.add(recommendation!);
+    final explanation = log['explanation']?.toString().trim();
+    if (explanation?.isNotEmpty == true) parts.add(explanation!);
+    if (log['quality_status'] != null) {
+      parts.add(log['quality_status'] == 'accepted'
+          ? 'Pemeriksaan mutu bacaan lolos'
+          : 'Mutu bacaan perlu diperhatikan');
+    }
+    final observedAt = DateTime.tryParse(log['observed_at']?.toString() ?? '');
+    if (observedAt != null) {
+      parts.add('Waktu bacaan: ${formatHilWibDateTime(observedAt)}');
+    }
+    final history = log['history'];
+    if (history is List && history.isNotEmpty) {
+      final readings = history
+          .whereType<Map>()
+          .map((item) =>
+              DateTime.tryParse(item['recorded_at']?.toString() ?? ''))
+          .whereType<DateTime>()
+          .toList()
+        ..sort();
+      if (readings.isNotEmpty) {
+        parts.add(
+          '${readings.length} bacaan sensor, ${formatHilWibDateTime(readings.first)}–${formatHilWibDateTime(readings.last)}',
+        );
+      }
+    }
+    return parts.join(' · ');
+  }
 
   Map<String, dynamic> get _baseline {
     for (final context in widget.baselineContexts) {
@@ -152,6 +276,15 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         );
   }
 
+  Map<String, dynamic>? _latestDeviation(List<Map<String, dynamic>> samples) {
+    if (_baseline.isEmpty) return null;
+    return HilRecordedScenarioAnalysis.latestDeviationSample(
+      samples: samples,
+      baselineMean: _baselineMean,
+      thresholdBpm: _threshold,
+    );
+  }
+
   Future<void> _startRun() async {
     final started = await _saveLog('scenario_started');
     if (!started || !mounted) return;
@@ -159,15 +292,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }
 
   Future<void> _loadSamples() async {
+    if (_isRefreshingSamples) return;
+    _isRefreshingSamples = true;
     setState(() {
-      _isLoading = true;
       _error = null;
-      _samples = [];
-      _selectedSampleId = null;
-      _recommendation = null;
-      _zeroShotExplanation = null;
-      _clarificationRequested = false;
-      _clarificationController.clear();
+      if (_samples.isEmpty) _isLoading = true;
     });
     final now = DateTime.now().toUtc();
     final response = await ApiService.getWearableSamples(
@@ -181,37 +310,162 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         _isLoading = false;
         _error = response.message ?? 'Riwayat HR gagal dimuat.';
       });
+      _isRefreshingSamples = false;
       return;
     }
     final samples = response.data!
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .where((sample) {
-          final quality = _map(sample['data_quality']);
-          return sample['provider'] == 'polar_h10' &&
-              sample['is_simulated'] != true &&
-              sample['recording_purpose'] != 'hil_baseline' &&
-              _normalizeActivity(sample['activity']) == _activity &&
-              sample['sensor_contact'] == true &&
-              quality['status'] == 'accepted' &&
-              _sampleHr(sample) != null;
-        })
-        .toList()
+      final quality = _map(sample['data_quality']);
+      return sample['provider'] == 'polar_h10' &&
+          sample['is_simulated'] != true &&
+          sample['recording_purpose'] != 'hil_baseline' &&
+          _normalizeActivity(sample['activity']) == _activity &&
+          sample['sensor_contact'] == true &&
+          quality['status'] == 'accepted' &&
+          _sampleHr(sample) != null;
+    }).toList()
       ..sort((a, b) => DateTime.parse(a['recorded_at'].toString())
           .compareTo(DateTime.parse(b['recorded_at'].toString())));
+    final deviation = _latestDeviation(samples);
     setState(() {
       _samples = samples;
-      _selectedSampleId =
-          samples.isEmpty ? null : samples.last['_id']?.toString();
+      final selectedId = _selectedSampleId;
+      final unhandledDeviation = deviation != null &&
+              !_handledDeviationSampleIds.contains(deviation['_id']?.toString())
+          ? deviation
+          : null;
+      final selectedSample =
+          unhandledDeviation ?? (samples.isEmpty ? null : samples.last);
+      _selectedSampleId = selectedSample?['_id']?.toString();
+      if (unhandledDeviation != null && _selectedSampleId != selectedId) {
+        _recommendation = null;
+        _zeroShotExplanation = null;
+        _clarificationRequested = false;
+        _clarificationController.clear();
+      }
       _isLoading = false;
     });
 
-    if (samples.isEmpty) return;
-    final saved = await _saveLog(
-      'records_loaded',
-      sampleIds: samples.map((sample) => sample['_id'].toString()).toList(),
+    final newSamples = samples
+        .where(
+            (sample) => !_loadedSampleIds.contains(sample['_id']?.toString()))
+        .toList();
+    if (newSamples.isNotEmpty) {
+      final saved = await _saveLog(
+        'records_loaded',
+        sampleIds:
+            newSamples.map((sample) => sample['_id'].toString()).toList(),
+      );
+      if (!saved || !mounted) {
+        _isRefreshingSamples = false;
+        return;
+      }
+      _loadedSampleIds.addAll(
+        newSamples.map((sample) => sample['_id'].toString()),
+      );
+    }
+    _isRefreshingSamples = false;
+    final deviationId = deviation?['_id']?.toString();
+    if (deviationId != null &&
+        !_handledDeviationSampleIds.contains(deviationId) &&
+        _autoAttemptedDeviationSampleIds.add(deviationId)) {
+      await _presentScenarioOutcome();
+    }
+  }
+
+  Future<void> _startLiveMonitoring() async {
+    if (_isStoppingLiveMonitoring) return;
+    if (_isLiveMonitoring) {
+      await _stopLiveMonitoring();
+      return;
+    }
+    if (_isStartingLiveMonitoring) return;
+    setState(() => _isStartingLiveMonitoring = true);
+    final bridge = context.read<AppState>().wearableBridge;
+    final startStreamHere = !bridge.isStreaming;
+    if (bridge.isDemoDevice) {
+      setState(() => _isStartingLiveMonitoring = false);
+      _showScenarioError('Skenario B/C hanya menerima data Polar H10 nyata.');
+      return;
+    }
+    if (startStreamHere) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => WearablePairingScreen(
+            activityOverride: _activity,
+            startStreamingAndReturnHome: true,
+          ),
+        ),
+      );
+      if (!mounted) return;
+    }
+    if (!bridge.isStreaming || bridge.isDemoDevice) {
+      setState(() => _isStartingLiveMonitoring = false);
+      _showScenarioError(
+        bridge.error ?? 'Streaming Polar H10 belum aktif.',
+      );
+      return;
+    }
+    final started = await _saveLog(
+      'live_recording_started',
+      explanation: 'Rekaman live Polar H10 dimulai.',
     );
-    if (!saved || !mounted) return;
+    if (!mounted) return;
+    if (!started) {
+      if (startStreamHere && bridge.isStreaming) {
+        await bridge.stopStreaming();
+      }
+      if (mounted) setState(() => _isStartingLiveMonitoring = false);
+      return;
+    }
+    _ownsStream = startStreamHere;
+    setState(() {
+      _isLiveMonitoring = true;
+      _isStoppingLiveMonitoring = false;
+      _isStartingLiveMonitoring = false;
+    });
+    await _loadSamples();
+    if (!mounted || !_isLiveMonitoring) return;
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      if (!bridge.isStreaming) {
+        unawaited(_stopLiveMonitoring(interrupted: true));
+        _showScenarioError(
+          bridge.error ?? 'Streaming Polar H10 terputus.',
+        );
+        return;
+      }
+      unawaited(_loadSamples());
+    });
+  }
+
+  Future<void> _stopLiveMonitoring({bool interrupted = false}) async {
+    if (!_isLiveMonitoring || _isStoppingLiveMonitoring) return;
+    _isStoppingLiveMonitoring = true;
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+    final shouldStopStream = _ownsStream;
+    _ownsStream = false;
+    _isLiveMonitoring = false;
+    if (mounted) setState(() {});
+    await _saveLog(
+      interrupted ? 'live_recording_interrupted' : 'live_recording_stopped',
+      explanation: interrupted
+          ? 'Perekaman live berhenti karena koneksi atau streaming Polar H10 terputus.'
+          : 'Perekaman live dihentikan oleh pengguna.',
+    );
+    final bridge = _appState.wearableBridge;
+    if (shouldStopStream && bridge.isStreaming) {
+      await bridge.stopStreaming();
+    }
+    _isStoppingLiveMonitoring = false;
+  }
+
+  void _showScenarioError(String message) {
+    if (!mounted) return;
+    setState(() => _error = message);
   }
 
   Future<bool> _saveLog(
@@ -269,7 +523,13 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
 
   Future<void> _presentScenarioOutcome() async {
     final sample = _selectedSample;
-    if (sample == null) return;
+    final sampleId = sample?['_id']?.toString();
+    if (sample == null ||
+        sampleId == null ||
+        _isSaving ||
+        _handledDeviationSampleIds.contains(sampleId)) {
+      return;
+    }
     setState(() {
       _isSaving = true;
       _error = null;
@@ -280,7 +540,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       setState(() => _isSaving = false);
       return;
     }
-    final status = deviationLog['algorithm_status']?.toString() ?? 'not_assessable';
+    final status =
+        deviationLog['algorithm_status']?.toString() ?? 'not_assessable';
     if (status != 'candidate_deviation') {
       setState(() {
         _isSaving = false;
@@ -290,6 +551,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       });
       return;
     }
+    _handledDeviationSampleIds.add(sampleId);
 
     if (widget.scenario == 'B') {
       const recommendation =
@@ -303,6 +565,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         _isSaving = false;
         if (feedbackLog != null) _recommendation = recommendation;
       });
+      if (feedbackLog == null) _handledDeviationSampleIds.remove(sampleId);
       if (feedbackLog != null) {
         final appState = context.read<AppState>();
         final saved = await appState.recordHumanInTheLoopScenario(
@@ -322,13 +585,13 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       return;
     }
 
-    final requested =
-        await _logSelectedObservation('clarification_requested');
+    final requested = await _logSelectedObservation('clarification_requested');
     if (!mounted) return;
     setState(() {
       _isSaving = false;
       _clarificationRequested = requested != null;
     });
+    if (requested == null) _handledDeviationSampleIds.remove(sampleId);
   }
 
   Map<String, dynamic> _explanationSnapshot(
@@ -393,8 +656,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       setState(() => _isGeneratingExplanation = false);
       return;
     }
-    final selectedLog = _logs
-        .lastWhere((log) => log['event_type'] == 'deviation_detected');
+    final selectedLog =
+        _logs.lastWhere((log) => log['event_type'] == 'deviation_detected');
     final evidence = <Map<String, dynamic>>[
       {
         'source': 'real_wearable_sample',
@@ -423,26 +686,30 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     ];
     final summary = [
       'Skenario C HIL, aktivitas $_activity.',
-      'HR rekaman ${selectedLog['heart_rate_bpm']} bpm; baseline HIL '
-          '${selectedLog['baseline_mean_hr']} bpm; z-score '
-          '${selectedLog['z_score'] ?? 'tidak tersedia'}; status '
-          '${selectedLog['algorithm_status']}.',
+      'Denyut rekaman ${selectedLog['heart_rate_bpm']} bpm; nilai pembanding pribadi '
+          '${selectedLog['baseline_mean_hr']} bpm; perubahan '
+          '${selectedLog['algorithm_status'] == 'candidate_deviation' ? 'lebih tinggi dari kisaran biasa' : 'belum dapat dinilai'}.',
+      if (selectedLog['z_score'] is num)
+        'Jarak dari kisaran pribadi sekitar ${(selectedLog['z_score'] as num).abs().toStringAsFixed(1)} kali variasi yang biasa terlihat.',
       'Klarifikasi peserta: $clarification',
-      'Data observasional. Klarifikasi tidak membuktikan penyebab.',
+      'Gunakan bahasa sehari-hari tanpa istilah teknis. Bedakan hasil sensor dari laporan peserta. Klarifikasi tidak membuktikan penyebab.',
     ].join(' ');
     final response = await ApiService.generatePersonalChatAnswer(
-      question: 'Buat penjelasan zero-shot dalam bahasa Indonesia yang '
+      question: 'Buat ringkasan penjelasan dalam bahasa Indonesia yang '
           'menggabungkan deviasi HR dari baseline HIL dengan klarifikasi '
           'peserta. Bedakan fakta sensor dari laporan peserta, jelaskan '
           'ketidakpastian, jangan menyatakan hubungan sebab-akibat, jangan '
-          'membuat diagnosis, dan jangan memberi rekomendasi medis.',
+          'membuat diagnosis, dan jangan memberi rekomendasi medis. Hindari '
+          'istilah statistik atau istilah ilmiah; jelaskan perubahan denyut '
+          'dengan kalimat sederhana.',
       evidence: evidence,
-      localSummary: summary.length > 1200 ? summary.substring(0, 1200) : summary,
+      localSummary:
+          summary.length > 1200 ? summary.substring(0, 1200) : summary,
       conversationHistory: const [],
     );
     if (!mounted) return;
     if (!response.success || response.data == null) {
-      final message = response.message ?? 'Penjelasan zero-shot gagal dibuat.';
+      final message = response.message ?? 'Ringkasan penjelasan gagal dibuat.';
       final savedFailure = await _logSelectedObservation(
         'zero_shot_failed',
         clarification: clarification,
@@ -500,11 +767,13 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           time,
           hr,
           activity: _activity,
-          observationStatus: _isDeviation(sample) ? 'candidate_deviation' : 'normal',
+          observationStatus:
+              _isDeviation(sample) ? 'candidate_deviation' : 'normal',
         );
       })
       .whereType<ChartPoint>()
-      .toList();
+      .toList()
+    ..sort((left, right) => left.time.compareTo(right.time));
 
   Widget _chartCard() {
     final points = _chartPoints;
@@ -522,9 +791,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
             const SizedBox(height: 4),
             Text(
               _baselineMean == null
-                  ? 'Baseline HIL aktivitas ini tidak tersedia.'
-                  : 'Garis putus-putus: baseline ${_baselineMean!.toStringAsFixed(1)} bpm · '
-                      'ambang observasi +${_threshold.toStringAsFixed(1)} bpm',
+                  ? 'Belum ada nilai pembanding pribadi untuk aktivitas ini.'
+                  : 'Garis putus-putus: nilai pembanding pribadi ${_baselineMean!.toStringAsFixed(1)} bpm · '
+                      'perubahan menonjol di atas +${_threshold.toStringAsFixed(1)} bpm',
               style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 8),
@@ -533,7 +802,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                 key: Key('hil-recorded-chart-empty'),
                 height: 170,
                 child: Center(
-                  child: Text('Perlu minimal dua sampel HR nyata untuk grafik.'),
+                  child:
+                      Text('Perlu minimal dua sampel HR nyata untuk grafik.'),
                 ),
               )
             else
@@ -546,11 +816,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                     color: AppTheme.primary,
                     baselineMean: _baselineMean,
                     timeDisplayOffset: hilWibOffset,
+                    maximumGap: const Duration(minutes: 2),
                   ),
                 ),
               ),
             Text(
-              '${points.length} sampel diterima · data simulasi dan sampel baseline A dikecualikan',
+              '${points.length} bacaan diterima · data simulasi dan data pembentukan profil tidak disertakan',
               style: AppTheme.font(size: 9.5, color: AppTheme.textMuted),
             ),
           ],
@@ -573,56 +844,48 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Pilih observasi nyata', style: AppTheme.font(size: 12, weight: FontWeight.w800)),
+            Text('Observasi terbaru',
+                style: AppTheme.font(size: 12, weight: FontWeight.w800)),
             const SizedBox(height: 7),
             if (_samples.isEmpty)
-              const Text('Belum ada rekaman Polar H10 yang valid untuk aktivitas ini.')
-            else
-              DropdownButtonFormField<String>(
-                key: const Key('hil-recorded-sample-picker'),
-                initialValue: _selectedSampleId,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Sampel HR'),
-                items: _samples.reversed.map((item) {
-                  final time = DateTime.tryParse(item['recorded_at'].toString());
-                  final value = _sampleHr(item);
-                  return DropdownMenuItem(
-                    value: item['_id'].toString(),
-                    child: Text(
-                      '${time == null ? 'Waktu tidak diketahui' : formatHilWibDateTime(time)}'
-                      ' · ${value?.toStringAsFixed(0) ?? '-'} bpm',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
-                onChanged: _isSaving
-                    ? null
-                    : (id) => setState(() => _selectedSampleId = id),
-              ),
+              const Text(
+                  'Belum ada rekaman Polar H10 yang valid untuk aktivitas ini.'),
             if (sample != null) ...[
               const SizedBox(height: 8),
               Text(
-                'HR ${hr?.toStringAsFixed(1) ?? '-'} bpm · baseline '
+                'Polar H10 · ${DateTime.tryParse(sample['recorded_at']?.toString() ?? '') == null ? 'waktu tidak diketahui' : formatHilWibDateTime(DateTime.parse(sample['recorded_at'].toString()))}',
+                key: const Key('hil-recorded-observation-time'),
+                style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Denyut ${hr?.toStringAsFixed(1) ?? '-'} bpm · nilai pembanding pribadi '
                 '${mean?.toStringAsFixed(1) ?? '-'} bpm'
-                '${zScore == null ? '' : ' · z=${zScore.toStringAsFixed(2)}'}',
+                '${zScore == null ? '' : ' · jarak dari kisaran pribadi sekitar ${zScore.abs().toStringAsFixed(1)} kali variasi yang biasa terlihat'}',
                 key: const Key('hil-recorded-observation-summary'),
                 style: AppTheme.font(size: 11, weight: FontWeight.w700),
               ),
               Text(
                 candidate
-                    ? 'Kandidat deviasi berdasarkan aturan eksperimen HIL.'
+                    ? 'Perubahan di luar pola biasa: denyut lebih tinggi ${_threshold.toStringAsFixed(1)} bpm dari pembanding aktivitas; pemeriksaan mutu bacaan lolos.'
                     : _baseline.isEmpty
-                        ? 'Baseline HIL aktivitas ini belum siap.'
-                        : 'Sampel tidak melampaui ambang kandidat deviasi.',
+                        ? 'Nilai pembanding pribadi untuk aktivitas ini belum siap, jadi perubahan belum dapat dinilai.'
+                        : 'Denyut belum melewati batas perubahan menonjol, yaitu pembanding pribadi + ${_threshold.toStringAsFixed(1)} bpm.',
+                key: const Key('hil-recorded-observation-explanation'),
                 style: AppTheme.font(
                   size: 10,
-                  color: candidate ? AppTheme.statusRed : AppTheme.textSecondary,
+                  color:
+                      candidate ? AppTheme.statusRed : AppTheme.textSecondary,
                 ),
               ),
               const SizedBox(height: 8),
               FilledButton.icon(
                 key: const Key('hil-recorded-trigger-scenario'),
-                onPressed: candidate && !_isSaving ? _presentScenarioOutcome : null,
+                onPressed: candidate &&
+                        !_isSaving &&
+                        !_handledDeviationSampleIds.contains(_selectedSampleId)
+                    ? _presentScenarioOutcome
+                    : null,
                 icon: _isSaving
                     ? const SizedBox(
                         width: 15,
@@ -630,9 +893,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.bolt_rounded),
-                label: Text(widget.scenario == 'B'
-                    ? 'Tampilkan feedback satu arah'
-                    : 'Minta klarifikasi peserta'),
+                label:
+                    Text(_handledDeviationSampleIds.contains(_selectedSampleId)
+                        ? 'Skenario sudah berjalan'
+                        : widget.scenario == 'B'
+                            ? 'Tampilkan feedback satu arah'
+                            : 'Minta klarifikasi peserta'),
               ),
             ],
           ],
@@ -674,7 +940,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                 style: AppTheme.font(size: 12, weight: FontWeight.w800)),
             const SizedBox(height: 5),
             const Text(
-              'Apakah ada informasi yang mungkin terlewat sistem saat deviasi ini terjadi?',
+              'Apakah ada informasi yang mungkin terlewat sistem saat perubahan denyut ini terjadi?',
             ),
             const SizedBox(height: 8),
             TextField(
@@ -683,14 +949,14 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               maxLength: 500,
               maxLines: 3,
               decoration: const InputDecoration(
-                hintText: 'Contoh: saya baru selesai berjalan atau merasa stres',
+                hintText:
+                    'Contoh: saya baru selesai berjalan atau merasa stres',
                 border: OutlineInputBorder(),
               ),
             ),
             FilledButton.icon(
               key: const Key('hil-recorded-submit-clarification'),
-              onPressed:
-                  _isGeneratingExplanation ? null : _submitClarification,
+              onPressed: _isGeneratingExplanation ? null : _submitClarification,
               icon: _isGeneratingExplanation
                   ? const SizedBox(
                       width: 15,
@@ -700,7 +966,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                   : const Icon(Icons.auto_awesome_outlined),
               label: Text(_isGeneratingExplanation
                   ? 'Membuat penjelasan...'
-                  : 'Simpan klarifikasi & buat penjelasan zero-shot'),
+                  : 'Kirim klarifikasi & buat ringkasan penjelasan'),
             ),
             if (_zeroShotExplanation != null) ...[
               const SizedBox(height: 12),
@@ -715,8 +981,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Penjelasan deviasi + klarifikasi',
-                        style: AppTheme.font(size: 11, weight: FontWeight.w800)),
+                    Text('Ringkasan perubahan + klarifikasi',
+                        style:
+                            AppTheme.font(size: 11, weight: FontWeight.w800)),
                     const SizedBox(height: 5),
                     Text(_zeroShotExplanation!),
                   ],
@@ -736,22 +1003,25 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Log eksperimen tersimpan',
+              Text('Ringkasan langkah dan waktu (WIB)',
                   style: AppTheme.font(size: 12, weight: FontWeight.w800)),
               const SizedBox(height: 4),
-              Text('Run: $_runId', style: AppTheme.font(size: 9.5)),
+              const Text(
+                'Setiap waktu menunjukkan kapan langkah dicatat. Untuk data sensor, waktu bacaan Polar H10 juga ditampilkan terpisah.',
+                key: Key('hil-recorded-log-time-explanation'),
+              ),
+              const SizedBox(height: 6),
+              Text('Nomor sesi: $_runId', style: AppTheme.font(size: 9.5)),
               ..._logs.map((log) => ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.check_circle_outline, size: 16),
-                    title: Text(log['event_type']?.toString() ?? ''),
+                    title: Text(
+                      '${_eventLabel(log['event_type']?.toString() ?? '')} · ${_eventTimeLabel(log)}',
+                    ),
                     subtitle: Text(
-                      log['explanation']?.toString().isNotEmpty == true
-                          ? log['explanation'].toString()
-                          : log['recommendation']?.toString().isNotEmpty == true
-                              ? log['recommendation'].toString()
-                              : log['clarification']?.toString() ?? '',
-                      maxLines: 2,
+                      _eventSummary(log),
+                      maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                     ),
                   )),
@@ -760,10 +1030,49 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         ),
       );
 
+  Widget _analysisNodesCard() => Card(
+        key: const Key('hil-recorded-analysis-nodes'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Arti tahapan analisis',
+                style: AppTheme.font(size: 12, weight: FontWeight.w800),
+              ),
+              const SizedBox(height: 7),
+              const Text(
+                '1. Pengukuran: denyut jantung berasal dari Polar H10 dan dicatat bersama aktivitas serta waktunya.',
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '2. Pemeriksaan mutu: aplikasi memastikan sensor menempel, bacaan cukup lengkap, dan sinyal layak sebelum membandingkan hasil.',
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '3. Pola pribadi: denyut rata-rata dari rekaman berkualitas untuk aktivitas ini menjadi pembanding (${_baselineMean?.toStringAsFixed(1) ?? 'belum tersedia'} bpm).',
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '4. Perubahan menonjol: ditandai bila denyut lebih tinggi dari pembanding pribadi sebesar ${_threshold.toStringAsFixed(1)} bpm atau lebih. Ini pengamatan, bukan diagnosis.',
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.scenario == 'B'
+                    ? '5. Skenario B: sistem memberi saran dan mencatat kapan saran ditampilkan; sistem tidak meminta jawaban.'
+                    : '5. Skenario C: sistem mencatat kapan pertanyaan dikirim dan kapan jawaban diterima. Jawaban pengguna dibedakan dari hasil sensor.',
+              ),
+            ],
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          title: Text('Skenario ${widget.scenario} · ${_activityLabel(_activity)}'),
+          title: Text(
+              'Skenario ${widget.scenario} · ${_activityLabel(_activity)}'),
           actions: [
             IconButton(
               key: const Key('hil-recorded-refresh'),
@@ -784,32 +1093,48 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                   children: [
                     Text(
                       widget.scenario == 'B'
-                          ? 'Uji B · one-way feedback'
-                          : 'Uji C · human in the loop',
+                          ? 'Skenario B · saran dari sistem'
+                          : 'Skenario C · klarifikasi dari pengguna',
                       style: AppTheme.font(size: 14, weight: FontWeight.w800),
                     ),
                     const SizedBox(height: 5),
                     const Text(
-                      'Skenario menggunakan rekaman Polar H10 nyata dan baseline HIL. Sampel simulasi dan sampel pembentukan baseline tidak dipakai sebagai observasi deviasi.',
+                      'Skenario memakai bacaan Polar H10 nyata dan pola pribadi untuk aktivitas yang sama. Data simulasi dan data pembentukan pola tidak dipakai sebagai hasil tes.',
                     ),
                     const SizedBox(height: 8),
+                    _liveRecordingCard(),
                     DropdownButtonFormField<String>(
                       key: const Key('hil-recorded-activity-picker'),
                       initialValue: _activity,
-                      decoration:
-                          const InputDecoration(labelText: 'Aktivitas'),
+                      decoration: const InputDecoration(labelText: 'Aktivitas'),
                       items: _activities
                           .map((item) => DropdownMenuItem(
                                 value: item.$1,
                                 child: Text(item.$2),
                               ))
                           .toList(),
-                      onChanged: _isLoading
+                      onChanged: _isLoading || _isLiveMonitoring
                           ? null
-                          : (activity) {
+                          : (activity) async {
                               if (activity == null) return;
-                              setState(() => _activity = activity);
-                              unawaited(_loadSamples());
+                              final previousActivity = _activity;
+                              setState(() {
+                                _activity = activity;
+                                _samples = [];
+                                _selectedSampleId = null;
+                                _recommendation = null;
+                                _zeroShotExplanation = null;
+                                _clarificationRequested = false;
+                                _clarificationController.clear();
+                                _autoAttemptedDeviationSampleIds.clear();
+                                _handledDeviationSampleIds.clear();
+                              });
+                              final saved = await _saveLog(
+                                'activity_selected',
+                                explanation:
+                                    'Aktivitas diubah dari ${_activityLabel(previousActivity)} ke ${_activityLabel(activity)}.',
+                              );
+                              if (saved && mounted) await _loadSamples();
                             },
                     ),
                   ],
@@ -836,10 +1161,136 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
             else ...[
               _chartCard(),
               _observationCard(),
+              _analysisNodesCard(),
+              if (_samples.isEmpty && !_isLoading) _noSamplesGuidanceCard(),
+              if (_samples.isNotEmpty &&
+                  !_isDeviation(_selectedSample ?? const {}) &&
+                  !_clarificationRequested &&
+                  _recommendation == null)
+                _noDeviationGuidanceCard(),
               _scenarioOutcome(),
               _logHistory(),
             ],
           ],
+        ),
+      );
+
+  Widget _liveRecordingCard() {
+    final bridge = context.watch<AppState>().wearableBridge;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const Key('hil-recorded-live-monitor'),
+              onPressed: _isSaving ||
+                      _isStartingLiveMonitoring ||
+                      _isStoppingLiveMonitoring
+                  ? null
+                  : () => unawaited(_startLiveMonitoring()),
+              icon: _isStartingLiveMonitoring || _isStoppingLiveMonitoring
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(_isLiveMonitoring ? Icons.stop : Icons.sensors),
+              label: Text(_isStoppingLiveMonitoring
+                  ? 'Menyimpan waktu berhenti...'
+                  : _isStartingLiveMonitoring
+                      ? 'Menghubungkan Polar H10...'
+                      : _isLiveMonitoring
+                          ? 'Hentikan rekam & pantau'
+                          : 'Rekam H10 & jalankan Skenario ${widget.scenario}'),
+            ),
+          ),
+          if (_isLiveMonitoring)
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Text(
+                'Polar H10 ${bridge.isStreaming ? 'aktif' : 'terputus'} · sampel diperbarui otomatis tiap 30 detik. '
+                'Skenario akan berjalan otomatis jika ditemukan perubahan menonjol dengan data yang layak.',
+                key: const Key('hil-recorded-live-monitor-status'),
+                style: AppTheme.font(
+                  size: 10,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ),
+          if (!_isLiveMonitoring)
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Text(
+                bridge.isStreaming && !bridge.isDemoDevice
+                    ? 'Polar H10 terhubung dan merekam.'
+                    : bridge.isConnected && !bridge.isDemoDevice
+                        ? 'Polar H10 terhubung, tetapi streaming belum dimulai.'
+                        : bridge.isDemoDevice
+                            ? 'Perangkat demo terdeteksi; skenario memerlukan Polar H10 nyata.'
+                            : 'Polar H10 belum terhubung. Tekan tombol untuk menghubungkan dan mulai merekam.',
+                key: const Key('hil-recorded-wearable-connection'),
+                style: AppTheme.font(
+                  size: 10,
+                  color: bridge.isStreaming && !bridge.isDemoDevice
+                      ? AppTheme.statusGreen
+                      : AppTheme.statusOrange,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _noSamplesGuidanceCard() => Card(
+        key: const Key('hil-recorded-no-samples-guidance'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Text(
+            'Belum ada rekaman Polar H10 yang layak untuk aktivitas ini. Mulai rekam untuk melihat grafik dan menjalankan skenario bila ada perubahan denyut yang menonjol.',
+            style: AppTheme.font(
+              size: 10.5,
+              color: AppTheme.textSecondary,
+              height: 1.4,
+            ),
+          ),
+        ),
+      );
+
+  Widget _noDeviationGuidanceCard() => Card(
+        key: const Key('hil-recorded-no-deviation-guidance'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Belum ada perubahan menonjol pada bacaan terpilih',
+                style: AppTheme.font(size: 12, weight: FontWeight.w800),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Belum ada bacaan yang menunjukkan perubahan denyut menonjol. Skenario ${widget.scenario} akan berjalan otomatis bila denyut melampaui pembanding pribadi aktivitas ini sebesar ${_threshold.toStringAsFixed(1)} bpm dan mutu bacaan memadai. Muat ulang setelah rekaman terbaru tersedia.',
+                style: AppTheme.font(
+                  size: 10.5,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                key: const Key('hil-recorded-refresh-observations'),
+                onPressed: _isRefreshingSamples
+                    ? null
+                    : () => unawaited(_loadSamples()),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Muat ulang observasi'),
+              ),
+            ],
+          ),
         ),
       );
 }

@@ -88,8 +88,15 @@ const PatientAppCheckInSchema = new mongoose.Schema(
       },
       activity_before_event: {
         type: String,
-        enum: ['rest', 'sitting', 'standing', 'walking', 'running', 'exercise', 'work', 'meal', 'other', 'unknown', null],
+        trim: true,
+        maxlength: 120,
         default: null,
+      },
+      activity_end_time: { type: String, trim: true, maxlength: 80, default: '' },
+      clarification_status: {
+        type: String,
+        enum: ['submitted', 'not_remembered', 'skipped'],
+        default: 'submitted',
       },
       strenuous_activity: {
         type: String,

@@ -1299,23 +1299,19 @@ class _HeartRateChartPainter extends CustomPainter {
       canvas.drawLine(Offset(x, chart.top), Offset(x, chart.bottom), gridPaint);
     }
 
+    final historical =
+        points.last.time.difference(points.first.time).inHours >= 24;
+    final maximumGap =
+        historical ? const Duration(days: 2) : const Duration(seconds: 90);
     final line = Path()..moveTo(coordinates.first.dx, coordinates.first.dy);
-    for (final point in coordinates.skip(1)) {
-      line.lineTo(point.dx, point.dy);
+    for (var index = 1; index < coordinates.length; index++) {
+      final elapsed = points[index].time.difference(points[index - 1].time);
+      if (elapsed.isNegative || elapsed > maximumGap) {
+        line.moveTo(coordinates[index].dx, coordinates[index].dy);
+      } else {
+        line.lineTo(coordinates[index].dx, coordinates[index].dy);
+      }
     }
-    final fill = Path.from(line)
-      ..lineTo(coordinates.last.dx, chart.bottom)
-      ..lineTo(coordinates.first.dx, chart.bottom)
-      ..close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0x7772C9C3), Color(0x0872C9C3)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ).createShader(chart),
-    );
     canvas.drawPath(
       line,
       Paint()

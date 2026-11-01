@@ -185,6 +185,8 @@ class AppState extends ChangeNotifier {
             _currentAccount = null;
             events = [];
             hilExplanationHistory = [];
+            hilScenarioLogs = [];
+            hilScenarioLogsError = null;
             hilBaselineContexts = [];
             hilBaselineError = null;
             notifyListeners();
@@ -206,6 +208,8 @@ class AppState extends ChangeNotifier {
           _currentAccount = null;
           events = [];
           hilExplanationHistory = [];
+          hilScenarioLogs = [];
+          hilScenarioLogsError = null;
           hilBaselineContexts = [];
           hilBaselineError = null;
           notifyListeners();
@@ -251,6 +255,8 @@ class AppState extends ChangeNotifier {
     if (res.success) {
       events = [];
       hilExplanationHistory = [];
+      hilScenarioLogs = [];
+      hilScenarioLogsError = null;
       hilBaselineContexts = [];
       hilBaselineError = null;
       _isAuthenticated = true;
@@ -286,6 +292,8 @@ class AppState extends ChangeNotifier {
     if (res.success) {
       events = [];
       hilExplanationHistory = [];
+      hilScenarioLogs = [];
+      hilScenarioLogsError = null;
       hilBaselineContexts = [];
       hilBaselineError = null;
       _isAuthenticated = true;
@@ -314,6 +322,8 @@ class AppState extends ChangeNotifier {
     _currentAccount = null;
     events = [];
     hilExplanationHistory = [];
+    hilScenarioLogs = [];
+    hilScenarioLogsError = null;
     hilBaselineContexts = [];
     hilBaselineError = null;
     notifyListeners();
@@ -792,6 +802,32 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> fetchHilScenarioLogs({int limit = 100}) async {
+    final res = await ApiService.getHilScenarioLogs(limit: limit);
+    if (res.success && res.data != null) {
+      hilScenarioLogs = res.data!
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList()
+        ..sort((left, right) {
+          final leftAt = DateTime.tryParse(
+            (left['createdAt'] ?? left['created_at'])?.toString() ?? '',
+          );
+          final rightAt = DateTime.tryParse(
+            (right['createdAt'] ?? right['created_at'])?.toString() ?? '',
+          );
+          if (leftAt == null) return rightAt == null ? 0 : -1;
+          if (rightAt == null) return 1;
+          return rightAt.compareTo(leftAt);
+        });
+      hilScenarioLogsError = null;
+    } else {
+      hilScenarioLogsError =
+          res.message ?? 'Gagal memuat riwayat aktivitas skenario HIL.';
+    }
+    notifyListeners();
+  }
+
   bool isHilBaselineLoading = false;
   String? hilBaselineError;
   List<Map<String, dynamic>> hilBaselineContexts = [];
@@ -1036,6 +1072,8 @@ class AppState extends ChangeNotifier {
   // 5. Event marker
   List<EventItem> events = [];
   List<EventItem> hilExplanationHistory = [];
+  List<Map<String, dynamic>> hilScenarioLogs = [];
+  String? hilScenarioLogsError;
 
   // 6. Catatan
   String note = '';
@@ -1741,8 +1779,10 @@ class AppState extends ChangeNotifier {
 
   Future<bool> submitHumanInTheLoopClarification({
     required String segmentId,
-    required String strenuousActivity,
-    required String activityIntensity,
+    required String clarificationStatus,
+    String? activityBeforeEvent,
+    String? activityEndTime,
+    String contextNote = '',
   }) async {
     if (!isAuthenticated ||
         !RegExp(r'^[a-f\d]{24}$', caseSensitive: false).hasMatch(segmentId)) {
@@ -1750,40 +1790,54 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    if (!const {'yes', 'no', 'uncertain'}.contains(strenuousActivity) ||
-        !const {
-          'light',
-          'moderate',
-          'heavy',
-          'very_heavy',
-          'not_applicable',
-          'uncertain',
-        }.contains(activityIntensity)) {
-      dataError = 'Jawaban klarifikasi aktivitas tidak valid.';
+    final normalizedActivity = activityBeforeEvent?.trim() ?? '';
+    final normalizedActivityEndTime = activityEndTime?.trim() ?? '';
+    final normalizedNote = contextNote.trim();
+    if (!const {'submitted', 'not_remembered', 'skipped'}
+        .contains(clarificationStatus) ||
+        normalizedActivity.length > 120 ||
+        normalizedActivityEndTime.length > 80 ||
+        normalizedNote.length > 500) {
+      dataError = 'Jawaban klarifikasi tidak valid atau terlalu panjang.';
       notifyListeners();
       return false;
     }
-    if ((strenuousActivity == 'yes' && activityIntensity == 'not_applicable') ||
-        (strenuousActivity == 'no' && activityIntensity != 'not_applicable')) {
-      dataError = 'Pilih intensitas yang sesuai dengan jawaban aktivitas.';
+    if (clarificationStatus == 'submitted' &&
+        normalizedActivity.isEmpty &&
+        normalizedNote.isEmpty) {
+      dataError = 'Isi aktivitas atau konteks tambahan sebelum mengirim.';
       notifyListeners();
       return false;
     }
-
-    final perceivedFactors = strenuousActivity == 'yes'
-        ? <String>['physical_activity']
-        : strenuousActivity == 'uncertain'
-            ? <String>['prefer_not_to_say']
-            : <String>[];
+    if (clarificationStatus == 'not_remembered' &&
+        normalizedActivity.isNotEmpty &&
+        normalizedActivity != 'unknown') {
+      dataError = 'Aktivitas harus ditandai tidak diketahui.';
+      notifyListeners();
+      return false;
+    }
+    if (clarificationStatus == 'skipped' &&
+        (normalizedActivity.isNotEmpty ||
+            normalizedActivityEndTime.isNotEmpty ||
+            normalizedNote.isNotEmpty)) {
+      dataError = 'Konteks jawaban tidak boleh disertakan saat klarifikasi dilewati.';
+      notifyListeners();
+      return false;
+    }
+    final followUp = <String, dynamic>{
+      'segment_id': segmentId,
+      'clarification_status': clarificationStatus,
+    };
+    if (normalizedActivity.isNotEmpty) {
+      followUp['activity_before_event'] = normalizedActivity;
+    }
+    if (normalizedActivityEndTime.isNotEmpty) {
+      followUp['activity_end_time'] = normalizedActivityEndTime;
+    }
+    if (normalizedNote.isNotEmpty) followUp['note'] = normalizedNote;
     final response = await ApiService.createCheckIn({
       'recorded_at': DateTime.now().toUtc().toIso8601String(),
-      'deviation_follow_up': {
-        'segment_id': segmentId,
-        'strenuous_activity': strenuousActivity,
-        'activity_intensity': activityIntensity,
-        'perceived_factors': perceivedFactors,
-        'note': 'Klarifikasi eksperimen Human In the Loop, skenario C.',
-      },
+      'deviation_follow_up': followUp,
     });
     if (!response.success) {
       dataError =
@@ -1793,7 +1847,12 @@ class AppState extends ChangeNotifier {
     }
     dataError = null;
     notifyListeners();
-    await fetchCaparInsights();
+    await Future.wait([
+      fetchCaparInsights(),
+      fetchDailySummary(),
+      fetchOverview(),
+      fetchProfile(),
+    ]);
     return true;
   }
 

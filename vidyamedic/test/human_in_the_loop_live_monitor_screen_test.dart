@@ -3,9 +3,39 @@ import 'package:provider/provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nadiku/providers/app_state.dart';
 import 'package:nadiku/screens/scenarios/human_in_the_loop_live_monitor_screen.dart';
+import 'package:nadiku/screens/pedagogy/history_trend_chart.dart';
 import 'package:nadiku/utils/hil_time.dart';
 
 void main() {
+  test('chart segments are broken when wearable samples have a long gap', () {
+    final first = ChartPoint(DateTime.utc(2026, 11, 1, 3), 70);
+    final connected = ChartPoint(
+      DateTime.utc(2026, 11, 1, 3, 0, 3),
+      72,
+    );
+    final afterDisconnect = ChartPoint(
+      DateTime.utc(2026, 11, 1, 3, 0, 12),
+      75,
+    );
+
+    expect(
+      ChartPoint.canConnect(
+        first,
+        connected,
+        maximumGap: const Duration(seconds: 5),
+      ),
+      isTrue,
+    );
+    expect(
+      ChartPoint.canConnect(
+        connected,
+        afterDisconnect,
+        maximumGap: const Duration(seconds: 5),
+      ),
+      isFalse,
+    );
+  });
+
   test('HIL timestamps display the UTC instant as WIB without shifting storage',
       () {
     expect(
@@ -56,7 +86,7 @@ void main() {
       ),
     );
     expect(find.textContaining('Kurangi aktivitas'), findsOneWidget);
-    expect(find.text('Kandidat deviasi HR terdeteksi.'), findsOneWidget);
+    expect(find.text('Denyut berbeda dari pola biasanya.'), findsOneWidget);
     expect(
       find.byKey(const Key('hil-live-zero-shot-analyze')),
       findsNothing,

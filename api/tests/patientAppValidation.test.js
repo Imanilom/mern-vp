@@ -1217,6 +1217,22 @@ test('HIL explanation snapshots are versioned and bounded', () => {
     assert.equal(run.event_type, 'deviation_detected');
     assert.deepEqual(run.sample_ids, []);
 
+    for (const event_type of [
+      'activity_selected',
+      'live_recording_started',
+      'live_recording_stopped',
+      'live_recording_interrupted',
+    ]) {
+      const event = validateHilScenarioLog({
+        run_id: 'hil-C-1793508969984',
+        scenario: 'C',
+        event_type,
+        activity: 'walking',
+      });
+      assert.equal(event.event_type, event_type);
+      assert.equal(event.activity, 'walking');
+    }
+
     const loaded = validateHilScenarioLog({
       run_id: 'hil-C-1793508969984',
       scenario: 'C',

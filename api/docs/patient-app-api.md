@@ -520,9 +520,12 @@ activity/lifestyle, symptoms/feeling, sleep, a measurement, or a note); a
 timestamp with only empty containers is rejected. Omitted fields remain
 unrecorded rather than being filled with a default feeling or activity.
 Event-linked `deviation_follow_up` check-ins can also record
-`activity_before_event`, `mental_activity`, and `measurement_condition`.
-These fields capture patient-reported context; they do not alter sensor values
-or prove a cause. CAPAR reports a clarification as `reinterpreted_with_limits`
+`activity_before_event` (free text), `activity_end_time` (an approximate time
+description), `clarification_status` (`submitted`, `not_remembered`, or
+`skipped`), `mental_activity`, and `measurement_condition`. A skipped
+clarification remains unanswered and can be completed later; “not remembered”
+is recorded as unknown context. These fields capture patient-reported context;
+they do not alter sensor values or prove a cause. CAPAR reports a clarification as `reinterpreted_with_limits`
 only when the new context is relevant, the measurement condition is reported as
 `worn_as_usual`, and quality-gated physiology plus a mature matching baseline
 are available without unresolved conflicts. Otherwise its resolution remains

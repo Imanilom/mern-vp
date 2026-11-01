@@ -100,6 +100,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   Completer<void>? _sampleUploadCompleter;
   Completer<void>? _streamUploadCompleter;
   Completer<bool>? _sensorStreamsCompleter;
+  Completer<bool>? _firstHeartRateCompleter;
   int _sessionRrIntervalCount = 0;
   int _sessionReadingCount = 0;
   int _sessionAccelerationCount = 0;
@@ -464,6 +465,11 @@ class PolarWearablePairingService extends ChangeNotifier {
     isConnected = false;
     isConnecting = false;
     isStreaming = false;
+    final firstHeartRateCompleter = _firstHeartRateCompleter;
+    if (firstHeartRateCompleter != null &&
+        !firstHeartRateCompleter.isCompleted) {
+      firstHeartRateCompleter.complete(false);
+    }
     _hasHeartRateStream = false;
     _hasAccelerationStream = false;
     _loggedAccelerationData = false;
@@ -571,6 +577,21 @@ class PolarWearablePairingService extends ChangeNotifier {
     }
   }
 
+  Future<bool> waitForFirstHeartRate({
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    if (isStreaming && _lastHeartRateAt != null) return true;
+    final completer = _firstHeartRateCompleter ??= Completer<bool>();
+    try {
+      return await completer.future.timeout(timeout);
+    } on TimeoutException {
+      connectionError =
+          'Stream sensor siap, tetapi belum ada HR dengan kontak terkonfirmasi. Pastikan Polar H10 terpasang rapat dan elektroda strap lembap.';
+      _notify();
+      return false;
+    }
+  }
+
   void _completeSensorStreamsReady(bool ready) {
     final completer = _sensorStreamsCompleter;
     if (completer != null && !completer.isCompleted) {
@@ -593,6 +614,11 @@ class PolarWearablePairingService extends ChangeNotifier {
       _sensorContact = true;
       _heartRateBpm = sample.hr;
       _lastHeartRateAt = DateTime.now();
+      final firstHeartRateCompleter = _firstHeartRateCompleter;
+      if (firstHeartRateCompleter != null &&
+          !firstHeartRateCompleter.isCompleted) {
+        firstHeartRateCompleter.complete(true);
+      }
       _sessionHeartRates.add(sample.hr);
       debugPrint(
         '[Polar H10] Bacaan diterima: HR=${sample.hr}, RR=${sample.rrsMs.length}, ACC siap=${_latestAcceleration != null}.',
@@ -743,6 +769,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     _loggedAccelerationData = false;
     _lastAccelerationNotifyAt = null;
     _lastStreamReadingTimestampMs = null;
+    _firstHeartRateCompleter = Completer<bool>();
     _streamReadings.clear();
     _recentStreamReadings.clear();
     _recentAcceleration.clear();
@@ -780,6 +807,11 @@ class PolarWearablePairingService extends ChangeNotifier {
     _streamFlushTimer?.cancel();
     _streamFlushTimer = null;
     isStreaming = false;
+    final firstHeartRateCompleter = _firstHeartRateCompleter;
+    if (firstHeartRateCompleter != null &&
+        !firstHeartRateCompleter.isCompleted) {
+      firstHeartRateCompleter.complete(false);
+    }
     await flushStream(force: true);
     await flushSample(force: true);
     _isHilBaselineRecording = false;

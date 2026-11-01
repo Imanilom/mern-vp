@@ -30,10 +30,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   ];
 
   String? _selectedScenario;
-  String _strenuousActivity = 'uncertain';
-  String _activityIntensity = 'uncertain';
-  bool _isSubmittingClarification = false;
-  bool _clarificationSaved = false;
   bool _hasResearchConsent = false;
   bool _isUpdatingAiConsent = false;
 
@@ -48,6 +44,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         unawaited(appState.fetchHilBaselines());
         unawaited(appState.fetchRecentEvents(limit: 100));
         unawaited(appState.fetchHilExplanationHistory(limit: 100));
+        unawaited(appState.fetchHilScenarioLogs(limit: 100));
       }
     });
   }
@@ -62,41 +59,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     return null;
   }
 
-  Future<void> _submitClarification(String? segmentId) async {
-    if (_isSubmittingClarification || segmentId == null) return;
-    if (_strenuousActivity == 'yes' && _activityIntensity == 'not_applicable') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Pilih intensitas aktivitas yang dirasakan.')),
-      );
-      return;
-    }
-    if (_strenuousActivity == 'no') _activityIntensity = 'not_applicable';
-    setState(() => _isSubmittingClarification = true);
-    final saved =
-        await context.read<AppState>().submitHumanInTheLoopClarification(
-              segmentId: segmentId,
-              strenuousActivity: _strenuousActivity,
-              activityIntensity: _activityIntensity,
-            );
-    if (!mounted) return;
-    setState(() {
-      _isSubmittingClarification = false;
-      _clarificationSaved = saved;
-    });
-    if (!saved) {
-      final error = context.read<AppState>().dataError;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error ?? 'Klarifikasi gagal disimpan.')),
-      );
-    }
-  }
-
   Future<void> _selectScenario(String scenario) async {
     if (!_hasResearchConsent) return;
     setState(() {
       _selectedScenario = scenario;
-      _clarificationSaved = false;
     });
     final appState = context.read<AppState>();
     final latestObservation = _map(
@@ -118,6 +84,213 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     await Future.wait([
       appState.fetchHilExplanationHistory(limit: 100),
       appState.fetchRecentEvents(limit: 100),
+      appState.fetchHilScenarioLogs(limit: 100),
+    ]);
+  }
+
+  Future<void> _openDeviationClarification({
+    required String? segmentId,
+    required String activity,
+    required Map<String, dynamic> reportedContext,
+  }) async {
+    if (segmentId == null) return;
+    final previousActivity =
+        reportedContext['activity_before_event']?.toString() ?? '';
+    final activityController = TextEditingController(
+      text: previousActivity == 'unknown' ? '' : previousActivity,
+    );
+    final activityEndController = TextEditingController(
+      text: reportedContext['activity_end_time']?.toString() ?? '',
+    );
+    final noteController = TextEditingController(
+      text: reportedContext['note']?.toString() ?? '',
+    );
+    var isSubmitting = false;
+    String? result;
+
+    try {
+      result = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> save(String status) async {
+              if (isSubmitting) return;
+              if (status == 'submitted' &&
+                  activityController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Isi aktivitas sebelumnya atau pilih “Tidak ingat”.'),
+                  ),
+                );
+                return;
+              }
+              setDialogState(() => isSubmitting = true);
+              final saved = await dialogContext
+                  .read<AppState>()
+                  .submitHumanInTheLoopClarification(
+                    segmentId: segmentId,
+                    clarificationStatus: status,
+                    activityBeforeEvent: status == 'skipped'
+                        ? null
+                        : status == 'not_remembered'
+                            ? 'unknown'
+                            : activityController.text.trim(),
+                    activityEndTime: status == 'skipped'
+                        ? null
+                        : activityEndController.text.trim(),
+                    contextNote: status == 'skipped'
+                        ? ''
+                        : noteController.text.trim(),
+                  );
+              if (!dialogContext.mounted) return;
+              setDialogState(() => isSubmitting = false);
+              if (saved) {
+                Navigator.of(dialogContext).pop(status);
+              } else {
+                final error = dialogContext.read<AppState>().dataError;
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(
+                    content:
+                        Text(error ?? 'Klarifikasi gagal disimpan. Silakan coba lagi.'),
+                  ),
+                );
+              }
+            }
+
+            return AlertDialog(
+              key: const Key('hil-deviation-clarification-dialog'),
+              title: const Text('Bantu lengkapi konteks pengukuran Anda'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Denyut jantung Anda saat ${_activityLabel(activity).toLowerCase()} berbeda dari baseline personal. Penyebabnya belum dapat dipastikan. Apakah ada aktivitas atau kondisi sebelum pengukuran yang belum tercatat?',
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Periksa informasi berikut, lalu koreksi atau tambahkan konteks bila diperlukan.',
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      key: const Key('hil-clarification-activity'),
+                      controller: activityController,
+                      maxLength: 120,
+                      decoration: const InputDecoration(
+                        labelText: 'Aktivitas sebelumnya',
+                        hintText: 'Pilih atau tuliskan aktivitas',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      key: const Key('hil-clarification-activity-end'),
+                      controller: activityEndController,
+                      maxLength: 80,
+                      decoration: const InputDecoration(
+                        labelText: 'Kapan aktivitas berakhir',
+                        hintText: 'Perkiraan waktu, mis. sekitar 10 menit sebelumnya',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      key: const Key('hil-clarification-note'),
+                      controller: noteController,
+                      maxLength: 500,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Konteks tambahan (opsional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Informasi Anda akan digunakan untuk meninjau kembali interpretasi sistem.',
+                      style: AppTheme.font(
+                        size: 10,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  key: const Key('hil-clarification-skip'),
+                  onPressed: isSubmitting ? null : () => save('skipped'),
+                  child: const Text('Lewati'),
+                ),
+                TextButton(
+                  key: const Key('hil-clarification-not-remembered'),
+                  onPressed:
+                      isSubmitting ? null : () => save('not_remembered'),
+                  child: const Text('Tidak ingat'),
+                ),
+                FilledButton(
+                  key: const Key('hil-clarification-submit'),
+                  onPressed: isSubmitting ? null : () => save('submitted'),
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Kirim dan tinjau ulang'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } finally {
+      activityController.dispose();
+      activityEndController.dispose();
+      noteController.dispose();
+    }
+
+    if (!mounted || result == null) return;
+    if (result == 'skipped') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Klarifikasi dilewati. Anda dapat menambahkan konteks nanti melalui detail pengukuran.',
+          ),
+        ),
+      );
+    } else if (result == 'not_remembered') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tidak apa-apa. Kami akan menggunakan informasi yang tersedia. Penyebab perbedaan denyut jantung belum dapat dipastikan.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openLiveMonitor(
+    List<Map<String, dynamic>> baselineContexts,
+    String initialActivity,
+  ) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => HumanInTheLoopLiveMonitorScreen(
+          baselineContexts: baselineContexts,
+          initialActivity: initialActivity,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    final appState = context.read<AppState>();
+    await Future.wait([
+      appState.fetchHilScenarioLogs(limit: 100),
+      appState.fetchRecentEvents(limit: 100),
     ]);
   }
 
@@ -134,7 +307,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         title: Text(
           scenario == null
               ? 'Riwayat skenario HIL'
-              : 'Skenario $scenario · ${scenario == 'B' ? 'One-way feedback' : 'Human in the loop'}',
+              : 'Skenario $scenario · ${scenario == 'B' ? 'Saran dari sistem' : 'Klarifikasi dari pengguna'}',
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -154,7 +327,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               ],
               if (snapshot['quality_status'] != null) ...[
                 const SizedBox(height: 4),
-                Text('Quality gate: ${snapshot['quality_status']}'),
+                Text('Pemeriksaan mutu bacaan: ${snapshot['quality_status']}'),
               ],
               const SizedBox(height: 10),
               Text(snapshot['explanation']?.toString() ?? event.details),
@@ -226,7 +399,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 title: Text(
                   scenario == null
                       ? event.details
-                      : 'Skenario $scenario · ${scenario == 'B' ? 'One-way feedback' : 'Human in the loop'}',
+                      : 'Skenario $scenario · ${scenario == 'B' ? 'Saran dari sistem' : 'Klarifikasi dari pengguna'}',
                   style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
                 ),
                 subtitle: Text(
@@ -237,6 +410,213 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _showScenarioHistory(event),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  String _scenarioLogEventLabel(String? eventType) => switch (eventType) {
+        'scenario_started' => 'Skenario dibuka',
+        'activity_selected' => 'Aktivitas dipilih',
+        'live_recording_started' => 'Rekaman sensor dimulai',
+        'live_recording_stopped' => 'Rekaman sensor dihentikan',
+        'live_recording_interrupted' => 'Rekaman sensor terputus',
+        'records_loaded' => 'Data sensor dimuat',
+        'deviation_detected' => 'Perubahan di luar pola biasa terdeteksi',
+        'feedback_presented' => 'Saran ditampilkan',
+        'clarification_requested' => 'Sistem meminta klarifikasi',
+        'clarification_submitted' => 'Klarifikasi dikirim pengguna',
+        'zero_shot_generated' => 'Ringkasan otomatis dibuat',
+        'zero_shot_failed' => 'Ringkasan otomatis gagal dibuat',
+        'activity_clarification_requested' => 'Sistem meminta keterangan',
+        'activity_clarification_answered' => 'Keterangan pengguna diterima',
+        'deviation_recommendation' => 'Saran ditampilkan',
+        'hr_recovery_observed' => 'Denyut mendekati kisaran biasa',
+        'dfa_5_minute_batch' => 'Ringkasan pola detak selesai',
+        _ => eventType?.replaceAll('_', ' ') ?? 'Kejadian tercatat',
+      };
+
+  String _hilActivityLabel(dynamic activity) => switch (activity?.toString()) {
+        'sitting' => 'duduk',
+        'standing' => 'berdiri',
+        'walking' => 'berjalan',
+        null || '' => 'tidak dicatat',
+        _ => activity.toString(),
+      };
+
+  Future<void> _showScenarioLogDetails(
+    BuildContext context,
+    Map<String, dynamic> log,
+  ) async {
+    final loggedAt = DateTime.tryParse(
+      (log['createdAt'] ?? log['created_at'])?.toString() ?? '',
+    );
+    final observedAt = DateTime.tryParse(log['observed_at']?.toString() ?? '');
+    final scenario = log['scenario']?.toString();
+    final details = <(String, String)>[
+      if (scenario != null) ('Skenario', scenario),
+      ('Aktivitas', _hilActivityLabel(log['activity'])),
+      if (log['heart_rate_bpm'] != null)
+        ('Denyut saat dicatat', '${log['heart_rate_bpm']} kali/menit'),
+      if (observedAt != null)
+        ('Waktu bacaan sensor', formatHilWibDateTime(observedAt)),
+      if (log['recommendation']?.toString().isNotEmpty == true)
+        ('Saran sistem', log['recommendation'].toString()),
+      if (log['clarification']?.toString().isNotEmpty == true)
+        ('Keterangan pengguna', log['clarification'].toString()),
+      if (log['explanation']?.toString().isNotEmpty == true)
+        ('Penjelasan', log['explanation'].toString()),
+    ];
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_scenarioLogEventLabel(log['event_type']?.toString())),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (loggedAt != null)
+                Text('Waktu tercatat: ${formatHilWibDateTime(loggedAt)}'),
+              for (final (label, value) in details) ...[
+                const SizedBox(height: 8),
+                Text('$label: $value'),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scenarioActionHistoryCard(
+    List<Map<String, dynamic>> logs,
+    List<EventItem> events, {
+    String? loadError,
+  }) {
+    final history = [
+      ...logs,
+      ...events
+          .where((event) =>
+              event.eventType == 'hil_scenario' &&
+              event.unit == 'hil_live_monitor')
+          .map((event) {
+        final activity = switch (event.details) {
+          final details when details.contains('"ctx":"sitting"') => 'sitting',
+          final details when details.contains('"ctx":"standing"') => 'standing',
+          final details when details.contains('"ctx":"walking"') => 'walking',
+          _ => null,
+        };
+        return <String, dynamic>{
+          '_id': event.id,
+          'scenario': 'C',
+          'event_type': event.value?.toString(),
+          'activity': activity,
+          'createdAt': event.timestamp.toUtc().toIso8601String(),
+          'explanation': event.details.split(' {').first.trim(),
+        };
+      }),
+    ]..sort((left, right) {
+        final leftAt = DateTime.tryParse(
+          (left['createdAt'] ?? left['created_at'])?.toString() ?? '',
+        );
+        final rightAt = DateTime.tryParse(
+          (right['createdAt'] ?? right['created_at'])?.toString() ?? '',
+        );
+        if (leftAt == null) return rightAt == null ? 0 : -1;
+        if (rightAt == null) return 1;
+        return rightAt.compareTo(leftAt);
+      });
+    final recentHistory = history.take(12).toList();
+    return Container(
+      key: const Key('hil-scenario-action-history'),
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Waktu aktivitas, rekaman, dan klarifikasi',
+            style: AppTheme.font(size: 12, weight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Catatan ini tersimpan untuk melihat kapan rekaman dimulai, perubahan terdeteksi, serta kapan sistem meminta dan menerima keterangan.',
+            style: AppTheme.font(
+              size: 10.5,
+              color: AppTheme.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          if (loadError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Riwayat belum dapat dimuat: $loadError',
+                key: const Key('hil-scenario-action-history-error'),
+                style: AppTheme.font(size: 10.5, color: AppTheme.statusRed),
+              ),
+            )
+          else if (recentHistory.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Belum ada aktivitas skenario B/C yang tersimpan.',
+                key: const Key('hil-scenario-action-history-empty'),
+                style: AppTheme.font(size: 10.5, color: AppTheme.textMuted),
+              ),
+            )
+          else
+            ...recentHistory.map((log) {
+              final loggedAt = DateTime.tryParse(
+                (log['createdAt'] ?? log['created_at'])?.toString() ?? '',
+              );
+              final scenario = log['scenario']?.toString();
+              final timestamp = loggedAt == null
+                  ? 'Waktu tidak tersedia'
+                  : formatHilWibDateTime(loggedAt);
+              final heading = [
+                if (scenario != null) 'Skenario $scenario',
+                _scenarioLogEventLabel(log['event_type']?.toString()),
+              ].join(' · ');
+              final summary = [
+                log['clarification'],
+                log['recommendation'],
+                log['explanation'],
+              ].whereType<String>().firstWhere(
+                    (value) => value.trim().isNotEmpty,
+                    orElse: () => '',
+                  );
+              return ListTile(
+                key: Key('hil-scenario-action-${log['_id'] ?? log['run_id']}'
+                    '-${log['event_type']}'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  heading,
+                  style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  '$timestamp · Aktivitas ${_hilActivityLabel(log['activity'])}'
+                  '${summary.isEmpty ? '' : ' · $summary'}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _showScenarioLogDetails(context, log),
               );
             }),
         ],
@@ -424,13 +804,13 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   String _statusLabel(String? status) => switch (status) {
         'awaiting_clarification' => 'Menunggu klarifikasi',
         'reinterpreted_with_limits' => 'Ditinjau ulang dengan batasan',
-        'unresolved' => 'Unresolved · bukti belum cukup',
+        'unresolved' => 'Belum dapat disimpulkan · bukti belum cukup',
         'not_required' => 'Klarifikasi tidak diperlukan saat ini',
         'requested' => 'Klarifikasi diperlukan',
         'already_answered' => 'Klarifikasi sudah tercatat',
-        'within_personal_region' => 'Dalam rentang baseline personal',
-        'moderately_displaced' => 'Berbeda dari baseline personal',
-        'strongly_displaced' => 'Jauh dari baseline personal',
+        'within_personal_region' => 'Dalam kisaran pribadi',
+        'moderately_displaced' => 'Agak berbeda dari kisaran pribadi',
+        'strongly_displaced' => 'Jauh berbeda dari kisaran pribadi',
         null || '' => 'Belum tersedia',
         _ => status.replaceAll('_', ' '),
       };
@@ -491,18 +871,23 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     List<Map<String, dynamic>> positiveZScores,
   ) {
     if (observation['status'] != 'available') {
-      return 'Data sensor, mutu sinyal, atau baseline aktivitas/waktu yang cocok belum cukup. Status unresolved; sistem tidak memaksakan interpretasi.';
+      return 'Data sensor, mutu bacaan, atau catatan pembanding untuk aktivitas dan waktu yang sesuai belum cukup. Sistem belum dapat menyimpulkan perubahan.';
     }
     final activity = observation['activity']?.toString();
     final detail = positiveZScores.isEmpty
-        ? 'tidak ada fitur terukur yang berada di atas rerata baseline (z-score > 0)'
-        : positiveZScores
-            .map((feature) =>
-                '${feature['label'] ?? feature['feature'] ?? 'fitur'} z=${(feature['z_score'] as num).toStringAsFixed(2)}')
-            .join(', ');
+        ? 'belum terlihat ukuran yang lebih tinggi dari pola pribadi'
+        : positiveZScores.map((feature) {
+            final metric = switch (feature['feature']?.toString()) {
+              'mean_hr' => 'denyut rata-rata',
+              'mean_rr' => 'jarak antardetak',
+              'rmssd' => 'perubahan jarak antardetak',
+              _ => feature['label']?.toString() ?? 'ukuran tubuh',
+            };
+            final distance = (feature['z_score'] as num).abs();
+            return '$metric sekitar ${distance.toStringAsFixed(1)} kali variasi yang biasa terlihat lebih tinggi';
+          }).join(', ');
     return 'Untuk ${activity ?? 'aktivitas'}${observation['time_period'] == null ? '' : ' · ${observation['time_period']}'}, '
-        '$detail. Deviasi pada HIL dimulai saat z-score fitur di atas baseline (> 0), tanpa tau tambahan. '
-        'Ini observasi statistik personal, bukan diagnosis.';
+        '$detail. Hasil dibandingkan dengan catatan pribadi untuk aktivitas serupa. Ini hanya pengamatan dan bukan diagnosis atau penjelasan penyebab.';
   }
 
   Widget _scenarioButton({
@@ -636,7 +1021,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             : const Icon(Icons.refresh_rounded),
       ),
       subtitle: Text(
-        'Baseline per aktivitas, deteksi z-score, dan klarifikasi peserta',
+        'Pola denyut pribadi, perubahan yang terlihat, dan klarifikasi',
         style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
       ),
       body: Column(
@@ -656,7 +1041,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           ),
           _scenarioButton(
             code: 'B',
-            title: 'One-way feedback',
+            title: 'Saran dari sistem',
             detail:
                 'Tampilkan narasi satu arah. Skenario dapat dibuka setelah tersedia 5 menit baseline HIL berkualitas untuk duduk, berdiri, dan berjalan.',
             selected: _selectedScenario == 'B',
@@ -667,7 +1052,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             code: 'C',
             title: 'Human in the loop',
             detail:
-                'Tampilkan hasil, minta klarifikasi, dan pertahankan unresolved bila bukti statistik belum cukup. Memerlukan 5 menit baseline HIL untuk setiap aktivitas.',
+                'Tampilkan hasil, tanyakan konteks yang mungkin terlewat, dan jelaskan bila data belum cukup untuk menyimpulkan. Memerlukan 5 menit catatan pribadi untuk setiap aktivitas.',
             selected: _selectedScenario == 'C',
             enabled: scenariosReady && _hasResearchConsent,
             onPressed: () => _selectScenario('C'),
@@ -688,7 +1073,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 7, bottom: 10),
               child: Text(
-                'Skenario B/C memerlukan 5 window HIL satu menit yang lolos quality gate untuk duduk, berdiri, dan berjalan. Saat ini $readyScenarioActivityCount/3 aktivitas siap; aktivitas dengan progres terendah memiliki $minimumScenarioWindowCount/5 window. Kesiapan memakai koleksi baseline HIL terpisah, bukan baseline CAPAR. Muat ulang setelah data diproses.',
+                'Skenario B/C memerlukan 5 menit bacaan layak untuk duduk, berdiri, dan berjalan. Saat ini $readyScenarioActivityCount/3 aktivitas siap; aktivitas dengan progres terendah memiliki $minimumScenarioWindowCount/5 menit. Catatan ini disimpan terpisah dari profil CAPAR. Muat ulang setelah data diproses.',
                 key: const Key('hil-scenarios-locked'),
                 style: AppTheme.font(
                   size: 10.5,
@@ -711,22 +1096,29 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             ...state.hilExplanationHistory,
             ...state.events.where((event) => event.eventType == 'hil_scenario'),
           ]),
+          _scenarioActionHistoryCard(
+            state.hilScenarioLogs,
+            state.events,
+            loadError: state.hilScenarioLogsError,
+          ),
           if (_selectedScenario == 'B') ...[
             const SizedBox(height: 10),
             _scenarioResultCard(
-              title: 'One-way feedback · hasil sistem',
+              title: 'Saran dari sistem · hasil',
               detail: _scenarioNarrative(latestObservation, positiveZScores),
               key: const Key('hil-one-way-result'),
             ),
           ],
-          if (_selectedScenario == 'C') ...[
+          if (_selectedScenario == 'C' &&
+              (followUpStatus == 'requested' ||
+                  resolution['feedback_recorded'] == true)) ...[
             const SizedBox(height: 10),
             _humanInTheLoopCard(
               observation: latestObservation,
-              positiveZScores: positiveZScores,
               segmentId: segmentId,
               hasSegment: hasSegment,
               resolutionStatus: resolutionStatus,
+              resolution: resolution,
             ),
             const SizedBox(height: 8),
             SizedBox(
@@ -734,13 +1126,9 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               child: OutlinedButton.icon(
                 key: const Key('hil-open-live-monitor'),
                 onPressed: _hasResearchConsent
-                    ? () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => HumanInTheLoopLiveMonitorScreen(
-                              baselineContexts: baselineContexts,
-                              initialActivity: observationActivity,
-                            ),
-                          ),
+                    ? () => _openLiveMonitor(
+                          baselineContexts,
+                          observationActivity,
                         )
                     : null,
                 icon: const Icon(Icons.monitor_heart_outlined),
@@ -752,16 +1140,17 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           _sectionTitle('Resolusi bukti'),
           _stepCard(
             number: '01',
-            title: 'Deteksi perubahan dari z-score',
+            title: 'Deteksi perubahan dari pola pribadi',
             detail: _scenarioNarrative(latestObservation, positiveZScores),
           ),
           _stepCard(
             number: '02',
             title: 'Periksa kualitas dan baseline',
             detail:
-                'Quality gate: ${qualityPassed ? 'lolos' : quality['status'] == 'insufficient_data' ? 'data belum cukup' : 'belum lolos/tersedia'}'
-                ' · baseline HIL: ${scenariosReady ? 'tersedia' : 'belum memenuhi 5 menit per aktivitas'}'
-                ' · progres minimum antaraktivitas: $minimumScenarioWindowCount/5 window valid',
+                'Pemeriksaan mutu bacaan: ${qualityPassed ? 'lolos' : quality['status'] == 'insufficient_data' ? 'data belum cukup' : 'belum lolos/tersedia'}'
+                ' (sinyal dan kelengkapan data)'
+                ' · catatan pembanding pribadi: ${scenariosReady ? 'tersedia' : 'belum memenuhi 5 menit per aktivitas'}'
+                ' · aktivitas dengan catatan paling sedikit: $minimumScenarioWindowCount/5 menit',
           ),
           _stepCard(
             number: '03',
@@ -807,10 +1196,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             title: 'Feedback dan observasi lanjutan',
             detail: resolution['next_step']?.toString() ==
                     'observe_next_comparable_window'
-                ? 'Amati window berikutnya yang lolos quality gate pada aktivitas dan waktu yang sebanding.'
+                ? 'Tunggu bacaan berikutnya dengan mutu baik pada aktivitas dan waktu yang sebanding.'
                 : resolution['next_step']?.toString() ==
                         'observe_next_quality_gated_window'
-                    ? 'Bukti belum cukup atau masih bertentangan; status tetap unresolved sambil menunggu observasi berkualitas berikutnya.'
+                    ? 'Bukti belum cukup atau masih berbeda; belum dapat disimpulkan sampai ada bacaan yang lebih baik.'
                     : 'Lanjutkan pemantauan dan tinjau perubahan berikutnya bersama konteksnya.',
           ),
           const SizedBox(height: 8),
@@ -825,7 +1214,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Klarifikasi peserta adalah konteks yang dilaporkan, bukan bukti penyebab. Interpretasi tetap unresolved jika data tidak cukup atau saling bertentangan; halaman ini bukan alat diagnosis.',
+            'Klarifikasi pengguna adalah konteks yang dilaporkan, bukan bukti penyebab. Hasil tetap belum dapat disimpulkan jika data tidak cukup atau saling berbeda; halaman ini bukan alat diagnosis.',
             style: AppTheme.font(
               size: 10.5,
               color: AppTheme.textMuted,
@@ -941,7 +1330,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               style: AppTheme.font(size: 12, weight: FontWeight.w800)),
           const SizedBox(height: 5),
           Text(
-            'Rekam baseline secara berurutan: duduk, berdiri, lalu berjalan. Setiap langkah membutuhkan 5 window satu menit yang lolos quality gate. Data baseline HIL disimpan tersendiri, terpisah dari baseline CAPAR.',
+            'Rekam catatan pembanding secara berurutan: duduk, berdiri, lalu berjalan. Setiap langkah membutuhkan 5 menit bacaan bermutu baik. Data HIL disimpan terpisah dari profil CAPAR.',
             style: AppTheme.font(
               size: 10.5,
               color: AppTheme.textSecondary,
@@ -1126,12 +1515,20 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
 
   Widget _humanInTheLoopCard({
     required Map<String, dynamic> observation,
-    required List<Map<String, dynamic>> positiveZScores,
     required String? segmentId,
     required bool hasSegment,
     required String resolutionStatus,
+    required Map<String, dynamic> resolution,
   }) =>
-      Container(
+      Builder(builder: (context) {
+        final reportedContext = _map(resolution['reported_context']);
+        final remainingUnknowns = resolution['remaining_unknowns'] is List
+            ? (resolution['remaining_unknowns'] as List)
+                .whereType<String>()
+                .map(_unknownContextLabel)
+                .toSet()
+            : <String>{};
+        return Container(
         key: const Key('hil-human-loop-form'),
         width: double.infinity,
         padding: const EdgeInsets.all(13),
@@ -1143,60 +1540,26 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Human in the loop · konfirmasi peserta',
+            Text('Bantu lengkapi konteks pengukuran Anda',
                 style: AppTheme.font(size: 12, weight: FontWeight.w800)),
             const SizedBox(height: 6),
             Text(
-              _scenarioNarrative(observation, positiveZScores),
+              'Denyut jantung Anda saat ${_hilActivityLabel(observation['activity'])} berbeda dari baseline personal. Penyebabnya belum dapat dipastikan. Apakah ada aktivitas atau kondisi sebelum pengukuran yang belum tercatat?',
               style: AppTheme.font(
                 size: 10.5,
                 color: AppTheme.textSecondary,
                 height: 1.4,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Text(
-              'Sebelum atau saat perubahan ini, apakah Anda melakukan aktivitas fisik berat?',
-              style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
-            ),
-            const SizedBox(height: 5),
-            _choiceChips(
-              group: 'strenuous',
-              value: _strenuousActivity,
-              options: const [
-                ('yes', 'Ya'),
-                ('no', 'Tidak'),
-                ('uncertain', 'Tidak yakin'),
-              ],
-              onSelected: (value) => setState(() {
-                _strenuousActivity = value;
-                if (value == 'no') _activityIntensity = 'not_applicable';
-                if (value == 'yes' && _activityIntensity == 'not_applicable') {
-                  _activityIntensity = 'uncertain';
-                }
-              }),
-            ),
-            if (_strenuousActivity == 'yes') ...[
-              const SizedBox(height: 8),
-              Text(
-                'Seberapa berat aktivitas tersebut dirasakan?',
-                style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
+              'Periksa informasi berikut, lalu koreksi atau tambahkan konteks bila diperlukan.',
+              style: AppTheme.font(
+                size: 10.5,
+                color: AppTheme.textSecondary,
+                height: 1.4,
               ),
-              const SizedBox(height: 5),
-              _choiceChips(
-                group: 'intensity',
-                value: _activityIntensity,
-                options: const [
-                  ('light', 'Ringan'),
-                  ('moderate', 'Sedang'),
-                  ('heavy', 'Berat'),
-                  ('very_heavy', 'Sangat berat'),
-                  ('uncertain', 'Tidak yakin'),
-                ],
-                onSelected: (value) =>
-                    setState(() => _activityIntensity = value),
-              ),
-            ],
+            ),
             if (!hasSegment)
               Padding(
                 padding: const EdgeInsets.only(top: 9),
@@ -1214,33 +1577,67 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                key: const Key('hil-submit-clarification'),
-                onPressed: !hasSegment ||
-                        _isSubmittingClarification ||
-                        _clarificationSaved
+                key: const Key('hil-open-deviation-clarification'),
+                onPressed: !hasSegment
                     ? null
-                    : () => _submitClarification(segmentId),
-                icon: _isSubmittingClarification
-                    ? const SizedBox(
-                        width: 15,
-                        height: 15,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(_clarificationSaved
-                        ? Icons.check_circle_outline
-                        : Icons.send_rounded),
-                label: Text(_clarificationSaved
-                    ? 'Klarifikasi tersimpan'
-                    : 'Kirim klarifikasi untuk ditinjau'),
+                    : () => _openDeviationClarification(
+                          segmentId: segmentId,
+                          activity: _hilActivityLabel(observation['activity']),
+                          reportedContext: reportedContext,
+                        ),
+                icon: const Icon(Icons.question_answer_outlined),
+                label: Text(reportedContext.isEmpty
+                    ? 'Lengkapi konteks pengukuran'
+                    : 'Koreksi atau tambahkan konteks'),
               ),
             ),
-            if (_clarificationSaved)
+            if (resolution['feedback_recorded'] == true &&
+                reportedContext.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Konteks yang ditambahkan',
+                style: AppTheme.font(size: 10.5, weight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Aktivitas sebelumnya: ${reportedContext['activity_before_event'] == 'unknown' ? 'Tidak diingat' : reportedContext['activity_before_event'] ?? 'Belum diketahui'}'
+                '${reportedContext['activity_end_time']?.toString().isNotEmpty == true ? '\nAktivitas berakhir: ${reportedContext['activity_end_time']}' : ''}'
+                '${reportedContext['note']?.toString().isNotEmpty == true ? '\nKonteks tambahan: ${reportedContext['note']}' : ''}',
+                key: const Key('hil-reported-context'),
+                style: AppTheme.font(
+                  size: 10,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                resolution['reinterpreted'] == true
+                    ? 'Interpretasi diperbarui dengan konteks ini, tetapi hal tersebut tidak membuktikan penyebab deviasi.'
+                    : 'Interpretasi belum berubah karena konteks atau bukti yang tersedia belum cukup.',
+                key: const Key('hil-interpretation-change'),
+                style: AppTheme.font(
+                  size: 10,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              Text(
+                'Yang masih belum diketahui: ${remainingUnknowns.isEmpty ? 'penyebab deviasi' : remainingUnknowns.join(', ')}. Penyebabnya belum dapat dipastikan.',
+                key: const Key('hil-remaining-unknowns'),
+                style: AppTheme.font(
+                  size: 10,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+            ],
+            if (resolutionStatus == 'unresolved' &&
+                resolution['feedback_recorded'] != true)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  resolutionStatus == 'reinterpreted_with_limits'
-                      ? 'Konteks baru dipertimbangkan bersama mutu sinyal dan baseline; interpretasi diperbarui dengan batasan, bukan menetapkan penyebab.'
-                      : 'Klarifikasi dicatat. Status ${_statusLabel(resolutionStatus)} sampai mutu sinyal, baseline yang cocok, dan bukti lain memadai.',
+                  'Status ${_statusLabel(resolutionStatus)}. Penyebab deviasi belum dapat dipastikan.',
                   key: const Key('hil-post-clarification-status'),
                   style: AppTheme.font(
                     size: 10,
@@ -1252,26 +1649,24 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           ],
         ),
       );
+      });
 
-  Widget _choiceChips({
-    required String group,
-    required String value,
-    required List<(String, String)> options,
-    required ValueChanged<String> onSelected,
-  }) =>
-      Wrap(
-        spacing: 6,
-        runSpacing: 4,
-        children: options.map((option) {
-          final selected = value == option.$1;
-          return ChoiceChip(
-            key: Key('hil-$group-${option.$1}'),
-            label: Text(option.$2),
-            selected: selected,
-            onSelected: (_) => onSelected(option.$1),
-          );
-        }).toList(),
-      );
+  String _unknownContextLabel(String value) => switch (value) {
+        'reported_activity' => 'aktivitas yang dilaporkan',
+        'cause_of_deviation' => 'penyebab deviasi',
+        'causal_relationship' => 'hubungan sebab-akibat',
+        'patient_context_not_recorded' => 'konteks pengguna belum tercatat',
+        'no_relevant_new_context' => 'konteks baru yang relevan',
+        'sensor_quality_gate_not_passed' => 'mutu sinyal yang memadai',
+        'matching_baseline_not_mature' => 'baseline pembanding yang matang',
+        'physiological_evidence_insufficient' => 'bukti fisiologis yang cukup',
+        'measurement_condition_requires_review' =>
+          'kondisi perangkat perlu ditinjau',
+        'measurement_condition_not_recorded' =>
+          'kondisi perangkat saat pengukuran',
+        'evidence_conflict_remains' => 'perbedaan bukti yang masih ada',
+        _ => value.replaceAll('_', ' '),
+      };
 
   Widget _scenarioResultCard({
     required String title,

@@ -277,6 +277,7 @@ class _HumanInTheLoopLiveMonitorScreenState
   final List<double> _simulatedHrHistory = [];
   bool _isMonitoring = false;
   bool _isSimulation = false;
+  bool _isStoppingMonitoring = false;
   bool _ownsStream = false;
   bool _isPromptVisible = false;
   bool _promptedForCurrentEpisode = false;
@@ -294,6 +295,7 @@ class _HumanInTheLoopLiveMonitorScreenState
   late final AppState _appState;
   late final List<Map<String, dynamic>> _dfaReadings;
   final List<ChartPoint> _hrObservationPoints = [];
+  final List<Map<String, dynamic>> _sessionEvents = [];
 
   @override
   void initState() {
@@ -311,6 +313,13 @@ class _HumanInTheLoopLiveMonitorScreenState
   void dispose() {
     _timer?.cancel();
     _appState.wearableBridge.removeListener(_handleWearableChange);
+    if (_isMonitoring && !_isSimulation && !_isStoppingMonitoring) {
+      unawaited(_saveHilEvent(
+        eventName: 'live_recording_stopped',
+        details: 'Pemantauan dihentikan ketika halaman ditutup.',
+        value: {'ctx': _activity, 'mode': _testMode},
+      ));
+    }
     if (_ownsStream && _appState.wearableBridge.isStreaming) {
       unawaited(_appState.wearableBridge.stopStreaming());
     }
@@ -328,6 +337,42 @@ class _HumanInTheLoopLiveMonitorScreenState
       'berjalan' || 'walk' || 'walking' => 'walking',
       _ => activity,
     };
+  }
+
+  String _activityLabel(String activity) => switch (activity) {
+        'sitting' => 'Duduk',
+        'standing' => 'Berdiri',
+        'walking' => 'Berjalan',
+        _ => activity,
+      };
+
+  String _liveEventLabel(String eventName) => switch (eventName) {
+        'live_recording_started' => 'Rekaman dimulai',
+        'live_recording_stopped' => 'Rekaman dihentikan',
+        'live_recording_interrupted' => 'Rekaman terputus',
+        'activity_selected' => 'Aktivitas dipilih',
+        'activity_clarification_requested' => 'Sistem mengirim pertanyaan',
+        'activity_clarification_answered' => 'Jawaban pengguna diterima',
+        'deviation_recommendation' => 'Saran ditampilkan',
+        'hr_recovery_observed' => 'Denyut mendekati kisaran biasa',
+        'dfa_5_minute_batch' => 'Ringkasan pola detak selesai',
+        _ => eventName.replaceAll('_', ' '),
+      };
+
+  Future<void> _selectActivity(String activity) async {
+    if (activity == _activity) return;
+    setState(() {
+      _activity = activity;
+      _resetTestObservations();
+    });
+    if (!_isSimulation) {
+      await _saveHilEvent(
+        eventName: 'activity_selected',
+        details:
+            'Pengguna memilih konteks aktivitas ${_activityLabel(activity)}.',
+        value: {'ctx': activity, 'mode': _testMode},
+      );
+    }
   }
 
   List<Map<String, dynamic>> get _matchingBaselines => widget.baselineContexts
@@ -524,24 +569,31 @@ class _HumanInTheLoopLiveMonitorScreenState
   }
 
   void _handleWearableChange() {
-    if (!mounted || !_isMonitoring) return;
+    if (!mounted || !_isMonitoring || _isStoppingMonitoring) return;
     final bridge = _appState.wearableBridge;
     if (!bridge.isStreaming) {
+      _isStoppingMonitoring = true;
       setState(() {
+        _isMonitoring = false;
+        _ownsStream = false;
         _latestStatus = 'Streaming wearable terputus; evaluasi dihentikan.';
         _latestDetail =
             bridge.error ?? 'Sambungkan kembali sensor untuk melanjutkan.';
       });
       _timer?.cancel();
       _timer = null;
-      _isMonitoring = false;
-      _ownsStream = false;
+      unawaited(_saveHilEvent(
+        eventName: 'live_recording_interrupted',
+        details: 'Perekaman berhenti karena koneksi Polar H10 terputus.',
+        value: {'ctx': _activity},
+      ).whenComplete(() => _isStoppingMonitoring = false));
       return;
     }
     _collectDfaReadings();
   }
 
   Future<void> _startMonitoring() async {
+    if (_isStoppingMonitoring) return;
     final bridge = _appState.wearableBridge;
     if (bridge.isDemoDevice) {
       setState(() {
@@ -574,6 +626,7 @@ class _HumanInTheLoopLiveMonitorScreenState
       return;
     }
     _ownsStream = startStreamHere;
+    _isStoppingMonitoring = false;
     _startTimer();
   }
 
@@ -643,6 +696,11 @@ class _HumanInTheLoopLiveMonitorScreenState
     final bridge = _appState.wearableBridge;
     if (_isMonitoring || !bridge.isStreaming || bridge.isDemoDevice) return;
     _isMonitoring = true;
+    unawaited(_saveHilEvent(
+      eventName: 'live_recording_started',
+      details: 'Pemantauan Polar H10 dimulai.',
+      value: {'ctx': _activity, 'mode': _testMode},
+    ));
     _elapsedSeconds = 0;
     _resetTestObservations();
     _dfaBatchStartedAt = DateTime.now();
@@ -676,7 +734,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     setState(() {
       _latestStatus = 'Pemantauan HIL aktif.';
       _latestDetail =
-          'HR dievaluasi tiap 30 detik. DFA α1 menunggu satu batch RR 5 menit.';
+          'Denyut jantung diringkas setiap 30 detik. Pola jarak antardetak menunggu data yang cukup selama 5 menit.';
     });
   }
 
@@ -726,7 +784,7 @@ class _HumanInTheLoopLiveMonitorScreenState
         _latestSlope = window.hrSlopeBpmPerMinute;
         _latestStatus = 'Data HR 30 detik belum cukup.';
         _latestDetail =
-            '${window.sampleCount} pembacaan valid tersedia; dibutuhkan minimal 3 untuk menghitung rerata dan slope.';
+            '${window.sampleCount} bacaan yang layak tersedia; dibutuhkan minimal 3 untuk menghitung rata-rata dan arah perubahan.';
       });
       return;
     }
@@ -735,10 +793,11 @@ class _HumanInTheLoopLiveMonitorScreenState
       setState(() {
         _latestMeanHr = meanHr;
         _latestSlope = window.hrSlopeBpmPerMinute;
-        _latestStatus = 'Baseline HR tidak tersedia untuk konteks ini.';
+        _latestStatus =
+            'Catatan pembanding denyut belum tersedia untuk aktivitas ini.';
         _latestDetail = _isSimulation
             ? 'Simulasi menggunakan baseline tampilan 70 bpm sebagai nilai contoh.'
-            : 'Data live ditampilkan, tetapi deviasi dan pemulihan tidak disimpulkan tanpa baseline pembanding.';
+            : 'Data langsung ditampilkan, tetapi perubahan tidak dapat dibandingkan tanpa catatan pribadi.';
       });
       if (submitBackend && !_isSimulation) {
         unawaited(_submitHilRealtime(
@@ -767,27 +826,27 @@ class _HumanInTheLoopLiveMonitorScreenState
     if (elevated) _hadElevatedHr = true;
 
     final status = elevated
-        ? 'Kandidat deviasi HR terdeteksi.'
+        ? 'Denyut berbeda dari pola biasanya.'
         : _hadElevatedHr && approachingBaseline
             ? meanHr <= baselineHr + _hrElevationThreshold
-                ? 'HR kembali ke rentang baseline personal.'
-                : 'HR menurun menuju baseline personal.'
-            : 'HR berada di sekitar rentang baseline personal.';
+                ? 'Denyut kembali ke kisaran biasanya.'
+                : 'Denyut bergerak mendekati kisaran biasanya.'
+            : 'Denyut berada di sekitar kisaran biasanya.';
     final detail = [
-      'Rerata 30 dtk ${meanHr.toStringAsFixed(1)} bpm; baseline ${baselineHr.toStringAsFixed(1)} bpm.',
-      'Deviasi ${hrDelta >= 0 ? '+' : ''}${hrDelta.toStringAsFixed(1)} bpm${hrZScore == null ? '' : ' (z=${hrZScore.toStringAsFixed(2)})'}.',
-      'Ambang observasi ${_hrElevationThreshold.toStringAsFixed(1)} bpm di atas baseline.',
+      'Rata-rata 30 detik ${meanHr.toStringAsFixed(1)} bpm; nilai pembanding pribadi ${baselineHr.toStringAsFixed(1)} bpm.',
+      'Perbedaannya ${hrDelta >= 0 ? '+' : ''}${hrDelta.toStringAsFixed(1)} bpm${hrZScore == null ? '' : ', sekitar ${hrZScore.abs().toStringAsFixed(1)} kali variasi yang biasa terlihat'}.',
+      'Perubahan dianggap menonjol bila lebih tinggi ${_hrElevationThreshold.toStringAsFixed(1)} bpm dari nilai pembanding.',
       if (window.hrSlopeBpmPerMinute != null)
-        'Slope ${window.hrSlopeBpmPerMinute!.toStringAsFixed(1)} bpm/menit.',
+        'Perubahan denyut sekitar ${window.hrSlopeBpmPerMinute!.toStringAsFixed(1)} bpm per menit.',
       if (window.accelerationVariability != null)
-        'Variasi magnitudo akselerasi ${window.accelerationVariability!.toStringAsFixed(3)} g.',
+        'Perubahan gerakan tubuh ${window.accelerationVariability!.toStringAsFixed(3)} g.',
       if (elevated && window.motionIsStable)
-        'Deviasi ini terdeteksi saat akselerasi relatif stabil; hal ini bukan bukti penyebab atau diagnosis.',
+        'Perubahan ini muncul saat gerakan relatif tenang; ini tidak membuktikan penyebab atau diagnosis.',
       if (!_hasMatureBaseline)
-        'Baseline belum mature; perbandingan ini bersifat sementara.',
+        'Catatan pembanding masih sementara; hasil ini belum mewakili pola jangka panjang.',
       if (_isSimulation) 'SIMULASI: data sintetis, bukan rekaman sensor.',
       if (_hadElevatedHr && approachingBaseline)
-        'Arah perubahan HR mendekati rerata baseline; pemulihan tidak dipastikan sebagai efek aktivitas tertentu.',
+        'Arah perubahan denyut mendekati nilai biasanya; penyebab perubahan tidak dapat dipastikan.',
     ].join(' ');
 
     setState(() {
@@ -857,9 +916,9 @@ class _HumanInTheLoopLiveMonitorScreenState
         .where((value) => value >= 250 && value <= 3000)
         .toList();
     setState(() {
-      _latestStatus = 'Batch RR 5 menit dikirim untuk evaluasi backend.';
+      _latestStatus = 'Ringkasan pola jarak antardetak sedang diperiksa.';
       _latestDetail =
-          '${validRr.length} interval RR diteruskan untuk menghitung DFA α1 dan memperbarui interpretasi.';
+          '${validRr.length} jarak antardetak diteruskan untuk menyusun ringkasan pola detak.';
     });
     if (!_isSimulation) {
       unawaited(_submitHilRealtime(
@@ -894,10 +953,9 @@ class _HumanInTheLoopLiveMonitorScreenState
     if (mounted) {
       setState(() {
         _latestStatus = dfaRrIntervals == null
-            ? 'Mengirim HR 30 detik untuk evaluasi sinkron backend...'
-            : 'Mengirim batch DFA 5 menit untuk evaluasi sinkron backend...';
-        _latestDetail =
-            'Hasil dihitung langsung oleh API dan tidak menunggu worker atau antrean RabbitMQ.';
+            ? 'Memeriksa bacaan denyut 30 detik...'
+            : 'Memeriksa ringkasan pola detak 5 menit...';
+        _latestDetail = 'Hasil akan ditampilkan setelah pemeriksaan selesai.';
       });
     }
     final response = await ApiService.evaluateHilRealtime({
@@ -912,7 +970,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     if (!mounted || requestGeneration != _backendEvaluationGeneration) return;
     if (!response.success || response.data == null) {
       setState(() {
-        _latestStatus = 'Evaluasi realtime backend gagal.';
+        _latestStatus = 'Hasil pengukuran belum dapat dihitung.';
         _latestDetail = response.message ??
             'Backend tidak mengembalikan hasil evaluasi; status sebelumnya tidak diperbarui.';
       });
@@ -927,50 +985,57 @@ class _HumanInTheLoopLiveMonitorScreenState
     final comparisons = _map(result['comparisons']);
     final dfaComparison = _map(comparisons['dfa_alpha1']);
     final status = interpretation['status']?.toString() ?? 'not_assessable';
-    final detail = interpretation['detail']?.toString() ??
-        'Backend tidak memberikan detail interpretasi.';
     final meanHr = metrics['mean_hr'];
     final slope = metrics['hr_slope_bpm_per_minute'];
     final dfaAlpha = metrics['dfa_alpha1'];
     final dfaCount = metrics['dfa_rr_count'];
     final dfaBase = dfaComparison['baseline_mean'];
     final dfaValue = dfaComparison['value'];
-    final dfaZ = dfaComparison['z_score'];
     final label = switch (status) {
-      'normal' => 'Backend: dalam rentang baseline',
-      'candidate_deviation' => 'Backend: kandidat deviasi HR terdeteksi',
-      'recovery_trend' => 'Backend: tren pemulihan menuju baseline',
-      'recovered' => 'Backend: kembali ke rentang baseline',
-      _ => 'Backend: belum dapat dinilai',
+      'normal' => 'Denyut berada dalam kisaran pribadi',
+      'candidate_deviation' => 'Denyut berbeda dari pola biasanya',
+      'recovery_trend' => 'Denyut bergerak mendekati kisaran biasanya',
+      'recovered' => 'Denyut kembali ke kisaran biasanya',
+      _ => 'Belum dapat dinilai',
     };
     final dfaText = dfaAlpha is num
-        ? ' DFA α1 ${dfaAlpha.toStringAsFixed(3)} dari ${dfaCount ?? 0} RR valid'
-            '${dfaBase is num ? ', baseline ${dfaBase.toStringAsFixed(3)}' : ''}'
-            '${dfaZ is num ? ', z=${dfaZ.toStringAsFixed(2)}' : ''}.'
+        ? ' Ringkasan pola detak dibuat dari ${dfaCount ?? 0} jarak antardetak yang layak.'
         : dfaRrIntervals != null
-            ? ' DFA α1 belum tersedia; dibutuhkan minimal 64 RR valid berkualitas.'
+            ? ' Ringkasan pola detak belum tersedia; diperlukan setidaknya 64 jarak antardetak yang layak.'
             : '';
+    final baselineMean = baseline['mean_hr'];
+    final baselineDescription = baseline['level'] == 'provisional'
+        ? ' Catatan pembanding masih sementara.'
+        : '';
+    final readableMetrics = [
+      if (meanHr is num)
+        'Rata-rata denyut ${meanHr.toStringAsFixed(1)} bpm'
+            '${baselineMean is num ? ', dibandingkan dengan nilai pribadi ${baselineMean.toStringAsFixed(1)} bpm' : ''}.',
+      if (slope is num)
+        'Denyut berubah sekitar ${slope.toStringAsFixed(1)} bpm per menit.',
+      if (evaluationId != null) 'Ringkasan pemeriksaan tersimpan.',
+    ].join(' ');
     final isNewBackendDeviation =
         status == 'candidate_deviation' && !_hadElevatedHr;
 
     setState(() {
       _latestStatus = label;
-      _latestDetail =
-          '$detail${baseline['level'] == 'provisional' ? ' Baseline masih provisional dan digunakan sebagai referensi sementara.' : ''}$dfaText ${evaluationId == null ? 'Log evaluasi tersimpan di MongoDB.' : 'Log MongoDB: $evaluationId.'}';
+      _latestDetail = '$readableMetrics$baselineDescription$dfaText';
       if (meanHr is num) _latestMeanHr = meanHr.toDouble();
       if (slope is num) _latestSlope = slope.toDouble();
       if (dfaAlpha is num) {
         _latestDfaAlpha1 = dfaAlpha.toDouble();
         _latestDfaRrCount = dfaCount is num ? dfaCount.toInt() : 0;
-        _latestDfaComparison = dfaBase is num
-            ? 'Deviasi ${dfaValue is num ? (dfaValue - dfaBase).toStringAsFixed(3) : '-'}'
-                '${dfaZ is num ? ' (z=${dfaZ.toStringAsFixed(2)})' : ''} dari baseline ${dfaBase.toStringAsFixed(3)}.'
-            : 'Baseline DFA α1 untuk konteks ini belum tersedia.';
+        _latestDfaComparison = dfaBase is num && dfaValue is num
+            ? (dfaValue - dfaBase).abs() < 0.1
+                ? 'Pola jeda antardetak mirip dengan catatan pribadi sebelumnya.'
+                : 'Pola jeda antardetak berbeda dari catatan pribadi sebelumnya.'
+            : 'Belum ada catatan pribadi untuk membandingkan pola jeda antardetak.';
       } else if (dfaRrIntervals != null) {
         _latestDfaAlpha1 = null;
         _latestDfaRrCount = dfaCount is num ? dfaCount.toInt() : 0;
         _latestDfaComparison =
-            'Batch backend selesai; data DFA α1 belum cukup atau kualitasnya tidak memenuhi syarat.';
+            'Ringkasan pola jeda antardetak belum dapat dibuat karena bacaan belum cukup atau mutunya kurang.';
       }
       if (status == 'candidate_deviation') {
         _hadElevatedHr = true;
@@ -1027,6 +1092,19 @@ class _HumanInTheLoopLiveMonitorScreenState
   Future<void> _requestActivityClarification(HilLiveWindow window) async {
     if (!mounted || _isPromptVisible) return;
     _isPromptVisible = true;
+    if (!_isSimulation) {
+      await _saveHilEvent(
+        eventName: 'activity_clarification_requested',
+        details: 'Sistem menampilkan pertanyaan tentang aktivitas berat.',
+        value: {
+          'mode': _testMode,
+          'ctx': _activity,
+          'hr': window.meanHr,
+          'base': _baselineMeanHr,
+        },
+      );
+      if (!mounted) return;
+    }
     final answer = await showDialog<({String activity, String? intensity})>(
       context: context,
       barrierDismissible: false,
@@ -1077,8 +1155,8 @@ class _HumanInTheLoopLiveMonitorScreenState
     }
     setState(() => _isSavingClarification = true);
     final saved = await _saveHilEvent(
-      eventName: 'activity_clarification',
-      details: 'Klarifikasi aktivitas berat oleh peserta.',
+      eventName: 'activity_clarification_answered',
+      details: 'Jawaban pengguna atas pertanyaan aktivitas berat.',
       value: {
         'mode': _testMode,
         'ctx': _activity,
@@ -1137,7 +1215,7 @@ class _HumanInTheLoopLiveMonitorScreenState
   Future<void> _recordDfaEvent(double alpha1, int rrCount) async {
     await _saveHilEvent(
       eventName: 'dfa_5_minute_batch',
-      details: 'Batch DFA alpha-1 5 menit selesai.',
+      details: 'Ringkasan pola jarak antardetak 5 menit selesai.',
       value: {
         'mode': _testMode,
         'ctx': _activity,
@@ -1154,6 +1232,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     required Map<String, dynamic> value,
     String? intensity,
   }) async {
+    final occurredAt = DateTime.now().toUtc();
     final eventDetails = '$details ${jsonEncode(value)}';
     if (eventDetails.length > 300) {
       _showSaveError(
@@ -1164,7 +1243,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     final response = await ApiService.createEvent({
       'event_type': 'hil_scenario',
       'run_id': _runId,
-      'occurred_at': DateTime.now().toUtc().toIso8601String(),
+      'occurred_at': occurredAt.toIso8601String(),
       'details': eventDetails,
       'value': eventName,
       if (intensity != null) 'intensity': intensity,
@@ -1172,6 +1251,18 @@ class _HumanInTheLoopLiveMonitorScreenState
     });
     if (!response.success && mounted) {
       _showSaveError(response.message ?? 'Event HIL gagal disimpan.');
+    }
+    if (response.success && mounted) {
+      setState(() {
+        _sessionEvents.add({
+          'event_name': eventName,
+          'details': details,
+          'occurred_at': occurredAt.toIso8601String(),
+          'activity': _activity,
+          if (value['hr'] is num) 'heart_rate_bpm': value['hr'],
+          if (value['base'] is num) 'baseline_mean_hr': value['base'],
+        });
+      });
     }
     return response.success;
   }
@@ -1184,17 +1275,28 @@ class _HumanInTheLoopLiveMonitorScreenState
   }
 
   Future<void> _stopMonitoring() async {
+    if (!_isMonitoring || _isStoppingMonitoring) return;
+    _isStoppingMonitoring = true;
     _timer?.cancel();
     _timer = null;
+    final wasSimulation = _isSimulation;
     setState(() {
       _isMonitoring = false;
       _isSimulation = false;
       _latestStatus = 'Pemantauan HIL dihentikan.';
     });
+    if (!wasSimulation) {
+      await _saveHilEvent(
+        eventName: 'live_recording_stopped',
+        details: 'Pemantauan dihentikan oleh pengguna.',
+        value: {'ctx': _activity, 'mode': _testMode},
+      );
+    }
     if (_ownsStream && _appState.wearableBridge.isStreaming) {
       await _appState.wearableBridge.stopStreaming();
     }
     _ownsStream = false;
+    _isStoppingMonitoring = false;
   }
 
   @override
@@ -1208,9 +1310,9 @@ class _HumanInTheLoopLiveMonitorScreenState
         children: [
           _infoCard(
             icon: Icons.health_and_safety_outlined,
-            title: 'Pemantauan khusus skenario C',
+            title: 'Pemantauan langsung',
             detail:
-                'HR dievaluasi setiap 30 detik, deviasi dibandingkan dengan baseline aktivitas yang dipilih, dan DFA α1 dihitung per batch 5 menit. Hasil hanya observasi, bukan diagnosis.',
+                'Denyut diringkas setiap 30 detik dan dibandingkan dengan catatan pribadi untuk aktivitas yang dipilih. Pola jarak antardetak diringkas tiap 5 menit bila data cukup. Hasil ini bukan diagnosis.',
           ),
           const SizedBox(height: 12),
           _sectionTitle('Kondisi pengujian'),
@@ -1222,7 +1324,7 @@ class _HumanInTheLoopLiveMonitorScreenState
             ],
           ),
           const SizedBox(height: 12),
-          _sectionTitle('Konteks baseline untuk dibandingkan'),
+          _sectionTitle('Aktivitas yang sedang dilakukan'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1232,12 +1334,9 @@ class _HumanInTheLoopLiveMonitorScreenState
                   key: Key('hil-live-activity-${option.$1}'),
                   label: Text(option.$2),
                   selected: _activity == option.$1,
-                  onSelected: _isMonitoring
+                  onSelected: _isMonitoring || _isStoppingMonitoring
                       ? null
-                      : (_) => setState(() {
-                            _activity = option.$1;
-                            _resetTestObservations();
-                          }),
+                      : (_) => unawaited(_selectActivity(option.$1)),
                 ),
             ],
           ),
@@ -1245,12 +1344,12 @@ class _HumanInTheLoopLiveMonitorScreenState
           _infoCard(
             icon: Icons.equalizer,
             title:
-                'Baseline ${_activityOptions.firstWhere((option) => option.$1 == _activity).$2}',
+                'Catatan pembanding pribadi · ${_activityOptions.firstWhere((option) => option.$1 == _activity).$2}',
             detail: baselineHr == null
-                ? 'Data baseline HR untuk aktivitas ini belum tersedia. Pemantauan dapat berjalan, tetapi deviasi dan pemulihan tidak akan disimpulkan tanpa nilai pembanding.'
-                : 'Rerata HR ${baselineHr.toStringAsFixed(1)} bpm · ambang observasi +${_hrElevationThreshold.toStringAsFixed(1)} bpm'
-                    ' · ${_matchingBaselines.length} periode baseline dirata-ratakan'
-                    '${_hasMatureBaseline ? '' : ' (belum mature; referensi sementara)'}.',
+                ? 'Belum ada catatan denyut untuk aktivitas ini. Pemantauan tetap bisa berjalan, tetapi perubahan tidak dapat dibandingkan.'
+                : 'Rata-rata denyut ${baselineHr.toStringAsFixed(1)} bpm · perubahan menonjol di atas +${_hrElevationThreshold.toStringAsFixed(1)} bpm'
+                    ' · dirangkum dari ${_matchingBaselines.length} catatan'
+                    '${_hasMatureBaseline ? '' : ' (masih sementara)'}.',
           ),
           const SizedBox(height: 12),
           Row(
@@ -1258,7 +1357,9 @@ class _HumanInTheLoopLiveMonitorScreenState
               Expanded(
                 child: FilledButton.icon(
                   key: const Key('hil-live-start'),
-                  onPressed: _isMonitoring ? null : _startMonitoring,
+                  onPressed: _isMonitoring || _isStoppingMonitoring
+                      ? null
+                      : _startMonitoring,
                   icon: const Icon(Icons.play_arrow),
                   label: Text(bridge.isStreaming
                       ? 'Mulai pemantauan'
@@ -1281,7 +1382,9 @@ class _HumanInTheLoopLiveMonitorScreenState
             width: double.infinity,
             child: OutlinedButton.icon(
               key: const Key('hil-live-run-simulation'),
-              onPressed: _isMonitoring ? null : _startSimulation,
+              onPressed: _isMonitoring || _isStoppingMonitoring
+                  ? null
+                  : _startSimulation,
               icon: const Icon(Icons.science_outlined),
               label: const Text('Simulasikan HR tinggi → baseline'),
             ),
@@ -1303,20 +1406,28 @@ class _HumanInTheLoopLiveMonitorScreenState
             _infoCard(
               key: const Key('hil-live-simulation-recovery-progress'),
               icon: Icons.trending_down,
-              title: 'Progres simulasi recovery',
+              title: 'Perubahan denyut pada simulasi',
               detail:
-                  '${_simulatedHrHistory.map((hr) => '${hr.toStringAsFixed(0)} bpm').join(' → ')} · baseline ${baselineHr?.toStringAsFixed(0) ?? '70'} bpm',
+                  '${_simulatedHrHistory.map((hr) => '${hr.toStringAsFixed(0)} bpm').join(' → ')} · nilai contoh ${baselineHr?.toStringAsFixed(0) ?? '70'} bpm',
             ),
           const SizedBox(height: 12),
+          _infoCard(
+            key: const Key('hil-live-analysis-node-guide'),
+            icon: Icons.account_tree_outlined,
+            title: 'Arti tahapan analisis',
+            detail:
+                '1. Polar H10 mengukur denyut dan jarak antardetak. 2. Aplikasi memeriksa apakah sensor menempel dan bacaan cukup lengkap. 3. Rata-rata dibandingkan dengan catatan pribadi untuk aktivitas yang sama. 4. Perubahan yang menonjol dapat memunculkan saran atau pertanyaan. Jawaban pengguna dicatat sebagai laporan, bukan bukti penyebab. Semua kejadian memiliki waktu tersimpan.',
+          ),
+          const SizedBox(height: 8),
           _infoCard(
             icon: bridge.isStreaming ? Icons.sensors : Icons.sensors_off,
             title: bridge.isStreaming && !bridge.isDemoDevice
                 ? 'Polar H10 tersambung'
-                : 'Streaming sensor tidak aktif',
+                : 'Pengukuran sensor tidak aktif',
             detail: bridge.isDemoDevice
                 ? 'Sensor demo terdeteksi; tidak digunakan untuk analisis live HIL.'
                 : bridge.isStreaming
-                    ? 'HR saat ini ${bridge.heartRateBpm?.toString() ?? '-'} bpm · ${bridge.recentStreamReadings.length} titik terbaru tersimpan.'
+                    ? 'Denyut saat ini ${bridge.heartRateBpm?.toString() ?? '-'} bpm · ${bridge.recentStreamReadings.length} bacaan terbaru.'
                     : bridge.error ??
                         'Sambungkan perangkat nyata untuk memulai pengukuran.',
           ),
@@ -1326,16 +1437,18 @@ class _HumanInTheLoopLiveMonitorScreenState
           const SizedBox(height: 8),
           _observationChart(),
           const SizedBox(height: 8),
+          _sessionTimelineCard(),
+          const SizedBox(height: 8),
           _infoCard(
             key: const Key('hil-live-zero-shot-insight'),
             icon: Icons.auto_awesome_outlined,
-            title: 'Wawasan zero-shot',
+            title: 'Ringkasan otomatis',
             detail: _zeroShotInsight != null
-                ? 'Analisis selesai. Hasil tersedia di bawah.'
+                ? 'Ringkasan selesai. Hasil tersedia di bawah.'
                 : _zeroShotInsightError ??
                     (_isSimulation
-                        ? 'Analisis zero-shot dinonaktifkan untuk simulasi sintetis.'
-                        : 'Minta analisis setelah tersedia hasil tes nyata dan baseline aktivitas.'),
+                        ? 'Ringkasan otomatis tidak tersedia untuk data simulasi.'
+                        : 'Buat ringkasan setelah tersedia bacaan nyata dan catatan pribadi untuk aktivitas ini.'),
           ),
           if (!_isSimulation)
             SizedBox(
@@ -1356,7 +1469,7 @@ class _HumanInTheLoopLiveMonitorScreenState
                     : const Icon(Icons.auto_awesome),
                 label: Text(_isGeneratingInsight
                     ? 'Menganalisis...'
-                    : 'Analisis tes dengan zero-shot'),
+                    : 'Buat ringkasan tes'),
               ),
             ),
           if (_zeroShotInsight != null)
@@ -1426,8 +1539,9 @@ class _HumanInTheLoopLiveMonitorScreenState
         key: Key('hil-live-mode-$mode'),
         label: Text(label),
         selected: _testMode == mode,
-        onSelected:
-            _isMonitoring ? null : (_) => setState(() => _testMode = mode),
+        onSelected: _isMonitoring || _isStoppingMonitoring
+            ? null
+            : (_) => setState(() => _testMode = mode),
       );
 
   Widget _observationChart() {
@@ -1474,6 +1588,7 @@ class _HumanInTheLoopLiveMonitorScreenState
                     color: AppTheme.primary,
                     baselineMean: _baselineMeanHr,
                     timeDisplayOffset: hilWibOffset,
+                    maximumGap: const Duration(seconds: 45),
                   ),
                 ),
               ),
@@ -1515,6 +1630,59 @@ class _HumanInTheLoopLiveMonitorScreenState
     );
   }
 
+  Widget _sessionTimelineCard() => Card(
+        key: const Key('hil-live-session-timeline'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Ringkasan kejadian dan waktunya (WIB)',
+                style: AppTheme.font(size: 12, weight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Waktu rekaman, pilihan aktivitas, pertanyaan, dan jawaban dicatat terpisah.',
+                key: Key('hil-live-timeline-explanation'),
+              ),
+              if (_sessionEvents.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child:
+                      Text('Belum ada kejadian yang tersimpan untuk sesi ini.'),
+                )
+              else
+                ..._sessionEvents.map((event) {
+                  final time = DateTime.tryParse(
+                    event['occurred_at']?.toString() ?? '',
+                  );
+                  final timestamp = time == null
+                      ? 'Waktu tidak tersedia'
+                      : formatHilWibDateTime(time);
+                  final details = <String>[
+                    'Aktivitas: ${_activityLabel(event['activity']?.toString() ?? _activity)}',
+                    if (event['heart_rate_bpm'] is num)
+                      'Denyut ${(event['heart_rate_bpm'] as num).toStringAsFixed(1)} bpm',
+                    if (event['baseline_mean_hr'] is num)
+                      'Pembanding pribadi ${(event['baseline_mean_hr'] as num).toStringAsFixed(1)} bpm',
+                    event['details']?.toString() ?? '',
+                  ].where((part) => part.isNotEmpty).join(' · ');
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.schedule, size: 18),
+                    title: Text(
+                      '${_liveEventLabel(event['event_name']?.toString() ?? '')} · $timestamp',
+                    ),
+                    subtitle: Text(details),
+                  );
+                }),
+            ],
+          ),
+        ),
+      );
+
   Widget _realtimeSignalChart() {
     final points = HilLiveAnalysis.buildRealtimeHrPoints(
       readings: _appState.wearableBridge.recentStreamReadings,
@@ -1539,6 +1707,26 @@ class _HumanInTheLoopLiveMonitorScreenState
               ),
             ),
             const SizedBox(height: 6),
+            Builder(builder: (context) {
+              final wearable = _appState.wearableBridge;
+              final connected = wearable.isConnected &&
+                  wearable.isStreaming &&
+                  !wearable.isDemoDevice;
+              return Text(
+                connected
+                    ? 'Polar H10 terhubung dan streaming. Garis diputus bila jeda antarsampel lebih dari 5 detik.'
+                    : wearable.isConnected
+                        ? 'Polar H10 terhubung tetapi streaming tidak aktif; grafik tidak menerima sampel baru.'
+                        : 'Polar H10 terputus. Sambungkan kembali untuk melanjutkan; jeda data tidak dihubungkan oleh garis.',
+                key: const Key('hil-live-chart-connection-status'),
+                style: AppTheme.font(
+                  size: 10,
+                  color:
+                      connected ? AppTheme.statusGreen : AppTheme.statusOrange,
+                ),
+              );
+            }),
+            const SizedBox(height: 6),
             if (points.isEmpty)
               Text(
                 _isSimulation
@@ -1560,6 +1748,7 @@ class _HumanInTheLoopLiveMonitorScreenState
                     color: AppTheme.primary,
                     baselineMean: _baselineMeanHr,
                     timeDisplayOffset: hilWibOffset,
+                    maximumGap: const Duration(seconds: 5),
                   ),
                 ),
               ),

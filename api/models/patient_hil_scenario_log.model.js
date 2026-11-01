@@ -43,6 +43,10 @@ const PatientHilScenarioLogSchema = new mongoose.Schema(
       required: true,
       enum: [
         'scenario_started',
+        'activity_selected',
+        'live_recording_started',
+        'live_recording_stopped',
+        'live_recording_interrupted',
         'records_loaded',
         'deviation_detected',
         'feedback_presented',

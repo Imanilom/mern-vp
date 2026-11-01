@@ -22,12 +22,21 @@ export function buildPatientReasoningResolution({
       feedback_recorded: false,
       reinterpreted: false,
       next_step: 'collect_patient_context',
+      remaining_unknowns: ['reported_activity', 'cause_of_deviation'],
       interpretation: 'Klarifikasi diperlukan sebelum konteks event ditinjau kembali.',
     };
   }
 
   const followUp = feedbackCheckIn?.deviation_follow_up || {};
   const measurementCondition = followUp.measurement_condition || null;
+  const reportedContext = feedbackCheckIn
+    ? {
+      activity_before_event: followUp.activity_before_event || null,
+      activity_end_time: followUp.activity_end_time || null,
+      note: followUp.note || '',
+      clarification_status: followUp.clarification_status || 'submitted',
+    }
+    : null;
   const hasRelevantContext = Boolean(
     (followUp.activity_before_event && followUp.activity_before_event !== 'unknown')
     || (followUp.strenuous_activity && followUp.strenuous_activity !== 'uncertain')
@@ -69,6 +78,8 @@ export function buildPatientReasoningResolution({
       feedback_recorded: true,
       reinterpreted: true,
       next_step: 'observe_next_comparable_window',
+      reported_context: reportedContext,
+      remaining_unknowns: ['cause_of_deviation', 'causal_relationship'],
       interpretation: 'Konteks baru yang relevan telah dipertimbangkan bersama sinyal dan baseline yang memadai. Ini memperbarui konteks interpretasi, bukan menetapkan penyebab.',
     };
   }
@@ -103,6 +114,8 @@ export function buildPatientReasoningResolution({
     feedback_recorded: Boolean(feedbackCheckIn),
     reinterpreted: false,
     next_step: 'observe_next_quality_gated_window',
+    reported_context: reportedContext,
+    remaining_unknowns: [...reasons, 'cause_of_deviation'],
     interpretation: 'Bukti belum cukup atau masih bertentangan untuk memperbarui interpretasi. Status tetap unresolved; sistem tidak memilih satu penjelasan dan menunggu observasi lanjutan yang sebanding.',
   };
 }

@@ -221,8 +221,10 @@ class HumanInTheLoopBaselineSummaryScreen extends StatelessWidget {
       if (stage.isEmpty) continue;
       for (final reading in _readings(stage.first)) {
         final hr = reading['heart_rate_bpm'];
-        if (hr is num) {
-          plotPoints.add(_HeartRatePoint(activity.$2, hr.toDouble()));
+        final time =
+            DateTime.tryParse(reading['recorded_at']?.toString() ?? '');
+        if (hr is num && time != null) {
+          plotPoints.add(_HeartRatePoint(activity.$2, hr.toDouble(), time));
         }
       }
     }
@@ -266,10 +268,21 @@ class HumanInTheLoopBaselineSummaryScreen extends StatelessWidget {
             );
           }),
           const SizedBox(height: 8),
+          const Card(
+            key: Key('hil-baseline-analysis-node-guide'),
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'Urutan hasil: wearable menghasilkan HR dan interval RR; quality gate menyaring data yang kurang baik; baseline lama menjadi pembanding pribadi; hasil rekaman baru dihitung terpisah. HR menunjukkan jumlah detak per menit, RR jarak antardetak, RMSSD variasi jangka pendek, dan DFA α1 pola variasi RR.',
+                style: TextStyle(fontSize: 11, height: 1.4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           _chartCard(plotPoints),
           const SizedBox(height: 12),
           Text(
-            'Metrik dihitung dari data sensor yang tersedia. DFA α1 hanya ditampilkan jika tersedia minimal 64 interval RR yang valid. Nilai yang tidak terkumpul tidak ditaksir; ringkasan ini bukan diagnosis.',
+            'Cara membaca metrik: HR rata-rata adalah detak jantung saat konteks direkam; RR adalah jarak antardetak; RMSSD merangkum perubahan antarinterval RR; DFA α1 menggambarkan pola variasi RR dan hanya dihitung jika tersedia minimal 64 interval valid. Data yang tidak terkumpul tidak ditaksir. Jeda lebih dari 90 detik memutus garis grafik, biasanya karena sensor berhenti mengirim atau rekaman terputus. Ini ringkasan observasi, bukan diagnosis.',
             style: AppTheme.font(
               size: 10.5,
               color: AppTheme.textMuted,
@@ -446,10 +459,11 @@ class HumanInTheLoopBaselineSummaryScreen extends StatelessWidget {
 }
 
 class _HeartRatePoint {
-  const _HeartRatePoint(this.activity, this.value);
+  const _HeartRatePoint(this.activity, this.value, this.time);
 
   final String activity;
   final double value;
+  final DateTime time;
 }
 
 class _ContextHeartRatePainter extends CustomPainter {
@@ -501,6 +515,7 @@ class _ContextHeartRatePainter extends CustomPainter {
           points.where((point) => point.activity == activity).toList();
       if (activityPoints.isEmpty) continue;
       final path = Path();
+      _HeartRatePoint? previous;
       for (var index = 0; index < activityPoints.length; index++) {
         final pointIndex = firstPointIndex + index;
         final x = chart.left +
@@ -508,11 +523,18 @@ class _ContextHeartRatePainter extends CustomPainter {
                 (points.length == 1 ? 0 : pointIndex / (points.length - 1));
         final y = chart.bottom -
             chart.height * (activityPoints[index].value - minHr) / spread;
-        if (index == 0) {
+        final current = activityPoints[index];
+        final elapsed = previous == null
+            ? Duration.zero
+            : current.time.difference(previous.time);
+        if (previous == null ||
+            elapsed.isNegative ||
+            elapsed > const Duration(seconds: 90)) {
           path.moveTo(x, y);
         } else {
           path.lineTo(x, y);
         }
+        previous = current;
       }
       canvas.drawPath(
         path,

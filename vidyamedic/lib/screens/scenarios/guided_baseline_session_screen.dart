@@ -53,6 +53,7 @@ class _GuidedBaselineSessionScreenState
   int _remainingSeconds = _stageDuration.inSeconds;
   Timer? _timer;
   bool _stageRunning = false;
+  bool _startingStage = false;
   bool _finishingStage = false;
   bool _emaSaved = false;
   bool _reviewOpened = false;
@@ -102,59 +103,109 @@ class _GuidedBaselineSessionScreenState
   }
 
   Future<void> _startStage() async {
-    if (_stageIndex >= _stages.length || _stageRunning || _finishingStage) {
+    if (_stageIndex >= _stages.length ||
+        _stageRunning ||
+        _startingStage ||
+        _finishingStage) {
       return;
     }
     if (_stageIndex == 0 && _stageResults.isEmpty) {
       if (!await _confirmParticipation() || !mounted) return;
     }
-    final appState = context.read<AppState>();
-    if (!appState.wearableBridge.isConnected) {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const WearablePairingScreen(
-            startStreamingAndReturnHome: false,
+    setState(() {
+      _error = null;
+      _startingStage = true;
+    });
+    try {
+      final appState = context.read<AppState>();
+      final wearable = appState.wearableBridge;
+      if (!wearable.isConnected) {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const WearablePairingScreen(
+              startStreamingAndReturnHome: false,
+            ),
           ),
-        ),
-      );
-      if (!mounted || !appState.wearableBridge.isConnected) return;
-    }
-    if (appState.wearableBridge.pendingCount > 0) {
-      final uploaded = await appState.wearableBridge.flushPendingUploads();
+        );
+        if (!mounted || !wearable.isConnected) return;
+      }
+      if (wearable.pendingCount > 0) {
+        final uploaded = await wearable.flushPendingUploads();
+        if (!mounted) return;
+        if (!uploaded) {
+          setState(() {
+            _error = wearable.error ??
+                'Data sesi sebelumnya belum terkirim. Periksa koneksi sebelum memulai konteks berikutnya.';
+          });
+          return;
+        }
+      }
+      final streamsReady = await wearable.waitForSensorStreams();
       if (!mounted) return;
-      if (!uploaded) {
+      if (!streamsReady) {
         setState(() {
-          _error = appState.wearableBridge.error ??
-              'Data sesi sebelumnya belum terkirim. Periksa koneksi sebelum memulai konteks berikutnya.';
+          _error = wearable.error ??
+              'Polar H10 tersambung, tetapi stream HR/RR dan akselerometer belum siap. Coba sambungkan ulang perangkat.';
         });
         return;
       }
-    }
-    final activity = _stages[_stageIndex].$1;
-    if (!appState.wearableBridge.startStreaming(activity,
-        isHilBaseline: widget.isHilBaselineRecording)) {
-      setState(() {
-        _error = appState.wearableBridge.error ??
-            'Perekaman belum dapat dimulai. Pastikan HR/RR dan akselerometer tersedia.';
-      });
-      return;
-    }
-    setState(() {
-      _error = null;
-      _remainingSeconds = _stageDuration.inSeconds;
-      _stageRunning = true;
-      _stageStartedAt = DateTime.now().toUtc();
-    });
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return timer.cancel();
-      if (_remainingSeconds <= 1) {
-        timer.cancel();
-        unawaited(_finishStage());
-      } else {
-        setState(() => _remainingSeconds--);
+      final activity = _stages[_stageIndex].$1;
+      if (!wearable.startStreaming(activity,
+          isHilBaseline: widget.isHilBaselineRecording)) {
+        setState(() {
+          _error = wearable.error ??
+              'Perekaman belum dapat dimulai. Pastikan HR/RR dan akselerometer tersedia.';
+        });
+        return;
       }
-    });
+      final hasHeartRate = await wearable.waitForFirstHeartRate();
+      if (!mounted) return;
+      if (!hasHeartRate) {
+        await wearable.stopStreaming();
+        if (!mounted) return;
+        setState(() {
+          _error = wearable.error ??
+              'Belum ada HR yang diterima. Pastikan Polar H10 terpasang rapat dan elektroda strap lembap, lalu mulai ulang tahap ini.';
+        });
+        return;
+      }
+      setState(() {
+        _remainingSeconds = _stageDuration.inSeconds;
+        _stageRunning = true;
+        _stageStartedAt = DateTime.now().toUtc();
+      });
+      _timer?.cancel();
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) return timer.cancel();
+        final lastHeartRateAt = wearable.lastHeartRateAt;
+        final heartRateIsStale = lastHeartRateAt == null ||
+            DateTime.now().difference(lastHeartRateAt) >
+                const Duration(seconds: 15);
+        if (!wearable.isConnected ||
+            !wearable.isStreaming ||
+            wearable.isDemoDevice ||
+            heartRateIsStale) {
+          timer.cancel();
+          setState(() {
+            _stageRunning = false;
+            _remainingSeconds = _stageDuration.inSeconds;
+            _stageStartedAt = null;
+            _error = heartRateIsStale
+                ? 'Rekaman dihentikan karena HR tidak diterima selama 15 detik. Periksa pemasangan Polar H10 dan mulai ulang tahap ini agar baseline tidak memakai data yang terputus.'
+                : 'Rekaman dihentikan karena Polar H10 terputus atau streaming berhenti. Sambungkan kembali dan mulai ulang tahap ini agar baseline tidak memakai data yang terputus.';
+          });
+          return;
+        }
+        if (_remainingSeconds <= 1) {
+          timer.cancel();
+          unawaited(_finishStage());
+        } else {
+          setState(() => _remainingSeconds--);
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _startingStage = false);
+    }
   }
 
   Future<void> _finishStage({bool skipped = false}) async {
@@ -324,6 +375,8 @@ class _GuidedBaselineSessionScreenState
                             height: 1.4)),
                     const SizedBox(height: 8),
                     _baselineExplanation(stage.$1, appState),
+                    const SizedBox(height: 8),
+                    _baselineNodeGuide(),
                     const SizedBox(height: 16),
                     if (_stageRunning) ...[
                       Container(
@@ -408,6 +461,8 @@ class _GuidedBaselineSessionScreenState
                       ),
                       const SizedBox(height: 10),
                       _streamStatus(wearable, context),
+                      const SizedBox(height: 8),
+                      _wearableConnectionStatus(wearable),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: _finishingStage
@@ -418,18 +473,41 @@ class _GuidedBaselineSessionScreenState
                       ),
                     ] else ...[
                       _connectionStatus(wearable.isConnected),
+                      if (_startingStage) ...[
+                        const SizedBox(height: 8),
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Menyiapkan stream dan menunggu HR pertama yang terkonfirmasi sebelum waktu rekaman dimulai.',
+                          style: AppTheme.font(
+                            size: 10.5,
+                            color: AppTheme.textSecondary,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       Row(
                         children: [
                           Expanded(
                             child: FilledButton.icon(
-                              onPressed: _finishingStage ? null : _startStage,
-                              icon: Icon(wearable.isConnected
-                                  ? Icons.play_arrow_rounded
-                                  : Icons.bluetooth_searching_rounded),
-                              label: Text(wearable.isConnected
-                                  ? 'Rekam 5 menit'
-                                  : 'Sambungkan & mulai'),
+                              onPressed: _finishingStage || _startingStage
+                                  ? null
+                                  : _startStage,
+                              icon: Icon(
+                                _startingStage
+                                    ? Icons.hourglass_top_rounded
+                                    : wearable.isConnected
+                                        ? Icons.play_arrow_rounded
+                                        : Icons.bluetooth_searching_rounded,
+                              ),
+                              label: Text(
+                                _startingStage
+                                    ? 'Menyiapkan sensor...'
+                                    : wearable.isConnected
+                                        ? 'Rekam 5 menit'
+                                        : 'Sambungkan & mulai',
+                              ),
                             ),
                           ),
                           if (_stageIndex > 0) ...[
@@ -782,6 +860,67 @@ class _GuidedBaselineSessionScreenState
       ),
     );
   }
+
+  Widget _wearableConnectionStatus(
+    PolarWearablePairingService wearable,
+  ) {
+    final isRecording =
+        wearable.isConnected && wearable.isStreaming && !wearable.isDemoDevice;
+    final message = wearable.isDemoDevice
+        ? 'Perangkat demo tidak digunakan untuk membentuk baseline HIL.'
+        : isRecording
+            ? 'Polar H10 terhubung dan streaming; HR/RR yang masuk akan digunakan untuk tahap ini.'
+            : wearable.isConnected
+                ? 'Polar H10 tersambung, tetapi streaming berhenti. Periksa koneksi wearable sebelum melanjutkan.'
+                : 'Polar H10 terputus. Periksa koneksi wearable; data yang terputus tidak dianggap sebagai rekaman berkesinambungan.';
+    return Container(
+      key: const Key('hil-baseline-wearable-status'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: isRecording ? AppTheme.statusGreenBg : AppTheme.statusYellowBg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isRecording ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+            size: 17,
+            color: isRecording ? AppTheme.statusGreen : AppTheme.statusOrange,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTheme.font(
+                size: 10,
+                color: AppTheme.textSecondary,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _baselineNodeGuide() => Container(
+        key: const Key('hil-baseline-node-guide'),
+        width: double.infinity,
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          color: AppTheme.fieldFill,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          'Arti tahapan: wearable mengukur detak HR dan interval RR; quality gate menilai kontak serta mutu sinyal; window satu menit merangkum data yang lolos; lima window berkualitas membentuk baseline awal aktivitas. Baseline ini pembanding eksperimen, bukan diagnosis.',
+          style: AppTheme.font(
+            size: 10.5,
+            color: AppTheme.textSecondary,
+            height: 1.4,
+          ),
+        ),
+      );
 
   Widget _connectionStatus(bool connected) {
     return Container(

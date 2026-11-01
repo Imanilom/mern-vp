@@ -1381,6 +1381,7 @@ export async function getPatientAppCaparInsights(req, res) {
       ? Boolean(await PatientAppCheckIn.exists({
         ...accountScopeFilter(accountScopes),
         'deviation_follow_up.segment_id': latestMahalanobis.segment_id,
+        'deviation_follow_up.clarification_status': { $ne: 'skipped' },
       }))
       : false;
     let deviationFollowUp = buildPatientDeviationFollowUpPrompt({
@@ -1394,6 +1395,7 @@ export async function getPatientAppCaparInsights(req, res) {
       ? historicalCheckIns.find((checkIn) => (
         checkIn.deviation_follow_up?.segment_id?.toString()
         === latestMahalanobis.segment_id.toString()
+        && checkIn.deviation_follow_up?.clarification_status !== 'skipped'
       )) || null
       : null;
     const patientRedFlags = identifyPatientRedFlags(recentPatientCheckIn);
@@ -1440,6 +1442,7 @@ export async function getPatientAppCaparInsights(req, res) {
       const eventFeedbackCheckIn = segment?._id
         ? historicalCheckIns.find((checkIn) => (
           checkIn.deviation_follow_up?.segment_id?.toString() === segment._id.toString()
+          && checkIn.deviation_follow_up?.clarification_status !== 'skipped'
         )) || null
         : null;
       const timePeriod = patientCaparTimePeriod(peakTime);
@@ -1621,6 +1624,11 @@ export async function getPatientAppCaparInsights(req, res) {
             symptom_severity: eventFeedbackCheckIn.symptom_severity ?? null,
             activity_before_event:
               eventFeedbackCheckIn.deviation_follow_up?.activity_before_event || null,
+            activity_end_time:
+              eventFeedbackCheckIn.deviation_follow_up?.activity_end_time || null,
+            clarification_status:
+              eventFeedbackCheckIn.deviation_follow_up?.clarification_status || 'submitted',
+            note: eventFeedbackCheckIn.deviation_follow_up?.note || '',
             strenuous_activity:
               eventFeedbackCheckIn.deviation_follow_up?.strenuous_activity || null,
             activity_intensity:
@@ -2314,7 +2322,7 @@ export async function listPatientHilScenarioLogs(req, res) {
     query.run_id = runId;
   }
   const logs = await PatientHilScenarioLog.find(query)
-    .sort({ createdAt: 1 })
+    .sort({ createdAt: -1 })
     .limit(limit)
     .lean();
   res.json({ success: true, data: logs });

@@ -17,6 +17,15 @@ class ChartPoint {
     this.activity,
     this.observationStatus,
   });
+
+  static bool canConnect(
+    ChartPoint previous,
+    ChartPoint current, {
+    Duration? maximumGap,
+  }) {
+    final elapsed = current.time.difference(previous.time);
+    return !elapsed.isNegative && (maximumGap == null || elapsed <= maximumGap);
+  }
 }
 
 class TrendChartPainter extends CustomPainter {
@@ -25,6 +34,7 @@ class TrendChartPainter extends CustomPainter {
   final String yAxisLabel;
   final double? baselineMean;
   final Duration? timeDisplayOffset;
+  final Duration? maximumGap;
 
   const TrendChartPainter({
     required this.points,
@@ -32,6 +42,7 @@ class TrendChartPainter extends CustomPainter {
     this.yAxisLabel = 'HR (bpm)',
     this.baselineMean,
     this.timeDisplayOffset,
+    this.maximumGap,
   });
 
   @override
@@ -96,6 +107,13 @@ class TrendChartPainter extends CustomPainter {
     }
 
     for (var index = 1; index < points.length; index++) {
+      if (!ChartPoint.canConnect(
+        points[index - 1],
+        points[index],
+        maximumGap: maximumGap,
+      )) {
+        continue;
+      }
       final currentActivity =
           points[index].activity ?? points[index - 1].activity;
       final linePaint = Paint()
@@ -231,5 +249,7 @@ class TrendChartPainter extends CustomPainter {
       oldDelegate.points != points ||
       oldDelegate.color != color ||
       oldDelegate.yAxisLabel != yAxisLabel ||
-      oldDelegate.baselineMean != baselineMean;
+      oldDelegate.baselineMean != baselineMean ||
+      oldDelegate.timeDisplayOffset != timeDisplayOffset ||
+      oldDelegate.maximumGap != maximumGap;
 }

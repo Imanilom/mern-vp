@@ -503,6 +503,10 @@ export function validateHilScenarioLog(value) {
   }
   const eventTypes = new Set([
     'scenario_started',
+    'activity_selected',
+    'live_recording_started',
+    'live_recording_stopped',
+    'live_recording_interrupted',
     'records_loaded',
     'deviation_detected',
     'feedback_presented',
@@ -596,7 +600,14 @@ export function validateHilScenarioLog(value) {
     }
   }
   if (
-    !['scenario_started', 'records_loaded'].includes(value.event_type)
+    ![
+      'scenario_started',
+      'activity_selected',
+      'live_recording_started',
+      'live_recording_stopped',
+      'live_recording_interrupted',
+      'records_loaded',
+    ].includes(value.event_type)
     && !result.sample_id
   ) {
     throw errorHandler(400, `Log ${value.event_type} harus terikat pada sampel wearable.`);
@@ -1462,6 +1473,8 @@ export function validateCheckIn(body) {
       'ranked_context_factors',
       'symptom_onset',
       'activity_before_event',
+      'activity_end_time',
+      'clarification_status',
       'strenuous_activity',
       'activity_intensity',
       'mental_activity',
@@ -1510,6 +1523,9 @@ export function validateCheckIn(body) {
       segment_id: followUp.segment_id,
       perceived_factors: perceivedFactors,
     };
+    const note = 'note' in followUp
+      ? optionalString(followUp.note, 'deviation_follow_up.note', 500)
+      : '';
     if ('ranked_context_factors' in followUp) {
       const rankedFactors = validateStringList(
         followUp.ranked_context_factors,
@@ -1544,11 +1560,54 @@ export function validateCheckIn(body) {
       resultFollowUp.symptom_onset = followUp.symptom_onset;
     }
     if ('activity_before_event' in followUp) {
-      const activitiesWithUnknown = [...activities, 'unknown'];
-      if (!activitiesWithUnknown.includes(followUp.activity_before_event)) {
-        throw errorHandler(400, 'deviation_follow_up.activity_before_event tidak valid.');
+      resultFollowUp.activity_before_event = optionalString(
+        followUp.activity_before_event,
+        'deviation_follow_up.activity_before_event',
+        120
+      );
+    }
+    if ('activity_end_time' in followUp) {
+      resultFollowUp.activity_end_time = optionalString(
+        followUp.activity_end_time,
+        'deviation_follow_up.activity_end_time',
+        80
+      );
+    }
+    if ('clarification_status' in followUp) {
+      if (!['submitted', 'not_remembered', 'skipped'].includes(followUp.clarification_status)) {
+        throw errorHandler(400, 'deviation_follow_up.clarification_status tidak valid.');
       }
-      resultFollowUp.activity_before_event = followUp.activity_before_event;
+      resultFollowUp.clarification_status = followUp.clarification_status;
+    }
+    if (
+      resultFollowUp.clarification_status === 'not_remembered'
+      && resultFollowUp.activity_before_event
+      && resultFollowUp.activity_before_event !== 'unknown'
+    ) {
+      throw errorHandler(
+        400,
+        'Aktivitas harus unknown bila klarifikasi ditandai tidak diingat.'
+      );
+    }
+    if (
+      resultFollowUp.clarification_status === 'skipped'
+      && (
+        resultFollowUp.activity_before_event
+        || resultFollowUp.activity_end_time
+        || note
+      )
+    ) {
+      throw errorHandler(400, 'Klarifikasi yang dilewati tidak boleh memuat konteks jawaban.');
+    }
+    if (
+      resultFollowUp.clarification_status === 'submitted'
+      && !resultFollowUp.activity_before_event
+      && !note
+    ) {
+      throw errorHandler(
+        400,
+        'Isi aktivitas atau konteks tambahan sebelum mengirim klarifikasi.'
+      );
     }
     if ('strenuous_activity' in followUp) {
       if (!['yes', 'no', 'uncertain'].includes(followUp.strenuous_activity)) {
@@ -1617,7 +1676,7 @@ export function validateCheckIn(body) {
       resultFollowUp.measurement_condition = followUp.measurement_condition;
     }
     if ('note' in followUp) {
-      resultFollowUp.note = optionalString(followUp.note, 'deviation_follow_up.note', 500);
+      resultFollowUp.note = note;
     }
     if ('meal_count' in followUp) {
       resultFollowUp.meal_count = optionalNumber(

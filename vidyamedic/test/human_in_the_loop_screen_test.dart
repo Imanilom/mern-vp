@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:nadiku/models/health_models.dart';
 import 'package:nadiku/providers/app_state.dart';
+import 'package:nadiku/screens/scenarios/guided_baseline_session_screen.dart';
 import 'package:nadiku/screens/scenarios/human_in_the_loop_screen.dart';
 import 'package:nadiku/screens/scenarios/hil_recorded_scenario_screen.dart';
 
@@ -37,6 +38,36 @@ Future<void> _acceptHilConsent(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('guided baseline displays HR after the sensor stream starts',
+      (tester) async {
+    final state = AppState();
+    addTearDown(state.dispose);
+    expect(await state.wearableBridge.connectDummyDevice(), isTrue);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: const MaterialApp(
+          home: GuidedBaselineSessionScreen(isHilBaselineRecording: true),
+        ),
+      ),
+    );
+    final startButton = find.text('Rekam 5 menit');
+    await tester.ensureVisible(startButton);
+    await tester.tap(startButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Saya siap'));
+    await tester.pump();
+
+    expect(find.text('Saat ini'), findsOneWidget);
+    expect(find.text('70'), findsWidgets);
+    expect(
+      find.textContaining('menunggu HR pertama'),
+      findsNothing,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('baseline profile opens the ordered three-step HCI flow',
       (tester) async {
     final state = AppState()
@@ -63,6 +94,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Perekaman baseline terpandu'), findsOneWidget);
+    expect(find.byKey(const Key('hil-baseline-node-guide')), findsOneWidget);
     expect(find.text('KONTEKS 1 DARI 3'), findsOneWidget);
     expect(find.text('Duduk'), findsOneWidget);
     await tester.pageBack();
@@ -122,14 +154,14 @@ void main() {
     expect(find.textContaining('terpisah dari eksperimen HCI'), findsNothing);
     expect(find.textContaining('Pembentukan baseline per aktivitas'),
         findsOneWidget);
-    expect(find.textContaining('One-way feedback'), findsOneWidget);
+    expect(find.textContaining('Saran dari sistem'), findsOneWidget);
     expect(find.textContaining('Human in the loop'), findsOneWidget);
     expect(find.byKey(const Key('hil-scenarios-locked')), findsOneWidget);
     expect(_scenarioTile(tester, 'B').onTap, isNull);
     expect(_scenarioTile(tester, 'C').onTap, isNull);
     expect(find.byKey(const Key('hil-consent-required')), findsOneWidget);
 
-    expect(find.text('Deteksi perubahan dari z-score'), findsOneWidget);
+    expect(find.text('Deteksi perubahan dari pola pribadi'), findsOneWidget);
     expect(find.text('Periksa kualitas dan baseline'), findsOneWidget);
     expect(find.text('Tinjau bukti dan batas interpretasi'), findsOneWidget);
     expect(find.text('Tafsir ulang hanya jika bukti cukup'), findsOneWidget);
@@ -474,5 +506,58 @@ void main() {
     expect(_scenarioTile(tester, 'B').onTap, isNull);
     expect(_scenarioTile(tester, 'C').onTap, isNull);
     expect(find.textContaining('Berjalan'), findsWidgets);
+  });
+
+  testWidgets('saved scenario logs show separate request and reply times',
+      (tester) async {
+    final state = AppState()
+      ..hilScenarioLogs = [
+        {
+          '_id': 'log-reply',
+          'run_id': 'scenario-run-1234',
+          'scenario': 'C',
+          'event_type': 'clarification_submitted',
+          'activity': 'walking',
+          'createdAt': '2026-11-01T03:02:00.000Z',
+          'clarification': 'Saya baru selesai berjalan.',
+        },
+        {
+          '_id': 'log-request',
+          'run_id': 'scenario-run-1234',
+          'scenario': 'C',
+          'event_type': 'clarification_requested',
+          'activity': 'walking',
+          'createdAt': '2026-11-01T03:01:00.000Z',
+          'explanation': 'Sistem meminta keterangan tambahan.',
+        },
+      ];
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    final replyItem = find.byKey(
+      const Key('hil-scenario-action-log-reply-clarification_submitted'),
+    );
+    await tester.ensureVisible(replyItem);
+    await tester.tap(replyItem);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Waktu tercatat: 01/11/2026 10:02 WIB'), findsOneWidget);
+    expect(find.text('Keterangan pengguna: Saya baru selesai berjalan.'),
+        findsOneWidget);
+    await tester.tap(find.text('Tutup'));
+    await tester.pumpAndSettle();
+
+    final requestItem = find.byKey(
+      const Key('hil-scenario-action-log-request-clarification_requested'),
+    );
+    await tester.ensureVisible(requestItem);
+    await tester.tap(requestItem);
+    await tester.pumpAndSettle();
+    expect(find.text('Waktu tercatat: 01/11/2026 10:01 WIB'), findsOneWidget);
+    expect(
+      find.text('Penjelasan: Sistem meminta keterangan tambahan.'),
+      findsOneWidget,
+    );
   });
 }
