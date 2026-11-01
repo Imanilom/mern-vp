@@ -54,13 +54,14 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final appState = context.read<AppState>();
-    final followUp = _map(appState.rawCaparInsights?['capar']?['pedagogy']?['follow_up']);
+    final capar = _map(appState.rawCaparInsights?['capar']);
+    final latestObservation = _map(capar['latest_observation']);
+    final followUp = _map(capar['pedagogy']?['follow_up']);
     final followUpStatus = followUp['status']?.toString() ?? appState.followUpPrompt.status;
     final segmentId =
         followUp['segment_id']?.toString() ?? appState.followUpPrompt.segmentId;
     final activity = _normalizeActivity(
-      _map(appState.rawCaparInsights?['capar'])['latest_observation']['activity']
-          ?.toString(),
+      latestObservation['activity']?.toString(),
     );
     final reportedContext = _map(followUp['reported_context']);
     if (followUpStatus != 'requested' || segmentId == null) {
