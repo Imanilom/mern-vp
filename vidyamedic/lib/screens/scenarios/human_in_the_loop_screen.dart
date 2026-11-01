@@ -32,6 +32,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   String? _selectedScenario;
   bool _hasResearchConsent = false;
   bool _isUpdatingAiConsent = false;
+  String? _lastAutoClarificationSegmentId;
 
   @override
   void initState() {
@@ -47,6 +48,36 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         unawaited(appState.fetchHilScenarioLogs(limit: 100));
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final appState = context.read<AppState>();
+    final followUp = _map(appState.rawCaparInsights?['capar']?['pedagogy']?['follow_up']);
+    final followUpStatus = followUp['status']?.toString() ?? appState.followUpPrompt.status;
+    final segmentId =
+        followUp['segment_id']?.toString() ?? appState.followUpPrompt.segmentId;
+    final activity = _normalizeActivity(
+      _map(appState.rawCaparInsights?['capar'])['latest_observation']['activity']
+          ?.toString(),
+    );
+    final reportedContext = _map(followUp['reported_context']);
+    if (followUpStatus != 'requested' || segmentId == null) {
+      _lastAutoClarificationSegmentId = null;
+      return;
+    }
+    if (_lastAutoClarificationSegmentId != segmentId) {
+      _lastAutoClarificationSegmentId = segmentId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _openDeviationClarification(
+          segmentId: segmentId,
+          activity: activity.isEmpty ? 'pengukuran' : activity,
+          reportedContext: reportedContext,
+        );
+      });
+    }
   }
 
   Map<String, dynamic> _map(dynamic value) =>
@@ -385,7 +416,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               ),
               if (snapshot['activity'] != null) ...[
                 const SizedBox(height: 8),
-                Text('Aktivitas: ${snapshot['activity']}'),
+                Text('Aktivitas: ${_hilActivityLabel(snapshot['activity'])}'),
               ],
               if (snapshot['status'] != null) ...[
                 const SizedBox(height: 4),
@@ -396,10 +427,12 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 Text('Pemeriksaan mutu bacaan: ${snapshot['quality_status']}'),
               ],
               const SizedBox(height: 10),
-              Text(snapshot['explanation']?.toString() ?? event.details),
+              Text(_timelineNarrative(snapshot, event)),
               if (factors.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text('Faktor yang tercatat: ${factors.join(', ')}'),
+                Text(
+                  'Indikator yang dicermati: ${_humanReadableFactorList(factors)}',
+                ),
               ],
             ],
           ),
@@ -458,7 +491,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             ...history.map((event) {
               final snapshot = _map(event.value);
               final scenario = snapshot['scenario']?.toString();
-              final time = formatHilWibDateTime(event.timestamp);
               return ListTile(
                 key: Key('hil-scenario-history-${event.id}'),
                 contentPadding: EdgeInsets.zero,
@@ -469,8 +501,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
                 ),
                 subtitle: Text(
-                  '$time · ${snapshot['activity'] ?? 'aktivitas tidak tersedia'} · '
-                  '${snapshot['status'] == null ? event.details : _statusLabel(snapshot['status']?.toString())}',
+                  _timelineNarrative(snapshot, event),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -659,14 +690,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 if (scenario != null) 'Skenario $scenario',
                 _scenarioLogEventLabel(log['event_type']?.toString()),
               ].join(' · ');
-              final summary = [
-                log['clarification'],
-                log['recommendation'],
-                log['explanation'],
-              ].whereType<String>().firstWhere(
-                    (value) => value.trim().isNotEmpty,
-                    orElse: () => '',
-                  );
+              final summary = _humanReadableLogSummary(log);
               return ListTile(
                 key: Key('hil-scenario-action-${log['_id'] ?? log['run_id']}'
                     '-${log['event_type']}'),
@@ -676,8 +700,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
                 ),
                 subtitle: Text(
-                  '$timestamp · Aktivitas ${_hilActivityLabel(log['activity'])}'
-                  '${summary.isEmpty ? '' : ' · $summary'}',
+                  '$timestamp · $summary',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -881,6 +904,90 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         _ => status.replaceAll('_', ' '),
       };
 
+  String _humanReadableFactorLabel(String? value) => switch (value) {
+        'mean_hr' => 'rata-rata detak jantung',
+        'mean_rr' => 'rata-rata jarak antardetak',
+        'rmssd' => 'variabilitas detak jantung',
+        'dfa_alpha1' => 'pola ritme jantung',
+        'hr' || 'heart_rate' => 'detak jantung',
+        'rr' || 'rr_interval' => 'jarak antardetak',
+        null || '' => 'indikator yang diamati',
+        _ => value.replaceAll('_', ' '),
+      };
+
+  String _humanReadableFactorList(List<String> factors) {
+    if (factors.isEmpty) return 'indikator yang diamati';
+    final labels = factors
+        .map(_humanReadableFactorLabel)
+        .where((label) => label.trim().isNotEmpty)
+        .toList();
+    if (labels.isEmpty) return 'indikator yang diamati';
+    if (labels.length == 1) return labels.first;
+    if (labels.length == 2) return '${labels[0]} dan ${labels[1]}';
+    return '${labels.sublist(0, labels.length - 1).join(', ')}, dan ${labels.last}';
+  }
+
+  String _timelineNarrative(Map<String, dynamic> snapshot, EventItem event) {
+    final activity = _hilActivityLabel(snapshot['activity']);
+    final timePeriod = snapshot['time_period']?.toString();
+    final dataPoints = (() {
+      final candidate = <dynamic>[
+        snapshot['data_points'],
+        snapshot['data_count'],
+        snapshot['record_count'],
+        snapshot['sample_count'],
+        snapshot['window_count'],
+      ];
+      for (final value in candidate) {
+        if (value is num) return value.toInt();
+        if (value is String && int.tryParse(value) != null) return int.parse(value);
+      }
+      return null;
+    })();
+    final factors = snapshot['factors'] is List
+        ? (snapshot['factors'] as List).whereType<String>().toList()
+        : <String>[];
+    final explanation = snapshot['explanation']?.toString() ?? event.details;
+
+    final buffer = StringBuffer();
+    final timeText = timePeriod == null
+        ? 'periode yang tercatat'
+        : 'periode $timePeriod';
+    buffer.write('Digunakan pada $timeText');
+    if (activity.trim().isNotEmpty && activity != 'tidak dicatat') {
+      buffer.write(' saat aktivitas $activity');
+    }
+    if (dataPoints != null) {
+      buffer.write(' dengan $dataPoints data');
+    }
+    buffer.write('.');
+    if (factors.isNotEmpty) {
+      buffer.write(
+        ' Fokus pengamatan ada pada ${_humanReadableFactorList(factors)}.',
+      );
+    }
+    if (snapshot['status'] != null) {
+      buffer.write(
+        ' Status penilaiannya: ${_statusLabel(snapshot['status']?.toString())}.',
+      );
+    }
+    buffer.write(' ${explanation.trim()}');
+    return buffer.toString();
+  }
+
+  String _humanReadableLogSummary(Map<String, dynamic> log) {
+    final activity = _hilActivityLabel(log['activity']);
+    final primaryText = [
+      log['clarification']?.toString(),
+      log['recommendation']?.toString(),
+      log['explanation']?.toString(),
+    ].firstWhere(
+      (value) => value != null && value.trim().isNotEmpty,
+      orElse: () => _scenarioLogEventLabel(log['event_type']?.toString()),
+    );
+    return 'Aktivitas $activity · $primaryText';
+  }
+
   String _normalizeActivity(String? value) {
     final normalized = value?.trim().toLowerCase() ?? '';
     return switch (normalized) {
@@ -944,10 +1051,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         ? 'belum terlihat ukuran yang lebih tinggi dari pola pribadi'
         : positiveZScores.map((feature) {
             final metric = switch (feature['feature']?.toString()) {
-              'mean_hr' => 'denyut rata-rata',
-              'mean_rr' => 'jarak antardetak',
-              'rmssd' => 'perubahan jarak antardetak',
-              _ => feature['label']?.toString() ?? 'ukuran tubuh',
+              'mean_hr' => 'rata-rata detak jantung',
+              'mean_rr' => 'rata-rata jarak antardetak',
+              'rmssd' => 'variabilitas detak jantung',
+              _ => feature['label']?.toString() ?? 'indikator yang diamati',
             };
             final distance = (feature['z_score'] as num).abs();
             return '$metric sekitar ${distance.toStringAsFixed(1)} kali variasi yang biasa terlihat lebih tinggi';
@@ -1681,9 +1788,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  resolution['reinterpreted'] == true
-                      ? 'Interpretasi diperbarui dengan konteks ini, tetapi hal tersebut tidak membuktikan penyebab deviasi.'
-                      : 'Interpretasi belum berubah karena konteks atau bukti yang tersedia belum cukup.',
+                  _interpretationNarrative(resolution, reportedContext),
                   key: const Key('hil-interpretation-change'),
                   style: AppTheme.font(
                     size: 10,
@@ -1692,7 +1797,9 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   ),
                 ),
                 Text(
-                  'Yang masih belum diketahui: ${remainingUnknowns.isEmpty ? 'penyebab deviasi' : remainingUnknowns.join(', ')}. Penyebabnya belum dapat dipastikan.',
+                  _remainingUnknownNarrative(
+                    remainingUnknowns.toList(),
+                  ),
                   key: const Key('hil-remaining-unknowns'),
                   style: AppTheme.font(
                     size: 10,
@@ -1719,6 +1826,32 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           ),
         );
       });
+
+  String _interpretationNarrative(
+    Map<String, dynamic> resolution,
+    Map<String, dynamic> reportedContext,
+  ) {
+    final isReinterpreted = resolution['reinterpreted'] == true;
+    final activity = reportedContext['activity_before_event']?.toString().trim();
+    final hasRecentHeavyActivity = activity != null &&
+        activity.isNotEmpty &&
+        activity != 'unknown' &&
+        activity.toLowerCase().contains(RegExp(r'olah|lari|jalan|berat|latihan|exercise|vigorous'));
+    if (isReinterpreted) {
+      if (hasRecentHeavyActivity) {
+        return 'Interpretasi berubah menjadi: perubahan yang terlihat kemungkinan berkaitan dengan aktivitas berat yang baru selesai, tetapi ini belum membuktikan penyebab pasti.';
+      }
+      return 'Interpretasi berubah karena konteks baru yang relevan sudah diperhitungkan. Informasi ini memperkuat penjelasan, tetapi tidak membuktikan penyebab deviasi.';
+    }
+    return 'Interpretasi belum berubah karena konteks atau bukti yang tersedia belum cukup untuk menjelaskan perubahan dengan yakin.';
+  }
+
+  String _remainingUnknownNarrative(List<String> remainingUnknowns) {
+    final unknownText = remainingUnknowns.isEmpty
+        ? 'penyebab deviasi yang pasti'
+        : remainingUnknowns.map(_unknownContextLabel).join(', ');
+    return 'Yang masih belum diketahui: $unknownText. Perubahan masih tetap bersifat observasional dan belum menjadi diagnosis.';
+  }
 
   String _unknownContextLabel(String value) => switch (value) {
         'reported_activity' => 'aktivitas yang dilaporkan',

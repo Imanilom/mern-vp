@@ -541,7 +541,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     ];
     final summary = [
       'Tes Human-in-the-Loop: aktivitas $_activity, mode $_testMode.',
-      'Rerata baseline HR ${_baselineMeanHr!.toStringAsFixed(1)} bpm; '
+      'Rata-rata detak jantung baseline ${_baselineMeanHr!.toStringAsFixed(1)} bpm; '
           'status kematangan $baselineStatus; ambang observasi '
           '${_hrElevationThreshold.toStringAsFixed(1)} bpm.',
       'Sampel HR tes (maksimum 12 terakhir): '
@@ -1542,10 +1542,10 @@ class _HumanInTheLoopLiveMonitorScreenState
             title: _latestStatus,
             detail: [
               if (_latestMeanHr != null)
-                'Rerata HR: ${_latestMeanHr!.toStringAsFixed(1)} bpm.',
+                'Rata-rata detak jantung: ${_latestMeanHr!.toStringAsFixed(1)} bpm.',
               if (_latestSlope != null)
-                'Slope: ${_latestSlope!.toStringAsFixed(1)} bpm/menit.',
-              if (_recoveryLabel != null) 'Label: $_recoveryLabel.',
+                'Kemiringan perubahan detak: ${_latestSlope!.toStringAsFixed(1)} bpm/menit.',
+              if (_recoveryLabel != null) 'Status: $_recoveryLabel.',
               if (_latestDetail != null) _latestDetail!,
             ].join(' '),
           ),
@@ -1561,10 +1561,10 @@ class _HumanInTheLoopLiveMonitorScreenState
           _infoCard(
             key: const Key('hil-live-dfa-result'),
             icon: Icons.multiline_chart,
-            title: 'DFA α1 · batch 5 menit',
+            title: 'Pola ritme jantung · batch 5 menit',
             detail: _latestDfaAlpha1 == null
-                ? 'Belum ada hasil batch. ${_latestDfaRrCount == null ? 'Nilai dihitung setelah lima menit.' : '$_latestDfaRrCount RR valid terkumpul; minimal 64 RR diperlukan.'}'
-                : 'DFA α1 ${_latestDfaAlpha1!.toStringAsFixed(3)} dari $_latestDfaRrCount RR valid. ${_latestDfaComparison ?? ''} Nilai deskriptif, bukan diagnosis.',
+                ? 'Belum ada hasil batch. ${_latestDfaRrCount == null ? 'Nilai dihitung setelah lima menit.' : '$_latestDfaRrCount interval RR valid terkumpul; minimal 64 interval diperlukan.'}'
+                : 'Pola ritme jantung ${_latestDfaAlpha1!.toStringAsFixed(3)} dari $_latestDfaRrCount interval RR valid. ${_latestDfaComparison ?? ''} Ini hanya ringkasan pola, bukan diagnosis.',
           ),
           if (_isSavingClarification)
             const Padding(

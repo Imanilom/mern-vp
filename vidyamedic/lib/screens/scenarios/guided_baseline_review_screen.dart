@@ -713,14 +713,14 @@ class _GuidedBaselineReviewScreenState
                     children: [
                       Expanded(
                           child: _valueMetric(
-                              'Rerata sesi',
+                              'Rata-rata sesi',
                               _formatNumber(sessionMean),
                               'bpm',
                               Icons.monitor_heart_outlined)),
                       const SizedBox(width: 8),
                       Expanded(
                           child: _valueMetric(
-                              'Rerata baseline matang',
+                              'Rata-rata baseline yang sudah matang',
                               _formatNumber(baselineMean),
                               'bpm',
                               Icons.insights_outlined)),

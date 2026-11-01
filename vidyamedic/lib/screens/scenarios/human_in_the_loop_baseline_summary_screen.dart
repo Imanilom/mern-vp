@@ -18,10 +18,10 @@ class HumanInTheLoopBaselineSummaryScreen extends StatelessWidget {
   ];
 
   static const _metricKeys = <(String, String, int)>[
-    ('HR rata-rata (bpm)', 'mean_hr', 1),
-    ('RR rata-rata (ms)', 'mean_rr', 1),
-    ('RMSSD (ms)', 'rmssd', 1),
-    ('DFA α1', 'dfa_alpha1', 3),
+    ('Rata-rata detak jantung (bpm)', 'mean_hr', 1),
+    ('Rata-rata jarak antardetak (ms)', 'mean_rr', 1),
+    ('Variabilitas detak jantung (ms)', 'rmssd', 1),
+    ('Pola ritme jantung', 'dfa_alpha1', 3),
   ];
 
   final List<Map<String, dynamic>> stageResults;
@@ -273,7 +273,7 @@ class HumanInTheLoopBaselineSummaryScreen extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.all(12),
               child: Text(
-                'Urutan hasil: wearable menghasilkan HR dan interval RR; quality gate menyaring data yang kurang baik; baseline lama menjadi pembanding pribadi; hasil rekaman baru dihitung terpisah. HR menunjukkan jumlah detak per menit, RR jarak antardetak, RMSSD variasi jangka pendek, dan DFA α1 pola variasi RR.',
+                'Urutan hasil: perangkat wearable menangkap detak jantung dan interval antardetak; pemeriksaan mutu menyaring data yang kurang baik; baseline lama menjadi pembanding pribadi; hasil rekaman baru dihitung secara terpisah. Rata-rata detak jantung menunjukkan jumlah denyut per menit, jarak antardetak menggambarkan durasi antar denyut, variabilitas detak jantung mencerminkan fluktuasi singkat, dan pola ritme jantung menunjukkan pola variasi yang lebih luas.',
                 style: TextStyle(fontSize: 11, height: 1.4),
               ),
             ),
@@ -282,7 +282,7 @@ class HumanInTheLoopBaselineSummaryScreen extends StatelessWidget {
           _chartCard(plotPoints),
           const SizedBox(height: 12),
           Text(
-            'Cara membaca metrik: HR rata-rata adalah detak jantung saat konteks direkam; RR adalah jarak antardetak; RMSSD merangkum perubahan antarinterval RR; DFA α1 menggambarkan pola variasi RR dan hanya dihitung jika tersedia minimal 64 interval valid. Data yang tidak terkumpul tidak ditaksir. Jeda lebih dari 90 detik memutus garis grafik, biasanya karena sensor berhenti mengirim atau rekaman terputus. Ini ringkasan observasi, bukan diagnosis.',
+            'Cara membaca metrik: rata-rata detak jantung adalah jumlah denyut saat konteks direkam; jarak antardetak menunjukkan selang waktu antar denyut; variabilitas detak jantung merangkum perubahan singkat antar selang waktu; pola ritme jantung menggambarkan pola variasi denyut dan hanya dihitung jika tersedia minimal 64 interval yang valid. Data yang tidak terkumpul tidak ditaksir. Jeda lebih dari 90 detik memutus garis grafik, biasanya karena sensor berhenti mengirim atau rekaman terputus. Ini ringkasan observasi, bukan diagnosis.',
             style: AppTheme.font(
               size: 10.5,
               color: AppTheme.textMuted,
@@ -387,12 +387,12 @@ class HumanInTheLoopBaselineSummaryScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Grafik HR seluruh konteks',
+              'Grafik detak jantung seluruh konteks',
               style: AppTheme.font(size: 14, weight: FontWeight.w800),
             ),
             const SizedBox(height: 4),
             Text(
-              'Pembacaan HR selama rekaman Duduk, Berdiri, dan Berjalan.',
+              'Pembacaan detak jantung selama rekaman Duduk, Berdiri, dan Berjalan.',
               style: AppTheme.font(size: 10.5, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 8),

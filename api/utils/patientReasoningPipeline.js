@@ -50,6 +50,15 @@ export function buildPatientReasoningResolution({
       'prefer_not_to_say',
     ].includes(factor))
   );
+  const heavyActivityRecentlyReported = Boolean(
+    followUp.activity_before_event
+    && followUp.activity_before_event !== 'unknown'
+    && /olahraga|berlari|berjalan|angkat beban|latihan|kegiatan berat|aktivitas berat|exercise|vigorous/i.test(followUp.activity_before_event)
+  ) || Boolean(
+    followUp.strenuous_activity
+    && followUp.strenuous_activity !== 'uncertain'
+    && /ya|heavy|vigorous|berat/i.test(followUp.strenuous_activity)
+  );
   const reasons = [];
   if (!feedbackCheckIn) reasons.push('patient_context_not_recorded');
   if (!hasRelevantContext) reasons.push('no_relevant_new_context');
@@ -73,6 +82,9 @@ export function buildPatientReasoningResolution({
     && conflicts.length === 0
   );
   if (canReinterpret) {
+    const priorHeavyActivityNarrative = heavyActivityRecentlyReported
+      ? 'Kenaikan HR yang terlihat bisa berkaitan dengan aktivitas berat yang baru selesai; konteks ini memperkuat penjelasan, tetapi tidak membuktikan penyebab pasti.'
+      : 'Konteks baru yang relevan telah dipertimbangkan bersama sinyal dan baseline yang memadai. Ini memperbarui konteks interpretasi, bukan menetapkan penyebab.';
     return {
       status: 'reinterpreted_with_limits',
       reason: 'relevant_context_and_quality_gated_evidence_available',
@@ -81,7 +93,10 @@ export function buildPatientReasoningResolution({
       next_step: 'observe_next_comparable_window',
       reported_context: reportedContext,
       remaining_unknowns: ['cause_of_deviation', 'causal_relationship'],
-      interpretation: 'Konteks baru yang relevan telah dipertimbangkan bersama sinyal dan baseline yang memadai. Ini memperbarui konteks interpretasi, bukan menetapkan penyebab.',
+      interpretation: priorHeavyActivityNarrative,
+      final_conclusion: heavyActivityRecentlyReported
+        ? 'Perubahan yang tampak kemungkinan berkaitan dengan aktivitas berat baru saja; interpretasi diperbarui tetapi masih belum cukup untuk memastikan penyebab yang pasti.'
+        : 'Interpretasi diperbarui dengan konteks baru, tetapi masih belum cukup untuk memastikan penyebab yang pasti.',
     };
   }
 
@@ -103,6 +118,9 @@ export function buildPatientReasoningResolution({
     };
   }
 
+  const unresolvedInterpretation = heavyActivityRecentlyReported
+    ? 'Bukti yang tersedia masih belum cukup untuk memastikan apakah perubahan HR benar-benar deviasi atau sekadar akibat aktivitas berat yang baru selesai. Status tetap unresolved dan observasi lanjutan masih diperlukan.'
+    : 'Bukti belum cukup atau masih bertentangan untuk memperbarui interpretasi. Status tetap unresolved; sistem tidak memilih satu penjelasan dan menunggu observasi lanjutan yang sebanding.';
   return {
     status: 'unresolved',
     reason: reasons[0] || 'evidence_remains_insufficient',
@@ -117,7 +135,8 @@ export function buildPatientReasoningResolution({
     next_step: 'observe_next_quality_gated_window',
     reported_context: reportedContext,
     remaining_unknowns: [...reasons, 'cause_of_deviation'],
-    interpretation: 'Bukti belum cukup atau masih bertentangan untuk memperbarui interpretasi. Status tetap unresolved; sistem tidak memilih satu penjelasan dan menunggu observasi lanjutan yang sebanding.',
+    interpretation: unresolvedInterpretation,
+    final_conclusion: unresolvedInterpretation,
   };
 }
 
