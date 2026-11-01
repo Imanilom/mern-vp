@@ -569,12 +569,28 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final observationActivity = _normalizeActivity(
       latestObservation['activity']?.toString(),
     );
-    final scenariosReady = baselineContexts.any(_isScenarioBaselineReady);
-    final bestScenarioWindowCount = baselineContexts.fold<int>(
-      0,
-      (best, baseline) => best > _validScenarioWindowCount(baseline)
-          ? best
-          : _validScenarioWindowCount(baseline),
+    final scenarioWindowCounts = _baselineActivities.map((activity) {
+      final matchingBaselines = baselineContexts.where(
+        (baseline) => _matchesBaselineActivity(baseline, activity.$2),
+      );
+      return matchingBaselines.fold<int>(
+        0,
+        (best, baseline) => best > _validScenarioWindowCount(baseline)
+            ? best
+            : _validScenarioWindowCount(baseline),
+      );
+    }).toList();
+    final readyScenarioActivityCount = _baselineActivities.where((activity) {
+      return baselineContexts.any(
+        (baseline) =>
+            _matchesBaselineActivity(baseline, activity.$2) &&
+            _isScenarioBaselineReady(baseline),
+      );
+    }).length;
+    final scenariosReady =
+        readyScenarioActivityCount == _baselineActivities.length;
+    final minimumScenarioWindowCount = scenarioWindowCounts.reduce(
+      (minimum, count) => minimum < count ? minimum : count,
     );
     final aiConsentRequired = caparStatus == 'consent_required';
     final followUpStatus =
@@ -665,7 +681,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             code: 'B',
             title: 'One-way feedback',
             detail:
-                'Tampilkan narasi satu arah. Skenario dapat dibuka setelah tersedia 5 menit baseline HIL berkualitas.',
+                'Tampilkan narasi satu arah. Skenario dapat dibuka setelah tersedia 5 menit baseline HIL berkualitas untuk duduk, berdiri, dan berjalan.',
             selected: _selectedScenario == 'B',
             enabled: scenariosReady && _hasResearchConsent,
             onPressed: () => _selectScenario('B', scenarioSnapshot('B')),
@@ -674,7 +690,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             code: 'C',
             title: 'Human in the loop',
             detail:
-                'Tampilkan hasil, minta klarifikasi, dan pertahankan unresolved bila bukti statistik belum cukup.',
+                'Tampilkan hasil, minta klarifikasi, dan pertahankan unresolved bila bukti statistik belum cukup. Memerlukan 5 menit baseline HIL untuk setiap aktivitas.',
             selected: _selectedScenario == 'C',
             enabled: scenariosReady && _hasResearchConsent,
             onPressed: () => _selectScenario('C', scenarioSnapshot('C')),
@@ -695,7 +711,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 7, bottom: 10),
               child: Text(
-                'Skenario B/C perlu 5 window HIL satu menit yang lolos quality gate pada satu aktivitas. Saat ini terdeteksi $bestScenarioWindowCount/5 window. Kesiapan memakai koleksi baseline HIL terpisah, bukan baseline CAPAR. Muat ulang setelah data diproses.',
+                'Skenario B/C memerlukan 5 window HIL satu menit yang lolos quality gate untuk duduk, berdiri, dan berjalan. Saat ini $readyScenarioActivityCount/3 aktivitas siap; aktivitas dengan progres terendah memiliki $minimumScenarioWindowCount/5 window. Kesiapan memakai koleksi baseline HIL terpisah, bukan baseline CAPAR. Muat ulang setelah data diproses.',
                 key: const Key('hil-scenarios-locked'),
                 style: AppTheme.font(
                   size: 10.5,
@@ -767,8 +783,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             title: 'Periksa kualitas dan baseline',
             detail:
                 'Quality gate: ${qualityPassed ? 'lolos' : quality['status'] == 'insufficient_data' ? 'data belum cukup' : 'belum lolos/tersedia'}'
-                ' · baseline HIL aktivitas: ${scenariosReady ? 'tersedia' : 'belum memenuhi 5 menit data valid'}'
-                ' · $bestScenarioWindowCount/5 window menit valid',
+                ' · baseline HIL: ${scenariosReady ? 'tersedia' : 'belum memenuhi 5 menit per aktivitas'}'
+                ' · progres minimum antaraktivitas: $minimumScenarioWindowCount/5 window valid',
           ),
           _stepCard(
             number: '03',

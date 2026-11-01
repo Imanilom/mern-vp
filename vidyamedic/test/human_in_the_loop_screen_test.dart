@@ -202,6 +202,29 @@ void main() {
     expect(_scenarioTile(tester, 'C').onTap, isNull);
   });
 
+  testWidgets('one ready HIL activity does not unlock B/C for all activities',
+      (tester) async {
+    final state = AppState()
+      ..hilBaselineContexts = [
+        {
+          'activity': 'sitting',
+          'segment_count': 5,
+          'scenario_readiness': {
+            'ready': true,
+            'valid_window_count': 5,
+          },
+        },
+      ];
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    expect(find.byKey(const Key('hil-scenarios-locked')), findsOneWidget);
+    expect(find.textContaining('Saat ini 1/3 aktivitas siap'), findsOneWidget);
+    expect(_scenarioTile(tester, 'B').onTap, isNull);
+    expect(_scenarioTile(tester, 'C').onTap, isNull);
+  });
+
   testWidgets('A explains when AI consent prevents loading stored baselines',
       (tester) async {
     final state = AppState()
@@ -317,7 +340,8 @@ void main() {
     );
   });
 
-  testWidgets('five-minute HIL baseline unlocks B and C without CAPAR baseline',
+  testWidgets(
+      'five-minute HIL baselines for all activities unlock B/C without CAPAR',
       (tester) async {
     final state = AppState()
       ..rawCaparInsights = {
@@ -363,15 +387,16 @@ void main() {
         },
       };
     state.hilBaselineContexts = [
-      {
-        'activity': 'sitting',
-        'segment_count': 5,
-        'scenario_readiness': {
-          'ready': true,
-          'valid_window_count': 5,
-          'valid_duration_seconds': 300,
+      for (final activity in ['sitting', 'standing', 'walking'])
+        {
+          'activity': activity,
+          'segment_count': 5,
+          'scenario_readiness': {
+            'ready': true,
+            'valid_window_count': 5,
+            'valid_duration_seconds': 300,
+          },
         },
-      },
     ];
     addTearDown(state.dispose);
 

@@ -9,7 +9,8 @@ const supportedActivities = new Set(['sitting', 'standing', 'walking']);
 
 export function buildPatientHilBaselineWindow(sample, accountId, accountType) {
   if (
-    sample?.provider !== 'polar_h10'
+    sample?.recording_purpose !== 'hil_baseline'
+    || sample?.provider !== 'polar_h10'
     || sample?.source !== 'mobile_wearable_bridge'
     || sample?.ingestion_source !== 'mobile_wearable_bridge'
     || sample?.is_simulated === true
@@ -32,6 +33,7 @@ export function buildPatientHilBaselineWindow(sample, accountId, accountType) {
   return {
     account_id: accountId,
     account_type: accountType,
+    recording_purpose: 'hil_baseline',
     activity: sample.activity,
     window_start: Math.floor(recordedAt.getTime() / 60_000) * 60_000,
     sample_id: sample._id,
@@ -46,7 +48,7 @@ export function buildPatientHilBaselineWindow(sample, accountId, accountType) {
       rmssd: sample.rmssd_ms,
       sdnn: sample.sdnn_ms,
       dfa_alpha1: sample.dfa_alpha1,
-      motion_intensity: sample.motion_intensity ?? null,
+      motion_intensity: sample.motion_index ?? null,
     },
   };
 }
@@ -71,7 +73,10 @@ function summarizeFeature(windows, feature) {
 export function summarizePatientHilBaselines(windows) {
   const byActivity = new Map();
   for (const window of windows) {
-    if (!supportedActivities.has(window.activity)) continue;
+    if (
+      window.recording_purpose !== 'hil_baseline'
+      || !supportedActivities.has(window.activity)
+    ) continue;
     const activityWindows = byActivity.get(window.activity) ?? new Map();
     const minute = Math.floor(window.window_start / 60_000);
     const current = activityWindows.get(minute);

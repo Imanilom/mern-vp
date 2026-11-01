@@ -71,6 +71,7 @@ test('patient check-in, events, and wearable schemas retain patient provenance',
     PatientAppWearableSample.schema.path('recording_purpose').options.default,
     'standard'
   );
+  assert.ok(PatientAppWearableSample.schema.path('motion_index'));
   assert.ok(PatientAppWearableSample.schema.indexes().some(([keys, options]) => (
     keys.account_id === 1
     && keys.account_type === 1
@@ -186,6 +187,10 @@ test('HIL baseline windows are isolated from CAPAR baseline documents', () => {
   assert.equal(PatientHilBaseline.collection.collectionName, 'patient_hil_baselines');
   assert.ok(PatientHilBaseline.schema.path('sample_id'));
   assert.ok(PatientHilBaseline.schema.path('window_start'));
+  assert.deepEqual(
+    PatientHilBaseline.schema.path('recording_purpose').enumValues,
+    ['hil_baseline']
+  );
   assert.deepEqual(
     PatientHilBaseline.schema.path('activity').enumValues,
     ['sitting', 'standing', 'walking']

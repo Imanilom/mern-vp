@@ -2123,12 +2123,7 @@ export async function getPatientAppHilBaselines(req, res) {
     $and: [
       accountScopeFilter(accountScopes),
       {
-        $or: [
-          { recording_purpose: 'hil_baseline' },
-          { recording_purpose: { $exists: false } },
-        ],
-      },
-      {
+        recording_purpose: 'hil_baseline',
         provider: 'polar_h10',
         source: 'mobile_wearable_bridge',
         ingestion_source: 'mobile_wearable_bridge',
@@ -2142,7 +2137,7 @@ export async function getPatientAppHilBaselines(req, res) {
     .sort({ recorded_at: -1 })
     .limit(10000)
     .select(
-      '_id provider source ingestion_source is_simulated sensor_contact data_quality recorded_at activity account_id account_type heart_rate_bpm rr_intervals_ms rmssd_ms sdnn_ms dfa_alpha1'
+      '_id provider source ingestion_source recording_purpose is_simulated sensor_contact data_quality recorded_at activity account_id account_type heart_rate_bpm rr_intervals_ms rmssd_ms sdnn_ms dfa_alpha1 motion_index'
     )
     .lean();
 
@@ -2179,6 +2174,7 @@ export async function getPatientAppHilBaselines(req, res) {
   const storedWindows = await PatientHilBaseline.find({
     account_id: dataOwnerId,
     account_type: dataOwnerType,
+    recording_purpose: 'hil_baseline',
   }).sort({ window_start: 1 }).lean();
   res.json({
     success: true,
@@ -3357,6 +3353,7 @@ export async function createPatientAppWearableSample(req, res) {
     rmssd_ms: derived.rmssd,
     sdnn_ms: derived.sdnn,
     dfa_alpha1: derived.dfa_alpha1,
+    motion_index: derived.motion_index,
     account_id: dataOwnerId,
     account_type: dataOwnerType,
   });

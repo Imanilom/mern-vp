@@ -748,9 +748,9 @@ class PolarWearablePairingService extends ChangeNotifier {
     _recentAcceleration.clear();
     lastStreamPublishedAt = null;
     isStreaming = true;
-    debugPrint(
-      '[Polar H10] Streaming dimulai. Batch upload setiap 10 detik.',
-    );
+    debugPrint(_isHilBaselineRecording
+        ? '[Polar H10] Perekaman baseline HIL dimulai; jalur streaming CAPAR dinonaktifkan.'
+        : '[Polar H10] Streaming dimulai. Batch upload setiap 10 detik.');
     sampleError = null;
     streamError = null;
     _sampleFlushTimer?.cancel();
@@ -862,6 +862,10 @@ class PolarWearablePairingService extends ChangeNotifier {
 
   Future<void> flushStream({bool force = false}) async {
     if (!isStreaming && !force) return;
+    if (_isHilBaselineRecording) {
+      _streamReadings.clear();
+      return;
+    }
     if (_streamReadings.isNotEmpty) {
       final readings = List<Map<String, dynamic>>.from(_streamReadings);
       for (var start = 0;

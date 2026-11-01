@@ -11,6 +11,11 @@ const PatientHilBaselineSchema = new mongoose.Schema(
       required: true,
       enum: ['user', 'patient'],
     },
+    recording_purpose: {
+      type: String,
+      required: true,
+      enum: ['hil_baseline'],
+    },
     activity: {
       type: String,
       required: true,

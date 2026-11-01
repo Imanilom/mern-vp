@@ -7,6 +7,7 @@ import {
 
 const sample = (overrides = {}) => ({
   _id: '507f1f77bcf86cd799439011',
+  recording_purpose: 'hil_baseline',
   provider: 'polar_h10',
   source: 'mobile_wearable_bridge',
   ingestion_source: 'mobile_wearable_bridge',
@@ -24,6 +25,7 @@ const sample = (overrides = {}) => ({
   rmssd_ms: 10,
   sdnn_ms: 15,
   dfa_alpha1: 0.8,
+  motion_index: 0.25,
   ...overrides,
 });
 
@@ -34,8 +36,10 @@ test('HIL baseline windows are constructed from accepted wearable samples only',
     'user'
   );
   assert.equal(window.activity, 'sitting');
+  assert.equal(window.recording_purpose, 'hil_baseline');
   assert.equal(window.window_start, Date.parse('2026-11-01T04:00:00.000Z'));
   assert.equal(window.features.mean_rr, 805);
+  assert.equal(window.features.motion_intensity, 0.25);
   assert.equal(window.account_type, 'user');
   assert.equal(buildPatientHilBaselineWindow(
     sample({ is_simulated: true }),
@@ -47,11 +51,17 @@ test('HIL baseline windows are constructed from accepted wearable samples only',
     '507f1f77bcf86cd799439012',
     'user'
   ), null);
+  assert.equal(buildPatientHilBaselineWindow(
+    sample({ recording_purpose: 'standard' }),
+    '507f1f77bcf86cd799439012',
+    'user'
+  ), null);
 });
 
 test('HIL baseline readiness requires five quality-gated minutes per activity', () => {
   const start = Date.parse('2026-11-01T04:00:00.000Z');
   const windows = Array.from({ length: 5 }, (_, index) => ({
+    recording_purpose: 'hil_baseline',
     activity: 'sitting',
     window_start: start + index * 60_000,
     recorded_at: new Date(start + index * 60_000),
@@ -72,6 +82,7 @@ test('HIL baseline readiness requires five quality-gated minutes per activity', 
 test('HIL baseline windows deduplicate minutes and exclude low-quality windows', () => {
   const start = Date.parse('2026-11-01T04:00:00.000Z');
   const windows = Array.from({ length: 5 }, (_, index) => ({
+    recording_purpose: 'hil_baseline',
     activity: 'walking',
     window_start: start + index * 60_000,
     recorded_at: new Date(start + index * 60_000),
@@ -87,4 +98,18 @@ test('HIL baseline windows deduplicate minutes and exclude low-quality windows',
   assert.equal(context.scenario_readiness.ready, false);
   assert.equal(context.scenario_readiness.valid_window_count, 4);
   assert.equal(context.segment_count, 5);
+});
+
+test('ordinary recording windows do not contribute to HIL readiness', () => {
+  const start = Date.parse('2026-11-01T04:00:00.000Z');
+  const windows = Array.from({ length: 5 }, (_, index) => ({
+    recording_purpose: 'standard',
+    activity: 'sitting',
+    window_start: start + index * 60_000,
+    recorded_at: new Date(start + index * 60_000),
+    quality: { q_signal: 0.9, q_complete: 0.9 },
+    features: { mean_hr: 70 },
+  }));
+
+  assert.deepEqual(summarizePatientHilBaselines(windows), []);
 });

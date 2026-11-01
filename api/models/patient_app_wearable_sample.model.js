@@ -75,6 +75,7 @@ const PatientAppWearableSampleSchema = new mongoose.Schema(
     rmssd_ms: { type: Number, min: 0, max: 1000, default: null },
     sdnn_ms: { type: Number, min: 0, max: 1000, default: null },
     dfa_alpha1: { type: Number, min: 0, max: 3, default: null },
+    motion_index: { type: Number, default: null },
     spo2_pct: { type: Number, min: 50, max: 100, default: null },
     steps: { type: Number, min: 0, max: 100000, default: null },
     activity: {

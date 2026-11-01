@@ -189,14 +189,16 @@ event markers.
 HIL baseline windows are stored separately in `patient_hil_baselines` and are
 never added to CAPAR's `Baseline` collection. The baseline endpoint returns
 activity-specific feature summaries and readiness; five distinct quality-gated
-one-minute Polar H10 windows are required for an activity. It reads accepted
-wearable samples and backfills their HIL windows, so previously recorded sample
-data can populate the separate HIL collection without using CAPAR baseline
-records. The endpoint requires explicit AI-processing consent. Wearable-sample
-responses report this separately in `data.hil_baseline`; it is not part of
-`data.capar_ingestion`. Samples recorded by the guided HIL baseline session are
-tagged `recording_purpose: "hil_baseline"` and are not converted into CAPAR
-segments; standard wearable recordings keep the existing CAPAR ingestion path.
+one-minute Polar H10 windows are required for each of sitting, standing, and
+walking before scenarios B/C unlock. Only accepted wearable samples explicitly
+tagged `recording_purpose: "hil_baseline"` populate this collection; ordinary
+wearable history and CAPAR baseline records are not reused. The endpoint
+requires explicit AI-processing consent. Wearable-sample responses report this
+separately in `data.hil_baseline`; it is not part of `data.capar_ingestion`.
+Samples recorded by the guided HIL baseline session are tagged
+`recording_purpose: "hil_baseline"` and are not sent through the CAPAR streaming
+endpoint or converted into CAPAR segments; standard wearable recordings keep
+the existing CAPAR ingestion path.
 
 ## Patient actions and impact summary
 
