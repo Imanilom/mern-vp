@@ -68,7 +68,7 @@ void main() {
   });
 
   testWidgets(
-      'Human In the Loop locks B/C until matching activity baseline is mature',
+      'Human In the Loop locks B/C until five quality-gated HIL minutes exist',
       (tester) async {
     final state = AppState()
       ..rawCaparInsights = {
@@ -136,7 +136,7 @@ void main() {
     expect(find.text('Dua arah nonadaptif'), findsNothing);
   });
 
-  testWidgets('mature matching activity baseline enables z-score B and C',
+  testWidgets('five-minute HIL baseline enables B and C without CAPAR maturity',
       (tester) async {
     final state = AppState()
       ..rawCaparInsights = {
@@ -146,8 +146,13 @@ void main() {
               {
                 'activity': 'sitting',
                 'time_period': 'morning',
-                'level': 'mature',
-                'segment_count': 35,
+                'level': 'provisional',
+                'segment_count': 5,
+                'scenario_readiness': {
+                  'ready': true,
+                  'valid_window_count': 5,
+                  'valid_duration_seconds': 300,
+                },
               },
             ],
           },
@@ -220,7 +225,7 @@ void main() {
     expect(find.byKey(const Key('hil-open-live-monitor')), findsOneWidget);
   });
 
-  testWidgets('a mature baseline for another activity cannot unlock the event',
+  testWidgets('CAPAR maturity alone cannot unlock HIL scenarios',
       (tester) async {
     final state = AppState()
       ..rawCaparInsights = {

@@ -1035,7 +1035,7 @@ export async function getPatientAppCaparInsights(req, res) {
     const monthStartMs = monthAgo.getTime();
     const [baselines, recentSegments, polarData, episodes, episodeMetadata,
       transitionDocs, anomalyEvents, cognitiveMemories, behaviorEvents,
-      historicalCheckIns, historicalPatientEvents] = await Promise.all([
+      historicalCheckIns, historicalPatientEvents, scenarioSegments] = await Promise.all([
       Baseline.find({ user_id: { $in: caparDataIds } }).lean(),
       Segment.find({
         user_id: { $in: caparDataIds },
@@ -1088,7 +1088,57 @@ export async function getPatientAppCaparInsights(req, res) {
         ...accountScopeFilter(accountScopes),
         occurred_at: { $gte: monthAgo, $lte: now },
       }).sort({ occurred_at: -1 }).limit(500).lean(),
+      Segment.find({
+        user_id: { $in: caparDataIds },
+        window_type: '1min',
+        analyzed: true,
+        is_valid: true,
+        window_start: {
+          $gte: now.getTime() - 180 * 24 * 60 * 60 * 1000,
+          $lte: now.getTime(),
+        },
+      }).sort({ window_start: -1 }).limit(5000)
+        .select('user_id patient_app_sample_id window_start activity_label is_valid analyzed signal_quality signal_quality_detail quality_audit')
+        .lean(),
     ]);
+    const scenarioSampleIds = [...new Set(
+      scenarioSegments
+        .map((segment) => segment.patient_app_sample_id?.toString())
+        .filter(Boolean)
+    )];
+    const scenarioSamples = scenarioSampleIds.length
+      ? await PatientAppWearableSample.find({
+        _id: { $in: scenarioSampleIds },
+        account_id: { $in: caparDataIds },
+        provider: 'polar_h10',
+        source: 'mobile_wearable_bridge',
+        ingestion_source: 'mobile_wearable_bridge',
+        sensor_contact: true,
+        'data_quality.status': 'accepted',
+      }).select('_id provider source ingestion_source sensor_contact data_quality.status')
+        .lean()
+      : [];
+    const acceptedScenarioSampleIds = new Set(
+      scenarioSamples
+        .filter(isScenarioRealRecordedSample)
+        .map((sample) => sample._id.toString())
+    );
+    const qualityGatedScenarioSegments = scenarioSegments.filter((segment) =>
+      segment.patient_app_sample_id
+      && acceptedScenarioSampleIds.has(segment.patient_app_sample_id.toString())
+      && isScenarioQualityGatedSegment(segment)
+    );
+    const scenarioSegmentsByContext = new Map();
+    for (const segment of qualityGatedScenarioSegments) {
+      const contextKey = [
+        segment.user_id.toString(),
+        segment.activity_label,
+        patientCaparTimePeriod(segment.window_start),
+      ].join(':');
+      const contextSegments = scenarioSegmentsByContext.get(contextKey) || [];
+      contextSegments.push(segment);
+      scenarioSegmentsByContext.set(contextKey, contextSegments);
+    }
 
     const eligibleSegments = recentSegments.filter(isPatientAnalyticsSegment);
     const currentSegments = eligibleSegments.filter(
@@ -1749,6 +1799,18 @@ export async function getPatientAppCaparInsights(req, res) {
               ? 'mature'
               : 'mature_legacy'
             : baseline.maturity_detail?.level || 'provisional',
+          scenario_readiness: (() => {
+            const contextKey = [
+              baseline.user_id.toString(),
+              baseline.activity,
+              baseline.time_period,
+            ].join(':');
+            const matchingSegments =
+              scenarioSegmentsByContext.get(contextKey) || [];
+            return matchingSegments.length
+              ? assessScenarioBaseline(baseline, matchingSegments)
+              : assessScenarioBaseline(null);
+          })(),
           quality: baseline.maturity_detail?.bq ?? null,
           segment_count: baseline.segment_count,
           maturity_threshold: baseline.MATURITY_THRESHOLD ?? 20,

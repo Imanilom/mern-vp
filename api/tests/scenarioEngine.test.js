@@ -50,6 +50,18 @@ test('scenario baseline requires one formation day and five quality-valid minute
   assert.equal(qualityGated.valid_duration_seconds, 240);
 });
 
+test('stored CAPAR baseline history exposes HIL readiness after five valid minutes', () => {
+  const baselineHistory = {
+    window_timestamps: windows(5).map((segment) => segment.window_start),
+    q_signal_history: Array(5).fill(0.8),
+    q_complete_history: Array(5).fill(0.9),
+  };
+  const readiness = assessScenarioBaseline(baselineHistory);
+  assert.equal(readiness.ready, true);
+  assert.equal(readiness.valid_window_count, 5);
+  assert.equal(readiness.valid_duration_seconds, 300);
+});
+
 test('quality-gated cold-start windows count toward scenario readiness without CAPAR maturity', () => {
   const coldStartWindows = windows(5).map((segment) => ({
     ...segment,

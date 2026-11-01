@@ -244,21 +244,22 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     };
   }
 
-  bool _isActivityContextMature(
+  bool _matchesBaselineActivity(
     Map<String, dynamic> baseline,
-    String activity, {
-    String? timePeriod,
-  }) {
-    if (_normalizeActivity(baseline['activity']?.toString()) != activity) {
-      return false;
-    }
-    if (timePeriod != null &&
-        baseline['time_period']?.toString() != timePeriod) {
-      return false;
-    }
-    final level = baseline['level']?.toString().toLowerCase() ??
-        _map(baseline['maturity_detail'])['level']?.toString().toLowerCase();
-    return const {'mature', 'mature_legacy'}.contains(level);
+    String activity,
+  ) {
+    final normalized = _normalizeActivity(baseline['activity']?.toString());
+    final aliases = switch (activity) {
+      'sitting' || 'standing' => {'sitting', 'standing', 'rest'},
+      'walking' => {'walking', 'light'},
+      _ => {activity},
+    };
+    return aliases.contains(normalized);
+  }
+
+  bool _isScenarioBaselineReady(Map<String, dynamic> baseline) {
+    final readiness = _map(baseline['scenario_readiness']);
+    return readiness['ready'] == true;
   }
 
   List<Map<String, dynamic>> _positiveZScoreFeatures(
@@ -354,14 +355,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final observationActivity = _normalizeActivity(
       latestObservation['activity']?.toString(),
     );
-    final observationTimePeriod = latestObservation['time_period']?.toString();
-    final matchingObservationBaselineReady =
-        baselineContexts.any((baseline) => _isActivityContextMature(
-              baseline,
-              observationActivity,
-              timePeriod: observationTimePeriod,
-            ));
-    final scenariosReady = matchingObservationBaselineReady;
+    final scenariosReady = baselineContexts.any(_isScenarioBaselineReady);
     final followUpStatus =
         followUp['status']?.toString() ?? state.followUpPrompt.status;
     final resolutionStatus = resolution['status']?.toString() ??
@@ -403,7 +397,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             code: 'A',
             title: 'Pembentukan baseline per aktivitas',
             detail:
-                'Bentuk profil aktivitas satu per satu. Data dibandingkan dengan baseline CAPAR untuk aktivitas dan waktu yang sama.',
+                'Bentuk profil aktivitas satu per satu. Lima menit data berkualitas per aktivitas cukup untuk mulai uji HIL; kematangan CAPAR tetap dinilai terpisah.',
             selected: _selectedScenario == 'A',
             enabled: _hasResearchConsent,
             onPressed: () => setState(() => _selectedScenario = 'A'),
@@ -412,7 +406,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             code: 'B',
             title: 'One-way feedback',
             detail:
-                'Tampilkan narasi deviasi yang terukur tanpa meminta klarifikasi.',
+                'Tampilkan narasi satu arah. Skenario dapat dibuka setelah tersedia 5 menit baseline HIL berkualitas.',
             selected: _selectedScenario == 'B',
             enabled: scenariosReady && _hasResearchConsent,
             onPressed: () => _selectScenario('B', segmentId),
@@ -421,7 +415,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             code: 'C',
             title: 'Human in the loop',
             detail:
-                'Tampilkan deviasi, tanyakan aktivitas berat dan intensitasnya, lalu pertahankan unresolved bila bukti belum cukup.',
+                'Tampilkan hasil, minta klarifikasi, dan pertahankan unresolved bila bukti statistik belum cukup.',
             selected: _selectedScenario == 'C',
             enabled: scenariosReady && _hasResearchConsent,
             onPressed: () => _selectScenario('C', segmentId),
@@ -442,7 +436,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 7, bottom: 10),
               child: Text(
-                'Skenario B/C memerlukan baseline matang untuk aktivitas dan waktu observasi yang sedang dievaluasi.',
+                'Skenario B/C terbuka setelah server mendeteksi 5 window satu menit berkualitas pada baseline HIL. Baseline CAPAR matang tidak diwajibkan.',
                 key: const Key('hil-scenarios-locked'),
                 style: AppTheme.font(
                   size: 10.5,
@@ -505,7 +499,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             title: 'Periksa kualitas dan baseline',
             detail:
                 'Quality gate: ${qualityPassed ? 'lolos' : quality['status'] == 'insufficient_data' ? 'data belum cukup' : 'belum lolos/tersedia'}'
-                ' · baseline aktivitas/waktu: ${matchingObservationBaselineReady ? 'matang dan cocok' : 'belum cocok atau belum matang'}'
+                ' · baseline aktivitas/waktu: ${scenariosReady ? 'data HIL tersedia' : 'belum memenuhi 5 menit HIL'}'
                 '${baselineStage['segment_count'] == null ? '' : ' (${baselineStage['segment_count']} segmen pada konteks terbaru)'}',
           ),
           _stepCard(
@@ -681,7 +675,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               style: AppTheme.font(size: 12, weight: FontWeight.w800)),
           const SizedBox(height: 5),
           Text(
-            'Rekam baseline secara berurutan: duduk, berdiri, lalu berjalan. Setiap langkah berlangsung 5 menit; tahap berdiri dan berjalan boleh dilewati jika tidak nyaman.',
+            'Rekam baseline secara berurutan: duduk, berdiri, lalu berjalan. Setiap langkah berlangsung 5 menit. Syarat uji HIL dihitung dari window satu menit yang lolos quality gate, bukan status matang baseline CAPAR.',
             style: AppTheme.font(
               size: 10.5,
               color: AppTheme.textSecondary,
@@ -693,30 +687,37 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             final activity = _baselineActivities[index];
             final contextsForActivity = contexts
                 .where((context) =>
-                    _normalizeActivity(context['activity']?.toString()) ==
-                    activity.$2)
+                    _matchesBaselineActivity(context, activity.$2))
                 .toList();
-            final matureContexts = contextsForActivity
-                .where(
-                    (context) => _isActivityContextMature(context, activity.$2))
-                .length;
-            final isMature = matureContexts > 0;
+            final readyContexts = contextsForActivity
+                .where(_isScenarioBaselineReady)
+                .toList();
+            final isReady = readyContexts.isNotEmpty;
             final count = contextsForActivity.fold<int>(
               0,
               (total, context) =>
                   total + ((context['segment_count'] as num?)?.toInt() ?? 0),
+            );
+            final validMinutes = readyContexts.fold<int>(
+              0,
+              (total, context) =>
+                  total +
+                  ((_map(context['scenario_readiness'])['valid_window_count']
+                          as num?)
+                      ?.toInt() ??
+                      0),
             );
             return Container(
               key: Key('hil-baseline-step-${index + 1}'),
               margin: const EdgeInsets.only(bottom: 6),
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
               decoration: BoxDecoration(
-                color: isMature
+                color: isReady
                     ? AppTheme.statusGreen.withValues(alpha: 0.08)
                     : Colors.white,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isMature ? AppTheme.statusGreen : AppTheme.borderLight,
+                  color: isReady ? AppTheme.statusGreen : AppTheme.borderLight,
                 ),
               ),
               child: Row(
@@ -724,10 +725,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   CircleAvatar(
                     radius: 13,
                     backgroundColor:
-                        isMature ? AppTheme.statusGreen : AppTheme.primarySoft,
+                        isReady ? AppTheme.statusGreen : AppTheme.primarySoft,
                     foregroundColor:
-                        isMature ? Colors.white : AppTheme.primaryDark,
-                    child: isMature
+                        isReady ? Colors.white : AppTheme.primaryDark,
+                    child: isReady
                         ? const Icon(Icons.check_rounded, size: 16)
                         : Text(
                             '${index + 1}',
@@ -745,13 +746,13 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   Text(
                     contextsForActivity.isEmpty
                         ? 'Belum ada data'
-                        : isMature
-                            ? 'Matang · $count segmen'
-                            : 'Belum matang · $count segmen',
+                        : isReady
+                            ? 'Siap HIL · $validMinutes menit · $count segmen'
+                            : 'Belum siap HIL · $count segmen CAPAR',
                     style: AppTheme.font(
                       size: 9.5,
                       weight: FontWeight.w600,
-                      color: isMature
+                      color: isReady
                           ? AppTheme.statusGreen
                           : AppTheme.textSecondary,
                     ),
