@@ -53,8 +53,22 @@ export function isScenarioRealRecordedSample(sample) {
     && sample?.data_quality?.status === 'accepted';
 }
 
+export function isScenarioQualityGatedSegment(segment) {
+  const quality = segment?.signal_quality_detail || {};
+  return segment?.is_valid === true
+    && segment?.analyzed === true
+    && segment?.signal_quality?.is_artifact !== true
+    && (segment?.quality_audit?.gate_passed === true
+      || (
+        Number.isFinite(quality.q_signal)
+        && Number.isFinite(quality.q_complete)
+        && quality.q_signal >= SCENARIO_BASELINE_POLICY.minimum_quality
+        && quality.q_complete >= SCENARIO_BASELINE_POLICY.minimum_quality
+      ));
+}
+
 export function assessScenarioBaseline(baseline, baselineSegments = []) {
-  if (!baseline) {
+  if (!baseline && baselineSegments.length === 0) {
     return {
       ready: false,
       status: 'INELIGIBLE',
@@ -113,10 +127,12 @@ export function assessScenarioBaseline(baseline, baselineSegments = []) {
   return {
     ready,
     status: ready ? 'ELIGIBLE' : 'INELIGIBLE',
-    reason_code: !hasFormationDay
-      ? 'BASELINE_FORMATION_DAY_INSUFFICIENT'
-      : !hasValidDuration
+    reason_code: !hasValidDuration
+      ? baseline || baselineSegments.length > 0
         ? 'VALID_DATA_UNDER_MINIMUM_DURATION'
+        : 'BASELINE_NOT_FOUND'
+      : !hasFormationDay
+        ? 'BASELINE_FORMATION_DAY_INSUFFICIENT'
         : null,
     valid_duration_seconds: validDurationSeconds,
     distinct_days: distinctDays,
@@ -136,17 +152,7 @@ export function buildScenarioInterpretation({
   previousVersion = null,
 }) {
   const quality = segment?.signal_quality_detail || {};
-  const qualityAvailable =
-    segment?.is_valid === true
-    && segment?.analyzed === true
-    && segment?.signal_quality?.is_artifact !== true
-    && (segment?.quality_audit?.gate_passed === true
-      || (
-        Number.isFinite(quality.q_signal)
-        && Number.isFinite(quality.q_complete)
-        && quality.q_signal >= SCENARIO_BASELINE_POLICY.minimum_quality
-        && quality.q_complete >= SCENARIO_BASELINE_POLICY.minimum_quality
-      ));
+  const qualityAvailable = isScenarioQualityGatedSegment(segment);
   const baselineAvailable = Boolean(baselineReadiness?.ready && score?.available);
   const state = !qualityAvailable || !baselineAvailable
     ? 'UNRESOLVED'

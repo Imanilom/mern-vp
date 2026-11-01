@@ -6,7 +6,7 @@ const HILAD_TEST_MODE = process.env.HILAD_TEST_MODE === 'true';
 if (HILAD_TEST_MODE && process.env.NODE_ENV === 'production') {
   throw new Error('HILAD_TEST_MODE must not be enabled in production.');
 }
-export const HILAD_MIN_TRAINING_WINDOWS = HILAD_TEST_MODE ? 1 : 20;
+export const HILAD_MIN_TRAINING_WINDOWS = HILAD_TEST_MODE ? 1 : 5;
 export const HILAD_RETRAIN_WINDOW_INTERVAL = 20;
 
 const MAX_TRAINING_WINDOWS = 500;

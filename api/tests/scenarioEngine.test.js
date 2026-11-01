@@ -4,6 +4,7 @@ import {
   assessScenarioBaseline,
   buildScenarioInterpretation,
   isScenarioRealRecordedSample,
+  isScenarioQualityGatedSegment,
   mapScenarioActivity,
   scenarioBaselineActivityAliases,
   SCENARIO_DEFINITIONS,
@@ -47,6 +48,32 @@ test('scenario baseline requires one formation day and five quality-valid minute
   const qualityGated = assessScenarioBaseline(baseline, lowQuality);
   assert.equal(qualityGated.ready, false);
   assert.equal(qualityGated.valid_duration_seconds, 240);
+});
+
+test('quality-gated cold-start windows count toward scenario readiness without CAPAR maturity', () => {
+  const coldStartWindows = windows(5).map((segment) => ({
+    ...segment,
+    is_valid: true,
+    analyzed: true,
+    rr_status: 'INSUFFICIENT_BASELINE',
+    quality_audit: { gate_passed: true },
+  }));
+  assert.ok(coldStartWindows.every(isScenarioQualityGatedSegment));
+  const readiness = assessScenarioBaseline(null, coldStartWindows);
+  assert.equal(readiness.ready, true);
+  assert.equal(readiness.valid_duration_seconds, 300);
+  assert.equal(readiness.reason_code, null);
+});
+
+test('scenario baseline reports insufficient quality-gated duration without a CAPAR document', () => {
+  const lowQualityWindows = windows(5).map((segment) => ({
+    ...segment,
+    signal_quality_detail: { q_signal: 0.4, q_complete: 0.9 },
+  }));
+  const readiness = assessScenarioBaseline(null, lowQualityWindows);
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.valid_duration_seconds, 0);
+  assert.equal(readiness.reason_code, 'VALID_DATA_UNDER_MINIMUM_DURATION');
 });
 
 test('scenario interpretation remains unresolved without statistical evidence', () => {

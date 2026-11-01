@@ -383,8 +383,8 @@ The evaluation is withheld when signal quality or baseline data is insufficient.
 
 When AI-processing consent is enabled, the streaming endpoint also evaluates
 completed, quality-gated 60-second Polar windows with a per-account,
-per-activity LSTM autoencoder. The first 20 valid minute windows are treated as
-normal training examples; this is a warm-up assumption, not a clinical
+per-activity LSTM autoencoder. The first 5 valid minute windows (5 minutes per
+activity) are treated as normal training examples; this is a warm-up assumption, not a clinical
 confirmation that those recordings are normal. The model uses a chronological hold-out set and applies 1.25 times the 95th
 percentile of its reconstruction errors as the
 candidate threshold. Until a model is trained, the result reports `warming_up`

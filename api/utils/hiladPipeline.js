@@ -277,7 +277,7 @@ export async function analyzePolarRecordingWithHilad({
       ? 'Model sedang dilatih dari rekaman berkualitas yang dianggap normal.'
       : model?.status === 'failed'
         ? 'Pelatihan model gagal; periksa log API atau minta pelatihan ulang.'
-        : 'Menunggu window satu menit dan data latih yang cukup sebelum skor anomali tersedia.',
+        : `Menunggu minimal ${HILAD_MIN_TRAINING_WINDOWS} window berkualitas (5 menit) sebelum skor anomali tersedia.`,
   };
 }
 

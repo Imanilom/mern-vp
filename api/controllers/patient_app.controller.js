@@ -98,6 +98,7 @@ import { awardRecordingDayCoin } from '../utils/recordingCoins.js';
 import {
   assessScenarioBaseline,
   buildScenarioInterpretation,
+  isScenarioQualityGatedSegment,
   isScenarioRealRecordedSample,
   mapScenarioActivity,
   scenarioBaselineActivityAliases,
@@ -2686,7 +2687,7 @@ export async function startPatientScenarioSession(req, res) {
       $lte: Date.now(),
     },
   }).sort({ window_start: -1 }).limit(5000).lean();
-  const latestObservation = segments.find(isPatientAnalyticsSegment) || null;
+  const latestObservation = segments.find(isScenarioQualityGatedSegment) || null;
   if (!latestObservation) {
     throw errorHandler(
       409,
@@ -3091,7 +3092,7 @@ async function evaluateScenarioObservation({
       || !realRecordedSampleIds.has(candidate.patient_app_sample_id.toString())
       || !baselineActivityAliases.includes(candidate.activity_label)
       || patientCaparTimePeriod(candidate.window_start) !== timePeriod
-      || !isPatientBaselineSegment(candidate, { allowProvisionalNormal: true })
+      || !isScenarioQualityGatedSegment(candidate)
       || stableByWindow.has(candidate.window_start)
     ) {
       continue;
@@ -3766,11 +3767,8 @@ function isPatientAnalyticsSegment(segment) {
     || (quality.q_signal >= minimumQuality && quality.q_complete >= minimumQuality);
 }
 
-function isPatientBaselineSegment(segment, { allowProvisionalNormal = false } = {}) {
+function isPatientBaselineSegment(segment) {
   if (!isPatientAnalyticsSegment(segment)) return false;
-  if (allowProvisionalNormal && segment.rr_status === 'PROVISIONAL_NORMAL') {
-    return true;
-  }
   if (segment.rr_status && segment.rr_status !== 'NORMAL') return false;
   return segment.rr_status === 'NORMAL' || segment.classification === 'Normal';
 }
@@ -3841,6 +3839,7 @@ function selectPatientMahalanobisFeatures(samples, baseline, minimumSamples = 30
     || samples.filter((sample) => Number.isFinite(sample[key])).length >= minimumSamples);
   const selected = [];
   for (const candidate of candidates) {
+    if (selected.length >= Math.max(2, minimumSamples - 2)) break;
     const proposed = [...selected, candidate];
     const completeSampleCount = samples.filter((sample) =>
       proposed.every((key) => Number.isFinite(sample[key]))

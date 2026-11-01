@@ -213,8 +213,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     }
     final interpretation = _currentInterpretation(result.data!);
     final baseline = _map(interpretation?['baseline']);
-    final baselineNeedsMoreData = baseline['status'] != 'ELIGIBLE' ||
-        baseline['production_is_mature'] != true;
+    final baselineNeedsMoreData = baseline['status'] != 'ELIGIBLE';
     setState(() {
       _selectedSession = result.data;
       _events = [];
@@ -268,7 +267,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Lengkapi data baseline CAPAR'),
+        title: const Text('Baseline skenario belum siap'),
         content: SizedBox(
           width: 480,
           child: SingleChildScrollView(
@@ -283,7 +282,11 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                 if (requestedContext.isNotEmpty)
                   Text('Konteks sesi ini: $requestedContext.'),
                 const Text(
-                  'Data CAPAR yang tersimpan tetap digunakan untuk evaluasi. Perbandingan personal dapat belum tersedia sampai baseline pada konteks yang sama cukup matang.',
+                  'Kesiapan skenario HIL dihitung dari minimal 5 menit window Polar berkualitas pada aktivitas dan periode waktu yang sama. Syarat ini terpisah dari kematangan baseline CAPAR produksi.',
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Sesi B/C tetap dapat digunakan. Jika data pembanding belum cukup, hasil interpretasi akan ditandai UNRESOLVED sampai tersedia bukti yang memadai.',
                 ),
                 const SizedBox(height: 12),
                 const Text(
@@ -291,7 +294,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Usahakan sinyal dan kontak sensor baik, rekam pada beberapa hari, dan kumpulkan window yang stabil. CAPAR menilai jumlah window efektif, sebaran hari, kualitas sinyal, dan kestabilan; banyaknya segmen saja tidak menjamin baseline matang. Setelah merekam, tunggu analisis CAPAR selesai lalu buka halaman ini lagi.',
+                  'Pastikan kontak sensor dan kualitas sinyal baik. Rekam setidaknya 5 window satu menit untuk aktivitas dan periode yang sama, lalu tunggu analisis selesai dan muat ulang halaman. Baseline CAPAR produksi dapat tetap berstatus belum matang tanpa menghalangi uji skenario setelah syarat 5 menit HIL terpenuhi.',
                 ),
               ],
             ),
@@ -773,7 +776,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                     ? 'Lolos'
                     : 'Tidak lolos / belum tersedia'),
             _detailRow(
-              'Baseline CAPAR',
+              'Baseline CAPAR produksi',
               '${baseline['activity'] ?? 'Tidak cocok'} · ${baseline['production_segment_count'] ?? 0} segmen · ${baseline['production_is_mature'] == true ? 'Mature' : 'Belum mature'} (${baseline['production_status'] ?? 'missing'})',
             ),
             _detailRow(

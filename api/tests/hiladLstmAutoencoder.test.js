@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildQualityGatedMinuteSequence,
   evaluateLstmAutoencoder,
+  HILAD_MIN_TRAINING_WINDOWS,
   trainLstmAutoencoder,
 } from '../utils/hiladLstmAutoencoder.js';
 
@@ -43,14 +44,15 @@ test('quality gate rejects poor confidence, short duration, and recording gaps',
 
 test('LSTM autoencoder trains, persists reconstructable weights, and emits residual attributions', async () => {
   const seed = buildQualityGatedMinuteSequence(minuteReadings());
-  const training = Array.from({ length: 20 }, (_, index) => ({
+  const training = Array.from({ length: HILAD_MIN_TRAINING_WINDOWS }, (_, index) => ({
     sequence: seed.sequence.map((row) => [
       Math.max(0, Math.min(1, row[0] + index * 0.0001)),
       ...row.slice(1),
     ]),
   }));
   const trained = await trainLstmAutoencoder(training);
-  assert.equal(trained.training_window_count, 20);
+  assert.equal(HILAD_MIN_TRAINING_WINDOWS, 5);
+  assert.equal(trained.training_window_count, 5);
   assert.ok(trained.threshold > 0);
   assert.ok(trained.weights.length > 0);
 
