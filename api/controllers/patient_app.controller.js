@@ -188,6 +188,21 @@ function accountScopeFilter(accountScopes) {
   return { $or: accountScopes };
 }
 
+function buildPatientHistoryFallbackQuery(accountScopes) {
+  const accountIds = [...new Set(
+    accountScopes
+      .map((scope) => scope?.account_id)
+      .filter((id) => id != null && !(typeof id === 'string' && id.trim() === ''))
+      .map((id) => (mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : id))
+  )];
+
+  const query = { $or: accountScopes };
+  if (accountIds.length) {
+    query.$or.push({ account_id: { $in: accountIds } });
+  }
+  return query;
+}
+
 async function evaluatePolarRecordingBatch(dataOwnerId, stream) {
   const baselineActivities = REALTIME_BASELINE_ACTIVITY_ALIASES[stream.activity] || [];
   const baselines = baselineActivities.length
@@ -2144,9 +2159,11 @@ export async function listPatientHilExplanations(req, res) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
     throw errorHandler(400, 'limit harus berupa bilangan bulat antara 1 dan 100.');
   }
-  const explanations = await PatientHilExplanation.find(
-    accountScopeFilter(accountScopes)
-  ).sort({ createdAt: -1 }).limit(limit).lean();
+  const accountQuery = buildPatientHistoryFallbackQuery(accountScopes);
+  const explanations = await PatientHilExplanation.find(accountQuery)
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
   res.json({ success: true, data: explanations });
 }
 
@@ -2399,13 +2416,13 @@ export async function listPatientHilScenarioLogs(req, res) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
     throw errorHandler(400, 'limit harus berupa bilangan bulat antara 1 dan 100.');
   }
-  const query = accountScopeFilter(accountScopes);
+  const query = buildPatientHistoryFallbackQuery(accountScopes);
   if (req.query.run_id !== undefined) {
     const runId = String(req.query.run_id);
     if (!/^[a-zA-Z0-9._:-]{8,80}$/.test(runId)) {
       throw errorHandler(400, 'run_id tidak valid.');
     }
-    query.run_id = runId;
+    query.$and = [{ run_id: runId }];
   }
   const logs = await PatientHilScenarioLog.find(query)
     .sort({ createdAt: -1 })

@@ -769,7 +769,7 @@ class AppState extends ChangeNotifier {
   Future<void> fetchHilExplanationHistory({int limit = 50}) async {
     final res = await ApiService.getHilExplanations(limit: limit);
     if (res.success && res.data != null) {
-      hilExplanationHistory = res.data!.whereType<Map>().map((item) {
+      final explanations = res.data!.whereType<Map>().map((item) {
         final explanation = Map<String, dynamic>.from(item);
         final snapshot = {
           'version': explanation['snapshot_version'] ?? 1,
@@ -796,8 +796,104 @@ class AppState extends ChangeNotifier {
           value: snapshot,
         );
       }).toList();
+
+      if (explanations.isNotEmpty) {
+        hilExplanationHistory = explanations;
+      } else {
+        final logsRes = await ApiService.getHilScenarioLogs(limit: limit);
+        if (logsRes.success && logsRes.data != null) {
+          hilExplanationHistory = logsRes.data!
+              .whereType<Map>()
+              .map((item) {
+                final log = Map<String, dynamic>.from(item);
+                final scenario = log['scenario']?.toString();
+                final explanationText = ([
+                  log['explanation']?.toString(),
+                  log['recommendation']?.toString(),
+                  log['clarification']?.toString(),
+                ] as List<String?>).firstWhere(
+                  (value) => value != null && value.trim().isNotEmpty,
+                  orElse: () => 'Riwayat HIL dari log skenario.',
+                ) ?? 'Riwayat HIL dari log skenario.';
+                return EventItem(
+                  id: log['_id']?.toString() ?? log['run_id']?.toString() ?? '',
+                  title: 'Human In the Loop',
+                  eventType: 'hil_scenario',
+                  icon: Icons.timeline,
+                  color: AppTheme.primary,
+                  timestamp: DateTime.tryParse(
+                        (log['createdAt'] ?? log['created_at'])?.toString() ?? '',
+                      ) ??
+                      DateTime.fromMillisecondsSinceEpoch(0),
+                  details: explanationText,
+                  value: {
+                    'version': 1,
+                    'scenario': scenario,
+                    'activity': log['activity'],
+                    'explanation': explanationText,
+                    'status': log['event_type'] == 'clarification_submitted'
+                        ? 'answered'
+                        : 'recorded',
+                    'quality_status': log['quality_status'] ?? 'unknown',
+                    'baseline_ready': true,
+                    'factors': const <String>[],
+                    'session_id': log['session_id']?.toString(),
+                    'run_id': log['run_id']?.toString(),
+                  },
+                );
+              })
+              .toList();
+        } else {
+          hilExplanationHistory = const [];
+        }
+      }
       notifyListeners();
     } else {
+      final logsRes = await ApiService.getHilScenarioLogs(limit: limit);
+      if (logsRes.success && logsRes.data != null) {
+        hilExplanationHistory = logsRes.data!
+            .whereType<Map>()
+            .map((item) {
+              final log = Map<String, dynamic>.from(item);
+              final explanationText = ([
+                log['explanation']?.toString(),
+                log['recommendation']?.toString(),
+                log['clarification']?.toString(),
+              ] as List<String?>).firstWhere(
+                (value) => value != null && value.trim().isNotEmpty,
+                orElse: () => 'Riwayat HIL dari log skenario.',
+              ) ?? 'Riwayat HIL dari log skenario.';
+              return EventItem(
+                id: log['_id']?.toString() ?? log['run_id']?.toString() ?? '',
+                title: 'Human In the Loop',
+                eventType: 'hil_scenario',
+                icon: Icons.timeline,
+                color: AppTheme.primary,
+                timestamp: DateTime.tryParse(
+                      (log['createdAt'] ?? log['created_at'])?.toString() ?? '',
+                    ) ??
+                    DateTime.fromMillisecondsSinceEpoch(0),
+                details: explanationText,
+                value: {
+                  'version': 1,
+                  'scenario': log['scenario']?.toString(),
+                  'activity': log['activity'],
+                  'explanation': explanationText,
+                  'status': log['event_type'] == 'clarification_submitted'
+                      ? 'answered'
+                      : 'recorded',
+                  'quality_status': log['quality_status'] ?? 'unknown',
+                  'baseline_ready': true,
+                  'factors': const <String>[],
+                  'session_id': log['session_id']?.toString(),
+                  'run_id': log['run_id']?.toString(),
+                },
+              );
+            })
+            .toList();
+        notifyListeners();
+        return;
+      }
       dataError = res.message ?? 'Gagal memuat histori penjelasan HIL.';
     }
   }

@@ -33,6 +33,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   bool _hasResearchConsent = false;
   bool _isUpdatingAiConsent = false;
   String? _lastAutoClarificationSegmentId;
+  bool _showExpandedScenarioHistory = false;
+  bool _showExpandedActivityHistory = false;
 
   @override
   void initState() {
@@ -394,7 +396,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
 
   Future<void> _showScenarioHistory(EventItem event) async {
     final snapshot = _map(event.value);
-    final scenario = snapshot['scenario']?.toString();
+    final scenario = _normalizeScenarioValue(snapshot['scenario']);
     final factors = snapshot['factors'] is List
         ? (snapshot['factors'] as List).whereType<String>().toList()
         : <String>[];
@@ -405,7 +407,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         title: Text(
           scenario == null
               ? 'Riwayat skenario HIL'
-              : 'Skenario $scenario · ${scenario == 'B' ? 'Saran dari sistem' : 'Klarifikasi dari pengguna'}',
+              : _scenarioHistoryTitle(scenario),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -417,7 +419,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               ),
               if (snapshot['activity'] != null) ...[
                 const SizedBox(height: 8),
-                Text('Aktivitas: ${_hilActivityLabel(snapshot['activity'])}'),
+                Text('Aktivitas: ${snapshot['activity']}'),
               ],
               if (snapshot['status'] != null) ...[
                 const SizedBox(height: 4),
@@ -429,11 +431,13 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               ],
               const SizedBox(height: 10),
               Text(_timelineNarrative(snapshot, event)),
+              if ((snapshot['explanation'] ?? event.details) != null) ...[
+                const SizedBox(height: 8),
+                Text((snapshot['explanation'] ?? event.details).toString()),
+              ],
               if (factors.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(
-                  'Indikator yang dicermati: ${_humanReadableFactorList(factors)}',
-                ),
+                Text('Faktor yang tercatat: ${factors.join(', ')}'),
               ],
             ],
           ),
@@ -448,11 +452,170 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     );
   }
 
+  String? _normalizeScenarioValue(dynamic value) {
+    final normalized = value?.toString().trim().toUpperCase();
+    if (normalized == 'B' || normalized == 'C') return normalized;
+    return null;
+  }
+
+  String _scenarioTitle(String? scenario) => switch (scenario) {
+        'B' => 'One way narrative · Duduk, berdiri, berjalan',
+        'C' => 'Human in the loop · Duduk, berdiri, berjalan',
+        _ => 'Riwayat skenario HIL',
+      };
+
+  String _scenarioHistoryTitle(String? scenario) => _scenarioTitle(scenario);
+
+  Widget _scenarioProfileHistoryCard(AppState state) {
+    final latestByScenario = <String, Map<String, dynamic>>{};
+    for (final event in state.hilExplanationHistory) {
+      final snapshot = _map(event.value);
+      final scenario = _normalizeScenarioValue(snapshot['scenario']);
+      if (scenario == null) continue;
+      latestByScenario[scenario] = snapshot;
+    }
+    for (final log in state.hilScenarioLogs) {
+      final scenario = _normalizeScenarioValue(log['scenario']);
+      if (scenario == null) continue;
+      if (latestByScenario.containsKey(scenario)) continue;
+      final narrative = [
+        log['explanation']?.toString(),
+        log['recommendation']?.toString(),
+        log['clarification']?.toString(),
+      ].firstWhere(
+        (value) => value != null && value.trim().isNotEmpty,
+        orElse: () => 'Rekaman HIL tersimpan untuk skenario ini.',
+      );
+      latestByScenario[scenario] = {
+        'scenario': scenario,
+        'activity': log['activity'] ?? 'unknown',
+        'status': log['event_type'] == 'feedback_presented'
+            ? 'feedback_presented'
+            : (log['event_type'] == 'clarification_submitted'
+                ? 'already_answered'
+                : 'recorded'),
+        'session_id': log['session_id']?.toString(),
+        'run_id': log['run_id']?.toString(),
+        'explanation': narrative,
+      };
+    }
+    if (latestByScenario.isEmpty) return const SizedBox.shrink();
+    final entries = latestByScenario.entries.toList()
+      ..sort((left, right) => left.key.compareTo(right.key));
+    return Container(
+      key: const Key('hil-scenario-profile-history'),
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Profil sebelumnya per skenario',
+            style: AppTheme.font(size: 12, weight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Data hasil pengukuran yang sudah tersimpan untuk tiap skenario ditampilkan di sini. Anda dapat melihat profil sebelumnya dan mengulang pengukuran bila perlu.',
+            style: AppTheme.font(
+              size: 10.5,
+              color: AppTheme.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...entries.map((entry) {
+            final scenario = entry.key;
+            final snapshot = entry.value;
+            final activity = snapshot['activity']?.toString() ?? 'unknown';
+            final status = _statusLabel(snapshot['status']?.toString());
+            final sessionId = snapshot['session_id']?.toString() ??
+                snapshot['run_id']?.toString();
+            final explanation = snapshot['explanation']?.toString() ??
+                'Tidak ada ringkasan tersimpan untuk sesi ini.';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primarySoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _scenarioTitle(scenario),
+                            style: AppTheme.font(
+                              size: 10.5,
+                              weight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Aktivitas: $activity · Status: $status',
+                            style: AppTheme.font(
+                              size: 9.5,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                          if (sessionId != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Sesi: $sessionId',
+                              style: AppTheme.font(
+                                size: 9.5,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 4),
+                          Text(
+                            explanation,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTheme.font(
+                              size: 9.5,
+                              color: AppTheme.textSecondary,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      key: Key('hil-rerun-scenario-$scenario'),
+                      onPressed: () => _selectScenario(scenario),
+                      child: const Text('Ulang pengukuran'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   Widget _scenarioHistoryCard(List<EventItem> events) {
     final history = events
         .where((event) => event.eventType == 'hil_scenario')
-        .take(5)
         .toList();
+    final visibleHistory = _showExpandedScenarioHistory
+        ? history
+        : history.take(5).toList();
     return Container(
       key: const Key('hil-scenario-history'),
       width: double.infinity,
@@ -488,8 +651,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 style: AppTheme.font(size: 10.5, color: AppTheme.textMuted),
               ),
             )
-          else
-            ...history.map((event) {
+          else ...[
+            ...visibleHistory.map((event) {
               final snapshot = _map(event.value);
               final scenario = snapshot['scenario']?.toString();
               return ListTile(
@@ -498,7 +661,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 title: Text(
                   scenario == null
                       ? event.details
-                      : 'Skenario $scenario · ${scenario == 'B' ? 'Saran dari sistem' : 'Klarifikasi dari pengguna'}',
+                      : _scenarioHistoryTitle(scenario),
                   style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
                 ),
                 subtitle: Text(
@@ -510,6 +673,21 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 onTap: () => _showScenarioHistory(event),
               );
             }),
+            if (history.length > 5)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => setState(
+                    () => _showExpandedScenarioHistory = !_showExpandedScenarioHistory,
+                  ),
+                  child: Text(
+                    _showExpandedScenarioHistory
+                        ? 'Tutup riwayat'
+                        : 'Lihat riwayat lain',
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -552,7 +730,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       (log['createdAt'] ?? log['created_at'])?.toString() ?? '',
     );
     final observedAt = DateTime.tryParse(log['observed_at']?.toString() ?? '');
-    final scenario = log['scenario']?.toString();
+    final scenario = _normalizeScenarioValue(log['scenario']);
     final details = <(String, String)>[
       if (scenario != null) ('Skenario', scenario),
       ('Aktivitas', _hilActivityLabel(log['activity'])),
@@ -633,7 +811,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         if (rightAt == null) return 1;
         return rightAt.compareTo(leftAt);
       });
-    final recentHistory = history.take(12).toList();
+    final visibleHistory = _showExpandedActivityHistory ? history : history.take(5).toList();
     return Container(
       key: const Key('hil-scenario-action-history'),
       width: double.infinity,
@@ -669,7 +847,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 style: AppTheme.font(size: 10.5, color: AppTheme.statusRed),
               ),
             )
-          else if (recentHistory.isEmpty)
+          else if (visibleHistory.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
@@ -678,12 +856,12 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 style: AppTheme.font(size: 10.5, color: AppTheme.textMuted),
               ),
             )
-          else
-            ...recentHistory.map((log) {
+          else ...[
+            ...visibleHistory.map((log) {
               final loggedAt = DateTime.tryParse(
                 (log['createdAt'] ?? log['created_at'])?.toString() ?? '',
               );
-              final scenario = log['scenario']?.toString();
+              final scenario = _normalizeScenarioValue(log['scenario']);
               final timestamp = loggedAt == null
                   ? 'Waktu tidak tersedia'
                   : formatHilWibDateTime(loggedAt);
@@ -709,6 +887,19 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 onTap: () => _showScenarioLogDetails(context, log),
               );
             }),
+            if (history.length > 5)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => setState(
+                    () => _showExpandedActivityHistory = !_showExpandedActivityHistory,
+                  ),
+                  child: Text(
+                    _showExpandedActivityHistory ? 'Tutup riwayat' : 'Lihat riwayat lain',
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -949,6 +1140,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         ? (snapshot['factors'] as List).whereType<String>().toList()
         : <String>[];
     final explanation = snapshot['explanation']?.toString() ?? event.details;
+    final sessionId = snapshot['session_id']?.toString();
+    final runId = snapshot['run_id']?.toString();
 
     final buffer = StringBuffer();
     final timeText = timePeriod == null
@@ -960,6 +1153,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     }
     if (dataPoints != null) {
       buffer.write(' dengan $dataPoints data');
+    }
+    if (sessionId != null || runId != null) {
+      final sessionLabel = sessionId ?? runId ?? 'sesi';
+      buffer.write(' · sesi $sessionLabel');
     }
     buffer.write('.');
     if (factors.isNotEmpty) {
@@ -1215,18 +1412,18 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           ),
           _scenarioButton(
             code: 'B',
-            title: 'Saran dari sistem',
+            title: 'One way narrative · Duduk, berdiri, berjalan',
             detail:
-                'Tampilkan narasi satu arah. Skenario dapat dibuka setelah tersedia 5 menit baseline HIL berkualitas untuk duduk, berdiri, dan berjalan.',
+                'Tampilkan hasil, saran, dan penjelasan untuk tiga aktivitas utama: duduk, berdiri, dan berjalan. Memerlukan 5 menit catatan pribadi pada tiap aktivitas.',
             selected: _selectedScenario == 'B',
             enabled: scenariosReady && _hasResearchConsent,
             onPressed: () => _selectScenario('B'),
           ),
           _scenarioButton(
             code: 'C',
-            title: 'Human in the loop',
+            title: 'Human in the loop · Duduk, berdiri, berjalan',
             detail:
-                'Tampilkan hasil, tanyakan konteks yang mungkin terlewat, dan jelaskan bila data belum cukup untuk menyimpulkan. Memerlukan 5 menit catatan pribadi untuk setiap aktivitas.',
+                'Tampilkan hasil, tanyakan konteks yang mungkin terlewat, dan jelaskan bila data belum cukup untuk menyimpulkan pada tiga aktivitas utama. Memerlukan 5 menit catatan pribadi pada tiap aktivitas.',
             selected: _selectedScenario == 'C',
             enabled: scenariosReady && _hasResearchConsent,
             onPressed: () => _selectScenario('C'),
@@ -1266,8 +1463,47 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             onGrantAiConsent: _grantAiProcessingConsent,
             loadError: state.hilBaselineError,
           ),
+          _scenarioProfileHistoryCard(state),
           _scenarioHistoryCard([
             ...state.hilExplanationHistory,
+            ...state.hilScenarioLogs.map((log) {
+              final scenario = _normalizeScenarioValue(log['scenario']);
+              final explanationText = ([
+                log['explanation']?.toString(),
+                log['recommendation']?.toString(),
+                log['clarification']?.toString(),
+              ] as List<String?>).firstWhere(
+                (value) => value != null && value.trim().isNotEmpty,
+                orElse: () => 'Riwayat HIL dari log skenario.',
+              ) ?? 'Riwayat HIL dari log skenario.';
+              final createdAt = DateTime.tryParse(
+                    (log['createdAt'] ?? log['created_at'])?.toString() ?? '',
+                  ) ??
+                  DateTime.fromMillisecondsSinceEpoch(0);
+              return EventItem(
+                id: log['_id']?.toString() ?? log['run_id']?.toString() ?? '',
+                title: 'Human In the Loop',
+                eventType: 'hil_scenario',
+                icon: Icons.timeline,
+                color: AppTheme.primary,
+                timestamp: createdAt,
+                details: explanationText,
+                value: {
+                  'version': 1,
+                  'scenario': scenario,
+                  'activity': log['activity'],
+                  'explanation': explanationText,
+                  'status': log['event_type'] == 'clarification_submitted'
+                      ? 'answered'
+                      : 'recorded',
+                  'quality_status': log['quality_status'] ?? 'unknown',
+                  'baseline_ready': true,
+                  'factors': const <String>[],
+                  'session_id': log['session_id']?.toString(),
+                  'run_id': log['run_id']?.toString(),
+                },
+              );
+            }),
             ...state.events.where((event) => event.eventType == 'hil_scenario'),
           ]),
           _scenarioActionHistoryCard(
@@ -1278,7 +1514,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           if (_selectedScenario == 'B') ...[
             const SizedBox(height: 10),
             _scenarioResultCard(
-              title: 'Saran dari sistem · hasil',
+              title: 'One way narrative · hasil',
               detail: _scenarioNarrative(latestObservation, positiveZScores),
               key: const Key('hil-one-way-result'),
             ),
