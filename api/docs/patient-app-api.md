@@ -184,8 +184,10 @@ separate from sensor-derived findings.
 
 The authenticated POST accepts a version-1 snapshot for scenario `B` or `C`,
 including `segment_id`, `activity`, `explanation`, `status`, `quality_status`,
-`baseline_ready`, and up to three `factors`. Records are stored separately in
-the account-scoped `patient_hil_explanations` collection rather than as general
+`baseline_ready`, up to three `factors`, and an optional `xai` block with
+`summary`, `confidence`, `supporting_factors`, `contradicting_factors`,
+`trigger_context`, and `decision`. Records are stored separately in the
+account-scoped `patient_hil_explanations` collection rather than as general
 event markers. A non-empty `activity` is mandatory; blank or whitespace-only
 activity is rejected with a validation response before attempting MongoDB
 creation.

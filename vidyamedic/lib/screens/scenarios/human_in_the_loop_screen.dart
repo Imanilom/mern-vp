@@ -400,10 +400,19 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final factors = snapshot['factors'] is List
         ? (snapshot['factors'] as List).whereType<String>().toList()
         : <String>[];
+    final xai = _map(snapshot['xai']);
     final timelineNarrative = _timelineNarrative(snapshot, event);
     final explanationText = (snapshot['explanation'] ?? event.details)
         ?.toString()
         .trim();
+    final xaiSummary = xai['summary']?.toString().trim();
+    final xaiConfidence = xai['confidence'];
+    final supportingFactors = xai['supporting_factors'] is List
+        ? (xai['supporting_factors'] as List).whereType<String>().toList()
+        : const <String>[];
+    final contradictingFactors = xai['contradicting_factors'] is List
+        ? (xai['contradicting_factors'] as List).whereType<String>().toList()
+        : const <String>[];
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -438,6 +447,29 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               if (explanationText != null && explanationText.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(explanationText),
+              ],
+              if (xaiSummary != null && xaiSummary.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Penjelasan XAI',
+                  style: AppTheme.font(size: 12, weight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(xaiSummary),
+                if (xaiConfidence != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Confidence: ${((double.tryParse(xaiConfidence.toString()) ?? 0) * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                  ),
+                ],
+              ],
+              if (supportingFactors.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Faktor pendukung: ${supportingFactors.join(', ')}'),
+              ],
+              if (contradictingFactors.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Faktor yang membatasi: ${contradictingFactors.join(', ')}'),
               ],
               if (factors.isNotEmpty) ...[
                 const SizedBox(height: 8),

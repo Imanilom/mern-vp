@@ -451,6 +451,77 @@ function validateGuidedSessionEma(value) {
   };
 }
 
+function validateHilXai(value) {
+  if (value === undefined) return undefined;
+  requireObject(value, 'xai');
+  rejectUnknownFields(
+    value,
+    new Set([
+      'summary',
+      'confidence',
+      'supporting_factors',
+      'contradicting_factors',
+      'trigger_context',
+      'decision',
+    ]),
+    'Field xai'
+  );
+  const xai = {};
+  if ('summary' in value) {
+    xai.summary = optionalString(value.summary, 'xai.summary', 500);
+  }
+  if ('confidence' in value) {
+    let confidence = value.confidence;
+    if (typeof confidence === 'string') {
+      confidence = Number(confidence.replace('%', ''));
+    }
+    if (typeof confidence !== 'number' || !Number.isFinite(confidence)) {
+      throw errorHandler(400, 'xai.confidence harus berupa angka 0-100 atau 0-1.');
+    }
+    if (confidence > 1) {
+      confidence = confidence / 100;
+    }
+    if (confidence < 0 || confidence > 1) {
+      throw errorHandler(400, 'xai.confidence harus antara 0 dan 1 atau 0-100%.');
+    }
+    xai.confidence = Number(confidence.toFixed(3));
+  }
+  if ('supporting_factors' in value) {
+    xai.supporting_factors = validateStringList(
+      value.supporting_factors,
+      'xai.supporting_factors',
+      5,
+      80
+    );
+  }
+  if ('contradicting_factors' in value) {
+    xai.contradicting_factors = validateStringList(
+      value.contradicting_factors,
+      'xai.contradicting_factors',
+      5,
+      80
+    );
+  }
+  if ('trigger_context' in value) {
+    requireObject(value.trigger_context, 'xai.trigger_context');
+    const triggerContext = {};
+    for (const [key, item] of Object.entries(value.trigger_context)) {
+      if (typeof item === 'string') {
+        triggerContext[key] = optionalString(item, `xai.trigger_context.${key}`, 200);
+      } else if (typeof item === 'number' && Number.isFinite(item)) {
+        triggerContext[key] = item;
+      } else if (typeof item === 'boolean') {
+        triggerContext[key] = item;
+      }
+    }
+    xai.trigger_context = triggerContext;
+  }
+  if ('decision' in value) {
+    xai.decision = optionalString(value.decision, 'xai.decision', 200);
+  }
+  return xai;
+}
+
 export function validateHilExplanation(value) {
   requireObject(value, 'value skenario HIL');
   rejectUnknownFields(
@@ -469,6 +540,7 @@ export function validateHilExplanation(value) {
       'quality_status',
       'baseline_ready',
       'factors',
+      'xai',
     ]),
     'Field snapshot skenario HIL'
   );
@@ -517,7 +589,8 @@ export function validateHilExplanation(value) {
     throw errorHandler(400, 'baseline_ready snapshot HIL harus boolean.');
   }
   const factors = validateStringList(value.factors, 'value.factors', 3, 80);
-  return {
+  const xai = validateHilXai(value.xai);
+  const result = {
     version: 1,
     session_id: value.session_id,
     run_id: runId,
@@ -532,6 +605,8 @@ export function validateHilExplanation(value) {
     baseline_ready: value.baseline_ready,
     factors,
   };
+  if (xai !== undefined) result.xai = xai;
+  return result;
 }
 
 function validateHilScenarioEventSnapshot(value) {
@@ -548,6 +623,7 @@ function validateHilScenarioEventSnapshot(value) {
       'quality_status',
       'baseline_ready',
       'factors',
+      'xai',
     ]),
     'Field event skenario HIL'
   );
@@ -569,7 +645,8 @@ function validateHilScenarioEventSnapshot(value) {
   if (typeof value.baseline_ready !== 'boolean') {
     throw errorHandler(400, 'baseline_ready event skenario HIL harus boolean.');
   }
-  return {
+  const xai = validateHilXai(value.xai);
+  const result = {
     version: 1,
     scenario: value.scenario,
     segment_id: value.segment_id,
@@ -580,6 +657,8 @@ function validateHilScenarioEventSnapshot(value) {
     baseline_ready: value.baseline_ready,
     factors: validateStringList(value.factors, 'value.factors', 3, 80),
   };
+  if (xai !== undefined) result.xai = xai;
+  return result;
 }
 
 export function validateHilSession(value) {

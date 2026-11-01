@@ -56,6 +56,20 @@ const PatientHilExplanationSchema = new mongoose.Schema(
       type: [{ type: String, trim: true, maxlength: 80 }],
       default: [],
     },
+    xai: {
+      summary: { type: String, trim: true, maxlength: 500, default: '' },
+      confidence: { type: Number, min: 0, max: 1, default: null },
+      supporting_factors: {
+        type: [{ type: String, trim: true, maxlength: 80 }],
+        default: [],
+      },
+      contradicting_factors: {
+        type: [{ type: String, trim: true, maxlength: 80 }],
+        default: [],
+      },
+      trigger_context: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
+      decision: { type: String, trim: true, maxlength: 200, default: '' },
+    },
     snapshot_version: { type: Number, required: true, default: 1 },
   },
   { timestamps: true, versionKey: false, collection: 'patient_hil_explanations' }

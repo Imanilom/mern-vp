@@ -39,6 +39,24 @@ class AppState extends ChangeNotifier {
         .toList();
   }
 
+  Map<String, dynamic> _normalizeXai(dynamic source) {
+    if (source is! Map) return <String, dynamic>{};
+    final xai = <String, dynamic>{};
+    final map = Map<String, dynamic>.from(source);
+    for (final entry in map.entries) {
+      final key = entry.key.toString();
+      final value = entry.value;
+      if (value is Map) {
+        xai[key] = Map<String, dynamic>.from(value);
+      } else if (value is List) {
+        xai[key] = value.map((item) => item.toString()).toList();
+      } else if (value is num || value is String || value is bool || value == null) {
+        xai[key] = value;
+      }
+    }
+    return xai;
+  }
+
   void _maybePromptForMovement([
     Map<String, dynamic>? latestSample,
     bool isLiveStream = false,
@@ -838,6 +856,7 @@ class AppState extends ChangeNotifier {
                     'quality_status': log['quality_status'] ?? 'unknown',
                     'baseline_ready': true,
                     'factors': const <String>[],
+                    'xai': _normalizeXai(log['xai']),
                     'session_id': log['session_id']?.toString(),
                     'run_id': log['run_id']?.toString(),
                   },
@@ -887,6 +906,7 @@ class AppState extends ChangeNotifier {
                   'quality_status': log['quality_status'] ?? 'unknown',
                   'baseline_ready': true,
                   'factors': const <String>[],
+                  'xai': _normalizeXai(log['xai']),
                   'session_id': log['session_id']?.toString(),
                   'run_id': log['run_id']?.toString(),
                 },

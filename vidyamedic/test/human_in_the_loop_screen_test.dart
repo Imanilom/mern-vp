@@ -424,6 +424,59 @@ void main() {
     );
   });
 
+  testWidgets('HIL explanation details render attached XAI reasoning',
+      (tester) async {
+    final state = AppState()
+      ..rawCaparInsights = {
+        'capar': {
+          'baseline': {'contexts': []},
+        },
+      }
+      ..events = [
+        EventItem(
+          id: 'hil-event-xai',
+          title: 'Human In the Loop',
+          eventType: 'hil_scenario',
+          icon: Icons.timeline,
+          color: Colors.teal,
+          timestamp: DateTime(2026, 11, 1, 12),
+          details: 'Snapshot penjelasan XAI.',
+          value: {
+            'version': 1,
+            'scenario': 'C',
+            'activity': 'standing',
+            'explanation': 'Kenaikan denyut jantung terdeteksi saat berdiri.',
+            'status': 'reviewed',
+            'quality_status': 'passed',
+            'baseline_ready': true,
+            'factors': ['mean_hr'],
+            'xai': {
+              'summary': 'Denyut naik karena transisi posisi dan pola aktivitas belum sepenuhnya dibaseline.',
+              'confidence': 0.85,
+              'supporting_factors': ['mean_hr', 'rmssd'],
+              'contradicting_factors': ['sleep'],
+            },
+          },
+        ),
+      ];
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    final historyItem = find.byKey(const Key('hil-scenario-history-hil-event-xai'));
+    await tester.ensureVisible(historyItem);
+    await tester.tap(historyItem);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('hil-scenario-history-detail')), findsOneWidget);
+    expect(find.text('Penjelasan XAI'), findsOneWidget);
+    expect(
+      find.textContaining('Denyut naik karena transisi posisi'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('85%'), findsOneWidget);
+  });
+
   testWidgets(
       'five-minute HIL baselines for all activities unlock recorded B/C',
       (tester) async {
