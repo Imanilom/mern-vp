@@ -31,6 +31,7 @@ import {
   publishLogTransport,
 } from '../utils/logTransport.js';
 import {
+  PATIENT_DECISION_POLICIES,
   getPatientDecisionPolicy,
   getPatientDecisionPolicyBundle,
 } from '../config/patientDecisionPolicies.js';
@@ -2655,13 +2656,30 @@ export async function startPatientScenarioSession(req, res) {
       'Belum ada rekaman Polar H10 nyata yang lolos quality gate. Hubungkan Polar H10 dan rekam data melalui halaman Pairing wearable sebelum memulai skenario.'
     );
   }
+  const realRecordedSampleIds = realRecordedSamples.map((sample) => sample._id);
+  const scenarioUserIds = [...new Set(
+    accountScopes.map((scope) => scope.account_id.toString())
+  )].map((id) => new mongoose.Types.ObjectId(id));
+  for (const userId of scenarioUserIds) {
+    const pendingSegments = await Segment.exists({
+      user_id: userId,
+      window_type: '1min',
+      analyzed: false,
+      is_valid: true,
+      patient_app_sample_id: { $in: realRecordedSampleIds },
+    });
+    if (pendingSegments) {
+      const { analyzeOneMinuteUser } = await import('./analysis.controller.js');
+      await analyzeOneMinuteUser(userId, realRecordedSampleIds);
+    }
+  }
   const segments = await Segment.find({
-    user_id: { $in: [...new Set(accountScopes.map((scope) => scope.account_id))] },
+    user_id: { $in: scenarioUserIds },
     window_type: '1min',
     analyzed: true,
     is_valid: true,
     patient_app_sample_id: {
-      $in: realRecordedSamples.map((sample) => sample._id),
+      $in: realRecordedSampleIds,
     },
     window_start: {
       $gte: Date.now() - 180 * 24 * 60 * 60 * 1000,
@@ -3073,7 +3091,7 @@ async function evaluateScenarioObservation({
       || !realRecordedSampleIds.has(candidate.patient_app_sample_id.toString())
       || !baselineActivityAliases.includes(candidate.activity_label)
       || patientCaparTimePeriod(candidate.window_start) !== timePeriod
-      || !isPatientBaselineSegment(candidate)
+      || !isPatientBaselineSegment(candidate, { allowProvisionalNormal: true })
       || stableByWindow.has(candidate.window_start)
     ) {
       continue;
@@ -3083,8 +3101,22 @@ async function evaluateScenarioObservation({
   const stableSegments = [...stableByWindow.values()];
   const baselineReadiness = assessScenarioBaseline(baseline, stableSegments);
   const samples = stableSegments.map(patientMahalanobisFeatureVector);
-  const featureKeys = selectPatientMahalanobisFeatures(samples, baseline);
-  const model = fitPatientMahalanobisModel(samples, featureKeys);
+  const minimumBaselineSamples = SCENARIO_BASELINE_POLICY.minimum_valid_seconds
+    / SCENARIO_BASELINE_POLICY.window_seconds;
+  const featureKeys = selectPatientMahalanobisFeatures(
+    samples,
+    baseline,
+    minimumBaselineSamples
+  );
+  const model = fitPatientMahalanobisModel(samples, featureKeys, {
+    policyOverrides: {
+      patient_mahalanobis_min_baseline_samples: {
+        ...PATIENT_DECISION_POLICIES.patient_mahalanobis_min_baseline_samples,
+        value: minimumBaselineSamples,
+        rationale: 'HIL scenario testing uses the five-minute quality-gated baseline window.',
+      },
+    },
+  });
   const score = scorePatientMahalanobis(
     patientMahalanobisFeatureVector(segment),
     model
@@ -3734,8 +3766,11 @@ function isPatientAnalyticsSegment(segment) {
     || (quality.q_signal >= minimumQuality && quality.q_complete >= minimumQuality);
 }
 
-function isPatientBaselineSegment(segment) {
+function isPatientBaselineSegment(segment, { allowProvisionalNormal = false } = {}) {
   if (!isPatientAnalyticsSegment(segment)) return false;
+  if (allowProvisionalNormal && segment.rr_status === 'PROVISIONAL_NORMAL') {
+    return true;
+  }
   if (segment.rr_status && segment.rr_status !== 'NORMAL') return false;
   return segment.rr_status === 'NORMAL' || segment.classification === 'Normal';
 }
@@ -3792,7 +3827,7 @@ function patientMahalanobisFeatureVector(segment) {
   );
 }
 
-function selectPatientMahalanobisFeatures(samples, baseline) {
+function selectPatientMahalanobisFeatures(samples, baseline, minimumSamples = 30) {
   const candidates = [
     'mean_hr',
     'mean_rr',
@@ -3802,14 +3837,15 @@ function selectPatientMahalanobisFeatures(samples, baseline) {
     'rmssd',
     'dfa_alpha1',
     'motion_intensity',
-  ].filter((key) => baseline?.stats?.[key]?.n >= 30);
+  ].filter((key) => baseline?.stats?.[key]?.n >= minimumSamples
+    || samples.filter((sample) => Number.isFinite(sample[key])).length >= minimumSamples);
   const selected = [];
   for (const candidate of candidates) {
     const proposed = [...selected, candidate];
     const completeSampleCount = samples.filter((sample) =>
       proposed.every((key) => Number.isFinite(sample[key]))
     ).length;
-    if (completeSampleCount >= 30) selected.push(candidate);
+    if (completeSampleCount >= minimumSamples) selected.push(candidate);
   }
   return selected.length >= 2 ? selected : [];
 }

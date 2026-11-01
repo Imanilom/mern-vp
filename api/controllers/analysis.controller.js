@@ -1699,11 +1699,14 @@ export async function runRRAnalysisPipeline(triggeredBy = 'CRON') {
   }
 }
 
-async function analyzeOneMinuteUser(userId) {
+export async function analyzeOneMinuteUser(userId, patientSampleIds = null) {
   const BATCH = 200;
   let skip = 0;
   let totalAnalyzed = 0;
   let totalEvents = 0;
+  const patientSampleFilter = Array.isArray(patientSampleIds)
+    ? { patient_app_sample_id: { $in: patientSampleIds } }
+    : {};
 
   const temporalStates = {};
   const persistenceState = {};
@@ -1714,6 +1717,7 @@ async function analyzeOneMinuteUser(userId) {
       window_type: '1min',
       analyzed: false,
       is_valid: true,
+      ...patientSampleFilter,
     })
       .sort({ window_start: 1 })
       .limit(BATCH)

@@ -31,22 +31,22 @@ function windows(count, start = Date.UTC(2026, 0, 5, 8)) {
   }));
 }
 
-test('scenario baseline requires one formation day and ten quality-valid minutes', () => {
-  const ready = assessScenarioBaseline(baseline, windows(10));
+test('scenario baseline requires one formation day and five quality-valid minutes', () => {
+  const ready = assessScenarioBaseline(baseline, windows(5));
   assert.equal(ready.ready, true);
-  assert.equal(ready.valid_duration_seconds, 600);
+  assert.equal(ready.valid_duration_seconds, 300);
   assert.equal(ready.distinct_days, 1);
   assert.equal(ready.status, 'ELIGIBLE');
 
-  const tooShort = assessScenarioBaseline(baseline, windows(9));
+  const tooShort = assessScenarioBaseline(baseline, windows(4));
   assert.equal(tooShort.ready, false);
-  assert.equal(tooShort.reason_code, 'VALID_DATA_UNDER_TEN_MINUTES');
+  assert.equal(tooShort.reason_code, 'VALID_DATA_UNDER_MINIMUM_DURATION');
 
-  const lowQuality = windows(10);
-  lowQuality[4].signal_quality_detail.q_signal = 0.4;
+  const lowQuality = windows(5);
+  lowQuality[2].signal_quality_detail.q_signal = 0.4;
   const qualityGated = assessScenarioBaseline(baseline, lowQuality);
   assert.equal(qualityGated.ready, false);
-  assert.equal(qualityGated.valid_duration_seconds, 540);
+  assert.equal(qualityGated.valid_duration_seconds, 240);
 });
 
 test('scenario interpretation remains unresolved without statistical evidence', () => {

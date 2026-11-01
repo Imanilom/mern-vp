@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { PATIENT_DECISION_POLICIES } from '../config/patientDecisionPolicies.js';
 import {
   computePatientMahalanobis,
   fitPatientMahalanobisModel,
@@ -85,5 +86,32 @@ test('multivariate score abstains when baseline features or current values are i
   assert.equal(
     scorePatientMahalanobis({ hr: 70 }, completeModel).reason,
     'incomplete_current_features'
+  );
+});
+
+test('scenario testing can score five quality-gated baseline samples', () => {
+  const samples = Array.from({ length: 5 }, (_, index) => ({
+    mean_hr: 70 + index * 2,
+    rmssd: 35 + index * 3,
+  }));
+  const model = fitPatientMahalanobisModel(
+    samples,
+    ['mean_hr', 'rmssd'],
+    {
+      policyOverrides: {
+        patient_mahalanobis_min_baseline_samples: {
+          ...PATIENT_DECISION_POLICIES.patient_mahalanobis_min_baseline_samples,
+          value: 5,
+          rationale: 'HIL scenario testing uses five quality-gated windows.',
+        },
+      },
+    }
+  );
+
+  assert.equal(model.available, true);
+  assert.equal(model.sample_count, 5);
+  assert.equal(
+    scorePatientMahalanobis({ mean_hr: 74, rmssd: 41 }, model).available,
+    true
   );
 });

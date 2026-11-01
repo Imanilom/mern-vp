@@ -7,7 +7,8 @@ class BaselineReadinessScreen extends StatefulWidget {
   const BaselineReadinessScreen({super.key});
 
   @override
-  State<BaselineReadinessScreen> createState() => _BaselineReadinessScreenState();
+  State<BaselineReadinessScreen> createState() =>
+      _BaselineReadinessScreenState();
 }
 
 class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
@@ -47,7 +48,8 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
   @override
   Widget build(BuildContext context) {
     final int segsCount = _segmentsList.length;
-    final rawSegCount = _baselineData?['total_segment_count'] ??
+    final rawSegCount =
+        _baselineData?['total_segment_count'] ??
         _baselineData?['segment_count'] ??
         (segsCount > 0 ? segsCount : (_mobileStatus?['total_records'] ?? 0));
     final int segmentCount = (rawSegCount is num) ? rawSegCount.toInt() : 0;
@@ -57,15 +59,33 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
     final double progressProv = (segmentCount / provRequired).clamp(0.0, 1.0);
     final double progressMat = (segmentCount / matRequired).clamp(0.0, 1.0);
 
-    final nEffRaw = _baselineData?['maturity_detail']?['n_effective'] ?? (segmentCount * 0.85);
-    final double nEff = (nEffRaw is num) ? nEffRaw.toDouble() : (segmentCount * 0.85);
-    final bool isFrozen = _baselineData?['is_frozen'] ?? (segmentCount >= matRequired);
+    final nEffRaw =
+        _baselineData?['maturity_detail']?['n_effective'] ??
+        (segmentCount * 0.85);
+    final double nEff = (nEffRaw is num)
+        ? nEffRaw.toDouble()
+        : (segmentCount * 0.85);
+    final bool isFrozen =
+        _baselineData?['is_frozen'] ?? (segmentCount >= matRequired);
 
-    final int distinctDays = ((_baselineData?['maturity_detail']?['distinct_days'] ?? (segmentCount >= 30 ? 3 : (segmentCount > 0 ? 1 : 0))) as num).toInt();
-    final double maxDayFrac = ((_baselineData?['maturity_detail']?['max_single_day_frac'] ?? (segmentCount > 0 ? 0.35 : 0.0)) as num).toDouble();
-    final double qSignal = ((_baselineData?['maturity_detail']?['q_signal'] ?? (segmentCount > 0 ? 0.95 : 0.0)) as num).toDouble();
+    final int distinctDays =
+        ((_baselineData?['maturity_detail']?['distinct_days'] ??
+                    (segmentCount >= 30 ? 3 : (segmentCount > 0 ? 1 : 0)))
+                as num)
+            .toInt();
+    final double maxDayFrac =
+        ((_baselineData?['maturity_detail']?['max_single_day_frac'] ??
+                    (segmentCount > 0 ? 0.35 : 0.0))
+                as num)
+            .toDouble();
+    final double qSignal =
+        ((_baselineData?['maturity_detail']?['q_signal'] ??
+                    (segmentCount > 0 ? 0.95 : 0.0))
+                as num)
+            .toDouble();
 
-    final allBaselines = (_baselineData?['all_baselines'] as List<dynamic>?)
+    final allBaselines =
+        (_baselineData?['all_baselines'] as List<dynamic>?)
             ?.map((b) => b as Map<String, dynamic>)
             .toList() ??
         [];
@@ -81,7 +101,11 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
         ),
         title: const Text(
           'Baseline & Kesiapan Personal',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: AppColors.navy,
+          ),
         ),
         centerTitle: true,
       ),
@@ -91,7 +115,10 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
           onRefresh: _loadBaseline,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 12.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -112,12 +139,19 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          isFrozen ? 'Baseline Personal Terkunci (Mature)' : 'Kematangan data provisional personal',
-                          style: const TextStyle(fontSize: 12, color: AppColors.gray),
+                          isFrozen
+                              ? 'Baseline Personal Terkunci (Mature)'
+                              : 'Kematangan data provisional personal',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.gray,
+                          ),
                         ),
                       ],
                     ),
-                    isFrozen ? EvidenceChip.baselineCompatible() : EvidenceChip.provisional(),
+                    isFrozen
+                        ? EvidenceChip.baselineCompatible()
+                        : EvidenceChip.provisional(),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -126,21 +160,33 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: segmentCount >= provRequired ? AppColors.tealSoft : AppColors.amberSoft,
+                    color: segmentCount >= provRequired
+                        ? AppColors.tealSoft
+                        : AppColors.amberSoft,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: segmentCount >= provRequired ? AppColors.teal : AppColors.amber),
+                    border: Border.all(
+                      color: segmentCount >= provRequired
+                          ? AppColors.teal
+                          : AppColors.amber,
+                    ),
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: segmentCount >= provRequired ? AppColors.teal : AppColors.amber,
+                          color: segmentCount >= provRequired
+                              ? AppColors.teal
+                              : AppColors.amber,
                           shape: BoxShape.circle,
                         ),
                         child: Text(
                           '${((segmentCount / provRequired) * 100).clamp(0, 100).toInt()}%',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -155,7 +201,9 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
-                                color: segmentCount >= provRequired ? AppColors.teal : AppColors.amber,
+                                color: segmentCount >= provRequired
+                                    ? AppColors.teal
+                                    : AppColors.amber,
                               ),
                             ),
                             const SizedBox(height: 3),
@@ -163,7 +211,11 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                               segmentCount >= provRequired
                                   ? 'Baseline provisional aktif penuh ($segmentCount / $provRequired window terverifikasi).'
                                   : 'Butuh ${(provRequired - segmentCount).clamp(0, provRequired)} window ($segmentCount / $provRequired window) lagi untuk penguncian baseline provisional.',
-                              style: const TextStyle(fontSize: 11, color: AppColors.ink, height: 1.3),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.ink,
+                                height: 1.3,
+                              ),
                             ),
                           ],
                         ),
@@ -204,21 +256,64 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                             ),
                           ),
                           if (_isLoading)
-                            const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teal)),
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.teal,
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _buildProgressRow('Baseline Provisional (n)', '$segmentCount / $provRequired (30 min)', progressProv, AppColors.teal, segmentCount >= 15 ? 'PASS (READY)' : 'LEARNING'),
+                      _buildProgressRow(
+                        'Baseline Provisional (n)',
+                        '$segmentCount / $provRequired (30 min)',
+                        progressProv,
+                        AppColors.teal,
+                        segmentCount >= 15 ? 'PASS (READY)' : 'LEARNING',
+                      ),
                       const SizedBox(height: 14),
-                      _buildProgressRow('Baseline Mature (n)', '$segmentCount / $matRequired (60 min)', progressMat, AppColors.purple, segmentCount >= 30 ? 'MATURE' : 'AUTO ACCUMULATING'),
+                      _buildProgressRow(
+                        'Baseline Mature (n)',
+                        '$segmentCount / $matRequired (60 min)',
+                        progressMat,
+                        AppColors.purple,
+                        segmentCount >= 30 ? 'MATURE' : 'AUTO ACCUMULATING',
+                      ),
                       const SizedBox(height: 14),
-                      _buildProgressRow('n efektif (n_eff)', nEff.toStringAsFixed(1), (nEff / 30.0).clamp(0.0, 1.0), AppColors.teal, nEff >= 12 ? 'READY' : 'LEARNING'),
+                      _buildProgressRow(
+                        'n efektif (n_eff)',
+                        nEff.toStringAsFixed(1),
+                        (nEff / 30.0).clamp(0.0, 1.0),
+                        AppColors.teal,
+                        nEff >= 12 ? 'READY' : 'LEARNING',
+                      ),
                       const SizedBox(height: 14),
-                      _buildProgressRow('Variasi hari', '$distinctDays / 3 hari', (distinctDays / 3.0).clamp(0.0, 1.0), distinctDays >= 3 ? AppColors.green : AppColors.amber, distinctDays >= 3 ? 'PASS' : 'ACCUMULATING'),
+                      _buildProgressRow(
+                        'Variasi hari',
+                        '$distinctDays / 3 hari',
+                        (distinctDays / 3.0).clamp(0.0, 1.0),
+                        distinctDays >= 3 ? AppColors.green : AppColors.amber,
+                        distinctDays >= 3 ? 'PASS' : 'ACCUMULATING',
+                      ),
                       const SizedBox(height: 14),
-                      _buildProgressRow('Dominasi hari', '${(maxDayFrac * 100).toStringAsFixed(0)}%', maxDayFrac.clamp(0.0, 1.0), maxDayFrac <= 0.4 ? AppColors.green : AppColors.amber, maxDayFrac <= 0.4 ? 'BALANCED' : 'PROVISIONAL'),
+                      _buildProgressRow(
+                        'Dominasi hari',
+                        '${(maxDayFrac * 100).toStringAsFixed(0)}%',
+                        maxDayFrac.clamp(0.0, 1.0),
+                        maxDayFrac <= 0.4 ? AppColors.green : AppColors.amber,
+                        maxDayFrac <= 0.4 ? 'BALANCED' : 'PROVISIONAL',
+                      ),
                       const SizedBox(height: 14),
-                      _buildProgressRow('Kualitas sinyal', qSignal > 0 ? qSignal.toStringAsFixed(2) : '-', qSignal.clamp(0.0, 1.0), qSignal >= 0.8 ? AppColors.green : AppColors.amber, qSignal >= 0.8 ? 'EXCELLENT' : 'CHECK SENSOR'),
+                      _buildProgressRow(
+                        'Kualitas sinyal',
+                        qSignal > 0 ? qSignal.toStringAsFixed(2) : '-',
+                        qSignal.clamp(0.0, 1.0),
+                        qSignal >= 0.8 ? AppColors.green : AppColors.amber,
+                        qSignal >= 0.8 ? 'EXCELLENT' : 'CHECK SENSOR',
+                      ),
                     ],
                   ),
                 ),
@@ -250,7 +345,11 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                           padding: EdgeInsets.symmetric(vertical: 12.0),
                           child: Text(
                             'Belum ada data baseline aktivitas. Lakukan streaming sensor Polar H10 untuk membangkitkan model baseline provisional.',
-                            style: TextStyle(fontSize: 11.5, color: AppColors.gray, height: 1.4),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.gray,
+                              height: 1.4,
+                            ),
                           ),
                         )
                       else
@@ -258,24 +357,42 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: allBaselines.length,
-                          separatorBuilder: (_, index) => const Divider(height: 20, color: AppColors.line),
+                          separatorBuilder: (_, index) =>
+                              const Divider(height: 20, color: AppColors.line),
                           itemBuilder: (ctx, idx) {
-                            const colors = [AppColors.teal, AppColors.purple, AppColors.blue, AppColors.amber];
+                            const colors = [
+                              AppColors.teal,
+                              AppColors.purple,
+                              AppColors.blue,
+                              AppColors.amber,
+                            ];
                             final b = allBaselines[idx];
                             final act = b['activity']?.toString() ?? 'General';
-                            final stats = b['stats'] as Map<String, dynamic>? ?? {};
+                            final stats =
+                                b['stats'] as Map<String, dynamic>? ?? {};
+                            final hrStats =
+                                stats['mean_hr'] ?? stats['hr_mean'];
 
-                            final hrMean = stats['hr_mean']?['mean']?.toString() ?? '-';
-                            final rmssdMean = stats['rmssd']?['mean']?.toString() ?? '-';
-                            final sdnnMean = stats['sdnn']?['mean']?.toString() ?? '-';
-                            final dfaMean = stats['dfa_alpha1']?['mean']?.toString() ?? '-';
+                            final hrMean = hrStats?['mean']?.toString() ?? '-';
+                            final rmssdMean =
+                                stats['rmssd']?['mean']?.toString() ?? '-';
+                            final sdnnMean =
+                                stats['sdnn']?['mean']?.toString() ?? '-';
+                            final dfaMean =
+                                stats['dfa_alpha1']?['mean']?.toString() ?? '-';
                             final segs = b['segment_count'] ?? 0;
 
                             final color = colors[idx % colors.length];
-                            final metricsStr = 'HR: $hrMean bpm · RMSSD: $rmssdMean ms · SDNN: $sdnnMean ms · DFA: $dfaMean';
+                            final metricsStr =
+                                'HR: $hrMean bpm · RMSSD: $rmssdMean ms · SDNN: $sdnnMean ms · DFA: $dfaMean';
                             final durStr = '$segs win (${segs * 2} m)';
 
-                            return _buildActivityBaselineTile(act, metricsStr, durStr, color);
+                            return _buildActivityBaselineTile(
+                              act,
+                              metricsStr,
+                              durStr,
+                              color,
+                            );
                           },
                         ),
                     ],
@@ -290,7 +407,13 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
     );
   }
 
-  Widget _buildProgressRow(String label, String value, double progress, Color barColor, String statusTag) {
+  Widget _buildProgressRow(
+    String label,
+    String value,
+    double progress,
+    Color barColor,
+    String statusTag,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -317,14 +440,21 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: barColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     statusTag,
-                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: barColor),
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: barColor,
+                    ),
                   ),
                 ),
               ],
@@ -345,7 +475,12 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
     );
   }
 
-  Widget _buildActivityBaselineTile(String activity, String metrics, String duration, Color color) {
+  Widget _buildActivityBaselineTile(
+    String activity,
+    String metrics,
+    String duration,
+    Color color,
+  ) {
     return Row(
       children: [
         Container(
@@ -362,8 +497,18 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(activity, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.navy)),
-              Text(metrics, style: const TextStyle(fontSize: 10.5, color: AppColors.gray)),
+              Text(
+                activity,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              Text(
+                metrics,
+                style: const TextStyle(fontSize: 10.5, color: AppColors.gray),
+              ),
             ],
           ),
         ),
@@ -373,7 +518,14 @@ class _BaselineReadinessScreenState extends State<BaselineReadinessScreen> {
             color: AppColors.graySoft,
             borderRadius: BorderRadius.circular(6),
           ),
-          child: Text(duration, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+          child: Text(
+            duration,
+            style: const TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
         ),
       ],
     );

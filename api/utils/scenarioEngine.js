@@ -116,7 +116,7 @@ export function assessScenarioBaseline(baseline, baselineSegments = []) {
     reason_code: !hasFormationDay
       ? 'BASELINE_FORMATION_DAY_INSUFFICIENT'
       : !hasValidDuration
-        ? 'VALID_DATA_UNDER_TEN_MINUTES'
+        ? 'VALID_DATA_UNDER_MINIMUM_DURATION'
         : null,
     valid_duration_seconds: validDurationSeconds,
     distinct_days: distinctDays,
