@@ -400,6 +400,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final factors = snapshot['factors'] is List
         ? (snapshot['factors'] as List).whereType<String>().toList()
         : <String>[];
+    final timelineNarrative = _timelineNarrative(snapshot, event);
+    final explanationText = (snapshot['explanation'] ?? event.details)
+        ?.toString()
+        .trim();
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -430,10 +434,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 Text('Pemeriksaan mutu bacaan: ${snapshot['quality_status']}'),
               ],
               const SizedBox(height: 10),
-              Text(_timelineNarrative(snapshot, event)),
-              if ((snapshot['explanation'] ?? event.details) != null) ...[
+              Text(timelineNarrative),
+              if (explanationText != null && explanationText.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text((snapshot['explanation'] ?? event.details).toString()),
+                Text(explanationText),
               ],
               if (factors.isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -467,17 +471,35 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   String _scenarioHistoryTitle(String? scenario) => _scenarioTitle(scenario);
 
   Widget _scenarioProfileHistoryCard(AppState state) {
-    final latestByScenario = <String, Map<String, dynamic>>{};
+    final groupedByScenario = <String, List<Map<String, dynamic>>>{};
+    void addHistoryRecord(Map<String, dynamic> snapshot) {
+      final scenario = _normalizeScenarioValue(snapshot['scenario']);
+      if (scenario == null) return;
+      final key = [scenario, snapshot['session_id']?.toString(), snapshot['run_id']?.toString()]
+          .where((value) => value != null && value.trim().isNotEmpty)
+          .join('|');
+      final groupKey = key.isEmpty ? scenario : '$scenario|$key';
+      groupedByScenario.putIfAbsent(scenario, () => []).add({
+        ...snapshot,
+        'group_key': groupKey,
+        'sort_time': DateTime.tryParse(
+              (snapshot['createdAt'] ?? snapshot['created_at'])?.toString() ?? '',
+            ) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      });
+    }
+
     for (final event in state.hilExplanationHistory) {
       final snapshot = _map(event.value);
-      final scenario = _normalizeScenarioValue(snapshot['scenario']);
-      if (scenario == null) continue;
-      latestByScenario[scenario] = snapshot;
+      addHistoryRecord({
+        ...snapshot,
+        'createdAt': event.timestamp.toUtc().toIso8601String(),
+      });
     }
+
     for (final log in state.hilScenarioLogs) {
       final scenario = _normalizeScenarioValue(log['scenario']);
       if (scenario == null) continue;
-      if (latestByScenario.containsKey(scenario)) continue;
       final narrative = [
         log['explanation']?.toString(),
         log['recommendation']?.toString(),
@@ -486,7 +508,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         (value) => value != null && value.trim().isNotEmpty,
         orElse: () => 'Rekaman HIL tersimpan untuk skenario ini.',
       );
-      latestByScenario[scenario] = {
+      addHistoryRecord({
         'scenario': scenario,
         'activity': log['activity'] ?? 'unknown',
         'status': log['event_type'] == 'feedback_presented'
@@ -497,11 +519,22 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         'session_id': log['session_id']?.toString(),
         'run_id': log['run_id']?.toString(),
         'explanation': narrative,
-      };
+        'createdAt': (log['createdAt'] ?? log['created_at'])?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+      });
     }
-    if (latestByScenario.isEmpty) return const SizedBox.shrink();
-    final entries = latestByScenario.entries.toList()
+
+    final entries = groupedByScenario.entries.toList()
       ..sort((left, right) => left.key.compareTo(right.key));
+
+    final rows = <Map<String, dynamic>>[];
+    for (final entry in entries) {
+      final scenarioRecords = [...entry.value]
+        ..sort((left, right) => (right['sort_time'] as DateTime).compareTo(left['sort_time'] as DateTime));
+      rows.addAll(scenarioRecords);
+    }
+
+    if (rows.isEmpty) return const SizedBox.shrink();
+
     return Container(
       key: const Key('hil-scenario-profile-history'),
       width: double.infinity,
@@ -521,7 +554,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Data hasil pengukuran yang sudah tersimpan untuk tiap skenario ditampilkan di sini. Anda dapat melihat profil sebelumnya dan mengulang pengukuran bila perlu.',
+            'Data hasil pengukuran yang sudah tersimpan untuk tiap skenario dan sesi ditampilkan di sini. Anda dapat membandingkan rekaman terbaru per run dan mengulang pengukuran bila perlu.',
             style: AppTheme.font(
               size: 10.5,
               color: AppTheme.textSecondary,
@@ -529,13 +562,11 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          ...entries.map((entry) {
-            final scenario = entry.key;
-            final snapshot = entry.value;
+          ...rows.map((snapshot) {
+            final scenario = _normalizeScenarioValue(snapshot['scenario']) ?? 'B';
             final activity = snapshot['activity']?.toString() ?? 'unknown';
             final status = _statusLabel(snapshot['status']?.toString());
-            final sessionId = snapshot['session_id']?.toString() ??
-                snapshot['run_id']?.toString();
+            final sessionId = snapshot['session_id']?.toString() ?? snapshot['run_id']?.toString();
             final explanation = snapshot['explanation']?.toString() ??
                 'Tidak ada ringkasan tersimpan untuk sesi ini.';
             return Padding(
@@ -573,6 +604,16 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                             const SizedBox(height: 2),
                             Text(
                               'Sesi: $sessionId',
+                              style: AppTheme.font(
+                                size: 9.5,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                          if (snapshot['version'] != null || snapshot['profile_version'] != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Versi profil: ${snapshot['profile_version'] ?? snapshot['version']}',
                               style: AppTheme.font(
                                 size: 9.5,
                                 color: AppTheme.textSecondary,
@@ -1139,7 +1180,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final factors = snapshot['factors'] is List
         ? (snapshot['factors'] as List).whereType<String>().toList()
         : <String>[];
-    final explanation = snapshot['explanation']?.toString() ?? event.details;
     final sessionId = snapshot['session_id']?.toString();
     final runId = snapshot['run_id']?.toString();
 
@@ -1169,7 +1209,6 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         ' Status penilaiannya: ${_statusLabel(snapshot['status']?.toString())}.',
       );
     }
-    buffer.write(' ${explanation.trim()}');
     return buffer.toString();
   }
 
@@ -1490,6 +1529,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 details: explanationText,
                 value: {
                   'version': 1,
+                  'profile_version': 1,
                   'scenario': scenario,
                   'activity': log['activity'],
                   'explanation': explanationText,

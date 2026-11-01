@@ -2149,7 +2149,7 @@ export async function createPatientHilExplanation(req, res) {
 }
 
 export async function listPatientHilExplanations(req, res) {
-  const { accountScopes } = await getAccount(req);
+  const { accountScopes, dataOwnerId, dataOwnerType } = await getAccount(req);
   const unknownQueryFields = Object.keys(req.query)
     .filter((field) => field !== 'limit');
   if (unknownQueryFields.length) {
@@ -2160,10 +2160,19 @@ export async function listPatientHilExplanations(req, res) {
     throw errorHandler(400, 'limit harus berupa bilangan bulat antara 1 dan 100.');
   }
   const accountQuery = buildPatientHistoryFallbackQuery(accountScopes);
-  const explanations = await PatientHilExplanation.find(accountQuery)
+  let explanations = await PatientHilExplanation.find(accountQuery)
     .sort({ createdAt: -1 })
     .limit(limit)
     .lean();
+  if (!explanations.length && dataOwnerId) {
+    explanations = await PatientHilExplanation.find({
+      account_id: dataOwnerId,
+      account_type: dataOwnerType,
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+  }
   res.json({ success: true, data: explanations });
 }
 
@@ -2406,7 +2415,7 @@ export async function createPatientHilScenarioLog(req, res) {
 }
 
 export async function listPatientHilScenarioLogs(req, res) {
-  const { accountScopes } = await getAccount(req);
+  const { accountScopes, dataOwnerId, dataOwnerType } = await getAccount(req);
   const unknownQueryFields = Object.keys(req.query)
     .filter((field) => !['limit', 'run_id'].includes(field));
   if (unknownQueryFields.length) {
@@ -2424,10 +2433,19 @@ export async function listPatientHilScenarioLogs(req, res) {
     }
     query.$and = [{ run_id: runId }];
   }
-  const logs = await PatientHilScenarioLog.find(query)
+  let logs = await PatientHilScenarioLog.find(query)
     .sort({ createdAt: -1 })
     .limit(limit)
     .lean();
+  if (!logs.length && dataOwnerId) {
+    logs = await PatientHilScenarioLog.find({
+      account_id: dataOwnerId,
+      account_type: dataOwnerType,
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+  }
   res.json({ success: true, data: logs });
 }
 

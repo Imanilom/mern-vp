@@ -828,6 +828,7 @@ class AppState extends ChangeNotifier {
                   details: explanationText,
                   value: {
                     'version': 1,
+                    'profile_version': 1,
                     'scenario': scenario,
                     'activity': log['activity'],
                     'explanation': explanationText,
@@ -876,6 +877,7 @@ class AppState extends ChangeNotifier {
                 details: explanationText,
                 value: {
                   'version': 1,
+                  'profile_version': 1,
                   'scenario': log['scenario']?.toString(),
                   'activity': log['activity'],
                   'explanation': explanationText,
