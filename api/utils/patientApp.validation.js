@@ -431,6 +431,52 @@ function validateGuidedSessionEma(value) {
   };
 }
 
+export function validateHilExplanation(value) {
+  requireObject(value, 'value skenario HIL');
+  rejectUnknownFields(
+    value,
+    new Set([
+      'version',
+      'scenario',
+      'segment_id',
+      'activity',
+      'explanation',
+      'status',
+      'quality_status',
+      'baseline_ready',
+      'factors',
+    ]),
+    'Field snapshot skenario HIL'
+  );
+  if (value.version !== 1 || !['B', 'C'].includes(value.scenario)) {
+    throw errorHandler(400, 'Identitas snapshot skenario HIL tidak valid.');
+  }
+  if (value.segment_id !== null
+    && (typeof value.segment_id !== 'string'
+      || !/^[a-f\d]{24}$/i.test(value.segment_id))) {
+    throw errorHandler(400, 'segment_id snapshot HIL tidak valid.');
+  }
+  const activity = optionalString(value.activity, 'value.activity', 48);
+  const explanation = optionalString(value.explanation, 'value.explanation', 1200);
+  const status = optionalString(value.status, 'value.status', 64);
+  const qualityStatus = optionalString(value.quality_status, 'value.quality_status', 48);
+  if (typeof value.baseline_ready !== 'boolean') {
+    throw errorHandler(400, 'baseline_ready snapshot HIL harus boolean.');
+  }
+  const factors = validateStringList(value.factors, 'value.factors', 3, 80);
+  return {
+    version: 1,
+    scenario: value.scenario,
+    segment_id: value.segment_id,
+    activity,
+    explanation,
+    status,
+    quality_status: qualityStatus,
+    baseline_ready: value.baseline_ready,
+    factors,
+  };
+}
+
 export function validatePatientEvent(body) {
   requireObject(body, 'Event');
   rejectUnknownFields(
@@ -546,6 +592,8 @@ export function validatePatientEvent(body) {
       };
     } else if (body.event_type === 'ema') {
       result.value = validateGuidedSessionEma(body.value);
+    } else if (body.event_type === 'hil_scenario' && isPlainObject(body.value)) {
+      result.value = validateHilExplanation(body.value);
     } else if (typeof body.value === 'string') {
       result.value = optionalString(body.value, 'value', 120);
     } else if (typeof body.value === 'number' && Number.isFinite(body.value)) {
@@ -829,6 +877,7 @@ export function validateWearableSample(body) {
   requireObject(body, 'Data wearable');
   const allowed = new Set([
     'provider',
+    'recording_purpose',
     'is_simulated',
     'recorded_at',
     'device_id',
@@ -857,10 +906,14 @@ export function validateWearableSample(body) {
 
   const result = {
     provider: body.provider,
+    recording_purpose: body.recording_purpose ?? 'standard',
     is_simulated: body.is_simulated === true,
     recorded_at: parseDate(body.recorded_at, 'recorded_at'),
     device_id: optionalString(body.device_id, 'device_id', 120),
   };
+  if (!['standard', 'hil_baseline'].includes(result.recording_purpose)) {
+    throw errorHandler(400, 'recording_purpose harus standard atau hil_baseline.');
+  }
   if (!result.device_id) throw errorHandler(400, 'device_id wajib diisi.');
   const limits = {
     heart_rate_bpm: [20, 250],

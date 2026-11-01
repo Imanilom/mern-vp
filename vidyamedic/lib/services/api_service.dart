@@ -386,6 +386,66 @@ class ApiService {
     }
   }
 
+  /// POST /api/patient-app/hil-explanations
+  static Future<ApiResponse<Map<String, dynamic>>> createHilExplanation(
+      Map<String, dynamic> snapshot) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(ApiConfig.hilExplanationsEndpoint),
+            headers: _headers(),
+            body: jsonEncode(snapshot),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse.error(
+        'Gagal menyimpan histori penjelasan HIL: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
+  /// GET /api/patient-app/hil-explanations
+  static Future<ApiResponse<List<dynamic>>> getHilExplanations({
+    int limit = 50,
+  }) async {
+    try {
+      final uri = Uri.parse(ApiConfig.hilExplanationsEndpoint)
+          .replace(queryParameters: {'limit': limit.toString()});
+      final res = await http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<List<dynamic>>(
+          res, (data) => data as List<dynamic>);
+    } catch (e) {
+      return ApiResponse.error(
+        'Gagal mengambil histori penjelasan HIL: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
+  /// GET /api/patient-app/hil-baselines
+  static Future<ApiResponse<Map<String, dynamic>>> getHilBaselines() async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse(ApiConfig.hilBaselinesEndpoint),
+            headers: _headers(),
+          )
+          .timeout(const Duration(seconds: 20));
+      return _handleResponse<Map<String, dynamic>>(
+          res, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse.error(
+        'Gagal mengambil baseline Human in the Loop: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
   /// POST /api/patient-app/actions
   static Future<ApiResponse<Map<String, dynamic>>> createPatientAction(
     Map<String, dynamic> payload,

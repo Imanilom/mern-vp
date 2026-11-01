@@ -4,6 +4,7 @@ import {
   createPatientAppCheckIn,
   createPatientAppEvent,
   createPatientAppAction,
+  createPatientHilExplanation,
   createPatientScenarioEvent,
   createPatientScenarioQuestionnaire,
   createPatientAppWearableSample,
@@ -19,8 +20,10 @@ import {
   getPatientAppProfile,
   getPatientAppGamification,
   getPatientAppWearableHistory,
+  getPatientAppHilBaselines,
   listPatientAppCheckIns,
   listPatientAppEvents,
+  listPatientHilExplanations,
   listPatientAppActions,
   listPatientAppWearableSamples,
   listPatientScenarioEvents,
@@ -124,6 +127,9 @@ router.get('/check-ins/:checkInId', verifyToken, getPatientAppCheckIn);
 router.delete('/check-ins/:checkInId', verifyToken, deletePatientAppCheckIn);
 router.post('/events', verifyToken, createPatientAppEvent);
 router.get('/events', verifyToken, listPatientAppEvents);
+router.post('/hil-explanations', verifyToken, scenarioWriteLimiter, createPatientHilExplanation);
+router.get('/hil-explanations', verifyToken, listPatientHilExplanations);
+router.get('/hil-baselines', verifyToken, getPatientAppHilBaselines);
 router.post('/actions', verifyToken, createPatientAppAction);
 router.get('/actions', verifyToken, listPatientAppActions);
 router.patch('/actions/:actionId/status', verifyToken, updatePatientAppActionStatus);

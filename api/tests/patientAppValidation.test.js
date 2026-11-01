@@ -18,6 +18,7 @@ import {
   validateHilRealtimeEvaluation,
   validateWearableHistoryQuery,
   validateGamificationSettings,
+  validateHilExplanation,
   registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
 
@@ -404,6 +405,55 @@ test('guided baseline EMA is stored as bounded structured patient input', () => 
       event_type: 'ema',
       occurred_at: '2026-10-08T08:15:00.000Z',
       value: { instrument: 'guided_baseline_session', version: 1, feeling: 'same', samples: [] },
+    }),
+    { statusCode: 400 },
+  );
+});
+
+test('HIL scenario events persist a bounded explanation snapshot', () => {
+  const event = validatePatientEvent({
+    event_type: 'hil_scenario',
+    occurred_at: '2026-11-01T04:15:00.000Z',
+    details: 'Snapshot penjelasan skenario C.',
+    value: {
+      version: 1,
+      scenario: 'C',
+      segment_id: '6ae6a9d5691614e258ca43a9',
+      activity: 'sitting',
+      explanation: 'Deteksi belum cukup untuk menyimpulkan perubahan fisiologis.',
+      status: 'unresolved',
+      quality_status: 'passed',
+      baseline_ready: true,
+      factors: ['mean_hr', 'rmssd'],
+    },
+  });
+  assert.equal(event.event_type, 'hil_scenario');
+  assert.equal(event.value.scenario, 'C');
+  assert.equal(event.value.explanation, 'Deteksi belum cukup untuk menyimpulkan perubahan fisiologis.');
+  assert.deepEqual(event.value.factors, ['mean_hr', 'rmssd']);
+  assert.equal(
+    validatePatientEvent({
+      event_type: 'hil_scenario',
+      occurred_at: '2026-11-01T04:15:00.000Z',
+      value: 'scenario=B;segment=unavailable',
+    }).value,
+    'scenario=B;segment=unavailable',
+  );
+  assert.throws(
+    () => validatePatientEvent({
+      event_type: 'hil_scenario',
+      occurred_at: '2026-11-01T04:15:00.000Z',
+      value: {
+        version: 1,
+        scenario: 'D',
+        segment_id: null,
+        activity: 'sitting',
+        explanation: 'Invalid scenario.',
+        status: 'unresolved',
+        quality_status: 'passed',
+        baseline_ready: true,
+        factors: [],
+      },
     }),
     { statusCode: 400 },
   );
@@ -804,6 +854,7 @@ test('patient event markers and wearable samples validate their source values', 
     activity: 'walking',
   });
   assert.equal(sample.provider, 'apple_watch');
+  assert.equal(sample.recording_purpose, 'standard');
   assert.equal(sample.is_simulated, true);
   assert.throws(
     () => validateWearableSample({
@@ -831,6 +882,27 @@ test('patient event markers and wearable samples validate their source values', 
     activity: 'running',
   });
   assert.equal(runningSample.activity, 'running');
+  const hilBaselineSample = validateWearableSample({
+    provider: 'polar_h10',
+    recording_purpose: 'hil_baseline',
+    device_id: 'polar-01',
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    heart_rate_bpm: 72,
+    rr_intervals_ms: Array(64).fill(830),
+    acceleration_g: Array.from({ length: 10 }, () => [0, 0, 1]),
+    sensor_contact: true,
+    signal_confidence: 0.95,
+    activity: 'sitting',
+  });
+  assert.equal(hilBaselineSample.recording_purpose, 'hil_baseline');
+  assert.throws(
+    () => validateWearableSample({
+      ...hilBaselineSample,
+      recorded_at: '2026-10-05T08:15:00.000Z',
+      recording_purpose: 'capar_baseline',
+    }),
+    { statusCode: 400 }
+  );
   assert.equal(runningSample.is_simulated, false);
   assert.throws(
     () => validateWearableSample({
@@ -1091,6 +1163,37 @@ test('wearable history requires a bounded date range and supported chart interva
       to: '2026-10-02T00:00:00.000Z',
       bucket_minutes: '10',
     }),
+    { statusCode: 400 }
+  );
+});
+
+test('HIL explanation snapshots are versioned and bounded', () => {
+  const snapshot = validateHilExplanation({
+    version: 1,
+    scenario: 'C',
+    segment_id: '507f1f77bcf86cd799439011',
+    activity: 'sitting',
+    explanation: 'Perubahan sinyal terdeteksi.',
+    status: 'unresolved',
+    quality_status: 'passed',
+    baseline_ready: true,
+    factors: ['mean_hr'],
+  });
+  assert.equal(snapshot.scenario, 'C');
+  assert.equal(snapshot.segment_id, '507f1f77bcf86cd799439011');
+  assert.equal(snapshot.baseline_ready, true);
+  assert.deepEqual(snapshot.factors, ['mean_hr']);
+
+  assert.throws(
+    () => validateHilExplanation({ ...snapshot, version: 2 }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilExplanation({ ...snapshot, scenario: 'A' }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilExplanation({ ...snapshot, factors: ['a', 'b', 'c', 'd'] }),
     { statusCode: 400 }
   );
 });

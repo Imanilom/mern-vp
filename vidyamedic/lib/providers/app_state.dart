@@ -131,8 +131,12 @@ class AppState extends ChangeNotifier {
   }
 
   void _refreshWearableData() {
-    unawaited(Future.wait(
-        [fetchWearableSamples(), fetchCaparInsights(), fetchOverview()]));
+    unawaited(Future.wait([
+      fetchWearableSamples(),
+      fetchCaparInsights(),
+      fetchHilBaselines(),
+      fetchOverview(),
+    ]));
   }
 
   @override
@@ -179,6 +183,10 @@ class AppState extends ChangeNotifier {
             await ApiService.clearSession();
             _isAuthenticated = false;
             _currentAccount = null;
+            events = [];
+            hilExplanationHistory = [];
+            hilBaselineContexts = [];
+            hilBaselineError = null;
             notifyListeners();
           } else {
             dataError =
@@ -196,6 +204,10 @@ class AppState extends ChangeNotifier {
           await wearableBridge.disconnect();
           _isAuthenticated = false;
           _currentAccount = null;
+          events = [];
+          hilExplanationHistory = [];
+          hilBaselineContexts = [];
+          hilBaselineError = null;
           notifyListeners();
         } else {
           dataError = profile.message ?? 'Profil belum dapat dimuat.';
@@ -237,6 +249,10 @@ class AppState extends ChangeNotifier {
 
     _isLoading = false;
     if (res.success) {
+      events = [];
+      hilExplanationHistory = [];
+      hilBaselineContexts = [];
+      hilBaselineError = null;
       _isAuthenticated = true;
       _currentAccount = ApiService.currentUser;
       userProfile.name = name;
@@ -268,6 +284,10 @@ class AppState extends ChangeNotifier {
 
     _isLoading = false;
     if (res.success) {
+      events = [];
+      hilExplanationHistory = [];
+      hilBaselineContexts = [];
+      hilBaselineError = null;
       _isAuthenticated = true;
       _currentAccount = ApiService.currentUser;
       if (_currentAccount != null && _currentAccount!['name'] != null) {
@@ -292,6 +312,10 @@ class AppState extends ChangeNotifier {
     await ApiService.logout();
     _isAuthenticated = false;
     _currentAccount = null;
+    events = [];
+    hilExplanationHistory = [];
+    hilBaselineContexts = [];
+    hilBaselineError = null;
     notifyListeners();
   }
 
@@ -339,6 +363,7 @@ class AppState extends ChangeNotifier {
       fetchProfile(),
       fetchOverview(),
       fetchCaparInsights(),
+      fetchHilBaselines(),
       fetchDailySummary(),
       fetchRecentEvents(),
       fetchWearableSamples(),
@@ -718,8 +743,8 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchRecentEvents() async {
-    final res = await ApiService.getEvents(limit: 20);
+  Future<void> fetchRecentEvents({int limit = 20}) async {
+    final res = await ApiService.getEvents(limit: limit);
     if (res.success && res.data != null) {
       events = res.data!
           .whereType<Map>()
@@ -729,6 +754,67 @@ class AppState extends ChangeNotifier {
     } else {
       dataError = res.message ?? 'Gagal memuat event dari server.';
     }
+  }
+
+  Future<void> fetchHilExplanationHistory({int limit = 50}) async {
+    final res = await ApiService.getHilExplanations(limit: limit);
+    if (res.success && res.data != null) {
+      hilExplanationHistory = res.data!.whereType<Map>().map((item) {
+        final explanation = Map<String, dynamic>.from(item);
+        final snapshot = {
+          'version': explanation['snapshot_version'] ?? 1,
+          'scenario': explanation['scenario'],
+          'segment_id': explanation['segment_id']?.toString(),
+          'activity': explanation['activity'],
+          'explanation': explanation['explanation'],
+          'status': explanation['status'],
+          'quality_status': explanation['quality_status'],
+          'baseline_ready': explanation['baseline_ready'],
+          'factors': explanation['factors'] ?? <String>[],
+        };
+        return EventItem(
+          id: explanation['_id']?.toString() ?? '',
+          title: 'Human In the Loop',
+          eventType: 'hil_scenario',
+          icon: Icons.timeline,
+          color: AppTheme.primary,
+          timestamp: DateTime.tryParse(
+                explanation['createdAt']?.toString() ?? '',
+              ) ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+          details: explanation['explanation']?.toString() ?? '',
+          value: snapshot,
+        );
+      }).toList();
+      notifyListeners();
+    } else {
+      dataError = res.message ?? 'Gagal memuat histori penjelasan HIL.';
+    }
+  }
+
+  bool isHilBaselineLoading = false;
+  String? hilBaselineError;
+  List<Map<String, dynamic>> hilBaselineContexts = [];
+
+  Future<void> fetchHilBaselines() async {
+    if (!isAuthenticated || isDoctorAccount) return;
+    isHilBaselineLoading = true;
+    notifyListeners();
+    final res = await ApiService.getHilBaselines();
+    if (res.success && res.data != null) {
+      final contexts = res.data!['contexts'];
+      hilBaselineContexts = contexts is List
+          ? contexts
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList()
+          : <Map<String, dynamic>>[];
+      hilBaselineError = null;
+    } else {
+      hilBaselineError = res.message ?? 'Gagal memuat baseline HIL.';
+    }
+    isHilBaselineLoading = false;
+    notifyListeners();
   }
 
   Future<bool> fetchWearableSamples() async {
@@ -949,6 +1035,7 @@ class AppState extends ChangeNotifier {
 
   // 5. Event marker
   List<EventItem> events = [];
+  List<EventItem> hilExplanationHistory = [];
 
   // 6. Catatan
   String note = '';
@@ -1712,20 +1799,16 @@ class AppState extends ChangeNotifier {
 
   Future<bool> recordHumanInTheLoopScenario({
     required String scenario,
-    String? segmentId,
+    required Map<String, dynamic> explanationSnapshot,
   }) async {
-    if (!isAuthenticated || !const {'B', 'C'}.contains(scenario)) {
+    if (!isAuthenticated ||
+        !const {'B', 'C'}.contains(scenario) ||
+        explanationSnapshot['scenario'] != scenario) {
       dataError = 'Skenario Human In the Loop tidak dapat dicatat.';
       notifyListeners();
       return false;
     }
-    final mode = scenario == 'B' ? 'one-way feedback' : 'human in the loop';
-    final response = await ApiService.createEvent({
-      'event_type': 'hil_scenario',
-      'occurred_at': DateTime.now().toUtc().toIso8601String(),
-      'details': 'Human In the Loop: skenario $scenario ($mode) dimulai.',
-      'value': 'scenario=$scenario;segment=${segmentId ?? 'unavailable'}',
-    });
+    final response = await ApiService.createHilExplanation(explanationSnapshot);
     if (!response.success) {
       dataError =
           response.message ?? 'Skenario Human In the Loop gagal dicatat.';
@@ -1733,7 +1816,7 @@ class AppState extends ChangeNotifier {
       return false;
     }
     dataError = null;
-    await fetchRecentEvents();
+    await fetchHilExplanationHistory(limit: 100);
     return true;
   }
 

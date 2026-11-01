@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/health_models.dart';
 import '../../providers/app_state.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
@@ -42,6 +43,9 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       final appState = context.read<AppState>();
       if (appState.isAuthenticated) {
         unawaited(appState.fetchCaparInsights());
+        unawaited(appState.fetchHilBaselines());
+        unawaited(appState.fetchRecentEvents(limit: 100));
+        unawaited(appState.fetchHilExplanationHistory(limit: 100));
       }
     });
   }
@@ -49,9 +53,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
 
-  List<Map<String, dynamic>> _maps(dynamic value) => value is List
-      ? value.whereType<Map>().map(_map).toList()
-      : <Map<String, dynamic>>[];
+  String _boundedText(dynamic value, int maxLength) {
+    final text = value?.toString() ?? '';
+    return text.length <= maxLength ? text : text.substring(0, maxLength);
+  }
 
   Map<String, dynamic>? _stage(List<Map<String, dynamic>> stages, String id) {
     for (final stage in stages) {
@@ -90,7 +95,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     }
   }
 
-  Future<void> _selectScenario(String scenario, String? segmentId) async {
+  Future<void> _selectScenario(
+    String scenario,
+    Map<String, dynamic> explanationSnapshot,
+  ) async {
     if (!_hasResearchConsent) return;
     setState(() {
       _selectedScenario = scenario;
@@ -98,7 +106,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     });
     final saved = await context.read<AppState>().recordHumanInTheLoopScenario(
           scenario: scenario,
-          segmentId: segmentId,
+          explanationSnapshot: explanationSnapshot,
         );
     if (!mounted || saved) return;
     final error = context.read<AppState>().dataError;
@@ -108,6 +116,132 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           'Skenario $scenario ditampilkan, tetapi assignment belum tercatat: '
           '${error ?? 'periksa koneksi dan sesi akun.'}',
         ),
+      ),
+    );
+  }
+
+  Future<void> _showScenarioHistory(EventItem event) async {
+    final snapshot = _map(event.value);
+    final scenario = snapshot['scenario']?.toString();
+    final factors = snapshot['factors'] is List
+        ? (snapshot['factors'] as List).whereType<String>().toList()
+        : <String>[];
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('hil-scenario-history-detail'),
+        title: Text(
+          scenario == null
+              ? 'Riwayat skenario HIL'
+              : 'Skenario $scenario · ${scenario == 'B' ? 'One-way feedback' : 'Human in the loop'}',
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${MaterialLocalizations.of(context).formatShortDate(event.timestamp.toLocal())} · '
+                '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(event.timestamp.toLocal()))}',
+              ),
+              if (snapshot['activity'] != null) ...[
+                const SizedBox(height: 8),
+                Text('Aktivitas: ${snapshot['activity']}'),
+              ],
+              if (snapshot['status'] != null) ...[
+                const SizedBox(height: 4),
+                Text('Status: ${_statusLabel(snapshot['status']?.toString())}'),
+              ],
+              if (snapshot['quality_status'] != null) ...[
+                const SizedBox(height: 4),
+                Text('Quality gate: ${snapshot['quality_status']}'),
+              ],
+              const SizedBox(height: 10),
+              Text(snapshot['explanation']?.toString() ?? event.details),
+              if (factors.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Faktor yang tercatat: ${factors.join(', ')}'),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scenarioHistoryCard(List<EventItem> events) {
+    final history = events
+        .where((event) => event.eventType == 'hil_scenario')
+        .take(5)
+        .toList();
+    return Container(
+      key: const Key('hil-scenario-history'),
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Riwayat penjelasan skenario B/C',
+            style: AppTheme.font(size: 12, weight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Snapshot penjelasan disimpan saat skenario dipilih. Tampilkan kembali untuk membandingkan dengan penjelasan saat ini.',
+            style: AppTheme.font(
+              size: 10.5,
+              color: AppTheme.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          if (history.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Belum ada sesi B/C tersimpan.',
+                key: const Key('hil-scenario-history-empty'),
+                style: AppTheme.font(size: 10.5, color: AppTheme.textMuted),
+              ),
+            )
+          else
+            ...history.map((event) {
+              final snapshot = _map(event.value);
+              final scenario = snapshot['scenario']?.toString();
+              final time = MaterialLocalizations.of(context).formatShortDate(
+                event.timestamp.toLocal(),
+              );
+              return ListTile(
+                key: Key('hil-scenario-history-${event.id}'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  scenario == null
+                      ? event.details
+                      : 'Skenario $scenario · ${scenario == 'B' ? 'One-way feedback' : 'Human in the loop'}',
+                  style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  '$time · ${snapshot['activity'] ?? 'aktivitas tidak tersedia'} · '
+                  '${snapshot['status'] == null ? event.details : _statusLabel(snapshot['status']?.toString())}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _showScenarioHistory(event),
+              );
+            }),
+        ],
       ),
     );
   }
@@ -130,38 +264,29 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       return;
     }
     final appState = context.read<AppState>();
-    await appState.fetchCaparInsights();
+    await appState.fetchHilBaselines();
     if (!mounted) return;
-    final rawCapar = appState.rawCaparInsights?['capar'];
-    if (rawCapar is! Map) {
+    if (appState.hilBaselineError != null &&
+        appState.hilBaselineContexts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            appState.dataError ??
-                'Baseline akun tidak dapat dimuat. Periksa koneksi lalu coba lagi.',
-          ),
+          content: Text(appState.hilBaselineError!),
         ),
       );
       return;
     }
-    final baseline = rawCapar['baseline'];
-    final contexts = baseline is Map && baseline['contexts'] is List
-        ? (baseline['contexts'] as List)
-            .whereType<Map>()
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList()
-        : <Map<String, dynamic>>[];
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => GuidedBaselineSessionScreen(
           includeRecoveryStage: false,
           showHciReview: false,
-          baselineContextsAtStart: contexts,
+          isHilBaselineRecording: true,
+          baselineContextsAtStart: appState.hilBaselineContexts,
         ),
       ),
     );
     if (!mounted) return;
-    await context.read<AppState>().fetchCaparInsights();
+    await context.read<AppState>().fetchHilBaselines();
   }
 
   Future<void> _grantAiProcessingConsent() async {
@@ -175,7 +300,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Untuk memuat baseline CAPAR dan menghitung kesiapan Human in the Loop, Vidyamedic memproses data wearable dan fitur kesehatan Anda. Persetujuan ini terpisah dari persetujuan penelitian HIL dan tidak mengubah data baseline yang sudah tersimpan.',
+                'Untuk membentuk baseline Human in the Loop tersendiri, Vidyamedic memproses data wearable dan fitur kesehatan Anda. Baseline ini disimpan terpisah dan tidak mengubah baseline CAPAR. Persetujuan ini terpisah dari persetujuan penelitian HIL.',
               ),
               const SizedBox(height: 8),
               CheckboxListTile(
@@ -223,7 +348,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       return;
     }
 
-    await context.read<AppState>().fetchCaparInsights();
+    await Future.wait([
+      context.read<AppState>().fetchCaparInsights(),
+      context.read<AppState>().fetchHilBaselines(),
+    ]);
     if (!mounted) return;
     setState(() => _isUpdatingAiConsent = false);
   }
@@ -437,7 +565,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final quality = _stage(stages, 'quality_gate') ?? <String, dynamic>{};
     final baselineStage =
         _stage(stages, 'personal_baseline') ?? <String, dynamic>{};
-    final baselineContexts = _maps(_map(capar['baseline'])['contexts']);
+    final baselineContexts = state.hilBaselineContexts;
     final observationActivity = _normalizeActivity(
       latestObservation['activity']?.toString(),
     );
@@ -474,15 +602,39 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         observation['segment_id']?.toString() ?? state.followUpPrompt.segmentId;
     final hasSegment = segmentId != null &&
         RegExp(r'^[a-f\d]{24}$', caseSensitive: false).hasMatch(segmentId);
+    final explanationFactors = factors
+        .map((factor) => _boundedText(
+              factor['physiology'] ?? factor['feature'] ?? 'sinyal',
+              80,
+            ))
+        .toList();
+    final narrative = _scenarioNarrative(latestObservation, positiveZScores);
+    String scenarioExplanation(String scenario) => scenario == 'B'
+        ? narrative
+        : '$narrative ${interpretation ?? _statusLabel(resolutionStatus)}';
+    Map<String, dynamic> scenarioSnapshot(String scenario) => {
+          'version': 1,
+          'scenario': scenario,
+          'segment_id': hasSegment ? segmentId : null,
+          'activity': latestObservation['activity']?.toString() ?? '',
+          'explanation': scenarioExplanation(scenario),
+          'status': resolutionStatus,
+          'quality_status': quality['status']?.toString() ?? 'unavailable',
+          'baseline_ready': scenariosReady,
+          'factors': explanationFactors,
+        };
     return MockupScaffold(
       title: 'Human In the Loop',
       trailing: IconButton(
         key: const Key('hil-refresh-baseline'),
         tooltip: 'Muat ulang baseline',
-        onPressed: state.isCaparLoading
+        onPressed: state.isCaparLoading || state.isHilBaselineLoading
             ? null
-            : () => unawaited(state.fetchCaparInsights()),
-        icon: state.isCaparLoading
+            : () => unawaited(Future.wait([
+                  state.fetchCaparInsights(),
+                  state.fetchHilBaselines(),
+                ])),
+        icon: state.isCaparLoading || state.isHilBaselineLoading
             ? const SizedBox(
                 width: 18,
                 height: 18,
@@ -516,7 +668,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 'Tampilkan narasi satu arah. Skenario dapat dibuka setelah tersedia 5 menit baseline HIL berkualitas.',
             selected: _selectedScenario == 'B',
             enabled: scenariosReady && _hasResearchConsent,
-            onPressed: () => _selectScenario('B', segmentId),
+            onPressed: () => _selectScenario('B', scenarioSnapshot('B')),
           ),
           _scenarioButton(
             code: 'C',
@@ -525,7 +677,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 'Tampilkan hasil, minta klarifikasi, dan pertahankan unresolved bila bukti statistik belum cukup.',
             selected: _selectedScenario == 'C',
             enabled: scenariosReady && _hasResearchConsent,
-            onPressed: () => _selectScenario('C', segmentId),
+            onPressed: () => _selectScenario('C', scenarioSnapshot('C')),
           ),
           if (!_hasResearchConsent)
             Padding(
@@ -543,7 +695,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 7, bottom: 10),
               child: Text(
-                'Skenario B/C perlu 5 window HIL satu menit yang lolos quality gate pada satu aktivitas dan periode. Saat ini terdeteksi $bestScenarioWindowCount/5 window; jumlah segmen CAPAR saja tidak cukup. Muat ulang setelah data diproses.',
+                'Skenario B/C perlu 5 window HIL satu menit yang lolos quality gate pada satu aktivitas. Saat ini terdeteksi $bestScenarioWindowCount/5 window. Kesiapan memakai koleksi baseline HIL terpisah, bukan baseline CAPAR. Muat ulang setelah data diproses.',
                 key: const Key('hil-scenarios-locked'),
                 style: AppTheme.font(
                   size: 10.5,
@@ -556,12 +708,16 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             contexts: baselineContexts,
             onStart: _openGuidedBaseline,
             canStart: _hasResearchConsent,
-            isLoading: state.isCaparLoading,
+            isLoading: state.isHilBaselineLoading,
             aiConsentRequired: aiConsentRequired,
             isUpdatingAiConsent: _isUpdatingAiConsent,
             onGrantAiConsent: _grantAiProcessingConsent,
-            loadError: state.dataError,
+            loadError: state.hilBaselineError,
           ),
+          _scenarioHistoryCard([
+            ...state.hilExplanationHistory,
+            ...state.events.where((event) => event.eventType == 'hil_scenario'),
+          ]),
           if (_selectedScenario == 'B') ...[
             const SizedBox(height: 10),
             _scenarioResultCard(
@@ -611,8 +767,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             title: 'Periksa kualitas dan baseline',
             detail:
                 'Quality gate: ${qualityPassed ? 'lolos' : quality['status'] == 'insufficient_data' ? 'data belum cukup' : 'belum lolos/tersedia'}'
-                ' · baseline aktivitas/waktu: ${scenariosReady ? 'data HIL tersedia' : 'belum memenuhi 5 menit HIL'}'
-                '${baselineStage['segment_count'] == null ? '' : ' (${baselineStage['segment_count']} segmen pada konteks terbaru)'}',
+                ' · baseline HIL aktivitas: ${scenariosReady ? 'tersedia' : 'belum memenuhi 5 menit data valid'}'
+                ' · $bestScenarioWindowCount/5 window menit valid',
           ),
           _stepCard(
             number: '03',
@@ -621,7 +777,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 ? (interpretation ??
                     'Bukti yang tersedia ditampilkan apa adanya. Satu perubahan tidak cukup untuk menyimpulkan penyebab atau diagnosis.')
                 : '${factors.map((factor) => factor['physiology'] ?? factor['feature'] ?? 'sinyal').join(', ')}. '
-                    'Perbandingan bergantung pada mutu sinyal dan kecocokan baseline aktivitas/waktu.',
+                    'Perbandingan bergantung pada mutu sinyal dan kecocokan baseline aktivitas HIL.',
           ),
           _stepCard(
             number: '04',
@@ -792,7 +948,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               style: AppTheme.font(size: 12, weight: FontWeight.w800)),
           const SizedBox(height: 5),
           Text(
-            'Rekam baseline secara berurutan: duduk, berdiri, lalu berjalan. Setiap langkah berlangsung 5 menit. Syarat uji HIL dihitung dari window satu menit yang lolos quality gate, bukan status matang baseline CAPAR.',
+            'Rekam baseline secara berurutan: duduk, berdiri, lalu berjalan. Setiap langkah membutuhkan 5 window satu menit yang lolos quality gate. Data baseline HIL disimpan tersendiri, terpisah dari baseline CAPAR.',
             style: AppTheme.font(
               size: 10.5,
               color: AppTheme.textSecondary,
@@ -812,7 +968,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Baseline belum dapat ditampilkan karena persetujuan pemrosesan AI belum diberikan. Persetujuan penelitian HIL saja tidak mengaktifkan analisis CAPAR.',
+                    'Baseline HIL belum dapat ditampilkan karena persetujuan pemrosesan AI belum diberikan. Baseline ini terpisah dari CAPAR.',
                   ),
                   const SizedBox(height: 8),
                   FilledButton(
@@ -821,7 +977,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                     child: Text(
                       isUpdatingAiConsent
                           ? 'Menyimpan persetujuan...'
-                          : 'Tinjau persetujuan dan muat baseline',
+                          : 'Tinjau persetujuan dan muat baseline HIL',
                     ),
                   ),
                 ],
@@ -916,8 +1072,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                           : contextsForActivity.isEmpty
                               ? 'Belum ada data'
                               : isReady
-                                  ? 'Siap HIL · $validMinutes menit · $count segmen CAPAR'
-                                  : 'Belum siap HIL · $bestWindowCount/5 menit · $count segmen CAPAR',
+                                  ? 'Siap HIL · $validMinutes menit · $count window'
+                                  : 'Belum siap HIL · $bestWindowCount/5 menit · $count window',
                       textAlign: TextAlign.end,
                       style: AppTheme.font(
                         size: 9.5,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:nadiku/models/health_models.dart';
 import 'package:nadiku/providers/app_state.dart';
 import 'package:nadiku/screens/scenarios/human_in_the_loop_screen.dart';
 
@@ -136,7 +137,7 @@ void main() {
     expect(find.text('Dua arah nonadaptif'), findsNothing);
   });
 
-  testWidgets('A shows stored immature activity baseline counts',
+  testWidgets('A shows HIL baseline counts separately from CAPAR baselines',
       (tester) async {
     final state = AppState()
       ..rawCaparInsights = {
@@ -145,35 +146,55 @@ void main() {
           'baseline': {
             'contexts': [
               {
-                'activity': 'Berdiri',
-                'level': 'provisional',
-                'segment_count': 4,
+                'activity': 'standing',
+                'level': 'mature',
+                'segment_count': 80,
                 'scenario_readiness': {
-                  'ready': false,
-                  'valid_window_count': 4,
-                },
+                  'ready': true,
+                  'valid_window_count': 80,
+                }
               },
-              {
-                'activity': 'Berjalan',
-                'level': 'provisional',
-                'segment_count': 2
-              },
-              {'activity': 'Duduk', 'level': 'provisional', 'segment_count': 2},
             ],
           },
         },
-      };
+      }
+      ..hilBaselineContexts = [
+        {
+          'activity': 'standing',
+          'segment_count': 4,
+          'scenario_readiness': {
+            'ready': false,
+            'valid_window_count': 4,
+          },
+        },
+        {
+          'activity': 'walking',
+          'segment_count': 2,
+          'scenario_readiness': {
+            'ready': false,
+            'valid_window_count': 0,
+          },
+        },
+        {
+          'activity': 'sitting',
+          'segment_count': 2,
+          'scenario_readiness': {
+            'ready': false,
+            'valid_window_count': 0,
+          },
+        },
+      ];
     addTearDown(state.dispose);
 
     await tester.pumpWidget(_app(state));
 
     expect(find.text('Belum ada data'), findsNothing);
     expect(
-      find.text('Belum siap HIL · 4/5 menit · 4 segmen CAPAR'),
+      find.text('Belum siap HIL · 4/5 menit · 4 window'),
       findsOneWidget,
     );
     expect(
-      find.text('Belum siap HIL · 0/5 menit · 2 segmen CAPAR'),
+      find.text('Belum siap HIL · 0/5 menit · 2 window'),
       findsNWidgets(2),
     );
     expect(find.byKey(const Key('hil-scenarios-locked')), findsOneWidget);
@@ -199,26 +220,109 @@ void main() {
     expect(find.text('Belum ada data'), findsNothing);
   });
 
-  testWidgets('five-minute HIL baseline enables B and C without CAPAR maturity',
+  testWidgets('saved HIL explanation can be opened from scenario history',
       (tester) async {
     final state = AppState()
       ..rawCaparInsights = {
         'capar': {
-          'baseline': {
-            'contexts': [
-              {
-                'activity': 'sitting',
-                'time_period': 'morning',
-                'level': 'provisional',
-                'segment_count': 5,
-                'scenario_readiness': {
-                  'ready': true,
-                  'valid_window_count': 5,
-                  'valid_duration_seconds': 300,
-                },
-              },
-            ],
+          'baseline': {'contexts': []},
+        },
+      }
+      ..events = [
+        EventItem(
+          id: 'hil-event-1',
+          title: 'Human In the Loop',
+          eventType: 'hil_scenario',
+          icon: Icons.timeline,
+          color: Colors.teal,
+          timestamp: DateTime(2026, 11, 1, 11),
+          details: 'Snapshot penjelasan skenario C.',
+          value: {
+            'version': 1,
+            'scenario': 'C',
+            'activity': 'sitting',
+            'explanation': 'Bukti belum cukup; status tetap unresolved.',
+            'status': 'unresolved',
+            'quality_status': 'passed',
+            'baseline_ready': true,
+            'factors': ['mean_hr'],
           },
+        ),
+      ];
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    final historyItem =
+        find.byKey(const Key('hil-scenario-history-hil-event-1'));
+    await tester.ensureVisible(historyItem);
+    await tester.tap(historyItem);
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const Key('hil-scenario-history-detail')), findsOneWidget);
+    expect(find.text('Aktivitas: sitting'), findsOneWidget);
+    expect(
+      find.text('Bukti belum cukup; status tetap unresolved.'),
+      findsOneWidget,
+    );
+    expect(find.text('Faktor yang tercatat: mean_hr'), findsOneWidget);
+  });
+
+  testWidgets('explanation history from its dedicated collection is displayed',
+      (tester) async {
+    final state = AppState()
+      ..rawCaparInsights = {
+        'capar': {
+          'baseline': {'contexts': []},
+        },
+      }
+      ..hilExplanationHistory = [
+        EventItem(
+          id: 'hil-record-1',
+          title: 'Human In the Loop',
+          eventType: 'hil_scenario',
+          icon: Icons.timeline,
+          color: Colors.teal,
+          timestamp: DateTime(2026, 11, 1, 11),
+          details: 'Snapshot penjelasan skenario B.',
+          value: {
+            'version': 1,
+            'scenario': 'B',
+            'activity': 'walking',
+            'explanation': 'Pola berjalan tetap dalam batas baseline.',
+            'status': 'normal',
+            'quality_status': 'passed',
+            'baseline_ready': true,
+            'factors': ['mean_hr'],
+          },
+        ),
+      ];
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    final historyItem =
+        find.byKey(const Key('hil-scenario-history-hil-record-1'));
+    await tester.ensureVisible(historyItem);
+    await tester.tap(historyItem);
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const Key('hil-scenario-history-detail')), findsOneWidget);
+    expect(find.text('Aktivitas: walking'), findsOneWidget);
+    expect(
+      find.text('Pola berjalan tetap dalam batas baseline.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('five-minute HIL baseline unlocks B and C without CAPAR baseline',
+      (tester) async {
+    final state = AppState()
+      ..rawCaparInsights = {
+        'capar': {
+          'baseline': {'contexts': []},
           'latest_observation': {
             'status': 'available',
             'activity': 'sitting',
@@ -252,12 +356,23 @@ void main() {
             'reasoning_pipeline': {
               'stages': [
                 {'stage_id': 'quality_gate', 'status': 'passed'},
-                {'stage_id': 'personal_baseline', 'status': 'mature'},
+                {'stage_id': 'personal_baseline', 'status': 'cold_start'},
               ],
             },
           },
         },
       };
+    state.hilBaselineContexts = [
+      {
+        'activity': 'sitting',
+        'segment_count': 5,
+        'scenario_readiness': {
+          'ready': true,
+          'valid_window_count': 5,
+          'valid_duration_seconds': 300,
+        },
+      },
+    ];
     addTearDown(state.dispose);
 
     await tester.pumpWidget(_app(state));

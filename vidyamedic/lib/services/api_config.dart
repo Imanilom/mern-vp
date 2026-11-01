@@ -126,6 +126,9 @@ class ApiConfig {
       '$baseUrl/patient-app/link-capar-account';
   static String get checkInsEndpoint => '$baseUrl/patient-app/check-ins';
   static String get eventsEndpoint => '$baseUrl/patient-app/events';
+  static String get hilExplanationsEndpoint =>
+      '$baseUrl/patient-app/hil-explanations';
+  static String get hilBaselinesEndpoint => '$baseUrl/patient-app/hil-baselines';
   static String get actionsEndpoint => '$baseUrl/patient-app/actions';
   static String get wearableSamplesEndpoint =>
       '$baseUrl/patient-app/wearable/samples';

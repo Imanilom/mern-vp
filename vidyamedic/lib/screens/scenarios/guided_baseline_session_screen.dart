@@ -16,11 +16,13 @@ class GuidedBaselineSessionScreen extends StatefulWidget {
     super.key,
     this.includeRecoveryStage = true,
     this.showHciReview = true,
+    this.isHilBaselineRecording = false,
     this.baselineContextsAtStart = const [],
   });
 
   final bool includeRecoveryStage;
   final bool showHciReview;
+  final bool isHilBaselineRecording;
   final List<Map<String, dynamic>> baselineContextsAtStart;
 
   @override
@@ -129,7 +131,8 @@ class _GuidedBaselineSessionScreenState
       }
     }
     final activity = _stages[_stageIndex].$1;
-    if (!appState.wearableBridge.startStreaming(activity)) {
+    if (!appState.wearableBridge.startStreaming(activity,
+        isHilBaseline: widget.isHilBaselineRecording)) {
       setState(() {
         _error = appState.wearableBridge.error ??
             'Perekaman belum dapat dimulai. Pastikan HR/RR dan akselerometer tersedia.';
@@ -199,7 +202,12 @@ class _GuidedBaselineSessionScreenState
       }
     });
     if (_stageIndex == _stages.length && mounted) {
-      await context.read<AppState>().fetchCaparInsights();
+      final appState = context.read<AppState>();
+      if (widget.isHilBaselineRecording) {
+        await appState.fetchHilBaselines();
+      } else {
+        await appState.fetchCaparInsights();
+      }
       if (!mounted) return;
       if (widget.showHciReview) {
         await _openReviewScreen();

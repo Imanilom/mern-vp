@@ -6,6 +6,8 @@ import Patient from '../models/patient.model.js';
 import PatientAppCheckIn from '../models/patient_app_checkin.model.js';
 import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppEvent from '../models/patient_app_event.model.js';
+import PatientHilExplanation from '../models/patient_hil_explanation.model.js';
+import PatientHilBaseline from '../models/patient_hil_baseline.model.js';
 import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
 import PatientGamificationProfile from '../models/patient_gamification_profile.model.js';
@@ -86,6 +88,7 @@ import {
   validatePatientImpactSummaryQuery,
   validateWearableStream,
   validateWearableSample,
+  validateHilExplanation,
   validateHilRealtimeEvaluation,
   validateScenarioEvent,
   validateScenarioQuestionnaire,
@@ -101,11 +104,15 @@ import {
   isScenarioQualityGatedSegment,
   isScenarioRealRecordedSample,
   mapScenarioActivity,
-  scenarioRecordingMatchesBaselineActivity,
   scenarioBaselineActivityAliases,
   SCENARIO_DEFINITIONS,
   SCENARIO_RULE_VERSION,
 } from '../utils/scenarioEngine.js';
+import {
+  buildPatientHilBaselineWindow,
+  PATIENT_HIL_BASELINE_POLICY,
+  summarizePatientHilBaselines,
+} from '../utils/patientHilBaseline.js';
 import { calculateScenarioQuestionnaireScore } from '../utils/scenarioQuestionnaire.js';
 import { parsePatientCaparHistoryQuery } from '../utils/patientCaparHistory.js';
 
@@ -1036,7 +1043,7 @@ export async function getPatientAppCaparInsights(req, res) {
     const monthStartMs = monthAgo.getTime();
     const [baselines, recentSegments, polarData, episodes, episodeMetadata,
       transitionDocs, anomalyEvents, cognitiveMemories, behaviorEvents,
-      historicalCheckIns, historicalPatientEvents, scenarioSegments] = await Promise.all([
+      historicalCheckIns, historicalPatientEvents] = await Promise.all([
       Baseline.find({ user_id: { $in: caparDataIds } }).lean(),
       Segment.find({
         user_id: { $in: caparDataIds },
@@ -1089,49 +1096,7 @@ export async function getPatientAppCaparInsights(req, res) {
         ...accountScopeFilter(accountScopes),
         occurred_at: { $gte: monthAgo, $lte: now },
       }).sort({ occurred_at: -1 }).limit(500).lean(),
-      Segment.find({
-        user_id: { $in: caparDataIds },
-        window_type: '1min',
-        analyzed: true,
-        is_valid: true,
-        window_start: {
-          $gte: now.getTime() - 180 * 24 * 60 * 60 * 1000,
-          $lte: now.getTime(),
-        },
-      }).sort({ window_start: -1 }).limit(5000)
-        .select('user_id patient_app_sample_id window_start activity_label is_valid analyzed signal_quality signal_quality_detail quality_audit')
-        .lean(),
     ]);
-    const scenarioSampleIds = [...new Set(
-      scenarioSegments
-        .map((segment) => segment.patient_app_sample_id?.toString())
-        .filter(Boolean)
-    )];
-    const scenarioSamples = scenarioSampleIds.length
-      ? await PatientAppWearableSample.find({
-        _id: { $in: scenarioSampleIds },
-        account_id: { $in: caparDataIds },
-        provider: 'polar_h10',
-        source: 'mobile_wearable_bridge',
-        ingestion_source: 'mobile_wearable_bridge',
-        sensor_contact: true,
-        'data_quality.status': 'accepted',
-      }).select('_id provider source ingestion_source sensor_contact data_quality.status activity posture')
-        .lean()
-      : [];
-    const acceptedScenarioSampleIds = new Set(
-      scenarioSamples
-        .filter(isScenarioRealRecordedSample)
-        .map((sample) => sample._id.toString())
-    );
-    const scenarioSampleById = new Map(
-      scenarioSamples.map((sample) => [sample._id.toString(), sample])
-    );
-    const qualityGatedScenarioSegments = scenarioSegments.filter((segment) =>
-      segment.patient_app_sample_id
-      && acceptedScenarioSampleIds.has(segment.patient_app_sample_id.toString())
-      && isScenarioQualityGatedSegment(segment)
-    );
     const eligibleSegments = recentSegments.filter(isPatientAnalyticsSegment);
     const currentSegments = eligibleSegments.filter(
       (segment) => segment.window_start >= dayAgo.getTime()
@@ -1791,28 +1756,6 @@ export async function getPatientAppCaparInsights(req, res) {
               ? 'mature'
               : 'mature_legacy'
             : baseline.maturity_detail?.level || 'provisional',
-          scenario_readiness: (() => {
-            const matchingSegments = qualityGatedScenarioSegments.filter(
-              (segment) => {
-                const sample = scenarioSampleById.get(
-                  segment.patient_app_sample_id.toString()
-                );
-                return segment.user_id.toString() === baseline.user_id.toString()
-                  && patientCaparTimePeriod(segment.window_start) === baseline.time_period
-                  && scenarioRecordingMatchesBaselineActivity(
-                    sample,
-                    baseline.activity
-                  );
-              }
-            );
-            const uniqueSegments = [
-              ...new Map(matchingSegments.map((segment) => [
-                Math.floor(segment.window_start / 60_000),
-                segment,
-              ])).values(),
-            ];
-            return assessScenarioBaseline(baseline, uniqueSegments);
-          })(),
           quality: baseline.maturity_detail?.bq ?? null,
           segment_count: baseline.segment_count,
           maturity_threshold: baseline.MATURITY_THRESHOLD ?? 20,
@@ -2123,6 +2066,126 @@ export async function listPatientAppEvents(req, res) {
     pagination: {
       limit: filters.limit,
       next_before: data.length === filters.limit ? data[data.length - 1].occurred_at : null,
+    },
+  });
+}
+
+export async function createPatientHilExplanation(req, res) {
+  const { dataOwnerId, dataOwnerType } = await getAccount(req);
+  const snapshot = validateHilExplanation(req.body);
+  const explanation = await PatientHilExplanation.create({
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+    scenario: snapshot.scenario,
+    segment_id: snapshot.segment_id,
+    activity: snapshot.activity,
+    explanation: snapshot.explanation,
+    status: snapshot.status,
+    quality_status: snapshot.quality_status,
+    baseline_ready: snapshot.baseline_ready,
+    factors: snapshot.factors,
+    snapshot_version: snapshot.version,
+  });
+  res.status(201).json({ success: true, data: explanation });
+}
+
+export async function listPatientHilExplanations(req, res) {
+  const { accountScopes } = await getAccount(req);
+  const unknownQueryFields = Object.keys(req.query)
+    .filter((field) => field !== 'limit');
+  if (unknownQueryFields.length) {
+    throw errorHandler(400, `Query tidak dikenal: ${unknownQueryFields.join(', ')}.`);
+  }
+  const limit = req.query.limit === undefined ? 50 : Number(req.query.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw errorHandler(400, 'limit harus berupa bilangan bulat antara 1 dan 100.');
+  }
+  const explanations = await PatientHilExplanation.find(
+    accountScopeFilter(accountScopes)
+  ).sort({ createdAt: -1 }).limit(limit).lean();
+  res.json({ success: true, data: explanations });
+}
+
+export async function getPatientAppHilBaselines(req, res) {
+  const { dataOwnerId, dataOwnerType, accountScopes } = await getAccount(req);
+  if (Object.keys(req.query).length) {
+    throw errorHandler(400, 'Endpoint baseline HIL tidak menerima parameter query.');
+  }
+  const profile = await findExistingPatientAppProfile(accountScopes);
+  if (profile?.ai_processing_consent?.granted !== true) {
+    throw errorHandler(
+      403,
+      'Persetujuan pemrosesan AI diperlukan untuk melihat baseline HIL.'
+    );
+  }
+
+  const samples = await PatientAppWearableSample.find({
+    $and: [
+      accountScopeFilter(accountScopes),
+      {
+        $or: [
+          { recording_purpose: 'hil_baseline' },
+          { recording_purpose: { $exists: false } },
+        ],
+      },
+      {
+        provider: 'polar_h10',
+        source: 'mobile_wearable_bridge',
+        ingestion_source: 'mobile_wearable_bridge',
+        is_simulated: false,
+        sensor_contact: true,
+        'data_quality.status': 'accepted',
+        activity: { $in: ['sitting', 'standing', 'walking'] },
+      },
+    ],
+  })
+    .sort({ recorded_at: -1 })
+    .limit(10000)
+    .select(
+      '_id provider source ingestion_source is_simulated sensor_contact data_quality recorded_at activity account_id account_type heart_rate_bpm rr_intervals_ms rmssd_ms sdnn_ms dfa_alpha1'
+    )
+    .lean();
+
+  const windowsByKey = new Map();
+  for (const sample of samples) {
+    const window = buildPatientHilBaselineWindow(
+      sample,
+      dataOwnerId,
+      dataOwnerType
+    );
+    if (!window) continue;
+    const key = `${window.activity}:${window.window_start}`;
+    if (!windowsByKey.has(key)) windowsByKey.set(key, window);
+  }
+  const windows = [...windowsByKey.values()];
+  if (windows.length) {
+    await PatientHilBaseline.bulkWrite(
+      windows.map((window) => ({
+        updateOne: {
+          filter: {
+            account_id: dataOwnerId,
+            account_type: dataOwnerType,
+            activity: window.activity,
+            window_start: window.window_start,
+          },
+          update: { $set: window },
+          upsert: true,
+        },
+      })),
+      { ordered: false }
+    );
+  }
+
+  const storedWindows = await PatientHilBaseline.find({
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+  }).sort({ window_start: 1 }).lean();
+  res.json({
+    success: true,
+    data: {
+      source: 'patient_hil_baselines',
+      policy: PATIENT_HIL_BASELINE_POLICY,
+      contexts: summarizePatientHilBaselines(storedWindows),
     },
   });
 }
@@ -3230,6 +3293,7 @@ export async function createPatientAppWearableSample(req, res) {
   const accountData = await getAccount(req);
   const { dataOwnerId, dataOwnerType } = accountData;
   const sampleData = validateWearableSample(req.body);
+  const isHilBaselineRecording = sampleData.recording_purpose === 'hil_baseline';
   const activityConfidence = sampleData.signal_confidence;
   const rrQuality = assessRRQuality(
     sampleData.rr_intervals_ms,
@@ -3299,90 +3363,201 @@ export async function createPatientAppWearableSample(req, res) {
   sample.data_quality = dataQuality;
   await sample.save();
 
-  const activityLabel = patientActivityLabel(sampleData.activity, sampleData.activity_intensity);
-  const durationMs = sampleData.rr_intervals_ms.reduce((sum, rr) => sum + rr, 0);
-  const windowEnd = sampleData.recorded_at.getTime() + durationMs;
-  const segmentFeatures = {
-    mean_hr: derived.hr_mean,
-    std_hr: null,
-    delta_hr: derived.hr_delta,
-    slope_hr: derived.hr_slope,
-    mean_rr: rrQuality.rr_clean.length
-      ? rrQuality.rr_clean.reduce((sum, rr) => sum + rr, 0) / rrQuality.rr_clean.length
-      : null,
-    sdnn: derived.sdnn,
-    rmssd: derived.rmssd,
-    motion_intensity: derived.motion_index,
-    step_count: sampleData.steps,
-    dfa_alpha1: derived.dfa_alpha1,
-    dfa_alpha2: derived.dfa_alpha2,
-    pnn50: derived.pnn50,
-  };
   let caparSegment;
-  try {
-    caparSegment = await Segment.findOneAndUpdate(
-      {
-        user_id: dataOwnerId,
-        device_id: sampleData.device_id,
-        window_type: '1min',
-        window_start: sampleData.recorded_at.getTime(),
-      },
-      {
-        $set: {
+  if (!isHilBaselineRecording) {
+    const activityLabel = patientActivityLabel(sampleData.activity, sampleData.activity_intensity);
+    const durationMs = sampleData.rr_intervals_ms.reduce((sum, rr) => sum + rr, 0);
+    const windowEnd = sampleData.recorded_at.getTime() + durationMs;
+    const segmentFeatures = {
+      mean_hr: derived.hr_mean,
+      std_hr: null,
+      delta_hr: derived.hr_delta,
+      slope_hr: derived.hr_slope,
+      mean_rr: rrQuality.rr_clean.length
+        ? rrQuality.rr_clean.reduce((sum, rr) => sum + rr, 0) / rrQuality.rr_clean.length
+        : null,
+      sdnn: derived.sdnn,
+      rmssd: derived.rmssd,
+      motion_intensity: derived.motion_index,
+      step_count: sampleData.steps,
+      dfa_alpha1: derived.dfa_alpha1,
+      dfa_alpha2: derived.dfa_alpha2,
+      pnn50: derived.pnn50,
+    };
+    try {
+      caparSegment = await Segment.findOneAndUpdate(
+        {
           user_id: dataOwnerId,
           device_id: sampleData.device_id,
-          patient_app_sample_id: sample._id,
-          is_simulated: sampleData.is_simulated,
           window_type: '1min',
           window_start: sampleData.recorded_at.getTime(),
-          window_end: windowEnd,
-          activity_label: activityLabel,
-          features: segmentFeatures,
-          rr_raw: sampleData.rr_intervals_ms,
-          raw_count: sampleData.rr_intervals_ms.length,
-          is_valid: qualityAccepted,
-          analyzed: !qualityAccepted,
-          rr_status: qualityAccepted ? null : 'QUALITY_WARNING',
-          quality_audit: {
-            rr_total_received: sampleData.rr_intervals_ms.length,
-            rr_artifact_count: Math.round(
-              rrQuality.artifact_fraction * sampleData.rr_intervals_ms.length
-            ),
-            rr_missing_count: Math.round(
-              rrQuality.missing_fraction * (sampleData.expected_rr_count || sampleData.rr_intervals_ms.length)
-            ),
-            rr_artifact_fraction: rrQuality.artifact_fraction,
-            rr_missing_fraction: rrQuality.missing_fraction,
-            gate_passed: qualityAccepted,
-            gate_reasons: reasons,
-          },
-          signal_quality: {
-            is_artifact: !qualityAccepted && !sampleData.is_simulated,
-            is_anomaly: false,
-            artifact_type: sampleData.is_simulated
-              ? 'simulated_data'
-              : qualityAccepted
-                ? null
-                : 'quality_gate',
-          },
-          signal_quality_detail: {
-            artifact_fraction: rrQuality.artifact_fraction,
-            missing_fraction: rrQuality.missing_fraction,
-            q_signal: signalQuality,
-            q_complete: rrQuality.q_complete,
-            q_context: null,
-            reasons,
+        },
+        {
+          $set: {
+            user_id: dataOwnerId,
+            device_id: sampleData.device_id,
+            patient_app_sample_id: sample._id,
+            is_simulated: sampleData.is_simulated,
+            window_type: '1min',
+            window_start: sampleData.recorded_at.getTime(),
+            window_end: windowEnd,
+            activity_label: activityLabel,
+            features: segmentFeatures,
+            rr_raw: sampleData.rr_intervals_ms,
+            raw_count: sampleData.rr_intervals_ms.length,
+            is_valid: qualityAccepted,
+            analyzed: !qualityAccepted,
+            rr_status: qualityAccepted ? null : 'QUALITY_WARNING',
+            quality_audit: {
+              rr_total_received: sampleData.rr_intervals_ms.length,
+              rr_artifact_count: Math.round(
+                rrQuality.artifact_fraction * sampleData.rr_intervals_ms.length
+              ),
+              rr_missing_count: Math.round(
+                rrQuality.missing_fraction * (sampleData.expected_rr_count || sampleData.rr_intervals_ms.length)
+              ),
+              rr_artifact_fraction: rrQuality.artifact_fraction,
+              rr_missing_fraction: rrQuality.missing_fraction,
+              gate_passed: qualityAccepted,
+              gate_reasons: reasons,
+            },
+            signal_quality: {
+              is_artifact: !qualityAccepted && !sampleData.is_simulated,
+              is_anomaly: false,
+              artifact_type: sampleData.is_simulated
+                ? 'simulated_data'
+                : qualityAccepted
+                  ? null
+                  : 'quality_gate',
+            },
+            signal_quality_detail: {
+              artifact_fraction: rrQuality.artifact_fraction,
+              missing_fraction: rrQuality.missing_fraction,
+              q_signal: signalQuality,
+              q_complete: rrQuality.q_complete,
+              q_context: null,
+              reasons,
+            },
           },
         },
-      },
-      { upsert: true, new: true, runValidators: true }
-    );
-  } catch (error) {
-    await PatientAppWearableSample.deleteOne({ _id: sample._id });
-    throw error;
+        { upsert: true, new: true, runValidators: true }
+      );
+    } catch (error) {
+      await PatientAppWearableSample.deleteOne({ _id: sample._id });
+      throw error;
+    }
   }
 
   const existingProfile = await findExistingPatientAppProfile(accountData.accountScopes);
+  const aiProcessingConsentGranted =
+    existingProfile?.ai_processing_consent?.granted === true;
+  let hilBaselineIngestion = {
+    status: !isHilBaselineRecording
+      ? 'not_hil_baseline'
+      : !qualityAccepted
+        ? 'quality_warning'
+        : aiProcessingConsentGranted
+          ? 'pending'
+          : 'consent_required',
+    window_id: null,
+  };
+  if (
+    isHilBaselineRecording
+    && qualityAccepted
+    && aiProcessingConsentGranted
+  ) {
+    const hilWindow = buildPatientHilBaselineWindow(
+      sample.toObject(),
+      dataOwnerId,
+      dataOwnerType
+    );
+    if (hilWindow) {
+      try {
+        const storedWindow = await PatientHilBaseline.findOneAndUpdate(
+          {
+            account_id: dataOwnerId,
+            account_type: dataOwnerType,
+            activity: hilWindow.activity,
+            window_start: hilWindow.window_start,
+          },
+          { $set: hilWindow },
+          { upsert: true, new: true, runValidators: true }
+        ).select('_id').lean();
+        hilBaselineIngestion = {
+          status: 'stored',
+          window_id: storedWindow?._id ?? null,
+        };
+      } catch (hilBaselineError) {
+        console.error(
+          `[PatientAppWearable] HIL baseline storage failed for sample ${sample._id}: ${hilBaselineError.message}`
+        );
+        hilBaselineIngestion = {
+          status: 'failed',
+          window_id: null,
+          message: 'Data tersimpan; baseline HIL belum berhasil diperbarui.',
+        };
+      }
+    } else {
+      hilBaselineIngestion.status = 'unsupported_activity';
+    }
+  } else if (
+    isHilBaselineRecording
+    && qualityAccepted
+    && !aiProcessingConsentGranted
+  ) {
+    hilBaselineIngestion.message =
+      'Persetujuan pemrosesan AI diperlukan untuk memperbarui baseline HIL.';
+  }
+
+  let caparAnalysis = {
+    status: isHilBaselineRecording
+      ? 'excluded_hil_baseline'
+      : !qualityAccepted
+        ? 'quality_warning'
+        : aiProcessingConsentGranted
+          ? 'pending'
+          : 'consent_required',
+    rr_status: caparSegment?.rr_status ?? null,
+  };
+  if (
+    !isHilBaselineRecording
+    && qualityAccepted
+    && aiProcessingConsentGranted
+  ) {
+    try {
+      const { analyzeOneMinuteUser } = await import('./analysis.controller.js');
+      await analyzeOneMinuteUser(dataOwnerId, [sample._id]);
+      const analyzedSegment = await Segment.findById(caparSegment._id)
+        .select('analyzed rr_status')
+        .lean();
+      caparAnalysis = {
+        status: analyzedSegment?.analyzed ? 'analyzed' : 'pending',
+        rr_status: analyzedSegment?.rr_status ?? null,
+      };
+      if (!analyzedSegment?.analyzed) {
+        console.warn(
+          `[PatientAppWearable] CAPAR analysis remains pending for sample ${sample._id}.`
+        );
+      }
+    } catch (analysisError) {
+      console.error(
+        `[PatientAppWearable] CAPAR analysis failed for sample ${sample._id}: ${analysisError.message}`
+      );
+      caparAnalysis = {
+        status: 'pending',
+        rr_status: null,
+        message: 'Data tersimpan; analisis CAPAR belum berhasil diselesaikan.',
+      };
+    }
+  } else if (
+    !isHilBaselineRecording
+    && qualityAccepted
+    && !aiProcessingConsentGranted
+  ) {
+    caparAnalysis.message =
+      'Data tersimpan; persetujuan pemrosesan AI diperlukan untuk analisis CAPAR.';
+  }
+
   const profileQuery = existingProfile
     ? { _id: existingProfile._id }
     : { account_id: dataOwnerId, account_type: dataOwnerType };
@@ -3405,10 +3580,20 @@ export async function createPatientAppWearableSample(req, res) {
     success: true,
     data: {
       sample,
+      hil_baseline: hilBaselineIngestion,
       capar_ingestion: {
-        status: qualityAccepted ? 'pending_layer3_analysis' : 'quality_warning',
-        segment_id: caparSegment._id,
-        analyzed: caparSegment.analyzed,
+        status: isHilBaselineRecording
+          ? 'excluded_hil_baseline'
+          : qualityAccepted
+          ? caparAnalysis.status === 'analyzed'
+            ? 'analyzed'
+            : caparAnalysis.status === 'consent_required'
+              ? 'consent_required'
+              : 'pending_layer3_analysis'
+          : 'quality_warning',
+        segment_id: caparSegment?._id ?? null,
+        analyzed: caparAnalysis.status === 'analyzed',
+        analysis: caparAnalysis,
         quality: dataQuality,
         derived_features: {
           hr_mean: derived.hr_mean,

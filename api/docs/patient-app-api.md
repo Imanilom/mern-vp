@@ -170,6 +170,34 @@ use a validated structured `value` with a questionnaire version, patient-reporte
 feeling, optional note, and the four activity sample summaries; they are kept
 separate from sensor-derived findings.
 
+## Human-in-the-loop data
+
+- `POST /api/patient-app/hil-explanations`
+- `GET /api/patient-app/hil-explanations?limit=50` (`limit`: 1-100)
+- `GET /api/patient-app/hil-baselines`
+
+### Explanation history
+
+The authenticated POST accepts a version-1 snapshot for scenario `B` or `C`,
+including `segment_id`, `activity`, `explanation`, `status`, `quality_status`,
+`baseline_ready`, and up to three `factors`. Records are stored separately in
+the account-scoped `patient_hil_explanations` collection rather than as general
+event markers.
+
+### Activity baselines
+
+HIL baseline windows are stored separately in `patient_hil_baselines` and are
+never added to CAPAR's `Baseline` collection. The baseline endpoint returns
+activity-specific feature summaries and readiness; five distinct quality-gated
+one-minute Polar H10 windows are required for an activity. It reads accepted
+wearable samples and backfills their HIL windows, so previously recorded sample
+data can populate the separate HIL collection without using CAPAR baseline
+records. The endpoint requires explicit AI-processing consent. Wearable-sample
+responses report this separately in `data.hil_baseline`; it is not part of
+`data.capar_ingestion`. Samples recorded by the guided HIL baseline session are
+tagged `recording_purpose: "hil_baseline"` and are not converted into CAPAR
+segments; standard wearable recordings keep the existing CAPAR ingestion path.
+
 ## Patient actions and impact summary
 
 - `POST /api/patient-app/actions`
@@ -357,6 +385,12 @@ wearable-history charts under the separate `patient_app_demo` source. The
 streaming endpoint validates the provider against the simulation flag. CAPAR
 Mobile uses that authenticated streaming endpoint; broker credentials remain
 server-side.
+
+An accepted real sample is analyzed immediately into its one-minute CAPAR
+segment when AI/CAPAR processing consent is granted. The response's
+`data.capar_ingestion.status` distinguishes `analyzed`, `pending_layer3_analysis`,
+`consent_required`, and `quality_warning`; only the analyzed state confirms that
+the segment pipeline completed.
 
 While streaming, Vidyamedic uses a local, cadence-based accelerometer heuristic
 to suggest `Berjalan` or `Berlari` and asks the patient to confirm or correct

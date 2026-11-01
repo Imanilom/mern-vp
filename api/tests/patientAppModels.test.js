@@ -5,6 +5,8 @@ import PatientAppEvent from '../models/patient_app_event.model.js';
 import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppProfile from '../models/patient_app_profile.model.js';
 import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
+import PatientHilExplanation from '../models/patient_hil_explanation.model.js';
+import PatientHilBaseline from '../models/patient_hil_baseline.model.js';
 import PatientGamificationProfile from '../models/patient_gamification_profile.model.js';
 import PatientRecordingCoin from '../models/patient_recording_coin.model.js';
 import PatientScenarioEvent from '../models/patient_scenario_event.model.js';
@@ -60,6 +62,14 @@ test('patient check-in, events, and wearable schemas retain patient provenance',
     PatientAppWearableSample.schema
       .path('ingestion_source')
       .enumValues.includes('rabbitmq_stream')
+  );
+  assert.deepEqual(
+    PatientAppWearableSample.schema.path('recording_purpose').enumValues,
+    ['standard', 'hil_baseline']
+  );
+  assert.equal(
+    PatientAppWearableSample.schema.path('recording_purpose').options.default,
+    'standard'
   );
   assert.ok(PatientAppWearableSample.schema.indexes().some(([keys, options]) => (
     keys.account_id === 1
@@ -155,4 +165,36 @@ test('scenario questionnaires are scoped and unique per session and instrument',
     )
   );
   assert.ok(uniqueIndex);
+});
+
+test('HIL explanations use a separate account-scoped collection', () => {
+  assert.equal(PatientHilExplanation.collection.collectionName, 'patient_hil_explanations');
+  assert.ok(PatientHilExplanation.schema.path('account_id'));
+  assert.ok(PatientHilExplanation.schema.path('explanation'));
+  assert.deepEqual(
+    PatientHilExplanation.schema.path('scenario').enumValues,
+    ['B', 'C']
+  );
+  assert.ok(PatientHilExplanation.schema.indexes().some(([keys]) => (
+    keys.account_id === 1
+    && keys.account_type === 1
+    && keys.createdAt === -1
+  )));
+});
+
+test('HIL baseline windows are isolated from CAPAR baseline documents', () => {
+  assert.equal(PatientHilBaseline.collection.collectionName, 'patient_hil_baselines');
+  assert.ok(PatientHilBaseline.schema.path('sample_id'));
+  assert.ok(PatientHilBaseline.schema.path('window_start'));
+  assert.deepEqual(
+    PatientHilBaseline.schema.path('activity').enumValues,
+    ['sitting', 'standing', 'walking']
+  );
+  assert.ok(PatientHilBaseline.schema.indexes().some(([keys, options]) => (
+    keys.account_id === 1
+    && keys.account_type === 1
+    && keys.activity === 1
+    && keys.window_start === 1
+    && options.unique === true
+  )));
 });

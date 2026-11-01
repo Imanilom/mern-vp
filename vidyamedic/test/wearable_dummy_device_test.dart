@@ -86,4 +86,26 @@ void main() {
       isTrue,
     );
   });
+
+  testWidgets('guided HIL baseline samples are explicitly tagged',
+      (tester) async {
+    final uploadedSamples = <Map<String, dynamic>>[];
+    final bridge = PolarWearablePairingService(
+      uploadSample: (sample) async {
+        uploadedSamples.add(sample);
+        return ApiResponse.success({'sample': sample});
+      },
+      uploadStream: (batch) async => ApiResponse.success({'published': true}),
+      onSampleStored: () {},
+    );
+    addTearDown(bridge.dispose);
+
+    expect(await bridge.connectDummyDevice(), isTrue);
+    expect(bridge.startStreaming('sitting', isHilBaseline: true), isTrue);
+    await tester.pump(const Duration(seconds: 60));
+    await bridge.stopStreaming();
+
+    expect(uploadedSamples, hasLength(1));
+    expect(uploadedSamples.single['recording_purpose'], 'hil_baseline');
+  });
 }

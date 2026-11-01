@@ -93,6 +93,7 @@ class PolarWearablePairingService extends ChangeNotifier {
   bool _isUploadingSample = false;
   bool _isUploadingStream = false;
   bool _isDummyDevice = false;
+  bool _isHilBaselineRecording = false;
   bool _isDisposed = false;
   bool _loggedAccelerationData = false;
   int _demoTick = 0;
@@ -717,7 +718,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     _notify();
   }
 
-  bool startStreaming(String activity) {
+  bool startStreaming(String activity, {bool isHilBaseline = false}) {
     if (!isConnected) {
       connectionError = 'Hubungkan Polar H10 sebelum memulai streaming.';
       _notify();
@@ -730,6 +731,7 @@ class PolarWearablePairingService extends ChangeNotifier {
       return false;
     }
     _activity = activity;
+    _isHilBaselineRecording = isHilBaseline;
     _clearWindow();
     _sessionHeartRates.clear();
     _recentRrIntervals.clear();
@@ -780,6 +782,7 @@ class PolarWearablePairingService extends ChangeNotifier {
     isStreaming = false;
     await flushStream(force: true);
     await flushSample(force: true);
+    _isHilBaselineRecording = false;
     _notify();
   }
 
@@ -999,6 +1002,7 @@ class PolarWearablePairingService extends ChangeNotifier {
       'signal_confidence':
           _expectedRrCount == 0 ? 0 : _validRrCount / _expectedRrCount,
       'activity': _activity,
+      if (_isHilBaselineRecording) 'recording_purpose': 'hil_baseline',
     };
   }
 
