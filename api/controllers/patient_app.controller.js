@@ -349,6 +349,62 @@ export async function updatePatientAppProfile(req, res) {
   } = accountData;
   const updates = validateProfileUpdate(req.body);
   const profileUpdates = { ...updates };
+  const profileVersionAction = profileUpdates.profile_version_action;
+  const profileVersionSummary = profileUpdates.profile_version_summary;
+  const explicitProfileVersion = profileUpdates.profile_version;
+  delete profileUpdates.profile_version_action;
+  delete profileUpdates.profile_version_summary;
+  delete profileUpdates.profile_version;
+
+  const existingProfile = await findExistingPatientAppProfile(accountScopes);
+  const currentVersion = Number(existingProfile?.profile_version ?? 1);
+  const shouldKeepOldVersion = profileVersionAction === 'keep';
+
+  if (shouldKeepOldVersion) {
+    const nextHistoryEntry = {
+      version: currentVersion,
+      previous_version: currentVersion,
+      action: 'kept',
+      created_at: new Date(),
+      source: 'reviewed',
+      summary: profileVersionSummary || 'Pengguna memilih mempertahankan profil lama.',
+    };
+    const profile = existingProfile
+      ? await PatientAppProfile.findOneAndUpdate(
+          { _id: existingProfile._id },
+          {
+            $push: {
+              profile_version_history: {
+                ...nextHistoryEntry,
+                previous_version: currentVersion,
+              },
+            },
+          },
+          { new: true, runValidators: true }
+        ).lean()
+      : await PatientAppProfile.findOneAndUpdate(
+          { account_id: dataOwnerId, account_type: dataOwnerType },
+          {
+            $setOnInsert: { account_id: dataOwnerId, account_type: dataOwnerType },
+            $push: {
+              profile_version_history: {
+                ...nextHistoryEntry,
+                previous_version: currentVersion,
+              },
+            },
+          },
+          { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+        ).lean();
+
+    return res.json({
+      success: true,
+      data: {
+        account: publicAccount(account, accountType),
+        profile: profileData(profile),
+      },
+    });
+  }
+
   const aiProcessingConsent = profileUpdates.ai_processing_consent;
   delete profileUpdates.ai_processing_consent;
   if (aiProcessingConsent) {
@@ -371,14 +427,28 @@ export async function updatePatientAppProfile(req, res) {
       }
     }
   }
-  const existingProfile = await findExistingPatientAppProfile(accountScopes);
   const profileQuery = existingProfile
     ? { _id: existingProfile._id }
     : { account_id: dataOwnerId, account_type: dataOwnerType };
+  const nextVersion = Math.max(1, Number.isInteger(explicitProfileVersion) ? explicitProfileVersion : currentVersion + 1);
+  const versionHistoryEntry = {
+    version: nextVersion,
+    previous_version: currentVersion,
+    action: 'updated',
+    created_at: new Date(),
+    source: 'manual',
+    summary: profileVersionSummary || 'Profil diperbarui oleh pengguna.',
+  };
   const profile = await PatientAppProfile.findOneAndUpdate(
     profileQuery,
     {
-      $set: profileUpdates,
+      $set: {
+        ...profileUpdates,
+        profile_version: nextVersion,
+      },
+      $push: {
+        profile_version_history: versionHistoryEntry,
+      },
       $setOnInsert: { account_id: dataOwnerId, account_type: dataOwnerType },
     },
     { new: true, upsert: !existingProfile, setDefaultsOnInsert: true, runValidators: true }
@@ -4824,6 +4894,10 @@ function profileData(profile) {
     },
     notification_preferences: profile.notification_preferences,
     wearable_provider: profile.wearable_provider,
+    profile_version: Number(profile.profile_version ?? 1),
+    profile_version_history: Array.isArray(profile.profile_version_history)
+      ? profile.profile_version_history
+      : [],
     personal_factor_ranking: profile.personal_factor_ranking || [],
     updated_at: profile.updatedAt,
   };

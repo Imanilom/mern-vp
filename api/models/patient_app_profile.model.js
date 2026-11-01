@@ -82,6 +82,22 @@ const PatientAppProfileSchema = new mongoose.Schema(
       enum: ['none', 'polar_h10', 'apple_watch', 'garmin', 'fitbit', 'other'],
       default: 'none',
     },
+    profile_version: {
+      type: Number,
+      min: 1,
+      default: 1,
+    },
+    profile_version_history: {
+      type: [{
+        version: { type: Number, required: true, min: 1 },
+        previous_version: { type: Number, default: null, min: 1 },
+        action: { type: String, enum: ['updated', 'kept'], default: 'updated' },
+        created_at: { type: Date, default: Date.now },
+        source: { type: String, enum: ['manual', 'system', 'reviewed'], default: 'manual' },
+        summary: { type: String, trim: true, maxlength: 500, default: '' },
+      }],
+      default: [],
+    },
     personal_factor_ranking: {
       type: [{
         type: String,

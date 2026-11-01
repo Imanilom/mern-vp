@@ -435,6 +435,9 @@ class UserProfile {
   String notifQuietEnd;
   bool clinicianSharing;
   bool familySharing;
+  int profileVersion;
+  String profileVersionAction;
+  String profileVersionSummary;
 
   UserProfile({
     this.name = '',
@@ -463,6 +466,9 @@ class UserProfile {
     this.notifQuietEnd = '06:00',
     this.clinicianSharing = false,
     this.familySharing = false,
+    this.profileVersion = 1,
+    this.profileVersionAction = 'update',
+    this.profileVersionSummary = '',
   });
 
   int? get age {
@@ -513,6 +519,11 @@ class UserProfile {
         'share_with_clinician': clinicianSharing,
         'share_with_family': familySharing,
       },
+      if (profileVersion > 0) 'profile_version': profileVersion,
+      if (profileVersionAction.isNotEmpty)
+        'profile_version_action': profileVersionAction,
+      if (profileVersionSummary.trim().isNotEmpty)
+        'profile_version_summary': profileVersionSummary.trim(),
     };
   }
 
@@ -577,6 +588,9 @@ class UserProfile {
       emergencyContactPhone: json['emergency_contact_phone']?.toString() ?? '',
       clinicianSharing: sharing['share_with_clinician'] == true,
       familySharing: sharing['share_with_family'] == true,
+      profileVersion: (json['profile_version'] as num?)?.toInt() ?? 1,
+      profileVersionAction: 'update',
+      profileVersionSummary: '',
     );
   }
 

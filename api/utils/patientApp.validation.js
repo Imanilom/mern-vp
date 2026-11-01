@@ -22,6 +22,9 @@ const profileFields = new Set([
   'ai_processing_consent',
   'notification_preferences',
   'wearable_provider',
+  'profile_version',
+  'profile_version_action',
+  'profile_version_summary',
   'personal_factor_ranking',
 ]);
 const personalFactorTypes = new Set([
@@ -331,6 +334,23 @@ export function validateProfileUpdate(body) {
       validated.morning_summary_time = preferences.morning_summary_time;
     }
     result.notification_preferences = validated;
+  }
+  if ('profile_version' in body) {
+    const version = Number(body.profile_version);
+    if (!Number.isInteger(version) || version < 1) {
+      throw errorHandler(400, 'profile_version harus berupa bilangan bulat positif.');
+    }
+    result.profile_version = version;
+  }
+  if ('profile_version_action' in body) {
+    const action = body.profile_version_action;
+    if (!['keep', 'update'].includes(action)) {
+      throw errorHandler(400, 'profile_version_action harus salah satu dari: keep, update.');
+    }
+    result.profile_version_action = action;
+  }
+  if ('profile_version_summary' in body) {
+    result.profile_version_summary = optionalString(body.profile_version_summary, 'profile_version_summary', 500);
   }
   return result;
 }

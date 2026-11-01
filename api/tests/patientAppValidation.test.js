@@ -281,9 +281,22 @@ test('profile only accepts known and bounded patient fields', () => {
     data_sharing: { share_with_clinician: false },
     notification_preferences: { morning_summary: false, quiet_start: '21:30' },
   });
+  assert.deepEqual(
+    validateProfileUpdate({
+      profile_version: 2,
+      profile_version_action: 'update',
+      profile_version_summary: 'Profil disesuaikan dengan data baru',
+    }),
+    {
+      profile_version: 2,
+      profile_version_action: 'update',
+      profile_version_summary: 'Profil disesuaikan dengan data baru',
+    }
+  );
   assert.throws(() => validateProfileUpdate({ role: 'admin' }), { statusCode: 400 });
   assert.throws(() => validateProfileUpdate({ height_cm: 500 }), { statusCode: 400 });
   assert.throws(() => validateProfileUpdate({ timezone: 'Not/AZone' }), { statusCode: 400 });
+  assert.throws(() => validateProfileUpdate({ profile_version_action: 'archive' }), { statusCode: 400 });
 });
 
 test('profile stores a unique ordered ranking of supported personal factors', () => {
