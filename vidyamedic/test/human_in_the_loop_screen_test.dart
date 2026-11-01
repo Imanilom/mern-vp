@@ -170,6 +170,57 @@ void main() {
     expect(find.text('Dua arah nonadaptif'), findsNothing);
   });
 
+  testWidgets('deviation asks for context and offers not remembered and skip',
+      (tester) async {
+    final state = AppState()
+      ..rawCaparInsights = {
+        'capar': {
+          'latest_observation': {'activity': 'sitting'},
+          'mahalanobis': [
+            {
+              'available': true,
+              'activity': 'sitting',
+              'segment_id': '507f1f77bcf86cd799439011',
+            },
+          ],
+          'pedagogy': {
+            'follow_up': {
+              'status': 'requested',
+              'triggered_by_segment_id': '507f1f77bcf86cd799439011',
+            },
+            'reasoning_resolution': {
+              'status': 'awaiting_clarification',
+              'feedback_recorded': false,
+              'reinterpreted': false,
+            },
+          },
+        },
+      };
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    final openClarification =
+        find.byKey(const Key('hil-open-deviation-clarification'));
+    await tester.ensureVisible(openClarification);
+    await tester.tap(openClarification);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('hil-deviation-clarification-dialog')),
+      findsOneWidget,
+    );
+    expect(find.text('Kirim dan tinjau ulang'), findsOneWidget);
+    expect(find.text('Tidak ingat'), findsOneWidget);
+    expect(find.text('Lewati'), findsOneWidget);
+    expect(find.byKey(const Key('hil-clarification-activity')), findsOneWidget);
+    expect(
+      find.byKey(const Key('hil-clarification-activity-end')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('hil-clarification-note')), findsOneWidget);
+  });
+
   testWidgets('A shows HIL baseline counts separately from CAPAR baselines',
       (tester) async {
     final state = AppState()

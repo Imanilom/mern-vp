@@ -105,6 +105,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final noteController = TextEditingController(
       text: reportedContext['note']?.toString() ?? '',
     );
+    String? measurementCondition =
+        reportedContext['measurement_condition']?.toString();
     var isSubmitting = false;
     String? result;
 
@@ -120,7 +122,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   activityController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
                   const SnackBar(
-                    content: Text('Isi aktivitas sebelumnya atau pilih “Tidak ingat”.'),
+                    content: Text(
+                        'Isi aktivitas sebelumnya atau pilih “Tidak ingat”.'),
                   ),
                 );
                 return;
@@ -139,9 +142,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                     activityEndTime: status == 'skipped'
                         ? null
                         : activityEndController.text.trim(),
-                    contextNote: status == 'skipped'
-                        ? ''
-                        : noteController.text.trim(),
+                    measurementCondition:
+                        status == 'skipped' ? null : measurementCondition,
+                    contextNote:
+                        status == 'skipped' ? '' : noteController.text.trim(),
                   );
               if (!dialogContext.mounted) return;
               setDialogState(() => isSubmitting = false);
@@ -151,8 +155,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 final error = dialogContext.read<AppState>().dataError;
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
                   SnackBar(
-                    content:
-                        Text(error ?? 'Klarifikasi gagal disimpan. Silakan coba lagi.'),
+                    content: Text(error ??
+                        'Klarifikasi gagal disimpan. Silakan coba lagi.'),
                   ),
                 );
               }
@@ -167,13 +171,38 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Denyut jantung Anda saat ${_activityLabel(activity).toLowerCase()} berbeda dari baseline personal. Penyebabnya belum dapat dipastikan. Apakah ada aktivitas atau kondisi sebelum pengukuran yang belum tercatat?',
+                      'Denyut jantung Anda saat ${_hilActivityLabel(activity)} berbeda dari baseline personal. Penyebabnya belum dapat dipastikan. Apakah ada aktivitas atau kondisi sebelum pengukuran yang belum tercatat?',
                     ),
                     const SizedBox(height: 12),
                     const Text(
                       'Periksa informasi berikut, lalu koreksi atau tambahkan konteks bila diperlukan.',
                     ),
                     const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: const [
+                        'Istirahat',
+                        'Duduk',
+                        'Berjalan',
+                        'Olahraga',
+                        'Bekerja',
+                        'Makan',
+                      ].map((activityOption) {
+                        return ChoiceChip(
+                          key: Key('hil-activity-option-$activityOption'),
+                          label: Text(activityOption),
+                          selected: activityController.text == activityOption,
+                          onSelected: isSubmitting
+                              ? null
+                              : (_) => setDialogState(
+                                    () => activityController.text =
+                                        activityOption,
+                                  ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 8),
                     TextField(
                       key: const Key('hil-clarification-activity'),
                       controller: activityController,
@@ -192,10 +221,48 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                       maxLength: 80,
                       decoration: const InputDecoration(
                         labelText: 'Kapan aktivitas berakhir',
-                        hintText: 'Perkiraan waktu, mis. sekitar 10 menit sebelumnya',
+                        hintText:
+                            'Perkiraan waktu, mis. sekitar 10 menit sebelumnya',
                         border: OutlineInputBorder(),
                       ),
                       textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      key: const Key('hil-clarification-measurement-condition'),
+                      initialValue: measurementCondition,
+                      decoration: const InputDecoration(
+                        labelText:
+                            'Kondisi perangkat saat pengukuran (opsional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'worn_as_usual',
+                          child: Text('Dipakai seperti biasa'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'adjusted_during_event',
+                          child: Text('Disesuaikan saat itu'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'loose_or_moving',
+                          child: Text('Longgar atau banyak bergerak'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'not_worn',
+                          child: Text('Tidak dipakai'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'unknown',
+                          child: Text('Tidak yakin'),
+                        ),
+                      ],
+                      onChanged: isSubmitting
+                          ? null
+                          : (value) => setDialogState(
+                                () => measurementCondition = value,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -228,8 +295,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 ),
                 TextButton(
                   key: const Key('hil-clarification-not-remembered'),
-                  onPressed:
-                      isSubmitting ? null : () => save('not_remembered'),
+                  onPressed: isSubmitting ? null : () => save('not_remembered'),
                   child: const Text('Tidak ingat'),
                 ),
                 FilledButton(
@@ -1109,9 +1175,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               key: const Key('hil-one-way-result'),
             ),
           ],
-          if (_selectedScenario == 'C' &&
-              (followUpStatus == 'requested' ||
-                  resolution['feedback_recorded'] == true)) ...[
+          if (followUpStatus == 'requested' ||
+              resolution['feedback_recorded'] == true) ...[
             const SizedBox(height: 10),
             _humanInTheLoopCard(
               observation: latestObservation,
@@ -1120,6 +1185,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               resolutionStatus: resolutionStatus,
               resolution: resolution,
             ),
+          ],
+          if (_selectedScenario == 'C') ...[
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
@@ -1529,126 +1596,128 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 .toSet()
             : <String>{};
         return Container(
-        key: const Key('hil-human-loop-form'),
-        width: double.infinity,
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.borderLight),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Bantu lengkapi konteks pengukuran Anda',
-                style: AppTheme.font(size: 12, weight: FontWeight.w800)),
-            const SizedBox(height: 6),
-            Text(
-              'Denyut jantung Anda saat ${_hilActivityLabel(observation['activity'])} berbeda dari baseline personal. Penyebabnya belum dapat dipastikan. Apakah ada aktivitas atau kondisi sebelum pengukuran yang belum tercatat?',
-              style: AppTheme.font(
-                size: 10.5,
-                color: AppTheme.textSecondary,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Periksa informasi berikut, lalu koreksi atau tambahkan konteks bila diperlukan.',
-              style: AppTheme.font(
-                size: 10.5,
-                color: AppTheme.textSecondary,
-                height: 1.4,
-              ),
-            ),
-            if (!hasSegment)
-              Padding(
-                padding: const EdgeInsets.only(top: 9),
-                child: Text(
-                  'Klarifikasi belum dapat dikaitkan karena ID event deviasi tidak tersedia. Status tetap unresolved.',
-                  key: const Key('hil-no-event'),
-                  style: AppTheme.font(
-                    size: 10,
-                    color: AppTheme.statusOrange,
-                    height: 1.35,
-                  ),
-                ),
-              ),
-            const SizedBox(height: 9),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                key: const Key('hil-open-deviation-clarification'),
-                onPressed: !hasSegment
-                    ? null
-                    : () => _openDeviationClarification(
-                          segmentId: segmentId,
-                          activity: _hilActivityLabel(observation['activity']),
-                          reportedContext: reportedContext,
-                        ),
-                icon: const Icon(Icons.question_answer_outlined),
-                label: Text(reportedContext.isEmpty
-                    ? 'Lengkapi konteks pengukuran'
-                    : 'Koreksi atau tambahkan konteks'),
-              ),
-            ),
-            if (resolution['feedback_recorded'] == true &&
-                reportedContext.isNotEmpty) ...[
-              const SizedBox(height: 10),
+          key: const Key('hil-human-loop-form'),
+          width: double.infinity,
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.borderLight),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bantu lengkapi konteks pengukuran Anda',
+                  style: AppTheme.font(size: 12, weight: FontWeight.w800)),
+              const SizedBox(height: 6),
               Text(
-                'Konteks yang ditambahkan',
-                style: AppTheme.font(size: 10.5, weight: FontWeight.w800),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Aktivitas sebelumnya: ${reportedContext['activity_before_event'] == 'unknown' ? 'Tidak diingat' : reportedContext['activity_before_event'] ?? 'Belum diketahui'}'
-                '${reportedContext['activity_end_time']?.toString().isNotEmpty == true ? '\nAktivitas berakhir: ${reportedContext['activity_end_time']}' : ''}'
-                '${reportedContext['note']?.toString().isNotEmpty == true ? '\nKonteks tambahan: ${reportedContext['note']}' : ''}',
-                key: const Key('hil-reported-context'),
+                'Denyut jantung Anda saat ${_hilActivityLabel(observation['activity'])} berbeda dari baseline personal. Penyebabnya belum dapat dipastikan. Apakah ada aktivitas atau kondisi sebelum pengukuran yang belum tercatat?',
                 style: AppTheme.font(
-                  size: 10,
+                  size: 10.5,
                   color: AppTheme.textSecondary,
                   height: 1.4,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                resolution['reinterpreted'] == true
-                    ? 'Interpretasi diperbarui dengan konteks ini, tetapi hal tersebut tidak membuktikan penyebab deviasi.'
-                    : 'Interpretasi belum berubah karena konteks atau bukti yang tersedia belum cukup.',
-                key: const Key('hil-interpretation-change'),
+                'Periksa informasi berikut, lalu koreksi atau tambahkan konteks bila diperlukan.',
                 style: AppTheme.font(
-                  size: 10,
+                  size: 10.5,
                   color: AppTheme.textSecondary,
                   height: 1.4,
                 ),
               ),
-              Text(
-                'Yang masih belum diketahui: ${remainingUnknowns.isEmpty ? 'penyebab deviasi' : remainingUnknowns.join(', ')}. Penyebabnya belum dapat dipastikan.',
-                key: const Key('hil-remaining-unknowns'),
-                style: AppTheme.font(
-                  size: 10,
-                  color: AppTheme.textSecondary,
-                  height: 1.4,
+              if (!hasSegment)
+                Padding(
+                  padding: const EdgeInsets.only(top: 9),
+                  child: Text(
+                    'Klarifikasi belum dapat dikaitkan karena ID event deviasi tidak tersedia. Status tetap unresolved.',
+                    key: const Key('hil-no-event'),
+                    style: AppTheme.font(
+                      size: 10,
+                      color: AppTheme.statusOrange,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 9),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('hil-open-deviation-clarification'),
+                  onPressed: !hasSegment
+                      ? null
+                      : () => _openDeviationClarification(
+                            segmentId: segmentId,
+                            activity:
+                                _hilActivityLabel(observation['activity']),
+                            reportedContext: reportedContext,
+                          ),
+                  icon: const Icon(Icons.question_answer_outlined),
+                  label: Text(reportedContext.isEmpty
+                      ? 'Lengkapi konteks pengukuran'
+                      : 'Koreksi atau tambahkan konteks'),
                 ),
               ),
-            ],
-            if (resolutionStatus == 'unresolved' &&
-                resolution['feedback_recorded'] != true)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Status ${_statusLabel(resolutionStatus)}. Penyebab deviasi belum dapat dipastikan.',
-                  key: const Key('hil-post-clarification-status'),
+              if (resolution['feedback_recorded'] == true &&
+                  reportedContext.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Konteks yang ditambahkan',
+                  style: AppTheme.font(size: 10.5, weight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Aktivitas sebelumnya: ${reportedContext['activity_before_event'] == 'unknown' ? 'Tidak diingat' : reportedContext['activity_before_event'] ?? 'Belum diketahui'}'
+                  '${reportedContext['activity_end_time']?.toString().isNotEmpty == true ? '\nAktivitas berakhir: ${reportedContext['activity_end_time']}' : ''}'
+                  '${reportedContext['measurement_condition'] != null ? '\nKondisi perangkat: ${_measurementConditionLabel(reportedContext['measurement_condition'])}' : ''}'
+                  '${reportedContext['note']?.toString().isNotEmpty == true ? '\nKonteks tambahan: ${reportedContext['note']}' : ''}',
+                  key: const Key('hil-reported-context'),
                   style: AppTheme.font(
                     size: 10,
                     color: AppTheme.textSecondary,
                     height: 1.4,
                   ),
                 ),
-              ),
-          ],
-        ),
-      );
+                const SizedBox(height: 6),
+                Text(
+                  resolution['reinterpreted'] == true
+                      ? 'Interpretasi diperbarui dengan konteks ini, tetapi hal tersebut tidak membuktikan penyebab deviasi.'
+                      : 'Interpretasi belum berubah karena konteks atau bukti yang tersedia belum cukup.',
+                  key: const Key('hil-interpretation-change'),
+                  style: AppTheme.font(
+                    size: 10,
+                    color: AppTheme.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                Text(
+                  'Yang masih belum diketahui: ${remainingUnknowns.isEmpty ? 'penyebab deviasi' : remainingUnknowns.join(', ')}. Penyebabnya belum dapat dipastikan.',
+                  key: const Key('hil-remaining-unknowns'),
+                  style: AppTheme.font(
+                    size: 10,
+                    color: AppTheme.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+              if (resolutionStatus == 'unresolved' &&
+                  resolution['feedback_recorded'] != true)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Status ${_statusLabel(resolutionStatus)}. Penyebab deviasi belum dapat dipastikan.',
+                    key: const Key('hil-post-clarification-status'),
+                    style: AppTheme.font(
+                      size: 10,
+                      color: AppTheme.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
       });
 
   String _unknownContextLabel(String value) => switch (value) {
@@ -1666,6 +1735,15 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           'kondisi perangkat saat pengukuran',
         'evidence_conflict_remains' => 'perbedaan bukti yang masih ada',
         _ => value.replaceAll('_', ' '),
+      };
+
+  String _measurementConditionLabel(dynamic value) => switch (value) {
+        'worn_as_usual' => 'dipakai seperti biasa',
+        'adjusted_during_event' => 'disesuaikan saat itu',
+        'loose_or_moving' => 'longgar atau banyak bergerak',
+        'not_worn' => 'tidak dipakai',
+        'unknown' => 'tidak yakin',
+        _ => 'belum diketahui',
       };
 
   Widget _scenarioResultCard({

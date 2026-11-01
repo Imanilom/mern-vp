@@ -148,6 +148,7 @@ test('resolution waits for clarification and reinterprets only with relevant, su
   });
   assert.equal(awaiting.status, 'awaiting_clarification');
   assert.equal(awaiting.reinterpreted, false);
+  assert.ok(awaiting.remaining_unknowns.includes('cause_of_deviation'));
 
   const feedbackCheckIn = {
     activity: 'sitting',
@@ -168,6 +169,14 @@ test('resolution waits for clarification and reinterprets only with relevant, su
   });
   assert.equal(reconsidered.status, 'reinterpreted_with_limits');
   assert.equal(reconsidered.reinterpreted, true);
+  assert.equal(
+    reconsidered.remaining_unknowns.includes('cause_of_deviation'),
+    true,
+  );
+  assert.equal(
+    reconsidered.reported_context.activity_before_event,
+    'walking',
+  );
 
   const insufficient = buildPatientReasoningResolution({
     followUpStatus: 'already_answered',

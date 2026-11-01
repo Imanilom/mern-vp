@@ -751,7 +751,6 @@ test('deviation follow-up validates activity, mental context, and measurement co
   assert.equal(result.deviation_follow_up.measurement_condition, 'worn_as_usual');
 
   for (const [field, value] of [
-    ['activity_before_event', 'cycling'],
     ['mental_activity', 'panic'],
     ['measurement_condition', 'sensor_broken'],
   ]) {
@@ -760,6 +759,63 @@ test('deviation follow-up validates activity, mental context, and measurement co
       deviation_follow_up: {
         segment_id: '507f1f77bcf86cd799439011',
         [field]: value,
+      },
+    }), { statusCode: 400 });
+  }
+});
+
+test('HIL clarification records free-text activity, timing, unknown, and skipped states', () => {
+  const submitted = validateCheckIn({
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      clarification_status: 'submitted',
+      activity_before_event: 'Bersepeda santai',
+      activity_end_time: 'sekitar 10 menit sebelum pengukuran',
+      note: 'Sedang terburu-buru menuju kantor.',
+    },
+  }).deviation_follow_up;
+  assert.equal(submitted.activity_before_event, 'Bersepeda santai');
+  assert.equal(submitted.activity_end_time, 'sekitar 10 menit sebelum pengukuran');
+  assert.equal(submitted.note, 'Sedang terburu-buru menuju kantor.');
+
+  const notRemembered = validateCheckIn({
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      clarification_status: 'not_remembered',
+      activity_before_event: 'unknown',
+    },
+  }).deviation_follow_up;
+  assert.equal(notRemembered.clarification_status, 'not_remembered');
+  assert.equal(notRemembered.activity_before_event, 'unknown');
+
+  const skipped = validateCheckIn({
+    recorded_at: '2026-10-05T08:15:00.000Z',
+    deviation_follow_up: {
+      segment_id: '507f1f77bcf86cd799439011',
+      clarification_status: 'skipped',
+    },
+  }).deviation_follow_up;
+  assert.equal(skipped.clarification_status, 'skipped');
+  assert.equal('activity_before_event' in skipped, false);
+
+  for (const followUp of [
+    { clarification_status: 'submitted' },
+    {
+      clarification_status: 'not_remembered',
+      activity_before_event: 'walking',
+    },
+    {
+      clarification_status: 'skipped',
+      activity_before_event: 'walking',
+    },
+  ]) {
+    assert.throws(() => validateCheckIn({
+      recorded_at: '2026-10-05T08:15:00.000Z',
+      deviation_follow_up: {
+        segment_id: '507f1f77bcf86cd799439011',
+        ...followUp,
       },
     }), { statusCode: 400 });
   }

@@ -1594,6 +1594,7 @@ export function validateCheckIn(body) {
       && (
         resultFollowUp.activity_before_event
         || resultFollowUp.activity_end_time
+        || followUp.measurement_condition
         || note
       )
     ) {

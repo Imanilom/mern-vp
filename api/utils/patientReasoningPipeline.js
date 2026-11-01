@@ -33,6 +33,7 @@ export function buildPatientReasoningResolution({
     ? {
       activity_before_event: followUp.activity_before_event || null,
       activity_end_time: followUp.activity_end_time || null,
+      measurement_condition: followUp.measurement_condition || null,
       note: followUp.note || '',
       clarification_status: followUp.clarification_status || 'submitted',
     }

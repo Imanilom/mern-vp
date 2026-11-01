@@ -1782,6 +1782,7 @@ class AppState extends ChangeNotifier {
     required String clarificationStatus,
     String? activityBeforeEvent,
     String? activityEndTime,
+    String? measurementCondition,
     String contextNote = '',
   }) async {
     if (!isAuthenticated ||
@@ -1792,11 +1793,20 @@ class AppState extends ChangeNotifier {
     }
     final normalizedActivity = activityBeforeEvent?.trim() ?? '';
     final normalizedActivityEndTime = activityEndTime?.trim() ?? '';
+    final normalizedMeasurementCondition = measurementCondition?.trim();
     final normalizedNote = contextNote.trim();
     if (!const {'submitted', 'not_remembered', 'skipped'}
-        .contains(clarificationStatus) ||
+            .contains(clarificationStatus) ||
         normalizedActivity.length > 120 ||
         normalizedActivityEndTime.length > 80 ||
+        (normalizedMeasurementCondition != null &&
+            !const {
+              'worn_as_usual',
+              'adjusted_during_event',
+              'loose_or_moving',
+              'not_worn',
+              'unknown',
+            }.contains(normalizedMeasurementCondition)) ||
         normalizedNote.length > 500) {
       dataError = 'Jawaban klarifikasi tidak valid atau terlalu panjang.';
       notifyListeners();
@@ -1819,8 +1829,10 @@ class AppState extends ChangeNotifier {
     if (clarificationStatus == 'skipped' &&
         (normalizedActivity.isNotEmpty ||
             normalizedActivityEndTime.isNotEmpty ||
+            normalizedMeasurementCondition != null ||
             normalizedNote.isNotEmpty)) {
-      dataError = 'Konteks jawaban tidak boleh disertakan saat klarifikasi dilewati.';
+      dataError =
+          'Konteks jawaban tidak boleh disertakan saat klarifikasi dilewati.';
       notifyListeners();
       return false;
     }
@@ -1833,6 +1845,9 @@ class AppState extends ChangeNotifier {
     }
     if (normalizedActivityEndTime.isNotEmpty) {
       followUp['activity_end_time'] = normalizedActivityEndTime;
+    }
+    if (normalizedMeasurementCondition != null) {
+      followUp['measurement_condition'] = normalizedMeasurementCondition;
     }
     if (normalizedNote.isNotEmpty) followUp['note'] = normalizedNote;
     final response = await ApiService.createCheckIn({
