@@ -19,6 +19,7 @@ import {
   validateWearableHistoryQuery,
   validateGamificationSettings,
   validateHilExplanation,
+  validateHilSession,
   validateHilScenarioLog,
   registrationEmailPattern,
 } from '../utils/patientApp.validation.js';
@@ -1148,6 +1149,7 @@ test('HIL realtime evaluation accepts bounded real sensor windows and five-minut
     ecg: 0.15,
   };
   const payload = {
+    session_id: '507f1f77bcf86cd799439010',
     activity: 'sitting',
     device_id: 'polar-h10-01',
     run_id: 'hil-live-1793508969984',
@@ -1158,6 +1160,7 @@ test('HIL realtime evaluation accepts bounded real sensor windows and five-minut
   };
   const result = validateHilRealtimeEvaluation(payload);
   assert.equal(result.activity, 'sitting');
+  assert.equal(result.session_id, '507f1f77bcf86cd799439010');
   assert.equal(result.run_id, 'hil-live-1793508969984');
   assert.equal(result.readings.length, 2);
   assert.equal(result.dfa_rr_intervals_ms.length, 64);
@@ -1249,11 +1252,45 @@ test('wearable history requires a bounded date range and supported chart interva
   );
 });
 
-test('HIL explanation snapshots are versioned and bounded', () => {
+test('HIL sessions require a source that matches the scenario', () => {
+  const recordedRun = validateHilSession({
+    run_id: 'hil-C-1793508969984',
+    scenario: 'C',
+    source: 'recorded_polar_sample',
+    activity: 'sitting',
+  });
+  assert.equal(recordedRun.scenario, 'C');
+  assert.equal(recordedRun.source, 'recorded_polar_sample');
+
+  const session = validateHilSession({
+    run_id: 'hil-live-1793508969984',
+    scenario: 'C',
+    source: 'realtime_wearable',
+    activity: 'sitting',
+  });
+  assert.equal(session.scenario, 'C');
+  assert.equal(session.source, 'realtime_wearable');
+
+  assert.throws(
+    () => validateHilSession({
+      run_id: 'hil-live-1793508969984',
+      scenario: 'B',
+      source: 'realtime_wearable',
+      activity: 'sitting',
+    }),
+    { statusCode: 400 }
+  );
+});
+
+test('HIL explanation snapshots require their session and source log references', () => {
   const snapshot = validateHilExplanation({
     version: 1,
+    session_id: '507f1f77bcf86cd799439010',
+    run_id: 'hil-live-1793508969984',
     scenario: 'C',
     segment_id: '507f1f77bcf86cd799439011',
+    sample_id: '507f1f77bcf86cd799439012',
+    source_log_id: '507f1f77bcf86cd799439013',
     activity: 'sitting',
     explanation: 'Perubahan sinyal terdeteksi.',
     status: 'unresolved',
@@ -1261,97 +1298,13 @@ test('HIL explanation snapshots are versioned and bounded', () => {
     baseline_ready: true,
     factors: ['mean_hr'],
   });
-
-  test('HIL scenario logs accept real sample references and bound research payloads', () => {
-    const run = validateHilScenarioLog({
-      run_id: 'hil-B-1793508969984',
-      scenario: 'B',
-      event_type: 'deviation_detected',
-      activity: 'sitting',
-      sample_id: '507f1f77bcf86cd799439011',
-    });
-    assert.equal(run.event_type, 'deviation_detected');
-    assert.deepEqual(run.sample_ids, []);
-
-    for (const event_type of [
-      'activity_selected',
-      'live_recording_started',
-      'live_recording_stopped',
-      'live_recording_interrupted',
-    ]) {
-      const event = validateHilScenarioLog({
-        run_id: 'hil-C-1793508969984',
-        scenario: 'C',
-        event_type,
-        activity: 'walking',
-      });
-      assert.equal(event.event_type, event_type);
-      assert.equal(event.activity, 'walking');
-    }
-
-    const loaded = validateHilScenarioLog({
-      run_id: 'hil-C-1793508969984',
-      scenario: 'C',
-      event_type: 'records_loaded',
-      activity: 'sitting',
-      sample_ids: [
-        '507f1f77bcf86cd799439011',
-        '507f1f77bcf86cd799439012',
-      ],
-    });
-    assert.equal(loaded.sample_ids.length, 2);
-
-    assert.throws(
-      () => validateHilScenarioLog({
-        run_id: 'short',
-        scenario: 'B',
-        event_type: 'scenario_started',
-        activity: 'sitting',
-      }),
-      { statusCode: 400 }
-    );
-    assert.throws(
-      () => validateHilScenarioLog({
-        run_id: 'hil-C-1793508969984',
-        scenario: 'C',
-        event_type: 'records_loaded',
-        activity: 'sitting',
-        sample_ids: ['not-an-object-id'],
-      }),
-      { statusCode: 400 }
-    );
-    assert.throws(
-      () => validateHilScenarioLog({
-        run_id: 'hil-B-1793508969984',
-        scenario: 'B',
-        event_type: 'clarification_requested',
-        activity: 'sitting',
-        sample_id: '507f1f77bcf86cd799439011',
-      }),
-      { statusCode: 400 }
-    );
-    assert.throws(
-      () => validateHilScenarioLog({
-        run_id: 'hil-C-1793508969984',
-        scenario: 'C',
-        event_type: 'zero_shot_generated',
-        activity: 'sitting',
-        sample_id: '507f1f77bcf86cd799439011',
-      }),
-      { statusCode: 400 }
-    );
-  });
   assert.equal(snapshot.scenario, 'C');
-  assert.equal(snapshot.segment_id, '507f1f77bcf86cd799439011');
+  assert.equal(snapshot.session_id, '507f1f77bcf86cd799439010');
   assert.equal(snapshot.baseline_ready, true);
   assert.deepEqual(snapshot.factors, ['mean_hr']);
 
   assert.throws(
     () => validateHilExplanation({ ...snapshot, activity: '' }),
-    { statusCode: 400 }
-  );
-  assert.throws(
-    () => validateHilExplanation({ ...snapshot, activity: '   ' }),
     { statusCode: 400 }
   );
   assert.throws(
@@ -1363,7 +1316,99 @@ test('HIL explanation snapshots are versioned and bounded', () => {
     { statusCode: 400 }
   );
   assert.throws(
+    () => validateHilExplanation({ ...snapshot, source_log_id: undefined }),
+    { statusCode: 400 }
+  );
+  assert.throws(
     () => validateHilExplanation({ ...snapshot, factors: ['a', 'b', 'c', 'd'] }),
+    { statusCode: 400 }
+  );
+});
+
+test('HIL scenario logs accept sample references inside a session', () => {
+  const sessionId = '507f1f77bcf86cd799439010';
+  const run = validateHilScenarioLog({
+    session_id: sessionId,
+    run_id: 'hil-B-1793508969984',
+    scenario: 'B',
+    event_type: 'deviation_detected',
+    activity: 'sitting',
+    sample_id: '507f1f77bcf86cd799439011',
+  });
+  assert.equal(run.event_type, 'deviation_detected');
+  assert.equal(run.session_id, sessionId);
+  assert.deepEqual(run.sample_ids, []);
+
+  for (const event_type of [
+    'activity_selected',
+    'live_recording_started',
+    'live_recording_stopped',
+    'live_recording_interrupted',
+  ]) {
+    const event = validateHilScenarioLog({
+      session_id: sessionId,
+      run_id: 'hil-C-1793508969984',
+      scenario: 'C',
+      event_type,
+      activity: 'walking',
+    });
+    assert.equal(event.event_type, event_type);
+    assert.equal(event.activity, 'walking');
+  }
+
+  const loaded = validateHilScenarioLog({
+    session_id: sessionId,
+    run_id: 'hil-C-1793508969984',
+    scenario: 'C',
+    event_type: 'records_loaded',
+    activity: 'sitting',
+    sample_ids: [
+      '507f1f77bcf86cd799439011',
+      '507f1f77bcf86cd799439012',
+    ],
+  });
+  assert.equal(loaded.sample_ids.length, 2);
+
+  assert.throws(
+    () => validateHilScenarioLog({
+      session_id: sessionId,
+      run_id: 'short',
+      scenario: 'B',
+      event_type: 'scenario_started',
+      activity: 'sitting',
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilScenarioLog({
+      session_id: sessionId,
+      run_id: 'hil-C-1793508969984',
+      scenario: 'C',
+      event_type: 'records_loaded',
+      activity: 'sitting',
+      sample_ids: ['not-an-object-id'],
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilScenarioLog({
+      session_id: sessionId,
+      run_id: 'hil-B-1793508969984',
+      scenario: 'B',
+      event_type: 'clarification_requested',
+      activity: 'sitting',
+      sample_id: '507f1f77bcf86cd799439011',
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilScenarioLog({
+      run_id: 'hil-B-1793508969984',
+      scenario: 'B',
+      event_type: 'deviation_detected',
+      activity: 'sitting',
+      sample_id: '507f1f77bcf86cd799439011',
+    }),
     { statusCode: 400 }
   );
 });

@@ -437,8 +437,12 @@ export function validateHilExplanation(value) {
     value,
     new Set([
       'version',
+      'session_id',
+      'run_id',
       'scenario',
       'segment_id',
+      'sample_id',
+      'source_log_id',
       'activity',
       'explanation',
       'status',
@@ -451,10 +455,36 @@ export function validateHilExplanation(value) {
   if (value.version !== 1 || !['B', 'C'].includes(value.scenario)) {
     throw errorHandler(400, 'Identitas snapshot skenario HIL tidak valid.');
   }
+  if (
+    typeof value.session_id !== 'string'
+    || !/^[a-f\d]{24}$/i.test(value.session_id)
+  ) {
+    throw errorHandler(400, 'session_id snapshot HIL tidak valid.');
+  }
+  const runId = optionalString(value.run_id, 'value.run_id', 100);
+  if (!/^[a-zA-Z0-9._:-]{8,100}$/.test(runId)) {
+    throw errorHandler(400, 'run_id snapshot HIL tidak valid.');
+  }
   if (value.segment_id !== null
     && (typeof value.segment_id !== 'string'
       || !/^[a-f\d]{24}$/i.test(value.segment_id))) {
     throw errorHandler(400, 'segment_id snapshot HIL tidak valid.');
+  }
+  if (
+    value.sample_id !== undefined
+    && value.sample_id !== null
+    && (
+      typeof value.sample_id !== 'string'
+      || !/^[a-f\d]{24}$/i.test(value.sample_id)
+    )
+  ) {
+    throw errorHandler(400, 'sample_id snapshot HIL tidak valid.');
+  }
+  if (
+    typeof value.source_log_id !== 'string'
+    || !/^[a-f\d]{24}$/i.test(value.source_log_id)
+  ) {
+    throw errorHandler(400, 'source_log_id snapshot HIL tidak valid.');
   }
   const activity = optionalString(value.activity, 'value.activity', 48);
   if (!activity) {
@@ -469,8 +499,12 @@ export function validateHilExplanation(value) {
   const factors = validateStringList(value.factors, 'value.factors', 3, 80);
   return {
     version: 1,
+    session_id: value.session_id,
+    run_id: runId,
     scenario: value.scenario,
     segment_id: value.segment_id,
+    sample_id: value.sample_id ?? null,
+    source_log_id: value.source_log_id,
     activity,
     explanation,
     status,
@@ -480,11 +514,91 @@ export function validateHilExplanation(value) {
   };
 }
 
+function validateHilScenarioEventSnapshot(value) {
+  requireObject(value, 'value event skenario HIL');
+  rejectUnknownFields(
+    value,
+    new Set([
+      'version',
+      'scenario',
+      'segment_id',
+      'activity',
+      'explanation',
+      'status',
+      'quality_status',
+      'baseline_ready',
+      'factors',
+    ]),
+    'Field event skenario HIL'
+  );
+  if (value.version !== 1 || !['B', 'C'].includes(value.scenario)) {
+    throw errorHandler(400, 'Identitas event skenario HIL tidak valid.');
+  }
+  if (
+    value.segment_id !== null
+    && (typeof value.segment_id !== 'string'
+      || !/^[a-f\d]{24}$/i.test(value.segment_id))
+  ) {
+    throw errorHandler(400, 'segment_id event skenario HIL tidak valid.');
+  }
+  const activity = optionalString(value.activity, 'value.activity', 48);
+  if (!activity) throw errorHandler(400, 'activity event skenario HIL wajib diisi.');
+  const explanation = optionalString(value.explanation, 'value.explanation', 1200);
+  const status = optionalString(value.status, 'value.status', 64);
+  const qualityStatus = optionalString(value.quality_status, 'value.quality_status', 48);
+  if (typeof value.baseline_ready !== 'boolean') {
+    throw errorHandler(400, 'baseline_ready event skenario HIL harus boolean.');
+  }
+  return {
+    version: 1,
+    scenario: value.scenario,
+    segment_id: value.segment_id,
+    activity,
+    explanation,
+    status,
+    quality_status: qualityStatus,
+    baseline_ready: value.baseline_ready,
+    factors: validateStringList(value.factors, 'value.factors', 3, 80),
+  };
+}
+
+export function validateHilSession(value) {
+  requireObject(value, 'Sesi HIL');
+  rejectUnknownFields(
+    value,
+    new Set(['run_id', 'scenario', 'source', 'activity']),
+    'Field sesi HIL'
+  );
+  const runId = optionalString(value.run_id, 'run_id', 100);
+  if (!/^[a-zA-Z0-9._:-]{8,100}$/.test(runId)) {
+    throw errorHandler(400, 'run_id sesi HIL tidak valid.');
+  }
+  if (!['B', 'C'].includes(value.scenario)) {
+    throw errorHandler(400, 'scenario sesi HIL harus B atau C.');
+  }
+  if (!['recorded_polar_sample', 'realtime_wearable'].includes(value.source)) {
+    throw errorHandler(400, 'source sesi HIL tidak valid.');
+  }
+  if (!['sitting', 'standing', 'walking'].includes(value.activity)) {
+    throw errorHandler(400, 'activity sesi HIL tidak valid.');
+  }
+  if (value.scenario === 'B' && value.source !== 'recorded_polar_sample') {
+    throw errorHandler(400, 'Sumber data sesi HIL tidak sesuai dengan skenario.');
+  }
+  return {
+    run_id: runId,
+    scenario: value.scenario,
+    source: value.source,
+    activity: value.activity,
+  };
+}
+
 export function validateHilScenarioLog(value) {
   requireObject(value, 'Log skenario HIL');
   rejectUnknownFields(
     value,
     new Set([
+      'session_id',
       'run_id',
       'scenario',
       'event_type',
@@ -497,6 +611,12 @@ export function validateHilScenarioLog(value) {
     ]),
     'Field log skenario HIL'
   );
+  if (
+    typeof value.session_id !== 'string'
+    || !/^[a-f\d]{24}$/i.test(value.session_id)
+  ) {
+    throw errorHandler(400, 'session_id log skenario HIL tidak valid.');
+  }
   const runId = optionalString(value.run_id, 'run_id', 80);
   if (!/^[a-zA-Z0-9._:-]{8,80}$/.test(runId)) {
     throw errorHandler(400, 'run_id harus berisi 8-80 karakter yang valid.');
@@ -575,6 +695,7 @@ export function validateHilScenarioLog(value) {
   }
 
   const result = {
+    session_id: value.session_id,
     run_id: runId,
     scenario: value.scenario,
     event_type: value.event_type,
@@ -755,7 +876,7 @@ export function validatePatientEvent(body) {
     } else if (body.event_type === 'ema') {
       result.value = validateGuidedSessionEma(body.value);
     } else if (body.event_type === 'hil_scenario' && isPlainObject(body.value)) {
-      result.value = validateHilExplanation(body.value);
+      result.value = validateHilScenarioEventSnapshot(body.value);
     } else if (typeof body.value === 'string') {
       result.value = optionalString(body.value, 'value', 120);
     } else if (typeof body.value === 'number' && Number.isFinite(body.value)) {
@@ -1244,6 +1365,7 @@ export function validateHilRealtimeEvaluation(body) {
   rejectUnknownFields(
     body,
     new Set([
+      'session_id',
       'activity',
       'device_id',
       'run_id',
@@ -1254,6 +1376,12 @@ export function validateHilRealtimeEvaluation(body) {
     ]),
     'Field evaluasi HIL'
   );
+  if (
+    typeof body.session_id !== 'string'
+    || !/^[a-f\d]{24}$/i.test(body.session_id)
+  ) {
+    throw errorHandler(400, 'session_id evaluasi HIL tidak valid.');
+  }
   if (!['sitting', 'standing', 'walking'].includes(body.activity)) {
     throw errorHandler(400, 'activity harus sitting, standing, atau walking.');
   }
@@ -1343,6 +1471,7 @@ export function validateHilRealtimeEvaluation(body) {
   }
 
   const result = {
+    session_id: body.session_id,
     activity: body.activity,
     device_id: deviceId,
     run_id: runId,

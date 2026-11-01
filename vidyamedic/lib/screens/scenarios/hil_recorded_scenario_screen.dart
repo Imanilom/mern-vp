@@ -85,6 +85,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
 
   late final String _runId =
       'hil-${widget.scenario}-${DateTime.now().toUtc().microsecondsSinceEpoch}';
+  String? _sessionId;
   late String _activity =
       _activities.any((item) => item.$1 == widget.initialActivity)
           ? widget.initialActivity
@@ -122,17 +123,25 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
-    if (_isLiveMonitoring && !_isStoppingLiveMonitoring) {
-      unawaited(_saveLog(
-        'live_recording_stopped',
-        explanation: 'Perekaman dihentikan ketika halaman skenario ditutup.',
-      ));
-    }
+    if (_sessionId != null) unawaited(_completeRun());
     if (_ownsStream && _appState.wearableBridge.isStreaming) {
       unawaited(_appState.wearableBridge.stopStreaming());
     }
     _clarificationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _completeRun() async {
+    if (_isLiveMonitoring && !_isStoppingLiveMonitoring) {
+      await _saveLog(
+        'live_recording_stopped',
+        explanation: 'Perekaman dihentikan ketika halaman skenario ditutup.',
+      );
+    }
+    final response = await ApiService.completeHilSession(_runId);
+    if (!response.success) {
+      debugPrint('[HIL] Gagal menutup sesi $_runId: ${response.message}');
+    }
   }
 
   String _normalizeActivity(dynamic value) {
@@ -286,8 +295,47 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }
 
   Future<void> _startRun() async {
+    final session = await ApiService.createHilSession({
+      'run_id': _runId,
+      'scenario': widget.scenario,
+      'source': 'recorded_polar_sample',
+      'activity': _activity,
+    });
+    if (!mounted) {
+      if (session.success) {
+        await ApiService.completeHilSession(_runId);
+      }
+      return;
+    }
+    if (!session.success || session.data == null) {
+      setState(() {
+        _isLoading = false;
+        _error = session.message ?? 'Sesi HIL gagal dimulai.';
+      });
+      return;
+    }
+    _sessionId = session.data!['_id']?.toString();
+    if (_sessionId == null) {
+      final response = await ApiService.completeHilSession(_runId);
+      if (!response.success) {
+        debugPrint('[HIL] Gagal menutup sesi $_runId: ${response.message}');
+      }
+      setState(() {
+        _isLoading = false;
+        _error = 'ID sesi HIL tidak diterima dari server.';
+      });
+      return;
+    }
     final started = await _saveLog('scenario_started');
-    if (!started || !mounted) return;
+    if (!started || !mounted) {
+      if (!started) {
+        final response = await ApiService.completeHilSession(_runId);
+        if (!response.success) {
+          debugPrint('[HIL] Gagal menutup sesi $_runId: ${response.message}');
+        }
+      }
+      return;
+    }
     await _loadSamples();
   }
 
@@ -476,7 +524,13 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     String? clarification,
     String? explanation,
   }) async {
+    final sessionId = _sessionId;
+    if (sessionId == null) {
+      _showScenarioError('Log tidak dapat disimpan tanpa sesi HIL aktif.');
+      return false;
+    }
     final response = await ApiService.createHilScenarioLog({
+      'session_id': sessionId,
       'run_id': _runId,
       'scenario': widget.scenario,
       'event_type': eventType,
@@ -573,6 +627,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           explanationSnapshot: _explanationSnapshot(
             recommendation,
             status,
+            sourceLogId: feedbackLog['_id'].toString(),
+            sampleId: feedbackLog['sample_id'].toString(),
           ),
         );
         if (!saved && mounted) {
@@ -596,12 +652,18 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
 
   Map<String, dynamic> _explanationSnapshot(
     String explanation,
-    String status,
-  ) {
+    String status, {
+    required String sourceLogId,
+    required String sampleId,
+  }) {
     return {
       'version': 1,
+      'session_id': _sessionId,
+      'run_id': _runId,
       'scenario': widget.scenario,
       'segment_id': null,
+      'sample_id': sampleId,
+      'source_log_id': sourceLogId,
       'activity': _activity,
       'explanation': explanation,
       'status': status,
@@ -743,6 +805,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         explanationSnapshot: _explanationSnapshot(
           explanation,
           'candidate_deviation_with_participant_context',
+          sourceLogId: saved['_id'].toString(),
+          sampleId: saved['sample_id'].toString(),
         ),
       );
       if (!explanationSaved && mounted) {

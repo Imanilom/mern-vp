@@ -68,3 +68,5 @@ export default mongoose.model(
   'PatientScenarioEvent',
   PatientScenarioEventSchema
 );
+
+// belum memiliki hubungan dengna intereptasi dan klarifikasi, karena ini hanya log dari event yang dikirimkan oleh pasien melalui aplikasi.

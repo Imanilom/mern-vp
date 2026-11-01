@@ -9,6 +9,7 @@ import PatientHilExplanation from '../models/patient_hil_explanation.model.js';
 import PatientHilBaseline from '../models/patient_hil_baseline.model.js';
 import PatientHilScenarioLog from '../models/patient_hil_scenario_log.model.js';
 import PatientHilRealtimeEvaluation from '../models/patient_hil_realtime_evaluation.model.js';
+import PatientHilSession from '../models/patient_hil_session.model.js';
 import PatientGamificationProfile from '../models/patient_gamification_profile.model.js';
 import PatientRecordingCoin from '../models/patient_recording_coin.model.js';
 import PatientScenarioEvent from '../models/patient_scenario_event.model.js';
@@ -174,6 +175,7 @@ test('scenario questionnaires are scoped and unique per session and instrument',
 test('HIL explanations use a separate account-scoped collection', () => {
   assert.equal(PatientHilExplanation.collection.collectionName, 'patient_hil_explanations');
   assert.ok(PatientHilExplanation.schema.path('account_id'));
+  assert.ok(PatientHilExplanation.schema.path('session_id'));
   assert.ok(PatientHilExplanation.schema.path('explanation'));
   assert.deepEqual(
     PatientHilExplanation.schema.path('scenario').enumValues,
@@ -184,6 +186,31 @@ test('HIL explanations use a separate account-scoped collection', () => {
     && keys.account_type === 1
     && keys.createdAt === -1
   )));
+});
+
+test('HIL sessions scope repeatable runs without merging them into the profile', async () => {
+  assert.equal(PatientHilSession.collection.collectionName, 'patient_hil_sessions');
+  assert.ok(PatientHilSession.schema.path('run_id'));
+  assert.ok(PatientHilSession.schema.path('scenario'));
+  assert.ok(PatientHilSession.schema.path('source'));
+  assert.ok(PatientHilSession.schema.path('status'));
+  assert.ok(PatientHilSession.schema.indexes().some(([keys, options]) => (
+    keys.account_id === 1
+    && keys.account_type === 1
+    && keys.run_id === 1
+    && options.unique === true
+  )));
+  const sessionId = new PatientHilSession.base.Types.ObjectId();
+  const session = new PatientHilSession({
+    _id: sessionId,
+    account_id: new PatientHilSession.base.Types.ObjectId(),
+    account_type: 'user',
+    run_id: 'hil-live-1793508969984',
+    scenario: 'C',
+    source: 'realtime_wearable',
+    activity: 'sitting',
+  });
+  await session.validate();
 });
 
 test('HIL baseline windows are isolated from CAPAR baseline documents', () => {
@@ -213,6 +240,7 @@ test('HIL scenario paper logs are append-only and account-scoped', () => {
     'patient_hil_scenario_logs'
   );
   assert.ok(PatientHilScenarioLog.schema.path('run_id'));
+  assert.ok(PatientHilScenarioLog.schema.path('session_id'));
   assert.ok(PatientHilScenarioLog.schema.path('event_type'));
   assert.ok(
     PatientHilScenarioLog.schema.path('event_type').enumValues.includes(
@@ -237,6 +265,7 @@ test('HIL realtime evaluations persist scoped readings and analysis separately',
   );
   assert.ok(PatientHilRealtimeEvaluation.schema.path('readings'));
   assert.ok(PatientHilRealtimeEvaluation.schema.path('analysis'));
+  assert.ok(PatientHilRealtimeEvaluation.schema.path('session_id'));
   assert.ok(PatientHilRealtimeEvaluation.schema.indexes().some(([keys]) => (
     keys.account_id === 1
     && keys.account_type === 1
@@ -246,6 +275,7 @@ test('HIL realtime evaluations persist scoped readings and analysis separately',
   const evaluation = new PatientHilRealtimeEvaluation({
     account_id: new PatientHilRealtimeEvaluation.base.Types.ObjectId(),
     account_type: 'user',
+    session_id: new PatientHilRealtimeEvaluation.base.Types.ObjectId(),
     run_id: 'hil-live-1793508969984',
     activity: 'sitting',
     device_id: 'polar-h10-01',

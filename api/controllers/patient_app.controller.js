@@ -7,6 +7,7 @@ import PatientAppCheckIn from '../models/patient_app_checkin.model.js';
 import PatientAppAction from '../models/patient_app_action.model.js';
 import PatientAppEvent from '../models/patient_app_event.model.js';
 import PatientHilExplanation from '../models/patient_hil_explanation.model.js';
+import PatientHilSession from '../models/patient_hil_session.model.js';
 import PatientHilBaseline from '../models/patient_hil_baseline.model.js';
 import PatientHilScenarioLog from '../models/patient_hil_scenario_log.model.js';
 import PatientHilRealtimeEvaluation from '../models/patient_hil_realtime_evaluation.model.js';
@@ -91,6 +92,7 @@ import {
   validateWearableStream,
   validateWearableSample,
   validateHilExplanation,
+  validateHilSession,
   validateHilScenarioLog,
   validateHilRealtimeEvaluation,
   validateScenarioEvent,
@@ -2083,13 +2085,43 @@ export async function listPatientAppEvents(req, res) {
 }
 
 export async function createPatientHilExplanation(req, res) {
-  const { dataOwnerId, dataOwnerType } = await getAccount(req);
+  const { dataOwnerId, dataOwnerType, accountScopes } = await getAccount(req);
   const snapshot = validateHilExplanation(req.body);
+  const session = await PatientHilSession.findOne({
+    _id: snapshot.session_id,
+    ...accountScopeFilter(accountScopes),
+    run_id: snapshot.run_id,
+    scenario: snapshot.scenario,
+    status: 'active',
+  }).lean();
+  if (!session) {
+    throw errorHandler(409, 'Sesi HIL aktif untuk snapshot penjelasan tidak ditemukan.');
+  }
+  const sourceLog = await PatientHilScenarioLog.findOne({
+    _id: snapshot.source_log_id,
+    session_id: session._id,
+    run_id: session.run_id,
+    scenario: session.scenario,
+    sample_id: snapshot.sample_id,
+    event_type: session.scenario === 'B'
+      ? 'feedback_presented'
+      : 'zero_shot_generated',
+  }).lean();
+  if (!sourceLog) {
+    throw errorHandler(
+      409,
+      'Snapshot penjelasan harus merujuk ke feedback atau klarifikasi yang tersimpan dalam sesi yang sama.'
+    );
+  }
   const explanation = await PatientHilExplanation.create({
     account_id: dataOwnerId,
     account_type: dataOwnerType,
+    session_id: session._id,
+    run_id: session.run_id,
     scenario: snapshot.scenario,
     segment_id: snapshot.segment_id,
+    sample_id: snapshot.sample_id,
+    source_log_id: sourceLog._id,
     activity: snapshot.activity,
     explanation: snapshot.explanation,
     status: snapshot.status,
@@ -2118,13 +2150,67 @@ export async function listPatientHilExplanations(req, res) {
   res.json({ success: true, data: explanations });
 }
 
+export async function createPatientHilSession(req, res) {
+  const { dataOwnerId, dataOwnerType } = await getAccount(req);
+  const input = validateHilSession(req.body);
+  const existing = await PatientHilSession.findOne({
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+    run_id: input.run_id,
+  }).lean();
+  if (existing) {
+    throw errorHandler(409, 'run_id sesi HIL sudah pernah digunakan.');
+  }
+  const session = await PatientHilSession.create({
+    ...input,
+    account_id: dataOwnerId,
+    account_type: dataOwnerType,
+  });
+  res.status(201).json({ success: true, data: session });
+}
+
+export async function completePatientHilSession(req, res) {
+  const { accountScopes } = await getAccount(req);
+  const runId = String(req.params.runId || '');
+  if (!/^[a-zA-Z0-9._:-]{8,100}$/.test(runId)) {
+    throw errorHandler(400, 'run_id sesi HIL tidak valid.');
+  }
+  const session = await PatientHilSession.findOneAndUpdate(
+    {
+      ...accountScopeFilter(accountScopes),
+      run_id: runId,
+      status: 'active',
+    },
+    {
+      $set: { status: 'completed', completed_at: new Date() },
+    },
+    { new: true, runValidators: true }
+  ).lean();
+  if (!session) {
+    throw errorHandler(404, 'Sesi HIL aktif tidak ditemukan.');
+  }
+  res.json({ success: true, data: session });
+}
+
 export async function createPatientHilScenarioLog(req, res) {
   const { dataOwnerId, dataOwnerType, accountScopes } = await getAccount(req);
   const log = validateHilScenarioLog(req.body);
   const accountFilter = accountScopeFilter(accountScopes);
+  const session = await PatientHilSession.findOne({
+    _id: log.session_id,
+    ...accountFilter,
+    run_id: log.run_id,
+    scenario: log.scenario,
+    source: 'recorded_polar_sample',
+    status: 'active',
+  }).lean();
+  if (!session) {
+    throw errorHandler(409, 'Log skenario HIL harus terikat pada sesi rekaman aktif.');
+  }
   const storedLog = {
     account_id: dataOwnerId,
     account_type: dataOwnerType,
+    session_id: session._id,
     run_id: log.run_id,
     scenario: log.scenario,
     event_type: log.event_type,
@@ -3993,8 +4079,19 @@ export async function streamPatientAppWearableData(req, res) {
 }
 
 export async function evaluatePatientAppHilRealtime(req, res) {
-  const { dataOwnerId, dataOwnerType } = await getAccount(req);
+  const { dataOwnerId, dataOwnerType, accountScopes } = await getAccount(req);
   const evaluation = validateHilRealtimeEvaluation(req.body);
+  const session = await PatientHilSession.findOne({
+    _id: evaluation.session_id,
+    ...accountScopeFilter(accountScopes),
+    run_id: evaluation.run_id,
+    scenario: 'C',
+    source: 'realtime_wearable',
+    status: 'active',
+  }).lean();
+  if (!session) {
+    throw errorHandler(409, 'Evaluasi realtime harus terikat pada sesi HIL C aktif.');
+  }
   const hilBaselineWindows = await PatientHilBaseline.find({
     account_id: dataOwnerId,
     account_type: dataOwnerType,
@@ -4009,6 +4106,7 @@ export async function evaluatePatientAppHilRealtime(req, res) {
   const saved = await PatientHilRealtimeEvaluation.create({
     account_id: dataOwnerId,
     account_type: dataOwnerType,
+    session_id: session._id,
     run_id: evaluation.run_id,
     activity: evaluation.activity,
     device_id: evaluation.device_id,

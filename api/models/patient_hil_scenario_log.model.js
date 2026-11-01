@@ -36,6 +36,12 @@ const PatientHilScenarioLogSchema = new mongoose.Schema(
       required: true,
       enum: ['user', 'patient'],
     },
+    session_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PatientHilSession',
+      required: true,
+      index: true,
+    },
     run_id: { type: String, required: true, maxlength: 80, index: true },
     scenario: { type: String, required: true, enum: ['B', 'C'] },
     event_type: {

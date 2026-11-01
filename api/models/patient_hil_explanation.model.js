@@ -12,6 +12,13 @@ const PatientHilExplanationSchema = new mongoose.Schema(
       required: true,
       enum: ['user', 'patient'],
     },
+    session_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PatientHilSession',
+      required: true,
+      index: true,
+    },
+    run_id: { type: String, required: true, maxlength: 100 },
     scenario: {
       type: String,
       required: true,
@@ -20,6 +27,15 @@ const PatientHilExplanationSchema = new mongoose.Schema(
     segment_id: {
       type: mongoose.Schema.Types.ObjectId,
       default: null,
+    },
+    sample_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+    },
+    source_log_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PatientHilScenarioLog',
+      required: true,
     },
     activity: { type: String, required: true, trim: true, maxlength: 48 },
     explanation: {
@@ -45,6 +61,12 @@ const PatientHilExplanationSchema = new mongoose.Schema(
   { timestamps: true, versionKey: false, collection: 'patient_hil_explanations' }
 );
 
+PatientHilExplanationSchema.index({
+  account_id: 1,
+  account_type: 1,
+  session_id: 1,
+  createdAt: -1,
+});
 PatientHilExplanationSchema.index({
   account_id: 1,
   account_type: 1,

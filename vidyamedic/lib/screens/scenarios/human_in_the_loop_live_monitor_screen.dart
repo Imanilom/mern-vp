@@ -252,6 +252,7 @@ class _HumanInTheLoopLiveMonitorScreenState
     extends State<HumanInTheLoopLiveMonitorScreen> {
   late final String _runId =
       'hil-live-${DateTime.now().toUtc().microsecondsSinceEpoch}';
+  String? _sessionId;
 
   static const _activityOptions = <(String, String, String)>[
     ('sitting', 'Duduk', 'chair'),
@@ -276,6 +277,7 @@ class _HumanInTheLoopLiveMonitorScreenState
   int _simulationStep = 0;
   final List<double> _simulatedHrHistory = [];
   bool _isMonitoring = false;
+  bool _isStartingMonitoring = false;
   bool _isSimulation = false;
   bool _isStoppingMonitoring = false;
   bool _ownsStream = false;
@@ -313,17 +315,25 @@ class _HumanInTheLoopLiveMonitorScreenState
   void dispose() {
     _timer?.cancel();
     _appState.wearableBridge.removeListener(_handleWearableChange);
-    if (_isMonitoring && !_isSimulation && !_isStoppingMonitoring) {
-      unawaited(_saveHilEvent(
-        eventName: 'live_recording_stopped',
-        details: 'Pemantauan dihentikan ketika halaman ditutup.',
-        value: {'ctx': _activity, 'mode': _testMode},
-      ));
-    }
+    if (_sessionId != null) unawaited(_completeRun());
     if (_ownsStream && _appState.wearableBridge.isStreaming) {
       unawaited(_appState.wearableBridge.stopStreaming());
     }
     super.dispose();
+  }
+
+  Future<void> _completeRun() async {
+    if (_isMonitoring && !_isSimulation && !_isStoppingMonitoring) {
+      await _saveHilEvent(
+        eventName: 'live_recording_stopped',
+        details: 'Pemantauan dihentikan ketika halaman ditutup.',
+        value: {'ctx': _activity, 'mode': _testMode},
+      );
+    }
+    final response = await ApiService.completeHilSession(_runId);
+    if (!response.success) {
+      debugPrint('[HIL] Gagal menutup sesi $_runId: ${response.message}');
+    }
   }
 
   Map<String, dynamic> _map(dynamic value) =>
@@ -593,10 +603,12 @@ class _HumanInTheLoopLiveMonitorScreenState
   }
 
   Future<void> _startMonitoring() async {
-    if (_isStoppingMonitoring) return;
+    if (_isStoppingMonitoring || _isStartingMonitoring || _isMonitoring) return;
+    setState(() => _isStartingMonitoring = true);
     final bridge = _appState.wearableBridge;
     if (bridge.isDemoDevice) {
       setState(() {
+        _isStartingMonitoring = false;
         _latestStatus = 'Monitor HIL hanya menerima data sensor nyata.';
         _latestDetail =
             'Data sensor demo/sintetis tidak digunakan untuk perbandingan baseline.';
@@ -613,10 +625,14 @@ class _HumanInTheLoopLiveMonitorScreenState
           ),
         ),
       );
-      if (!mounted) return;
+      if (!mounted) {
+        _isStartingMonitoring = false;
+        return;
+      }
     }
     if (!bridge.isStreaming || bridge.isDemoDevice) {
       setState(() {
+        _isStartingMonitoring = false;
         _latestStatus = bridge.isDemoDevice
             ? 'Monitor HIL hanya menerima data sensor nyata.'
             : 'Streaming sensor belum aktif.';
@@ -627,11 +643,16 @@ class _HumanInTheLoopLiveMonitorScreenState
     }
     _ownsStream = startStreamHere;
     _isStoppingMonitoring = false;
-    _startTimer();
+    await _startTimer();
+    if (mounted) {
+      setState(() => _isStartingMonitoring = false);
+    } else {
+      _isStartingMonitoring = false;
+    }
   }
 
   void _startSimulation() {
-    if (_isMonitoring) return;
+    if (_isMonitoring || _isStartingMonitoring) return;
     final baseline = _baselineMeanHr ?? 70;
     _isSimulation = true;
     _ownsStream = false;
@@ -691,10 +712,30 @@ class _HumanInTheLoopLiveMonitorScreenState
     }
   }
 
-  void _startTimer() {
+  Future<void> _startTimer() async {
     _isSimulation = false;
     final bridge = _appState.wearableBridge;
     if (_isMonitoring || !bridge.isStreaming || bridge.isDemoDevice) return;
+    final session = await ApiService.createHilSession({
+      'run_id': _runId,
+      'scenario': 'C',
+      'source': 'realtime_wearable',
+      'activity': _activity,
+    });
+    if (!mounted) {
+      if (session.success) await ApiService.completeHilSession(_runId);
+      return;
+    }
+    if (!session.success || session.data == null) {
+      _showSaveError(session.message ?? 'Sesi HIL realtime gagal dimulai.');
+      return;
+    }
+    _sessionId = session.data!['_id']?.toString();
+    if (_sessionId == null) {
+      _showSaveError('ID sesi HIL realtime tidak diterima dari server.');
+      await ApiService.completeHilSession(_runId);
+      return;
+    }
     _isMonitoring = true;
     unawaited(_saveHilEvent(
       eventName: 'live_recording_started',
@@ -959,6 +1000,7 @@ class _HumanInTheLoopLiveMonitorScreenState
       });
     }
     final response = await ApiService.evaluateHilRealtime({
+      'session_id': _sessionId,
       'activity': _activity,
       'device_id': _appState.wearableBridge.deviceId,
       'run_id': _runId,
@@ -1232,8 +1274,10 @@ class _HumanInTheLoopLiveMonitorScreenState
     required Map<String, dynamic> value,
     String? intensity,
   }) async {
+    if (_sessionId == null) return false;
     final occurredAt = DateTime.now().toUtc();
-    final eventDetails = '$details ${jsonEncode(value)}';
+    final eventDetails =
+        '$details ${jsonEncode({...value, 'session_id': _sessionId})}';
     if (eventDetails.length > 300) {
       _showSaveError(
         'Event HIL tidak disimpan: detail melebihi batas 300 karakter.',
@@ -1334,7 +1378,9 @@ class _HumanInTheLoopLiveMonitorScreenState
                   key: Key('hil-live-activity-${option.$1}'),
                   label: Text(option.$2),
                   selected: _activity == option.$1,
-                  onSelected: _isMonitoring || _isStoppingMonitoring
+                  onSelected: _isMonitoring ||
+                          _isStartingMonitoring ||
+                          _isStoppingMonitoring
                       ? null
                       : (_) => unawaited(_selectActivity(option.$1)),
                 ),
@@ -1357,7 +1403,9 @@ class _HumanInTheLoopLiveMonitorScreenState
               Expanded(
                 child: FilledButton.icon(
                   key: const Key('hil-live-start'),
-                  onPressed: _isMonitoring || _isStoppingMonitoring
+                  onPressed: _isMonitoring ||
+                          _isStartingMonitoring ||
+                          _isStoppingMonitoring
                       ? null
                       : _startMonitoring,
                   icon: const Icon(Icons.play_arrow),
@@ -1382,7 +1430,9 @@ class _HumanInTheLoopLiveMonitorScreenState
             width: double.infinity,
             child: OutlinedButton.icon(
               key: const Key('hil-live-run-simulation'),
-              onPressed: _isMonitoring || _isStoppingMonitoring
+              onPressed: _isMonitoring ||
+                      _isStartingMonitoring ||
+                      _isStoppingMonitoring
                   ? null
                   : _startSimulation,
               icon: const Icon(Icons.science_outlined),

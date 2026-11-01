@@ -28,6 +28,12 @@ const PatientHilRealtimeEvaluationSchema = new mongoose.Schema(
       required: true,
       enum: ['user', 'patient'],
     },
+    session_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PatientHilSession',
+      required: true,
+      index: true,
+    },
     run_id: { type: String, required: true, maxlength: 100, index: true },
     activity: {
       type: String,

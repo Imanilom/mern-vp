@@ -5,11 +5,13 @@ import {
   createPatientAppEvent,
   createPatientAppAction,
   createPatientHilExplanation,
+  createPatientHilSession,
   createPatientHilScenarioLog,
   createPatientScenarioEvent,
   createPatientScenarioQuestionnaire,
   createPatientAppWearableSample,
   completePatientScenarioSession,
+  completePatientHilSession,
   deletePatientAppCheckIn,
   getPatientAppDailySummary,
   getPatientAppCheckIn,
@@ -132,6 +134,13 @@ router.post('/events', verifyToken, createPatientAppEvent);
 router.get('/events', verifyToken, listPatientAppEvents);
 router.post('/hil-explanations', verifyToken, scenarioWriteLimiter, createPatientHilExplanation);
 router.get('/hil-explanations', verifyToken, listPatientHilExplanations);
+router.post('/hil-sessions', verifyToken, scenarioWriteLimiter, createPatientHilSession);
+router.patch(
+  '/hil-sessions/:runId/complete',
+  verifyToken,
+  scenarioWriteLimiter,
+  completePatientHilSession
+);
 router.post('/hil-scenario-logs', verifyToken, scenarioWriteLimiter, createPatientHilScenarioLog);
 router.get('/hil-scenario-logs', verifyToken, listPatientHilScenarioLogs);
 router.get('/hil-baselines', verifyToken, getPatientAppHilBaselines);

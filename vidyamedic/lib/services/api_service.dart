@@ -407,6 +407,47 @@ class ApiService {
     }
   }
 
+  /// POST /api/patient-app/hil-sessions
+  static Future<ApiResponse<Map<String, dynamic>>> createHilSession(
+    Map<String, dynamic> session,
+  ) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(ApiConfig.hilSessionsEndpoint),
+            headers: _headers(),
+            body: jsonEncode(session),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal memulai sesi HIL: $e', statusCode: 0);
+    }
+  }
+
+  /// PATCH /api/patient-app/hil-sessions/:runId/complete
+  static Future<ApiResponse<Map<String, dynamic>>> completeHilSession(
+    String runId,
+  ) async {
+    try {
+      final res = await http
+          .patch(
+            Uri.parse('${ApiConfig.hilSessionsEndpoint}/$runId/complete'),
+            headers: _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _handleResponse<Map<String, dynamic>>(
+        res,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse.error('Gagal menutup sesi HIL: $e', statusCode: 0);
+    }
+  }
+
   /// GET /api/patient-app/hil-explanations
   static Future<ApiResponse<List<dynamic>>> getHilExplanations({
     int limit = 50,

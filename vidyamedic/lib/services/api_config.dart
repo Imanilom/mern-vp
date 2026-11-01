@@ -128,9 +128,11 @@ class ApiConfig {
   static String get eventsEndpoint => '$baseUrl/patient-app/events';
   static String get hilExplanationsEndpoint =>
       '$baseUrl/patient-app/hil-explanations';
+  static String get hilSessionsEndpoint => '$baseUrl/patient-app/hil-sessions';
   static String get hilScenarioLogsEndpoint =>
       '$baseUrl/patient-app/hil-scenario-logs';
-  static String get hilBaselinesEndpoint => '$baseUrl/patient-app/hil-baselines';
+  static String get hilBaselinesEndpoint =>
+      '$baseUrl/patient-app/hil-baselines';
   static String get actionsEndpoint => '$baseUrl/patient-app/actions';
   static String get wearableSamplesEndpoint =>
       '$baseUrl/patient-app/wearable/samples';
