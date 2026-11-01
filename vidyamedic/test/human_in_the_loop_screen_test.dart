@@ -136,15 +136,28 @@ void main() {
     expect(find.text('Dua arah nonadaptif'), findsNothing);
   });
 
-  testWidgets('A shows stored immature activity baseline counts', (tester) async {
+  testWidgets('A shows stored immature activity baseline counts',
+      (tester) async {
     final state = AppState()
       ..rawCaparInsights = {
         'capar': {
           'status': 'available',
           'baseline': {
             'contexts': [
-              {'activity': 'Berdiri', 'level': 'provisional', 'segment_count': 4},
-              {'activity': 'Berjalan', 'level': 'provisional', 'segment_count': 2},
+              {
+                'activity': 'Berdiri',
+                'level': 'provisional',
+                'segment_count': 4,
+                'scenario_readiness': {
+                  'ready': false,
+                  'valid_window_count': 4,
+                },
+              },
+              {
+                'activity': 'Berjalan',
+                'level': 'provisional',
+                'segment_count': 2
+              },
               {'activity': 'Duduk', 'level': 'provisional', 'segment_count': 2},
             ],
           },
@@ -155,8 +168,17 @@ void main() {
     await tester.pumpWidget(_app(state));
 
     expect(find.text('Belum ada data'), findsNothing);
-    expect(find.text('Belum siap HIL · 4 segmen CAPAR'), findsOneWidget);
-    expect(find.text('Belum siap HIL · 2 segmen CAPAR'), findsNWidgets(2));
+    expect(
+      find.text('Belum siap HIL · 4/5 menit · 4 segmen CAPAR'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Belum siap HIL · 0/5 menit · 2 segmen CAPAR'),
+      findsNWidgets(2),
+    );
+    expect(find.byKey(const Key('hil-scenarios-locked')), findsOneWidget);
+    expect(_scenarioTile(tester, 'B').onTap, isNull);
+    expect(_scenarioTile(tester, 'C').onTap, isNull);
   });
 
   testWidgets('A explains when AI consent prevents loading stored baselines',

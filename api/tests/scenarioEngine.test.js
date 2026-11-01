@@ -63,6 +63,23 @@ test('stored CAPAR baseline history exposes HIL readiness after five valid minut
   assert.equal(readiness.valid_duration_seconds, 300);
 });
 
+test('stored Mongo baseline windows combine with linked HIL windows without double counting', () => {
+  const baselineStart = Date.UTC(2026, 0, 5, 8);
+  const baselineHistory = {
+    window_timestamps: windows(4, baselineStart)
+      .map((segment) => segment.window_start),
+    q_signal_history: Array(4).fill(0.8),
+    q_complete_history: Array(4).fill(0.9),
+  };
+  const linkedWindows = windows(2, baselineStart + 3 * 60_000);
+
+  const readiness = assessScenarioBaseline(baselineHistory, linkedWindows);
+
+  assert.equal(readiness.ready, true);
+  assert.equal(readiness.valid_window_count, 5);
+  assert.equal(readiness.valid_duration_seconds, 300);
+});
+
 test('quality-gated cold-start windows count toward scenario readiness without CAPAR maturity', () => {
   const coldStartWindows = windows(5).map((segment) => ({
     ...segment,

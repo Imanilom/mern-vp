@@ -80,27 +80,30 @@ export function assessScenarioBaseline(baseline, baselineSegments = []) {
     };
   }
 
-  const timestamps = baselineSegments.length
-    ? baselineSegments.map((segment) => segment.window_start)
-    : Array.isArray(baseline.window_timestamps)
-      ? baseline.window_timestamps
-      : [];
-  const signals = baselineSegments.length
-    ? baselineSegments.map((segment) => segment.signal_quality_detail?.q_signal)
-    : Array.isArray(baseline.q_signal_history)
-      ? baseline.q_signal_history
-      : [];
-  const completeness = baselineSegments.length
-    ? baselineSegments.map((segment) => segment.signal_quality_detail?.q_complete)
-    : Array.isArray(baseline.q_complete_history)
-      ? baseline.q_complete_history
-      : [];
+  const windowsByMinute = new Map();
+  const timestamps = Array.isArray(baseline?.window_timestamps)
+    ? baseline.window_timestamps
+    : [];
+  timestamps.forEach((windowStart, index) => {
+    windowsByMinute.set(Math.floor(windowStart / 60_000), {
+      window_start: windowStart,
+      signal_quality_detail: {
+        q_signal: baseline.q_signal_history?.[index],
+        q_complete: baseline.q_complete_history?.[index],
+      },
+    });
+  });
+  baselineSegments.forEach((segment) => {
+    windowsByMinute.set(Math.floor(segment.window_start / 60_000), segment);
+  });
+  const windows = [...windowsByMinute.values()];
   const validDays = new Set();
   const validWindows = new Set();
 
-  timestamps.forEach((timestamp, index) => {
-    const signal = signals[index];
-    const complete = completeness[index];
+  windows.forEach((window) => {
+    const timestamp = window.window_start;
+    const signal = window.signal_quality_detail?.q_signal;
+    const complete = window.signal_quality_detail?.q_complete;
     if (
       !Number.isFinite(timestamp)
       || !Number.isFinite(signal)

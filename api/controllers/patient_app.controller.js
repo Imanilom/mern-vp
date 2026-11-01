@@ -1811,9 +1811,7 @@ export async function getPatientAppCaparInsights(req, res) {
                 segment,
               ])).values(),
             ];
-            return uniqueSegments.length
-              ? assessScenarioBaseline(baseline, uniqueSegments)
-              : assessScenarioBaseline(null);
+            return assessScenarioBaseline(baseline, uniqueSegments);
           })(),
           quality: baseline.maturity_detail?.bq ?? null,
           segment_count: baseline.segment_count,

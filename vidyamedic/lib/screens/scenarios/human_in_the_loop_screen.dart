@@ -40,7 +40,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final appState = context.read<AppState>();
-      if (appState.isAuthenticated && appState.rawCaparInsights == null) {
+      if (appState.isAuthenticated) {
         unawaited(appState.fetchCaparInsights());
       }
     });
@@ -342,6 +342,11 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     return readiness['ready'] == true;
   }
 
+  int _validScenarioWindowCount(Map<String, dynamic> baseline) {
+    final count = _map(baseline['scenario_readiness'])['valid_window_count'];
+    return count is num ? count.toInt() : 0;
+  }
+
   List<Map<String, dynamic>> _positiveZScoreFeatures(
     Map<String, dynamic> observation,
   ) {
@@ -437,6 +442,12 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       latestObservation['activity']?.toString(),
     );
     final scenariosReady = baselineContexts.any(_isScenarioBaselineReady);
+    final bestScenarioWindowCount = baselineContexts.fold<int>(
+      0,
+      (best, baseline) => best > _validScenarioWindowCount(baseline)
+          ? best
+          : _validScenarioWindowCount(baseline),
+    );
     final aiConsentRequired = caparStatus == 'consent_required';
     final followUpStatus =
         followUp['status']?.toString() ?? state.followUpPrompt.status;
@@ -532,7 +543,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 7, bottom: 10),
               child: Text(
-                'Skenario B/C terbuka setelah server mendeteksi 5 window satu menit berkualitas pada baseline HIL. Baseline CAPAR matang tidak diwajibkan.',
+                'Skenario B/C perlu 5 window HIL satu menit yang lolos quality gate pada satu aktivitas dan periode. Saat ini terdeteksi $bestScenarioWindowCount/5 window; jumlah segmen CAPAR saja tidak cukup. Muat ulang setelah data diproses.',
                 key: const Key('hil-scenarios-locked'),
                 style: AppTheme.font(
                   size: 10.5,
@@ -848,12 +859,17 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             );
             final validMinutes = readyContexts.fold<int>(
               0,
-              (total, context) =>
-                  total +
-                  ((_map(context['scenario_readiness'])['valid_window_count']
-                              as num?)
-                          ?.toInt() ??
-                      0),
+              (best, context) {
+                final windows = _validScenarioWindowCount(context);
+                return best > windows ? best : windows;
+              },
+            );
+            final bestWindowCount = contextsForActivity.fold<int>(
+              0,
+              (best, context) {
+                final windows = _validScenarioWindowCount(context);
+                return best > windows ? best : windows;
+              },
             );
             return Container(
               key: Key('hil-baseline-step-${index + 1}'),
@@ -886,25 +902,30 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   ),
                   const SizedBox(width: 9),
                   Expanded(
+                    flex: 2,
                     child: Text(
                       activity.$1,
                       style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
                     ),
                   ),
-                  Text(
-                    aiConsentRequired
-                        ? 'Menunggu persetujuan AI'
-                        : contextsForActivity.isEmpty
-                            ? 'Belum ada data'
-                            : isReady
-                                ? 'Siap HIL · $validMinutes menit · $count segmen'
-                                : 'Belum siap HIL · $count segmen CAPAR',
-                    style: AppTheme.font(
-                      size: 9.5,
-                      weight: FontWeight.w600,
-                      color: isReady
-                          ? AppTheme.statusGreen
-                          : AppTheme.textSecondary,
+                  Flexible(
+                    flex: 3,
+                    child: Text(
+                      aiConsentRequired
+                          ? 'Menunggu persetujuan AI'
+                          : contextsForActivity.isEmpty
+                              ? 'Belum ada data'
+                              : isReady
+                                  ? 'Siap HIL · $validMinutes menit · $count segmen CAPAR'
+                                  : 'Belum siap HIL · $bestWindowCount/5 menit · $count segmen CAPAR',
+                      textAlign: TextAlign.end,
+                      style: AppTheme.font(
+                        size: 9.5,
+                        weight: FontWeight.w600,
+                        color: isReady
+                            ? AppTheme.statusGreen
+                            : AppTheme.textSecondary,
+                      ),
                     ),
                   ),
                 ],
