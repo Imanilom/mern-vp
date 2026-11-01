@@ -62,3 +62,13 @@ test('LSTM autoencoder trains, persists reconstructable weights, and emits resid
   assert.equal(evaluation.reconstruction_errors.length, 60);
   assert.ok(Number.isFinite(evaluation.reconstruction_score));
 });
+
+test('LSTM autoencoder can train a one-minute test baseline', async () => {
+  const seed = buildQualityGatedMinuteSequence(minuteReadings());
+  const trained = await trainLstmAutoencoder([{ sequence: seed.sequence }], 1);
+
+  assert.equal(trained.training_window_count, 1);
+  assert.equal(trained.validation_window_count, 1);
+  assert.ok(trained.threshold > 0);
+  assert.ok(trained.weights.length > 0);
+});

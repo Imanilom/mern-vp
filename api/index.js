@@ -1,6 +1,6 @@
+import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import userRouter from "./routes/user.route.js";
@@ -43,7 +43,6 @@ import resilienceRouter from './routes/resilience.route.js';
 import patientAppRouter from './routes/patient_app.route.js';
 import { verifyToken } from './utils/verifyUser.js';
 import { isAllowedOrigin, parseAllowedOrigins } from './utils/corsOrigins.js';
-dotenv.config();
 
 const mongoUri = process.env.MONGO;
 const localMongoUri = "mongodb://127.0.0.1:27017/healthdevice";

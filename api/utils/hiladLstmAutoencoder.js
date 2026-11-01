@@ -2,7 +2,11 @@ import tf from '@tensorflow/tfjs';
 
 export const HILAD_WINDOW_SIZE = 60;
 export const HILAD_FEATURE_COUNT = 5;
-export const HILAD_MIN_TRAINING_WINDOWS = 20;
+const HILAD_TEST_MODE = process.env.HILAD_TEST_MODE === 'true';
+if (HILAD_TEST_MODE && process.env.NODE_ENV === 'production') {
+  throw new Error('HILAD_TEST_MODE must not be enabled in production.');
+}
+export const HILAD_MIN_TRAINING_WINDOWS = HILAD_TEST_MODE ? 1 : 20;
 export const HILAD_RETRAIN_WINDOW_INTERVAL = 20;
 
 const MAX_TRAINING_WINDOWS = 500;
@@ -153,16 +157,25 @@ function percentile(values, percentileValue) {
   return sorted[lowerIndex] + (sorted[upperIndex] - sorted[lowerIndex]) * fraction;
 }
 
-export async function trainLstmAutoencoder(sequences) {
-  if (sequences.length < HILAD_MIN_TRAINING_WINDOWS) {
+export async function trainLstmAutoencoder(
+  sequences,
+  minimumTrainingWindows = HILAD_MIN_TRAINING_WINDOWS
+) {
+  if (sequences.length < minimumTrainingWindows) {
     throw new Error(
-      `At least ${HILAD_MIN_TRAINING_WINDOWS} quality-gated minute windows are required.`
+      `At least ${minimumTrainingWindows} quality-gated minute windows are required.`
     );
   }
   const trainingSequences = sequences.slice(-MAX_TRAINING_WINDOWS);
-  const validationCount = Math.max(1, Math.floor(trainingSequences.length * 0.2));
-  const fitSequences = trainingSequences.slice(0, -validationCount);
-  const validationSequences = trainingSequences.slice(-validationCount);
+  const validationCount = trainingSequences.length > 1
+    ? Math.max(1, Math.floor(trainingSequences.length * 0.2))
+    : 0;
+  const fitSequences = validationCount
+    ? trainingSequences.slice(0, -validationCount)
+    : trainingSequences;
+  const validationSequences = validationCount
+    ? trainingSequences.slice(-validationCount)
+    : trainingSequences;
   const values = fitSequences.flatMap((item) => flattenRows(item.sequence));
   const input = tf.tensor3d(
     values,
