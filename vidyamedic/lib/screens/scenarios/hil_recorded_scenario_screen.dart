@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../providers/app_state.dart';
 import '../../services/api_service.dart';
@@ -112,6 +114,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   bool _isGeneratingExplanation = false;
   bool _isResultFrozen = false;
   bool _isStartingRun = false;
+  Map<String, dynamic>? _frozenOutcomeSnapshot;
   Timer? _refreshTimer;
   late final AppState _appState;
 
@@ -119,7 +122,52 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   void initState() {
     super.initState();
     _appState = context.read<AppState>();
-    unawaited(_startRun());
+    unawaited(_initialize());
+  }
+
+  Future<void> _initialize() async {
+    await _restoreFrozenOutcome();
+    if (mounted) await _startRun();
+  }
+
+  String get _freezeStorageKey {
+    final account = _appState.currentAccount;
+    final accountId = (account?['id'] ??
+            account?['_id'] ??
+            account?['email'] ??
+            _appState.userProfile.name)
+        .toString()
+        .trim();
+    final scope = accountId.isEmpty ? 'signed_in_account' : accountId;
+    return 'vidyamedic_hil_frozen_result_v1_'
+        '${Uri.encodeComponent(scope)}_${widget.scenario}';
+  }
+
+  Future<void> _restoreFrozenOutcome() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final encoded = preferences.getString(_freezeStorageKey);
+      if (encoded == null) return;
+      final decoded = jsonDecode(encoded);
+      if (decoded is! Map) {
+        throw const FormatException('Snapshot freeze HIL tidak valid.');
+      }
+      final snapshot = Map<String, dynamic>.from(decoded);
+      if (snapshot['scenario'] != widget.scenario ||
+          snapshot['summary'] is! String) {
+        throw const FormatException('Isi snapshot freeze HIL tidak valid.');
+      }
+      if (!mounted) return;
+      setState(() {
+        _frozenOutcomeSnapshot = snapshot;
+        _isResultFrozen = true;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Hasil freeze sebelumnya gagal dimuat: $error';
+      });
+    }
   }
 
   @override
@@ -409,7 +457,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     }
     _isRefreshingSamples = false;
     final deviationId = deviation?['_id']?.toString();
-    if (deviationId != null &&
+    if (!_isResultFrozen &&
+        deviationId != null &&
         !_handledDeviationSampleIds.contains(deviationId) &&
         _autoAttemptedDeviationSampleIds.add(deviationId)) {
       await _presentScenarioOutcome();
@@ -631,6 +680,14 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                 'belum tersimpan: ${appState.dataError ?? 'coba lagi.'}';
           });
         }
+        await _showScenarioResultDialog(
+          title: 'Skenario B · One way feedback',
+          summary: _buildObservationSummary(
+            deviationLog,
+            participantContext: null,
+          ),
+          recommendation: recommendation,
+        );
       }
       return;
     }
@@ -700,8 +757,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           final options = <String>[
-            'Saya sedang beraktivitas berat atau olahraga',
-            'Saya baru selesai berjalan / bergerak',
+            'Saya baru selesai olahraga, lalu duduk sebelum mulai rekaman',
+            'Saya baru selesai berjalan / bergerak, lalu duduk sebelum rekaman',
+            'Saya sedang beraktivitas berat atau olahraga saat rekaman',
             'Saya sedang stres / cemas',
             'Saya sedang beristirahat / tidur',
             'Saya sedang makan / minum',
@@ -829,7 +887,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       'Ringkasan fakta Skenario C HIL:',
       'Waktu sampel saat perubahan terdeteksi: $recordedAtLabel (WIB).',
       'Aktivitas yang dipilih untuk pengukuran: $activityLabel.',
-      'Klarifikasi peserta: "$clarification". Ini laporan peserta, bukan kesimpulan sensor.',
+      'Urutan konteks menurut peserta: $clarification. Ini laporan peserta, bukan kesimpulan sensor.',
       if (heartRate is num)
         'HR saat sampel: ${heartRate.toStringAsFixed(1)} bpm.',
       if (baselineMeanHr is num)
@@ -841,8 +899,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       if (zScore is num)
         'Jarak dari variasi yang biasa terlihat: ${zScore.abs().toStringAsFixed(1)} kali.',
       'Status sistem: ${selectedLog['algorithm_status'] ?? 'tidak tersedia'}.',
-      'Data sensor menunjukkan waktu dan perubahan HR; data ini tidak memastikan penyebab.',
+      'Interpretasi: HR yang lebih tinggi tercatat saat konteks pengukuran "$activityLabel". Peserta melaporkan konteks sebelumnya seperti di atas. Urutan waktunya memberi konteks, tetapi tidak membuktikan aktivitas tersebut sebagai penyebab perubahan HR.',
     ].join(' ');
+    if (mounted) {
+      setState(() => _zeroShotExplanation = localSummary);
+    }
     final evidence = <Map<String, dynamic>>[
       {
         'source': 'real_wearable_sample',
@@ -874,14 +935,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       },
     ];
     final response = await ApiService.generatePersonalChatAnswer(
-      question: 'Buat ringkasan penjelasan dalam bahasa Indonesia yang '
-          'melengkapi fakta Skenario C HIL. Sebutkan waktu sampel dalam WIB, '
-          'aktivitas yang dipilih, HR, baseline, selisih, ambang, status, dan '
-          'klarifikasi peserta. Jangan menghilangkan atau mengubah angka dan '
-          'waktu dari fakta. Jelaskan perbedaan antara konteks pengukuran '
-          'dengan laporan peserta bila berbeda. Bedakan fakta sensor dari '
-          'laporan peserta; klarifikasi tidak membuktikan penyebab. Jangan '
-          'membuat diagnosis atau rekomendasi medis. Gunakan kalimat sederhana.',
+      question: 'Jelaskan observasi Skenario C HIL. Cantumkan waktu sampel '
+          'WIB, aktivitas pengukuran, HR, baseline, selisih, ambang, status, '
+          'dan klarifikasi peserta. Pertahankan angka dan waktu persis. '
+          'Bedakan konteks pengukuran dari laporan peserta; klarifikasi bukan '
+          'bukti penyebab. Tanpa diagnosis atau saran medis.',
       evidence: evidence,
       localSummary: localSummary.length > 1200
           ? localSummary.substring(0, 1200)
@@ -900,9 +958,14 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       setState(() {
         _isGeneratingExplanation = false;
         _error = savedFailure == null
-            ? '$message Log kegagalan juga belum tersimpan.'
-            : message;
+            ? 'Ringkasan faktual tetap ditampilkan, tetapi $message Log kegagalan juga belum tersimpan.'
+            : 'Ringkasan faktual tetap ditampilkan, tetapi penjelasan AI gagal dibuat: $message';
       });
+      await _showScenarioResultDialog(
+        title: 'Skenario C · Ringkasan klarifikasi',
+        summary: localSummary,
+        recommendation: _hilRecommendation,
+      );
       return;
     }
 
@@ -945,6 +1008,84 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         });
       }
     }
+    await _showScenarioResultDialog(
+      title: 'Skenario C · Ringkasan klarifikasi',
+      summary: explanation,
+      recommendation: _hilRecommendation,
+    );
+  }
+
+  String get _hilRecommendation =>
+      'Duduk atau beristirahat dengan tenang selama beberapa menit, lalu ukur kembali denyut saat kondisi stabil. Catat bila baru selesai berolahraga atau bergerak. Jika denyut tetap tinggi, terasa tidak biasa, atau disertai nyeri dada, sesak napas berat, pusing berat, atau pingsan, segera cari bantuan medis. Ini saran umum, bukan diagnosis.';
+
+  String _buildObservationSummary(
+    Map<String, dynamic> log, {
+    required String? participantContext,
+  }) {
+    final observedAt = DateTime.tryParse(log['observed_at']?.toString() ?? '');
+    final heartRate = log['heart_rate_bpm'];
+    final baseline = log['baseline_mean_hr'];
+    final delta =
+        heartRate is num && baseline is num ? heartRate - baseline : null;
+    return [
+      if (observedAt != null)
+        'Waktu sampel: ${formatHilWibDateTime(observedAt)}.',
+      'Aktivitas saat pengukuran: ${_activityLabel(_activity)}.',
+      if (heartRate is num)
+        'Denyut terukur: ${heartRate.toStringAsFixed(1)} bpm.',
+      if (baseline is num)
+        'Baseline pribadi: ${baseline.toStringAsFixed(1)} bpm.',
+      if (delta != null)
+        'Selisih dari baseline: ${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(1)} bpm.',
+      if (log['threshold_bpm'] is num)
+        'Ambang deviasi: ${(log['threshold_bpm'] as num).toStringAsFixed(1)} bpm.',
+      'Status: anomali terdeteksi dibandingkan baseline pribadi. Ini observasi, bukan diagnosis.',
+      if (participantContext != null)
+        'Klarifikasi peserta: $participantContext. Informasi ini adalah laporan peserta, bukan bukti penyebab.',
+    ].join('\n');
+  }
+
+  Future<void> _showScenarioResultDialog({
+    required String title,
+    required String summary,
+    required String recommendation,
+  }) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('hil-recorded-result-dialog'),
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Ringkasan observasi',
+                style: AppTheme.font(size: 12, weight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(summary),
+              const SizedBox(height: 16),
+              Text(
+                'Saran umum',
+                style: AppTheme.font(size: 12, weight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(recommendation),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Mengerti'),
+          ),
+        ],
+      ),
+    );
   }
 
   Map<String, dynamic> _map(dynamic value) =>
@@ -1099,13 +1240,109 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     );
   }
 
-  void _toggleResultFreeze() {
-    setState(() {
-      _isResultFrozen = !_isResultFrozen;
-    });
+  Future<void> _toggleResultFreeze() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (_isResultFrozen) {
+        final removed = await preferences.remove(_freezeStorageKey);
+        if (!removed && preferences.containsKey(_freezeStorageKey)) {
+          throw StateError('Freeze gagal dibatalkan di perangkat.');
+        }
+        if (!mounted) return;
+        setState(() {
+          _isResultFrozen = false;
+          _frozenOutcomeSnapshot = null;
+        });
+        return;
+      }
+
+      final sample = _selectedSample;
+      final recordedAt = DateTime.tryParse(
+        sample?['recorded_at']?.toString() ?? '',
+      );
+      final clarification = _clarificationController.text.trim();
+      final summary = widget.scenario == 'B'
+          ? _recommendation ?? 'Feedback belum tersedia.'
+          : _zeroShotExplanation ??
+              (clarification.isNotEmpty
+                  ? clarification
+                  : 'Anomali terdeteksi; klarifikasi peserta belum dikirim.');
+      final snapshot = <String, dynamic>{
+        'scenario': widget.scenario,
+        'summary': summary,
+        'activity': _activity,
+        'sample_id': sample?['_id']?.toString(),
+        'recorded_at': recordedAt?.toIso8601String(),
+        'heart_rate_bpm': sample == null ? null : _sampleHr(sample),
+        'baseline_mean_hr': _baselineMean,
+        'clarification': clarification,
+        'frozen_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      final saved = await preferences.setString(
+        _freezeStorageKey,
+        jsonEncode(snapshot),
+      );
+      if (!saved) throw StateError('Freeze hasil gagal disimpan di perangkat.');
+      if (!mounted) return;
+      setState(() {
+        _frozenOutcomeSnapshot = snapshot;
+        _isResultFrozen = true;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = 'Freeze hasil gagal disimpan: $error');
+    }
   }
 
   Widget _scenarioOutcome() {
+    final frozen = _frozenOutcomeSnapshot;
+    if (_isResultFrozen && frozen != null) {
+      final recordedAt = DateTime.tryParse(
+        frozen['recorded_at']?.toString() ?? '',
+      );
+      final heartRate = frozen['heart_rate_bpm'];
+      final baselineMeanHr = frozen['baseline_mean_hr'];
+      return Card(
+        key: const Key('hil-recorded-frozen-result'),
+        color: AppTheme.primarySoft,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Skenario ${widget.scenario} · hasil dibekukan',
+                      style: AppTheme.font(size: 12, weight: FontWeight.w800),
+                    ),
+                  ),
+                  TextButton.icon(
+                    key: const Key('hil-recorded-unfreeze-result'),
+                    onPressed: _toggleResultFreeze,
+                    icon: const Icon(Icons.lock_open_rounded),
+                    label: const Text('Batal freeze'),
+                  ),
+                ],
+              ),
+              if (recordedAt != null)
+                Text('Waktu sampel: ${formatHilWibDateTime(recordedAt)}'),
+              if (frozen['activity'] != null)
+                Text('Aktivitas pengukuran: '
+                    '${_activityLabel(frozen['activity'].toString())}'),
+              if (heartRate is num)
+                Text('HR saat dibekukan: ${heartRate.toStringAsFixed(1)} bpm'),
+              if (baselineMeanHr is num)
+                Text('Baseline pribadi: '
+                    '${baselineMeanHr.toStringAsFixed(1)} bpm'),
+              const SizedBox(height: 8),
+              Text(frozen['summary']?.toString() ?? ''),
+            ],
+          ),
+        ),
+      );
+    }
     if (_recommendation != null) {
       return Card(
         key: const Key('hil-recorded-scenario-B-result'),
