@@ -37,6 +37,40 @@ test('sanitizes evidence fields before forwarding them to Gemini', () => {
   ]);
 });
 
+test('accepts HIL wearable, baseline, and participant clarification evidence', () => {
+  const result = sanitizePersonalChatEvidence([
+    {
+      source: 'real_wearable_sample',
+      facts: 'Sampel Polar H10 aktivitas walking.',
+      metric: 'mean_hr',
+      value: 112,
+      unit: 'bpm',
+      status: 'candidate_deviation',
+    },
+    {
+      source: 'hil_personal_baseline',
+      facts: 'Baseline HIL untuk aktivitas walking.',
+      metric: 'mean_hr',
+      value: 75,
+      unit: 'bpm',
+      status: 'ready',
+    },
+    {
+      source: 'participant_clarification',
+      facts: 'Saya baru selesai berjalan / bergerak',
+      metric: 'context',
+      value: 'Saya baru selesai berjalan / bergerak',
+      unit: '',
+      status: 'self_reported',
+    },
+  ]);
+
+  assert.equal(result?.length, 3);
+  assert.equal(result?.[0].source, 'real_wearable_sample');
+  assert.equal(result?.[1].source, 'hil_personal_baseline');
+  assert.equal(result?.[2].source, 'participant_clarification');
+});
+
 test('rejects malformed, nested, or oversized evidence', () => {
   assert.equal(sanitizePersonalChatEvidence(undefined), null);
   assert.equal(sanitizePersonalChatEvidence([null]), null);

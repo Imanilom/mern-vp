@@ -195,8 +195,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     final parts = <String>[];
     final hr = log['heart_rate_bpm'];
     final baseline = log['baseline_mean_hr'];
-    if (hr is num) parts.add('HR ${hr.toStringAsFixed(1)} bpm');
-    if (baseline is num) parts.add('baseline ${baseline.toStringAsFixed(1)} bpm');
+    if (hr is num) {
+      parts.add('HR ${hr.toStringAsFixed(1)} bpm');
+    }
+    if (baseline is num) {
+      parts.add('baseline ${baseline.toStringAsFixed(1)} bpm');
+    }
     final recommendation = log['recommendation']?.toString().trim();
     if (recommendation?.isNotEmpty == true) {
       parts.add(recommendation!);
@@ -515,7 +519,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }) async {
     final sessionId = _sessionId;
     if (sessionId == null) {
-      debugPrint('[HIL] Log $eventType tidak dapat disimpan tanpa sesi HIL aktif.');
+      debugPrint(
+          '[HIL] Log $eventType tidak dapat disimpan tanpa sesi HIL aktif.');
       return false;
     }
     final response = await ApiService.createHilScenarioLog({
@@ -685,11 +690,108 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     return consent == true;
   }
 
+  Future<void> _openClarificationPicker() async {
+    String? choice = _clarificationController.text.trim().isNotEmpty
+        ? _clarificationController.text.trim()
+        : null;
+    final selected = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final options = <String>[
+            'Saya sedang beraktivitas berat atau olahraga',
+            'Saya baru selesai berjalan / bergerak',
+            'Saya sedang stres / cemas',
+            'Saya sedang beristirahat / tidur',
+            'Saya sedang makan / minum',
+            'Saya tidak ingat / tidak yakin',
+            'Tidak ada faktor khusus yang memengaruhi denyut',
+          ];
+          return AlertDialog(
+            title: const Text('Pilih faktor yang mungkin memengaruhi deviasi'),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 360),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: options.map((option) {
+                    final selected = choice == option;
+                    return InkWell(
+                      onTap: () => setDialogState(() => choice = option),
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color:
+                                selected ? AppTheme.primary : AppTheme.divider,
+                          ),
+                          color: selected ? AppTheme.primarySoft : null,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                option,
+                                style: AppTheme.font(
+                                  size: 11,
+                                  weight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            if (selected)
+                              Icon(
+                                Icons.check_circle,
+                                color: AppTheme.primary,
+                                size: 18,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                onPressed: choice == null
+                    ? null
+                    : () => Navigator.pop(dialogContext, choice),
+                child: const Text('Simpan pilihan'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (!mounted || selected == null) return;
+    setState(() {
+      _clarificationController.text = selected;
+      _clarificationController.selection = TextSelection.collapsed(
+        offset: _clarificationController.text.length,
+      );
+    });
+  }
+
   Future<void> _submitClarification() async {
     final clarification = _clarificationController.text.trim();
     final sample = _selectedSample;
     if (clarification.isEmpty || sample == null) {
-      setState(() => _error = 'Tulis informasi yang mungkin terlewat sistem.');
+      setState(() =>
+          _error = 'Pilih salah satu faktor yang mungkin memengaruhi deviasi.');
       return;
     }
     if (!await _confirmZeroShotTransfer() || !mounted) return;
@@ -1038,20 +1140,36 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
             ),
             const SizedBox(height: 5),
             const Text(
-              'Apakah ada informasi yang mungkin terlewat sistem saat perubahan denyut ini terjadi?',
+              'Pilih faktor yang mungkin memengaruhi deviasi saat perubahan denyut ini terjadi.',
             ),
-            const SizedBox(height: 8),
-            TextField(
-              key: const Key('hil-recorded-clarification-input'),
-              controller: _clarificationController,
-              maxLength: 500,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                hintText:
-                    'Contoh: saya baru selesai berjalan atau merasa stres',
-                border: OutlineInputBorder(),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              key: const Key('hil-recorded-clarification-picker'),
+              onPressed:
+                  _isGeneratingExplanation ? null : _openClarificationPicker,
+              icon: const Icon(Icons.fact_check_outlined),
+              label: Text(
+                _clarificationController.text.trim().isNotEmpty
+                    ? 'Ubah pilihan klarifikasi'
+                    : 'Pilih klarifikasi',
               ),
             ),
+            if (_clarificationController.text.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primarySoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _clarificationController.text.trim(),
+                  style: AppTheme.font(size: 10.5),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
             FilledButton.icon(
               key: const Key('hil-recorded-submit-clarification'),
               onPressed: _isGeneratingExplanation ? null : _submitClarification,

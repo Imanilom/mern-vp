@@ -46,7 +46,10 @@ const allowedEvidenceFields = new Set([
 const allowedEvidenceSources = new Set([
   'check_in',
   'wearable_sample',
+  'real_wearable_sample',
   'personal_baseline',
+  'hil_personal_baseline',
+  'participant_clarification',
   'capar_summary',
   'capar_history_summary',
   'manual_activity_summary',
