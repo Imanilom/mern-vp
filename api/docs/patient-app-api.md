@@ -175,7 +175,7 @@ separate from sensor-derived findings.
 - `POST /api/patient-app/hil-explanations`
 - `GET /api/patient-app/hil-explanations?limit=50` (`limit`: 1-100)
 - `POST /api/patient-app/hil-scenario-logs`
-- `GET /api/patient-app/hil-scenario-logs?run_id=<id>&limit=100`
+- `GET /api/patient-app/hil-scenario-logs?run_id=<id>&session_id=<id>&limit=100`
 - `POST /api/patient-app/wearable/hil-realtime` (hasil evaluasi dan input tersimpan di `patient_hil_realtime_evaluations`)
 - `GET /api/patient-app/wearable/hil-realtime?run_id=<id>&limit=100`
 - `GET /api/patient-app/hil-baselines`

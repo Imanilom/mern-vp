@@ -920,8 +920,14 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchHilScenarioLogs({int limit = 100}) async {
-    final res = await ApiService.getHilScenarioLogs(limit: limit);
+  Future<void> fetchHilScenarioLogs({
+    int limit = 100,
+    String? sessionId,
+  }) async {
+    final res = await ApiService.getHilScenarioLogs(
+      limit: limit,
+      sessionId: sessionId,
+    );
     if (res.success && res.data != null) {
       hilScenarioLogs = res.data!
           .whereType<Map>()

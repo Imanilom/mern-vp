@@ -168,9 +168,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         'live_recording_stopped' => 'Rekaman sensor dihentikan',
         'live_recording_interrupted' => 'Rekaman sensor terputus',
         'records_loaded' => 'Data sensor dimuat',
-        'deviation_detected' => 'Perubahan di luar pola biasa terdeteksi',
-        'feedback_presented' => 'Saran ditampilkan',
-        'clarification_requested' => 'Sistem meminta klarifikasi',
+        'deviation_detected' => 'Anomali terdeteksi',
+        'feedback_presented' => 'One way feedback',
+        'clarification_requested' => 'Klarifikasi diminta',
         'clarification_submitted' => 'Klarifikasi dikirim',
         'zero_shot_generated' => 'Ringkasan otomatis dibuat',
         'zero_shot_failed' => 'Ringkasan otomatis gagal dibuat',
@@ -190,46 +190,25 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
 
   String _eventSummary(Map<String, dynamic> log) {
     final activity = _activityLabel(_normalizeActivity(log['activity']));
-    final parts = <String>['Aktivitas: $activity'];
+    final parts = <String>[];
     final hr = log['heart_rate_bpm'];
     final baseline = log['baseline_mean_hr'];
-    if (hr is num) parts.add('Denyut terukur ${hr.toStringAsFixed(1)} bpm');
-    if (baseline is num) {
-      parts.add('pembanding pribadi ${baseline.toStringAsFixed(1)} bpm');
+    if (hr is num) parts.add('HR ${hr.toStringAsFixed(1)} bpm');
+    if (baseline is num) parts.add('baseline ${baseline.toStringAsFixed(1)} bpm');
+    final recommendation = log['recommendation']?.toString().trim();
+    if (recommendation?.isNotEmpty == true) {
+      parts.add(recommendation!);
     }
     final clarification = log['clarification']?.toString().trim();
     if (clarification?.isNotEmpty == true) {
-      parts.add('Jawaban: $clarification');
+      parts.add('Keterangan: $clarification');
     }
-    final recommendation = log['recommendation']?.toString().trim();
-    if (recommendation?.isNotEmpty == true) parts.add(recommendation!);
     final explanation = log['explanation']?.toString().trim();
-    if (explanation?.isNotEmpty == true) parts.add(explanation!);
-    if (log['quality_status'] != null) {
-      parts.add(log['quality_status'] == 'accepted'
-          ? 'Pemeriksaan mutu bacaan lolos'
-          : 'Mutu bacaan perlu diperhatikan');
+    if (explanation?.isNotEmpty == true) {
+      parts.add(explanation!);
     }
-    final observedAt = DateTime.tryParse(log['observed_at']?.toString() ?? '');
-    if (observedAt != null) {
-      parts.add('Waktu bacaan: ${formatHilWibDateTime(observedAt)}');
-    }
-    final history = log['history'];
-    if (history is List && history.isNotEmpty) {
-      final readings = history
-          .whereType<Map>()
-          .map((item) =>
-              DateTime.tryParse(item['recorded_at']?.toString() ?? ''))
-          .whereType<DateTime>()
-          .toList()
-        ..sort();
-      if (readings.isNotEmpty) {
-        parts.add(
-          '${readings.length} bacaan sensor, ${formatHilWibDateTime(readings.first)}–${formatHilWibDateTime(readings.last)}',
-        );
-      }
-    }
-    return parts.join(' · ');
+    if (parts.isEmpty) return 'Aktivitas: $activity';
+    return 'Aktivitas: $activity · ${parts.take(3).join(' · ')}';
   }
 
   Map<String, dynamic> get _baseline {
@@ -608,8 +587,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     _handledDeviationSampleIds.add(sampleId);
 
     if (widget.scenario == 'B') {
-      const recommendation =
-          'Duduk atau beristirahat sejenak, lalu pantau kembali HR. Jika merasa tidak sehat atau mengalami gejala berat, cari bantuan medis. Ini bukan diagnosis.';
+      final recommendation =
+          'Anomali terdeteksi pada denyut saat $_activity. Istirahat 5–10 menit, hentikan aktivitas berat, dan cek ulang denyut setelah Anda tenang. Jika HR tetap tinggi atau disertai pusing, nyeri dada, sesak napas, atau lemas, segera konsultasikan ke tenaga kesehatan.';
       final feedbackLog = await _logSelectedObservation(
         'feedback_presented',
         recommendation: recommendation,
@@ -931,10 +910,10 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               ),
               Text(
                 candidate
-                    ? 'Perubahan di luar pola biasa: denyut lebih tinggi ${_threshold.toStringAsFixed(1)} bpm dari pembanding aktivitas; pemeriksaan mutu bacaan lolos.'
+                    ? 'Anomali terdeteksi: denyut lebih tinggi ${_threshold.toStringAsFixed(1)} bpm dari pembanding aktivitas; pemeriksaan mutu bacaan lolos.'
                     : _baseline.isEmpty
                         ? 'Nilai pembanding pribadi untuk aktivitas ini belum siap, jadi perubahan belum dapat dinilai.'
-                        : 'Denyut belum melewati batas perubahan menonjol, yaitu pembanding pribadi + ${_threshold.toStringAsFixed(1)} bpm.',
+                        : 'Denyut belum melewati batas anomali, yaitu pembanding pribadi + ${_threshold.toStringAsFixed(1)} bpm.',
                 key: const Key('hil-recorded-observation-explanation'),
                 style: AppTheme.font(
                   size: 10,
@@ -981,12 +960,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Skenario B · feedback sistem',
+              Text('Skenario B · one way feedback',
                   style: AppTheme.font(size: 12, weight: FontWeight.w800)),
               const SizedBox(height: 6),
               Text(_recommendation!),
               const SizedBox(height: 5),
-              const Text('Feedback satu arah; tidak meminta klarifikasi.'),
+              const Text('Feedback satu arah; tidak meminta klarifikasi. Hasil ini dibekukan saat anomali muncul agar tidak hilang saat sinyal turun kembali.'),
             ],
           ),
         ),
@@ -1076,7 +1055,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               ),
               const SizedBox(height: 6),
               Text('Nomor sesi: $_runId', style: AppTheme.font(size: 9.5)),
-              ..._logs.map((log) => ListTile(
+              ..._logs.take(5).map((log) => ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.check_circle_outline, size: 16),
@@ -1085,7 +1064,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                     ),
                     subtitle: Text(
                       _eventSummary(log),
-                      maxLines: 4,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   )),
@@ -1124,8 +1103,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               const SizedBox(height: 4),
               Text(
                 widget.scenario == 'B'
-                    ? '5. Skenario B: sistem memberi saran dan mencatat kapan saran ditampilkan; sistem tidak meminta jawaban.'
-                    : '5. Skenario C: sistem mencatat kapan pertanyaan dikirim dan kapan jawaban diterima. Jawaban pengguna dibedakan dari hasil sensor.',
+                    ? '5. Hasil observasi terbaru: saat anomali terdeteksi, HR dan status saat itu disimpan agar tetap terlihat meski pembacaan berikutnya turun kembali.\n6. One way feedback: sistem memberi arahan tindakan yang jelas tanpa meminta jawaban.\n7. Freeze: hasil anomali dibekukan agar tidak hilang saat feedback atau sinyal normal kembali.'
+                    : '5. Hasil observasi terbaru: saat anomali terdeteksi, HR dan status saat itu disimpan agar tetap terlihat meski pembacaan berikutnya turun kembali.\n6. Klarifikasi pengguna: sistem mencatat kapan pertanyaan dikirim dan kapan jawaban diterima. Jawaban pengguna dibedakan dari hasil sensor.\n7. Freeze: hasil observasi dan penjelasan yang sudah dibuat tetap tersimpan agar tidak hilang saat perubahan berikutnya muncul.',
               ),
             ],
           ),
@@ -1157,7 +1136,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                   children: [
                     Text(
                       widget.scenario == 'B'
-                          ? 'Skenario B · saran dari sistem'
+                          ? 'Skenario B · one way feedback'
                           : 'Skenario C · klarifikasi dari pengguna',
                       style: AppTheme.font(size: 14, weight: FontWeight.w800),
                     ),

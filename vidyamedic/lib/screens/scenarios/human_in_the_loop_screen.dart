@@ -495,7 +495,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   }
 
   String _scenarioTitle(String? scenario) => switch (scenario) {
-        'B' => 'One way narrative · Duduk, berdiri, berjalan',
+        'B' => 'One way feedback · Duduk, berdiri, berjalan',
         'C' => 'Human in the loop · Duduk, berdiri, berjalan',
         _ => 'Riwayat skenario HIL',
       };
@@ -773,15 +773,15 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         'live_recording_stopped' => 'Rekaman sensor dihentikan',
         'live_recording_interrupted' => 'Rekaman sensor terputus',
         'records_loaded' => 'Data sensor dimuat',
-        'deviation_detected' => 'Perubahan di luar pola biasa terdeteksi',
-        'feedback_presented' => 'Saran ditampilkan',
-        'clarification_requested' => 'Sistem meminta klarifikasi',
+        'deviation_detected' => 'Anomali terdeteksi',
+        'feedback_presented' => 'One way feedback',
+        'clarification_requested' => 'Klarifikasi diminta',
         'clarification_submitted' => 'Klarifikasi dikirim pengguna',
         'zero_shot_generated' => 'Ringkasan otomatis dibuat',
         'zero_shot_failed' => 'Ringkasan otomatis gagal dibuat',
         'activity_clarification_requested' => 'Sistem meminta keterangan',
         'activity_clarification_answered' => 'Keterangan pengguna diterima',
-        'deviation_recommendation' => 'Saran ditampilkan',
+        'deviation_recommendation' => 'One way feedback',
         'hr_recovery_observed' => 'Denyut mendekati kisaran biasa',
         'dfa_5_minute_batch' => 'Ringkasan pola detak selesai',
         _ => eventType?.replaceAll('_', ' ') ?? 'Kejadian tercatat',
@@ -938,8 +938,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               final timestamp = loggedAt == null
                   ? 'Waktu tidak tersedia'
                   : formatHilWibDateTime(loggedAt);
+              final sessionId = log['session_id']?.toString();
               final heading = [
                 if (scenario != null) 'Skenario $scenario',
+                if (sessionId != null && sessionId.isNotEmpty) 'Sesi $sessionId',
                 _scenarioLogEventLabel(log['event_type']?.toString()),
               ].join(' · ');
               final summary = _humanReadableLogSummary(log);
@@ -952,7 +954,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   style: AppTheme.font(size: 10.5, weight: FontWeight.w700),
                 ),
                 subtitle: Text(
-                  '$timestamp · $summary',
+                  '$timestamp${sessionId != null && sessionId.isNotEmpty ? ' · sesi $sessionId' : ''} · $summary',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1483,7 +1485,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           ),
           _scenarioButton(
             code: 'B',
-            title: 'One way narrative · Duduk, berdiri, berjalan',
+            title: 'One way feedback · Duduk, berdiri, berjalan',
             detail:
                 'Tampilkan hasil, saran, dan penjelasan untuk tiga aktivitas utama: duduk, berdiri, dan berjalan. Memerlukan 5 menit catatan pribadi pada tiap aktivitas.',
             selected: _selectedScenario == 'B',

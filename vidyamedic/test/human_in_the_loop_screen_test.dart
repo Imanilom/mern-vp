@@ -154,7 +154,7 @@ void main() {
     expect(find.textContaining('terpisah dari eksperimen HCI'), findsNothing);
     expect(find.textContaining('Pembentukan baseline per aktivitas'),
         findsOneWidget);
-    expect(find.textContaining('One way narrative'), findsOneWidget);
+    expect(find.textContaining('One way feedback'), findsOneWidget);
     expect(find.textContaining('Human in the loop'), findsOneWidget);
     expect(find.byKey(const Key('hil-scenarios-locked')), findsOneWidget);
     expect(_scenarioTile(tester, 'B').onTap, isNull);

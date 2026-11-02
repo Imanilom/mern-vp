@@ -493,12 +493,14 @@ class ApiService {
   /// GET /api/patient-app/hil-scenario-logs
   static Future<ApiResponse<List<dynamic>>> getHilScenarioLogs({
     String? runId,
+    String? sessionId,
     int limit = 100,
   }) async {
     try {
       final query = <String, String>{
         'limit': limit.toString(),
         if (runId != null) 'run_id': runId,
+        if (sessionId != null) 'session_id': sessionId,
       };
       final uri = Uri.parse(ApiConfig.hilScenarioLogsEndpoint)
           .replace(queryParameters: query);

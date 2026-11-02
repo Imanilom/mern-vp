@@ -2487,7 +2487,7 @@ export async function createPatientHilScenarioLog(req, res) {
 export async function listPatientHilScenarioLogs(req, res) {
   const { accountScopes, dataOwnerId, dataOwnerType } = await getAccount(req);
   const unknownQueryFields = Object.keys(req.query)
-    .filter((field) => !['limit', 'run_id'].includes(field));
+    .filter((field) => !['limit', 'run_id', 'session_id'].includes(field));
   if (unknownQueryFields.length) {
     throw errorHandler(400, `Query tidak dikenal: ${unknownQueryFields.join(', ')}.`);
   }
@@ -2496,12 +2496,23 @@ export async function listPatientHilScenarioLogs(req, res) {
     throw errorHandler(400, 'limit harus berupa bilangan bulat antara 1 dan 100.');
   }
   const query = buildPatientHistoryFallbackQuery(accountScopes);
+  const sessionClauses = [];
   if (req.query.run_id !== undefined) {
     const runId = String(req.query.run_id);
     if (!/^[a-zA-Z0-9._:-]{8,80}$/.test(runId)) {
       throw errorHandler(400, 'run_id tidak valid.');
     }
-    query.$and = [{ run_id: runId }];
+    sessionClauses.push({ run_id: runId });
+  }
+  if (req.query.session_id !== undefined) {
+    const sessionId = String(req.query.session_id);
+    if (!mongoose.isValidObjectId(sessionId)) {
+      throw errorHandler(400, 'session_id tidak valid.');
+    }
+    sessionClauses.push({ session_id: new mongoose.Types.ObjectId(sessionId) });
+  }
+  if (sessionClauses.length) {
+    query.$and = sessionClauses;
   }
   let logs = await PatientHilScenarioLog.find(query)
     .sort({ createdAt: -1 })
