@@ -80,12 +80,15 @@ class _GuidedBaselineSessionScreenState
   Future<bool> _confirmParticipation() async {
     final activitySequence =
         _stages.map((stage) => stage.$2.toLowerCase()).join(', ');
+    final recordingGuidance = widget.isHilBaselineRecording
+        ? 'Rentang 20–250 bpm adalah batas validasi pembacaan sensor, bukan target detak jantung. Jadi HR 80–90 bpm termasuk valid. Baseline awal per aktivitas memerlukan minimal lima window satu menit yang lolos quality gate (kontak sensor serta kualitas dan kelengkapan sinyal).'
+        : 'Lima menit belum menjamin baseline matang; CAPAR dapat memerlukan rekaman berkualitas pada beberapa waktu/hari.';
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Sesi pengukuran personal'),
         content: Text(
-          'Sesi ini merekam data Polar H10 nyata selama 5 menit per konteks: $activitySequence. Aktivitas berdiri dan berjalan bersifat sukarela; Anda dapat melewati tahap atau menghentikan sesi kapan saja. Jangan lakukan gerakan yang terasa tidak aman. Lima menit belum menjamin baseline matang; CAPAR dapat memerlukan rekaman berkualitas pada beberapa waktu/hari.',
+          'Sesi ini merekam data Polar H10 nyata selama 5 menit per konteks: $activitySequence. Aktivitas berdiri dan berjalan bersifat sukarela; Anda dapat melewati tahap atau menghentikan sesi kapan saja. Jangan lakukan gerakan yang terasa tidak aman. $recordingGuidance',
         ),
         actions: [
           TextButton(
@@ -743,7 +746,15 @@ class _GuidedBaselineSessionScreenState
           if (minimum == null || maximum == null) ...[
             const SizedBox(height: 9),
             Text(
-              'Rentang min–maks akan terhitung otomatis setelah pembacaan HR pertama diterima.',
+              'Rentang min–maks akan terhitung otomatis setelah pembacaan HR pertama diterima. Nilai 20–250 bpm adalah batas validasi sensor; HR 80–90 bpm termasuk valid.',
+              style: AppTheme.font(
+                  size: 10, color: AppTheme.textMuted, height: 1.35),
+            ),
+          ],
+          if (minimum != null && maximum != null) ...[
+            const SizedBox(height: 9),
+            Text(
+              'Batas validasi sensor adalah 20–250 bpm, bukan target detak jantung. HR 80–90 bpm termasuk valid; baseline tetap bergantung pada mutu sinyal dan window yang lolos quality gate.',
               style: AppTheme.font(
                   size: 10, color: AppTheme.textMuted, height: 1.35),
             ),
@@ -913,7 +924,7 @@ class _GuidedBaselineSessionScreenState
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
-          'Arti tahapan: wearable mengukur detak HR dan interval RR; quality gate menilai kontak serta mutu sinyal; window satu menit merangkum data yang lolos; lima window berkualitas membentuk baseline awal aktivitas. Baseline ini pembanding eksperimen, bukan diagnosis.',
+          'HR 20–250 bpm adalah rentang validasi sensor, bukan target yang harus dicapai; HR 80–90 bpm termasuk valid. Arti tahapan: wearable mengukur detak HR dan interval RR; quality gate menilai kontak, kualitas, dan kelengkapan sinyal; window satu menit merangkum data yang lolos. Minimal lima window berkualitas membentuk baseline awal untuk aktivitas tersebut. Baseline ini pembanding eksperimen, bukan diagnosis.',
           style: AppTheme.font(
             size: 10.5,
             color: AppTheme.textSecondary,

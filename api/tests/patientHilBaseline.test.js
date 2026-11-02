@@ -74,10 +74,73 @@ test('HIL baseline readiness requires five quality-gated minutes per activity', 
   assert.equal(context.scenario_readiness.valid_window_count, 5);
   assert.equal(context.segment_count, 5);
   assert.equal(context.feature_stats.mean_hr.mean, 72);
+  assert.deepEqual(context.history, [{
+    date: '2026-11-01',
+    segment_count: 5,
+    valid_window_count: 5,
+    feature_stats: {
+      mean_hr: {
+        count: 5,
+        mean: 72,
+        standard_deviation: Math.sqrt(2),
+      },
+      mean_rr: {
+        count: 5,
+        mean: 800,
+        standard_deviation: 0,
+      },
+      rmssd: {
+        count: 5,
+        mean: 10,
+        standard_deviation: 0,
+      },
+    },
+  }]);
 
   const [notReady] = summarizePatientHilBaselines(windows.slice(0, 4));
   assert.equal(notReady.scenario_readiness.ready, false);
   assert.equal(notReady.scenario_readiness.valid_duration_seconds, 240);
+});
+
+test('baseline history groups quality-gated minutes by activity and WIB date', () => {
+  const windows = [
+    {
+      recording_purpose: 'hil_baseline',
+      activity: 'sitting',
+      window_start: Date.parse('2026-11-01T16:30:00.000Z'),
+      recorded_at: new Date('2026-11-01T16:30:00.000Z'),
+      quality: { q_signal: 0.9, q_complete: 0.9 },
+      features: { mean_hr: 80 },
+    },
+    {
+      recording_purpose: 'hil_baseline',
+      activity: 'sitting',
+      window_start: Date.parse('2026-11-01T17:00:00.000Z'),
+      recorded_at: new Date('2026-11-01T17:00:00.000Z'),
+      quality: { q_signal: 0.4, q_complete: 0.9 },
+      features: { mean_hr: 120 },
+    },
+    {
+      recording_purpose: 'hil_baseline',
+      activity: 'sitting',
+      window_start: Date.parse('2026-11-02T00:00:00.000Z'),
+      recorded_at: new Date('2026-11-02T00:00:00.000Z'),
+      quality: { q_signal: 0.9, q_complete: 0.9 },
+      features: { mean_hr: 90 },
+    },
+  ];
+
+  const [context] = summarizePatientHilBaselines(windows);
+
+  assert.deepEqual(context.history.map((day) => ({
+    date: day.date,
+    segment_count: day.segment_count,
+    valid_window_count: day.valid_window_count,
+    mean_hr: day.feature_stats.mean_hr.mean,
+  })), [
+    { date: '2026-11-02', segment_count: 2, valid_window_count: 1, mean_hr: 90 },
+    { date: '2026-11-01', segment_count: 1, valid_window_count: 1, mean_hr: 80 },
+  ]);
 });
 
 test('real-time HIL analysis uses only ready isolated HIL feature statistics', () => {

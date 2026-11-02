@@ -97,6 +97,10 @@ void main() {
     expect(find.byKey(const Key('hil-baseline-node-guide')), findsOneWidget);
     expect(find.text('KONTEKS 1 DARI 3'), findsOneWidget);
     expect(find.text('Duduk'), findsOneWidget);
+    expect(
+      find.textContaining('HR 80–90 bpm termasuk valid'),
+      findsOneWidget,
+    );
     await tester.pageBack();
     await tester.pumpAndSettle();
   });
@@ -304,6 +308,60 @@ void main() {
     expect(find.textContaining('Saat ini 1/3 aktivitas siap'), findsOneWidget);
     expect(_scenarioTile(tester, 'B').onTap, isNull);
     expect(_scenarioTile(tester, 'C').onTap, isNull);
+  });
+
+  testWidgets('baseline history on the HIL home shows dates and HR summaries',
+      (tester) async {
+    final state = AppState()
+      ..hilBaselineContexts = [
+        {
+          'activity': 'sitting',
+          'segment_count': 7,
+          'scenario_readiness': {
+            'ready': true,
+            'valid_window_count': 6,
+          },
+          'history': [
+            {
+              'date': '2026-11-02',
+              'segment_count': 3,
+              'valid_window_count': 3,
+              'feature_stats': {
+                'mean_hr': {'mean': 82.5},
+              },
+            },
+            {
+              'date': '2026-11-01',
+              'segment_count': 4,
+              'valid_window_count': 3,
+              'feature_stats': {
+                'mean_hr': {'mean': 79.0},
+              },
+            },
+          ],
+        },
+      ];
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    expect(
+      find.text('2 catatan harian · dikelompokkan per aktivitas'),
+      findsOneWidget,
+    );
+    final historyExpansion =
+        find.byKey(const Key('hil-baseline-history-expansion'));
+    await tester.ensureVisible(historyExpansion);
+    await tester.tap(historyExpansion);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Duduk'), findsWidgets);
+    expect(find.text('02/11/2026'), findsOneWidget);
+    expect(find.text('01/11/2026'), findsOneWidget);
+    expect(
+      find.text('3/3 window lolos kualitas · HR rata-rata 82.5 bpm'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('A explains when AI consent prevents loading stored baselines',

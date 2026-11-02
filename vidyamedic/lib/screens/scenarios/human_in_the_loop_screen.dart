@@ -1908,6 +1908,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               ),
             );
           }),
+          const SizedBox(height: 4),
+          _baselineHistory(contexts),
           const SizedBox(height: 9),
           SizedBox(
             width: double.infinity,
@@ -1946,6 +1948,126 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               height: 1.35,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _baselineHistory(List<Map<String, dynamic>> contexts) {
+    final historyCount = contexts.fold<int>(0, (total, context) {
+      final history = context['history'];
+      return total + (history is List ? history.length : 0);
+    });
+
+    return Container(
+      key: const Key('hil-baseline-history'),
+      decoration: BoxDecoration(
+        color: AppTheme.fieldFill,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: ExpansionTile(
+        key: const Key('hil-baseline-history-expansion'),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 10),
+        childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+        leading: const Icon(Icons.history_rounded, color: AppTheme.primary),
+        title: Text(
+          'Riwayat baseline yang terbentuk',
+          style: AppTheme.font(size: 11, weight: FontWeight.w800),
+        ),
+        subtitle: Text(
+          '$historyCount catatan harian · dikelompokkan per aktivitas',
+          style: AppTheme.font(size: 9.5, color: AppTheme.textSecondary),
+        ),
+        children: [
+          if (historyCount == 0)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Belum ada riwayat rekaman baseline.',
+                key: const Key('hil-baseline-history-empty'),
+                style: AppTheme.font(
+                  size: 10,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+            )
+          else
+            ..._baselineActivities.expand((activity) {
+              final matchingContexts = contexts.where(
+                (baseline) =>
+                    _matchesBaselineActivity(baseline, activity.$2),
+              );
+              final dailyHistory = matchingContexts
+                  .expand((baseline) {
+                    final history = baseline['history'];
+                    if (history is! List) {
+                      return const <Map<String, dynamic>>[];
+                    }
+                    return history
+                        .whereType<Map>()
+                        .map((item) => Map<String, dynamic>.from(item));
+                  })
+                  .toList()
+                ..sort((a, b) => (b['date']?.toString() ?? '')
+                    .compareTo(a['date']?.toString() ?? ''));
+              if (dailyHistory.isEmpty) return const <Widget>[];
+              return <Widget>[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 7, bottom: 3),
+                    child: Text(
+                      activity.$1,
+                      style: AppTheme.font(
+                        size: 10.5,
+                        weight: FontWeight.w800,
+                        color: AppTheme.primaryDark,
+                      ),
+                    ),
+                  ),
+                ),
+                ...dailyHistory.map((day) {
+                  final date = day['date']?.toString() ?? '';
+                  final dateParts = date.split('-');
+                  final displayDate = dateParts.length == 3
+                      ? '${dateParts[2]}/${dateParts[1]}/${dateParts[0]}'
+                      : date;
+                  final validWindows =
+                      (day['valid_window_count'] as num?)?.toInt() ?? 0;
+                  final totalWindows =
+                      (day['segment_count'] as num?)?.toInt() ?? 0;
+                  final heartRate = _map(day['feature_stats'])['mean_hr'];
+                  final averageHeartRate =
+                      heartRate is Map ? heartRate['mean'] : null;
+                  final details = [
+                    '$validWindows/$totalWindows window lolos kualitas',
+                    if (averageHeartRate is num)
+                      'HR rata-rata ${averageHeartRate.toStringAsFixed(1)} bpm',
+                  ].join(' · ');
+                  return ListTile(
+                    key: Key('hil-baseline-history-${activity.$2}-$date'),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: AppTheme.primary,
+                    ),
+                    title: Text(
+                      displayDate,
+                      style: AppTheme.font(size: 10, weight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      details,
+                      style: AppTheme.font(
+                        size: 9.5,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  );
+                }),
+              ];
+            }),
         ],
       ),
     );

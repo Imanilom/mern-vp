@@ -70,6 +70,39 @@ function summarizeFeature(windows, feature) {
   };
 }
 
+function summarizeBaselineHistory(windows, features) {
+  const byWibDate = new Map();
+  for (const window of windows) {
+    const wibDate = new Date(window.window_start + 7 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const dayWindows = byWibDate.get(wibDate) ?? [];
+    dayWindows.push(window);
+    byWibDate.set(wibDate, dayWindows);
+  }
+
+  return [...byWibDate.entries()]
+    .map(([date, dayWindows]) => {
+      const acceptedWindows = dayWindows.filter((window) => (
+        Number.isFinite(window.quality?.q_signal)
+        && Number.isFinite(window.quality?.q_complete)
+        && window.quality.q_signal >= PATIENT_HIL_BASELINE_POLICY.minimum_quality
+        && window.quality.q_complete >= PATIENT_HIL_BASELINE_POLICY.minimum_quality
+      ));
+      return {
+        date,
+        segment_count: dayWindows.length,
+        valid_window_count: acceptedWindows.length,
+        feature_stats: Object.fromEntries(
+          features
+            .map((feature) => [feature, summarizeFeature(acceptedWindows, feature)])
+            .filter(([, stats]) => stats !== null)
+        ),
+      };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
 export function summarizePatientHilBaselines(windows) {
   const byActivity = new Map();
   for (const window of windows) {
@@ -117,6 +150,7 @@ export function summarizePatientHilBaselines(windows) {
           .map((feature) => [feature, summarizeFeature(acceptedWindows, feature)])
           .filter(([, stats]) => stats !== null)
       ),
+      history: summarizeBaselineHistory(allWindows, features),
       scenario_readiness: {
         ready,
         status: ready ? 'ELIGIBLE' : 'INELIGIBLE',
