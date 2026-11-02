@@ -34,6 +34,21 @@ class HilRecordedScenarioAnalysis {
       qComplete >= 0.6 &&
       heartRate > baselineMean + thresholdBpm;
 
+  static Map<String, dynamic>? maximumHeartRateSample(
+    List<Map<String, dynamic>> samples,
+  ) {
+    Map<String, dynamic>? maximum;
+    for (final sample in samples) {
+      final heartRate = sample['heart_rate_bpm'];
+      if (heartRate is! num || !heartRate.isFinite) continue;
+      final currentMaximum = maximum?['heart_rate_bpm'];
+      if (currentMaximum is! num || heartRate > currentMaximum) {
+        maximum = sample;
+      }
+    }
+    return maximum;
+  }
+
   static Map<String, dynamic>? latestDeviationSample({
     required List<Map<String, dynamic>> samples,
     required double? baselineMean,
@@ -115,6 +130,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   bool _isResultFrozen = false;
   bool _isStartingRun = false;
   Map<String, dynamic>? _frozenOutcomeSnapshot;
+  DateTime? _recordingStartedAt;
+  DateTime? _recordingStoppedAt;
+  final Map<String, Map<String, dynamic>> _recordingSamples = {};
   Timer? _refreshTimer;
   late final AppState _appState;
 
@@ -318,15 +336,6 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         );
   }
 
-  Map<String, dynamic>? _latestDeviation(List<Map<String, dynamic>> samples) {
-    if (_baseline.isEmpty) return null;
-    return HilRecordedScenarioAnalysis.latestDeviationSample(
-      samples: samples,
-      baselineMean: _baselineMean,
-      thresholdBpm: _threshold,
-    );
-  }
-
   Future<void> _startRun() async {
     if (_sessionId != null || _isStartingRun) return;
     _isStartingRun = true;
@@ -386,8 +395,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       if (_samples.isEmpty) _isLoading = true;
     });
     final now = DateTime.now().toUtc();
+    final isPeakScenario = widget.scenario == 'C';
+    final recordingStartedAt = isPeakScenario ? _recordingStartedAt : null;
+    final recordingStoppedAt = isPeakScenario ? _recordingStoppedAt : null;
     final response = await ApiService.getWearableSamples(
-      from: now.subtract(const Duration(days: 31)).toIso8601String(),
+      from: (recordingStartedAt ?? now.subtract(const Duration(days: 31)))
+          .toIso8601String(),
       to: now.toIso8601String(),
       limit: 100,
     );
@@ -405,28 +418,48 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         .map((item) => Map<String, dynamic>.from(item))
         .where((sample) {
       final quality = _map(sample['data_quality']);
+      final recordedAt =
+          DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
       return sample['provider'] == 'polar_h10' &&
           sample['is_simulated'] != true &&
           sample['recording_purpose'] != 'hil_baseline' &&
           _normalizeActivity(sample['activity']) == _activity &&
           sample['sensor_contact'] == true &&
           quality['status'] == 'accepted' &&
-          _sampleHr(sample) != null;
+          _sampleHr(sample) != null &&
+          recordedAt != null &&
+          (recordingStartedAt == null ||
+              !recordedAt.isBefore(recordingStartedAt)) &&
+          (recordingStoppedAt == null ||
+              !recordedAt.isAfter(recordingStoppedAt));
     }).toList()
       ..sort((a, b) => DateTime.parse(a['recorded_at'].toString())
           .compareTo(DateTime.parse(b['recorded_at'].toString())));
-    final deviation = _latestDeviation(samples);
+    if (isPeakScenario && recordingStartedAt != null) {
+      for (final sample in samples) {
+        final id = sample['_id']?.toString();
+        if (id != null) _recordingSamples[id] = sample;
+      }
+    }
+    final sessionSamples = _recordingSamples.values.toList()
+      ..sort((a, b) => DateTime.parse(a['recorded_at'].toString())
+          .compareTo(DateTime.parse(b['recorded_at'].toString())));
+    final displayedSamples =
+        isPeakScenario && recordingStartedAt != null ? sessionSamples : samples;
+    final targetSample = isPeakScenario
+        ? HilRecordedScenarioAnalysis.maximumHeartRateSample(displayedSamples)
+        : HilRecordedScenarioAnalysis.latestDeviationSample(
+            samples: displayedSamples,
+            baselineMean: _baselineMean,
+            thresholdBpm: _threshold,
+          );
     setState(() {
-      _samples = samples;
+      _samples = displayedSamples;
       final selectedId = _selectedSampleId;
-      final unhandledDeviation = deviation != null &&
-              !_handledDeviationSampleIds.contains(deviation['_id']?.toString())
-          ? deviation
-          : null;
-      final selectedSample =
-          unhandledDeviation ?? (samples.isEmpty ? null : samples.last);
+      final selectedSample = targetSample ??
+          (displayedSamples.isEmpty ? null : displayedSamples.last);
       _selectedSampleId = selectedSample?['_id']?.toString();
-      if (unhandledDeviation != null &&
+      if (selectedSample != null &&
           _selectedSampleId != selectedId &&
           !_isResultFrozen) {
         _recommendation = null;
@@ -456,11 +489,13 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       );
     }
     _isRefreshingSamples = false;
-    final deviationId = deviation?['_id']?.toString();
-    if (!_isResultFrozen &&
-        deviationId != null &&
-        !_handledDeviationSampleIds.contains(deviationId) &&
-        _autoAttemptedDeviationSampleIds.add(deviationId)) {
+    final targetId = targetSample?['_id']?.toString();
+    if ((!isPeakScenario || _recordingStoppedAt != null) &&
+        !_isResultFrozen &&
+        targetId != null &&
+        (isPeakScenario ? _isDeviation(targetSample!) : true) &&
+        !_handledDeviationSampleIds.contains(targetId) &&
+        _autoAttemptedDeviationSampleIds.add(targetId)) {
       await _presentScenarioOutcome();
     }
   }
@@ -498,6 +533,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       );
       return;
     }
+    _recordingStartedAt = DateTime.now().toUtc();
+    _recordingStoppedAt = null;
+    _recordingSamples.clear();
+    _loadedSampleIds.clear();
+    _autoAttemptedDeviationSampleIds.clear();
+    _handledDeviationSampleIds.clear();
     final started = await _saveLog(
       'live_recording_started',
       explanation: 'Rekaman live Polar H10 dimulai.',
@@ -507,6 +548,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       if (startStreamHere && bridge.isStreaming) {
         await bridge.stopStreaming();
       }
+      _recordingStartedAt = null;
+      _recordingStoppedAt = null;
+      _recordingSamples.clear();
       if (mounted) setState(() => _isStartingLiveMonitoring = false);
       return;
     }
@@ -536,6 +580,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     _isStoppingLiveMonitoring = true;
     _refreshTimer?.cancel();
     _refreshTimer = null;
+    _recordingStoppedAt = DateTime.now().toUtc();
     final shouldStopStream = _ownsStream;
     _ownsStream = false;
     _isLiveMonitoring = false;
@@ -551,6 +596,10 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       await bridge.stopStreaming();
     }
     _isStoppingLiveMonitoring = false;
+    while (_isRefreshingSamples && mounted) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    if (mounted) await _loadSamples();
   }
 
   void _showScenarioError(String message) {
@@ -621,7 +670,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   Future<void> _presentScenarioOutcome() async {
     final sample = _selectedSample;
     final sampleId = sample?['_id']?.toString();
-    if (sample == null ||
+    if ((widget.scenario == 'C' &&
+            (_recordingStartedAt == null ||
+                _recordingStoppedAt == null ||
+                _isLiveMonitoring)) ||
+        sample == null ||
         sampleId == null ||
         _isSaving ||
         _handledDeviationSampleIds.contains(sampleId)) {
@@ -1177,12 +1230,26 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Observasi terbaru',
+            Text(
+                widget.scenario == 'C'
+                    ? _recordingStartedAt == null
+                        ? 'Sampel HR tertinggi pada riwayat'
+                        : _recordingStoppedAt == null
+                            ? 'HR maksimum sementara'
+                            : 'HR maksimum pada rekaman'
+                    : 'Observasi terbaru',
                 style: AppTheme.font(size: 12, weight: FontWeight.w800)),
             const SizedBox(height: 7),
+            if (widget.scenario == 'C' &&
+                _recordingStartedAt != null &&
+                _recordingStoppedAt == null)
+              const Text(
+                'Skenario menilai bacaan tertinggi pada sesi ini. Hentikan rekaman untuk menetapkan nilai puncak.',
+                key: Key('hil-recorded-peak-guidance'),
+              ),
             if (_samples.isEmpty)
               const Text(
-                  'Belum ada rekaman Polar H10 yang valid untuk aktivitas ini.'),
+                  'Belum ada sampel Polar H10 yang valid pada rekaman ini.'),
             if (sample != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -1215,6 +1282,10 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               FilledButton.icon(
                 key: const Key('hil-recorded-trigger-scenario'),
                 onPressed: candidate &&
+                        (widget.scenario != 'C' ||
+                            (_recordingStartedAt != null &&
+                                _recordingStoppedAt != null &&
+                                !_isLiveMonitoring)) &&
                         !_isSaving &&
                         !_handledDeviationSampleIds.contains(_selectedSampleId)
                     ? _presentScenarioOutcome
@@ -1229,9 +1300,17 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                 label:
                     Text(_handledDeviationSampleIds.contains(_selectedSampleId)
                         ? 'Skenario sudah berjalan'
-                        : widget.scenario == 'B'
-                            ? 'Tampilkan feedback satu arah'
-                            : 'Minta klarifikasi peserta'),
+                        : widget.scenario != 'C'
+                            ? widget.scenario == 'B'
+                                ? 'Tampilkan feedback satu arah'
+                                : 'Minta klarifikasi peserta'
+                            : _recordingStartedAt == null
+                                ? 'Mulai rekam untuk menguji skenario'
+                                : _recordingStoppedAt == null
+                                    ? 'Hentikan rekaman untuk menilai puncak'
+                                    : widget.scenario == 'B'
+                                        ? 'Tampilkan feedback satu arah'
+                                        : 'Minta klarifikasi peserta'),
               ),
             ],
           ],
@@ -1550,8 +1629,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               const SizedBox(height: 4),
               Text(
                 widget.scenario == 'B'
-                    ? '5. Hasil observasi terbaru: saat anomali terdeteksi, HR dan status saat itu disimpan agar tetap terlihat meski pembacaan berikutnya turun kembali.\n6. One way feedback: sistem memberi arahan tindakan yang jelas tanpa meminta jawaban.\n7. Freeze: hasil anomali dibekukan agar tidak hilang saat feedback atau sinyal normal kembali.'
-                    : '5. Hasil observasi terbaru: saat anomali terdeteksi, HR dan status saat itu disimpan agar tetap terlihat meski pembacaan berikutnya turun kembali.\n6. Klarifikasi pengguna: sistem mencatat kapan pertanyaan dikirim dan kapan jawaban diterima. Jawaban pengguna dibedakan dari hasil sensor.\n7. Freeze: hasil observasi dan penjelasan yang sudah dibuat tetap tersimpan agar tidak hilang saat perubahan berikutnya muncul.',
+                    ? '5. Puncak rekaman: HR tertinggi pada sesi ini dibandingkan dengan baseline aktivitas terpilih; ELSTM tidak digunakan.\n6. One way feedback: sistem memberi arahan tindakan yang jelas tanpa meminta jawaban.\n7. Freeze: hasil anomali dibekukan agar tidak hilang saat feedback atau sinyal normal kembali.'
+                    : '5. Puncak rekaman: HR tertinggi pada sesi ini dibandingkan dengan baseline aktivitas terpilih; ELSTM tidak digunakan.\n6. Klarifikasi pengguna: sistem mencatat kapan pertanyaan dikirim dan kapan jawaban diterima. Jawaban pengguna dibedakan dari hasil sensor.\n7. Freeze: hasil observasi dan penjelasan yang sudah dibuat tetap tersimpan agar tidak hilang saat perubahan berikutnya muncul.',
               ),
             ],
           ),
@@ -1591,6 +1670,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                     const Text(
                       'Skenario memakai bacaan Polar H10 nyata dan pola pribadi untuk aktivitas yang sama. Data simulasi dan data pembentukan pola tidak dipakai sebagai hasil tes.',
                     ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Hasil skenario memakai HR tertinggi yang tercatat selama sesi rekaman ini, lalu membandingkannya dengan baseline aktivitas terpilih. Perhitungan langsung dari HR dan mutu sensor; ELSTM tidak digunakan.',
+                      key: Key('hil-recorded-peak-method'),
+                    ),
                     const SizedBox(height: 8),
                     _liveRecordingCard(),
                     DropdownButtonFormField<String>(
@@ -1612,6 +1696,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                                 _activity = activity;
                                 _samples = [];
                                 _selectedSampleId = null;
+                                _recordingStartedAt = null;
+                                _recordingStoppedAt = null;
+                                _recordingSamples.clear();
                                 _recommendation = null;
                                 _zeroShotExplanation = null;
                                 _clarificationRequested = false;
