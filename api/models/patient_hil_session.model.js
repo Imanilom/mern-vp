@@ -31,6 +31,7 @@ const PatientHilSessionSchema = new mongoose.Schema(
       default: 'active',
     },
     started_at: { type: Date, required: true, default: Date.now },
+    last_activity_at: { type: Date, required: true, default: Date.now },
     completed_at: { type: Date, default: null },
   },
   {
@@ -48,6 +49,12 @@ PatientHilSessionSchema.index({
   account_id: 1,
   account_type: 1,
   createdAt: -1,
+});
+PatientHilSessionSchema.index({
+  account_id: 1,
+  account_type: 1,
+  status: 1,
+  last_activity_at: 1,
 });
 
 export default mongoose.model('PatientHilSession', PatientHilSessionSchema);

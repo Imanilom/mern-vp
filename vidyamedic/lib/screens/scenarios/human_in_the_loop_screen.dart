@@ -60,7 +60,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final capar = _map(appState.rawCaparInsights?['capar']);
     final latestObservation = _map(capar['latest_observation']);
     final followUp = _map(capar['pedagogy']?['follow_up']);
-    final followUpStatus = followUp['status']?.toString() ?? appState.followUpPrompt.status;
+    final followUpStatus =
+        followUp['status']?.toString() ?? appState.followUpPrompt.status;
     final segmentId =
         followUp['segment_id']?.toString() ?? appState.followUpPrompt.segmentId;
     final activity = _normalizeActivity(
@@ -131,17 +132,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     if (segmentId == null) return;
     final previousActivity =
         reportedContext['activity_before_event']?.toString() ?? '';
-    final activityController = TextEditingController(
-      text: previousActivity == 'unknown' ? '' : previousActivity,
-    );
-    final activityEndController = TextEditingController(
-      text: reportedContext['activity_end_time']?.toString() ?? '',
-    );
-    final noteController = TextEditingController(
-      text: reportedContext['note']?.toString() ?? '',
-    );
-    String? measurementCondition =
-        reportedContext['measurement_condition']?.toString();
+    String? selectedChoice =
+        previousActivity.isNotEmpty && previousActivity != 'unknown'
+            ? previousActivity
+            : null;
     var isSubmitting = false;
     String? result;
 
@@ -153,12 +147,17 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           builder: (context, setDialogState) {
             Future<void> save(String status) async {
               if (isSubmitting) return;
-              if (status == 'submitted' &&
-                  activityController.text.trim().isEmpty) {
+              final finalActivity = status == 'skipped'
+                  ? null
+                  : status == 'not_remembered'
+                      ? 'unknown'
+                      : selectedChoice ?? 'unknown';
+              if (status == 'submitted' && finalActivity == 'unknown') {
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
                   const SnackBar(
                     content: Text(
-                        'Isi aktivitas sebelumnya atau pilih “Tidak ingat”.'),
+                      'Pilih salah satu aktivitas atau pilih “Tidak ingat”.',
+                    ),
                   ),
                 );
                 return;
@@ -169,18 +168,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   .submitHumanInTheLoopClarification(
                     segmentId: segmentId,
                     clarificationStatus: status,
-                    activityBeforeEvent: status == 'skipped'
-                        ? null
-                        : status == 'not_remembered'
-                            ? 'unknown'
-                            : activityController.text.trim(),
-                    activityEndTime: status == 'skipped'
-                        ? null
-                        : activityEndController.text.trim(),
-                    measurementCondition:
-                        status == 'skipped' ? null : measurementCondition,
-                    contextNote:
-                        status == 'skipped' ? '' : noteController.text.trim(),
+                    activityBeforeEvent: finalActivity,
+                    activityEndTime: null,
+                    measurementCondition: null,
+                    contextNote: '',
                   );
               if (!dialogContext.mounted) return;
               setDialogState(() => isSubmitting = false);
@@ -199,23 +190,19 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
 
             return AlertDialog(
               key: const Key('hil-deviation-clarification-dialog'),
-              title: const Text('Bantu lengkapi konteks pengukuran Anda'),
+              title: const Text('Pilih aktivitas sebelum puncak denyut'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Denyut jantung Anda saat ${_hilActivityLabel(activity)} berbeda dari baseline personal. Penyebabnya belum dapat dipastikan. Apakah ada aktivitas atau kondisi sebelum pengukuran yang belum tercatat?',
+                      'Denyut jantung Anda saat ${_hilActivityLabel(activity)} berbeda dari baseline personal. Pilih aktivitas paling mungkin sebelum puncak denyut.',
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Periksa informasi berikut, lalu koreksi atau tambahkan konteks bila diperlukan.',
-                    ),
-                    const SizedBox(height: 10),
                     Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
+                      spacing: 8,
+                      runSpacing: 8,
                       children: const [
                         'Istirahat',
                         'Duduk',
@@ -227,93 +214,18 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                         return ChoiceChip(
                           key: Key('hil-activity-option-$activityOption'),
                           label: Text(activityOption),
-                          selected: activityController.text == activityOption,
+                          selected: selectedChoice == activityOption,
                           onSelected: isSubmitting
                               ? null
                               : (_) => setDialogState(
-                                    () => activityController.text =
-                                        activityOption,
+                                    () => selectedChoice = activityOption,
                                   ),
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      key: const Key('hil-clarification-activity'),
-                      controller: activityController,
-                      maxLength: 120,
-                      decoration: const InputDecoration(
-                        labelText: 'Aktivitas sebelumnya',
-                        hintText: 'Pilih atau tuliskan aktivitas',
-                        border: OutlineInputBorder(),
-                      ),
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      key: const Key('hil-clarification-activity-end'),
-                      controller: activityEndController,
-                      maxLength: 80,
-                      decoration: const InputDecoration(
-                        labelText: 'Kapan aktivitas berakhir',
-                        hintText:
-                            'Perkiraan waktu, mis. sekitar 10 menit sebelumnya',
-                        border: OutlineInputBorder(),
-                      ),
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      key: const Key('hil-clarification-measurement-condition'),
-                      initialValue: measurementCondition,
-                      decoration: const InputDecoration(
-                        labelText:
-                            'Kondisi perangkat saat pengukuran (opsional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'worn_as_usual',
-                          child: Text('Dipakai seperti biasa'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'adjusted_during_event',
-                          child: Text('Disesuaikan saat itu'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'loose_or_moving',
-                          child: Text('Longgar atau banyak bergerak'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'not_worn',
-                          child: Text('Tidak dipakai'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'unknown',
-                          child: Text('Tidak yakin'),
-                        ),
-                      ],
-                      onChanged: isSubmitting
-                          ? null
-                          : (value) => setDialogState(
-                                () => measurementCondition = value,
-                              ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      key: const Key('hil-clarification-note'),
-                      controller: noteController,
-                      maxLength: 500,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Konteks tambahan (opsional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 12),
                     Text(
-                      'Informasi Anda akan digunakan untuk meninjau kembali interpretasi sistem.',
+                      'Informasi ini membantu memeriksa kembali interpretasi sistem.',
                       style: AppTheme.font(
                         size: 10,
                         color: AppTheme.textMuted,
@@ -349,11 +261,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           },
         ),
       );
-    } finally {
-      activityController.dispose();
-      activityEndController.dispose();
-      noteController.dispose();
-    }
+    } finally {}
 
     if (!mounted || result == null) return;
     if (result == 'skipped') {
@@ -403,9 +311,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         : <String>[];
     final xai = _map(snapshot['xai']);
     final timelineNarrative = _timelineNarrative(snapshot, event);
-    final explanationText = (snapshot['explanation'] ?? event.details)
-        ?.toString()
-        .trim();
+    final explanationText =
+        (snapshot['explanation'] ?? event.details)?.toString().trim();
     final xaiSummary = xai['summary']?.toString().trim();
     final xaiConfidence = xai['confidence'];
     final supportingFactors = xai['supporting_factors'] is List
@@ -470,7 +377,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               ],
               if (contradictingFactors.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text('Faktor yang membatasi: ${contradictingFactors.join(', ')}'),
+                Text(
+                    'Faktor yang membatasi: ${contradictingFactors.join(', ')}'),
               ],
               if (factors.isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -508,15 +416,18 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     void addHistoryRecord(Map<String, dynamic> snapshot) {
       final scenario = _normalizeScenarioValue(snapshot['scenario']);
       if (scenario == null) return;
-      final key = [scenario, snapshot['session_id']?.toString(), snapshot['run_id']?.toString()]
-          .where((value) => value != null && value.trim().isNotEmpty)
-          .join('|');
+      final key = [
+        scenario,
+        snapshot['session_id']?.toString(),
+        snapshot['run_id']?.toString()
+      ].where((value) => value != null && value.trim().isNotEmpty).join('|');
       final groupKey = key.isEmpty ? scenario : '$scenario|$key';
       groupedByScenario.putIfAbsent(scenario, () => []).add({
         ...snapshot,
         'group_key': groupKey,
         'sort_time': DateTime.tryParse(
-              (snapshot['createdAt'] ?? snapshot['created_at'])?.toString() ?? '',
+              (snapshot['createdAt'] ?? snapshot['created_at'])?.toString() ??
+                  '',
             ) ??
             DateTime.fromMillisecondsSinceEpoch(0),
       });
@@ -552,7 +463,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         'session_id': log['session_id']?.toString(),
         'run_id': log['run_id']?.toString(),
         'explanation': narrative,
-        'createdAt': (log['createdAt'] ?? log['created_at'])?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+        'createdAt': (log['createdAt'] ?? log['created_at'])?.toString() ??
+            DateTime.now().toUtc().toIso8601String(),
       });
     }
 
@@ -562,8 +474,9 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final rows = <Map<String, dynamic>>[];
     final maxProfilesPerScenario = _showExpandedProfileHistory ? 10 : 2;
     for (final entry in entries) {
-      final scenarioRecords = [...entry.value]
-        ..sort((left, right) => (right['sort_time'] as DateTime).compareTo(left['sort_time'] as DateTime));
+      final scenarioRecords = [...entry.value]..sort((left, right) =>
+          (right['sort_time'] as DateTime)
+              .compareTo(left['sort_time'] as DateTime));
       rows.addAll(scenarioRecords.take(maxProfilesPerScenario));
       if (scenarioRecords.length > maxProfilesPerScenario) {
         rows.add({
@@ -613,7 +526,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () => setState(
-                      () => _showExpandedProfileHistory = !_showExpandedProfileHistory,
+                      () => _showExpandedProfileHistory =
+                          !_showExpandedProfileHistory,
                     ),
                     child: Text(
                       _showExpandedProfileHistory
@@ -625,10 +539,12 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               );
             }
 
-            final scenario = _normalizeScenarioValue(snapshot['scenario']) ?? 'B';
+            final scenario =
+                _normalizeScenarioValue(snapshot['scenario']) ?? 'B';
             final activity = snapshot['activity']?.toString() ?? 'unknown';
             final status = _statusLabel(snapshot['status']?.toString());
-            final sessionId = snapshot['session_id']?.toString() ?? snapshot['run_id']?.toString();
+            final sessionId = snapshot['session_id']?.toString() ??
+                snapshot['run_id']?.toString();
             final explanation = snapshot['explanation']?.toString() ??
                 'Tidak ada ringkasan tersimpan untuk sesi ini.';
             return Padding(
@@ -672,7 +588,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                               ),
                             ),
                           ],
-                          if (snapshot['version'] != null || snapshot['profile_version'] != null) ...[
+                          if (snapshot['version'] != null ||
+                              snapshot['profile_version'] != null) ...[
                             const SizedBox(height: 2),
                             Text(
                               'Versi profil: ${snapshot['profile_version'] ?? snapshot['version']}',
@@ -713,12 +630,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   }
 
   Widget _scenarioHistoryCard(List<EventItem> events) {
-    final history = events
-        .where((event) => event.eventType == 'hil_scenario')
-        .toList();
-    final visibleHistory = _showExpandedScenarioHistory
-        ? history
-        : history.take(5).toList();
+    final history =
+        events.where((event) => event.eventType == 'hil_scenario').toList();
+    final visibleHistory =
+        _showExpandedScenarioHistory ? history : history.take(5).toList();
     return Container(
       key: const Key('hil-scenario-history'),
       width: double.infinity,
@@ -781,7 +696,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () => setState(
-                    () => _showExpandedScenarioHistory = !_showExpandedScenarioHistory,
+                    () => _showExpandedScenarioHistory =
+                        !_showExpandedScenarioHistory,
                   ),
                   child: Text(
                     _showExpandedScenarioHistory
@@ -914,7 +830,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         if (rightAt == null) return 1;
         return rightAt.compareTo(leftAt);
       });
-    final visibleHistory = _showExpandedActivityHistory ? history : history.take(5).toList();
+    final visibleHistory =
+        _showExpandedActivityHistory ? history : history.take(5).toList();
     return Container(
       key: const Key('hil-scenario-action-history'),
       width: double.infinity,
@@ -971,7 +888,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
               final sessionId = log['session_id']?.toString();
               final heading = [
                 if (scenario != null) 'Skenario $scenario',
-                if (sessionId != null && sessionId.isNotEmpty) 'Sesi $sessionId',
+                if (sessionId != null && sessionId.isNotEmpty)
+                  'Sesi $sessionId',
                 _scenarioLogEventLabel(log['event_type']?.toString()),
               ].join(' · ');
               final summary = _humanReadableLogSummary(log);
@@ -997,10 +915,13 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () => setState(
-                    () => _showExpandedActivityHistory = !_showExpandedActivityHistory,
+                    () => _showExpandedActivityHistory =
+                        !_showExpandedActivityHistory,
                   ),
                   child: Text(
-                    _showExpandedActivityHistory ? 'Tutup riwayat' : 'Lihat riwayat lain',
+                    _showExpandedActivityHistory
+                        ? 'Tutup riwayat'
+                        : 'Lihat riwayat lain',
                   ),
                 ),
               ),
@@ -1237,7 +1158,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       ];
       for (final value in candidate) {
         if (value is num) return value.toInt();
-        if (value is String && int.tryParse(value) != null) return int.parse(value);
+        if (value is String && int.tryParse(value) != null)
+          return int.parse(value);
       }
       return null;
     })();
@@ -1248,9 +1170,8 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     final runId = snapshot['run_id']?.toString();
 
     final buffer = StringBuffer();
-    final timeText = timePeriod == null
-        ? 'periode yang tercatat'
-        : 'periode $timePeriod';
+    final timeText =
+        timePeriod == null ? 'periode yang tercatat' : 'periode $timePeriod';
     buffer.write('Digunakan pada $timeText');
     if (activity.trim().isNotEmpty && activity != 'tidak dicatat') {
       buffer.write(' saat aktivitas $activity');
@@ -1572,13 +1493,15 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             ...state.hilScenarioLogs.map((log) {
               final scenario = _normalizeScenarioValue(log['scenario']);
               final explanationText = ([
-                log['explanation']?.toString(),
-                log['recommendation']?.toString(),
-                log['clarification']?.toString(),
-              ] as List<String?>).firstWhere(
-                (value) => value != null && value.trim().isNotEmpty,
-                orElse: () => 'Riwayat HIL dari log skenario.',
-              ) ?? 'Riwayat HIL dari log skenario.';
+                    log['explanation']?.toString(),
+                    log['recommendation']?.toString(),
+                    log['clarification']?.toString(),
+                  ] as List<String?>)
+                      .firstWhere(
+                    (value) => value != null && value.trim().isNotEmpty,
+                    orElse: () => 'Riwayat HIL dari log skenario.',
+                  ) ??
+                  'Riwayat HIL dari log skenario.';
               final createdAt = DateTime.tryParse(
                     (log['createdAt'] ?? log['created_at'])?.toString() ?? '',
                   ) ??
@@ -2173,11 +2096,13 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     Map<String, dynamic> reportedContext,
   ) {
     final isReinterpreted = resolution['reinterpreted'] == true;
-    final activity = reportedContext['activity_before_event']?.toString().trim();
+    final activity =
+        reportedContext['activity_before_event']?.toString().trim();
     final hasRecentHeavyActivity = activity != null &&
         activity.isNotEmpty &&
         activity != 'unknown' &&
-        activity.toLowerCase().contains(RegExp(r'olah|lari|jalan|berat|latihan|exercise|vigorous'));
+        activity.toLowerCase().contains(
+            RegExp(r'olah|lari|jalan|berat|latihan|exercise|vigorous'));
     if (isReinterpreted) {
       if (hasRecentHeavyActivity) {
         return 'Interpretasi berubah menjadi: perubahan yang terlihat kemungkinan berkaitan dengan aktivitas berat yang baru selesai, tetapi ini belum membuktikan penyebab pasti.';

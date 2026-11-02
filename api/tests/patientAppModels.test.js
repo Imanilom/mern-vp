@@ -194,6 +194,7 @@ test('HIL sessions scope repeatable runs without merging them into the profile',
   assert.ok(PatientHilSession.schema.path('scenario'));
   assert.ok(PatientHilSession.schema.path('source'));
   assert.ok(PatientHilSession.schema.path('status'));
+  assert.ok(PatientHilSession.schema.path('last_activity_at'));
   assert.ok(PatientHilSession.schema.indexes().some(([keys, options]) => (
     keys.account_id === 1
     && keys.account_type === 1

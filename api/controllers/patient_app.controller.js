@@ -132,6 +132,32 @@ const REALTIME_BASELINE_ACTIVITY_ALIASES = {
   sleep: ['sleep', 'Sleep', 'Tidur', 'Berbaring', 'Rest'],
 };
 
+const HIL_INACTIVE_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
+async function closeInactivePatientHilSessions({ accountId, accountType }) {
+  const cutoff = new Date(Date.now() - HIL_INACTIVE_SESSION_TIMEOUT_MS);
+  await PatientHilSession.updateMany(
+    {
+      account_id: accountId,
+      account_type: accountType,
+      status: 'active',
+      $or: [
+        { last_activity_at: { $lt: cutoff } },
+        { last_activity_at: { $exists: false } },
+        { started_at: { $lt: cutoff } },
+      ],
+    },
+    {
+      $set: {
+        status: 'completed',
+        completed_at: new Date(),
+        last_activity_at: new Date(),
+      },
+    },
+    { runValidators: true }
+  );
+}
+
 async function getAccount(req) {
   const accountId = req.user?.id;
   if (!mongoose.isValidObjectId(accountId)) {
@@ -2248,6 +2274,10 @@ export async function listPatientHilExplanations(req, res) {
 
 export async function createPatientHilSession(req, res) {
   const { dataOwnerId, dataOwnerType } = await getAccount(req);
+  await closeInactivePatientHilSessions({
+    accountId: dataOwnerId,
+    accountType: dataOwnerType,
+  });
   const input = validateHilSession(req.body);
   const existing = await PatientHilSession.findOne({
     account_id: dataOwnerId,
@@ -2261,6 +2291,7 @@ export async function createPatientHilSession(req, res) {
     ...input,
     account_id: dataOwnerId,
     account_type: dataOwnerType,
+    last_activity_at: new Date(),
   });
   res.status(201).json({ success: true, data: session });
 }
@@ -2290,6 +2321,10 @@ export async function completePatientHilSession(req, res) {
 
 export async function createPatientHilScenarioLog(req, res) {
   const { dataOwnerId, dataOwnerType, accountScopes } = await getAccount(req);
+  await closeInactivePatientHilSessions({
+    accountId: dataOwnerId,
+    accountType: dataOwnerType,
+  });
   const log = validateHilScenarioLog(req.body);
   const accountFilter = accountScopeFilter(accountScopes);
   const session = await PatientHilSession.findOne({
@@ -2316,6 +2351,11 @@ export async function createPatientHilScenarioLog(req, res) {
     clarification: log.clarification ?? '',
     explanation: log.explanation ?? '',
   };
+  await PatientHilSession.findOneAndUpdate(
+    { _id: session._id, status: 'active' },
+    { $set: { last_activity_at: new Date() } },
+    { runValidators: true }
+  );
   const runFilter = {
     ...accountFilter,
     run_id: log.run_id,

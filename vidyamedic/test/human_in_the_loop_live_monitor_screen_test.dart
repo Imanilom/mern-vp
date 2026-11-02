@@ -92,36 +92,19 @@ void main() {
       findsNothing,
     );
 
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump();
-
-    expect(find.text('Klarifikasi aktivitas'), findsOneWidget);
-    expect(
-      find.textContaining('HR: 105.0 bpm · baseline 70.0 bpm'),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.text('Ya, aktivitas berat'));
-    await tester.pump();
-    expect(find.text('Klarifikasi aktivitas'), findsNothing);
-
-    for (var index = 0; index < 6; index++) {
+    for (var index = 0; index < 7; index++) {
       await tester.pump(const Duration(seconds: 2));
       await tester.pump();
     }
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('hil-live-current-result')),
-      300,
-      scrollable: find.descendant(
-        of: find.byType(ListView),
-        matching: find.byType(Scrollable),
-      ),
-    );
-    await tester.pump();
-    expect(find.text('Simulasi selesai · HR kembali ke baseline.'),
-        findsOneWidget);
+
+    expect(find.text('Klarifikasi aktivitas'), findsOneWidget);
     expect(
-        find.textContaining('HR simulasi mencapai 70.0 bpm'), findsOneWidget);
+      find.textContaining('sudah kembali mendekati rentang normal'),
+      findsOneWidget,
+    );
+
+    await tester.pump();
+    expect(find.text('Klarifikasi aktivitas'), findsOneWidget);
   });
 
   testWidgets('simulation chart labels a provisional-baseline candidate',

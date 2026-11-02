@@ -213,12 +213,9 @@ void main() {
     expect(find.text('Kirim dan tinjau ulang'), findsOneWidget);
     expect(find.text('Tidak ingat'), findsOneWidget);
     expect(find.text('Lewati'), findsOneWidget);
-    expect(find.byKey(const Key('hil-clarification-activity')), findsOneWidget);
-    expect(
-      find.byKey(const Key('hil-clarification-activity-end')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const Key('hil-clarification-note')), findsOneWidget);
+    expect(find.text('Pilih aktivitas sebelum puncak denyut'), findsOneWidget);
+    expect(find.byKey(const Key('hil-activity-option-Duduk')), findsOneWidget);
+    expect(find.byKey(const Key('hil-activity-option-Bekerja')), findsOneWidget);
   });
 
   testWidgets('A shows HIL baseline counts separately from CAPAR baselines',

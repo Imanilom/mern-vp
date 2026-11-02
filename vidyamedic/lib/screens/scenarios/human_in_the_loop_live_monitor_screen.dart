@@ -285,6 +285,8 @@ class _HumanInTheLoopLiveMonitorScreenState
   bool _promptedForCurrentEpisode = false;
   bool _hadElevatedHr = false;
   bool _deviationRecommendationRecordedForCurrentEpisode = false;
+  DateTime? _peakDeviationObservedAt;
+  DateTime? _recoveryObservedAt;
   bool _isSavingClarification = false;
   bool _isGeneratingInsight = false;
   int _backendEvaluationGeneration = 0;
@@ -451,6 +453,9 @@ class _HumanInTheLoopLiveMonitorScreenState
     _zeroShotInsight = null;
     _zeroShotInsightError = null;
     _latestRecommendation = null;
+    _peakDeviationObservedAt = null;
+    _recoveryObservedAt = null;
+    _promptedForCurrentEpisode = false;
   }
 
   void _recordHrObservation(HilLiveWindow window, double meanHr) {
@@ -864,6 +869,15 @@ class _HumanInTheLoopLiveMonitorScreenState
         meanHr < _previousWindowMeanHr! &&
         (meanHr - baselineHr).abs() <
             (_previousWindowMeanHr! - baselineHr).abs();
+    final recoveredToBaseline =
+        !elevated && meanHr <= baselineHr + _hrElevationThreshold;
+    if (isNewDeviation) {
+      _peakDeviationObservedAt = DateTime.now().toUtc();
+    } else if (elevated &&
+        _peakDeviationObservedAt != null &&
+        meanHr > baselineHr + _hrElevationThreshold) {
+      _peakDeviationObservedAt = DateTime.now().toUtc();
+    }
     if (elevated) _hadElevatedHr = true;
 
     final status = elevated
@@ -914,27 +928,37 @@ class _HumanInTheLoopLiveMonitorScreenState
       window.motionIsStable,
     )) {
       _highHrStableWindows++;
-      if (_highHrStableWindows >= 2 && !_promptedForCurrentEpisode) {
-        _promptedForCurrentEpisode = true;
-        unawaited(_requestActivityClarification(window));
-      }
     } else {
       _highHrStableWindows = 0;
     }
-    if (!_isSimulation &&
-        _hadElevatedHr &&
-        !elevated &&
-        approachingBaseline &&
-        _recoveryLabel != null) {
+    if (_hadElevatedHr && !elevated && recoveredToBaseline) {
+      _recoveryObservedAt = DateTime.now().toUtc();
       _hadElevatedHr = false;
       _highHrStableWindows = 0;
-      _promptedForCurrentEpisode = false;
       _deviationRecommendationRecordedForCurrentEpisode = false;
       _latestRecommendation = null;
-      unawaited(_recordRecoveryEvent(window, baselineHr));
+      final peakDeviationObservedAt = _peakDeviationObservedAt;
+      if (!_isSimulation) {
+        unawaited(_recordRecoveryEvent(
+          window,
+          baselineHr,
+          peakDeviationObservedAt: peakDeviationObservedAt,
+          recoveryObservedAt: _recoveryObservedAt,
+        ));
+      }
+      if (!_promptedForCurrentEpisode && peakDeviationObservedAt != null) {
+        _promptedForCurrentEpisode = true;
+        unawaited(_requestActivityClarification(
+          window,
+          peakDeviationObservedAt: peakDeviationObservedAt,
+          recoveryObservedAt: _recoveryObservedAt,
+        ));
+      }
+      _peakDeviationObservedAt = null;
     } else if (_isSimulation && !elevated && approachingBaseline) {
       _hadElevatedHr = false;
       _latestRecommendation = null;
+      _peakDeviationObservedAt = null;
     }
     if (submitBackend && !_isSimulation) {
       unawaited(_submitHilRealtime(
@@ -1131,18 +1155,25 @@ class _HumanInTheLoopLiveMonitorScreenState
     }
   }
 
-  Future<void> _requestActivityClarification(HilLiveWindow window) async {
+  Future<void> _requestActivityClarification(
+    HilLiveWindow window, {
+    required DateTime peakDeviationObservedAt,
+    required DateTime? recoveryObservedAt,
+  }) async {
     if (!mounted || _isPromptVisible) return;
     _isPromptVisible = true;
     if (!_isSimulation) {
       await _saveHilEvent(
         eventName: 'activity_clarification_requested',
-        details: 'Sistem menampilkan pertanyaan tentang aktivitas berat.',
+        details:
+            'Sistem menampilkan pertanyaan klarifikasi setelah denyut kembali ke baseline.',
         value: {
           'mode': _testMode,
           'ctx': _activity,
           'hr': window.meanHr,
           'base': _baselineMeanHr,
+          'peak_detected_at': peakDeviationObservedAt.toIso8601String(),
+          'recovery_detected_at': recoveryObservedAt?.toIso8601String(),
         },
       );
       if (!mounted) return;
@@ -1152,35 +1183,72 @@ class _HumanInTheLoopLiveMonitorScreenState
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Klarifikasi aktivitas'),
-        content: Text(
-          'HR 30 detik di atas baseline ${_hasMatureBaseline ? 'personal' : 'tersimpan sementara'} sementara akselerasi relatif stabil. '
-          'Apakah Anda baru saja melakukan aktivitas berat?\n\n'
-          'HR: ${window.meanHr?.toStringAsFixed(1) ?? '-'} bpm'
-          '${_baselineMeanHr == null ? '' : ' · baseline ${_baselineMeanHr!.toStringAsFixed(1)} bpm'}'
-          '${window.hrSlopeBpmPerMinute == null ? '' : ' · slope ${window.hrSlopeBpmPerMinute!.toStringAsFixed(1)} bpm/menit'}\n\n'
-          'Pertanyaan ini hanya mencatat konteks yang Anda laporkan; pola sensor tidak menentukan penyebab.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Denyut Anda sempat lebih tinggi dari baseline dan sudah kembali mendekati rentang normal. Aktivitas apa yang paling sesuai saat puncak tadi?',
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _clarificationChoiceChip(
+                  'Istirahat',
+                  'rest',
+                  'istirahat',
+                  dialogContext,
+                ),
+                _clarificationChoiceChip(
+                  'Duduk',
+                  'sitting',
+                  'duduk',
+                  dialogContext,
+                ),
+                _clarificationChoiceChip(
+                  'Berjalan',
+                  'walking',
+                  'berjalan',
+                  dialogContext,
+                ),
+                _clarificationChoiceChip(
+                  'Olahraga',
+                  'exercise',
+                  'olahraga',
+                  dialogContext,
+                ),
+                _clarificationChoiceChip(
+                  'Bekerja',
+                  'working',
+                  'bekerja',
+                  dialogContext,
+                ),
+                _clarificationChoiceChip(
+                  'Makan',
+                  'eating',
+                  'makan',
+                  dialogContext,
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(
               dialogContext,
-              (activity: 'no', intensity: null),
+              (activity: 'not_remembered', intensity: null),
             ),
-            child: const Text('Tidak'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(
-              dialogContext,
-              (activity: 'uncertain', intensity: null),
-            ),
-            child: const Text('Tidak yakin'),
+            child: const Text('Tidak ingat'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(
               dialogContext,
-              (activity: 'yes', intensity: 'vigorous'),
+              (activity: 'other', intensity: 'uncertain'),
             ),
-            child: const Text('Ya, aktivitas berat'),
+            child: const Text('Kirim'),
           ),
         ],
       ),
@@ -1191,24 +1259,26 @@ class _HumanInTheLoopLiveMonitorScreenState
       setState(() {
         _latestStatus = 'Jawaban simulasi tercatat di layar.';
         _latestDetail =
-            'Pilihan: ${answer.activity == 'yes' ? 'ya, aktivitas berat' : answer.activity == 'no' ? 'tidak' : 'tidak yakin'}. Tidak dikirim atau disimpan sebagai event pasien.';
+            'Pilihan: ${answer.activity}. Tidak dikirim atau disimpan sebagai event pasien.';
       });
       return;
     }
     setState(() => _isSavingClarification = true);
     final saved = await _saveHilEvent(
       eventName: 'activity_clarification_answered',
-      details: 'Jawaban pengguna atas pertanyaan aktivitas berat.',
+      details: 'Jawaban pengguna atas klarifikasi setelah pemulihan HR.',
       value: {
         'mode': _testMode,
         'ctx': _activity,
-        'heavy': answer.activity,
+        'clarification_choice': answer.activity,
         'intensity': answer.intensity ?? 'not_applicable',
         'hr': window.meanHr,
         'base': _baselineMeanHr,
         'slope': window.hrSlopeBpmPerMinute,
         'accel_var': window.accelerationVariability,
         'stable': window.motionIsStable,
+        'peak_detected_at': peakDeviationObservedAt.toIso8601String(),
+        'recovery_detected_at': recoveryObservedAt?.toIso8601String(),
       },
       intensity: answer.intensity ?? 'none',
     );
@@ -1217,10 +1287,28 @@ class _HumanInTheLoopLiveMonitorScreenState
     if (!saved) _showSaveError('Klarifikasi live gagal disimpan.');
   }
 
+  Widget _clarificationChoiceChip(
+    String label,
+    String value,
+    String activity, [
+    BuildContext? dialogContext,
+  ]) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: false,
+      onSelected: (_) {
+        if (dialogContext == null) return;
+        Navigator.of(dialogContext).pop((activity: value, intensity: activity));
+      },
+    );
+  }
+
   Future<void> _recordRecoveryEvent(
     HilLiveWindow window,
-    double baselineHr,
-  ) async {
+    double baselineHr, {
+    required DateTime? peakDeviationObservedAt,
+    required DateTime? recoveryObservedAt,
+  }) async {
     if (_isSimulation) return;
     await _saveHilEvent(
       eventName: 'hr_recovery_observed',
@@ -1232,14 +1320,19 @@ class _HumanInTheLoopLiveMonitorScreenState
         'base': baselineHr,
         'slope': window.hrSlopeBpmPerMinute,
         'label': _recoveryLabel,
+        if (peakDeviationObservedAt != null)
+          'peak_detected_at': peakDeviationObservedAt.toIso8601String(),
+        if (recoveryObservedAt != null)
+          'recovery_detected_at': recoveryObservedAt.toIso8601String(),
       },
     );
   }
 
   Future<void> _recordDeviationRecommendation(
     HilLiveWindow window,
-    double baselineHr,
-  ) async {
+    double baselineHr, {
+    DateTime? peakDeviationObservedAt,
+  }) async {
     await _saveHilEvent(
       eventName: 'deviation_recommendation',
       details:
@@ -1250,6 +1343,8 @@ class _HumanInTheLoopLiveMonitorScreenState
         'hr': window.meanHr,
         'base': baselineHr,
         'threshold': _hrElevationThreshold,
+        if (peakDeviationObservedAt != null)
+          'peak_detected_at': peakDeviationObservedAt.toIso8601String(),
       },
     );
   }
