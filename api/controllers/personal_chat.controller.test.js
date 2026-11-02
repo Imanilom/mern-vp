@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  formatPersonalChatTimestamp,
   sanitizePersonalChatAnalysis,
   sanitizePersonalChatErrorMessage,
   sanitizePersonalChatEvidence,
@@ -176,6 +177,14 @@ test('includes useful error details without exposing Gemini credentials', () => 
     result,
     'Request failed: https://example.test?key=[REDACTED] x-goog-api-key: [REDACTED]',
   );
+});
+
+test('formats Polar timestamps stored in seconds or milliseconds', () => {
+  const timestampMs = Date.parse('2026-11-02T00:00:00.000Z');
+
+  assert.equal(formatPersonalChatTimestamp(timestampMs / 1000), '2026-11-02');
+  assert.equal(formatPersonalChatTimestamp(timestampMs), '2026-11-02');
+  assert.equal(formatPersonalChatTimestamp(Number.NaN), 'tidak diketahui');
 });
 
 test('uses CAPAR analysis only when longitudinal CAPAR data exists', () => {

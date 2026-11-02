@@ -245,10 +245,15 @@ async function retrievePopulationBaselines(question, excludedUserIds) {
   return evidence.slice(0, MAX_EVIDENCE_ITEMS);
 }
 
-function dateLabel(timestamp) {
-  return Number.isFinite(timestamp)
-    ? new Date(timestamp).toISOString().slice(0, 10)
-    : 'tidak diketahui';
+export function formatPersonalChatTimestamp(timestamp) {
+  if (!Number.isFinite(timestamp)) return 'tidak diketahui';
+  const timestampMs = Math.abs(timestamp) < 100_000_000_000
+    ? timestamp * 1000
+    : timestamp;
+  const date = new Date(timestampMs);
+  return Number.isNaN(date.getTime())
+    ? 'tidak diketahui'
+    : date.toISOString().slice(0, 10);
 }
 
 function isHistoricalTrendQuestion(question) {
@@ -262,6 +267,24 @@ async function retrievePersonalHistory(caparUserId, question, req) {
   const range = getPersonalChatDateFilter(question);
   const includeDaily = isHistoricalTrendQuestion(question);
   const dateMatch = (field) => range ? { [field]: { $gte: range.from.getTime(), $lte: range.to.getTime() } } : {};
+  const polarTimestampMatch = range
+    ? {
+        $or: [
+          {
+            timestamp: {
+              $gte: Math.floor(range.from.getTime() / 1000),
+              $lte: Math.floor(range.to.getTime() / 1000),
+            },
+          },
+          {
+            timestamp: {
+              $gte: range.from.getTime(),
+              $lte: range.to.getTime(),
+            },
+          },
+        ],
+      }
+    : {};
   const baseMatch = userId ? { user_id: userId } : null;
   const history = {
     patientApp: null,
@@ -359,7 +382,7 @@ async function retrievePersonalHistory(caparUserId, question, req) {
       : Promise.resolve(null),
     baseMatch
       ? retrieve('PolarData', () => PolarData.aggregate([
-      { $match: { ...baseMatch, ...dateMatch('timestamp') } },
+      { $match: { ...baseMatch, ...polarTimestampMatch } },
       { $group: {
         _id: null,
         count: { $sum: 1 },
@@ -375,12 +398,20 @@ async function retrievePersonalHistory(caparUserId, question, req) {
       : Promise.resolve([]),
     baseMatch && includeDaily
       ? retrieve('PolarData daily trend', () => PolarData.aggregate([
-        { $match: { ...baseMatch, ...dateMatch('timestamp') } },
+        { $match: { ...baseMatch, ...polarTimestampMatch } },
         { $group: {
           _id: {
             $dateToString: {
               format: '%Y-%m-%d',
-              date: { $toDate: '$timestamp' },
+              date: {
+                $toDate: {
+                  $cond: [
+                    { $lt: ['$timestamp', 100_000_000_000] },
+                    { $multiply: ['$timestamp', 1000] },
+                    '$timestamp',
+                  ],
+                },
+              },
               timezone: 'UTC',
             },
           },
@@ -506,7 +537,7 @@ async function retrievePersonalHistory(caparUserId, question, req) {
       source: 'capar_history_summary',
       facts: [
         period,
-        `PolarData ${polar?.count ?? 0} titik (${dateLabel(polar?.first)}—${dateLabel(polar?.last)}), HR rata-rata ${polar?.avg_hr?.toFixed(1) ?? 'n/a'} bpm, rentang ${polar?.min_hr ?? 'n/a'}–${polar?.max_hr ?? 'n/a'} bpm, rrms rata-rata ${polar?.avg_rrms?.toFixed(1) ?? 'n/a'} ms, langkah ${polar?.total_steps ?? 0}.`,
+        `PolarData ${polar?.count ?? 0} titik (${formatPersonalChatTimestamp(polar?.first)}—${formatPersonalChatTimestamp(polar?.last)}), HR rata-rata ${polar?.avg_hr?.toFixed(1) ?? 'n/a'} bpm, rentang ${polar?.min_hr ?? 'n/a'}–${polar?.max_hr ?? 'n/a'} bpm, rrms rata-rata ${polar?.avg_rrms?.toFixed(1) ?? 'n/a'} ms, langkah ${polar?.total_steps ?? 0}.`,
         `Segmen CAPAR ${segments?.count ?? 0} window; HR ${segments?.avg_hr?.toFixed(1) ?? 'n/a'} bpm, RMSSD ${segments?.avg_rmssd?.toFixed(1) ?? 'n/a'} ms, SDNN ${segments?.avg_sdnn?.toFixed(1) ?? 'n/a'} ms.`,
         `Baseline matang: ${baselineSummary || 'belum tersedia'}. Event CAPAR: ${anomalySummary || 'belum tersedia'}.`,
         includeDaily

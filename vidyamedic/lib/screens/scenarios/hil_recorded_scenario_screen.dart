@@ -811,25 +811,61 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     }
     final selectedLog =
         _logs.lastWhere((log) => log['event_type'] == 'deviation_detected');
+    final recordedAt = DateTime.tryParse(
+      (selectedLog['observed_at'] ?? sample['recorded_at'])?.toString() ?? '',
+    );
+    final recordedAtLabel = recordedAt == null
+        ? 'waktu tidak tersedia'
+        : formatHilWibDateTime(recordedAt);
+    final heartRate = selectedLog['heart_rate_bpm'];
+    final baselineMeanHr = selectedLog['baseline_mean_hr'];
+    final deltaHr = heartRate is num && baselineMeanHr is num
+        ? heartRate - baselineMeanHr
+        : null;
+    final threshold = selectedLog['threshold_bpm'];
+    final zScore = selectedLog['z_score'];
+    final activityLabel = _activityLabel(_activity);
+    final localSummary = [
+      'Ringkasan fakta Skenario C HIL:',
+      'Waktu sampel saat perubahan terdeteksi: $recordedAtLabel (WIB).',
+      'Aktivitas yang dipilih untuk pengukuran: $activityLabel.',
+      'Klarifikasi peserta: "$clarification". Ini laporan peserta, bukan kesimpulan sensor.',
+      if (heartRate is num)
+        'HR saat sampel: ${heartRate.toStringAsFixed(1)} bpm.',
+      if (baselineMeanHr is num)
+        'Baseline pribadi untuk $activityLabel: ${baselineMeanHr.toStringAsFixed(1)} bpm.',
+      if (deltaHr != null)
+        'Selisih HR terhadap baseline: ${deltaHr >= 0 ? '+' : ''}${deltaHr.toStringAsFixed(1)} bpm.',
+      if (threshold is num)
+        'Ambang perubahan menonjol: ${threshold.toStringAsFixed(1)} bpm di atas baseline.',
+      if (zScore is num)
+        'Jarak dari variasi yang biasa terlihat: ${zScore.abs().toStringAsFixed(1)} kali.',
+      'Status sistem: ${selectedLog['algorithm_status'] ?? 'tidak tersedia'}.',
+      'Data sensor menunjukkan waktu dan perubahan HR; data ini tidak memastikan penyebab.',
+    ].join(' ');
     final evidence = <Map<String, dynamic>>[
       {
         'source': 'real_wearable_sample',
-        'facts': 'Sampel Polar H10 aktivitas $_activity.',
+        'recorded_at': recordedAt?.toIso8601String(),
+        'facts':
+            'Sampel Polar H10 pada $recordedAtLabel WIB; konteks pengukuran $activityLabel.',
         'metric': 'mean_hr',
-        'value': selectedLog['heart_rate_bpm'],
+        'value': heartRate,
         'unit': 'bpm',
         'status': selectedLog['algorithm_status'],
       },
       {
         'source': 'hil_personal_baseline',
-        'facts': 'Baseline HIL untuk aktivitas $_activity.',
+        'recorded_at': recordedAt?.toIso8601String(),
+        'facts': 'Baseline HIL pribadi untuk aktivitas $activityLabel.',
         'metric': 'mean_hr',
-        'value': selectedLog['baseline_mean_hr'],
+        'value': baselineMeanHr,
         'unit': 'bpm',
         'status': 'ready',
       },
       {
         'source': 'participant_clarification',
+        'recorded_at': recordedAt?.toIso8601String(),
         'facts': clarification,
         'metric': 'context',
         'value': clarification,
@@ -837,27 +873,19 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         'status': 'self_reported',
       },
     ];
-    final summary = [
-      'Skenario C HIL, aktivitas $_activity.',
-      'Denyut rekaman ${selectedLog['heart_rate_bpm']} bpm; nilai pembanding pribadi '
-          '${selectedLog['baseline_mean_hr']} bpm; perubahan '
-          '${selectedLog['algorithm_status'] == 'candidate_deviation' ? 'lebih tinggi dari kisaran biasa' : 'belum dapat dinilai'}.',
-      if (selectedLog['z_score'] is num)
-        'Jarak dari kisaran pribadi sekitar ${(selectedLog['z_score'] as num).abs().toStringAsFixed(1)} kali variasi yang biasa terlihat.',
-      'Klarifikasi peserta: $clarification',
-      'Gunakan bahasa sehari-hari tanpa istilah teknis. Bedakan hasil sensor dari laporan peserta. Klarifikasi tidak membuktikan penyebab.',
-    ].join(' ');
     final response = await ApiService.generatePersonalChatAnswer(
       question: 'Buat ringkasan penjelasan dalam bahasa Indonesia yang '
-          'menggabungkan deviasi HR dari baseline HIL dengan klarifikasi '
-          'peserta. Bedakan fakta sensor dari laporan peserta, jelaskan '
-          'ketidakpastian, jangan menyatakan hubungan sebab-akibat, jangan '
-          'membuat diagnosis, dan jangan memberi rekomendasi medis. Hindari '
-          'istilah statistik atau istilah ilmiah; jelaskan perubahan denyut '
-          'dengan kalimat sederhana.',
+          'melengkapi fakta Skenario C HIL. Sebutkan waktu sampel dalam WIB, '
+          'aktivitas yang dipilih, HR, baseline, selisih, ambang, status, dan '
+          'klarifikasi peserta. Jangan menghilangkan atau mengubah angka dan '
+          'waktu dari fakta. Jelaskan perbedaan antara konteks pengukuran '
+          'dengan laporan peserta bila berbeda. Bedakan fakta sensor dari '
+          'laporan peserta; klarifikasi tidak membuktikan penyebab. Jangan '
+          'membuat diagnosis atau rekomendasi medis. Gunakan kalimat sederhana.',
       evidence: evidence,
-      localSummary:
-          summary.length > 1200 ? summary.substring(0, 1200) : summary,
+      localSummary: localSummary.length > 1200
+          ? localSummary.substring(0, 1200)
+          : localSummary,
       conversationHistory: const [],
     );
     if (!mounted) return;
@@ -878,7 +906,16 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       return;
     }
 
-    final explanation = response.data!;
+    final explanationPrefix = [
+      localSummary,
+      '',
+      'Penjelasan tambahan:',
+    ].join('\n');
+    final explanation = '$explanationPrefix'
+        '${response.data!.substring(
+      0,
+      math.max(0, 1200 - explanationPrefix.length),
+    )}';
     final saved = await _logSelectedObservation(
       'zero_shot_generated',
       clarification: clarification,
