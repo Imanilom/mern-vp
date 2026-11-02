@@ -110,6 +110,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   bool _ownsStream = false;
   bool _clarificationRequested = false;
   bool _isGeneratingExplanation = false;
+  bool _isResultFrozen = false;
+  bool _isStartingRun = false;
   Timer? _refreshTimer;
   late final AppState _appState;
 
@@ -274,48 +276,54 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }
 
   Future<void> _startRun() async {
-    final session = await ApiService.createHilSession({
-      'run_id': _runId,
-      'scenario': widget.scenario,
-      'source': 'recorded_polar_sample',
-      'activity': _activity,
-    });
-    if (!mounted) {
-      if (session.success) {
-        await ApiService.completeHilSession(_runId);
-      }
-      return;
-    }
-    if (!session.success || session.data == null) {
-      setState(() {
-        _isLoading = false;
-        _error = session.message ?? 'Sesi HIL gagal dimulai.';
+    if (_sessionId != null || _isStartingRun) return;
+    _isStartingRun = true;
+    try {
+      final session = await ApiService.createHilSession({
+        'run_id': _runId,
+        'scenario': widget.scenario,
+        'source': 'recorded_polar_sample',
+        'activity': _activity,
       });
-      return;
-    }
-    _sessionId = session.data!['_id']?.toString();
-    if (_sessionId == null) {
-      final response = await ApiService.completeHilSession(_runId);
-      if (!response.success) {
-        debugPrint('[HIL] Gagal menutup sesi $_runId: ${response.message}');
+      if (!mounted) {
+        if (session.success) {
+          await ApiService.completeHilSession(_runId);
+        }
+        return;
       }
-      setState(() {
-        _isLoading = false;
-        _error = 'ID sesi HIL tidak diterima dari server.';
-      });
-      return;
-    }
-    final started = await _saveLog('scenario_started');
-    if (!started || !mounted) {
-      if (!started) {
+      if (!session.success || session.data == null) {
+        setState(() {
+          _isLoading = false;
+          _error = session.message ?? 'Sesi HIL gagal dimulai.';
+        });
+        return;
+      }
+      _sessionId = session.data!['_id']?.toString();
+      if (_sessionId == null) {
         final response = await ApiService.completeHilSession(_runId);
         if (!response.success) {
           debugPrint('[HIL] Gagal menutup sesi $_runId: ${response.message}');
         }
+        setState(() {
+          _isLoading = false;
+          _error = 'ID sesi HIL tidak diterima dari server.';
+        });
+        return;
       }
-      return;
+      final started = await _saveLog('scenario_started');
+      if (!started || !mounted) {
+        if (!started) {
+          final response = await ApiService.completeHilSession(_runId);
+          if (!response.success) {
+            debugPrint('[HIL] Gagal menutup sesi $_runId: ${response.message}');
+          }
+        }
+        return;
+      }
+      await _loadSamples();
+    } finally {
+      _isStartingRun = false;
     }
-    await _loadSamples();
   }
 
   Future<void> _loadSamples() async {
@@ -366,7 +374,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       final selectedSample =
           unhandledDeviation ?? (samples.isEmpty ? null : samples.last);
       _selectedSampleId = selectedSample?['_id']?.toString();
-      if (unhandledDeviation != null && _selectedSampleId != selectedId) {
+      if (unhandledDeviation != null &&
+          _selectedSampleId != selectedId &&
+          !_isResultFrozen) {
         _recommendation = null;
         _zeroShotExplanation = null;
         _clarificationRequested = false;
@@ -505,7 +515,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }) async {
     final sessionId = _sessionId;
     if (sessionId == null) {
-      _showScenarioError('Log tidak dapat disimpan tanpa sesi HIL aktif.');
+      debugPrint('[HIL] Log $eventType tidak dapat disimpan tanpa sesi HIL aktif.');
       return false;
     }
     final response = await ApiService.createHilScenarioLog({
@@ -950,6 +960,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     );
   }
 
+  void _toggleResultFreeze() {
+    setState(() {
+      _isResultFrozen = !_isResultFrozen;
+    });
+  }
+
   Widget _scenarioOutcome() {
     if (_recommendation != null) {
       return Card(
@@ -960,12 +976,34 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Skenario B · one way feedback',
-                  style: AppTheme.font(size: 12, weight: FontWeight.w800)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text('Skenario B · one way feedback',
+                        style:
+                            AppTheme.font(size: 12, weight: FontWeight.w800)),
+                  ),
+                  TextButton.icon(
+                    key: const Key('hil-recorded-freeze-result'),
+                    onPressed: _toggleResultFreeze,
+                    icon: Icon(
+                      _isResultFrozen ? Icons.lock : Icons.lock_open_rounded,
+                    ),
+                    label: Text(
+                      _isResultFrozen ? 'Batal freeze' : 'Freeze hasil',
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
               Text(_recommendation!),
               const SizedBox(height: 5),
-              const Text('Feedback satu arah; tidak meminta klarifikasi. Hasil ini dibekukan saat anomali muncul agar tidak hilang saat sinyal turun kembali.'),
+              Text(
+                _isResultFrozen
+                    ? 'Hasil saat ini dibekukan dan tetap ditampilkan meski sinyal atau deviasi berikutnya turun kembali.'
+                    : 'Feedback satu arah; tidak meminta klarifikasi. Hasil ini dibekukan saat anomali muncul agar tidak hilang saat sinyal turun kembali.',
+              ),
             ],
           ),
         ),
@@ -979,8 +1017,25 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Skenario C · klarifikasi peserta',
-                style: AppTheme.font(size: 12, weight: FontWeight.w800)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text('Skenario C · klarifikasi peserta',
+                      style: AppTheme.font(size: 12, weight: FontWeight.w800)),
+                ),
+                TextButton.icon(
+                  key: const Key('hil-recorded-freeze-result-c'),
+                  onPressed: _toggleResultFreeze,
+                  icon: Icon(
+                    _isResultFrozen ? Icons.lock : Icons.lock_open_rounded,
+                  ),
+                  label: Text(
+                    _isResultFrozen ? 'Batal freeze' : 'Freeze hasil',
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 5),
             const Text(
               'Apakah ada informasi yang mungkin terlewat sistem saat perubahan denyut ini terjadi?',

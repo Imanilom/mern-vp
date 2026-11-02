@@ -35,6 +35,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   String? _lastAutoClarificationSegmentId;
   bool _showExpandedScenarioHistory = false;
   bool _showExpandedActivityHistory = false;
+  bool _showExpandedProfileHistory = false;
 
   @override
   void initState() {
@@ -559,10 +560,20 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
       ..sort((left, right) => left.key.compareTo(right.key));
 
     final rows = <Map<String, dynamic>>[];
+    final maxProfilesPerScenario = _showExpandedProfileHistory ? 10 : 2;
     for (final entry in entries) {
       final scenarioRecords = [...entry.value]
         ..sort((left, right) => (right['sort_time'] as DateTime).compareTo(left['sort_time'] as DateTime));
-      rows.addAll(scenarioRecords);
+      rows.addAll(scenarioRecords.take(maxProfilesPerScenario));
+      if (scenarioRecords.length > maxProfilesPerScenario) {
+        rows.add({
+          'scenario': entry.key,
+          'activity': 'more',
+          'status': 'more_records',
+          'explanation': 'Tampilkan profil lain untuk skenario ${entry.key}.',
+          'is_more_placeholder': true,
+        });
+      }
     }
 
     if (rows.isEmpty) return const SizedBox.shrink();
@@ -595,6 +606,25 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           ),
           const SizedBox(height: 8),
           ...rows.map((snapshot) {
+            if (snapshot['is_more_placeholder'] == true) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => setState(
+                      () => _showExpandedProfileHistory = !_showExpandedProfileHistory,
+                    ),
+                    child: Text(
+                      _showExpandedProfileHistory
+                          ? 'Tutup profil lain'
+                          : 'Lihat profil lain',
+                    ),
+                  ),
+                ),
+              );
+            }
+
             final scenario = _normalizeScenarioValue(snapshot['scenario']) ?? 'B';
             final activity = snapshot['activity']?.toString() ?? 'unknown';
             final status = _statusLabel(snapshot['status']?.toString());
@@ -1588,7 +1618,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           if (_selectedScenario == 'B') ...[
             const SizedBox(height: 10),
             _scenarioResultCard(
-              title: 'One way narrative · hasil',
+              title: 'One way feedback · hasil',
               detail: _scenarioNarrative(latestObservation, positiveZScores),
               key: const Key('hil-one-way-result'),
             ),

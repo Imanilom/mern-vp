@@ -70,6 +70,14 @@ const scenarioWriteLimiter = rateLimit({
   message: { success: false, message: 'Terlalu banyak perubahan skenario. Coba lagi nanti.' },
 });
 
+const hilWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 200,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { success: false, message: 'Sesi HIL sedang sibuk. Tunggu beberapa saat lalu coba lagi.' },
+});
+
 const hilRealtimeLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 120,
@@ -132,16 +140,16 @@ router.get('/check-ins/:checkInId', verifyToken, getPatientAppCheckIn);
 router.delete('/check-ins/:checkInId', verifyToken, deletePatientAppCheckIn);
 router.post('/events', verifyToken, createPatientAppEvent);
 router.get('/events', verifyToken, listPatientAppEvents);
-router.post('/hil-explanations', verifyToken, scenarioWriteLimiter, createPatientHilExplanation);
+router.post('/hil-explanations', verifyToken, hilWriteLimiter, createPatientHilExplanation);
 router.get('/hil-explanations', verifyToken, listPatientHilExplanations);
-router.post('/hil-sessions', verifyToken, scenarioWriteLimiter, createPatientHilSession);
+router.post('/hil-sessions', verifyToken, hilWriteLimiter, createPatientHilSession);
 router.patch(
   '/hil-sessions/:runId/complete',
   verifyToken,
-  scenarioWriteLimiter,
+  hilWriteLimiter,
   completePatientHilSession
 );
-router.post('/hil-scenario-logs', verifyToken, scenarioWriteLimiter, createPatientHilScenarioLog);
+router.post('/hil-scenario-logs', verifyToken, hilWriteLimiter, createPatientHilScenarioLog);
 router.get('/hil-scenario-logs', verifyToken, listPatientHilScenarioLogs);
 router.get('/hil-baselines', verifyToken, getPatientAppHilBaselines);
 router.post('/actions', verifyToken, createPatientAppAction);
