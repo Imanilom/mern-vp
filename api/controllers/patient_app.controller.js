@@ -4273,6 +4273,7 @@ export async function evaluatePatientAppHilRealtime(req, res) {
     readings: evaluation.readings,
     dfa_rr_intervals_ms: evaluation.dfa_rr_intervals_ms ?? [],
     previous_max_hr: evaluation.previous_max_hr ?? null,
+    context_activity_mean_hr: evaluation.context_activity_mean_hr ?? null,
     previous_elevated: evaluation.previous_elevated ?? false,
     analysis,
   });

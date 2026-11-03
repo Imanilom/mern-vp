@@ -1169,6 +1169,7 @@ test('HIL realtime evaluation accepts bounded real sensor windows and five-minut
     readings: [reading, { ...reading, recorded_at: new Date(Date.now() + 1000).toISOString() }],
     dfa_rr_intervals_ms: Array(64).fill(830),
     previous_max_hr: 90,
+    context_activity_mean_hr: 96.5,
     previous_elevated: true,
   };
   const result = validateHilRealtimeEvaluation(payload);
@@ -1178,6 +1179,7 @@ test('HIL realtime evaluation accepts bounded real sensor windows and five-minut
   assert.equal(result.readings.length, 2);
   assert.equal(result.dfa_rr_intervals_ms.length, 64);
   assert.equal(result.previous_elevated, true);
+  assert.equal(result.context_activity_mean_hr, 96.5);
   assert.equal(result.readings[0].ecg, 0.15);
 
   assert.throws(
@@ -1186,6 +1188,13 @@ test('HIL realtime evaluation accepts bounded real sensor windows and five-minut
   );
   assert.throws(
     () => validateHilRealtimeEvaluation({ ...payload, activity: 'running' }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilRealtimeEvaluation({
+      ...payload,
+      context_activity_mean_hr: 251,
+    }),
     { statusCode: 400 }
   );
   assert.throws(

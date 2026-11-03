@@ -90,12 +90,18 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
   }));
 
   const { mean: hrBaseline, std: hrStd } = baselineFeature(baselines, 'mean_hr');
+  const contextActivityMeanHr = evaluation.context_activity_mean_hr ?? null;
+  const comparisonHrBaseline = contextActivityMeanHr ?? hrBaseline;
   comparisons.max_hr = {
     value: maxHr,
-    baseline_mean: hrBaseline,
+    baseline_mean: comparisonHrBaseline,
     baseline_std: hrStd,
+    reference: contextActivityMeanHr === null
+      ? 'personal_baseline'
+      : 'repeated_activity_session_average',
     candidate: maxHr !== null && hrBaseline !== null
-      && maxHr > hrBaseline + (hrStd === null ? 10 : Math.max(10, hrStd * 2)),
+      && maxHr > comparisonHrBaseline
+        + (hrStd === null ? 10 : Math.max(10, hrStd * 2)),
   };
   const baselineAvailable = hrBaseline !== null;
   const canAttribute = baselineAvailable && hrQualityAccepted;
@@ -108,12 +114,13 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
     is_peak: reading === maximumReading,
     importance: reading === maximumReading ? 1 : 0,
   }));
-  const hrElevated = maxHr !== null && hrBaseline !== null
-    && maxHr > hrBaseline + hrThreshold;
+  const hrElevated = maxHr !== null && comparisonHrBaseline !== null
+    && maxHr > comparisonHrBaseline + hrThreshold;
   const previousHr = evaluation.previous_max_hr;
   const approachingBaseline = maxHr !== null && hrBaseline !== null
     && previousHr !== undefined && maxHr < previousHr
-    && Math.abs(maxHr - hrBaseline) < Math.abs(previousHr - hrBaseline);
+    && Math.abs(maxHr - comparisonHrBaseline)
+      < Math.abs(previousHr - comparisonHrBaseline);
   const recoveryTrend = evaluation.previous_elevated === true
     && approachingBaseline;
 
@@ -121,7 +128,7 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
   const status = !qualityAccepted || !baselineAvailable
     ? 'not_assessable'
     : recoveryTrend
-      ? Math.abs(maxHr - hrBaseline) <= hrThreshold
+      ? Math.abs(maxHr - comparisonHrBaseline) <= hrThreshold
         ? 'recovered'
         : 'recovery_trend'
       : hrElevated
@@ -143,7 +150,9 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
       ? 'Kualitas atau jumlah sampel HR belum memenuhi syarat; interpretasi ditahan.'
       : 'Baseline aktivitas belum tersedia di backend; interpretasi ditahan.'
     : status === 'candidate_deviation'
-      ? 'HR maksimum per detik melampaui pembanding personal. Ini bukan diagnosis atau penentuan penyebab.'
+      ? contextActivityMeanHr === null
+        ? 'HR maksimum per detik melampaui pembanding personal. Ini bukan diagnosis atau penentuan penyebab.'
+        : 'HR maksimum per detik melampaui rerata rekaman ulang aktivitas pada sesi ini. Baseline personal tidak diubah.'
       : status === 'recovery_trend'
         ? 'HR menurun dan mendekati baseline setelah jendela sebelumnya tinggi; pemulihan masih diamati.'
         : status === 'recovered'
@@ -179,6 +188,10 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
       mean_hr: hrBaseline,
       mean_hr_std: hrStd,
       hr_threshold: hrThreshold,
+      context_activity_mean_hr: contextActivityMeanHr,
+      comparison_reference: contextActivityMeanHr === null
+        ? 'personal_baseline'
+        : 'repeated_activity_session_average',
     },
     comparisons,
     explanation: {

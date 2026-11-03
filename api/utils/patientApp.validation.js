@@ -1472,6 +1472,7 @@ export function validateHilRealtimeEvaluation(body) {
       'dfa_rr_intervals_ms',
       'previous_max_hr',
       'previous_elevated',
+      'context_activity_mean_hr',
     ]),
     'Field evaluasi HIL'
   );
@@ -1579,6 +1580,14 @@ export function validateHilRealtimeEvaluation(body) {
   };
   if ('previous_max_hr' in body) {
     result.previous_max_hr = optionalNumber(body.previous_max_hr, 'previous_max_hr', 20, 250);
+  }
+  if ('context_activity_mean_hr' in body) {
+    result.context_activity_mean_hr = optionalNumber(
+      body.context_activity_mean_hr,
+      'context_activity_mean_hr',
+      20,
+      250
+    );
   }
   if ('previous_elevated' in body) {
     if (typeof body.previous_elevated !== 'boolean') {

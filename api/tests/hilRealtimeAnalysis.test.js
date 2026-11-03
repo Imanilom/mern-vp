@@ -71,6 +71,30 @@ test('HIL deviation status depends on maximum HR, not HRV feature candidates', (
   assert.equal(result.interpretation.status, 'normal');
 });
 
+test('HIL repeated-activity average contextualizes a session without changing personal baseline', () => {
+  const result = analyzeHilRealtimeEvaluation({
+    activity: 'sitting',
+    readings: readings({ heartRate: 100 }),
+    context_activity_mean_hr: 100,
+  }, [provisionalBaseline]);
+
+  assert.equal(result.interpretation.status, 'normal');
+  assert.equal(result.baseline.mean_hr, 70);
+  assert.equal(result.baseline.context_activity_mean_hr, 100);
+  assert.equal(result.comparisons.max_hr.baseline_mean, 100);
+  assert.equal(
+    result.comparisons.max_hr.reference,
+    'repeated_activity_session_average'
+  );
+
+  const stillElevated = analyzeHilRealtimeEvaluation({
+    activity: 'sitting',
+    readings: readings({ heartRate: 115 }),
+    context_activity_mean_hr: 100,
+  }, [provisionalBaseline]);
+  assert.equal(stillElevated.interpretation.status, 'candidate_deviation');
+});
+
 test('HIL evaluator accepts one valid HR sample and checks its maximum', () => {
   const result = analyzeHilRealtimeEvaluation({
     activity: 'sitting',
