@@ -1438,6 +1438,18 @@ test('HIL scenario logs accept sample references inside a session', () => {
   assert.equal(frozenObservation.raw_recorded_at.toISOString(), '2026-11-01T04:00:00.000Z');
   assert.equal(frozenObservation.explanation, 'HR raw melewati rata-rata baseline.');
   assert.equal(frozenObservation.recommendation, 'Hasil observasi sementara.');
+  assert.throws(
+    () => validateHilScenarioLog({
+      session_id: sessionId,
+      run_id: 'hil-C-freeze-empty-1793508969984',
+      scenario: 'C',
+      event_type: 'observation_frozen',
+      activity: 'walking',
+      raw_hr: 101,
+      raw_recorded_at: '2026-11-01T04:00:00.000Z',
+    }),
+    { statusCode: 400 }
+  );
 
   const repeatChoice = validateHilScenarioLog({
     session_id: sessionId,

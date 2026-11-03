@@ -852,6 +852,17 @@ export function validateHilScenarioLog(value) {
   ) {
     throw errorHandler(400, 'zero_shot_generated memerlukan penjelasan.');
   }
+  if (
+    value.event_type === 'observation_frozen'
+    && (
+      typeof value.explanation !== 'string'
+      || !value.explanation.trim()
+      || typeof value.recommendation !== 'string'
+      || !value.recommendation.trim()
+    )
+  ) {
+    throw errorHandler(400, 'observation_frozen memerlukan ringkasan dan hasil popup.');
+  }
 
   const result = {
     session_id: value.session_id,

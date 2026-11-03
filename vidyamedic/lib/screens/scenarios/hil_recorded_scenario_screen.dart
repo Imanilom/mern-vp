@@ -1041,7 +1041,6 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           sampleId: _selectedSampleId,
           rawHeartRate: rawHr,
           rawRecordedAt: rawTime,
-          rawSignalQuality: _rawSignalQuality(rawReading),
           explanation: 'Ringkasan observasi: HR raw '
               '${rawHr.toStringAsFixed(1)} pada '
               '${formatHilWibDateTime(rawTime)}; lebih tinggi dari rata-rata '
@@ -1110,7 +1109,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         );
       }
       if (logsSaved) {
-        final requested = sampleId != null && _selectedSampleId != null
+        final requested = _selectedSampleId != null
             ? await _logSelectedObservation('clarification_requested')
             : await _saveLog('clarification_requested');
         final submitted = requested == null
@@ -1267,8 +1266,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         explanationSnapshot: _explanationSnapshot(
           conclusion,
           'candidate_deviation',
-          sourceLogId: conclusionLog!['_id'].toString(),
-          sampleId: conclusionLog!['sample_id']?.toString(),
+          sourceLogId: conclusionLog['_id'].toString(),
+          sampleId: conclusionLog['sample_id']?.toString(),
         ),
       );
       if (!saved && mounted) {
@@ -1302,7 +1301,6 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         sampleId: _selectedSampleId,
         rawHeartRate: rawHr,
         rawRecordedAt: rawTime,
-        rawSignalQuality: _rawSignalQuality(rawReading),
         clarification: answer,
         explanation: _buildObservationSummary(
           deviation,
