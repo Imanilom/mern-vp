@@ -706,6 +706,7 @@ export function validateHilScenarioLog(value) {
       'sample_id',
       'raw_hr',
       'raw_recorded_at',
+      'raw_signal_quality',
       'recommendation',
       'clarification',
       'explanation',
@@ -733,6 +734,11 @@ export function validateHilScenarioLog(value) {
       || value.raw_hr > 250
       || typeof value.raw_recorded_at !== 'string'
       || !Number.isFinite(new Date(value.raw_recorded_at).getTime())
+      || (value.raw_signal_quality !== undefined
+        && (typeof value.raw_signal_quality !== 'number'
+          || !Number.isFinite(value.raw_signal_quality)
+          || value.raw_signal_quality < 0
+          || value.raw_signal_quality > 1))
     )
   ) {
     throw errorHandler(400, 'Data HR raw hanya valid untuk event deviasi.');
@@ -754,6 +760,9 @@ export function validateHilScenarioLog(value) {
     'clarification_submitted',
     'zero_shot_generated',
     'zero_shot_failed',
+    'activity_repeat_selected',
+    'activity_context_sufficient',
+    'activity_repeat_skipped',
   ]);
   const activities = new Set(['sitting', 'standing', 'walking']);
   if (!['B', 'C'].includes(value.scenario) || !eventTypes.has(value.event_type)) {
@@ -764,7 +773,15 @@ export function validateHilScenarioLog(value) {
   }
   if (
     (value.scenario === 'B'
-      && ['clarification_requested', 'clarification_submitted', 'zero_shot_generated', 'zero_shot_failed']
+      && [
+        'clarification_requested',
+        'clarification_submitted',
+        'zero_shot_generated',
+        'zero_shot_failed',
+        'activity_repeat_selected',
+        'activity_context_sufficient',
+        'activity_repeat_skipped',
+      ]
         .includes(value.event_type))
     || (value.scenario === 'C' && value.event_type === 'feedback_presented')
   ) {
@@ -780,7 +797,20 @@ export function validateHilScenarioLog(value) {
     'zero_shot_generated',
     'zero_shot_failed',
   ]);
-  if (sampleEvents.has(value.event_type) && !value.sample_id) {
+  if (
+    sampleEvents.has(value.event_type)
+    && !value.sample_id
+    && !(value.event_type === 'deviation_detected' && hasRawHeartRate)
+    && !(
+      value.scenario === 'C'
+      && [
+        'clarification_requested',
+        'clarification_submitted',
+        'zero_shot_generated',
+        'zero_shot_failed',
+      ].includes(value.event_type)
+    )
+  ) {
     throw errorHandler(400, `${value.event_type} memerlukan sample_id.`);
   }
   if (!Array.isArray(sampleIds) || sampleIds.length > 100) {
@@ -834,6 +864,9 @@ export function validateHilScenarioLog(value) {
   if (hasRawHeartRate) {
     result.raw_hr = value.raw_hr;
     result.raw_recorded_at = new Date(value.raw_recorded_at);
+    if (value.raw_signal_quality !== undefined) {
+      result.raw_signal_quality = value.raw_signal_quality;
+    }
   }
   for (const field of ['recommendation', 'clarification', 'explanation']) {
     if (field in value) {
@@ -852,7 +885,20 @@ export function validateHilScenarioLog(value) {
       'live_recording_stopped',
       'live_recording_interrupted',
       'records_loaded',
+      'activity_repeat_selected',
+      'activity_context_sufficient',
+      'activity_repeat_skipped',
     ].includes(value.event_type)
+    && !(
+      value.scenario === 'C'
+      && [
+        'clarification_requested',
+        'clarification_submitted',
+        'zero_shot_generated',
+        'zero_shot_failed',
+      ].includes(value.event_type)
+    )
+    && !(value.event_type === 'deviation_detected' && hasRawHeartRate)
     && !result.sample_id
   ) {
     throw errorHandler(400, `Log ${value.event_type} harus terikat pada sampel wearable.`);

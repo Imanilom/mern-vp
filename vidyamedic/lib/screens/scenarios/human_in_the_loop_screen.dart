@@ -726,6 +726,9 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
         'clarification_submitted' => 'Klarifikasi dikirim pengguna',
         'zero_shot_generated' => 'Ringkasan otomatis dibuat',
         'zero_shot_failed' => 'Ringkasan otomatis gagal dibuat',
+        'activity_repeat_selected' => 'Rekam ulang dipilih',
+        'activity_context_sufficient' => 'Konteks dinilai cukup',
+        'activity_repeat_skipped' => 'Tidak merekam ulang',
         'activity_clarification_requested' => 'Sistem meminta keterangan',
         'activity_clarification_answered' => 'Keterangan pengguna diterima',
         'deviation_recommendation' => 'One way feedback',
@@ -2011,20 +2014,17 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
           else
             ..._baselineActivities.expand((activity) {
               final matchingContexts = contexts.where(
-                (baseline) =>
-                    _matchesBaselineActivity(baseline, activity.$2),
+                (baseline) => _matchesBaselineActivity(baseline, activity.$2),
               );
-              final dailyHistory = matchingContexts
-                  .expand((baseline) {
-                    final history = baseline['history'];
-                    if (history is! List) {
-                      return const <Map<String, dynamic>>[];
-                    }
-                    return history
-                        .whereType<Map>()
-                        .map((item) => Map<String, dynamic>.from(item));
-                  })
-                  .toList()
+              final dailyHistory = matchingContexts.expand((baseline) {
+                final history = baseline['history'];
+                if (history is! List) {
+                  return const <Map<String, dynamic>>[];
+                }
+                return history
+                    .whereType<Map>()
+                    .map((item) => Map<String, dynamic>.from(item));
+              }).toList()
                 ..sort((a, b) => (b['date']?.toString() ?? '')
                     .compareTo(a['date']?.toString() ?? ''));
               if (dailyHistory.isEmpty) return const <Widget>[];

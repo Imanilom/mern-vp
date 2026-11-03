@@ -80,6 +80,21 @@ void main() {
     );
   });
 
+  test('scenario C conclusion includes the measured delta and reported context',
+      () {
+    final conclusion = HilRecordedScenarioAnalysis.participantContextConclusion(
+      heartRate: 96,
+      baselineMean: 72,
+      participantContext: 'Saya baru selesai berjalan.',
+    );
+
+    expect(conclusion, contains('HR raw saat deviasi 96.0'));
+    expect(conclusion, contains('lebih tinggi 24.0'));
+    expect(conclusion, contains('rata-rata baseline 72.0'));
+    expect(conclusion, contains('Saya baru selesai berjalan.'));
+    expect(conclusion, contains('tidak membuktikan penyebab deviasi'));
+  });
+
   testWidgets('HR line chart replaces per-reading BPM chips', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(

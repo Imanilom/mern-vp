@@ -60,6 +60,9 @@ const PatientHilScenarioLogSchema = new mongoose.Schema(
         'clarification_submitted',
         'zero_shot_generated',
         'zero_shot_failed',
+        'activity_repeat_selected',
+        'activity_context_sufficient',
+        'activity_repeat_skipped',
       ],
     },
     activity: {
@@ -81,6 +84,7 @@ const PatientHilScenarioLogSchema = new mongoose.Schema(
     threshold_bpm: { type: Number, min: 0, max: 200, default: null },
     z_score: { type: Number, min: -100, max: 100, default: null },
     q_signal: { type: Number, min: 0, max: 1, default: null },
+    raw_signal_quality: { type: Number, min: 0, max: 1, default: null },
     q_complete: { type: Number, min: 0, max: 1, default: null },
     quality_status: {
       type: String,

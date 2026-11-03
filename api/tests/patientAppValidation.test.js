@@ -1375,6 +1375,38 @@ test('HIL scenario logs accept sample references inside a session', () => {
   assert.ok(rawDeviation.raw_recorded_at instanceof Date);
   assert.equal(rawDeviation.raw_recorded_at.toISOString(), '2026-11-01T04:00:00.000Z');
 
+  const liveRawDeviation = validateHilScenarioLog({
+    session_id: sessionId,
+    run_id: 'hil-C-raw-1793508969984',
+    scenario: 'C',
+    event_type: 'deviation_detected',
+    activity: 'walking',
+    raw_hr: 101,
+    raw_recorded_at: '2026-11-01T04:00:00.000Z',
+    raw_signal_quality: 0.9,
+  });
+  assert.equal(liveRawDeviation.sample_id, undefined);
+  assert.equal(liveRawDeviation.raw_signal_quality, 0.9);
+
+  const liveClarification = validateHilScenarioLog({
+    session_id: sessionId,
+    run_id: 'hil-C-raw-1793508969984',
+    scenario: 'C',
+    event_type: 'clarification_submitted',
+    activity: 'walking',
+    clarification: 'Saya baru selesai berjalan.',
+  });
+  assert.equal(liveClarification.sample_id, undefined);
+
+  const repeatChoice = validateHilScenarioLog({
+    session_id: sessionId,
+    run_id: 'hil-C-raw-1793508969984',
+    scenario: 'C',
+    event_type: 'activity_repeat_selected',
+    activity: 'walking',
+  });
+  assert.equal(repeatChoice.event_type, 'activity_repeat_selected');
+
   for (const event_type of [
     'activity_selected',
     'live_recording_started',

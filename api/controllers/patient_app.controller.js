@@ -2371,7 +2371,14 @@ export async function createPatientHilScenarioLog(req, res) {
   ));
   const priorDeviation = previousLogs.find((entry) => (
     entry.event_type === 'deviation_detected'
-    && entry.sample_id?.toString() === log.sample_id
+    && (
+      entry.sample_id?.toString() === log.sample_id
+      || (
+        !log.sample_id
+        && entry.sample_id == null
+        && Number.isFinite(entry.raw_hr)
+      )
+    )
   ));
   if (log.event_type === 'scenario_started') {
     if (previousLogs.length) {
@@ -2544,6 +2551,7 @@ export async function createPatientHilScenarioLog(req, res) {
       heart_rate_bpm: evaluatedHeartRate,
       raw_hr: rawHeartRate,
       raw_recorded_at: rawRecordedAt,
+      raw_signal_quality: rawSignalQuality,
       baseline_mean_hr: Number.isFinite(baselineMean) ? baselineMean : null,
       baseline_std_hr: Number.isFinite(baselineStd) ? baselineStd : null,
       threshold_bpm: threshold,
@@ -2558,6 +2566,92 @@ export async function createPatientHilScenarioLog(req, res) {
         : candidate
           ? 'candidate_deviation'
           : 'normal',
+    });
+  } else if (log.event_type === 'deviation_detected' && log.raw_hr != null) {
+    const rawTimestamp = log.raw_recorded_at.getTime() / 1000;
+    const rawReading = await PolarData.findOne({
+      user_id: dataOwnerId,
+      hr: log.raw_hr,
+      timestamp: { $gte: rawTimestamp - 2, $lte: rawTimestamp + 2 },
+    })
+      .select('hr timestamp signal_quality')
+      .lean();
+    const baselineReady = baseline?.scenario_readiness?.ready === true;
+    const baselineMean = baseline?.feature_stats?.mean_hr?.mean;
+    const baselineStd = baseline?.feature_stats?.mean_hr?.standard_deviation;
+    const signalQuality = rawReading?.signal_quality ?? log.raw_signal_quality;
+    const qualityAccepted = Number.isFinite(signalQuality)
+      && signalQuality >= PATIENT_HIL_BASELINE_POLICY.minimum_quality;
+    const candidate = baselineReady
+      && Number.isFinite(baselineMean)
+      && qualityAccepted
+      && log.raw_hr > baselineMean;
+    Object.assign(storedLog, {
+      observed_at: rawReading
+        ? new Date(rawReading.timestamp * 1000)
+        : log.raw_recorded_at,
+      heart_rate_bpm: log.raw_hr,
+      raw_hr: log.raw_hr,
+      raw_recorded_at: log.raw_recorded_at,
+      raw_signal_quality: signalQuality ?? null,
+      baseline_mean_hr: Number.isFinite(baselineMean) ? baselineMean : null,
+      baseline_std_hr: Number.isFinite(baselineStd) ? baselineStd : null,
+      threshold_bpm: 0,
+      z_score: Number.isFinite(baselineStd) && baselineStd > 0
+        ? (log.raw_hr - baselineMean) / baselineStd
+        : null,
+      q_signal: signalQuality ?? null,
+      quality_status: qualityAccepted ? 'accepted' : 'warning',
+      algorithm_status: !baselineReady || !Number.isFinite(baselineMean)
+        || !qualityAccepted
+        ? 'not_assessable'
+        : candidate
+          ? 'candidate_deviation'
+          : 'normal',
+    });
+  } else if (
+    !log.sample_id
+    && [
+      'clarification_requested',
+      'clarification_submitted',
+      'zero_shot_generated',
+      'zero_shot_failed',
+      'activity_repeat_selected',
+      'activity_context_sufficient',
+      'activity_repeat_skipped',
+    ].includes(log.event_type)
+  ) {
+    const requiredPriorEvent = {
+      clarification_requested: 'deviation_detected',
+      clarification_submitted: 'clarification_requested',
+      zero_shot_generated: 'clarification_submitted',
+      zero_shot_failed: 'clarification_submitted',
+    }[log.event_type];
+    const hasZeroShotResult = priorEvent('zero_shot_generated')
+      || priorEvent('zero_shot_failed');
+    const hasRequiredSequence = [
+      'activity_repeat_selected',
+      'activity_context_sufficient',
+      'activity_repeat_skipped',
+    ].includes(log.event_type)
+      ? hasZeroShotResult
+      : priorEvent(requiredPriorEvent);
+    if (!priorDeviation || !hasRequiredSequence) {
+      throw errorHandler(409, 'Log raw HIL tidak memiliki deviasi dan konteks sebelumnya.');
+    }
+    Object.assign(storedLog, {
+      observed_at: priorDeviation.observed_at ?? priorDeviation.raw_recorded_at,
+      heart_rate_bpm: priorDeviation.raw_hr,
+      raw_hr: priorDeviation.raw_hr,
+      raw_recorded_at: priorDeviation.raw_recorded_at,
+      raw_signal_quality: priorDeviation.raw_signal_quality ?? null,
+      baseline_mean_hr: priorDeviation.baseline_mean_hr ?? null,
+      baseline_std_hr: priorDeviation.baseline_std_hr ?? null,
+      threshold_bpm: priorDeviation.threshold_bpm ?? 0,
+      z_score: priorDeviation.z_score ?? null,
+      q_signal: priorDeviation.q_signal ?? null,
+      quality_status: priorDeviation.quality_status ?? 'warning',
+      algorithm_status: priorDeviation.algorithm_status ?? 'not_assessable',
     });
   }
 
