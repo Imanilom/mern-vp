@@ -32,35 +32,4 @@ void main() {
       'valid',
     );
   });
-
-  test('selects latest qualifying deviation for the one-way scenario flow', () {
-    final samples = [
-      {
-        '_id': 'earlier-deviation',
-        'heart_rate_bpm': 110,
-        'data_quality': {
-          'status': 'accepted',
-          'q_signal': 0.9,
-          'q_complete': 0.9,
-        },
-      },
-      {
-        '_id': 'latest-deviation',
-        'heart_rate_bpm': 100,
-        'data_quality': {
-          'status': 'accepted',
-          'q_signal': 0.9,
-          'q_complete': 0.9,
-        },
-      },
-    ];
-
-    final selected = HilRecordedScenarioAnalysis.latestDeviationSample(
-      samples: samples,
-      baselineMean: 70,
-      thresholdBpm: 10,
-    );
-
-    expect(selected?['_id'], 'latest-deviation');
-  });
 }

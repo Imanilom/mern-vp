@@ -1168,7 +1168,7 @@ test('HIL realtime evaluation accepts bounded real sensor windows and five-minut
     run_id: 'hil-live-1793508969984',
     readings: [reading, { ...reading, recorded_at: new Date(Date.now() + 1000).toISOString() }],
     dfa_rr_intervals_ms: Array(64).fill(830),
-    previous_mean_hr: 90,
+    previous_max_hr: 90,
     previous_elevated: true,
   };
   const result = validateHilRealtimeEvaluation(payload);

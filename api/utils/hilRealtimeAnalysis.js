@@ -1,8 +1,8 @@
 import { assessRRQuality, extractRRFeatures } from './rrBaselinePipeline.js';
 
-const FEATURES = ['mean_hr', 'rmssd', 'sdnn', 'dfa_alpha1'];
-const MIN_HR_SAMPLES = 3;
-const MIN_SIGNAL_CONFIDENCE = 0.5;
+const FEATURES = ['rmssd', 'sdnn', 'dfa_alpha1'];
+const MIN_HR_SAMPLES = 1;
+const MIN_SIGNAL_CONFIDENCE = 0.6;
 
 function average(values) {
   return values.length
@@ -21,26 +21,6 @@ function baselineFeature(baselines, feature) {
   return { mean: average(means), std: average(deviations) };
 }
 
-function linearSlope(readings) {
-  if (readings.length < 3) return null;
-  const origin = readings[0].recorded_at.getTime();
-  const points = readings.map((reading) => ({
-    time: (reading.recorded_at.getTime() - origin) / 1000,
-    value: reading.heart_rate_bpm,
-  }));
-  const meanTime = average(points.map((point) => point.time));
-  const meanValue = average(points.map((point) => point.value));
-  const numerator = points.reduce(
-    (sum, point) => sum + (point.time - meanTime) * (point.value - meanValue),
-    0
-  );
-  const denominator = points.reduce(
-    (sum, point) => sum + (point.time - meanTime) ** 2,
-    0
-  );
-  return denominator > 0 ? (numerator / denominator) * 60 : null;
-}
-
 function accelerationVariability(readings) {
   const magnitudes = readings.map((reading) => {
     const [x, y, z] = reading.acceleration_g;
@@ -56,11 +36,24 @@ function accelerationVariability(readings) {
 
 export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
   const { readings, dfa_rr_intervals_ms: dfaIntervals = [] } = evaluation;
-  const meanHr = average(readings.map((reading) => reading.heart_rate_bpm));
+  const validReadings = readings.filter((reading) =>
+    reading.sensor_contact === true
+    && Number.isFinite(reading.signal_confidence)
+    && reading.signal_confidence >= MIN_SIGNAL_CONFIDENCE
+    && Number.isFinite(reading.heart_rate_bpm)
+    && reading.heart_rate_bpm >= 20
+    && reading.heart_rate_bpm <= 250
+  );
+  const maximumReading = validReadings.reduce((maximum, reading) =>
+    maximum === null || reading.heart_rate_bpm > maximum.heart_rate_bpm
+      ? reading
+      : maximum
+  , null);
+  const maxHr = maximumReading?.heart_rate_bpm ?? null;
   const meanConfidence = average(readings.map((reading) => reading.signal_confidence));
   const hrQualityAccepted =
     readings.length >= MIN_HR_SAMPLES
-    && readings.every((reading) => reading.sensor_contact)
+    && validReadings.length === readings.length
     && meanConfidence >= MIN_SIGNAL_CONFIDENCE;
 
   const windowRr = readings.map((reading) => reading.rr_interval_ms);
@@ -76,7 +69,6 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
     ? extractRRFeatures(dfaQuality.rr_clean, [], [], [], 64)
     : null;
   const features = {
-    mean_hr: meanHr,
     rmssd: windowFeatures?.rmssd ?? null,
     sdnn: windowFeatures?.sdnn ?? null,
     dfa_alpha1: dfaFeatures?.dfa_alpha1 ?? null,
@@ -97,52 +89,42 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
     }];
   }));
 
-  const hrBaseline = comparisons.mean_hr.baseline_mean;
-  const hrStd = comparisons.mean_hr.baseline_std;
+  const { mean: hrBaseline, std: hrStd } = baselineFeature(baselines, 'mean_hr');
+  comparisons.max_hr = {
+    value: maxHr,
+    baseline_mean: hrBaseline,
+    baseline_std: hrStd,
+    candidate: maxHr !== null && hrBaseline !== null
+      && maxHr > hrBaseline + (hrStd === null ? 10 : Math.max(10, hrStd * 2)),
+  };
   const baselineAvailable = hrBaseline !== null;
   const canAttribute = baselineAvailable && hrQualityAccepted;
   const hrThreshold = hrStd === null ? 10 : Math.max(10, hrStd * 2);
-  const attributionScale = hrStd !== null && hrStd > 0 ? hrStd : hrThreshold;
-  const rawAttributions = canAttribute
-    ? readings.map((reading) => Math.abs(
-      (reading.heart_rate_bpm - hrBaseline) / attributionScale
-    ))
-    : readings.map(() => null);
-  const attributionTotal = rawAttributions.reduce(
-    (sum, value) => sum + (value ?? 0),
-    0
-  );
-  const temporalAttributions = readings.map((reading, index) => ({
+  const temporalAttributions = validReadings.map((reading) => ({
     recorded_at: reading.recorded_at,
     feature: 'heart_rate_bpm',
     value: reading.heart_rate_bpm,
     baseline_mean: hrBaseline,
-    z_score: rawAttributions[index] === null
-      ? null
-      : (reading.heart_rate_bpm - hrBaseline) / attributionScale,
-    importance: attributionTotal > 0
-      ? rawAttributions[index] / attributionTotal
-      : 0,
+    is_peak: reading === maximumReading,
+    importance: reading === maximumReading ? 1 : 0,
   }));
-  const hrElevated = meanHr !== null && hrBaseline !== null
-    && meanHr > hrBaseline + hrThreshold;
-  const previousHr = evaluation.previous_mean_hr;
-  const approachingBaseline = meanHr !== null && hrBaseline !== null
-    && previousHr !== undefined && meanHr < previousHr
-    && Math.abs(meanHr - hrBaseline) < Math.abs(previousHr - hrBaseline);
+  const hrElevated = maxHr !== null && hrBaseline !== null
+    && maxHr > hrBaseline + hrThreshold;
+  const previousHr = evaluation.previous_max_hr;
+  const approachingBaseline = maxHr !== null && hrBaseline !== null
+    && previousHr !== undefined && maxHr < previousHr
+    && Math.abs(maxHr - hrBaseline) < Math.abs(previousHr - hrBaseline);
   const recoveryTrend = evaluation.previous_elevated === true
     && approachingBaseline;
 
   const qualityAccepted = hrQualityAccepted;
-  const isCandidate = hrElevated
-    || FEATURES.slice(1).some((feature) => comparisons[feature].candidate);
   const status = !qualityAccepted || !baselineAvailable
     ? 'not_assessable'
     : recoveryTrend
-      ? Math.abs(meanHr - hrBaseline) <= hrThreshold
+      ? Math.abs(maxHr - hrBaseline) <= hrThreshold
         ? 'recovered'
         : 'recovery_trend'
-      : isCandidate
+      : hrElevated
         ? 'candidate_deviation'
         : 'normal';
   const maturityLevels = baselines.map((baseline) =>
@@ -161,7 +143,7 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
       ? 'Kualitas atau jumlah sampel HR belum memenuhi syarat; interpretasi ditahan.'
       : 'Baseline aktivitas belum tersedia di backend; interpretasi ditahan.'
     : status === 'candidate_deviation'
-      ? 'Teramati kandidat perubahan dibanding baseline personal. Ini bukan diagnosis atau penentuan penyebab.'
+      ? 'HR maksimum per detik melampaui pembanding personal. Ini bukan diagnosis atau penentuan penyebab.'
       : status === 'recovery_trend'
         ? 'HR menurun dan mendekati baseline setelah jendela sebelumnya tinggi; pemulihan masih diamati.'
         : status === 'recovered'
@@ -173,8 +155,8 @@ export function analyzeHilRealtimeEvaluation(evaluation, baselines) {
     source: 'synchronous_hil_backend',
     activity: evaluation.activity,
     metrics: {
-      mean_hr: meanHr,
-      hr_slope_bpm_per_minute: linearSlope(readings),
+      max_hr: maxHr,
+      max_hr_recorded_at: maximumReading?.recorded_at ?? null,
       acceleration_variability_g: accelerationVariability(readings),
       rmssd: features.rmssd,
       sdnn: features.sdnn,

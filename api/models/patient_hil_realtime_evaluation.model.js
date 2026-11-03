@@ -57,7 +57,7 @@ const PatientHilRealtimeEvaluationSchema = new mongoose.Schema(
       default: [],
       validate: (values) => values.length <= 1200,
     },
-    previous_mean_hr: { type: Number, min: 20, max: 250, default: null },
+    previous_max_hr: { type: Number, min: 20, max: 250, default: null },
     previous_elevated: { type: Boolean, default: false },
     analysis: {
       type: mongoose.Schema.Types.Mixed,

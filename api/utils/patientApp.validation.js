@@ -1470,7 +1470,7 @@ export function validateHilRealtimeEvaluation(body) {
       'run_id',
       'readings',
       'dfa_rr_intervals_ms',
-      'previous_mean_hr',
+      'previous_max_hr',
       'previous_elevated',
     ]),
     'Field evaluasi HIL'
@@ -1577,8 +1577,8 @@ export function validateHilRealtimeEvaluation(body) {
     readings,
     dfa_rr_intervals_ms: dfaRrIntervals,
   };
-  if ('previous_mean_hr' in body) {
-    result.previous_mean_hr = optionalNumber(body.previous_mean_hr, 'previous_mean_hr', 20, 250);
+  if ('previous_max_hr' in body) {
+    result.previous_max_hr = optionalNumber(body.previous_max_hr, 'previous_max_hr', 20, 250);
   }
   if ('previous_elevated' in body) {
     if (typeof body.previous_elevated !== 'boolean') {

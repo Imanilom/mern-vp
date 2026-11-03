@@ -1,16 +1,13 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../providers/app_state.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/hil_time.dart';
-import '../pedagogy/history_trend_chart.dart';
 import '../profile/wearable_pairing_screen.dart';
 
 class HilRecordedScenarioAnalysis {
@@ -49,31 +46,6 @@ class HilRecordedScenarioAnalysis {
     return maximum;
   }
 
-  static Map<String, dynamic>? latestDeviationSample({
-    required List<Map<String, dynamic>> samples,
-    required double? baselineMean,
-    required double thresholdBpm,
-  }) {
-    for (final sample in samples.reversed) {
-      final quality = sample['data_quality'];
-      final dataQuality =
-          quality is Map ? Map<String, dynamic>.from(quality) : const {};
-      final qSignal = dataQuality['q_signal'];
-      final qComplete = dataQuality['q_complete'];
-      final heartRate = sample['heart_rate_bpm'];
-      if (isElevatedCandidate(
-        heartRate: heartRate is num ? heartRate.toDouble() : null,
-        baselineMean: baselineMean,
-        thresholdBpm: thresholdBpm,
-        qSignal: qSignal is num ? qSignal.toDouble() : null,
-        qComplete: qComplete is num ? qComplete.toDouble() : null,
-        qualityAccepted: dataQuality['status'] == 'accepted',
-      )) {
-        return sample;
-      }
-    }
-    return null;
-  }
 }
 
 class HilRecordedScenarioScreen extends StatefulWidget {
@@ -117,7 +89,6 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   String? _selectedSampleId;
   String? _error;
   String? _recommendation;
-  String? _zeroShotExplanation;
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isRefreshingSamples = false;
@@ -126,10 +97,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   bool _isStoppingLiveMonitoring = false;
   bool _ownsStream = false;
   bool _clarificationRequested = false;
-  bool _isGeneratingExplanation = false;
-  bool _isResultFrozen = false;
   bool _isStartingRun = false;
-  Map<String, dynamic>? _frozenOutcomeSnapshot;
   DateTime? _recordingStartedAt;
   DateTime? _recordingStoppedAt;
   final Map<String, Map<String, dynamic>> _recordingSamples = {};
@@ -144,48 +112,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }
 
   Future<void> _initialize() async {
-    await _restoreFrozenOutcome();
-    if (mounted) await _startRun();
-  }
-
-  String get _freezeStorageKey {
-    final account = _appState.currentAccount;
-    final accountId = (account?['id'] ??
-            account?['_id'] ??
-            account?['email'] ??
-            _appState.userProfile.name)
-        .toString()
-        .trim();
-    final scope = accountId.isEmpty ? 'signed_in_account' : accountId;
-    return 'vidyamedic_hil_frozen_result_v1_'
-        '${Uri.encodeComponent(scope)}_${widget.scenario}';
-  }
-
-  Future<void> _restoreFrozenOutcome() async {
-    try {
-      final preferences = await SharedPreferences.getInstance();
-      final encoded = preferences.getString(_freezeStorageKey);
-      if (encoded == null) return;
-      final decoded = jsonDecode(encoded);
-      if (decoded is! Map) {
-        throw const FormatException('Snapshot freeze HIL tidak valid.');
-      }
-      final snapshot = Map<String, dynamic>.from(decoded);
-      if (snapshot['scenario'] != widget.scenario ||
-          snapshot['summary'] is! String) {
-        throw const FormatException('Isi snapshot freeze HIL tidak valid.');
-      }
-      if (!mounted) return;
-      setState(() {
-        _frozenOutcomeSnapshot = snapshot;
-        _isResultFrozen = true;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Hasil freeze sebelumnya gagal dimuat: $error';
-      });
-    }
+    await _startRun();
   }
 
   @override
@@ -260,12 +187,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     final activity = _activityLabel(_normalizeActivity(log['activity']));
     final parts = <String>[];
     final hr = log['heart_rate_bpm'];
-    final baseline = log['baseline_mean_hr'];
     if (hr is num) {
-      parts.add('HR ${hr.toStringAsFixed(1)} bpm');
-    }
-    if (baseline is num) {
-      parts.add('baseline ${baseline.toStringAsFixed(1)} bpm');
+      parts.add('HR maks ${hr.toStringAsFixed(1)} bpm');
     }
     final recommendation = log['recommendation']?.toString().trim();
     if (recommendation?.isNotEmpty == true) {
@@ -395,9 +318,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       if (_samples.isEmpty) _isLoading = true;
     });
     final now = DateTime.now().toUtc();
-    final isPeakScenario = widget.scenario == 'C';
-    final recordingStartedAt = isPeakScenario ? _recordingStartedAt : null;
-    final recordingStoppedAt = isPeakScenario ? _recordingStoppedAt : null;
+    final recordingStartedAt = _recordingStartedAt;
+    final recordingStoppedAt = _recordingStoppedAt;
     final response = await ApiService.getWearableSamples(
       from: (recordingStartedAt ?? now.subtract(const Duration(days: 31)))
           .toIso8601String(),
@@ -435,7 +357,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     }).toList()
       ..sort((a, b) => DateTime.parse(a['recorded_at'].toString())
           .compareTo(DateTime.parse(b['recorded_at'].toString())));
-    if (isPeakScenario && recordingStartedAt != null) {
+    if (recordingStartedAt != null) {
       for (final sample in samples) {
         final id = sample['_id']?.toString();
         if (id != null) _recordingSamples[id] = sample;
@@ -445,25 +367,17 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       ..sort((a, b) => DateTime.parse(a['recorded_at'].toString())
           .compareTo(DateTime.parse(b['recorded_at'].toString())));
     final displayedSamples =
-        isPeakScenario && recordingStartedAt != null ? sessionSamples : samples;
-    final targetSample = isPeakScenario
-        ? HilRecordedScenarioAnalysis.maximumHeartRateSample(displayedSamples)
-        : HilRecordedScenarioAnalysis.latestDeviationSample(
-            samples: displayedSamples,
-            baselineMean: _baselineMean,
-            thresholdBpm: _threshold,
-          );
+        recordingStartedAt != null ? sessionSamples : samples;
+    final targetSample =
+        HilRecordedScenarioAnalysis.maximumHeartRateSample(displayedSamples);
     setState(() {
       _samples = displayedSamples;
       final selectedId = _selectedSampleId;
       final selectedSample = targetSample ??
           (displayedSamples.isEmpty ? null : displayedSamples.last);
       _selectedSampleId = selectedSample?['_id']?.toString();
-      if (selectedSample != null &&
-          _selectedSampleId != selectedId &&
-          !_isResultFrozen) {
+      if (selectedSample != null && _selectedSampleId != selectedId) {
         _recommendation = null;
-        _zeroShotExplanation = null;
         _clarificationRequested = false;
         _clarificationController.clear();
       }
@@ -490,10 +404,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     }
     _isRefreshingSamples = false;
     final targetId = targetSample?['_id']?.toString();
-    if ((!isPeakScenario || _recordingStoppedAt != null) &&
-        !_isResultFrozen &&
+    if ((_recordingStartedAt == null || _recordingStoppedAt != null) &&
         targetId != null &&
-        (isPeakScenario ? _isDeviation(targetSample!) : true) &&
+        _isDeviation(targetSample!) &&
         !_handledDeviationSampleIds.contains(targetId) &&
         _autoAttemptedDeviationSampleIds.add(targetId)) {
       await _presentScenarioOutcome();
@@ -751,7 +664,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       _isSaving = false;
       _clarificationRequested = requested != null;
     });
-    if (requested == null) _handledDeviationSampleIds.remove(sampleId);
+    if (requested == null) {
+      _handledDeviationSampleIds.remove(sampleId);
+      return;
+    }
+    await _openClarificationPicker();
   }
 
   Map<String, dynamic> _explanationSnapshot(
@@ -777,299 +694,153 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     };
   }
 
-  Future<bool> _confirmZeroShotTransfer() async {
-    final consent = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Persetujuan penjelasan zero-shot'),
-        content: const Text(
-          'Nilai HR, ringkasan baseline, dan klarifikasi yang Anda tulis akan dikirim ke layanan AI untuk membuat penjelasan. Jangan masukkan nama atau informasi pengenal. Hasil hanya ringkasan observasional, bukan diagnosis.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Setuju dan lanjutkan'),
-          ),
-        ],
-      ),
-    );
-    return consent == true;
-  }
-
   Future<void> _openClarificationPicker() async {
     String? choice = _clarificationController.text.trim().isNotEmpty
         ? _clarificationController.text.trim()
         : null;
+    final otherContextController = TextEditingController();
     final selected = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           final options = <String>[
-            'Saya baru selesai olahraga, lalu duduk sebelum mulai rekaman',
-            'Saya baru selesai berjalan / bergerak, lalu duduk sebelum rekaman',
-            'Saya sedang beraktivitas berat atau olahraga saat rekaman',
-            'Saya sedang stres / cemas',
-            'Saya sedang beristirahat / tidur',
-            'Saya sedang makan / minum',
+            'Saya berolahraga sebelum perubahan denyut',
+            'Saya berjalan atau bergerak sebelum perubahan denyut',
+            'Saya sedang beraktivitas saat perubahan denyut',
+            'Saya sedang beristirahat',
+            'Saya sedang stres atau cemas',
+            'Saya baru makan atau minum',
             'Saya tidak ingat / tidak yakin',
-            'Tidak ada faktor khusus yang memengaruhi denyut',
+            'Tidak ada aktivitas atau konteks khusus sebelumnya',
           ];
           return AlertDialog(
-            title: const Text('Pilih faktor yang mungkin memengaruhi deviasi'),
-            content: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 360),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: options.map((option) {
-                    final selected = choice == option;
-                    return InkWell(
-                      onTap: () => setDialogState(() => choice = option),
-                      child: Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color:
-                                selected ? AppTheme.primary : AppTheme.divider,
-                          ),
-                          color: selected ? AppTheme.primarySoft : null,
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                option,
-                                style: AppTheme.font(
-                                  size: 11,
-                                  weight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
-                              ),
+            title: const Text('Ada aktivitas atau konteks sebelumnya?'),
+            content: SizedBox(
+              width: 420,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 420),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Aktivitas apa yang terjadi sebelum perubahan denyut terdeteksi?',
+                      ),
+                      const SizedBox(height: 10),
+                      ...options.map((option) {
+                        final isSelected = choice == option;
+                        return InkWell(
+                          onTap: () => setDialogState(() => choice = option),
+                          child: Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
                             ),
-                            if (selected)
-                              Icon(
-                                Icons.check_circle,
-                                color: AppTheme.primary,
-                                size: 18,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppTheme.primary
+                                    : AppTheme.divider,
                               ),
-                          ],
+                              color:
+                                  isSelected ? AppTheme.primarySoft : null,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    option,
+                                    style: AppTheme.font(
+                                      size: 11,
+                                      weight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: AppTheme.primary,
+                                    size: 18,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                      TextField(
+                        controller: otherContextController,
+                        maxLength: 300,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: 'Hal lain (opsional)',
+                          hintText: 'Tambahkan konteks bila diperlukan',
                         ),
                       ),
-                    );
-                  }).toList(),
+                    ],
+                  ),
                 ),
               ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
+                onPressed: () => Navigator.pop(dialogContext, null),
                 child: const Text('Batal'),
               ),
               FilledButton(
-                onPressed: choice == null
-                    ? null
-                    : () => Navigator.pop(dialogContext, choice),
-                child: const Text('Simpan pilihan'),
+                onPressed: () {
+                  final other = otherContextController.text.trim();
+                  final answer = [
+                    if (choice != null) choice,
+                    if (other.isNotEmpty) 'Hal lain: $other',
+                  ].join(' · ');
+                  if (answer.isNotEmpty) {
+                    Navigator.pop(dialogContext, answer);
+                  }
+                },
+                child: const Text('Kirim jawaban'),
               ),
             ],
           );
         },
       ),
     );
-    if (!mounted || selected == null) return;
+    otherContextController.dispose();
+    if (!mounted) return;
+    if (selected == null) {
+      setState(() => _clarificationRequested = false);
+      return;
+    }
     setState(() {
       _clarificationController.text = selected;
       _clarificationController.selection = TextSelection.collapsed(
         offset: _clarificationController.text.length,
       );
     });
+    await _submitClarification();
   }
 
   Future<void> _submitClarification() async {
     final clarification = _clarificationController.text.trim();
-    final sample = _selectedSample;
-    if (clarification.isEmpty || sample == null) {
-      setState(() =>
-          _error = 'Pilih salah satu faktor yang mungkin memengaruhi deviasi.');
+    if (clarification.isEmpty || _selectedSample == null) {
+      setState(() => _error = 'Isi konteks sebelum mengirim klarifikasi.');
       return;
     }
-    if (!await _confirmZeroShotTransfer() || !mounted) return;
-    setState(() {
-      _isGeneratingExplanation = true;
-      _error = null;
-      _zeroShotExplanation = null;
-    });
     final submitted = await _logSelectedObservation(
       'clarification_submitted',
       clarification: clarification,
     );
     if (!mounted) return;
-    if (submitted == null) {
-      setState(() => _isGeneratingExplanation = false);
-      return;
+    if (submitted != null) {
+      setState(() => _clarificationRequested = false);
     }
-    final selectedLog =
-        _logs.lastWhere((log) => log['event_type'] == 'deviation_detected');
-    final recordedAt = DateTime.tryParse(
-      (selectedLog['observed_at'] ?? sample['recorded_at'])?.toString() ?? '',
-    );
-    final recordedAtLabel = recordedAt == null
-        ? 'waktu tidak tersedia'
-        : formatHilWibDateTime(recordedAt);
-    final heartRate = selectedLog['heart_rate_bpm'];
-    final baselineMeanHr = selectedLog['baseline_mean_hr'];
-    final deltaHr = heartRate is num && baselineMeanHr is num
-        ? heartRate - baselineMeanHr
-        : null;
-    final threshold = selectedLog['threshold_bpm'];
-    final zScore = selectedLog['z_score'];
-    final activityLabel = _activityLabel(_activity);
-    final localSummary = [
-      'Ringkasan fakta Skenario C HIL:',
-      'Waktu sampel saat perubahan terdeteksi: $recordedAtLabel (WIB).',
-      'Aktivitas yang dipilih untuk pengukuran: $activityLabel.',
-      'Urutan konteks menurut peserta: $clarification. Ini laporan peserta, bukan kesimpulan sensor.',
-      if (heartRate is num)
-        'HR saat sampel: ${heartRate.toStringAsFixed(1)} bpm.',
-      if (baselineMeanHr is num)
-        'Baseline pribadi untuk $activityLabel: ${baselineMeanHr.toStringAsFixed(1)} bpm.',
-      if (deltaHr != null)
-        'Selisih HR terhadap baseline: ${deltaHr >= 0 ? '+' : ''}${deltaHr.toStringAsFixed(1)} bpm.',
-      if (threshold is num)
-        'Ambang perubahan menonjol: ${threshold.toStringAsFixed(1)} bpm di atas baseline.',
-      if (zScore is num)
-        'Jarak dari variasi yang biasa terlihat: ${zScore.abs().toStringAsFixed(1)} kali.',
-      'Status sistem: ${selectedLog['algorithm_status'] ?? 'tidak tersedia'}.',
-      'Interpretasi: HR yang lebih tinggi tercatat saat konteks pengukuran "$activityLabel". Peserta melaporkan konteks sebelumnya seperti di atas. Urutan waktunya memberi konteks, tetapi tidak membuktikan aktivitas tersebut sebagai penyebab perubahan HR.',
-    ].join(' ');
-    if (mounted) {
-      setState(() => _zeroShotExplanation = localSummary);
-    }
-    final evidence = <Map<String, dynamic>>[
-      {
-        'source': 'real_wearable_sample',
-        'recorded_at': recordedAt?.toIso8601String(),
-        'facts':
-            'Sampel Polar H10 pada $recordedAtLabel WIB; konteks pengukuran $activityLabel.',
-        'metric': 'mean_hr',
-        'value': heartRate,
-        'unit': 'bpm',
-        'status': selectedLog['algorithm_status'],
-      },
-      {
-        'source': 'hil_personal_baseline',
-        'recorded_at': recordedAt?.toIso8601String(),
-        'facts': 'Baseline HIL pribadi untuk aktivitas $activityLabel.',
-        'metric': 'mean_hr',
-        'value': baselineMeanHr,
-        'unit': 'bpm',
-        'status': 'ready',
-      },
-      {
-        'source': 'participant_clarification',
-        'recorded_at': recordedAt?.toIso8601String(),
-        'facts': clarification,
-        'metric': 'context',
-        'value': clarification,
-        'unit': '',
-        'status': 'self_reported',
-      },
-    ];
-    final response = await ApiService.generatePersonalChatAnswer(
-      question: 'Jelaskan observasi Skenario C HIL. Cantumkan waktu sampel '
-          'WIB, aktivitas pengukuran, HR, baseline, selisih, ambang, status, '
-          'dan klarifikasi peserta. Pertahankan angka dan waktu persis. '
-          'Bedakan konteks pengukuran dari laporan peserta; klarifikasi bukan '
-          'bukti penyebab. Tanpa diagnosis atau saran medis.',
-      evidence: evidence,
-      localSummary: localSummary.length > 1200
-          ? localSummary.substring(0, 1200)
-          : localSummary,
-      conversationHistory: const [],
-    );
-    if (!mounted) return;
-    if (!response.success || response.data == null) {
-      final message = response.message ?? 'Ringkasan penjelasan gagal dibuat.';
-      final savedFailure = await _logSelectedObservation(
-        'zero_shot_failed',
-        clarification: clarification,
-        explanation: message,
-      );
-      if (!mounted) return;
-      setState(() {
-        _isGeneratingExplanation = false;
-        _error = savedFailure == null
-            ? 'Ringkasan faktual tetap ditampilkan, tetapi $message Log kegagalan juga belum tersimpan.'
-            : 'Ringkasan faktual tetap ditampilkan, tetapi penjelasan AI gagal dibuat: $message';
-      });
-      await _showScenarioResultDialog(
-        title: 'Skenario C · Ringkasan klarifikasi',
-        summary: localSummary,
-        recommendation: _hilRecommendation,
-      );
-      return;
-    }
-
-    final explanationPrefix = [
-      localSummary,
-      '',
-      'Penjelasan tambahan:',
-    ].join('\n');
-    final explanation = '$explanationPrefix'
-        '${response.data!.substring(
-      0,
-      math.max(0, 1200 - explanationPrefix.length),
-    )}';
-    final saved = await _logSelectedObservation(
-      'zero_shot_generated',
-      clarification: clarification,
-      explanation: explanation,
-    );
-    if (!mounted) return;
-    setState(() {
-      _isGeneratingExplanation = false;
-      if (saved != null) _zeroShotExplanation = explanation;
-    });
-    if (saved != null) {
-      final appState = context.read<AppState>();
-      final explanationSaved = await appState.recordHumanInTheLoopScenario(
-        scenario: 'C',
-        explanationSnapshot: _explanationSnapshot(
-          explanation,
-          'candidate_deviation_with_participant_context',
-          sourceLogId: saved['_id'].toString(),
-          sampleId: saved['sample_id'].toString(),
-        ),
-      );
-      if (!explanationSaved && mounted) {
-        setState(() {
-          _error = 'Penjelasan C sudah dibuat dan log skenario tersimpan, '
-              'tetapi histori penjelasan belum tersimpan: '
-              '${appState.dataError ?? 'coba lagi.'}';
-        });
-      }
-    }
-    await _showScenarioResultDialog(
-      title: 'Skenario C · Ringkasan klarifikasi',
-      summary: explanation,
-      recommendation: _hilRecommendation,
-    );
   }
-
-  String get _hilRecommendation =>
-      'Duduk atau beristirahat dengan tenang selama beberapa menit, lalu ukur kembali denyut saat kondisi stabil. Catat bila baru selesai berolahraga atau bergerak. Jika denyut tetap tinggi, terasa tidak biasa, atau disertai nyeri dada, sesak napas berat, pusing berat, atau pingsan, segera cari bantuan medis. Ini saran umum, bukan diagnosis.';
 
   String _buildObservationSummary(
     Map<String, dynamic> log, {
@@ -1077,22 +848,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }) {
     final observedAt = DateTime.tryParse(log['observed_at']?.toString() ?? '');
     final heartRate = log['heart_rate_bpm'];
-    final baseline = log['baseline_mean_hr'];
-    final delta =
-        heartRate is num && baseline is num ? heartRate - baseline : null;
     return [
       if (observedAt != null)
         'Waktu sampel: ${formatHilWibDateTime(observedAt)}.',
-      'Aktivitas saat pengukuran: ${_activityLabel(_activity)}.',
       if (heartRate is num)
-        'Denyut terukur: ${heartRate.toStringAsFixed(1)} bpm.',
-      if (baseline is num)
-        'Baseline pribadi: ${baseline.toStringAsFixed(1)} bpm.',
-      if (delta != null)
-        'Selisih dari baseline: ${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(1)} bpm.',
-      if (log['threshold_bpm'] is num)
-        'Ambang deviasi: ${(log['threshold_bpm'] as num).toStringAsFixed(1)} bpm.',
-      'Status: anomali terdeteksi dibandingkan baseline pribadi. Ini observasi, bukan diagnosis.',
+        'HR maksimum pada bacaan per detik: ${heartRate.toStringAsFixed(1)} bpm.',
+      'Deviasi terdeteksi pada bacaan berkualitas. Ini observasi, bukan diagnosis.',
       if (participantContext != null)
         'Klarifikasi peserta: $participantContext. Informasi ini adalah laporan peserta, bukan bukti penyebab.',
     ].join('\n');
@@ -1144,70 +905,49 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
 
-  List<ChartPoint> get _chartPoints => _samples
-      .map((sample) {
-        final time = DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
-        final hr = _sampleHr(sample);
-        if (time == null || hr == null) return null;
-        return ChartPoint(
-          time,
-          hr,
-          activity: _activity,
-          observationStatus:
-              _isDeviation(sample) ? 'candidate_deviation' : 'normal',
-        );
-      })
-      .whereType<ChartPoint>()
-      .toList()
-    ..sort((left, right) => left.time.compareTo(right.time));
-
-  Widget _chartCard() {
-    final points = _chartPoints;
+  Widget _hrPerSecondCard() {
+    final samples = _samples.reversed.take(30).toList().reversed.toList();
+    final maximum = HilRecordedScenarioAnalysis.maximumHeartRateSample(_samples);
+    final maximumHr = maximum == null ? null : _sampleHr(maximum);
     return Card(
-      key: const Key('hil-recorded-chart'),
+      key: const Key('hil-recorded-hr-per-second'),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'HR rekaman nyata · ${_activityLabel(_activity)}',
+              'HR per detik · ${_activityLabel(_activity)}',
               style: AppTheme.font(size: 12, weight: FontWeight.w800),
             ),
             const SizedBox(height: 4),
             Text(
-              _baselineMean == null
-                  ? 'Belum ada nilai pembanding pribadi untuk aktivitas ini.'
-                  : 'Garis putus-putus: nilai pembanding pribadi ${_baselineMean!.toStringAsFixed(1)} bpm · '
-                      'perubahan menonjol di atas +${_threshold.toStringAsFixed(1)} bpm',
+              maximumHr == null
+                  ? 'Belum ada bacaan HR berkualitas.'
+                  : 'HR maksimum pada bacaan yang tersedia: '
+                      '${maximumHr.toStringAsFixed(1)} bpm.',
               style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 8),
-            if (points.length < 2)
-              const SizedBox(
-                key: Key('hil-recorded-chart-empty'),
-                height: 170,
-                child: Center(
-                  child:
-                      Text('Perlu minimal dua sampel HR nyata untuk grafik.'),
-                ),
-              )
+            if (samples.isEmpty)
+              const Text('Bacaan HR akan muncul setelah sensor merekam.')
             else
-              SizedBox(
-                height: 190,
-                width: double.infinity,
-                child: CustomPaint(
-                  painter: TrendChartPainter(
-                    points: points,
-                    color: AppTheme.primary,
-                    baselineMean: _baselineMean,
-                    timeDisplayOffset: hilWibOffset,
-                    maximumGap: const Duration(minutes: 2),
-                  ),
-                ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: samples.map((sample) {
+                  final time =
+                      DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
+                  return Chip(
+                    label: Text(
+                      '${_sampleHr(sample)?.toStringAsFixed(0) ?? '-'} bpm'
+                      '${time == null ? '' : ' · ${formatHilWibDateTime(time)}'}',
+                    ),
+                  );
+                }).toList(),
               ),
             Text(
-              '${points.length} bacaan diterima · data simulasi dan data pembentukan profil tidak disertakan',
+              '${_samples.length} bacaan per detik yang lolos pemeriksaan mutu.',
               style: AppTheme.font(size: 9.5, color: AppTheme.textMuted),
             ),
           ],
@@ -1220,10 +960,6 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     final sample = _selectedSample;
     final hr = sample == null ? null : _sampleHr(sample);
     final candidate = sample != null && _isDeviation(sample);
-    final mean = _baselineMean;
-    final zScore = hr != null && mean != null && (_baselineStd ?? 0) > 0
-        ? (hr - mean) / _baselineStd!
-        : null;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -1231,20 +967,14 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-                widget.scenario == 'C'
-                    ? _recordingStartedAt == null
-                        ? 'Sampel HR tertinggi pada riwayat'
-                        : _recordingStoppedAt == null
-                            ? 'HR maksimum sementara'
-                            : 'HR maksimum pada rekaman'
-                    : 'Observasi terbaru',
-                style: AppTheme.font(size: 12, weight: FontWeight.w800)),
+              'HR maksimum pada bacaan per detik',
+              style: AppTheme.font(size: 12, weight: FontWeight.w800),
+            ),
             const SizedBox(height: 7),
-            if (widget.scenario == 'C' &&
-                _recordingStartedAt != null &&
+            if (_recordingStartedAt != null &&
                 _recordingStoppedAt == null)
               const Text(
-                'Skenario menilai bacaan tertinggi pada sesi ini. Hentikan rekaman untuk menetapkan nilai puncak.',
+                'HR maksimum sementara dihitung dari bacaan per detik sesi ini.',
                 key: Key('hil-recorded-peak-guidance'),
               ),
             if (_samples.isEmpty)
@@ -1259,18 +989,16 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Denyut ${hr?.toStringAsFixed(1) ?? '-'} bpm · nilai pembanding pribadi '
-                '${mean?.toStringAsFixed(1) ?? '-'} bpm'
-                '${zScore == null ? '' : ' · jarak dari kisaran pribadi sekitar ${zScore.abs().toStringAsFixed(1)} kali variasi yang biasa terlihat'}',
+                'HR maksimum: ${hr?.toStringAsFixed(1) ?? '-'} bpm',
                 key: const Key('hil-recorded-observation-summary'),
                 style: AppTheme.font(size: 11, weight: FontWeight.w700),
               ),
               Text(
                 candidate
-                    ? 'Anomali terdeteksi: denyut lebih tinggi ${_threshold.toStringAsFixed(1)} bpm dari pembanding aktivitas; pemeriksaan mutu bacaan lolos.'
+                    ? 'Deviasi terdeteksi pada HR maksimum; mutu bacaan lolos.'
                     : _baseline.isEmpty
-                        ? 'Nilai pembanding pribadi untuk aktivitas ini belum siap, jadi perubahan belum dapat dinilai.'
-                        : 'Denyut belum melewati batas anomali, yaitu pembanding pribadi + ${_threshold.toStringAsFixed(1)} bpm.',
+                        ? 'Pembanding aktivitas belum tersedia untuk menilai deviasi.'
+                        : 'Belum ada deviasi pada HR maksimum bacaan.',
                 key: const Key('hil-recorded-observation-explanation'),
                 style: AppTheme.font(
                   size: 10,
@@ -1300,263 +1028,13 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                 label:
                     Text(_handledDeviationSampleIds.contains(_selectedSampleId)
                         ? 'Skenario sudah berjalan'
-                        : widget.scenario != 'C'
-                            ? widget.scenario == 'B'
-                                ? 'Tampilkan feedback satu arah'
-                                : 'Minta klarifikasi peserta'
-                            : _recordingStartedAt == null
-                                ? 'Mulai rekam untuk menguji skenario'
-                                : _recordingStoppedAt == null
-                                    ? 'Hentikan rekaman untuk menilai puncak'
-                                    : widget.scenario == 'B'
-                                        ? 'Tampilkan feedback satu arah'
-                                        : 'Minta klarifikasi peserta'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _toggleResultFreeze() async {
-    try {
-      final preferences = await SharedPreferences.getInstance();
-      if (_isResultFrozen) {
-        final removed = await preferences.remove(_freezeStorageKey);
-        if (!removed && preferences.containsKey(_freezeStorageKey)) {
-          throw StateError('Freeze gagal dibatalkan di perangkat.');
-        }
-        if (!mounted) return;
-        setState(() {
-          _isResultFrozen = false;
-          _frozenOutcomeSnapshot = null;
-        });
-        return;
-      }
-
-      final sample = _selectedSample;
-      final recordedAt = DateTime.tryParse(
-        sample?['recorded_at']?.toString() ?? '',
-      );
-      final clarification = _clarificationController.text.trim();
-      final summary = widget.scenario == 'B'
-          ? _recommendation ?? 'Feedback belum tersedia.'
-          : _zeroShotExplanation ??
-              (clarification.isNotEmpty
-                  ? clarification
-                  : 'Anomali terdeteksi; klarifikasi peserta belum dikirim.');
-      final snapshot = <String, dynamic>{
-        'scenario': widget.scenario,
-        'summary': summary,
-        'activity': _activity,
-        'sample_id': sample?['_id']?.toString(),
-        'recorded_at': recordedAt?.toIso8601String(),
-        'heart_rate_bpm': sample == null ? null : _sampleHr(sample),
-        'baseline_mean_hr': _baselineMean,
-        'clarification': clarification,
-        'frozen_at': DateTime.now().toUtc().toIso8601String(),
-      };
-      final saved = await preferences.setString(
-        _freezeStorageKey,
-        jsonEncode(snapshot),
-      );
-      if (!saved) throw StateError('Freeze hasil gagal disimpan di perangkat.');
-      if (!mounted) return;
-      setState(() {
-        _frozenOutcomeSnapshot = snapshot;
-        _isResultFrozen = true;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _error = 'Freeze hasil gagal disimpan: $error');
-    }
-  }
-
-  Widget _scenarioOutcome() {
-    final frozen = _frozenOutcomeSnapshot;
-    if (_isResultFrozen && frozen != null) {
-      final recordedAt = DateTime.tryParse(
-        frozen['recorded_at']?.toString() ?? '',
-      );
-      final heartRate = frozen['heart_rate_bpm'];
-      final baselineMeanHr = frozen['baseline_mean_hr'];
-      return Card(
-        key: const Key('hil-recorded-frozen-result'),
-        color: AppTheme.primarySoft,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Skenario ${widget.scenario} · hasil dibekukan',
-                      style: AppTheme.font(size: 12, weight: FontWeight.w800),
-                    ),
-                  ),
-                  TextButton.icon(
-                    key: const Key('hil-recorded-unfreeze-result'),
-                    onPressed: _toggleResultFreeze,
-                    icon: const Icon(Icons.lock_open_rounded),
-                    label: const Text('Batal freeze'),
-                  ),
-                ],
-              ),
-              if (recordedAt != null)
-                Text('Waktu sampel: ${formatHilWibDateTime(recordedAt)}'),
-              if (frozen['activity'] != null)
-                Text('Aktivitas pengukuran: '
-                    '${_activityLabel(frozen['activity'].toString())}'),
-              if (heartRate is num)
-                Text('HR saat dibekukan: ${heartRate.toStringAsFixed(1)} bpm'),
-              if (baselineMeanHr is num)
-                Text('Baseline pribadi: '
-                    '${baselineMeanHr.toStringAsFixed(1)} bpm'),
-              const SizedBox(height: 8),
-              Text(frozen['summary']?.toString() ?? ''),
-            ],
-          ),
-        ),
-      );
-    }
-    if (_recommendation != null) {
-      return Card(
-        key: const Key('hil-recorded-scenario-B-result'),
-        color: AppTheme.primarySoft,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text('Skenario B · one way feedback',
-                        style:
-                            AppTheme.font(size: 12, weight: FontWeight.w800)),
-                  ),
-                  TextButton.icon(
-                    key: const Key('hil-recorded-freeze-result'),
-                    onPressed: _toggleResultFreeze,
-                    icon: Icon(
-                      _isResultFrozen ? Icons.lock : Icons.lock_open_rounded,
-                    ),
-                    label: Text(
-                      _isResultFrozen ? 'Batal freeze' : 'Freeze hasil',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(_recommendation!),
-              const SizedBox(height: 5),
-              Text(
-                _isResultFrozen
-                    ? 'Hasil saat ini dibekukan dan tetap ditampilkan meski sinyal atau deviasi berikutnya turun kembali.'
-                    : 'Feedback satu arah; tidak meminta klarifikasi. Hasil ini dibekukan saat anomali muncul agar tidak hilang saat sinyal turun kembali.',
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    if (!_clarificationRequested) return const SizedBox.shrink();
-    return Card(
-      key: const Key('hil-recorded-scenario-C-result'),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text('Skenario C · klarifikasi peserta',
-                      style: AppTheme.font(size: 12, weight: FontWeight.w800)),
-                ),
-                TextButton.icon(
-                  key: const Key('hil-recorded-freeze-result-c'),
-                  onPressed: _toggleResultFreeze,
-                  icon: Icon(
-                    _isResultFrozen ? Icons.lock : Icons.lock_open_rounded,
-                  ),
-                  label: Text(
-                    _isResultFrozen ? 'Batal freeze' : 'Freeze hasil',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 5),
-            const Text(
-              'Pilih faktor yang mungkin memengaruhi deviasi saat perubahan denyut ini terjadi.',
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              key: const Key('hil-recorded-clarification-picker'),
-              onPressed:
-                  _isGeneratingExplanation ? null : _openClarificationPicker,
-              icon: const Icon(Icons.fact_check_outlined),
-              label: Text(
-                _clarificationController.text.trim().isNotEmpty
-                    ? 'Ubah pilihan klarifikasi'
-                    : 'Pilih klarifikasi',
-              ),
-            ),
-            if (_clarificationController.text.trim().isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.primarySoft,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _clarificationController.text.trim(),
-                  style: AppTheme.font(size: 10.5),
-                ),
-              ),
-            ],
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              key: const Key('hil-recorded-submit-clarification'),
-              onPressed: _isGeneratingExplanation ? null : _submitClarification,
-              icon: _isGeneratingExplanation
-                  ? const SizedBox(
-                      width: 15,
-                      height: 15,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.auto_awesome_outlined),
-              label: Text(_isGeneratingExplanation
-                  ? 'Membuat penjelasan...'
-                  : 'Kirim klarifikasi & buat ringkasan penjelasan'),
-            ),
-            if (_zeroShotExplanation != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                key: const Key('hil-recorded-zero-shot-explanation'),
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.primarySoft,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Ringkasan perubahan + klarifikasi',
-                        style:
-                            AppTheme.font(size: 11, weight: FontWeight.w800)),
-                    const SizedBox(height: 5),
-                    Text(_zeroShotExplanation!),
-                  ],
-                ),
+                        : widget.scenario == 'C' &&
+                                _recordingStartedAt != null &&
+                                _recordingStoppedAt == null
+                            ? 'HR maksimum sementara'
+                            : widget.scenario == 'B'
+                                ? 'Tampilkan feedback'
+                                : 'Tanyakan konteks sebelumnya'),
               ),
             ],
           ],
@@ -1620,11 +1098,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '3. Pola pribadi: denyut rata-rata dari rekaman berkualitas untuk aktivitas ini menjadi pembanding (${_baselineMean?.toStringAsFixed(1) ?? 'belum tersedia'} bpm).',
+                '3. Pola pribadi untuk aktivitas ini menjadi pembanding deviasi.',
               ),
               const SizedBox(height: 4),
               Text(
-                '4. Perubahan menonjol: ditandai bila denyut lebih tinggi dari pembanding pribadi sebesar ${_threshold.toStringAsFixed(1)} bpm atau lebih. Ini pengamatan, bukan diagnosis.',
+                '4. Sistem memeriksa HR per detik dan menilai deviasi dari HR maksimum bacaan berkualitas. Ini pengamatan, bukan diagnosis.',
               ),
               const SizedBox(height: 4),
               Text(
@@ -1672,7 +1150,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                     ),
                     const SizedBox(height: 5),
                     const Text(
-                      'Hasil skenario memakai HR tertinggi yang tercatat selama sesi rekaman ini, lalu membandingkannya dengan baseline aktivitas terpilih. Perhitungan langsung dari HR dan mutu sensor; ELSTM tidak digunakan.',
+                      'Skenario membaca HR per detik, memeriksa mutu sensor, lalu menggunakan HR maksimum untuk menilai deviasi terhadap baseline aktivitas. Tidak ada grafik atau ringkasan rata-rata BPM.',
                       key: Key('hil-recorded-peak-method'),
                     ),
                     const SizedBox(height: 8),
@@ -1700,7 +1178,6 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                                 _recordingStoppedAt = null;
                                 _recordingSamples.clear();
                                 _recommendation = null;
-                                _zeroShotExplanation = null;
                                 _clarificationRequested = false;
                                 _clarificationController.clear();
                                 _autoAttemptedDeviationSampleIds.clear();
@@ -1736,7 +1213,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                 child: Center(child: CircularProgressIndicator()),
               )
             else ...[
-              _chartCard(),
+              _hrPerSecondCard(),
               _observationCard(),
               _analysisNodesCard(),
               if (_samples.isEmpty && !_isLoading) _noSamplesGuidanceCard(),
@@ -1745,7 +1222,6 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                   !_clarificationRequested &&
                   _recommendation == null)
                 _noDeviationGuidanceCard(),
-              _scenarioOutcome(),
               _logHistory(),
             ],
           ],
@@ -1827,7 +1303,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Text(
-            'Belum ada rekaman Polar H10 yang layak untuk aktivitas ini. Mulai rekam untuk melihat grafik dan menjalankan skenario bila ada perubahan denyut yang menonjol.',
+            'Belum ada rekaman Polar H10 yang layak untuk aktivitas ini. Mulai rekam untuk melihat HR per detik dan menjalankan skenario bila ada deviasi.',
             style: AppTheme.font(
               size: 10.5,
               color: AppTheme.textSecondary,
@@ -1850,7 +1326,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               ),
               const SizedBox(height: 5),
               Text(
-                'Belum ada bacaan yang menunjukkan perubahan denyut menonjol. Skenario ${widget.scenario} akan berjalan otomatis bila denyut melampaui pembanding pribadi aktivitas ini sebesar ${_threshold.toStringAsFixed(1)} bpm dan mutu bacaan memadai. Muat ulang setelah rekaman terbaru tersedia.',
+                'Belum ada HR maksimum yang menunjukkan deviasi pada bacaan berkualitas. Muat ulang setelah rekaman terbaru tersedia.',
                 style: AppTheme.font(
                   size: 10.5,
                   color: AppTheme.textSecondary,

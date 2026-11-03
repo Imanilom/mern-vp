@@ -24,28 +24,69 @@ const provisionalBaseline = {
   maturity_detail: { level: 'provisional' },
 };
 
-test('HIL synchronous evaluator calculates HR features and uses provisional baselines', () => {
+test('HIL synchronous evaluator uses the maximum per-second HR and provisional baseline', () => {
+  const samples = readings();
   const result = analyzeHilRealtimeEvaluation({
     activity: 'sitting',
-    readings: readings(),
+    readings: samples,
   }, [provisionalBaseline]);
 
   assert.equal(result.source, 'synchronous_hil_backend');
-  assert.equal(result.metrics.mean_hr, 72.5);
-  assert.ok(result.metrics.hr_slope_bpm_per_minute > 0);
+  assert.equal(result.metrics.max_hr, 75);
+  assert.equal(result.metrics.max_hr_recorded_at, samples.at(-1).recorded_at);
+  assert.equal(result.metrics.mean_hr, undefined);
+  assert.equal(result.metrics.hr_slope_bpm_per_minute, undefined);
   assert.equal(result.baseline.level, 'provisional');
   assert.equal(result.interpretation.status, 'normal');
   assert.equal(result.interpretation.provisional_baseline, true);
   assert.equal(result.explanation.method, 'personal_baseline_deviation_proxy');
   assert.equal(result.explanation.temporal_attributions.length, 6);
-  assert.ok(
-    Math.abs(
-      result.explanation.temporal_attributions.reduce(
-        (sum, point) => sum + point.importance,
-        0
-      ) - 1
-    ) < 1e-10
+  assert.equal(
+    result.explanation.temporal_attributions.filter((point) => point.is_peak).length,
+    1
   );
+  assert.equal(
+    result.explanation.temporal_attributions.reduce(
+      (sum, point) => sum + point.importance,
+      0
+    ),
+    1
+  );
+});
+
+test('HIL deviation status depends on maximum HR, not HRV feature candidates', () => {
+  const baseline = {
+    ...provisionalBaseline,
+    stats: {
+      ...provisionalBaseline.stats,
+      rmssd: { mean: 0, std: 0.001 },
+      sdnn: { mean: 0, std: 0.001 },
+    },
+  };
+  const result = analyzeHilRealtimeEvaluation({
+    activity: 'sitting',
+    readings: readings({ heartRate: 70 }),
+  }, [baseline]);
+
+  assert.equal(result.interpretation.status, 'normal');
+});
+
+test('HIL evaluator accepts one valid HR sample and checks its maximum', () => {
+  const result = analyzeHilRealtimeEvaluation({
+    activity: 'sitting',
+    readings: [{
+      recorded_at: new Date(),
+      heart_rate_bpm: 95,
+      rr_interval_ms: 820,
+      acceleration_g: [0, 0, 1],
+      sensor_contact: true,
+      signal_confidence: 0.95,
+    }],
+  }, [provisionalBaseline]);
+
+  assert.equal(result.metrics.max_hr, 95);
+  assert.equal(result.quality.hr_accepted, true);
+  assert.equal(result.interpretation.status, 'candidate_deviation');
 });
 
 test('HIL synchronous evaluator labels high HR and subsequent recovery trends', () => {
@@ -61,7 +102,7 @@ test('HIL synchronous evaluator labels high HR and subsequent recovery trends', 
       ...reading,
       heart_rate_bpm: 70,
     })),
-    previous_mean_hr: 95,
+    previous_max_hr: 95,
     previous_elevated: true,
   }, [provisionalBaseline]);
   assert.equal(recovery.interpretation.status, 'recovered');
@@ -88,10 +129,7 @@ test('HIL synchronous evaluator withholds interpretation when baseline or signal
     readings: readings(),
   }, []);
   assert.equal(noBaseline.interpretation.status, 'not_assessable');
-  assert.equal(
-    noBaseline.explanation.temporal_attributions[0].z_score,
-    null
-  );
+  assert.equal(noBaseline.explanation.available, false);
 
   const poorQuality = analyzeHilRealtimeEvaluation({
     activity: 'sitting',
@@ -102,8 +140,19 @@ test('HIL synchronous evaluator withholds interpretation when baseline or signal
   }, [provisionalBaseline]);
   assert.equal(poorQuality.interpretation.status, 'not_assessable');
   assert.equal(poorQuality.explanation.available, false);
-  assert.equal(
-    poorQuality.explanation.temporal_attributions[0].z_score,
-    null
-  );
+  assert.equal(poorQuality.explanation.temporal_attributions.length, 0);
+
+  const mixedQuality = analyzeHilRealtimeEvaluation({
+    activity: 'sitting',
+    readings: [
+      ...readings({ heartRate: 70 }),
+      {
+        ...readings({ heartRate: 140, count: 1 })[0],
+        signal_confidence: 0.2,
+      },
+    ],
+  }, [provisionalBaseline]);
+  assert.equal(mixedQuality.metrics.max_hr, 75);
+  assert.equal(mixedQuality.quality.hr_accepted, false);
+  assert.equal(mixedQuality.interpretation.status, 'not_assessable');
 });
