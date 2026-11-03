@@ -98,6 +98,25 @@ function summarizeBaselineHistory(windows, features) {
             .map((feature) => [feature, summarizeFeature(acceptedWindows, feature)])
             .filter(([, stats]) => stats !== null)
         ),
+        windows: [...dayWindows]
+          .sort((a, b) => a.window_start - b.window_start)
+          .map((window) => ({
+            window_start: new Date(window.window_start).toISOString(),
+            recorded_at: new Date(window.recorded_at).toISOString(),
+            quality: {
+              q_signal: window.quality?.q_signal ?? null,
+              q_complete: window.quality?.q_complete ?? null,
+            },
+            quality_passed: acceptedWindows.includes(window),
+            features: Object.fromEntries(
+              features.map((feature) => [
+                feature,
+                Number.isFinite(window.features?.[feature])
+                  ? window.features[feature]
+                  : null,
+              ])
+            ),
+          })),
       };
     })
     .sort((a, b) => b.date.localeCompare(a.date));

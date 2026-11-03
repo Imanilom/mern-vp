@@ -12,6 +12,7 @@ import '../../widgets/custom_widgets.dart';
 import 'guided_baseline_session_screen.dart';
 import 'hil_recorded_scenario_screen.dart';
 import 'human_in_the_loop_live_monitor_screen.dart';
+import 'hil_baseline_history_screen.dart';
 import '../pedagogy/patient_journey_screen.dart';
 import '../pedagogy/pedagogy_screen_what_changed.dart';
 
@@ -940,6 +941,19 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
   Future<void> _openHistory(BuildContext context) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const PatientJourneyScreen()),
+    );
+  }
+
+  Future<void> _openBaselineHistory(
+    BuildContext context,
+    List<Map<String, dynamic>> contexts,
+  ) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => HilBaselineHistoryScreen(
+          baselineContexts: contexts,
+        ),
+      ),
     );
   }
 
@@ -1909,7 +1923,7 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
             );
           }),
           const SizedBox(height: 4),
-          _baselineHistory(contexts),
+          _baselineHistory(context, contexts),
           const SizedBox(height: 9),
           SizedBox(
             width: double.infinity,
@@ -1953,7 +1967,10 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
     );
   }
 
-  Widget _baselineHistory(List<Map<String, dynamic>> contexts) {
+  Widget _baselineHistory(
+    BuildContext context,
+    List<Map<String, dynamic>> contexts,
+  ) {
     final historyCount = contexts.fold<int>(0, (total, context) {
       final history = context['history'];
       return total + (history is List ? history.length : 0);
@@ -2068,6 +2085,18 @@ class _HumanInTheLoopScreenState extends State<HumanInTheLoopScreen> {
                 }),
               ];
             }),
+          if (historyCount > 0) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('hil-open-baseline-history-detail'),
+                onPressed: () => _openBaselineHistory(context, contexts),
+                icon: const Icon(Icons.timeline_rounded),
+                label: const Text('Buka ringkasan dan detail window'),
+              ),
+            ),
+          ],
         ],
       ),
     );

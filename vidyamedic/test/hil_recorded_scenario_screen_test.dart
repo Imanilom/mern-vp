@@ -35,6 +35,86 @@ void main() {
     );
   });
 
+  test('scenario C detects qualified raw HR above baseline', () {
+    final rawReading = {
+      'heart_rate_bpm': 76,
+      'sensor_contact': true,
+      'signal_confidence': 0.9,
+      'recorded_at': '2026-11-01T04:00:00.000Z',
+    };
+
+    expect(
+      HilRecordedScenarioAnalysis.isElevatedRawReading(
+        reading: rawReading,
+        baselineMean: 75,
+        thresholdBpm: 0,
+      ),
+      isTrue,
+    );
+    expect(
+      HilRecordedScenarioAnalysis.isElevatedRawReading(
+        reading: rawReading,
+        baselineMean: 76,
+        thresholdBpm: 0,
+      ),
+      isFalse,
+    );
+    expect(
+      HilRecordedScenarioAnalysis.isElevatedRawReading(
+        reading: {...rawReading, 'signal_confidence': 0.4},
+        baselineMean: 70,
+        thresholdBpm: 0,
+      ),
+      isFalse,
+    );
+    expect(
+      HilRecordedScenarioAnalysis.maximumQualifiedRawHeartRateSample([
+        {
+          ...rawReading,
+          'heart_rate_bpm': 180,
+          'signal_confidence': 0.3,
+        },
+        rawReading,
+      ])?['heart_rate_bpm'],
+      76,
+    );
+  });
+
+  test('scenario C waits for HR to fall halfway back toward baseline', () {
+    expect(
+      HilRecordedScenarioAnalysis.hasRecoveredHalfwayToBaseline(
+        maximumHeartRate: 120,
+        currentHeartRate: 95,
+        baselineMean: 70,
+      ),
+      isTrue,
+    );
+    expect(
+      HilRecordedScenarioAnalysis.hasRecoveredHalfwayToBaseline(
+        maximumHeartRate: 120,
+        currentHeartRate: 96,
+        baselineMean: 70,
+      ),
+      isFalse,
+    );
+    expect(
+      HilRecordedScenarioAnalysis.hasRecoveredHalfwayToBaseline(
+        maximumHeartRate: 120,
+        currentHeartRate: 121,
+        baselineMean: 70,
+      ),
+      isFalse,
+    );
+    expect(
+      HilRecordedScenarioAnalysis.hasRecoveredHalfwayToBaseline(
+        maximumHeartRate: 70,
+        currentHeartRate: 60,
+        baselineMean: 70,
+      ),
+      isFalse,
+    );
+  });
+
   testWidgets('HR line chart replaces per-reading BPM chips', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(

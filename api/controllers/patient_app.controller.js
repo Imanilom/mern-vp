@@ -2480,9 +2480,11 @@ export async function createPatientHilScenarioLog(req, res) {
       && signalQuality >= PATIENT_HIL_BASELINE_POLICY.minimum_quality
       && Number.isFinite(completeness)
       && completeness >= PATIENT_HIL_BASELINE_POLICY.minimum_quality;
-    const threshold = Number.isFinite(baselineStd)
-      ? Math.max(10, baselineStd * 2)
-      : 10;
+    const threshold = log.scenario === 'C'
+      ? 0
+      : Number.isFinite(baselineStd)
+        ? Math.max(10, baselineStd * 2)
+        : 10;
     const assessable = baselineReady
       && Number.isFinite(baselineMean)
       && qualityAccepted;

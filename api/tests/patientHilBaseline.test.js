@@ -95,6 +95,20 @@ test('HIL baseline readiness requires five quality-gated minutes per activity', 
         standard_deviation: 0,
       },
     },
+    windows: Array.from({ length: 5 }, (_, index) => ({
+      window_start: new Date(start + index * 60_000).toISOString(),
+      recorded_at: new Date(start + index * 60_000).toISOString(),
+      quality: { q_signal: 0.9, q_complete: 0.9 },
+      quality_passed: true,
+      features: {
+        mean_hr: 70 + index,
+        mean_rr: 800,
+        rmssd: 10,
+        sdnn: null,
+        dfa_alpha1: null,
+        motion_intensity: null,
+      },
+    })),
   }]);
 
   const [notReady] = summarizePatientHilBaselines(windows.slice(0, 4));
@@ -137,10 +151,44 @@ test('baseline history groups quality-gated minutes by activity and WIB date', (
     segment_count: day.segment_count,
     valid_window_count: day.valid_window_count,
     mean_hr: day.feature_stats.mean_hr.mean,
+    windows: day.windows.map((window) => ({
+      window_start: window.window_start,
+      quality_passed: window.quality_passed,
+    })),
   })), [
-    { date: '2026-11-02', segment_count: 2, valid_window_count: 1, mean_hr: 90 },
-    { date: '2026-11-01', segment_count: 1, valid_window_count: 1, mean_hr: 80 },
+    {
+      date: '2026-11-02',
+      segment_count: 2,
+      valid_window_count: 1,
+      mean_hr: 90,
+      windows: [
+        {
+          window_start: new Date(
+            Date.parse('2026-11-01T17:00:00.000Z')
+          ).toISOString(),
+          quality_passed: false,
+        },
+        {
+          window_start: new Date(
+            Date.parse('2026-11-02T00:00:00.000Z')
+          ).toISOString(),
+          quality_passed: true,
+        },
+      ],
+    },
+    {
+      date: '2026-11-01',
+      segment_count: 1,
+      valid_window_count: 1,
+      mean_hr: 80,
+      windows: [{
+        window_start: new Date(Date.parse('2026-11-01T16:30:00.000Z')).toISOString(),
+        quality_passed: true,
+      }],
+    },
   ]);
+  assert.equal(context.history[0].windows[0].quality.q_signal, 0.4);
+  assert.equal(context.history[0].windows[0].quality_passed, false);
 });
 
 test('real-time HIL analysis uses only ready isolated HIL feature statistics', () => {

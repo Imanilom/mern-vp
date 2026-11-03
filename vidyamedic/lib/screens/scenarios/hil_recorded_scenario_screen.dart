@@ -47,6 +47,51 @@ class HilRecordedScenarioAnalysis {
     return maximum;
   }
 
+  static bool isQualifiedRawReading(Map<String, dynamic> reading) {
+    final heartRate = reading['heart_rate_bpm'];
+    final signalConfidence = reading['signal_confidence'];
+    return reading['sensor_contact'] == true &&
+        heartRate is num &&
+        heartRate.isFinite &&
+        heartRate >= 20 &&
+        heartRate <= 250 &&
+        signalConfidence is num &&
+        signalConfidence.isFinite &&
+        signalConfidence >= 0.6;
+  }
+
+  static Map<String, dynamic>? maximumQualifiedRawHeartRateSample(
+    List<Map<String, dynamic>> readings,
+  ) =>
+      maximumHeartRateSample(
+        readings.where(isQualifiedRawReading).toList(),
+      );
+
+  static bool isElevatedRawReading({
+    required Map<String, dynamic> reading,
+    required double? baselineMean,
+    required double thresholdBpm,
+  }) {
+    final heartRate = reading['heart_rate_bpm'];
+    return isQualifiedRawReading(reading) &&
+        heartRate is num &&
+        baselineMean != null &&
+        heartRate > baselineMean + thresholdBpm;
+  }
+
+  static bool hasRecoveredHalfwayToBaseline({
+    required double maximumHeartRate,
+    required double currentHeartRate,
+    required double baselineMean,
+  }) {
+    if (maximumHeartRate <= baselineMean ||
+        currentHeartRate >= maximumHeartRate) {
+      return false;
+    }
+    final halfwayHeartRate =
+        baselineMean + (maximumHeartRate - baselineMean) / 2;
+    return currentHeartRate <= halfwayHeartRate;
+  }
 }
 
 class HilRecordedScenarioScreen extends StatefulWidget {
@@ -98,6 +143,10 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   bool _isStoppingLiveMonitoring = false;
   bool _ownsStream = false;
   bool _clarificationRequested = false;
+  bool _liveDeviationPrompted = false;
+  bool _rawDeviationInProgress = false;
+  Map<String, dynamic>? _livePeakReading;
+  DateTime? _lastProcessedRawReadingAt;
   bool _isStartingRun = false;
   DateTime? _recordingStartedAt;
   DateTime? _recordingStoppedAt;
@@ -109,6 +158,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   void initState() {
     super.initState();
     _appState = context.read<AppState>();
+    _appState.wearableBridge.addListener(_onWearableReadingsChanged);
     unawaited(_initialize());
   }
 
@@ -119,6 +169,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _appState.wearableBridge.removeListener(_onWearableReadingsChanged);
     if (_sessionId != null) unawaited(_completeRun());
     if (_ownsStream && _appState.wearableBridge.isStreaming) {
       unawaited(_appState.wearableBridge.stopStreaming());
@@ -229,7 +280,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     return value is num && value.isFinite ? value.toDouble() : null;
   }
 
-  double get _threshold => HilRecordedScenarioAnalysis.threshold(_baselineStd);
+  double get _threshold => widget.scenario == 'C'
+      ? 0
+      : HilRecordedScenarioAnalysis.threshold(_baselineStd);
 
   Map<String, dynamic>? get _selectedSample {
     for (final sample in _samples) {
@@ -258,6 +311,65 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           qComplete: qComplete is num ? qComplete.toDouble() : null,
           qualityAccepted: quality['status'] == 'accepted',
         );
+  }
+
+  List<Map<String, dynamic>> _rawSessionReadings() {
+    final startedAt = _recordingStartedAt;
+    if (startedAt == null) return const [];
+    return _appState.wearableBridge.recentStreamReadings.where((reading) {
+      final recordedAt =
+          DateTime.tryParse(reading['recorded_at']?.toString() ?? '');
+      return recordedAt?.isBefore(startedAt) == false &&
+          HilRecordedScenarioAnalysis.isQualifiedRawReading(reading);
+    }).toList()
+      ..sort((a, b) => DateTime.parse(a['recorded_at'].toString())
+          .compareTo(DateTime.parse(b['recorded_at'].toString())));
+  }
+
+  void _onWearableReadingsChanged() {
+    if (widget.scenario != 'C' ||
+        !_isLiveMonitoring ||
+        _liveDeviationPrompted ||
+        _rawDeviationInProgress) {
+      return;
+    }
+    final baseline = _baselineMean;
+    if (baseline == null) return;
+    final readings = _rawSessionReadings();
+    for (final reading in readings) {
+      final recordedAt =
+          DateTime.tryParse(reading['recorded_at']?.toString() ?? '');
+      final heartRate = _sampleHr(reading);
+      if (recordedAt == null ||
+          heartRate == null ||
+          (_lastProcessedRawReadingAt != null &&
+              !recordedAt.isAfter(_lastProcessedRawReadingAt!))) {
+        continue;
+      }
+      _lastProcessedRawReadingAt = recordedAt;
+      final peakHr = _sampleHr(_livePeakReading ?? const {});
+      if (peakHr == null || heartRate > peakHr) {
+        if (HilRecordedScenarioAnalysis.isElevatedRawReading(
+          reading: reading,
+          baselineMean: baseline,
+          thresholdBpm: _threshold,
+        )) {
+          _livePeakReading = reading;
+        }
+        continue;
+      }
+      if (peakHr > baseline &&
+          HilRecordedScenarioAnalysis.hasRecoveredHalfwayToBaseline(
+            maximumHeartRate: peakHr,
+            currentHeartRate: heartRate,
+            baselineMean: baseline,
+          )) {
+        _liveDeviationPrompted = true;
+        _rawDeviationInProgress = true;
+        unawaited(_presentLiveRawDeviation(_livePeakReading!));
+        return;
+      }
+    }
   }
 
   Future<void> _startRun() async {
@@ -321,8 +433,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     final now = DateTime.now().toUtc();
     final recordingStartedAt = _recordingStartedAt;
     final recordingStoppedAt = _recordingStoppedAt;
+    final sampleCutoff = recordingStartedAt?.subtract(
+      _liveDeviationPrompted ? const Duration(minutes: 1) : Duration.zero,
+    );
     final response = await ApiService.getWearableSamples(
-      from: (recordingStartedAt ?? now.subtract(const Duration(days: 31)))
+      from: (sampleCutoff ?? now.subtract(const Duration(days: 31)))
           .toIso8601String(),
       to: now.toIso8601String(),
       limit: 100,
@@ -351,8 +466,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           quality['status'] == 'accepted' &&
           _sampleHr(sample) != null &&
           recordedAt != null &&
-          (recordingStartedAt == null ||
-              !recordedAt.isBefore(recordingStartedAt)) &&
+          (sampleCutoff == null || !recordedAt.isBefore(sampleCutoff)) &&
           (recordingStoppedAt == null ||
               !recordedAt.isAfter(recordingStoppedAt));
     }).toList()
@@ -449,10 +563,15 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     }
     _recordingStartedAt = DateTime.now().toUtc();
     _recordingStoppedAt = null;
+    _appState.wearableBridge.setActivity(_activity);
     _recordingSamples.clear();
     _loadedSampleIds.clear();
     _autoAttemptedDeviationSampleIds.clear();
     _handledDeviationSampleIds.clear();
+    _liveDeviationPrompted = false;
+    _rawDeviationInProgress = false;
+    _livePeakReading = null;
+    _lastProcessedRawReadingAt = null;
     final started = await _saveLog(
       'live_recording_started',
       explanation: 'Rekaman live Polar H10 dimulai.',
@@ -672,6 +791,131 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     await _openClarificationPicker();
   }
 
+  Future<Map<String, dynamic>?> _persistRawDeviationSample(
+    Map<String, dynamic> rawReading,
+  ) async {
+    final rawTime =
+        DateTime.tryParse(rawReading['recorded_at']?.toString() ?? '');
+    if (rawTime == null) return null;
+    final bridge = _appState.wearableBridge;
+
+    for (var attempt = 0; attempt < 5; attempt++) {
+      await bridge.flushSample(force: true);
+      if (!mounted) return null;
+      while (_isRefreshingSamples && mounted) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+      if (!mounted) return null;
+      await _loadSamples();
+      final candidates = _samples.where((sample) {
+        final sampleTime =
+            DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
+        return sampleTime != null &&
+            sampleTime.difference(rawTime).abs() <=
+                const Duration(seconds: 90) &&
+            _isDeviation(sample);
+      }).toList()
+        ..sort((left, right) {
+          final leftTime = DateTime.parse(left['recorded_at'].toString());
+          final rightTime = DateTime.parse(right['recorded_at'].toString());
+          final distance = leftTime
+              .difference(rawTime)
+              .abs()
+              .compareTo(rightTime.difference(rawTime).abs());
+          if (distance != 0) return distance;
+          return (_sampleHr(right) ?? 0).compareTo(_sampleHr(left) ?? 0);
+        });
+      if (candidates.isNotEmpty) return candidates.first;
+      if (attempt < 4) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
+    }
+    return null;
+  }
+
+  Future<void> _presentLiveRawDeviation(
+    Map<String, dynamic> rawReading,
+  ) async {
+    final rawHr = _sampleHr(rawReading);
+    final rawTime =
+        DateTime.tryParse(rawReading['recorded_at']?.toString() ?? '');
+    if (rawHr == null || rawTime == null || !mounted) {
+      _rawDeviationInProgress = false;
+      return;
+    }
+
+    final answerFuture = _showClarificationDialog(
+      rawHeartRate: rawHr,
+      observedAt: rawTime,
+    );
+    final sampleFuture = _persistRawDeviationSample(rawReading);
+    final answer = await answerFuture;
+    if (!mounted) return;
+    if (answer == null) {
+      setState(() {
+        _rawDeviationInProgress = false;
+        _clarificationRequested = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _clarificationController.text = answer;
+      _clarificationRequested = true;
+      _error = null;
+    });
+    final sample = await sampleFuture;
+    if (!mounted) return;
+    final sampleId = sample?['_id']?.toString();
+    if (sample == null || sampleId == null) {
+      setState(() {
+        _isSaving = false;
+        _rawDeviationInProgress = false;
+        _error = 'Deviasi HR raw terdeteksi dan jawaban tersimpan sementara, '
+            'tetapi sampel Polar berkualitas belum tersedia untuk menyimpan '
+            'klarifikasi. Hentikan rekaman lalu muat ulang observasi.';
+      });
+      return;
+    }
+
+    setState(() {
+      _selectedSampleId = sampleId;
+    });
+    final deviation = await _logSelectedObservation('deviation_detected');
+    if (!mounted) return;
+    if (deviation == null ||
+        deviation['algorithm_status'] != 'candidate_deviation') {
+      setState(() {
+        _isSaving = false;
+        _rawDeviationInProgress = false;
+        _error = 'Popup sudah ditampilkan, tetapi deviasi belum dapat '
+            'disimpan dari sampel Polar yang tervalidasi.';
+      });
+      return;
+    }
+    final requested = await _logSelectedObservation('clarification_requested');
+    if (!mounted) return;
+    if (requested == null) {
+      setState(() {
+        _isSaving = false;
+        _rawDeviationInProgress = false;
+      });
+      return;
+    }
+    final submitted = await _logSelectedObservation(
+      'clarification_submitted',
+      clarification: answer,
+    );
+    if (!mounted) return;
+    setState(() {
+      _isSaving = false;
+      _rawDeviationInProgress = false;
+      _clarificationRequested = submitted == null;
+      if (submitted != null) _handledDeviationSampleIds.add(sampleId);
+    });
+  }
+
   Map<String, dynamic> _explanationSnapshot(
     String explanation,
     String status, {
@@ -695,7 +939,10 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     };
   }
 
-  Future<void> _openClarificationPicker() async {
+  Future<String?> _showClarificationDialog({
+    double? rawHeartRate,
+    DateTime? observedAt,
+  }) async {
     String? choice = _clarificationController.text.trim().isNotEmpty
         ? _clarificationController.text.trim()
         : null;
@@ -716,6 +963,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
             'Tidak ada aktivitas atau konteks khusus sebelumnya',
           ];
           return AlertDialog(
+            key: const Key('hil-recorded-clarification-dialog'),
             title: const Text('Ada aktivitas atau konteks sebelumnya?'),
             content: SizedBox(
               width: 420,
@@ -726,6 +974,15 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (rawHeartRate != null) ...[
+                        Text(
+                          'HR maksimum raw per detik mencapai ${rawHeartRate.toStringAsFixed(1)} bpm, melewati pembanding baseline aktivitas dan kini telah turun setidaknya setengah jarak menuju baseline. '
+                          '${observedAt == null ? '' : 'Terdeteksi ${formatHilWibDateTime(observedAt)}. '}'
+                          'Apa konteks sebelum perubahan ini?',
+                          key: const Key('hil-recorded-raw-deviation-prompt'),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                       const Text(
                         'Aktivitas apa yang terjadi sebelum perubahan denyut terdeteksi?',
                       ),
@@ -748,8 +1005,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                                     ? AppTheme.primary
                                     : AppTheme.divider,
                               ),
-                              color:
-                                  isSelected ? AppTheme.primarySoft : null,
+                              color: isSelected ? AppTheme.primarySoft : null,
                             ),
                             child: Row(
                               children: [
@@ -813,6 +1069,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       ),
     );
     otherContextController.dispose();
+    if (!mounted) return null;
+    return selected;
+  }
+
+  Future<void> _openClarificationPicker() async {
+    final selected = await _showClarificationDialog();
     if (!mounted) return;
     if (selected == null) {
       setState(() => _clarificationRequested = false);
@@ -907,13 +1169,16 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
 
   Widget _hrPerSecondCard() {
-    final samples = _samples.reversed.take(30).toList().reversed.toList();
-    final maximum = HilRecordedScenarioAnalysis.maximumHeartRateSample(_samples);
+    final isLiveRawScenario = widget.scenario == 'C' && _isLiveMonitoring;
+    final source = isLiveRawScenario ? _rawSessionReadings() : _samples;
+    final samples = source.reversed.take(30).toList().reversed.toList();
+    final maximum = isLiveRawScenario
+        ? HilRecordedScenarioAnalysis.maximumQualifiedRawHeartRateSample(
+            source,
+          )
+        : HilRecordedScenarioAnalysis.maximumHeartRateSample(source);
     final maximumHr = maximum == null ? null : _sampleHr(maximum);
-    final readings = samples
-        .map(_sampleHr)
-        .whereType<double>()
-        .toList();
+    final readings = samples.map(_sampleHr).whereType<double>().toList();
     return Card(
       key: const Key('hil-recorded-hr-per-second'),
       child: Padding(
@@ -959,9 +1224,20 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }
 
   Widget _observationCard() {
-    final sample = _selectedSample;
+    final liveRawPeak = widget.scenario == 'C' && _isLiveMonitoring
+        ? HilRecordedScenarioAnalysis.maximumQualifiedRawHeartRateSample(
+            _rawSessionReadings(),
+          )
+        : null;
+    final sample = liveRawPeak ?? _selectedSample;
     final hr = sample == null ? null : _sampleHr(sample);
-    final candidate = sample != null && _isDeviation(sample);
+    final candidate = liveRawPeak != null
+        ? HilRecordedScenarioAnalysis.isElevatedRawReading(
+            reading: liveRawPeak,
+            baselineMean: _baselineMean,
+            thresholdBpm: _threshold,
+          )
+        : sample != null && _isDeviation(sample);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -973,13 +1249,12 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               style: AppTheme.font(size: 12, weight: FontWeight.w800),
             ),
             const SizedBox(height: 7),
-            if (_recordingStartedAt != null &&
-                _recordingStoppedAt == null)
+            if (_recordingStartedAt != null && _recordingStoppedAt == null)
               const Text(
                 'HR maksimum sementara dihitung dari bacaan per detik sesi ini.',
                 key: Key('hil-recorded-peak-guidance'),
               ),
-            if (_samples.isEmpty)
+            if (_samples.isEmpty && liveRawPeak == null)
               const Text(
                   'Belum ada sampel Polar H10 yang valid pada rekaman ini.'),
             if (sample != null) ...[
@@ -997,7 +1272,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               ),
               Text(
                 candidate
-                    ? 'Deviasi terdeteksi pada HR maksimum; mutu bacaan lolos.'
+                    ? liveRawPeak != null
+                        ? _liveDeviationPrompted
+                            ? 'HR telah turun setidaknya setengah jarak menuju baseline; pertanyaan konteks ditampilkan.'
+                            : 'HR maksimum melewati baseline; menunggu HR turun setengah jarak menuju baseline sebelum bertanya.'
+                        : 'Deviasi terdeteksi pada HR maksimum; mutu bacaan lolos.'
                     : _baseline.isEmpty
                         ? 'Pembanding aktivitas belum tersedia untuk menilai deviasi.'
                         : 'Belum ada deviasi pada HR maksimum bacaan.',
@@ -1027,8 +1306,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.bolt_rounded),
-                label:
-                    Text(_handledDeviationSampleIds.contains(_selectedSampleId)
+                label: Text(
+                    _handledDeviationSampleIds.contains(_selectedSampleId)
                         ? 'Skenario sudah berjalan'
                         : widget.scenario == 'C' &&
                                 _recordingStartedAt != null &&
@@ -1104,7 +1383,9 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '4. Sistem memeriksa HR per detik dan menilai deviasi dari HR maksimum bacaan berkualitas. Ini pengamatan, bukan diagnosis.',
+                widget.scenario == 'C'
+                    ? '4. HR raw per detik yang lolos mutu dibandingkan dengan baseline aktivitas; popup klarifikasi muncul langsung saat HR maksimum melewati ambang. Ini pengamatan, bukan diagnosis.'
+                    : '4. Sistem memeriksa HR per detik dan menilai deviasi dari HR maksimum bacaan berkualitas. Ini pengamatan, bukan diagnosis.',
               ),
               const SizedBox(height: 4),
               Text(
@@ -1266,8 +1547,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 5),
               child: Text(
-                'Polar H10 ${bridge.isStreaming ? 'aktif' : 'terputus'} · sampel diperbarui otomatis tiap 30 detik. '
-                'Skenario akan berjalan otomatis jika ditemukan perubahan menonjol dengan data yang layak.',
+                'Polar H10 ${bridge.isStreaming ? 'aktif' : 'terputus'} · HR raw dipantau langsung; riwayat sampel disinkronkan tiap 30 detik. '
+                'Skenario C langsung meminta konteks saat HR maksimum melewati baseline.',
                 key: const Key('hil-recorded-live-monitor-status'),
                 style: AppTheme.font(
                   size: 10,

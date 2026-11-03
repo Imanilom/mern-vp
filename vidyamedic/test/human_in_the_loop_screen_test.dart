@@ -105,6 +105,61 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('formed baseline can reopen its longitudinal windows',
+      (tester) async {
+    final state = AppState()
+      ..rawCaparInsights = {
+        'capar': {
+          'baseline': {'contexts': []},
+        },
+      }
+      ..hilBaselineContexts = [
+        {
+          'activity': 'sitting',
+          'segment_count': 1,
+          'feature_stats': {
+            'mean_hr': {'mean': 70},
+          },
+          'scenario_readiness': {'valid_window_count': 1},
+          'history': [
+            {
+              'date': '2026-11-01',
+              'segment_count': 1,
+              'valid_window_count': 1,
+              'feature_stats': {
+                'mean_hr': {'mean': 70},
+              },
+              'windows': [
+                {
+                  'window_start': '2026-11-01T04:00:00.000Z',
+                  'quality': {'q_signal': 0.9, 'q_complete': 0.9},
+                  'quality_passed': true,
+                  'features': {'mean_hr': 70},
+                },
+              ],
+            },
+          ],
+        },
+      ];
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(_app(state));
+
+    final expansion = find.byKey(const Key('hil-baseline-history-expansion'));
+    await tester.ensureVisible(expansion);
+    await tester.tap(expansion);
+    await tester.pumpAndSettle();
+    final openHistory =
+        find.byKey(const Key('hil-open-baseline-history-detail'));
+    await tester.ensureVisible(openHistory);
+    await tester.tap(openHistory);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Riwayat baseline HIL'), findsOneWidget);
+    expect(find.byKey(const Key('hil-baseline-longitudinal-chart')),
+        findsOneWidget);
+  });
+
   testWidgets(
       'Human In the Loop locks B/C until five quality-gated HIL minutes exist',
       (tester) async {
@@ -219,7 +274,8 @@ void main() {
     expect(find.text('Lewati'), findsOneWidget);
     expect(find.text('Pilih aktivitas sebelum puncak denyut'), findsOneWidget);
     expect(find.byKey(const Key('hil-activity-option-Duduk')), findsOneWidget);
-    expect(find.byKey(const Key('hil-activity-option-Bekerja')), findsOneWidget);
+    expect(
+        find.byKey(const Key('hil-activity-option-Bekerja')), findsOneWidget);
   });
 
   testWidgets('A shows HIL baseline counts separately from CAPAR baselines',
@@ -506,7 +562,8 @@ void main() {
             'baseline_ready': true,
             'factors': ['mean_hr'],
             'xai': {
-              'summary': 'Denyut naik karena transisi posisi dan pola aktivitas belum sepenuhnya dibaseline.',
+              'summary':
+                  'Denyut naik karena transisi posisi dan pola aktivitas belum sepenuhnya dibaseline.',
               'confidence': 0.85,
               'supporting_factors': ['mean_hr', 'rmssd'],
               'contradicting_factors': ['sleep'],
@@ -518,12 +575,14 @@ void main() {
 
     await tester.pumpWidget(_app(state));
 
-    final historyItem = find.byKey(const Key('hil-scenario-history-hil-event-xai'));
+    final historyItem =
+        find.byKey(const Key('hil-scenario-history-hil-event-xai'));
     await tester.ensureVisible(historyItem);
     await tester.tap(historyItem);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('hil-scenario-history-detail')), findsOneWidget);
+    expect(
+        find.byKey(const Key('hil-scenario-history-detail')), findsOneWidget);
     expect(find.text('Penjelasan XAI'), findsOneWidget);
     expect(
       find.textContaining('Denyut naik karena transisi posisi'),
