@@ -2369,6 +2369,10 @@ export async function createPatientHilScenarioLog(req, res) {
     entry.event_type === eventType
     && (sampleId === null || entry.sample_id?.toString() === sampleId)
   ));
+  const priorDeviation = previousLogs.find((entry) => (
+    entry.event_type === 'deviation_detected'
+    && entry.sample_id?.toString() === log.sample_id
+  ));
   if (log.event_type === 'scenario_started') {
     if (previousLogs.length) {
       throw errorHandler(409, 'run_id skenario HIL sudah pernah digunakan.');
@@ -2471,25 +2475,55 @@ export async function createPatientHilScenarioLog(req, res) {
       );
     }
 
+    let rawHeartRate = log.raw_hr ?? priorDeviation?.raw_hr ?? null;
+    let rawRecordedAt = log.raw_recorded_at ?? priorDeviation?.raw_recorded_at ?? null;
+    let rawSignalQuality = null;
+    if (log.raw_hr !== undefined) {
+      const timestampSeconds = log.raw_recorded_at.getTime() / 1000;
+      const rawReading = await PolarData.findOne({
+        user_id: dataOwnerId,
+        hr: log.raw_hr,
+        timestamp: {
+          $gte: timestampSeconds - 2,
+          $lte: timestampSeconds + 2,
+        },
+        signal_quality: { $gte: PATIENT_HIL_BASELINE_POLICY.minimum_quality },
+      })
+        .select('hr timestamp signal_quality')
+        .lean();
+      if (!rawReading) {
+        throw errorHandler(
+          400,
+          'HR raw deviasi tidak cocok dengan bacaan Polar tersimpan yang bermutu.'
+        );
+      }
+      rawHeartRate = rawReading.hr;
+      rawRecordedAt = new Date(rawReading.timestamp * 1000);
+      rawSignalQuality = rawReading.signal_quality;
+    } else if (priorDeviation?.raw_hr != null) {
+      rawSignalQuality = priorDeviation.q_signal;
+    }
+
     const baselineReady = baseline?.scenario_readiness?.ready === true;
     const baselineMean = baseline?.feature_stats?.mean_hr?.mean;
     const baselineStd = baseline?.feature_stats?.mean_hr?.standard_deviation;
     const signalQuality = sample.data_quality?.q_signal;
     const completeness = sample.data_quality?.q_complete;
-    const qualityAccepted = Number.isFinite(signalQuality)
+    const sampleQualityAccepted = Number.isFinite(signalQuality)
       && signalQuality >= PATIENT_HIL_BASELINE_POLICY.minimum_quality
       && Number.isFinite(completeness)
       && completeness >= PATIENT_HIL_BASELINE_POLICY.minimum_quality;
-    const threshold = log.scenario === 'C'
-      ? 0
-      : Number.isFinite(baselineStd)
-        ? Math.max(10, baselineStd * 2)
-        : 10;
+    const qualityAccepted = sampleQualityAccepted
+      && (rawHeartRate === null
+        || (Number.isFinite(rawSignalQuality)
+          && rawSignalQuality >= PATIENT_HIL_BASELINE_POLICY.minimum_quality));
+    const threshold = 0;
+    const evaluatedHeartRate = rawHeartRate ?? sample.heart_rate_bpm;
     const assessable = baselineReady
       && Number.isFinite(baselineMean)
       && qualityAccepted;
     const candidate = assessable
-      && sample.heart_rate_bpm > baselineMean + threshold;
+      && evaluatedHeartRate > baselineMean + threshold;
     if (
       ['deviation_detected', 'feedback_presented', 'clarification_requested',
         'clarification_submitted', 'zero_shot_generated', 'zero_shot_failed']
@@ -2501,15 +2535,17 @@ export async function createPatientHilScenarioLog(req, res) {
 
     Object.assign(storedLog, {
       sample_id: sample._id,
-      observed_at: sample.recorded_at,
-      heart_rate_bpm: sample.heart_rate_bpm,
+      observed_at: rawRecordedAt ?? sample.recorded_at,
+      heart_rate_bpm: evaluatedHeartRate,
+      raw_hr: rawHeartRate,
+      raw_recorded_at: rawRecordedAt,
       baseline_mean_hr: Number.isFinite(baselineMean) ? baselineMean : null,
       baseline_std_hr: Number.isFinite(baselineStd) ? baselineStd : null,
       threshold_bpm: threshold,
       z_score: Number.isFinite(baselineStd) && baselineStd > 0
-        ? (sample.heart_rate_bpm - baselineMean) / baselineStd
+        ? (evaluatedHeartRate - baselineMean) / baselineStd
         : null,
-      q_signal: signalQuality,
+      q_signal: rawSignalQuality ?? signalQuality,
       q_complete: completeness,
       quality_status: qualityAccepted ? 'accepted' : 'warning',
       algorithm_status: !assessable

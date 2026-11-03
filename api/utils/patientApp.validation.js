@@ -704,6 +704,8 @@ export function validateHilScenarioLog(value) {
       'activity',
       'sample_ids',
       'sample_id',
+      'raw_hr',
+      'raw_recorded_at',
       'recommendation',
       'clarification',
       'explanation',
@@ -715,6 +717,25 @@ export function validateHilScenarioLog(value) {
     || !/^[a-f\d]{24}$/i.test(value.session_id)
   ) {
     throw errorHandler(400, 'session_id log skenario HIL tidak valid.');
+  }
+  const hasRawHeartRate = value.raw_hr !== undefined;
+  const hasRawRecordedAt = value.raw_recorded_at !== undefined;
+  if (hasRawHeartRate !== hasRawRecordedAt) {
+    throw errorHandler(400, 'raw_hr dan raw_recorded_at harus dikirim bersama.');
+  }
+  if (
+    hasRawHeartRate
+    && (
+      value.event_type !== 'deviation_detected'
+      || typeof value.raw_hr !== 'number'
+      || !Number.isFinite(value.raw_hr)
+      || value.raw_hr < 20
+      || value.raw_hr > 250
+      || typeof value.raw_recorded_at !== 'string'
+      || !Number.isFinite(new Date(value.raw_recorded_at).getTime())
+    )
+  ) {
+    throw errorHandler(400, 'Data HR raw hanya valid untuk event deviasi.');
   }
   const runId = optionalString(value.run_id, 'run_id', 80);
   if (!/^[a-zA-Z0-9._:-]{8,80}$/.test(runId)) {
@@ -809,6 +830,10 @@ export function validateHilScenarioLog(value) {
       throw errorHandler(400, 'sample_id log HIL tidak valid.');
     }
     result.sample_id = value.sample_id;
+  }
+  if (hasRawHeartRate) {
+    result.raw_hr = value.raw_hr;
+    result.raw_recorded_at = new Date(value.raw_recorded_at);
   }
   for (const field of ['recommendation', 'clarification', 'explanation']) {
     if (field in value) {

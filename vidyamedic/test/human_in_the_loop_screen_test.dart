@@ -661,14 +661,13 @@ void main() {
     expect(_scenarioTile(tester, 'C').onTap, isNotNull);
   });
 
-  test('recorded HIL deviation uses a quality-gated personal threshold', () {
-    expect(HilRecordedScenarioAnalysis.threshold(3), 10);
-    expect(HilRecordedScenarioAnalysis.threshold(8), 16);
+  test('recorded HIL deviation uses raw HR above baseline with quality gates',
+      () {
     expect(
       HilRecordedScenarioAnalysis.isElevatedCandidate(
         heartRate: 91,
         baselineMean: 70,
-        thresholdBpm: 20,
+        thresholdBpm: 0,
         qSignal: 0.9,
         qComplete: 0.9,
         qualityAccepted: true,
@@ -677,10 +676,21 @@ void main() {
     );
     expect(
       HilRecordedScenarioAnalysis.isElevatedCandidate(
-        heartRate: 91,
+        heartRate: 70,
         baselineMean: 70,
-        thresholdBpm: 20,
+        thresholdBpm: 0,
         qSignal: 0.4,
+        qComplete: 0.9,
+        qualityAccepted: true,
+      ),
+      isFalse,
+    );
+    expect(
+      HilRecordedScenarioAnalysis.isElevatedCandidate(
+        heartRate: 70,
+        baselineMean: 70,
+        thresholdBpm: 0,
+        qSignal: 0.9,
         qComplete: 0.9,
         qualityAccepted: true,
       ),

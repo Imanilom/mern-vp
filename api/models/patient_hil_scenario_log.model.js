@@ -74,6 +74,8 @@ const PatientHilScenarioLogSchema = new mongoose.Schema(
     },
     observed_at: { type: Date, default: null },
     heart_rate_bpm: { type: Number, min: 20, max: 250, default: null },
+    raw_hr: { type: Number, min: 20, max: 250, default: null },
+    raw_recorded_at: { type: Date, default: null },
     baseline_mean_hr: { type: Number, min: 20, max: 250, default: null },
     baseline_std_hr: { type: Number, min: 0, max: 100, default: null },
     threshold_bpm: { type: Number, min: 0, max: 200, default: null },

@@ -80,41 +80,6 @@ void main() {
     );
   });
 
-  test('scenario C waits for HR to fall halfway back toward baseline', () {
-    expect(
-      HilRecordedScenarioAnalysis.hasRecoveredHalfwayToBaseline(
-        maximumHeartRate: 120,
-        currentHeartRate: 95,
-        baselineMean: 70,
-      ),
-      isTrue,
-    );
-    expect(
-      HilRecordedScenarioAnalysis.hasRecoveredHalfwayToBaseline(
-        maximumHeartRate: 120,
-        currentHeartRate: 96,
-        baselineMean: 70,
-      ),
-      isFalse,
-    );
-    expect(
-      HilRecordedScenarioAnalysis.hasRecoveredHalfwayToBaseline(
-        maximumHeartRate: 120,
-        currentHeartRate: 121,
-        baselineMean: 70,
-      ),
-      isFalse,
-    );
-    expect(
-      HilRecordedScenarioAnalysis.hasRecoveredHalfwayToBaseline(
-        maximumHeartRate: 70,
-        currentHeartRate: 60,
-        baselineMean: 70,
-      ),
-      isFalse,
-    );
-  });
-
   testWidgets('HR line chart replaces per-reading BPM chips', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(

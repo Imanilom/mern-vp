@@ -1361,6 +1361,20 @@ test('HIL scenario logs accept sample references inside a session', () => {
   assert.equal(run.session_id, sessionId);
   assert.deepEqual(run.sample_ids, []);
 
+  const rawDeviation = validateHilScenarioLog({
+    session_id: sessionId,
+    run_id: 'hil-C-1793508969984',
+    scenario: 'C',
+    event_type: 'deviation_detected',
+    activity: 'walking',
+    sample_id: '507f1f77bcf86cd799439011',
+    raw_hr: 101,
+    raw_recorded_at: '2026-11-01T04:00:00.000Z',
+  });
+  assert.equal(rawDeviation.raw_hr, 101);
+  assert.ok(rawDeviation.raw_recorded_at instanceof Date);
+  assert.equal(rawDeviation.raw_recorded_at.toISOString(), '2026-11-01T04:00:00.000Z');
+
   for (const event_type of [
     'activity_selected',
     'live_recording_started',
@@ -1430,6 +1444,31 @@ test('HIL scenario logs accept sample references inside a session', () => {
       event_type: 'deviation_detected',
       activity: 'sitting',
       sample_id: '507f1f77bcf86cd799439011',
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilScenarioLog({
+      session_id: sessionId,
+      run_id: 'hil-C-1793508969984',
+      scenario: 'C',
+      event_type: 'deviation_detected',
+      activity: 'walking',
+      sample_id: '507f1f77bcf86cd799439011',
+      raw_hr: 101,
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateHilScenarioLog({
+      session_id: sessionId,
+      run_id: 'hil-C-1793508969984',
+      scenario: 'C',
+      event_type: 'clarification_requested',
+      activity: 'walking',
+      sample_id: '507f1f77bcf86cd799439011',
+      raw_hr: 101,
+      raw_recorded_at: '2026-11-01T04:00:00.000Z',
     }),
     { statusCode: 400 }
   );
