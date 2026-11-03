@@ -95,6 +95,18 @@ void main() {
     expect(conclusion, contains('tidak membuktikan penyebab deviasi'));
   });
 
+  test('repeat recording averages only qualified raw readings', () {
+    final average = HilRecordedScenarioAnalysis.averageQualifiedRawHeartRate([
+      {'heart_rate_bpm': 80, 'sensor_contact': true, 'signal_confidence': 0.9},
+      {'heart_rate_bpm': 100, 'sensor_contact': true, 'signal_confidence': 0.8},
+      {'heart_rate_bpm': 240, 'sensor_contact': true, 'signal_confidence': 0.2},
+      {'heart_rate_bpm': 70, 'sensor_contact': false, 'signal_confidence': 1.0},
+    ]);
+
+    expect(average, 90);
+    expect(HilRecordedScenarioAnalysis.minimumRepeatReadings, 5);
+  });
+
   testWidgets('HR line chart replaces per-reading BPM chips', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(

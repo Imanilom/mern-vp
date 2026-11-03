@@ -1398,6 +1398,47 @@ test('HIL scenario logs accept sample references inside a session', () => {
   });
   assert.equal(liveClarification.sample_id, undefined);
 
+  const liveZeroShot = validateHilScenarioLog({
+    session_id: sessionId,
+    run_id: 'hil-C-raw-1793508969984',
+    scenario: 'C',
+    event_type: 'zero_shot_generated',
+    activity: 'walking',
+    clarification: 'Saya baru selesai berjalan.',
+    explanation: 'Hasil zero-shot contoh.',
+  });
+  assert.equal(liveZeroShot.explanation, 'Hasil zero-shot contoh.');
+  assert.equal(liveZeroShot.sample_id, undefined);
+
+  const liveFeedback = validateHilScenarioLog({
+    session_id: sessionId,
+    run_id: 'hil-B-raw-1793508969984',
+    scenario: 'B',
+    event_type: 'feedback_presented',
+    activity: 'sitting',
+    recommendation: 'Istirahat sejenak dan cek kembali.',
+  });
+  assert.equal(liveFeedback.recommendation, 'Istirahat sejenak dan cek kembali.');
+
+  const frozenObservation = validateHilScenarioLog({
+    session_id: sessionId,
+    run_id: 'hil-C-raw-1793508969984',
+    scenario: 'C',
+    event_type: 'observation_frozen',
+    activity: 'walking',
+    raw_hr: 101,
+    raw_recorded_at: '2026-11-01T04:00:00.000Z',
+    raw_signal_quality: 0.9,
+    clarification: 'Saya baru selesai berjalan.',
+    explanation: 'HR raw melewati rata-rata baseline.',
+    recommendation: 'Hasil observasi sementara.',
+  });
+  assert.equal(frozenObservation.event_type, 'observation_frozen');
+  assert.equal(frozenObservation.raw_hr, 101);
+  assert.equal(frozenObservation.raw_recorded_at.toISOString(), '2026-11-01T04:00:00.000Z');
+  assert.equal(frozenObservation.explanation, 'HR raw melewati rata-rata baseline.');
+  assert.equal(frozenObservation.recommendation, 'Hasil observasi sementara.');
+
   const repeatChoice = validateHilScenarioLog({
     session_id: sessionId,
     run_id: 'hil-C-raw-1793508969984',

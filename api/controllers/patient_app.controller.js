@@ -2451,12 +2451,25 @@ export async function createPatientHilScenarioLog(req, res) {
       clarification_submitted: 'clarification_requested',
       zero_shot_generated: 'clarification_submitted',
       zero_shot_failed: 'clarification_submitted',
+      observation_frozen: log.scenario === 'B'
+        ? 'feedback_presented'
+        : null,
     }[log.event_type];
     if (
       requiredPriorEvent
       && !priorEvent(requiredPriorEvent, requiredPriorEvent === 'records_loaded' ? null : log.sample_id)
     ) {
       throw errorHandler(409, 'Urutan event skenario HIL tidak valid.');
+    }
+    if (
+      log.event_type === 'observation_frozen'
+      && log.scenario === 'C'
+      && !(
+        priorEvent('zero_shot_generated', log.sample_id)
+        || priorEvent('zero_shot_failed', log.sample_id)
+      )
+    ) {
+      throw errorHandler(409, 'Bekukan hasil hanya setelah kesimpulan skenario C.');
     }
 
     const sample = await PatientAppWearableSample.findOne({
@@ -2612,6 +2625,7 @@ export async function createPatientHilScenarioLog(req, res) {
   } else if (
     !log.sample_id
     && [
+      'feedback_presented',
       'clarification_requested',
       'clarification_submitted',
       'zero_shot_generated',
@@ -2619,9 +2633,11 @@ export async function createPatientHilScenarioLog(req, res) {
       'activity_repeat_selected',
       'activity_context_sufficient',
       'activity_repeat_skipped',
+      'observation_frozen',
     ].includes(log.event_type)
   ) {
     const requiredPriorEvent = {
+      feedback_presented: 'deviation_detected',
       clarification_requested: 'deviation_detected',
       clarification_submitted: 'clarification_requested',
       zero_shot_generated: 'clarification_submitted',
@@ -2629,22 +2645,40 @@ export async function createPatientHilScenarioLog(req, res) {
     }[log.event_type];
     const hasZeroShotResult = priorEvent('zero_shot_generated')
       || priorEvent('zero_shot_failed');
-    const hasRequiredSequence = [
-      'activity_repeat_selected',
-      'activity_context_sufficient',
-      'activity_repeat_skipped',
-    ].includes(log.event_type)
-      ? hasZeroShotResult
-      : priorEvent(requiredPriorEvent);
+    const hasRequiredSequence = log.event_type === 'observation_frozen'
+      ? (log.scenario === 'B'
+          ? priorEvent('feedback_presented')
+          : hasZeroShotResult)
+      : [
+          'activity_repeat_selected',
+          'activity_context_sufficient',
+          'activity_repeat_skipped',
+        ].includes(log.event_type)
+        ? hasZeroShotResult
+        : priorEvent(requiredPriorEvent);
     if (!priorDeviation || !hasRequiredSequence) {
       throw errorHandler(409, 'Log raw HIL tidak memiliki deviasi dan konteks sebelumnya.');
     }
+    if (
+      log.event_type === 'observation_frozen'
+      && (
+        log.raw_hr !== priorDeviation.raw_hr
+        || Math.abs(
+          log.raw_recorded_at.getTime()
+          - new Date(priorDeviation.raw_recorded_at).getTime()
+        ) > 1000
+      )
+    ) {
+      throw errorHandler(409, 'Snapshot harus memakai bacaan deviasi yang sedang ditampilkan.');
+    }
     Object.assign(storedLog, {
       observed_at: priorDeviation.observed_at ?? priorDeviation.raw_recorded_at,
-      heart_rate_bpm: priorDeviation.raw_hr,
-      raw_hr: priorDeviation.raw_hr,
-      raw_recorded_at: priorDeviation.raw_recorded_at,
-      raw_signal_quality: priorDeviation.raw_signal_quality ?? null,
+      heart_rate_bpm: log.raw_hr ?? priorDeviation.raw_hr,
+      raw_hr: log.raw_hr ?? priorDeviation.raw_hr,
+      raw_recorded_at: log.raw_recorded_at ?? priorDeviation.raw_recorded_at,
+      raw_signal_quality: log.raw_signal_quality
+        ?? priorDeviation.raw_signal_quality
+        ?? null,
       baseline_mean_hr: priorDeviation.baseline_mean_hr ?? null,
       baseline_std_hr: priorDeviation.baseline_std_hr ?? null,
       threshold_bpm: priorDeviation.threshold_bpm ?? 0,

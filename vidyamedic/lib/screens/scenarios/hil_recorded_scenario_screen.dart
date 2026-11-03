@@ -86,6 +86,8 @@ class HilRecordedScenarioAnalysis {
     return values.reduce((sum, value) => sum + value) / values.length;
   }
 
+  static const minimumRepeatReadings = 5;
+
   static String participantContextConclusion({
     required double? heartRate,
     required double? baselineMean,
@@ -137,7 +139,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           : 'sitting';
   final TextEditingController _clarificationController =
       TextEditingController();
-  final List<Map<String, dynamic>> _logs = [];
+  List<Map<String, dynamic>> _logs = [];
   final Set<String> _loadedSampleIds = {};
   final Set<String> _autoAttemptedDeviationSampleIds = {};
   final Set<String> _handledDeviationSampleIds = {};
@@ -151,15 +153,23 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   bool _isStartingLiveMonitoring = false;
   bool _isLiveMonitoring = false;
   bool _isStoppingLiveMonitoring = false;
+  bool _isRecordingContextRepeat = false;
   bool _ownsStream = false;
   bool _clarificationRequested = false;
   bool _liveDeviationPrompted = false;
   bool _rawDeviationInProgress = false;
   bool _isStartingRun = false;
+  bool _showAllScenarioLogs = false;
   DateTime? _recordingStartedAt;
   DateTime? _recordingStoppedAt;
+  DateTime? _contextRepeatStartedAt;
+  DateTime? _lastContextRepeatReadingAt;
+  double? _contextRepeatAverage;
+  int _contextRepeatCount = 0;
+  final List<Map<String, dynamic>> _contextRepeatReadings = [];
   final Map<String, Map<String, dynamic>> _recordingSamples = {};
   Timer? _refreshTimer;
+  Timer? _contextRepeatTimer;
   late final AppState _appState;
 
   @override
@@ -177,6 +187,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _contextRepeatTimer?.cancel();
     _appState.wearableBridge.removeListener(_onWearableReadingsChanged);
     if (_sessionId != null) unawaited(_completeRun());
     if (_ownsStream && _appState.wearableBridge.isStreaming) {
@@ -232,6 +243,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         'activity_repeat_selected' => 'Rekam ulang dipilih',
         'activity_context_sufficient' => 'Konteks dinilai cukup',
         'activity_repeat_skipped' => 'Tidak merekam ulang',
+        'observation_frozen' => 'Hasil observasi dibekukan',
         _ => eventType.replaceAll('_', ' '),
       };
 
@@ -251,7 +263,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     final parts = <String>[];
     final hr = log['heart_rate_bpm'];
     if (hr is num) {
-      parts.add('HR raw maks ${hr.toStringAsFixed(1)}');
+      parts.add('HR raw ${hr.toStringAsFixed(1)}');
+    }
+    final baselineMean = log['baseline_mean_hr'];
+    if (hr is num && baselineMean is num) {
+      parts.add('baseline ${baselineMean.toStringAsFixed(1)}');
     }
     final recommendation = log['recommendation']?.toString().trim();
     if (recommendation?.isNotEmpty == true) {
@@ -267,6 +283,86 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     }
     if (parts.isEmpty) return 'Aktivitas: $activity';
     return 'Aktivitas: $activity · ${parts.take(3).join(' · ')}';
+  }
+
+  Future<void> _reloadScenarioLogs() async {
+    final sessionId = _sessionId;
+    if (sessionId == null) {
+      _showScenarioError('Log belum dapat dimuat tanpa sesi HIL.');
+      return;
+    }
+    final response = await ApiService.getHilScenarioLogs(
+      sessionId: sessionId,
+      runId: _runId,
+      limit: 100,
+    );
+    if (!mounted) return;
+    if (!response.success || response.data == null) {
+      _showScenarioError(
+        response.message ?? 'Log tersimpan gagal dimuat dari database.',
+      );
+      return;
+    }
+    final logs = response.data!
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList()
+      ..sort((left, right) {
+        final leftAt = _eventTimestamp(left);
+        final rightAt = _eventTimestamp(right);
+        if (leftAt == null) return rightAt == null ? 0 : 1;
+        if (rightAt == null) return -1;
+        return rightAt.compareTo(leftAt);
+      });
+    setState(() {
+      _logs = logs;
+      _error = null;
+    });
+  }
+
+  Future<void> _showScenarioLogDetails(
+    Map<String, dynamic> log,
+  ) async {
+    final details = <String>[
+      'Skenario ${log['scenario'] ?? widget.scenario}',
+      'Aktivitas: ${_activityLabel(_normalizeActivity(log['activity']))}',
+      'Waktu log: ${_eventTimeLabel(log)}',
+      if (DateTime.tryParse(log['observed_at']?.toString() ?? '')
+          case final observedAt?)
+        'Waktu bacaan: ${formatHilWibDateTime(observedAt)}',
+      if (log['raw_hr'] is num)
+        'HR raw: ${(log['raw_hr'] as num).toStringAsFixed(1)}',
+      if (log['baseline_mean_hr'] is num)
+        'Rata-rata baseline: ${(log['baseline_mean_hr'] as num).toStringAsFixed(1)}',
+      if (log['algorithm_status'] != null)
+        'Status deviasi: ${log['algorithm_status']}',
+      if (log['quality_status'] != null)
+        'Mutu bacaan: ${log['quality_status']}',
+      if ((log['clarification']?.toString().trim().isNotEmpty ?? false))
+        'Jawaban pengguna:\n${log['clarification']}',
+      if ((log['explanation']?.toString().trim().isNotEmpty ?? false))
+        'Hasil/interpretasi:\n${log['explanation']}',
+      if ((log['recommendation']?.toString().trim().isNotEmpty ?? false))
+        'Rekomendasi:\n${log['recommendation']}',
+    ];
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('hil-recorded-log-detail-dialog'),
+        title: Text(
+          _eventLabel(log['event_type']?.toString() ?? 'Log HIL'),
+        ),
+        content: SingleChildScrollView(
+          child: SelectableText(details.join('\n\n')),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
   }
 
   Map<String, dynamic> get _baseline {
@@ -331,6 +427,10 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }
 
   void _onWearableReadingsChanged() {
+    if (_isRecordingContextRepeat) {
+      _collectContextRepeatReadings();
+      return;
+    }
     if (!_isLiveMonitoring ||
         _liveDeviationPrompted ||
         _rawDeviationInProgress) {
@@ -399,6 +499,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         }
         return;
       }
+      await _reloadScenarioLogs();
+      if (!mounted) return;
       await _loadSamples();
     } finally {
       _isStartingRun = false;
@@ -760,14 +862,25 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
                 'belum tersimpan: ${appState.dataError ?? 'coba lagi.'}';
           });
         }
-        await _showScenarioResultDialog(
+        final freezeObservation = await _showScenarioResultDialog(
           title: 'Skenario B · One way feedback',
           summary: _buildObservationSummary(
             deviationLog,
             participantContext: null,
           ),
           recommendation: recommendation,
+          canFreeze: true,
         );
+        if (freezeObservation) {
+          await _logSelectedObservation(
+            'observation_frozen',
+            explanation: _buildObservationSummary(
+              deviationLog,
+              participantContext: null,
+            ),
+            recommendation: recommendation,
+          );
+        }
       }
       return;
     }
@@ -843,12 +956,13 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       setState(() {
         _recommendation = recommendation;
       });
-      await _showScenarioResultDialog(
+      final freezeObservation = await _showScenarioResultDialog(
         title: 'Skenario B · One way feedback',
         summary: 'HR raw ${rawHr.toStringAsFixed(1)} terdeteksi '
             '${formatHilWibDateTime(rawTime)}, lebih tinggi dari rata-rata '
             'baseline aktivitas. Ini observasi, bukan diagnosis.',
         recommendation: recommendation,
+        canFreeze: true,
       );
       if (!mounted) return;
       setState(() {
@@ -858,48 +972,52 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       final sample = await sampleFuture;
       if (!mounted) return;
       final sampleId = sample?['_id']?.toString();
-      if (sampleId == null) {
+      Map<String, dynamic>? deviation;
+      Map<String, dynamic>? feedback;
+      if (sampleId != null) {
+        setState(() => _selectedSampleId = sampleId);
+        deviation = await _logSelectedObservation(
+          'deviation_detected',
+          rawHeartRate: rawHr,
+          rawRecordedAt: rawTime,
+          rawSignalQuality: _rawSignalQuality(rawReading),
+        );
+        if (deviation?['algorithm_status'] == 'candidate_deviation') {
+          feedback = await _logSelectedObservation(
+            'feedback_presented',
+            recommendation: recommendation,
+          );
+        }
+      }
+      if (feedback == null) {
         setState(() => _selectedSampleId = null);
+        final rawDeviationSaved = await _saveLog(
+          'deviation_detected',
+          rawHeartRate: rawHr,
+          rawRecordedAt: rawTime,
+          rawSignalQuality: _rawSignalQuality(rawReading),
+        );
+        if (rawDeviationSaved) {
+          final feedbackSaved = await _saveLog(
+            'feedback_presented',
+            recommendation: recommendation,
+          );
+          if (feedbackSaved && _logs.isNotEmpty) feedback = _logs.last;
+        }
       }
-      if (sample == null || sampleId == null) {
-        setState(() {
-          _isSaving = false;
-          _rawDeviationInProgress = false;
-          _error = 'Feedback sudah ditampilkan dan rekaman tetap berjalan, '
-              'tetapi sampel Polar belum tersedia untuk menyimpan histori.';
-        });
-        return;
-      }
-      setState(() => _selectedSampleId = sampleId);
-      final deviation = await _logSelectedObservation(
-        'deviation_detected',
-        rawHeartRate: rawHr,
-        rawRecordedAt: rawTime,
-      );
-      if (!mounted) return;
-      if (deviation == null ||
-          deviation['algorithm_status'] != 'candidate_deviation') {
-        setState(() {
-          _isSaving = false;
-          _rawDeviationInProgress = false;
-          _error = 'Feedback sudah ditampilkan, tetapi sampel tersimpan '
-              'belum mengonfirmasi HR raw di atas baseline.';
-        });
-        return;
-      }
-      final feedback = await _logSelectedObservation(
-        'feedback_presented',
-        recommendation: recommendation,
-      );
       if (!mounted) return;
       if (feedback == null) {
         setState(() {
           _isSaving = false;
           _rawDeviationInProgress = false;
+          _error = 'Feedback sudah ditampilkan, tetapi log deviasi atau '
+              'rekomendasi belum tersimpan. Periksa koneksi lalu muat ulang log.';
         });
         return;
       }
-      _handledDeviationSampleIds.add(sampleId);
+      if (_selectedSampleId != null) {
+        _handledDeviationSampleIds.add(_selectedSampleId!);
+      }
       final appState = context.read<AppState>();
       final saved = await appState.recordHumanInTheLoopScenario(
         scenario: 'B',
@@ -907,17 +1025,34 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           recommendation,
           'candidate_deviation',
           sourceLogId: feedback['_id'].toString(),
-          sampleId: feedback['sample_id'].toString(),
+          sampleId: feedback['sample_id']?.toString(),
         ),
       );
       if (!mounted) return;
       setState(() {
-        _isSaving = false;
-        _rawDeviationInProgress = false;
         if (!saved) {
           _error = 'Feedback sudah ditampilkan, tetapi histori penjelasan '
               'belum tersimpan: ${appState.dataError ?? 'coba lagi.'}';
         }
+      });
+      if (freezeObservation) {
+        await _saveLog(
+          'observation_frozen',
+          sampleId: _selectedSampleId,
+          rawHeartRate: rawHr,
+          rawRecordedAt: rawTime,
+          rawSignalQuality: _rawSignalQuality(rawReading),
+          explanation: 'Ringkasan observasi: HR raw '
+              '${rawHr.toStringAsFixed(1)} pada '
+              '${formatHilWibDateTime(rawTime)}; lebih tinggi dari rata-rata '
+              'baseline aktivitas.',
+          recommendation: recommendation,
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _rawDeviationInProgress = false;
       });
       return;
     }
@@ -1117,6 +1252,11 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         );
         if (saved && _logs.isNotEmpty) conclusionLog = _logs.last;
       }
+    } else {
+      setState(() {
+        _error = 'Interpretasi sudah dibuat, tetapi log deviasi/jawaban belum '
+            'lengkap di database. Periksa koneksi lalu muat ulang log.';
+      });
     }
     if (!mounted) return;
 
@@ -1144,7 +1284,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       _isSaving = false;
       _rawDeviationInProgress = false;
     });
-    await _showScenarioResultDialog(
+    final freezeObservation = await _showScenarioResultDialog(
       title: 'Skenario C · Kesimpulan observasi',
       summary: _buildObservationSummary(
         deviation,
@@ -1154,7 +1294,26 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       recommendationHeading: hasZeroShotConclusion
           ? 'Interpretasi zero-shot'
           : 'Ringkasan observasi',
+      canFreeze: true,
     );
+    if (freezeObservation) {
+      await _saveLog(
+        'observation_frozen',
+        sampleId: _selectedSampleId,
+        rawHeartRate: rawHr,
+        rawRecordedAt: rawTime,
+        rawSignalQuality: _rawSignalQuality(rawReading),
+        clarification: answer,
+        explanation: _buildObservationSummary(
+          deviation,
+          participantContext: answer,
+        ),
+        recommendation: conclusion.substring(
+          0,
+          conclusion.length > 500 ? 500 : conclusion.length,
+        ),
+      );
+    }
     if (!mounted) return;
     final action = await _showRepeatDecisionDialog();
     if (!mounted || action == null) return;
@@ -1163,7 +1322,7 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
       'sufficient' => 'activity_context_sufficient',
       _ => 'activity_repeat_skipped',
     };
-    await _saveLog(
+    final choiceSaved = await _saveLog(
       actionEvent,
       sampleId: _selectedSampleId,
       explanation: switch (action) {
@@ -1172,10 +1331,233 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
         _ => 'Pengguna memilih tidak merekam ulang aktivitas.',
       },
     );
-    if (action == 'repeat' && mounted) {
-      if (_isLiveMonitoring) await _stopLiveMonitoring();
-      if (mounted) await _startLiveMonitoring();
+    if (!choiceSaved && mounted) {
+      setState(() {
+        _error = 'Pilihan Anda belum tersimpan di database. '
+            'Coba muat ulang log setelah koneksi pulih.';
+      });
     }
+    if (action == 'repeat' && mounted) {
+      _startContextRepeatRecording();
+    }
+  }
+
+  void _startContextRepeatRecording() {
+    final bridge = _appState.wearableBridge;
+    if (!_isLiveMonitoring || !bridge.isStreaming || bridge.isDemoDevice) {
+      _showScenarioError(
+        'Untuk merekam ulang konteks ${_activityLabel(_activity)}, '
+        'hubungkan Polar H10 nyata dan mulai pemantauan live.',
+      );
+      return;
+    }
+
+    _contextRepeatTimer?.cancel();
+    _contextRepeatReadings.clear();
+    _contextRepeatStartedAt = DateTime.now().toUtc();
+    _lastContextRepeatReadingAt = null;
+    _contextRepeatAverage = null;
+    _contextRepeatCount = 0;
+    setState(() {
+      _isRecordingContextRepeat = true;
+      _error = null;
+    });
+    _collectContextRepeatReadings();
+    _contextRepeatTimer = Timer(
+      const Duration(seconds: 30),
+      () => unawaited(_finishContextRepeatRecording()),
+    );
+  }
+
+  void _collectContextRepeatReadings() {
+    final startedAt = _contextRepeatStartedAt;
+    if (!_isRecordingContextRepeat || startedAt == null) return;
+    final newReadings = _appState.wearableBridge.recentStreamReadings
+        .where((reading) {
+      final recordedAt = DateTime.tryParse(
+        reading['recorded_at']?.toString() ?? '',
+      )?.toUtc();
+      return recordedAt != null &&
+          !recordedAt.isBefore(startedAt) &&
+          (_lastContextRepeatReadingAt == null ||
+              recordedAt.isAfter(_lastContextRepeatReadingAt!)) &&
+          HilRecordedScenarioAnalysis.isQualifiedRawReading(reading);
+    }).toList()
+      ..sort((left, right) => DateTime.parse(left['recorded_at'].toString())
+          .compareTo(DateTime.parse(right['recorded_at'].toString())));
+    if (newReadings.isEmpty) return;
+    _contextRepeatReadings.addAll(newReadings);
+    _lastContextRepeatReadingAt =
+        DateTime.parse(newReadings.last['recorded_at'].toString()).toUtc();
+    _contextRepeatCount = _contextRepeatReadings.length;
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _finishContextRepeatRecording() async {
+    if (!_isRecordingContextRepeat) return;
+    _collectContextRepeatReadings();
+    _contextRepeatTimer?.cancel();
+    _contextRepeatTimer = null;
+    final readings = List<Map<String, dynamic>>.from(_contextRepeatReadings);
+    final average =
+        HilRecordedScenarioAnalysis.averageQualifiedRawHeartRate(readings);
+    final count = readings.length;
+    final baselineMean = _baselineMean;
+    final participantContext = _clarificationController.text.trim();
+    final enoughReadings =
+        count >= HilRecordedScenarioAnalysis.minimumRepeatReadings;
+    final status = !enoughReadings || average == null || baselineMean == null
+        ? 'not_assessable'
+        : average > baselineMean
+            ? 'candidate_deviation'
+            : 'normal';
+
+    setState(() {
+      _isRecordingContextRepeat = false;
+      _contextRepeatAverage = average;
+      _contextRepeatCount = count;
+      _isSaving = true;
+    });
+
+    final generated = enoughReadings && average != null
+        ? await ApiService.generatePersonalChatAnswer(
+            question: 'Buat interpretasi zero-shot singkat untuk rekaman '
+                'ulang konteks aktivitas ${_activityLabel(_activity)}. '
+                'Bandingkan rerata HR rekaman ulang dengan baseline personal '
+                'aktivitas yang sama. Sebutkan jawaban konteks sebagai '
+                'laporan pengguna, bukan sebab yang terbukti. Rekaman ulang '
+                'hanya pembanding sesi dan TIDAK memperbarui baseline personal. '
+                'Jangan membuat diagnosis.',
+            evidence: [
+              {
+                'source': 'real_wearable_sample',
+                'facts': 'Rerata HR raw dari $count bacaan berkualitas '
+                    'saat rekaman ulang konteks ${_activityLabel(_activity)}.',
+                'metric': 'repeat_mean_hr',
+                'value': average,
+                'unit': 'bpm',
+                'status': 'observed; temporary session comparison',
+              },
+              if (baselineMean != null)
+                {
+                  'source': 'hil_personal_baseline',
+                  'facts': 'Rata-rata baseline aktivitas '
+                      '${_activityLabel(_activity)}.',
+                  'metric': 'baseline_mean_hr',
+                  'value': baselineMean,
+                  'unit': 'bpm',
+                  'status': 'personal baseline; unchanged',
+                },
+              {
+                'source': 'participant_clarification',
+                'facts': participantContext.isEmpty
+                    ? 'Pengguna tidak menambahkan konteks aktivitas.'
+                    : participantContext,
+                'status': 'reported by participant; not causal evidence',
+              },
+            ],
+            localSummary: 'Rekaman ulang HIL selama 30 detik untuk konteks '
+                '${_activityLabel(_activity)}. Rerata HR raw: '
+                '${average.toStringAsFixed(1)} dari $count bacaan berkualitas. '
+                'Rata-rata baseline personal aktivitas yang sama: '
+                '${baselineMean?.toStringAsFixed(1) ?? 'tidak tersedia'}. '
+                'Status sementara: $status. Rekaman ini hanya pembanding sesi '
+                'dan tidak mengubah baseline personal. '
+                'Konteks pengguna: ${participantContext.isEmpty ? 'tidak diisi' : participantContext}.',
+            conversationHistory: const [],
+          )
+        : null;
+
+    if (!mounted) return;
+    final generatedText =
+        generated?.success == true ? generated?.data?.trim() : null;
+    final hasInterpretation = generatedText != null && generatedText.isNotEmpty;
+    final repeatConclusion = hasInterpretation
+        ? generatedText.substring(
+            0,
+            generatedText.length > 1200 ? 1200 : generatedText.length,
+          )
+        : enoughReadings && average != null && baselineMean != null
+            ? 'Rerata HR rekaman ulang ${average.toStringAsFixed(1)} '
+                '${average > baselineMean ? 'lebih tinggi' : 'tidak lebih tinggi'} '
+                'dari baseline aktivitas ${_activityLabel(_activity)} '
+                '${baselineMean.toStringAsFixed(1)}. Hasil ini hanya '
+                'pembanding sementara sesi dan tidak mengubah baseline personal. '
+                'Konteks yang dilaporkan: ${participantContext.isEmpty ? 'tidak diisi' : participantContext}. '
+                'Ini observasi, bukan diagnosis.'
+            : 'Rekaman ulang belum cukup untuk dibandingkan. Terkumpul '
+                '$count bacaan berkualitas; diperlukan minimal '
+                '${HilRecordedScenarioAnalysis.minimumRepeatReadings}. '
+                'Baseline personal tetap tidak berubah.';
+    final resultEvent =
+        hasInterpretation ? 'zero_shot_generated' : 'zero_shot_failed';
+    final repeatLogText = 'Rekaman ulang konteks ${_activityLabel(_activity)}: '
+        '$count bacaan berkualitas; rerata HR raw '
+        '${average?.toStringAsFixed(1) ?? 'tidak tersedia'}; '
+        'baseline personal ${baselineMean?.toStringAsFixed(1) ?? 'tidak tersedia'} '
+        '(tidak diubah). Kesimpulan: $repeatConclusion';
+    final boundedLogText = repeatLogText.substring(
+        0, repeatLogText.length > 1200 ? 1200 : repeatLogText.length);
+    Map<String, dynamic>? resultLog;
+    if (_selectedSampleId != null) {
+      resultLog = await _logSelectedObservation(
+        resultEvent,
+        clarification: participantContext.isEmpty
+            ? 'Konteks tidak diisi.'
+            : participantContext,
+        explanation: boundedLogText,
+      );
+    } else {
+      final saved = await _saveLog(
+        resultEvent,
+        clarification: participantContext.isEmpty
+            ? 'Konteks tidak diisi.'
+            : participantContext,
+        explanation: boundedLogText,
+      );
+      if (saved && _logs.isNotEmpty) resultLog = _logs.last;
+    }
+    if (!mounted) return;
+
+    if (resultLog != null && hasInterpretation) {
+      final appState = context.read<AppState>();
+      final saved = await appState.recordHumanInTheLoopScenario(
+        scenario: 'C',
+        explanationSnapshot: _explanationSnapshot(
+          repeatConclusion,
+          status,
+          sourceLogId: resultLog['_id'].toString(),
+          sampleId: resultLog['sample_id']?.toString(),
+        ),
+      );
+      if (!saved && mounted) {
+        setState(() {
+          _error = 'Interpretasi rekaman ulang tersedia, tetapi histori '
+              'penjelasan gagal disimpan: ${appState.dataError ?? 'coba lagi.'}';
+        });
+      }
+    } else if (!hasInterpretation && generated != null) {
+      setState(() {
+        _error = generated.message ??
+            'Zero-shot tidak tersedia; ditampilkan ringkasan hasil pengukuran.';
+      });
+    }
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    await _showScenarioResultDialog(
+      title: 'Hasil rekam ulang · ${_activityLabel(_activity)}',
+      summary: average == null
+          ? 'Tidak ada rerata bacaan berkualitas yang dapat dihitung. '
+              '$count bacaan terkumpul.'
+          : 'Rerata HR raw rekaman ulang: ${average.toStringAsFixed(1)} '
+              'dari $count bacaan berkualitas. '
+              'Baseline personal: ${baselineMean?.toStringAsFixed(1) ?? 'tidak tersedia'}. '
+              'Rekaman ulang ini bersifat sementara dan baseline personal tidak berubah.',
+      recommendation: repeatConclusion,
+      recommendationHeading:
+          hasInterpretation ? 'Interpretasi zero-shot' : 'Ringkasan observasi',
+    );
   }
 
   double? _rawSignalQuality(Map<String, dynamic> reading) {
@@ -1427,14 +1809,15 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     ].join('\n');
   }
 
-  Future<void> _showScenarioResultDialog({
+  Future<bool> _showScenarioResultDialog({
     required String title,
     required String summary,
     required String recommendation,
     String recommendationHeading = 'Saran umum',
+    bool canFreeze = false,
   }) async {
-    if (!mounted) return;
-    await showDialog<void>(
+    if (!mounted) return false;
+    return await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
@@ -1462,21 +1845,34 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           ),
         ),
         actions: [
+          if (canFreeze)
+            OutlinedButton(
+              key: const Key('hil-recorded-freeze-observation'),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Bekukan hasil'),
+            ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Mengerti'),
           ),
         ],
       ),
-    );
+    ) ??
+        false;
   }
 
   Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
 
   Widget _hrPerSecondCard() {
-    final isLiveRawScenario = _isLiveMonitoring;
-    final source = isLiveRawScenario ? _rawSessionReadings() : _samples;
+    final isLiveRawScenario = _isLiveMonitoring || _isRecordingContextRepeat;
+    final isShowingRepeat =
+        _isRecordingContextRepeat || _contextRepeatReadings.isNotEmpty;
+    final source = isShowingRepeat
+        ? _contextRepeatReadings
+        : _isLiveMonitoring
+            ? _rawSessionReadings()
+            : _samples;
     final samples = source.reversed.take(30).toList().reversed.toList();
     final maximum = isLiveRawScenario
         ? HilRecordedScenarioAnalysis.maximumQualifiedRawHeartRateSample(
@@ -1493,7 +1889,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'HR per detik · ${_activityLabel(_activity)}',
+              'HR per detik · ${_activityLabel(_activity)}'
+              '${isShowingRepeat ? ' · rekam ulang sementara' : ''}',
               style: AppTheme.font(size: 12, weight: FontWeight.w800),
             ),
             const SizedBox(height: 4),
@@ -1522,6 +1919,27 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               '${samples.length} bacaan per detik berkualitas ditampilkan pada grafik.',
               style: AppTheme.font(size: 9.5, color: AppTheme.textMuted),
             ),
+            if (_isRecordingContextRepeat)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Mengumpulkan bacaan rekam ulang '
+                  '$_contextRepeatCount/${HilRecordedScenarioAnalysis.minimumRepeatReadings} minimum. '
+                  'Baseline personal tidak diubah.',
+                  key: const Key('hil-recorded-repeat-progress'),
+                  style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
+                ),
+              ),
+            if (!_isRecordingContextRepeat && _contextRepeatAverage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Rerata sementara: ${_contextRepeatAverage!.toStringAsFixed(1)} '
+                  'dari $_contextRepeatCount bacaan. Baseline personal tidak diubah.',
+                  key: const Key('hil-recorded-repeat-average'),
+                  style: AppTheme.font(size: 10, color: AppTheme.textSecondary),
+                ),
+              ),
           ],
         ),
       ),
@@ -1629,39 +2047,85 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     );
   }
 
-  Widget _logHistory() => Card(
-        key: const Key('hil-recorded-log-history'),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Ringkasan langkah dan waktu (WIB)',
-                  style: AppTheme.font(size: 12, weight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              const Text(
-                'Setiap waktu menunjukkan kapan langkah dicatat. Untuk data sensor, waktu bacaan Polar H10 juga ditampilkan terpisah.',
-                key: Key('hil-recorded-log-time-explanation'),
+  Widget _logHistory() {
+    final sortedLogs = List<Map<String, dynamic>>.from(_logs)
+      ..sort((left, right) {
+        final leftAt = _eventTimestamp(left);
+        final rightAt = _eventTimestamp(right);
+        if (leftAt == null) return rightAt == null ? 0 : 1;
+        if (rightAt == null) return -1;
+        return rightAt.compareTo(leftAt);
+      });
+    final visibleLogs =
+        _showAllScenarioLogs ? sortedLogs : sortedLogs.take(5).toList();
+    return Card(
+      key: const Key('hil-recorded-log-history'),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Log aktivitas dan hasil (WIB)',
+                    style: AppTheme.font(size: 12, weight: FontWeight.w800),
+                  ),
+                ),
+                IconButton(
+                  key: const Key('hil-recorded-log-reload'),
+                  tooltip: 'Muat ulang log dari database',
+                  onPressed: _isSaving ? null : _reloadScenarioLogs,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+              ],
+            ),
+            const Text(
+              'Pilihan, jawaban pengguna, hasil zero-shot, dan waktu tersimpan di database. Ketuk log untuk melihat detail lengkap.',
+              key: Key('hil-recorded-log-time-explanation'),
+            ),
+            const SizedBox(height: 6),
+            Text('Nomor sesi: $_runId', style: AppTheme.font(size: 9.5)),
+            if (visibleLogs.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text('Belum ada log untuk sesi ini.'),
               ),
-              const SizedBox(height: 6),
-              Text('Nomor sesi: $_runId', style: AppTheme.font(size: 9.5)),
-              ..._logs.take(5).map((log) => ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.check_circle_outline, size: 16),
-                    title: Text(
-                      '${_eventLabel(log['event_type']?.toString() ?? '')} · ${_eventTimeLabel(log)}',
-                    ),
-                    subtitle: Text(
-                      _eventSummary(log),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  )),
-            ],
-          ),
+            ...visibleLogs.map(
+              (log) => ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.check_circle_outline, size: 16),
+                title: Text(
+                  '${_eventLabel(log['event_type']?.toString() ?? '')} · ${_eventTimeLabel(log)}',
+                ),
+                subtitle: Text(
+                  _eventSummary(log),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => _showScenarioLogDetails(log),
+              ),
+            ),
+            if (sortedLogs.length > 5)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: const Key('hil-recorded-log-expand'),
+                  onPressed: () => setState(
+                    () => _showAllScenarioLogs = !_showAllScenarioLogs,
+                  ),
+                  child: Text(
+                    _showAllScenarioLogs ? 'Tutup log' : 'Lihat semua log',
+                  ),
+                ),
+              ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 
   Widget _analysisNodesCard() => Card(
         key: const Key('hil-recorded-analysis-nodes'),
@@ -1851,7 +2315,8 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
               padding: const EdgeInsets.only(top: 5),
               child: Text(
                 'Polar H10 ${bridge.isStreaming ? 'aktif' : 'terputus'} · HR raw dipantau langsung; riwayat sampel disinkronkan tiap 30 detik. '
-                'Popup hanya muncul sekali saat HR raw melewati rata-rata baseline; rekaman tetap berjalan.',
+                '${_isRecordingContextRepeat ? 'Rekaman ulang ${_activityLabel(_activity)} sedang dihitung sebagai pembanding sementara. ' : ''}'
+                'Popup hanya muncul sekali saat HR raw melewati rata-rata baseline; baseline personal tidak berubah.',
                 key: const Key('hil-recorded-live-monitor-status'),
                 style: AppTheme.font(
                   size: 10,

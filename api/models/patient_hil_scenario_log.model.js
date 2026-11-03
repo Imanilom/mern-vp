@@ -63,6 +63,7 @@ const PatientHilScenarioLogSchema = new mongoose.Schema(
         'activity_repeat_selected',
         'activity_context_sufficient',
         'activity_repeat_skipped',
+        'observation_frozen',
       ],
     },
     activity: {

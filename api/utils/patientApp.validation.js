@@ -727,7 +727,7 @@ export function validateHilScenarioLog(value) {
   if (
     hasRawHeartRate
     && (
-      value.event_type !== 'deviation_detected'
+      !['deviation_detected', 'observation_frozen'].includes(value.event_type)
       || typeof value.raw_hr !== 'number'
       || !Number.isFinite(value.raw_hr)
       || value.raw_hr < 20
@@ -741,7 +741,7 @@ export function validateHilScenarioLog(value) {
           || value.raw_signal_quality > 1))
     )
   ) {
-    throw errorHandler(400, 'Data HR raw hanya valid untuk event deviasi.');
+    throw errorHandler(400, 'Data HR raw tidak valid untuk event ini.');
   }
   const runId = optionalString(value.run_id, 'run_id', 80);
   if (!/^[a-zA-Z0-9._:-]{8,80}$/.test(runId)) {
@@ -763,6 +763,7 @@ export function validateHilScenarioLog(value) {
     'activity_repeat_selected',
     'activity_context_sufficient',
     'activity_repeat_skipped',
+    'observation_frozen',
   ]);
   const activities = new Set(['sitting', 'standing', 'walking']);
   if (!['B', 'C'].includes(value.scenario) || !eventTypes.has(value.event_type)) {
@@ -796,11 +797,19 @@ export function validateHilScenarioLog(value) {
     'clarification_submitted',
     'zero_shot_generated',
     'zero_shot_failed',
+    'observation_frozen',
   ]);
   if (
     sampleEvents.has(value.event_type)
     && !value.sample_id
-    && !(value.event_type === 'deviation_detected' && hasRawHeartRate)
+    && !(
+      ['deviation_detected', 'observation_frozen'].includes(value.event_type)
+      && hasRawHeartRate
+    )
+    && !(
+      value.scenario === 'B'
+      && value.event_type === 'feedback_presented'
+    )
     && !(
       value.scenario === 'C'
       && [
@@ -898,7 +907,14 @@ export function validateHilScenarioLog(value) {
         'zero_shot_failed',
       ].includes(value.event_type)
     )
-    && !(value.event_type === 'deviation_detected' && hasRawHeartRate)
+    && !(
+      ['deviation_detected', 'observation_frozen'].includes(value.event_type)
+      && hasRawHeartRate
+    )
+    && !(
+      value.scenario === 'B'
+      && value.event_type === 'feedback_presented'
+    )
     && !result.sample_id
   ) {
     throw errorHandler(400, `Log ${value.event_type} harus terikat pada sampel wearable.`);
