@@ -1818,46 +1818,46 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
   }) async {
     if (!mounted) return false;
     return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        key: const Key('hil-recorded-result-dialog'),
-        title: Text(title),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Ringkasan observasi',
-                style: AppTheme.font(size: 12, weight: FontWeight.w800),
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AlertDialog(
+            key: const Key('hil-recorded-result-dialog'),
+            title: Text(title),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Ringkasan observasi',
+                    style: AppTheme.font(size: 12, weight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(summary),
+                  const SizedBox(height: 16),
+                  Text(
+                    recommendationHeading,
+                    style: AppTheme.font(size: 12, weight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(recommendation),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(summary),
-              const SizedBox(height: 16),
-              Text(
-                recommendationHeading,
-                style: AppTheme.font(size: 12, weight: FontWeight.w800),
+            ),
+            actions: [
+              if (canFreeze)
+                OutlinedButton(
+                  key: const Key('hil-recorded-freeze-observation'),
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Bekukan hasil'),
+                ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Mengerti'),
               ),
-              const SizedBox(height: 6),
-              Text(recommendation),
             ],
           ),
-        ),
-        actions: [
-          if (canFreeze)
-            OutlinedButton(
-              key: const Key('hil-recorded-freeze-observation'),
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Bekukan hasil'),
-            ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Mengerti'),
-          ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
   }
 
