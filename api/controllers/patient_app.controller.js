@@ -2491,10 +2491,15 @@ export async function createPatientHilScenarioLog(req, res) {
       })
         .select('hr timestamp signal_quality')
         .lean();
-      if (!rawReading) {
+      if (
+        !rawReading
+        || Math.abs(
+          new Date(sample.recorded_at).getTime() - rawReading.timestamp * 1000
+        ) > 90_000
+      ) {
         throw errorHandler(
           400,
-          'HR raw deviasi tidak cocok dengan bacaan Polar tersimpan yang bermutu.'
+          'HR raw deviasi tidak cocok dengan sampel dan bacaan Polar tersimpan yang bermutu.'
         );
       }
       rawHeartRate = rawReading.hr;
