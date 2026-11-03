@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nadiku/screens/scenarios/hil_recorded_scenario_screen.dart';
+import 'package:nadiku/widgets/hil_hr_line_chart.dart';
 
 void main() {
   test('selects the maximum heart-rate sample from a recording', () {
@@ -31,5 +33,23 @@ void main() {
       HilRecordedScenarioAnalysis.maximumHeartRateSample(samples)?['_id'],
       'valid',
     );
+  });
+
+  testWidgets('HR line chart replaces per-reading BPM chips', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: HilHrLineChart(
+            chartKey: Key('hil-recorded-hr-line-chart'),
+            readings: [90, 78, 92, 83, 81, 87],
+            personalBaseline: 70,
+            activityAverage: null,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('hil-recorded-hr-line-chart')), findsOneWidget);
+    expect(find.byType(Chip), findsNothing);
   });
 }

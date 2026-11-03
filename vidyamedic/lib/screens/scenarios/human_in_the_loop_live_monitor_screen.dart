@@ -162,19 +162,21 @@ class HilLiveHrLineChart extends StatelessWidget {
     required this.readings,
     required this.personalBaseline,
     required this.activityAverage,
+    this.chartKey = const Key('hil-live-hr-line-chart'),
     super.key,
   });
 
   final List<double> readings;
   final double? personalBaseline;
   final double? activityAverage;
+  final Key chartKey;
 
   @override
   Widget build(BuildContext context) => SizedBox(
         height: 190,
         width: double.infinity,
         child: CustomPaint(
-          key: const Key('hil-live-hr-line-chart'),
+          key: chartKey,
           painter: _HilLiveHrChartPainter(
             readings: readings,
             personalBaseline: personalBaseline,
@@ -1803,10 +1805,19 @@ class _HumanInTheLoopLiveMonitorScreenState
             _infoCard(
               key: const Key('hil-live-simulation-recovery-progress'),
               icon: Icons.trending_down,
-              title: 'Perubahan denyut pada simulasi',
-              detail: _simulatedHrHistory
-                  .map((hr) => '${hr.toStringAsFixed(0)} bpm')
-                  .join(' → '),
+              title: 'HR per detik · ${_activityLabel(_activity)} (simulasi)',
+              detail:
+                  'Perubahan HR ditampilkan sebagai grafik garis terhadap baseline personal.',
+            ),
+          if (_isSimulation)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: HilLiveHrLineChart(
+                chartKey: const Key('hil-live-simulation-hr-chart'),
+                readings: _simulatedHrHistory,
+                personalBaseline: _baselineMeanHr,
+                activityAverage: null,
+              ),
             ),
           if (_isRecordingActivityRepeat)
             _infoCard(
@@ -2030,7 +2041,7 @@ class _HumanInTheLoopLiveMonitorScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'HR per detik · 30 bacaan terbaru',
+              'HR per detik · ${_activityLabel(_activity)} · 30 bacaan terbaru',
               style: AppTheme.font(
                 size: 12,
                 weight: FontWeight.w700,

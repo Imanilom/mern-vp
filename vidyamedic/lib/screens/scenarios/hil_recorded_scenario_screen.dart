@@ -8,6 +8,7 @@ import '../../providers/app_state.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/hil_time.dart';
+import '../../widgets/hil_hr_line_chart.dart';
 import '../profile/wearable_pairing_screen.dart';
 
 class HilRecordedScenarioAnalysis {
@@ -909,6 +910,10 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
     final samples = _samples.reversed.take(30).toList().reversed.toList();
     final maximum = HilRecordedScenarioAnalysis.maximumHeartRateSample(_samples);
     final maximumHr = maximum == null ? null : _sampleHr(maximum);
+    final readings = samples
+        .map(_sampleHr)
+        .whereType<double>()
+        .toList();
     return Card(
       key: const Key('hil-recorded-hr-per-second'),
       child: Padding(
@@ -930,24 +935,21 @@ class _HilRecordedScenarioScreenState extends State<HilRecordedScenarioScreen> {
             ),
             const SizedBox(height: 8),
             if (samples.isEmpty)
-              const Text('Bacaan HR akan muncul setelah sensor merekam.')
+              const SizedBox(
+                height: 190,
+                child: Center(
+                  child: Text('Grafik HR akan muncul setelah sensor merekam.'),
+                ),
+              )
             else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: samples.map((sample) {
-                  final time =
-                      DateTime.tryParse(sample['recorded_at']?.toString() ?? '');
-                  return Chip(
-                    label: Text(
-                      '${_sampleHr(sample)?.toStringAsFixed(0) ?? '-'} bpm'
-                      '${time == null ? '' : ' · ${formatHilWibDateTime(time)}'}',
-                    ),
-                  );
-                }).toList(),
+              HilHrLineChart(
+                chartKey: const Key('hil-recorded-hr-line-chart'),
+                readings: readings,
+                personalBaseline: _baselineMean,
+                activityAverage: null,
               ),
             Text(
-              '${_samples.length} bacaan per detik yang lolos pemeriksaan mutu.',
+              '${samples.length} bacaan per detik berkualitas ditampilkan pada grafik.',
               style: AppTheme.font(size: 9.5, color: AppTheme.textMuted),
             ),
           ],

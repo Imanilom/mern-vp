@@ -55,7 +55,6 @@ void main() {
     expect(find.text('Hal lain (opsional)'), findsOneWidget);
     expect(find.textContaining('HR maksimum yang terdeteksi: 105 bpm'),
         findsOneWidget);
-
     await tester.enterText(find.byType(TextField).first, 'Olahraga');
     await tester.tap(find.text('Kirim'));
     await tester.pump();
@@ -69,6 +68,14 @@ void main() {
     await tester
         .tap(find.byKey(const Key('hil-live-activity-action-sufficient')));
     await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('hil-live-simulation-hr-chart')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+        find.byKey(const Key('hil-live-simulation-hr-chart')), findsOneWidget);
+    expect(find.textContaining('105 bpm →'), findsNothing);
     await tester.scrollUntilVisible(
       find.byKey(const Key('hil-live-current-result')),
       300,
