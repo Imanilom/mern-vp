@@ -1,7 +1,39 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, ChevronDown, ClipboardList, LoaderCircle, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle,
+  ChevronDown,
+  ClipboardList,
+  GitBranch,
+  HeartPulse,
+  Lightbulb,
+  LoaderCircle,
+  MessageSquareText,
+  Radio,
+  RefreshCw,
+  TrendingUp,
+} from 'lucide-react';
 import { api } from '../api';
 import SectionHeading from '../components/SectionHeading';
+import DoctorLogAnalytics from '../components/DoctorLogAnalytics';
+
+const DOCTOR_VIEWS = [
+  { id: 'logs', label: 'Semua log', icon: ClipboardList },
+  { id: 'baseline', label: 'Baseline', icon: HeartPulse },
+  { id: 'deviation', label: 'Deviasi', icon: TrendingUp },
+  { id: 'recordings', label: 'Rekaman', icon: Radio },
+  { id: 'observations', label: 'Hasil observasi', icon: Lightbulb },
+  { id: 'answers', label: 'Jawaban pasien', icon: MessageSquareText },
+  { id: 'nodes', label: 'Node & grafik', icon: GitBranch },
+];
+
+const ANALYSIS_CATEGORIES = {
+  baseline: ['hil_baseline'],
+  deviation: ['hil_scenario', 'hil_realtime'],
+  recordings: ['hil_scenario', 'hil_realtime', 'wearable'],
+  observations: ['hil_explanation', 'hil_scenario', 'scenario_session'],
+  answers: ['check_in', 'scenario_questionnaire', 'scenario_event', 'hil_scenario'],
+  nodes: ['hil_scenario', 'scenario_session'],
+};
 
 const LOG_CATEGORIES = [
   ['hil_session', 'Sesi HIL'],
@@ -19,6 +51,41 @@ const LOG_CATEGORIES = [
 ];
 
 const CATEGORY_LABELS = Object.fromEntries(LOG_CATEGORIES);
+
+function getLogQueries(activeView, category) {
+  if (activeView === 'logs') return [category || null];
+  return ANALYSIS_CATEGORIES[activeView] || [];
+}
+
+async function fetchLogPages({ patientId, categories, cursors = {}, limit = 100 }) {
+  const pages = await Promise.all(categories.map(async (category) => {
+    const key = category || 'all';
+    const result = await api.listDoctorLogs({
+      patientId: patientId || undefined,
+      category: category || undefined,
+      cursor: cursors[key] || undefined,
+      limit,
+    });
+    return { key, result };
+  }));
+  const nextCursors = { ...cursors };
+  for (const { key, result } of pages) {
+    if (result.next_cursor) nextCursors[key] = result.next_cursor;
+    else delete nextCursors[key];
+  }
+  const data = pages.flatMap(({ result }) => result.data || [])
+    .sort((first, second) => {
+      const timeDifference = new Date(second.log_at).getTime() - new Date(first.log_at).getTime();
+      return timeDifference
+        || String(second._id).localeCompare(String(first._id))
+        || String(second.log_type).localeCompare(String(first.log_type));
+    });
+  return {
+    data,
+    cursors: nextCursors,
+    hasMore: Object.keys(nextCursors).length > 0,
+  };
+}
 
 function formatTimestamp(value) {
   const date = new Date(value);
@@ -55,8 +122,9 @@ export default function DoctorLogsPage() {
   const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState('');
   const [category, setCategory] = useState('');
+  const [activeView, setActiveView] = useState('logs');
   const [logs, setLogs] = useState([]);
-  const [cursor, setCursor] = useState(null);
+  const [cursors, setCursors] = useState({});
   const [hasMore, setHasMore] = useState(false);
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -84,17 +152,18 @@ export default function DoctorLogsPage() {
     setLoading(true);
     setError('');
     setLogs([]);
-    setCursor(null);
+    setCursors({});
     setHasMore(false);
-    api.listDoctorLogs({
+    fetchLogPages({
       patientId: selectedPatient || undefined,
-      category: category || undefined,
+      categories: getLogQueries(activeView, category),
+      limit: 100,
     })
       .then((result) => {
         if (!active) return;
-        setLogs(result.data || []);
-        setCursor(result.next_cursor || null);
-        setHasMore(Boolean(result.has_more));
+        setLogs(result.data);
+        setCursors(result.cursors);
+        setHasMore(result.hasMore);
       })
       .catch((reason) => {
         if (active) setError(reason.message || 'Log pasien gagal dimuat.');
@@ -103,21 +172,22 @@ export default function DoctorLogsPage() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [selectedPatient, category, reloadKey]);
+  }, [selectedPatient, category, activeView, reloadKey]);
 
   async function loadMore() {
-    if (!cursor || loadingMore) return;
+    if (!hasMore || loadingMore) return;
     setLoadingMore(true);
     setError('');
     try {
-      const result = await api.listDoctorLogs({
+      const result = await fetchLogPages({
         patientId: selectedPatient || undefined,
-        category: category || undefined,
-        cursor,
+        categories: getLogQueries(activeView, category),
+        cursors,
+        limit: 100,
       });
-      setLogs((current) => [...current, ...(result.data || [])]);
-      setCursor(result.next_cursor || null);
-      setHasMore(Boolean(result.has_more));
+      setLogs((current) => [...current, ...result.data]);
+      setCursors(result.cursors);
+      setHasMore(result.hasMore);
     } catch (reason) {
       setError(reason.message || 'Log berikutnya gagal dimuat.');
     } finally {
@@ -152,7 +222,7 @@ export default function DoctorLogsPage() {
             <ChevronDown aria-hidden="true" size={16} />
           </span>
         </label>
-        <label>
+        {activeView === 'logs' && <label>
           Jenis log
           <span className="doctor-log-select">
             <select onChange={(event) => setCategory(event.target.value)} value={category}>
@@ -163,7 +233,7 @@ export default function DoctorLogsPage() {
             </select>
             <ChevronDown aria-hidden="true" size={16} />
           </span>
-        </label>
+        </label>}
         <button
           aria-label="Muat ulang log"
           className="button button-light doctor-log-refresh"
@@ -176,6 +246,23 @@ export default function DoctorLogsPage() {
         </button>
       </div>
 
+      <nav className="doctor-view-tabs" aria-label="Menu analisis pasien">
+        {DOCTOR_VIEWS.map(({ id, label, icon: Icon }) => (
+          <button
+            aria-current={activeView === id ? 'page' : undefined}
+            className={`doctor-view-tab ${activeView === id ? 'doctor-view-tab-active' : ''}`}
+            key={id}
+            onClick={() => {
+              setActiveView(id);
+              if (id !== 'logs') setCategory('');
+            }}
+          >
+            <Icon size={16} />
+            {label}
+          </button>
+        ))}
+      </nav>
+
       {error && (
         <div className="notice notice-warning doctor-log-error">
           <AlertCircle size={17} />
@@ -183,7 +270,7 @@ export default function DoctorLogsPage() {
         </div>
       )}
 
-      <div className="doctor-log-list panel">
+      {activeView === 'logs' ? <div className="doctor-log-list panel">
         <div className="doctor-log-list-heading">
           <div>
             <span className="eyebrow">LINIMASA</span>
@@ -224,17 +311,20 @@ export default function DoctorLogsPage() {
           </div>
         )}
 
-        {hasMore && (
-          <button
-            className="button button-light doctor-log-more"
-            disabled={loadingMore}
-            onClick={loadMore}
-          >
-            {loadingMore && <LoaderCircle className="spin" size={16} />}
-            {loadingMore ? 'Memuat...' : 'Muat log berikutnya'}
-          </button>
-        )}
-      </div>
+      </div> : (
+        <DoctorLogAnalytics activeView={activeView} logs={logs} />
+      )}
+
+      {hasMore && !loading && (
+        <button
+          className="button button-light doctor-log-more"
+          disabled={loadingMore}
+          onClick={loadMore}
+        >
+          {loadingMore && <LoaderCircle className="spin" size={16} />}
+          {loadingMore ? 'Memuat...' : 'Muat data berikutnya untuk grafik'}
+        </button>
+      )}
     </section>
   );
 }

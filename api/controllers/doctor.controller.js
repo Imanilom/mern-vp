@@ -34,6 +34,7 @@ const DOCTOR_LOG_SOURCES = [
 ];
 
 const DOCTOR_LOG_PROJECTIONS = {
+  hil_realtime: 'account_id account_type session_id run_id activity device_id evaluation_kind evaluated_at readings.recorded_at readings.heart_rate_bpm readings.signal_confidence analysis createdAt',
   wearable: 'account_id account_type provider recording_purpose is_simulated recorded_at heart_rate_bpm activity_intensity posture sensor_contact signal_confidence data_quality device_id ingestion_source rmssd_ms sdnn_ms dfa_alpha1 motion_index spo2_pct steps activity sleep_duration_minutes sleep_quality skin_temperature_c createdAt',
 };
 
