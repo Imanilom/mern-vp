@@ -51,6 +51,17 @@ export const api = {
     const result = await request('/auth/me');
     return result.user || result;
   },
+  async listDoctorPatients() {
+    const result = await request('/doctor/logs/patients');
+    return result.data || [];
+  },
+  async listDoctorLogs({ patientId, category, cursor, limit = 30 } = {}) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (patientId) params.set('patient_id', patientId);
+    if (category) params.set('category', category);
+    if (cursor) params.set('cursor', cursor);
+    return request(`/doctor/logs?${params.toString()}`);
+  },
   async signout() {
     try {
       await request('/auth/signout');

@@ -2,8 +2,9 @@
 
 React web app for patient-facing Vidyamedic with Dashboard, Monitoring,
 Profil Kesehatan, Business Intelligence, AI & Deteksi Dini, Rekomendasi &
-Keputusan, Laporan, and Perangkat & Privasi sections. It reuses the
-authenticated `/api` patient endpoints provided by the existing backend.
+Keputusan, Laporan, and Perangkat & Privasi sections. Doctor accounts use a
+separate Log Pasien view for system-wide patient activity and HIL histories.
+It reuses the authenticated `/api` endpoints provided by the existing backend.
 
 ## Run locally
 

@@ -22,6 +22,7 @@ import MonitoringPage from './pages/MonitoringPage';
 import PredictionPage from './pages/PredictionPage';
 import ProfilePage from './pages/ProfilePage';
 import ReportsPage from './pages/ReportsPage';
+import DoctorLogsPage from './pages/DoctorLogsPage';
 
 export default function App() {
   const [account, setAccount] = useState(null);
@@ -58,6 +59,7 @@ export default function App() {
       .then((user) => {
         if (!alive) return;
         setAccount(user);
+        if (user.role === 'doctor') setActive('doctor_logs');
         setAuthenticated(true);
       })
       .catch(() => {
@@ -70,8 +72,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (authenticated) refresh(periodDays);
-  }, [authenticated, periodDays, refresh]);
+    if (authenticated && account?.role !== 'doctor') refresh(periodDays);
+  }, [authenticated, account, periodDays, refresh]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -154,12 +156,22 @@ export default function App() {
     );
   }
   if (!authenticated) {
-    return <Login onLogin={(user) => { setAccount(user); setAuthenticated(true); }} />;
+    return <Login onLogin={(user) => {
+      setAccount(user);
+      setActive(user.role === 'doctor' ? 'doctor_logs' : 'dashboard');
+      setAuthenticated(true);
+    }} />;
   }
 
-  const sectionName = NAV_ITEMS.find((item) => item.id === active)?.label || 'Monitoring';
+  const isDoctor = account?.role === 'doctor';
+  const visibleNavItems = isDoctor
+    ? NAV_ITEMS.filter((item) => item.id === 'doctor_logs')
+    : NAV_ITEMS.filter((item) => item.id !== 'doctor_logs');
+  const sectionName = visibleNavItems.find((item) => item.id === active)?.label || 'Monitoring';
   let pageContent;
-  if (active === 'dashboard') {
+  if (isDoctor) {
+    pageContent = <DoctorLogsPage />;
+  } else if (active === 'dashboard') {
     pageContent = <DashboardPage account={account} dashboard={dashboard} onNavigate={setActive} />;
   } else if (active === 'profil') {
     pageContent = <ProfilePage account={account} dashboard={dashboard} onSave={saveProfile} />;
@@ -223,6 +235,7 @@ export default function App() {
         onClose={() => setMobileOpen(false)}
         onNavigate={setActive}
         onSignout={signout}
+        items={visibleNavItems}
       />
       <main className="main-area">
         <header className="topbar">
@@ -245,7 +258,7 @@ export default function App() {
               <CalendarDays size={16} />
               <span>{formatDate(new Date(), { day: 'numeric', month: 'long', year: 'numeric' })}</span>
             </div>
-            <button
+            {!isDoctor && <button
               aria-label="Perbarui data"
               className="icon-button top-refresh"
               disabled={loading}
@@ -253,7 +266,7 @@ export default function App() {
               title="Perbarui data"
             >
               {loading ? <LoaderCircle className="spin" size={18} /> : <RefreshCw size={18} />}
-            </button>
+            </button>}
             <div className="top-avatar">{getInitial(account?.name)}</div>
           </div>
         </header>

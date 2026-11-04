@@ -7,6 +7,8 @@ import {
   getDoctorPatientPredictions,
   postDoctorPatientValidation,
   getDoctorPatientConfidence,
+  listDoctorLogPatients,
+  listDoctorPatientLogs,
 } from '../controllers/doctor.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
 
@@ -14,7 +16,7 @@ const router = express.Router();
 
 // Middleware ensuring doctor role
 const requireDoctor = (req, res, next) => {
-  if (req.user && req.user.role !== 'doctor') {
+  if (!req.user || req.user.role !== 'doctor') {
     return res.status(403).json({ success: false, message: 'Access denied: Doctor role required' });
   }
   next();
@@ -24,6 +26,8 @@ router.use(verifyToken);
 router.use(requireDoctor);
 
 router.get('/patients', getDoctorPatients);
+router.get('/logs/patients', listDoctorLogPatients);
+router.get('/logs', listDoctorPatientLogs);
 router.get('/patient/:id', getDoctorPatientById);
 router.get('/patient/:id/live', getDoctorPatientLive);
 router.get('/patient/:id/history', getDoctorPatientHistory);

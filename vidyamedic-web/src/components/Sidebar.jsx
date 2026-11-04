@@ -14,6 +14,7 @@ export default function Sidebar({
   onSignout,
   mobileOpen,
   onClose,
+  items = NAV_ITEMS,
 }) {
   return (
     <>
@@ -27,7 +28,7 @@ export default function Sidebar({
         </div>
         <div className="sidebar-section-label">MENU UTAMA</div>
         <nav className="main-nav" aria-label="Navigasi utama">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+          {items.map(({ id, label, icon: Icon }) => (
             <button
               aria-current={active === id ? 'page' : undefined}
               className={`nav-item ${active === id ? 'nav-active' : ''}`}
@@ -42,8 +43,12 @@ export default function Sidebar({
         </nav>
         <div className="sidebar-help">
           <div className="help-icon"><HeartPulse size={17} /></div>
-          <strong>Jaga ritme sehat</strong>
-          <p>Catat data secara konsisten untuk melihat pola personal Anda.</p>
+          <strong>{account?.role === 'doctor' ? 'Pantau pasien' : 'Jaga ritme sehat'}</strong>
+          <p>
+            {account?.role === 'doctor'
+              ? 'Tinjau riwayat pasien dan seluruh tahapan HIL.'
+              : 'Catat data secara konsisten untuk melihat pola personal Anda.'}
+          </p>
         </div>
         <div className="sidebar-account">
           <div className="account-avatar">{getInitial(account?.name)}</div>

@@ -634,11 +634,45 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .sidebar-account { border-top-color: rgba(255,255,255,.12); }
 .account-avatar { color: #174a53; background: #d1f0e9; }
 
+.doctor-log-toolbar { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 15px; padding: 16px; }
+.doctor-log-toolbar label { display: grid; flex: 1; min-width: 180px; gap: 6px; color: var(--ink-soft); font-size: 10px; font-weight: 700; }
+.doctor-log-select { position: relative; display: flex; align-items: center; }
+.doctor-log-select select { width: 100%; min-height: 39px; padding: 0 34px 0 11px; color: var(--ink); appearance: none; background: #fff; border: 1px solid var(--line); border-radius: 9px; font-size: 11px; }
+.doctor-log-select svg { position: absolute; right: 10px; color: var(--muted); pointer-events: none; }
+.doctor-log-refresh { min-height: 39px; }
+.doctor-log-error { margin-bottom: 15px; }
+.doctor-log-list { padding: 18px; }
+.doctor-log-list-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.doctor-log-list-heading h2 { margin: 4px 0 0; color: var(--ink); font-family: Manrope, sans-serif; font-size: 16px; }
+.doctor-log-count { color: var(--muted); font-size: 10px; }
+.doctor-log-items { display: grid; }
+.doctor-log-item { border-top: 1px solid var(--line); }
+.doctor-log-item summary { display: flex; align-items: center; gap: 11px; padding: 13px 2px; cursor: pointer; list-style: none; }
+.doctor-log-item summary::-webkit-details-marker { display: none; }
+.doctor-log-icon { display: grid; flex: 0 0 auto; width: 33px; height: 33px; color: var(--green-dark); background: var(--green-pale); border-radius: 10px; place-items: center; }
+.doctor-log-main { display: grid; flex: 1; min-width: 0; gap: 3px; }
+.doctor-log-main strong { color: var(--ink); font-size: 11px; text-transform: capitalize; }
+.doctor-log-main > span { overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.doctor-log-main .doctor-log-detail { color: var(--ink-soft); }
+.doctor-log-item time { flex: 0 0 auto; color: var(--muted); font-size: 9px; }
+.doctor-log-chevron { flex: 0 0 auto; color: var(--muted); transition: transform .18s ease; }
+.doctor-log-item[open] .doctor-log-chevron { transform: rotate(180deg); }
+.doctor-log-item pre { max-height: 420px; overflow: auto; margin: 0 0 14px 44px; padding: 12px; color: #d6e8ed; background: #172d40; border-radius: 9px; font: 10px/1.6 "Cascadia Code", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.doctor-log-state { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 145px; color: var(--muted); font-size: 11px; }
+.doctor-log-more { display: flex; margin: 15px auto 0; }
+
 @media (max-width: 880px) {
   .dashboard-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 650px) {
+  .doctor-log-toolbar { align-items: stretch; flex-direction: column; }
+  .doctor-log-toolbar label { min-width: 0; }
+  .doctor-log-refresh { align-self: flex-start; }
+  .doctor-log-list { padding: 14px; }
+  .doctor-log-item summary { align-items: flex-start; }
+  .doctor-log-item time { display: none; }
+  .doctor-log-item pre { margin-left: 0; }
   .hero-banner { align-items: flex-start; flex-direction: column; gap: 13px; padding: 17px; }
   .hero-banner h2 { font-size: 17px; }
   .hero-banner p { font-size: 10px; }

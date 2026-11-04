@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  ClipboardList,
   FileText,
   LayoutDashboard,
   ShieldCheck,
@@ -17,6 +18,7 @@ export const NAV_ITEMS = [
   { id: 'prediksi', label: 'Rekomendasi & Keputusan', icon: Sparkles },
   { id: 'laporan', label: 'Laporan', icon: FileText },
   { id: 'administrasi', label: 'Administrasi', icon: SlidersHorizontal },
+  { id: 'doctor_logs', label: 'Log Pasien', icon: ClipboardList },
 ];
 
 export const INITIAL_PROFILE = {

@@ -839,3 +839,23 @@ rules, not a validated medical triage system; the response does not diagnose.
 The RAG response contains citation metadata and retrieval relevance only. It
 does not generate individualized medical advice, establish causality, or send
 patient data to an external model.
+
+## Doctor web log browser
+
+The Vidyamedic Web login redirects accounts with `role: "doctor"` to the
+Log Pasien view. These endpoints require the existing authenticated access
+token and a doctor role:
+
+- `GET /api/doctor/logs/patients` lists patient accounts without credentials.
+  Linked legacy `Patient` and `User` records are presented as one patient.
+- `GET /api/doctor/logs?patient_id=<id>&category=<category>&limit=30&cursor=<cursor>`
+  returns a newest-first, cursor-paginated timeline. `patient_id` and
+  `category` are optional; omitting them includes all patient accounts and
+  supported log categories. `limit` is an integer from 1 to 100.
+
+The timeline covers HIL sessions, scenario logs, explanations, realtime
+evaluations and baselines; check-ins, patient events, wearable samples and
+actions; and HCI scenario sessions, events and questionnaires. Responses
+include `patient_name`, `log_type`, and `log_at` with the stored record.
+`has_more` and `next_cursor` indicate whether another page is available.
+Access is system-wide for doctor accounts, not limited to assigned patients.
