@@ -702,22 +702,37 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .doctor-observation-meta span, .doctor-answer-tags span { padding: 5px 7px; color: #4a766e; background: #edf7f4; border-radius: 6px; font-size: 8px; text-transform: capitalize; }
 .doctor-answer-card ul { display: grid; gap: 7px; margin: 11px 0 0; padding-left: 17px; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
 .doctor-node-panel { overflow: hidden; }
-.doctor-node-track { display: flex; gap: 25px; overflow-x: auto; padding: 22px 4px 8px; }
-.doctor-node { position: relative; display: grid; flex: 0 0 190px; align-content: start; gap: 7px; min-height: 130px; padding: 15px 12px 12px; background: #f7fafb; border: 1px solid #e4ebf0; border-radius: 12px; }
-.doctor-node:not(:last-child)::after { position: absolute; top: 26px; left: calc(100% + 1px); width: 25px; border-top: 2px solid #a9cec6; content: ""; }
+.doctor-circular-diagram { position: relative; width: min(100%, 740px); aspect-ratio: 1; margin: 20px auto 0; }
+.doctor-circular-connectors { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.doctor-circular-connectors path { fill: none; stroke: #a9cec6; stroke-width: 3; }
+.doctor-circular-center { position: absolute; top: 50%; left: 50%; display: flex; width: 145px; height: 145px; align-items: center; flex-direction: column; justify-content: center; gap: 7px; color: var(--green-dark); background: #eff8f6; border: 1px solid #d5ebe6; border-radius: 50%; text-align: center; transform: translate(-50%, -50%); }
+.doctor-circular-center strong { color: var(--ink); font-size: 11px; }
+.doctor-circular-center span { color: var(--muted); font-size: 9px; }
+.doctor-node { position: absolute; z-index: 1; display: grid; width: 155px; min-height: 96px; align-content: start; justify-items: center; gap: 5px; padding: 10px 9px; background: #fff; border: 1px solid #dce9e6; border-radius: 13px; box-shadow: 0 5px 16px rgba(34,75,68,.10); text-align: center; transform: translate(-50%, -50%); }
+.doctor-circular-node > span { display: grid; width: 23px; height: 23px; color: #fff; background: var(--green); border-radius: 50%; font-size: 9px; font-weight: 800; place-items: center; }
+.doctor-circular-node strong { color: var(--ink); font-size: 9px; line-height: 1.35; text-transform: capitalize; }
+.doctor-circular-node small { color: var(--muted); font-size: 7px; line-height: 1.35; }
+.doctor-circular-node p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--ink-soft); font-size: 8px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .doctor-node > span { display: grid; width: 23px; height: 23px; color: #fff; background: var(--green); border-radius: 50%; font-size: 9px; font-weight: 800; place-items: center; }
-.doctor-node strong { color: var(--ink); font-size: 10px; text-transform: capitalize; }
-.doctor-node small { color: var(--muted); font-size: 8px; }
-.doctor-node p { margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.5; }
 
 @media (max-width: 880px) {
   .dashboard-grid { grid-template-columns: 1fr; }
   .doctor-analysis-grid { grid-template-columns: 1fr; }
+  .doctor-circular-diagram { width: min(100%, 620px); }
+  .doctor-node { width: 135px; min-height: 86px; padding: 8px 7px; }
 }
 
 @media (max-width: 650px) {
   .doctor-analysis-card { padding: 13px; }
   .doctor-baseline-summary { grid-column: auto; }
+  .doctor-circular-diagram { width: min(100%, 430px); }
+  .doctor-circular-center { width: 100px; height: 100px; gap: 4px; }
+  .doctor-circular-center strong { font-size: 9px; }
+  .doctor-circular-center span { font-size: 8px; }
+  .doctor-node { width: 94px; min-height: 68px; gap: 3px; padding: 6px 5px; border-radius: 10px; }
+  .doctor-circular-node > span { width: 18px; height: 18px; font-size: 8px; }
+  .doctor-circular-node strong { font-size: 7px; }
+  .doctor-circular-node small, .doctor-circular-node p { font-size: 6px; }
   .doctor-log-toolbar { align-items: stretch; flex-direction: column; }
   .doctor-log-toolbar label { min-width: 0; }
   .doctor-log-refresh { align-self: flex-start; }

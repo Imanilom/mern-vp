@@ -471,6 +471,82 @@ function PatientAnswers({ logs }) {
   );
 }
 
+function CircularNodeDiagram({ nodes }) {
+  const radius = 390;
+  const center = 500;
+  const positions = nodes.map((node, index) => {
+    const angle = -Math.PI / 2 + (index / nodes.length) * Math.PI * 2;
+    return {
+      ...node,
+      angle,
+      x: center + radius * Math.cos(angle),
+      y: center + radius * Math.sin(angle),
+      left: `${50 + (radius / 10) * Math.cos(angle)}%`,
+      top: `${50 + (radius / 10) * Math.sin(angle)}%`,
+    };
+  });
+
+  return (
+    <div className="doctor-circular-diagram">
+      <svg
+        aria-hidden="true"
+        className="doctor-circular-connectors"
+        preserveAspectRatio="none"
+        viewBox="0 0 1000 1000"
+      >
+        <defs>
+          <marker
+            id="doctor-node-arrow"
+            markerHeight="8"
+            markerWidth="8"
+            orient="auto"
+            refX="5"
+            refY="4"
+          >
+            <path d="M0,0 L8,4 L0,8 Z" fill="#8bbdb3" />
+          </marker>
+        </defs>
+        {positions.length > 1 && positions.map((node, index) => {
+          const next = positions[(index + 1) % positions.length];
+          const gap = (Math.PI * 2) / positions.length;
+          const startAngle = node.angle + Math.min(0.22, gap / 4);
+          const endAngle = next.angle - Math.min(0.22, gap / 4)
+            + (index === positions.length - 1 ? Math.PI * 2 : 0);
+          const startX = center + radius * Math.cos(startAngle);
+          const startY = center + radius * Math.sin(startAngle);
+          const endX = center + radius * Math.cos(endAngle);
+          const endY = center + radius * Math.sin(endAngle);
+          const arc = endAngle - startAngle;
+          return (
+            <path
+              d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${arc > Math.PI ? 1 : 0} 1 ${endX} ${endY}`}
+              key={`${node.id}-connector`}
+              markerEnd="url(#doctor-node-arrow)"
+            />
+          );
+        })}
+      </svg>
+      <div className="doctor-circular-center">
+        <GitBranch size={23} />
+        <strong>Alur observasi</strong>
+        <span>{nodes.length} node</span>
+      </div>
+      {positions.map((node, index) => (
+        <article
+          className="doctor-node doctor-circular-node"
+          key={node.id}
+          style={{ left: node.left, top: node.top }}
+        >
+          <span>{index + 1}</span>
+          <strong>{node.title}</strong>
+          <small>{node.meta}</small>
+          {node.detail && <p>{node.detail}</p>}
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function NodeAnalysis({ logs }) {
   const scenarioLogs = sortedByTime(logs.filter((log) => log.log_type === 'hil_scenario'));
   const runs = new Map();
@@ -484,7 +560,7 @@ function NodeAnalysis({ logs }) {
   ))[0] || [];
   const uniqueNodes = latestRun.filter((log, index) => (
     index === 0 || log.event_type !== latestRun[index - 1].event_type
-  )).slice(-12);
+  )).slice(-8);
 
   if (!uniqueNodes.length) {
     const interpretations = logs
@@ -501,16 +577,14 @@ function NodeAnalysis({ logs }) {
     return (
       <div className="doctor-node-panel panel">
         <h3>Urutan hasil interpretasi</h3>
-        <div className="doctor-node-track">
-          {interpretations.slice(-12).map((node, index) => (
-            <div className="doctor-node" key={`${node.version}:${index}`}>
-              <span>{index + 1}</span>
-              <strong>{String(node.status || 'observasi').replaceAll('_', ' ')}</strong>
-              <small>{node.patient_name} · {node.processing_state}</small>
-              {node.reason && <p>{node.reason}</p>}
-            </div>
-          ))}
-        </div>
+        <CircularNodeDiagram
+          nodes={interpretations.slice(-8).map((node, index) => ({
+            id: `interpretation-${node.version}-${index}`,
+            title: String(node.status || 'observasi').replaceAll('_', ' '),
+            meta: `${node.patient_name} · ${node.processing_state}`,
+            detail: node.reason,
+          }))}
+        />
       </div>
     );
   }
@@ -523,17 +597,16 @@ function NodeAnalysis({ logs }) {
           <p>{latestRun[0]?.patient_name} · Skenario {latestRun[0]?.scenario} · {latestRun[0]?.run_id}</p>
         </div>
       </div>
-      <div className="doctor-node-track">
-        {uniqueNodes.map((node, index) => (
-          <div className="doctor-node" key={node._id}>
-            <span>{index + 1}</span>
-            <strong>{String(node.event_type).replaceAll('_', ' ')}</strong>
-            <small>{node.activity} · {formatTime(node.log_at)}</small>
-            {node.algorithm_status && <small>Status: {node.algorithm_status.replaceAll('_', ' ')}</small>}
-            {node.explanation && <p>{node.explanation}</p>}
-          </div>
-        ))}
-      </div>
+      <CircularNodeDiagram
+        nodes={uniqueNodes.map((node) => ({
+          id: node._id,
+          title: String(node.event_type).replaceAll('_', ' '),
+          meta: `${node.activity} · ${formatTime(node.log_at)}`,
+          detail: node.algorithm_status
+            ? `Status: ${node.algorithm_status.replaceAll('_', ' ')}`
+            : node.explanation,
+        }))}
+      />
     </div>
   );
 }
