@@ -506,8 +506,8 @@ function CircularNodeDiagram({ nodes }) {
             <path d="M0,0 L8,4 L0,8 Z" fill="#8bbdb3" />
           </marker>
         </defs>
-        {positions.length > 1 && positions.map((node, index) => {
-          const next = positions[(index + 1) % positions.length];
+        {positions.length > 1 && positions.slice(0, -1).map((node, index) => {
+          const next = positions[index + 1];
           const gap = (Math.PI * 2) / positions.length;
           const startAngle = node.angle + Math.min(0.22, gap / 4);
           const endAngle = next.angle - Math.min(0.22, gap / 4)
@@ -549,64 +549,100 @@ function CircularNodeDiagram({ nodes }) {
 
 function NodeAnalysis({ logs }) {
   const scenarioLogs = sortedByTime(logs.filter((log) => log.log_type === 'hil_scenario'));
-  const runs = new Map();
-  for (const log of scenarioLogs) {
-    const key = `${log.patient_id}:${log.run_id}`;
-    if (!runs.has(key)) runs.set(key, []);
-    runs.get(key).push(log);
-  }
-  const latestRun = [...runs.values()].sort((first, second) => (
-    new Date(second.at(-1)?.log_at || 0) - new Date(first.at(-1)?.log_at || 0)
-  ))[0] || [];
-  const uniqueNodes = latestRun.filter((log, index) => (
-    index === 0 || log.event_type !== latestRun[index - 1].event_type
-  )).slice(-8);
-
-  if (!uniqueNodes.length) {
-    const interpretations = logs
-      .filter((log) => log.log_type === 'scenario_session')
-      .flatMap((log) => (log.interpretations || []).map((item) => ({
-        ...item,
-        patient_name: log.patient_name,
-        log_at: item.created_at,
-      })))
-      .sort((first, second) => new Date(first.log_at || 0) - new Date(second.log_at || 0));
-    if (!interpretations.length) {
-      return <EmptyAnalysis icon={GitBranch} title="Node proses belum tersedia" detail="Node alur akan disusun dari event sesi HIL atau interpretasi skenario yang tersimpan." />;
+  const scenarioSessions = logs.filter((log) => log.log_type === 'scenario_session');
+  const flowDefinitions = [
+    {
+      scenario: 'B',
+      title: 'One-way feedback',
+      description: 'Skenario B: rekomendasi diberikan satu arah, tanpa klarifikasi bolak-balik.',
+    },
+    {
+      scenario: 'C',
+      title: 'Human in the loop',
+      description: 'Skenario C: pasien memberi klarifikasi dan masukan yang tercatat dalam alur.',
+    },
+  ];
+  const flows = flowDefinitions.map((definition) => {
+    const scenarioRuns = new Map();
+    for (const log of scenarioLogs.filter((item) => item.scenario === definition.scenario)) {
+      const key = `${log.patient_id}:${log.run_id}`;
+      if (!scenarioRuns.has(key)) scenarioRuns.set(key, []);
+      scenarioRuns.get(key).push(log);
     }
-    return (
-      <div className="doctor-node-panel panel">
-        <h3>Urutan hasil interpretasi</h3>
-        <CircularNodeDiagram
-          nodes={interpretations.slice(-8).map((node, index) => ({
-            id: `interpretation-${node.version}-${index}`,
-            title: String(node.status || 'observasi').replaceAll('_', ' '),
-            meta: `${node.patient_name} · ${node.processing_state}`,
-            detail: node.reason,
-          }))}
-        />
-      </div>
-    );
+    const latestRun = [...scenarioRuns.values()].sort((first, second) => (
+      new Date(second.at(-1)?.log_at || 0) - new Date(first.at(-1)?.log_at || 0)
+    ))[0] || [];
+    const uniqueNodes = latestRun.filter((log, index) => (
+      index === 0 || log.event_type !== latestRun[index - 1].event_type
+    )).slice(-12);
+    return { ...definition, latestRun, uniqueNodes };
+  });
+  const interpretations = scenarioSessions
+    .flatMap((log) => (log.interpretations || []).map((item) => ({
+      ...item,
+      patient_name: log.patient_name,
+      log_at: item.created_at,
+    })))
+    .sort((first, second) => new Date(first.log_at || 0) - new Date(second.log_at || 0))
+    .slice(-12);
+
+  if (!flows.some((flow) => flow.uniqueNodes.length) && !interpretations.length) {
+    return <EmptyAnalysis icon={GitBranch} title="Node proses belum tersedia" detail="Node alur akan disusun dari event sesi HIL atau interpretasi skenario yang tersimpan." />;
   }
 
   return (
-    <div className="doctor-node-panel panel">
-      <div className="doctor-analysis-heading">
-        <div>
-          <h3>Node alur sesi HIL terbaru</h3>
-          <p>{latestRun[0]?.patient_name} · Skenario {latestRun[0]?.scenario} · {latestRun[0]?.run_id}</p>
-        </div>
-      </div>
-      <CircularNodeDiagram
-        nodes={uniqueNodes.map((node) => ({
-          id: node._id,
-          title: String(node.event_type).replaceAll('_', ' '),
-          meta: `${node.activity} · ${formatTime(node.log_at)}`,
-          detail: node.algorithm_status
-            ? `Status: ${node.algorithm_status.replaceAll('_', ' ')}`
-            : node.explanation,
-        }))}
-      />
+    <div className="doctor-node-flows">
+      {flows.map((flow) => (
+        <section className="doctor-node-panel panel" key={flow.scenario}>
+          <div className="doctor-analysis-heading">
+            <div>
+              <span className={`doctor-flow-badge doctor-flow-badge-${flow.scenario.toLowerCase()}`}>
+                Skenario {flow.scenario}
+              </span>
+              <h3>{flow.title}</h3>
+              <p>{flow.description}</p>
+              {flow.latestRun.length > 0 && (
+                <p>
+                  {flow.latestRun[0].patient_name} · {flow.latestRun[0].run_id}
+                </p>
+              )}
+            </div>
+          </div>
+          {flow.uniqueNodes.length ? (
+            <CircularNodeDiagram
+              nodes={flow.uniqueNodes.map((node) => ({
+                id: node._id,
+                title: String(node.event_type).replaceAll('_', ' '),
+                meta: `${node.activity} · ${formatTime(node.log_at)}`,
+                detail: node.algorithm_status
+                  ? `Status: ${node.algorithm_status.replaceAll('_', ' ')}`
+                  : node.explanation || node.recommendation || node.clarification,
+              }))}
+            />
+          ) : (
+            <div className="doctor-flow-empty">Belum ada node untuk Skenario {flow.scenario}.</div>
+          )}
+        </section>
+      ))}
+      {interpretations.length > 0 && (
+        <section className="doctor-node-panel panel">
+          <div className="doctor-analysis-heading">
+            <div>
+              <span className="doctor-flow-badge doctor-flow-badge-interpretation">OBSERVASI</span>
+              <h3>Node hasil observasi</h3>
+              <p>Urutan interpretasi yang tercatat dari sesi skenario pasien.</p>
+            </div>
+          </div>
+          <CircularNodeDiagram
+            nodes={interpretations.map((node, index) => ({
+              id: `interpretation-${node.version}-${index}`,
+              title: String(node.status || 'observasi').replaceAll('_', ' '),
+              meta: `${node.patient_name} · ${node.processing_state}`,
+              detail: node.reason,
+            }))}
+          />
+        </section>
+      )}
     </div>
   );
 }
