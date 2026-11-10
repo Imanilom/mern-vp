@@ -1,8 +1,11 @@
 import {
+  ChevronDown,
+  ChevronRight,
   HeartPulse,
   LogOut,
   X,
 } from 'lucide-react';
+import { useState } from 'react';
 import { NAV_ITEMS } from '../constants/navigation';
 import { getInitial } from '../utils/formatters';
 import Brand from './Brand';
@@ -16,6 +19,10 @@ export default function Sidebar({
   onClose,
   items = NAV_ITEMS,
 }) {
+  const [expanded, setExpanded] = useState(
+    items.some((item) => item.children?.some((child) => child.id === active)),
+  );
+
   return (
     <>
       {mobileOpen && <button aria-label="Tutup menu" className="mobile-scrim" onClick={onClose} />}
@@ -28,17 +35,49 @@ export default function Sidebar({
         </div>
         <div className="sidebar-section-label">MENU UTAMA</div>
         <nav className="main-nav" aria-label="Navigasi utama">
-          {items.map(({ id, label, icon: Icon }) => (
-            <button
-              aria-current={active === id ? 'page' : undefined}
-              className={`nav-item ${active === id ? 'nav-active' : ''}`}
-              key={id}
-              onClick={() => { onNavigate(id); onClose(); }}
-            >
-              <Icon size={19} strokeWidth={active === id ? 2.3 : 1.9} />
-              <span>{label}</span>
-              {active === id && <span className="nav-indicator" />}
-            </button>
+          {items.map(({ id, label, icon: Icon, children }) => (
+            <div className="nav-group" key={id}>
+              <button
+                aria-current={active === id ? 'page' : undefined}
+                aria-expanded={children ? expanded : undefined}
+                className={`nav-item ${active === id ? 'nav-active' : ''}`}
+                onClick={() => {
+                  if (children) {
+                    if (!expanded) {
+                      setExpanded(true);
+                      onNavigate(children[0].id);
+                      onClose();
+                    } else {
+                      setExpanded(false);
+                    }
+                    return;
+                  }
+                  onNavigate(id);
+                  onClose();
+                }}
+              >
+                <Icon size={19} strokeWidth={active === id ? 2.3 : 1.9} />
+                <span>{label}</span>
+                {children
+                  ? (expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />)
+                  : active === id && <span className="nav-indicator" />}
+              </button>
+              {children && expanded && (
+                <div className="nav-submenu" aria-label={`${label} submenu`}>
+                  {children.map(({ id: childId, label: childLabel, icon: ChildIcon }) => (
+                    <button
+                      aria-current={active === childId ? 'page' : undefined}
+                      className={`nav-subitem ${active === childId ? 'nav-subactive' : ''}`}
+                      key={childId}
+                      onClick={() => { onNavigate(childId); onClose(); }}
+                    >
+                      <ChildIcon size={15} />
+                      <span>{childLabel}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
         <div className="sidebar-help">

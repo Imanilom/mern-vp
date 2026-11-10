@@ -131,7 +131,8 @@ test('impact summary query defaults to 30 days and caps the requested range', ()
 
 test('scenario consent, IDs, and participant feedback are strictly validated', () => {
   assert.equal(validateScenarioId('c'), 'c');
-  assert.throws(() => validateScenarioId('d'), { statusCode: 404 });
+  assert.equal(validateScenarioId('d'), 'd');
+  assert.throws(() => validateScenarioId('e'), { statusCode: 404 });
   assert.deepEqual(validateScenarioSession({ consent_given: true }), {
     consent_given: true,
   });
@@ -150,6 +151,11 @@ test('scenario consent, IDs, and participant feedback are strictly validated', (
     event_time: eventTime.toISOString(),
     activity: 'walking',
     confidence: 'certain',
+    recovery_context: {
+      posture: 'sitting',
+      fatigue: 'unsure',
+      note: 'Naik tangga sebelum duduk',
+    },
     affected_interval: {
       start: new Date(eventTime.getTime() - 30_000).toISOString(),
       end: new Date(eventTime.getTime() + 30_000).toISOString(),
@@ -157,6 +163,11 @@ test('scenario consent, IDs, and participant feedback are strictly validated', (
   });
   assert.equal(event.activity, 'walking');
   assert.equal(event.confidence, 'certain');
+  assert.deepEqual(event.recovery_context, {
+    posture: 'sitting',
+    fatigue: 'unsure',
+    note: 'Naik tangga sebelum duduk',
+  });
   assert.throws(
     () => validateScenarioEvent({
       idempotency_key: 'scenario-event-123',
@@ -176,6 +187,20 @@ test('scenario consent, IDs, and participant feedback are strictly validated', (
       event_time: eventTime.toISOString(),
       activity: 'walking',
       confidence: 'certain',
+      affected_interval: {
+        start: eventTime.toISOString(),
+        end: eventTime.toISOString(),
+      },
+    }),
+    { statusCode: 400 }
+  );
+  assert.throws(
+    () => validateScenarioEvent({
+      idempotency_key: 'scenario-event-456',
+      event_time: eventTime.toISOString(),
+      activity: 'walking',
+      confidence: 'certain',
+      recovery_context: { posture: 'sitting', fatigue: 'maybe' },
       affected_interval: {
         start: eventTime.toISOString(),
         end: eventTime.toISOString(),

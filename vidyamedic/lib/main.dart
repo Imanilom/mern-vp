@@ -80,6 +80,8 @@ class VidyaMedicApp extends StatelessWidget {
               const ScenarioLabScreen(initialScenarioId: 'b'),
           '/scenarios/c': (_) =>
               const ScenarioLabScreen(initialScenarioId: 'c'),
+          '/scenarios/d': (_) =>
+              const ScenarioLabScreen(initialScenarioId: 'd'),
         },
       ),
     );

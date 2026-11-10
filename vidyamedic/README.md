@@ -45,21 +45,21 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
 - **Dampak & Keselamatan**: Menampilkan outcome recovery historis dan jumlah pencatatan dari API, dengan batas data yang tersedia.
 - Status pelaksanaan klinisi, efektivitas tindakan, false alarm, serta analitik populasi tidak diklaim bila belum disediakan backend.
 
-### 7. 🧪 Skenario HCI A/B/C
+### 7. 🧪 Skenario HCI A/B/C/D
 - **A — Satu arah**: menampilkan interpretasi tanpa kanal koreksi.
 - **B — Dua arah nonadaptif**: feedback peserta tercatat, tetapi interpretasi awal dipertahankan.
 - **C — Dua arah adaptif**: membuat versi interpretasi baru hanya jika koreksi konteks dapat dievaluasi memakai bukti CAPAR berkualitas dan baseline statistik yang sesuai.
 - Persetujuan eksplisit, riwayat sesi, event idempotent, audit trail, serta ekspor JSON/CSV (salin ke clipboard) tersedia di aplikasi.
-- Mode A/B/C memakai data hasil rekaman Polar H10 yang tersimpan dan lolos quality gate CAPAR; tanpa rekaman/window analisis nyata, sesi tidak dibuat dan aplikasi mengarahkan pengguna ke halaman pairing/perekaman.
-- Ketiga mode berbagi halaman perekaman wearable, catatan kondisi, ringkasan, dampak, dan tindakan. Perbedaan A/B/C hanya pada pola feedback dan interpretasi.
+- Mode A/B/C/D memakai data hasil rekaman Polar H10 yang tersimpan dan lolos quality gate CAPAR; tanpa rekaman/window analisis nyata, sesi tidak dibuat dan aplikasi mengarahkan pengguna ke halaman pairing/perekaman.
+- Semua mode berbagi halaman perekaman wearable, catatan kondisi, ringkasan, dampak, dan tindakan. Mode D berfokus pada observasi pascaaktivitas; status pemulihan tidak disimpulkan dari satu observasi.
 - Skenario C menyediakan input kuesioner SUS (10 butir, skala 1-5) dan NASA-TLX (6 dimensi, skala 0-100); setiap hasil terikat ke sesi dan ikut tersedia dalam ekspor.
 - SUS dihitung dengan pembalikan butir standar; nilai NASA-TLX yang disimpan adalah rata-rata enam dimensi tanpa pembobotan, bukan skor NASA-TLX berbobot.
 - Baseline eksperimen memerlukan minimal satu hari dan 10 menit window valid berkualitas; kekurangan bukti menghasilkan `UNRESOLVED`, bukan label normal. Persyaratan ini tidak mengubah kematangan baseline CAPAR produksi.
-- Pilihan A/B/C ditampilkan sebagai kartu skenario tanpa kartu pengantar dan ringkasan data baseline CAPAR; data tetap digunakan untuk evaluasi sesi.
+- Pilihan A/B/C/D ditampilkan sebagai kartu skenario tanpa kartu pengantar dan ringkasan data baseline CAPAR; data tetap digunakan untuk evaluasi sesi.
 
 ### Human In the Loop
-- Halaman Human In the Loop merupakan alur observasi dan klarifikasi tersendiri, terpisah dari eksperimen HCI A/B/C.
-- Pemilihan A/B/C menggunakan tampilan kartu yang sama, tanpa kartu informasi pengantar.
+- Halaman Human In the Loop merupakan alur observasi dan klarifikasi tersendiri, terpisah dari eksperimen HCI A/B/C/D.
+- Pemilihan A/B/C/D menggunakan tampilan kartu yang sama, tanpa kartu informasi pengantar.
 - Baseline dan profil dibuat per aktivitas/waktu melalui langkah terpandu Duduk → Berdiri → Berjalan, mengikuti sesi baseline HCI. Pembanding CAPAR dipilih sesuai aktivitas; baseline provisional/cold-start tetap dapat digunakan sebagai referensi sementara dan diberi label kematangannya.
 - Tahap 5 tinjauan baseline menyediakan konfirmasi/koreksi aktivitas untuk rentang tanggal-waktu mulai hingga selesai, pilihan “Tidak yakin”, suasana hati, kafein, makan, faktor tambahan, dan catatan pengalaman. Backend menyimpan `event_time` dan `affected_interval` dari laporan serta `report_time` saat diterima; catatan peserta tidak mengubah data sensor atau baseline.
 - Mengikuti tahap persiapan bagian 4.6.1 pada PDF, peserta harus membaca dan menyetujui informasi penggunaan data sebelum memulai baseline atau skenario HIL. Persetujuan dapat ditolak atau dicabut; tombol mulai tetap nonaktif tanpa persetujuan. Persetujuan aplikasi ini bukan pengganti persetujuan etik institusi.
@@ -67,7 +67,7 @@ Kerangka evaluasi kesehatan holistik berbasis 6 pertanyaan kunci:
 - Deviasi HIL memakai `latest_observation.features[].z_score` dari CAPAR; fitur di atas baseline (z-score > 0) ditampilkan tanpa tau tambahan. Quality gate dan kematangan baseline tetap berlaku; ini observasi statistik, bukan diagnosis.
 - Halaman “Apa yang Berubah?” menampilkan dan merata-ratakan seluruh baseline tersimpan untuk aktivitas yang sama, termasuk baseline provisional/cold-start, beserta status dan jumlah segmennya. Baseline yang belum mature hanya ditampilkan sebagai referensi deskriptif; tidak dilabeli sebagai hasil deviasi CAPAR yang matang.
 - Pada skenario B dan C, sistem memeriksa kualitas sensor, mengambil HR maksimum dari bacaan per detik, dan membandingkannya dengan baseline personal aktivitas. Monitor HIL live menampilkan bacaan sebagai grafik garis HR terhadap baseline.
-- Skenario B menampilkan popup berisi pesan observasi dan saran rekomendasi saja. Skenario C menampilkan popup yang menanyakan aktivitas atau konteks sebelum deviasi, dengan isian “Hal lain” yang opsional. Jawaban pengguna dicatat sebagai laporan, bukan bukti penyebab.
+- Skenario B menampilkan popup berisi pesan observasi dan saran rekomendasi saja. Skenario C/D menerima koreksi konteks; jawaban pengguna dicatat sebagai laporan, bukan bukti penyebab. Scenario D berfokus pada observasi pemulihan pascaaktivitas dan tidak menyatakan pulih berdasarkan satu pengukuran.
 - Pada skenario C, monitor live mengirim window sensor ke endpoint `/patient-app/wearable/hil-realtime` setiap 30 detik. Backend mengevaluasi maksimum HR untuk deviasi/pemulihan dan tetap memproses RMSSD, SDNN, serta perbandingan baseline; batch DFA α1 diproses backend setiap 5 menit dengan minimal 64 interval RR valid.
 - Alur PUDAL pada monitor live menjelaskan persepsi (HR dan baseline), pemahaman (deviasi bukan diagnosis), keputusan (laporan aktivitas/konteks), dan aksi. Setelah konteks diisi, pengguna dapat mengulang aktivitas selama 30 detik, memilih “Cukup”, atau “Tidak diulang”. Rerata bacaan berkualitas dari pengulangan hanya menjadi pembanding sesi; baseline personal tidak diubah. Monitor menyimpan jawaban, pilihan aksi, batch DFA, dan observasi pemulihan sebagai event HIL. Data demo tidak dipakai.
 - Untuk uji UI tanpa wearable, tombol “Simulasikan HR tinggi → baseline” menampilkan popup klarifikasi dengan isian opsional, lalu menurunkan HR contoh bertahap; progres ditampilkan sebagai urutan nilai per detik. Simulasi ditandai jelas dan tidak membuat rekaman fisiologis atau event server.

@@ -16,6 +16,11 @@ export const SCENARIO_DEFINITIONS = Object.freeze({
     title: 'Dua arah adaptif',
     interaction: 'Koreksi konteks dievaluasi ulang terhadap bukti dan baseline.',
   },
+  d: {
+    id: 'd',
+    title: 'Pemulihan',
+    interaction: 'Observasi pascaaktivitas berbasis rekaman nyata; status pulih tidak disimpulkan dari satu observasi.',
+  },
 });
 
 export const CAPAR_ACTIVITY_LABELS = Object.freeze({
@@ -201,6 +206,14 @@ export function buildScenarioInterpretation({
         motion_intensity: segment?.features?.motion_intensity ?? null,
       },
     },
+    ...(scenarioId === 'd'
+      ? {
+        recovery_observation: {
+          status: 'UNDETERMINED',
+          reason: 'Satu observasi tidak cukup untuk memastikan pemulihan selesai.',
+        },
+      }
+      : {}),
     baseline: {
       activity: baseline?.activity ?? null,
       time_period: baseline?.time_period ?? null,

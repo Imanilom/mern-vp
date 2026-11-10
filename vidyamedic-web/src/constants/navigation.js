@@ -2,6 +2,11 @@ import {
   BarChart3,
   ClipboardList,
   FileText,
+  FlaskConical,
+  Activity,
+  CircleHelp,
+  History,
+  HeartPulse,
   LayoutDashboard,
   ShieldCheck,
   Sparkles,
@@ -18,6 +23,18 @@ export const NAV_ITEMS = [
   { id: 'prediksi', label: 'Rekomendasi & Keputusan', icon: Sparkles },
   { id: 'laporan', label: 'Laporan', icon: FileText },
   { id: 'administrasi', label: 'Administrasi', icon: SlidersHorizontal },
+  {
+    id: 'capar_experiment',
+    label: 'CAPAR Experiment',
+    icon: FlaskConical,
+    children: [
+      { id: 'capar_episode', label: 'Episode', icon: Activity },
+      { id: 'capar_baseline', label: 'Baseline', icon: HeartPulse },
+      { id: 'capar_analytics', label: 'Analitik', icon: BarChart3 },
+      { id: 'capar_ser', label: 'SER', icon: History },
+      { id: 'capar_audit', label: 'Audit', icon: CircleHelp },
+    ],
+  },
   { id: 'doctor_logs', label: 'Log Pasien', icon: ClipboardList },
 ];
 

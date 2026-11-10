@@ -267,7 +267,7 @@ not claim clinical effectiveness, population analytics, false-alarm rates, or
 clinician response metrics. Historical episode recovery remains available
 through `GET /api/patient-app/capar-insights`.
 
-## HCI scenarios A/B/C
+## HCI scenarios A/B/C/D
 
 - `GET /api/patient-app/scenarios`
 - `POST /api/patient-app/scenarios/:scenarioId/sessions`
@@ -282,10 +282,17 @@ through `GET /api/patient-app/capar-insights`.
 Every endpoint is authenticated and scoped to the verified account. Starting a
 session requires `{"consent_given": true}`. Scenario A is one-way and rejects
 participant corrections. Scenario B stores feedback as an append-only event but
-retains its initial interpretation. Scenario C may add a new immutable
+retains its initial interpretation. Scenario C/D may add a new immutable
 interpretation version only when the corrected CAPAR context has sufficient
 quality-gated statistical evidence; otherwise the feedback is retained with a
 reason code and no new version is created.
+Scenario D is a post-activity recovery observation using the same real Polar
+H10 provenance and quality gates. Activity corrections may be evaluated against
+the corresponding personal baseline when evidence is sufficient. A single
+observation does not establish that recovery is complete; the API does not
+relabel a compatible observation as recovered. Scenario D interpretations
+include `recovery_observation.status: "UNDETERMINED"` until a separately
+validated longitudinal recovery workflow is available.
 
 An event requires `idempotency_key`, `event_time`, `activity` (including
 `unsure`), `confidence`, and an `affected_interval`. The server records
@@ -294,6 +301,10 @@ interval, previous/new interpretation version, evidence quality, processing
 state, and reason code. Reusing an idempotency key with different feedback is
 rejected. Session/event reads are owner-scoped; account IDs are never accepted
 from the client.
+Scenario D events additionally require `recovery_context` with a participant-
+reported `posture` (`sitting`, `standing`, or `lying`), `fatigue` (`yes`, `no`,
+or `unsure`), and an optional note up to 300 characters. This context is stored
+with the event and is not treated as independent sensor evidence.
 
 Scenario baseline eligibility is separately configured in
 `api/config/scenarioBaselinePolicy.js`: at least one distinct formation day and

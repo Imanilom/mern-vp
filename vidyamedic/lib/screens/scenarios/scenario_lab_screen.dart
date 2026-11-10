@@ -43,6 +43,12 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
   String _initialActivity = 'unsure';
   String _confidence = 'unsure';
   String _initialConfidence = 'unsure';
+  String _recoveryPosture = 'sitting';
+  String _initialRecoveryPosture = 'sitting';
+  String _recoveryFatigue = 'unsure';
+  String _initialRecoveryFatigue = 'unsure';
+  String _initialRecoveryNote = '';
+  final TextEditingController _recoveryNoteController = TextEditingController();
   late String _activeScenarioId;
   bool _loading = true;
   bool _busy = false;
@@ -55,6 +61,12 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     super.initState();
     _activeScenarioId = widget.initialScenarioId ?? 'a';
     _load();
+  }
+
+  @override
+  void dispose() {
+    _recoveryNoteController.dispose();
+    super.dispose();
   }
 
   Map<String, dynamic> _map(dynamic value) =>
@@ -143,6 +155,17 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     );
     final selectedConfidence =
         latestCorrection?['confidence']?.toString() ?? 'unsure';
+    final recoveryContext = _map(latestCorrection?['recovery_context']);
+    final selectedPosture =
+        ['sitting', 'standing', 'lying'].contains(recoveryContext['posture'])
+            ? recoveryContext['posture'] as String
+            : 'sitting';
+    final selectedFatigue =
+        ['yes', 'no', 'unsure'].contains(recoveryContext['fatigue'])
+            ? recoveryContext['fatigue'] as String
+            : 'unsure';
+    final recoveryNote = recoveryContext['note']?.toString() ?? '';
+    _recoveryNoteController.text = recoveryNote;
     setState(() {
       _selectedSession = session.data;
       _events = eventItems;
@@ -152,6 +175,11 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
       _initialActivity = selectedActivity;
       _confidence = selectedConfidence;
       _initialConfidence = selectedConfidence;
+      _recoveryPosture = selectedPosture;
+      _initialRecoveryPosture = selectedPosture;
+      _recoveryFatigue = selectedFatigue;
+      _initialRecoveryFatigue = selectedFatigue;
+      _initialRecoveryNote = recoveryNote;
     });
   }
 
@@ -214,12 +242,27 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     final interpretation = _currentInterpretation(result.data!);
     final baseline = _map(interpretation?['baseline']);
     final baselineNeedsMoreData = baseline['status'] != 'ELIGIBLE';
+    final initialActivity = _scenarioActivityValue(
+      _map(interpretation?['context'])['activity'],
+    );
     setState(() {
       _selectedSession = result.data;
       _events = [];
       _questionnaires = [];
       _busy = false;
       _requiresRealRecording = false;
+      if (scenarioId == 'd') {
+        _activity = initialActivity;
+        _initialActivity = initialActivity;
+        _confidence = 'unsure';
+        _initialConfidence = 'unsure';
+        _recoveryPosture = 'sitting';
+        _initialRecoveryPosture = 'sitting';
+        _recoveryFatigue = 'unsure';
+        _initialRecoveryFatigue = 'unsure';
+        _recoveryNoteController.clear();
+        _initialRecoveryNote = '';
+      }
     });
     await _loadHistory();
     if (baselineNeedsMoreData && mounted) {
@@ -406,6 +449,12 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
         'event_time': eventTime.toIso8601String(),
         'activity': _activity,
         'confidence': _activity == 'unsure' ? 'unsure' : _confidence,
+        if (_activeScenarioId == 'd')
+          'recovery_context': {
+            'posture': _recoveryPosture,
+            'fatigue': _recoveryFatigue,
+            'note': _recoveryNoteController.text.trim(),
+          },
         'affected_interval': {
           'start': eventTime.toIso8601String(),
           'end': intervalEnd.toIso8601String(),
@@ -573,7 +622,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Skenario HCI A/B/C')),
+      appBar: AppBar(title: const Text('Skenario HCI A/B/C/D')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -669,7 +718,7 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Mode A/B/C menggunakan perekaman dan catatan kesehatan VidyaMedic yang sama; yang berubah hanya cara feedback dan interpretasi ditampilkan.',
+                'Mode A/B/C/D menggunakan perekaman dan catatan kesehatan VidyaMedic yang sama. Mode D meninjau observasi pascaaktivitas; satu observasi tidak cukup untuk menyimpulkan pemulihan.',
               ),
               const SizedBox(height: 10),
               Wrap(
@@ -745,9 +794,15 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
     final observation = _map(interpretation?['observation']);
     final quality = _map(observation['quality']);
     final baseline = _map(interpretation?['baseline']);
+    final recoveryObservation = _map(interpretation?['recovery_observation']);
     final evidence = _map(interpretation?['statistical_evidence']);
     final hasCorrectionChanges =
-        _activity != _initialActivity || _confidence != _initialConfidence;
+        _activity != _initialActivity
+        || _confidence != _initialConfidence
+        || (scenarioId == 'd'
+            && (_recoveryPosture != _initialRecoveryPosture
+                || _recoveryFatigue != _initialRecoveryFatigue
+                || _recoveryNoteController.text.trim() != _initialRecoveryNote));
     final statusLabel = switch (status) {
       'BASELINE_COMPATIBLE' => 'Kompatibel dengan baseline statistik',
       'DEVIATION_CANDIDATE' => 'Kandidat deviasi statistik',
@@ -766,6 +821,20 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
             ),
             const SizedBox(height: 12),
             _detailRow('Status bukti', statusLabel),
+            if (scenarioId == 'd') ...[
+              _detailRow(
+                'Status pemulihan',
+                recoveryObservation['status'] == 'UNDETERMINED'
+                    ? 'Belum dapat dipastikan dari satu observasi'
+                    : 'Belum tersedia',
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Perbandingan statistik di bawah bukan konfirmasi bahwa pemulihan telah selesai. Diperlukan pengamatan berkelanjutan dan bukti yang memadai.',
+                ),
+              ),
+            ],
             _detailRow('Versi interpretasi',
                 '${session['current_interpretation_version'] ?? 1}'),
             _detailRow('Konteks',
@@ -818,8 +887,10 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
               Text('Koreksi konteks',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
-              const Text(
-                'Respons dicatat sebagai laporan peserta. Skenario B tidak mengubah interpretasi; skenario C mengevaluasi ulang hanya bila bukti statistik tersedia.',
+              Text(
+                scenarioId == 'd'
+                    ? 'Catat aktivitas sebelum mulai merekam, postur saat observasi, dan apakah Anda masih merasa lelah. Semua jawaban adalah laporan peserta, bukan bukti bahwa pemulihan telah selesai.'
+                    : 'Respons aktivitas dicatat sebagai laporan peserta. Skenario B tidak mengubah interpretasi; skenario C mengevaluasi ulang hanya bila bukti statistik tersedia.',
               ),
               const SizedBox(height: 10),
               if (hasCorrectionChanges)
@@ -839,8 +910,11 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                 ),
               DropdownButtonFormField<String>(
                 initialValue: _activity,
-                decoration: const InputDecoration(
-                    labelText: 'Aktivitas saat observasi'),
+                decoration: InputDecoration(
+                  labelText: scenarioId == 'd'
+                      ? 'Aktivitas sebelum mulai merekam'
+                      : 'Aktivitas saat observasi',
+                ),
                 items: _activityOptions.entries
                     .map((entry) => DropdownMenuItem(
                           value: entry.key,
@@ -858,6 +932,57 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
                         });
                       },
               ),
+              if (scenarioId == 'd') ...[
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: _recoveryPosture,
+                  decoration: const InputDecoration(
+                    labelText: 'Postur saat mulai merekam',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'sitting', child: Text('Duduk')),
+                    DropdownMenuItem(value: 'standing', child: Text('Berdiri')),
+                    DropdownMenuItem(value: 'lying', child: Text('Berbaring')),
+                  ],
+                  onChanged: _busy
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            setState(() => _recoveryPosture = value);
+                          }
+                        },
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: _recoveryFatigue,
+                  decoration: const InputDecoration(
+                    labelText: 'Apakah masih merasa lelah?',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'yes', child: Text('Ya')),
+                    DropdownMenuItem(value: 'no', child: Text('Tidak')),
+                    DropdownMenuItem(value: 'unsure', child: Text('Tidak yakin')),
+                  ],
+                  onChanged: _busy
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            setState(() => _recoveryFatigue = value);
+                          }
+                        },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _recoveryNoteController,
+                  enabled: !_busy,
+                  maxLength: 300,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan tambahan (opsional)',
+                    hintText: 'Contoh: naik 2 lantai, lalu duduk',
+                  ),
+                ),
+              ],
               if (_activity != 'unsure')
                 DropdownButtonFormField<String>(
                   initialValue: _confidence,
@@ -880,7 +1005,11 @@ class _ScenarioLabScreenState extends State<ScenarioLabScreen> {
               FilledButton.icon(
                 onPressed: _busy ? null : _submitFeedback,
                 icon: const Icon(Icons.send_rounded),
-                label: const Text('Simpan feedback'),
+                label: Text(
+                  scenarioId == 'd'
+                      ? 'Simpan klarifikasi pemulihan'
+                      : 'Simpan feedback',
+                ),
               ),
             ],
             if (_events.isNotEmpty) ...[

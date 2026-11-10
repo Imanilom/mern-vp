@@ -17,10 +17,12 @@ const baseline = {
   is_mature: false,
 };
 
-test('HCI A/B/C definitions retain their original interactions', () => {
+test('HCI A/B/C/D definitions retain their interactions', () => {
   assert.equal(SCENARIO_DEFINITIONS.a.title, 'Satu arah');
   assert.equal(SCENARIO_DEFINITIONS.b.title, 'Dua arah nonadaptif');
   assert.equal(SCENARIO_DEFINITIONS.c.title, 'Dua arah adaptif');
+  assert.equal(SCENARIO_DEFINITIONS.d.title, 'Pemulihan');
+  assert.match(SCENARIO_DEFINITIONS.d.interaction, /tidak disimpulkan dari satu observasi/);
 });
 
 function windows(count, start = Date.UTC(2026, 0, 5, 8)) {
@@ -123,6 +125,32 @@ test('scenario interpretation remains unresolved without statistical evidence', 
     baseline,
     baselineReadiness: { ready: true, status: 'ELIGIBLE' },
     score: { available: false, reason: 'insufficient_baseline' },
+  });
+
+  test('scenario D keeps recovery undetermined from a single observation', () => {
+    const interpretation = buildScenarioInterpretation({
+      version: 1,
+      scenarioId: 'd',
+      segment: {
+        is_valid: true,
+        analyzed: true,
+        quality_audit: { gate_passed: true },
+        features: { mean_hr: 82, rmssd: 35 },
+      },
+      baseline,
+      baselineReadiness: { ready: true, status: 'ELIGIBLE' },
+      score: {
+        available: true,
+        distance: 0.4,
+        squared_distance: 0.16,
+        thresholds: { mild: 1 },
+        feature_keys: ['mean_hr', 'rmssd'],
+        sample_count: 10,
+      },
+    });
+
+    assert.equal(interpretation.recovery_observation.status, 'UNDETERMINED');
+    assert.notEqual(interpretation.status, 'RECOVERED');
   });
   assert.equal(result.status, 'UNRESOLVED');
   assert.equal(result.reason_code, 'insufficient_baseline');

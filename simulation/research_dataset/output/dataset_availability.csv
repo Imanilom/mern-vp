@@ -1,0 +1,9 @@
+﻿dataset_number,dataset,availability,notes
+01,Fisiologis mentah,parsial,Ada RR/HR pada data.csv dan fitur window di events.csv; tidak ada ACC mentah atau pemetaan episode untuk data.csv.
+02,Aktivitas dan transisi,parsial,"Ada log aktivitas aplikasi; waktu naik tangga, berhenti, dan mulai duduk terverifikasi tidak tersedia."
+03,Baseline personal,parsial,Log memuat mean/SD HR baseline untuk sebagian observasi; jumlah observasi dan RMSSD baseline tidak tersedia.
+04,Klarifikasi HITL,parsial,"Log event, jawaban klarifikasi, dan teks interpretasi tersedia bila tersimpan; pertanyaan dan alasan revisi tidak terstruktur."
+05,Label referensi independen,belum tersedia,Label review sistem diekspor terpisah; independensi dan kriteria referensi tidak dapat dipastikan dari sumber.
+06,Karakteristik peserta,belum tersedia,Kolom template disediakan tanpa mengarang karakteristik.
+07,Protokol eksperimen,parsial,Run dan waktu event tersedia; rincian prosedur dan intensitas tidak tersedia.
+08,Log komputasi dan SER,parsial,"Status/score/timing episode diekspor; audit trail, parameter lengkap, dan versi model dapat tidak tersedia."

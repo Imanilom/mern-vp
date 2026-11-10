@@ -1234,7 +1234,7 @@ const scenarioActivityValues = new Set([
 ]);
 
 export function validateScenarioId(scenarioId) {
-  if (!['a', 'b', 'c'].includes(scenarioId)) {
+  if (!['a', 'b', 'c', 'd'].includes(scenarioId)) {
     throw errorHandler(404, 'Skenario tidak ditemukan.');
   }
   return scenarioId;
@@ -1259,6 +1259,7 @@ export function validateScenarioEvent(body) {
       'activity',
       'confidence',
       'affected_interval',
+      'recovery_context',
     ]),
     'Field event skenario'
   );
@@ -1301,12 +1302,35 @@ export function validateScenarioEvent(body) {
   if (eventTime < start || eventTime > end) {
     throw errorHandler(400, 'event_time harus berada di dalam affected_interval.');
   }
+  let recoveryContext = null;
+  if ('recovery_context' in body) {
+    requireObject(body.recovery_context, 'recovery_context');
+    rejectUnknownFields(
+      body.recovery_context,
+      new Set(['posture', 'fatigue', 'note']),
+      'Field recovery_context'
+    );
+    if (!['sitting', 'standing', 'lying'].includes(body.recovery_context.posture)) {
+      throw errorHandler(400, 'recovery_context.posture tidak valid.');
+    }
+    if (!['yes', 'no', 'unsure'].includes(body.recovery_context.fatigue)) {
+      throw errorHandler(400, 'recovery_context.fatigue tidak valid.');
+    }
+    recoveryContext = {
+      posture: body.recovery_context.posture,
+      fatigue: body.recovery_context.fatigue,
+      note: 'note' in body.recovery_context
+        ? optionalString(body.recovery_context.note, 'recovery_context.note', 300).trim()
+        : '',
+    };
+  }
   return {
     idempotency_key: idempotencyKey,
     event_time: eventTime,
     activity: body.activity,
     confidence: body.confidence,
     affected_interval: { start, end },
+    recovery_context: recoveryContext,
   };
 }
 

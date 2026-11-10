@@ -142,4 +142,12 @@ export const api = {
       body: JSON.stringify({ status }),
     });
   },
+  async listScenarioSessions() {
+    return request('/patient-app/scenario-sessions');
+  },
+  async listScenarioEvents(sessionId) {
+    return request(
+      `/patient-app/scenario-sessions/${encodeURIComponent(sessionId)}/events`,
+    );
+  },
 };

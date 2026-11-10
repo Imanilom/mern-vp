@@ -3596,6 +3596,12 @@ export async function createPatientScenarioEvent(req, res) {
   if (scenarioSession.status !== 'ACTIVE') {
     throw errorHandler(409, 'Sesi skenario sudah selesai.');
   }
+  if (scenarioSession.scenario_id === 'd' && !input.recovery_context) {
+    throw errorHandler(400, 'Klarifikasi pemulihan skenario D wajib menyertakan postur dan kondisi lelah.');
+  }
+  if (scenarioSession.scenario_id !== 'd' && input.recovery_context) {
+    throw errorHandler(400, 'Klarifikasi pemulihan hanya tersedia untuk skenario D.');
+  }
   if (scenarioSession.scenario_id === 'a') {
     throw errorHandler(409, 'Skenario satu arah tidak menerima koreksi peserta.');
   }
@@ -3631,7 +3637,7 @@ export async function createPatientScenarioEvent(req, res) {
       is_valid: true,
     }).lean()
     : null;
-  const canAdapt = scenarioSession.scenario_id === 'c'
+  const canAdapt = ['c', 'd'].includes(scenarioSession.scenario_id)
     && input.activity !== 'unsure'
     && Boolean(segment);
   let newInterpretation = null;
@@ -3685,6 +3691,7 @@ export async function createPatientScenarioEvent(req, res) {
     value: input.activity,
     confidence: input.confidence,
     affected_interval: input.affected_interval,
+    recovery_context: input.recovery_context,
     previous_context: previousInterpretation.context?.activity ?? null,
     current_context: input.activity === 'unsure'
       ? null
@@ -3900,6 +3907,8 @@ function scenarioEventMatchesInput(event, input) {
   return event.event_time.getTime() === input.event_time.getTime()
     && event.value === input.activity
     && event.confidence === input.confidence
+    && JSON.stringify(event.recovery_context || null)
+      === JSON.stringify(input.recovery_context || null)
     && event.affected_interval?.start?.getTime()
       === input.affected_interval.start.getTime()
     && event.affected_interval?.end?.getTime()

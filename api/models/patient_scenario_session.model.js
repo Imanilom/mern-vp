@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const InterpretationSchema = new mongoose.Schema(
   {
     version: { type: Number, required: true },
-    scenario_id: { type: String, enum: ['a', 'b', 'c'], required: true },
+    scenario_id: { type: String, enum: ['a', 'b', 'c', 'd'], required: true },
     created_at: { type: Date, required: true },
     status: {
       type: String,
@@ -26,6 +26,7 @@ const InterpretationSchema = new mongoose.Schema(
     context: { type: mongoose.Schema.Types.Mixed, required: true },
     observed_at: { type: Date, default: null },
     observation: { type: mongoose.Schema.Types.Mixed, required: true },
+    recovery_observation: { type: mongoose.Schema.Types.Mixed, default: null },
     baseline: { type: mongoose.Schema.Types.Mixed, required: true },
     statistical_evidence: { type: mongoose.Schema.Types.Mixed, default: null },
     uncertainty: { type: String, required: true },
@@ -50,7 +51,7 @@ const PatientScenarioSessionSchema = new mongoose.Schema(
       enum: ['user', 'patient'],
     },
     participant_pseudonym: { type: String, required: true },
-    scenario_id: { type: String, enum: ['a', 'b', 'c'], required: true },
+    scenario_id: { type: String, enum: ['a', 'b', 'c', 'd'], required: true },
     consent: {
       given: { type: Boolean, required: true },
       recorded_at: { type: Date, required: true },

@@ -1,0 +1,129 @@
+﻿participant_id,episode_id,scenario_run_id,timestamp,event_type,question,response,context_before,context_after,decision_before,decision_after,recorded_status,revision_reason,interpretation_text,source
+P0001,,R00002,2026-11-02T06:11:27.900Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0001,,R00002,2026-11-02T06:11:57.862Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0001,,R00002,2026-11-02T06:12:58.735Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0001,,R00002,2026-11-02T06:14:28.044Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0001,,R00002,2026-11-02T06:14:58.080Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0001,,R00002,2026-11-02T06:15:57.607Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0001,,R00002,2026-11-02T06:16:57.451Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0001,,R00002,2026-11-02T06:17:57.341Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0001,,R00002,2026-11-02T06:18:59.348Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0001,,R00004,2026-11-02T07:16:49.107Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0004,,R00005,2026-11-02T08:15:30.782Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00028,2026-11-03T04:17:51.027Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00028,2026-11-03T04:18:00.792Z,clarification_submitted,,Saya berolahraga sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00031,2026-11-03T04:32:17.382Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00031,2026-11-03T04:32:21.816Z,clarification_submitted,,Saya berolahraga sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00031,2026-11-03T04:33:05.347Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00031,2026-11-03T04:33:18.261Z,clarification_submitted,,Saya berolahraga sebelum perubahan denyut · Hal lain: baru lari larian,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00031,2026-11-03T04:35:15.990Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00031,2026-11-03T04:35:21.793Z,clarification_submitted,,Saya berjalan atau bergerak sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00032,2026-11-03T04:38:15.944Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00032,2026-11-03T04:38:18.652Z,clarification_submitted,,Saya berjalan atau bergerak sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00032,2026-11-03T04:41:23.962Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00032,2026-11-03T04:41:25.651Z,clarification_submitted,,Saya berjalan atau bergerak sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00033,2026-11-03T04:57:08.659Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00033,2026-11-03T04:57:08.785Z,clarification_submitted,,Saya berjalan atau bergerak sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00033,2026-11-03T04:57:15.088Z,zero_shot_generated,,,,,,,candidate_deviation,,"Denyut jantung (*HR*) raw saat ini tercatat sebesar 99.0 bpm (pada tanggal 03/11/2026 berdasarkan 1 rekaman live), lebih tinggi dibandingkan rata-rata baseline pribadi untuk aktivitas duduk yaitu 80.8 bpm. 
+
+Keterbatasan data yang perlu diperhatikan:
+* Sampel Polar agregat saat ini berstatus belum tervalidasi.
+* Konteks yang dilaporkan pengguna (""Saya berjalan atau bergerak sebelum perubahan denyut"") dicatat sebagai laporan subjektif semata dan bukan bukti sebab-akibat.
+* Agregat populasi yang memenuhi syarat belum tersedia untuk perbandingan.
+* Portofolio baseline pribadi masih berada pada tahap awal (*cold start*) dengan data yang terbatas.
+
+Informasi ini bersifat observasional dan bukan diagnosis. Jika Anda merasakan gejala berat atau darurat, segera hubungi tenaga medis.",simulation/events.csv
+P0008,,R00033,2026-11-03T04:59:14.837Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00033,2026-11-03T04:59:43.418Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00033,2026-11-03T04:59:43.542Z,clarification_submitted,,Saya sedang beristirahat,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00033,2026-11-03T04:59:50.315Z,zero_shot_generated,,,,,,,candidate_deviation,,"Denyut jantung (HR) *live* Anda saat duduk tercatat 97,0 bpm pada 3 November 2026, lebih tinggi daripada rata-rata baseline pribadi untuk aktivitas sitting yaitu 80,8 bpm (berdasarkan 57 sampel wearable dengan HR rata-rata 99,3 bpm). 
+
+Keterbatasan data:
+* Sampel Polar agregat saat ini belum tervalidasi.
+* Konteks ""sedang beristirahat"" murni merupakan laporan subjektif pengguna dan bukan bukti sebab-akibat atau diagnosis.
+* Agregat populasi yang memenuhi syarat belum tersedia.
+* Riwayat aplikasi mencatat 0 check-in.
+
+*Catatan:* Ringkasan ini adalah informasi tentatif dari analisis model dan bukan diagnosis medis. Jika Anda merasakan gejala berat atau darurat, segera hubungi tenaga medis atau layanan darurat.",simulation/events.csv
+P0008,,R00033,2026-11-03T05:00:12.488Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00034,2026-11-03T05:07:50.168Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00034,2026-11-03T05:07:50.305Z,clarification_submitted,,Saya berjalan atau bergerak sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00034,2026-11-03T05:07:56.995Z,zero_shot_generated,,,,,,,candidate_deviation,,"Denyut jantung (HR) saat ini adalah 99.0 bpm, lebih tinggi dibandingkan rata-rata baseline aktivitas duduk pribadi yaitu 80.8 bpm (periode 30 Oktober 2026 – 03 November 2026, total 3.586 sampel detik dari perangkat Polar). 
+
+Keterbatasan data yang perlu diperhatikan:
+* **Sampel Agregat Belum Tervalidasi:** Kualitas sampel *wearable* saat ini berstatus belum tervalidasi.
+* **Konteks Subjektif:** Pernyataan pengguna (""Saya berjalan atau bergerak sebelum perubahan denyut"") dicatat sebagai laporan subjektif semata dan bukan bukti sebab-akibat atau diagnosis medis.
+* **Baseline Masih Berkembang:** Baseline aktivitas duduk masih berada pada tahap awal (*cold start* dengan 1 window), sehingga perbandingan ini bersifat tentatif.
+* **Baseline Populasi:** Agregat populasi yang memenuhi syarat belum tersedia.
+
+*Catatan: Informasi ini bersifat observasional dan bukan merupakan diagnosis. Jika Anda merasakan gejala berat atau darurat, segera hubungi tenaga medis atau layanan darurat.*",simulation/events.csv
+P0008,,R00034,2026-11-03T05:08:24.078Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00034,2026-11-03T05:08:26.620Z,clarification_submitted,,Saya berjalan atau bergerak sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00034,2026-11-03T05:08:39.051Z,zero_shot_generated,,,,,,,candidate_deviation,,"Rekaman ulang konteks Duduk: 33 bacaan berkualitas; rerata HR raw 95.3; baseline personal 80.8 (tidak diubah). Kesimpulan: Halo, saya turut memahami jika Anda merasa khawatir dengan perubahan denyut jantung ini. 
+
+Berdasarkan rekaman ulang singkat selama 30 detik untuk konteks **Duduk**, berikut ringkasan data yang tercatat:
+
+- **Periode & Jumlah Rekaman:** 1 sesi rekaman ulang dengan 33 bacaan berkualitas.
+- **Angka & Satuan:** Rerata HR rekaman ulang adalah **95.3 bpm**, sedangkan rata-rata baseline personal untuk aktivitas Duduk adalah **80.8 bpm**.
+- **Keterbatasan Terkait:** 
+  - Rekaman ulang ini hanya bersifat sebagai pembanding sesi sementara dan **tidak memperbarui baseline personal**.
+  - Laporan mengenai aktivitas fisik sebelum perubahan denyut merupakan informasi yang dilaporkan sendiri (*check-in* pengguna), bukan bukti sebab-akibat yang terbukti secara otomatis.
+  - Agregat populasi pembanding yang memenuhi syarat belum tersedia.
+
+*Catatan:* Ringkasan ini bukan merupakan diagnosis atau pengganti saran tenaga kesehatan. Jika Anda merasakan keluhan berat atau kondisi darurat, silakan segera menghubungi layanan medis terdekat.",simulation/events.csv
+P0008,,R00013,2026-11-03T05:09:31.173Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00035,2026-11-03T05:47:13.316Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00035,2026-11-03T05:47:13.416Z,clarification_submitted,,Saya sedang stres atau cemas,,,,,candidate_deviation,,,simulation/events.csv
+P0008,,R00035,2026-11-03T05:47:34.101Z,zero_shot_generated,,,,,,,candidate_deviation,,"Halo, saya turut memahami apa yang Anda rasakan. Berdasarkan data dari perangkat wearable PolarData Anda pada tanggal 03-11-2026, tercatat detak jantung (HR) raw live saat duduk sebesar **110,0 bpm**, yang berada di atas rata-rata baseline personal Anda yaitu **80,8 bpm** untuk aktivitas yang sama. Sementara itu, konteks bahwa Anda sedang merasa stres atau cemas merupakan laporan subjektif semata dan bukan merupakan diagnosis medis.
+
+**Keterbatasan data yang perlu diperhatikan:**
+* Periode data yang diamati mencakup seluruh riwayat PolarData dengan 3.687 titik sampel pada tanggal 03-11-2026 (ringkasan historis CAPAR).
+* Riwayat aplikasi pasien mencatat 0 check-in, dengan sampel wearable sebanyak 61 (HR rata-rata 99,4 bpm, rentang 74–166 bpm).
+* Sampel agregat Polar saat ini dinilai **belum tervalidasi**.
+* Agregat populasi yang memenuhi syarat belum tersedia (`population_baseline_available` bernilai false), sehingga perbandingan hanya didasarkan pada baseline personal.
+
+*Catatan:* Informasi ini bersifat observasional dan bukan diagnosis. Jika Anda merasakan gejala berat atau kekhawatiran medis, segera hubungi tenaga kesehatan atau layanan darurat.",simulation/events.csv
+P0009,,R00014,2026-11-03T07:21:52.291Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0009,,R00014,2026-11-03T07:22:01.663Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0009,,R00014,2026-11-03T07:22:38.909Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0010,,R00036,2026-11-03T08:21:34.399Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0010,,R00036,2026-11-03T08:21:34.533Z,clarification_submitted,,Saya sedang beraktivitas saat perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0011,,R00015,2026-11-03T09:08:05.399Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0012,,R00037,2026-11-03T09:39:46.480Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0012,,R00037,2026-11-03T09:39:46.603Z,clarification_submitted,,Saya berjalan atau bergerak sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0012,,R00037,2026-11-03T09:39:48.361Z,zero_shot_generated,,,,,,,candidate_deviation,,"Halo, saya turut memahami jika Anda merasa khawatir melihat perbedaan denyut jantung saat ini. Berikut adalah ringkasan data kesehatan Anda:
+
+*   **Periode dan Jumlah Rekaman:** Berdasarkan 1 rekaman check-in dan 15 sampel wearable dalam riwayat aplikasi Anda.
+*   **Data Denyut Jantung:** Denyut jantung *raw* saat ini adalah **115.0 bpm**, lebih tinggi dibandingkan rata-rata baseline pribadi Anda untuk aktivitas *sitting* yaitu **83.8 bpm**.
+*   **Laporan Subjektif:** Anda melaporkan bahwa Anda berjalan atau bergerak sebelum perubahan denyut tersebut (ini adalah laporan subjektif, bukan bukti sebab-akibat).
+*   **Keterbatasan Data:** Sampel Polar agregat saat ini **belum tervalidasi**, dan agregat populasi pembanding yang memenuhi syarat belum tersedia. Analisis CAPAR XAI juga belum tersedia untuk saat ini.
+
+Ringkasan ini bersifat observasional dan bukan merupakan diagnosis medis. Jika Anda merasakan gejala berat atau keadaan darurat, mohon segera menghubungi tenaga medis atau layanan darurat terdekat.",simulation/events.csv
+P0013,,R00016,2026-11-03T10:19:27.606Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0013,,R00016,2026-11-03T10:19:30.220Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv
+P0014,,R00039,2026-11-03T11:38:50.721Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0014,,R00039,2026-11-03T11:38:50.838Z,clarification_submitted,,Saya berjalan atau bergerak sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0014,,R00039,2026-11-03T11:38:57.856Z,zero_shot_generated,,,,,,,candidate_deviation,,"Halo. Denyut jantung (*HR*) raw saat ini adalah **144.0 bpm** selama aktivitas *sitting*, yang lebih tinggi dibandingkan rata-rata baseline personal sebesar **101.4 bpm**. 
+
+Berdasarkan konteks yang Anda laporkan, Anda menyatakan bahwa Anda berjalan atau bergerak sebelum perubahan denyut tersebut (ini adalah laporan subjektif dan bukan bukti sebab-akibat).
+
+**Keterbatasan Data:**
+* Sampel Polar agregat saat ini **belum tervalidasi**.
+* Agregat populasi yang memenuhi syarat belum tersedia.
+* Analisis ini bersifat observasional dan bukan merupakan diagnosis medis.
+
+Jika Anda merasakan gejala berat atau keadaan darurat, harap segera menghubungi tenaga medis atau layanan darurat.",simulation/events.csv
+P0015,,R00038,2026-11-03T11:06:43.443Z,clarification_requested,,,,,,,candidate_deviation,,,simulation/events.csv
+P0015,,R00038,2026-11-03T11:06:43.566Z,clarification_submitted,,Saya berolahraga sebelum perubahan denyut,,,,,candidate_deviation,,,simulation/events.csv
+P0015,,R00038,2026-11-03T11:06:53.249Z,zero_shot_generated,,,,,,,candidate_deviation,,"Halo, saya memahami kekhawatiran Anda. Pada tanggal 03 November 2026, tercatat HR raw sebesar 135.0 bpm saat aktivitas *sitting*, yang berada di atas rata-rata baseline personal sebesar 86.8 bpm. 
+
+Berikut adalah ringkasan data dan keterbatasan yang perlu diperhatikan:
+- **Periode & Jumlah Rekaman:** Seluruh riwayat PolarData yang tersedia adalah 81 titik pada 03 November 2026 (dengan sampel wearable sebanyak 22 rekaman).
+- **Keterbatasan Data:** 
+  - Sampel Polar agregat saat ini belum tervalidasi.
+  - Baseline matang belum tersedia.
+  - Konteks ""Saya berolahraga sebelum perubahan denyut"" dilaporkan secara subjektif oleh pengguna dan bukan merupakan bukti sebab-akibat.
+  - Agregat populasi yang memenuhi syarat belum tersedia.
+
+Hasil analisis ini bersifat observasional dan bukan merupakan diagnosis. Jika Anda merasakan gejala berat atau keadaan darurat, segera hubungi tenaga medis atau layanan darurat. Disarankan untuk terus memperbarui data atau mengisi *check-in* secara berkala, serta berkonsultasi langsung dengan tenaga kesehatan untuk saran medis yang tepat.",simulation/events.csv
+P0016,,R00017,2026-11-03T12:11:57.841Z,feedback_presented,,,,,,,candidate_deviation,,,simulation/events.csv

@@ -15,6 +15,10 @@ dist-ssr
 *.local
 
 graphs
+/simulation/episodes.csv
+/simulation/events.csv
+/simulation/interpretations.jsonl
+/simulation/scenario_comparison.xlsx
 
 # Editor directories and files
 .vscode/*
@@ -31,4 +35,3 @@ node_modules
 npm-debug.log
 package-lock.json
 !vidyamedic-web/package-lock.json
-

@@ -23,6 +23,7 @@ import PredictionPage from './pages/PredictionPage';
 import ProfilePage from './pages/ProfilePage';
 import ReportsPage from './pages/ReportsPage';
 import DoctorLogsPage from './pages/DoctorLogsPage';
+import ExperimentPage from './pages/ExperimentPage';
 
 export default function App() {
   const [account, setAccount] = useState(null);
@@ -167,7 +168,10 @@ export default function App() {
   const visibleNavItems = isDoctor
     ? NAV_ITEMS.filter((item) => item.id === 'doctor_logs')
     : NAV_ITEMS.filter((item) => item.id !== 'doctor_logs');
-  const sectionName = visibleNavItems.find((item) => item.id === active)?.label || 'Monitoring';
+  const flatVisibleNavItems = visibleNavItems.flatMap((item) => (
+    item.children ? [item, ...item.children] : [item]
+  ));
+  const sectionName = flatVisibleNavItems.find((item) => item.id === active)?.label || 'Monitoring';
   let pageContent;
   if (isDoctor) {
     pageContent = <DoctorLogsPage />;
@@ -214,6 +218,8 @@ export default function App() {
     );
   } else if (active === 'administrasi') {
     pageContent = <DevicePrivacyPage dashboard={dashboard} onNavigate={setActive} />;
+  } else if (active.startsWith('capar_')) {
+    pageContent = <ExperimentPage active={active} dashboard={dashboard} />;
   } else {
     pageContent = (
       <MonitoringPage

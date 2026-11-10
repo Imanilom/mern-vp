@@ -131,7 +131,7 @@ test('scenario sessions retain versioned interpretations and explicit consent', 
   assert.ok(PatientScenarioSession.schema.path('interpretations'));
   assert.deepEqual(
     PatientScenarioSession.schema.path('scenario_id').enumValues,
-    ['a', 'b', 'c']
+    ['a', 'b', 'c', 'd']
   );
   assert.ok(
     PatientScenarioSession.schema.path('source').enumValues.includes(
@@ -144,6 +144,11 @@ test('scenario events are scoped and deduplicated per session', () => {
   assert.ok(PatientScenarioEvent.schema.path('account_id'));
   assert.ok(PatientScenarioEvent.schema.path('session_id'));
   assert.ok(PatientScenarioEvent.schema.path('idempotency_key'));
+  assert.ok(PatientScenarioEvent.schema.path('recovery_context'));
+  assert.deepEqual(
+    PatientScenarioEvent.schema.path('scenario_id').enumValues,
+    ['a', 'b', 'c', 'd']
+  );
   const idempotencyIndex = PatientScenarioEvent.schema.indexes().find(
     ([keys, options]) => (
       keys.session_id === 1

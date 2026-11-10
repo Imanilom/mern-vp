@@ -228,12 +228,12 @@ void main() {
     );
     expect(find.text('Riwayat baseline dan CAPAR'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Skenario HCI A/B/C'),
+      find.text('Skenario HCI A/B/C/D'),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Komunitas'), findsOneWidget);
-    expect(find.text('Skenario HCI A/B/C'), findsOneWidget);
+    expect(find.text('Skenario HCI A/B/C/D'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Komunitas'),
       250,

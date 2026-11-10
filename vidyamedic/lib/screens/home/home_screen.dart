@@ -2533,7 +2533,7 @@ class _InsightsHubTabState extends State<_InsightsHubTab> {
           ),
           _InsightLinkCard(
             icon: Icons.science_outlined,
-            title: 'Skenario HCI A/B/C',
+            title: 'Skenario HCI A/B/C/D',
             subtitle: 'Buka fitur skenario penelitian yang tersedia',
             onTap: () => Navigator.pushNamed(context, '/scenarios'),
           ),

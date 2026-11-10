@@ -1,0 +1,19 @@
+﻿participant_id,episode_id,context,HR_mean_bpm,HR_SD_bpm,RMSSD_mean_ms,RMSSD_SD_ms,baseline_observation_count,source_record_count,source_run_id,source_timestamp,baseline_source
+P0001,,sitting,84.4,1.4966629547095764,,,,18,R00002,2026-11-02T06:18:59.348Z,patient_hil_scenario_logs evidence
+P0001,,sitting,84.4,1.4966629547095764,,,,2,R00004,2026-11-02T07:16:49.107Z,patient_hil_scenario_logs evidence
+P0004,,sitting,85.6,1.3564659966250536,,,,2,R00005,2026-11-02T08:15:30.782Z,patient_hil_scenario_logs evidence
+P0008,,sitting,80.8,1.7204650534085253,,,,3,R00028,2026-11-03T04:18:00.792Z,patient_hil_scenario_logs evidence
+P0008,,sitting,80.8,1.7204650534085253,,,,9,R00031,2026-11-03T04:35:21.793Z,patient_hil_scenario_logs evidence
+P0008,,sitting,80.8,1.7204650534085253,,,,6,R00032,2026-11-03T04:41:25.651Z,patient_hil_scenario_logs evidence
+P0008,,sitting,80.8,1.7204650534085253,,,,14,R00033,2026-11-03T05:00:12.488Z,patient_hil_scenario_logs evidence
+P0008,,sitting,80.8,1.7204650534085253,,,,9,R00034,2026-11-03T05:08:39.051Z,patient_hil_scenario_logs evidence
+P0008,,sitting,80.8,1.7204650534085253,,,,2,R00013,2026-11-03T05:09:31.173Z,patient_hil_scenario_logs evidence
+P0008,,sitting,80.8,1.7204650534085253,,,,5,R00035,2026-11-03T05:47:59.545Z,patient_hil_scenario_logs evidence
+P0009,,sitting,112.25,5.973901572674261,,,,7,R00014,2026-11-03T07:22:38.909Z,patient_hil_scenario_logs evidence
+P0010,,sitting,71.4,3.555277766926235,,,,4,R00036,2026-11-03T08:23:14.836Z,patient_hil_scenario_logs evidence
+P0011,,sitting,99.4,3.7202150475476548,,,,3,R00015,2026-11-03T09:08:05.821Z,patient_hil_scenario_logs evidence
+P0012,,sitting,83.8,3.124099870362662,,,,6,R00037,2026-11-03T09:40:35.192Z,patient_hil_scenario_logs evidence
+P0013,,sitting,92.4,4.586937976471886,,,,5,R00016,2026-11-03T10:20:26.496Z,patient_hil_scenario_logs evidence
+P0014,,sitting,101.4,2.9393876913398134,,,,5,R00039,2026-11-03T11:39:47.731Z,patient_hil_scenario_logs evidence
+P0015,,sitting,86.8,3.762977544445356,,,,5,R00038,2026-11-03T11:07:39.075Z,patient_hil_scenario_logs evidence
+P0016,,sitting,81,2.1908902300206643,,,,3,R00017,2026-11-03T12:11:58.448Z,patient_hil_scenario_logs evidence

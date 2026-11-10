@@ -43,6 +43,13 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .nav-active, .nav-active:hover { color: #e8fffb; background: rgba(71, 185, 169, .17); }
 .nav-active > svg { color: #69d4c4; }
 .nav-indicator { position: absolute; top: 11px; right: 0; width: 3px; height: 22px; background: #58c6b7; border-radius: 5px 0 0 5px; }
+.nav-group { display: grid; gap: 3px; }
+.nav-submenu { display: grid; gap: 2px; margin: 0 0 4px 17px; padding-left: 11px; border-left: 1px solid rgba(177,192,207,.24); }
+.nav-subitem { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; color: #9fb1c0; background: transparent; border: 0; border-radius: 8px; text-align: left; }
+.nav-subitem span { font-size: 11px; font-weight: 600; }
+.nav-subitem:hover { color: #fff; background: rgba(255,255,255,.07); }
+.nav-subactive, .nav-subactive:hover { color: #e8fffb; background: rgba(71,185,169,.14); }
+.nav-subactive svg { color: #69d4c4; }
 .sidebar-help { margin: auto 2px 16px; padding: 13px 12px; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.08); border-radius: 13px; }
 .help-icon { display: grid; width: 30px; height: 30px; margin-bottom: 9px; color: #71d7c6; background: rgba(75,190,172,.14); border-radius: 9px; place-items: center; }
 .sidebar-help strong { color: #f1f8f3; font-family: Manrope, sans-serif; font-size: 12px; }
