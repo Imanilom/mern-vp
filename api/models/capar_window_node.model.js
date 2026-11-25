@@ -22,11 +22,21 @@ const CaparWindowNodeSchema = new mongoose.Schema(
     window_start: { type: Number, required: true },
     window_end: { type: Number, required: true },
     window_type: { type: String, enum: ['5min', '1min'], required: true },
-    activity_label: {
+    time_period: {
       type: String,
-      enum: ['Rest', 'Light', 'Moderate', 'Intense', 'Unknown'],
-      default: 'Unknown',
+      enum: ['morning', 'afternoon', 'evening', 'night', null],
+      default: null,
     },
+    raw_count: { type: Number, default: 0 },
+    is_valid: { type: Boolean, default: true },
+    rr_status: { type: String, default: null },
+    signal_quality_detail: {
+      q_signal: { type: Number, default: null },
+      q_complete: { type: Number, default: null },
+      q_context: { type: Number, default: null },
+      reasons: { type: [String], default: undefined },
+    },
+    activity_label: { type: String, default: 'Unknown' },
     analyzed: { type: Boolean, default: false },
     classification: {
       type: String,
@@ -36,6 +46,7 @@ const CaparWindowNodeSchema = new mongoose.Schema(
     anomaly_score: { type: Number, default: null },
     features: {
       mean_hr: { type: Number, default: null },
+      mean_rr: { type: Number, default: null },
       sdnn: { type: Number, default: null },
       rmssd: { type: Number, default: null },
       dfa_alpha1: { type: Number, default: null },

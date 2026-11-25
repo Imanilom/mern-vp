@@ -18,6 +18,14 @@ import PatientScenarioEvent from '../models/patient_scenario_event.model.js';
 import PatientScenarioQuestionnaire from '../models/patient_scenario_questionnaire.model.js';
 import PatientScenarioSession from '../models/patient_scenario_session.model.js';
 import CaparWindowNode from '../models/capar_window_node.model.js';
+import CaparWindowDailyAnalysis from '../models/capar_window_daily_analysis.model.js';
+import Baseline from '../models/baseline.model.js';
+import {
+  buildCaparDailyAnalysis,
+  getJakartaDayRange,
+  getTimePeriodForWindow,
+  normalizeEpochMs,
+} from '../utils/caparWindowAnalytics.js';
 
 const DOCTOR_LOG_SOURCES = [
   { type: 'hil_session', model: PatientHilSession, timeField: 'started_at' },
@@ -238,6 +246,15 @@ export async function listDoctorPatientLogs(req, res) {
 
 export async function listDoctorCaparWindowNodes(req, res) {
   try {
+    const allowedQuery = new Set(['patient_id', 'date']);
+    const unknownFields = Object.keys(req.query).filter((field) => !allowedQuery.has(field));
+    if (unknownFields.length) {
+      return res.status(400).json({
+        success: false,
+        message: `Query tidak dikenal: ${unknownFields.join(', ')}.`,
+      });
+    }
+
     const patientId = String(req.query.patient_id || '');
     if (!mongoose.isValidObjectId(patientId)) {
       return res.status(400).json({ success: false, message: 'patient_id tidak valid.' });
@@ -250,39 +267,130 @@ export async function listDoctorCaparWindowNodes(req, res) {
     }
     const userAccount = patient.account_refs?.find((ref) => ref.account_type === 'user');
     if (!userAccount) {
-      return res.json({ success: true, count: 0, data: [] });
+      return res.json({
+        success: true,
+        count: 0,
+        dates: [],
+        selected_date: null,
+        data: [],
+        baselines: [],
+        daily_analysis: null,
+        activity_summaries: [],
+        activity_runs: [],
+        transitions: [],
+      });
     }
 
-    const segments = await Segment.find({
-      user_id: userAccount.account_id,
-      is_valid: true,
-    })
-      .select('_id window_start window_end window_type activity_label analyzed classification anomaly_score features.mean_hr features.sdnn features.rmssd features.dfa_alpha1 features.motion_intensity')
-      .sort({ window_start: -1 })
-      .limit(100)
-      .lean();
+    const dates = await Segment.aggregate([
+      { $match: { user_id: userAccount.account_id, window_start: { $type: 'number' } } },
+      {
+        $project: {
+          day: {
+            $dateToString: {
+              date: {
+                $toDate: {
+                  $cond: [
+                    { $lt: ['$window_start', 100_000_000_000] },
+                    { $multiply: ['$window_start', 1000] },
+                    '$window_start',
+                  ],
+                },
+              },
+              format: '%Y-%m-%d',
+              timezone: 'Asia/Jakarta',
+            },
+          },
+        },
+      },
+      { $group: { _id: '$day' } },
+      { $sort: { _id: -1 } },
+    ]);
+    const availableDates = dates.map(({ _id }) => _id);
+    const requestedDate = req.query.date === undefined ? null : String(req.query.date);
+    let selectedDate = requestedDate || availableDates[0] || null;
+    let dayRange = null;
+    if (selectedDate) {
+      try {
+        dayRange = getJakartaDayRange(selectedDate);
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+    }
+
+    let segments = [];
+    if (dayRange) {
+      segments = await Segment.find({
+        user_id: userAccount.account_id,
+        $or: [
+          {
+            window_start: {
+              $gte: dayRange.startMs,
+              $lt: dayRange.endMs,
+            },
+          },
+          {
+            window_start: {
+              $gte: Math.floor(dayRange.startMs / 1000),
+              $lt: Math.floor(dayRange.endMs / 1000),
+            },
+          },
+        ],
+      })
+        .select('_id window_start window_end window_type activity_label raw_count is_valid analyzed classification anomaly_score rr_status signal_quality_detail features.mean_hr features.mean_rr features.sdnn features.rmssd features.dfa_alpha1 features.motion_intensity')
+        .limit(10001)
+        .lean();
+      segments.sort((first, second) => (
+        (normalizeEpochMs(first.window_start) ?? 0)
+        - (normalizeEpochMs(second.window_start) ?? 0)
+        || String(first._id).localeCompare(String(second._id))
+      ));
+    }
+    const truncated = segments.length > 10000;
+    if (truncated) segments = segments.slice(0, 10000);
     const savedNodes = segments.length
       ? await CaparWindowNode.find({
         segment_id: { $in: segments.map((segment) => segment._id) },
       })
-        .select('segment_id createdAt')
+        .select('segment_id createdAt is_valid')
         .lean()
       : [];
     const savedBySegment = new Map(
       savedNodes.map((node) => [String(node.segment_id), node])
     );
+    const baselines = await Baseline.find({ user_id: userAccount.account_id })
+      .select('activity time_period stats.mean_hr stats.mean_rr stats.rmssd stats.dfa_alpha1 stats.motion_intensity segment_count is_mature MATURITY_THRESHOLD maturity_detail.level')
+      .lean();
+    const summary = buildCaparDailyAnalysis(segments);
+    const dailyAnalysis = selectedDate
+      ? await CaparWindowDailyAnalysis.findOne({
+        account_id: userAccount.account_id,
+        analysis_date: selectedDate,
+      }).lean()
+      : null;
 
     res.json({
       success: true,
       count: segments.length,
+      dates: availableDates,
+      selected_date: selectedDate,
+      truncated,
       data: segments.map((segment) => {
         const savedNode = savedBySegment.get(String(segment._id));
         return {
           ...segment,
+          time_period: getTimePeriodForWindow(segment.window_start),
           saved: Boolean(savedNode),
           saved_at: savedNode?.createdAt || null,
         };
       }),
+      baselines,
+      daily_analysis: dailyAnalysis,
+      source_window_count: summary.source_window_count,
+      valid_window_count: summary.valid_window_count,
+      invalid_window_count: summary.invalid_window_count,
+      activity_summaries: summary.activity_summaries,
+      activity_runs: summary.activity_runs,
+      transitions: summary.transitions,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -313,9 +421,8 @@ export async function saveDoctorCaparWindowNode(req, res) {
     const segment = await Segment.findOne({
       _id: segmentId,
       user_id: userAccount.account_id,
-      is_valid: true,
     })
-      .select('_id user_id window_start window_end window_type activity_label analyzed classification anomaly_score features.mean_hr features.sdnn features.rmssd features.dfa_alpha1 features.motion_intensity')
+      .select('_id user_id window_start window_end window_type activity_label raw_count is_valid analyzed classification anomaly_score rr_status signal_quality_detail features.mean_hr features.mean_rr features.sdnn features.rmssd features.dfa_alpha1 features.motion_intensity')
       .lean();
     if (!segment) {
       return res.status(404).json({
@@ -334,12 +441,23 @@ export async function saveDoctorCaparWindowNode(req, res) {
           window_start: segment.window_start,
           window_end: segment.window_end,
           window_type: segment.window_type,
+          time_period: getTimePeriodForWindow(segment.window_start),
+          raw_count: segment.raw_count,
+          is_valid: segment.is_valid,
           activity_label: segment.activity_label,
           analyzed: segment.analyzed,
           classification: segment.classification,
           anomaly_score: segment.anomaly_score,
+          rr_status: segment.rr_status,
+          signal_quality_detail: {
+            q_signal: segment.signal_quality_detail?.q_signal,
+            q_complete: segment.signal_quality_detail?.q_complete,
+            q_context: segment.signal_quality_detail?.q_context,
+            reasons: segment.signal_quality_detail?.reasons,
+          },
           features: {
             mean_hr: segment.features?.mean_hr,
+            mean_rr: segment.features?.mean_rr,
             sdnn: segment.features?.sdnn,
             rmssd: segment.features?.rmssd,
             dfa_alpha1: segment.features?.dfa_alpha1,
@@ -351,6 +469,107 @@ export async function saveDoctorCaparWindowNode(req, res) {
     );
 
     res.status(201).json({ success: true, data: node });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function saveDoctorCaparDailyAnalysis(req, res) {
+  try {
+    const patientId = String(req.body?.patient_id || '');
+    const analysisDate = String(req.body?.date || '');
+    if (!mongoose.isValidObjectId(patientId)) {
+      return res.status(400).json({ success: false, message: 'patient_id tidak valid.' });
+    }
+
+    let dayRange;
+    try {
+      dayRange = getJakartaDayRange(analysisDate);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+
+    const patients = await getDoctorPatientAccounts();
+    const patient = patients.find((item) => String(item._id) === patientId);
+    if (!patient) {
+      return res.status(404).json({ success: false, message: 'Pasien tidak ditemukan.' });
+    }
+    const userAccount = patient.account_refs?.find((ref) => ref.account_type === 'user');
+    if (!userAccount) {
+      return res.status(404).json({ success: false, message: 'Akun CAPAR pasien tidak tersedia.' });
+    }
+
+    const segments = await Segment.find({
+      user_id: userAccount.account_id,
+      $or: [
+        {
+          window_start: {
+            $gte: dayRange.startMs,
+            $lt: dayRange.endMs,
+          },
+        },
+        {
+          window_start: {
+            $gte: Math.floor(dayRange.startMs / 1000),
+            $lt: Math.floor(dayRange.endMs / 1000),
+          },
+        },
+      ],
+    })
+      .select('_id window_start window_end activity_label raw_count is_valid features.mean_hr features.mean_rr features.motion_intensity features.rmssd features.dfa_alpha1')
+      .lean();
+
+    if (!segments.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tidak ada window CAPAR pada tanggal yang dipilih.',
+      });
+    }
+
+    const analysis = buildCaparDailyAnalysis(segments);
+    const activities = [...new Set(segments.map((segment) => segment.activity_label || 'Unknown'))];
+    const baselineRows = await Baseline.find({
+      user_id: userAccount.account_id,
+      activity: { $in: activities },
+    })
+      .select('activity time_period stats.mean_hr stats.mean_rr stats.rmssd stats.dfa_alpha1 stats.motion_intensity segment_count is_mature maturity_detail.level')
+      .lean();
+    const baselineSnapshots = baselineRows.map((baseline) => ({
+      activity: baseline.activity,
+      time_period: baseline.time_period,
+      segment_count: baseline.segment_count,
+      is_mature: baseline.is_mature,
+      maturity_level: baseline.maturity_detail?.level || null,
+      mean_hr: baseline.stats?.mean_hr?.mean,
+      std_hr: baseline.stats?.mean_hr?.std,
+      mean_rr: baseline.stats?.mean_rr?.mean,
+      mean_motion_intensity: baseline.stats?.motion_intensity?.mean,
+      mean_rmssd: baseline.stats?.rmssd?.mean,
+      mean_dfa_alpha1: baseline.stats?.dfa_alpha1?.mean,
+    }));
+    const savedAnalysis = await CaparWindowDailyAnalysis.findOneAndUpdate(
+      {
+        account_id: userAccount.account_id,
+        analysis_date: analysisDate,
+      },
+      {
+        $set: {
+          source_window_count: analysis.source_window_count,
+          valid_window_count: analysis.valid_window_count,
+          invalid_window_count: analysis.invalid_window_count,
+          source_segment_ids: segments.map((segment) => segment._id),
+          activity_summaries: analysis.activity_summaries,
+          activity_runs: analysis.activity_runs,
+          transitions: analysis.transitions,
+          baseline_snapshots: baselineSnapshots,
+          generated_by: req.user.id,
+          analysis_version: 'capar-window-daily-v1',
+        },
+      },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(201).json({ success: true, data: savedAnalysis });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

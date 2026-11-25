@@ -62,15 +62,21 @@ export const api = {
     if (cursor) params.set('cursor', cursor);
     return request(`/doctor/logs?${params.toString()}`);
   },
-  async listDoctorCaparWindowNodes(patientId) {
+  async listDoctorCaparWindowNodes(patientId, date) {
     const params = new URLSearchParams({ patient_id: patientId });
-    const result = await request(`/doctor/capar-window-nodes?${params.toString()}`);
-    return result.data || [];
+    if (date) params.set('date', date);
+    return request(`/doctor/capar-window-nodes?${params.toString()}`);
   },
   async saveDoctorCaparWindowNode(patientId, segmentId) {
     return request('/doctor/capar-window-nodes', {
       method: 'POST',
       body: JSON.stringify({ patient_id: patientId, segment_id: segmentId }),
+    });
+  },
+  async saveDoctorCaparDailyAnalysis(patientId, date) {
+    return request('/doctor/capar-window-analyses/daily', {
+      method: 'POST',
+      body: JSON.stringify({ patient_id: patientId, date }),
     });
   },
   async signout() {
