@@ -9,6 +9,8 @@ import {
   getDoctorPatientConfidence,
   listDoctorLogPatients,
   listDoctorPatientLogs,
+  listDoctorCaparWindowNodes,
+  saveDoctorCaparWindowNode,
 } from '../controllers/doctor.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
 
@@ -28,6 +30,8 @@ router.use(requireDoctor);
 router.get('/patients', getDoctorPatients);
 router.get('/logs/patients', listDoctorLogPatients);
 router.get('/logs', listDoctorPatientLogs);
+router.get('/capar-window-nodes', listDoctorCaparWindowNodes);
+router.post('/capar-window-nodes', saveDoctorCaparWindowNode);
 router.get('/patient/:id', getDoctorPatientById);
 router.get('/patient/:id/live', getDoctorPatientLive);
 router.get('/patient/:id/history', getDoctorPatientHistory);

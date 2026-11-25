@@ -24,6 +24,7 @@ import ProfilePage from './pages/ProfilePage';
 import ReportsPage from './pages/ReportsPage';
 import DoctorLogsPage from './pages/DoctorLogsPage';
 import ExperimentPage from './pages/ExperimentPage';
+import CaparWindowNodesPage from './pages/CaparWindowNodesPage';
 
 export default function App() {
   const [account, setAccount] = useState(null);
@@ -166,15 +167,17 @@ export default function App() {
 
   const isDoctor = account?.role === 'doctor';
   const visibleNavItems = isDoctor
-    ? NAV_ITEMS.filter((item) => item.id === 'doctor_logs')
-    : NAV_ITEMS.filter((item) => item.id !== 'doctor_logs');
+    ? NAV_ITEMS.filter((item) => ['doctor_logs', 'doctor_capar_nodes'].includes(item.id))
+    : NAV_ITEMS.filter((item) => !['doctor_logs', 'doctor_capar_nodes'].includes(item.id));
   const flatVisibleNavItems = visibleNavItems.flatMap((item) => (
     item.children ? [item, ...item.children] : [item]
   ));
   const sectionName = flatVisibleNavItems.find((item) => item.id === active)?.label || 'Monitoring';
   let pageContent;
   if (isDoctor) {
-    pageContent = <DoctorLogsPage />;
+    pageContent = active === 'doctor_capar_nodes'
+      ? <CaparWindowNodesPage />
+      : <DoctorLogsPage />;
   } else if (active === 'dashboard') {
     pageContent = <DashboardPage account={account} dashboard={dashboard} onNavigate={setActive} />;
   } else if (active === 'profil') {

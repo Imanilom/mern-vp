@@ -62,6 +62,17 @@ export const api = {
     if (cursor) params.set('cursor', cursor);
     return request(`/doctor/logs?${params.toString()}`);
   },
+  async listDoctorCaparWindowNodes(patientId) {
+    const params = new URLSearchParams({ patient_id: patientId });
+    const result = await request(`/doctor/capar-window-nodes?${params.toString()}`);
+    return result.data || [];
+  },
+  async saveDoctorCaparWindowNode(patientId, segmentId) {
+    return request('/doctor/capar-window-nodes', {
+      method: 'POST',
+      body: JSON.stringify({ patient_id: patientId, segment_id: segmentId }),
+    });
+  },
   async signout() {
     try {
       await request('/auth/signout');

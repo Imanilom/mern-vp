@@ -5,6 +5,7 @@ import {
   FlaskConical,
   Activity,
   CircleHelp,
+  GitBranch,
   History,
   HeartPulse,
   LayoutDashboard,
@@ -36,6 +37,7 @@ export const NAV_ITEMS = [
     ],
   },
   { id: 'doctor_logs', label: 'Log Pasien', icon: ClipboardList },
+  { id: 'doctor_capar_nodes', label: 'Node Window CAPAR', icon: GitBranch },
 ];
 
 export const INITIAL_PROFILE = {

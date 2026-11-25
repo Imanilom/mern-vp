@@ -17,6 +17,7 @@ import PatientHilSession from '../models/patient_hil_session.model.js';
 import PatientScenarioEvent from '../models/patient_scenario_event.model.js';
 import PatientScenarioQuestionnaire from '../models/patient_scenario_questionnaire.model.js';
 import PatientScenarioSession from '../models/patient_scenario_session.model.js';
+import CaparWindowNode from '../models/capar_window_node.model.js';
 
 const DOCTOR_LOG_SOURCES = [
   { type: 'hil_session', model: PatientHilSession, timeField: 'started_at' },
@@ -230,6 +231,126 @@ export async function listDoctorPatientLogs(req, res) {
       next_cursor: nextCursor,
       data,
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function listDoctorCaparWindowNodes(req, res) {
+  try {
+    const patientId = String(req.query.patient_id || '');
+    if (!mongoose.isValidObjectId(patientId)) {
+      return res.status(400).json({ success: false, message: 'patient_id tidak valid.' });
+    }
+
+    const patients = await getDoctorPatientAccounts();
+    const patient = patients.find((item) => String(item._id) === patientId);
+    if (!patient) {
+      return res.status(404).json({ success: false, message: 'Pasien tidak ditemukan.' });
+    }
+    const userAccount = patient.account_refs?.find((ref) => ref.account_type === 'user');
+    if (!userAccount) {
+      return res.json({ success: true, count: 0, data: [] });
+    }
+
+    const segments = await Segment.find({
+      user_id: userAccount.account_id,
+      is_valid: true,
+    })
+      .select('_id window_start window_end window_type activity_label analyzed classification anomaly_score features.mean_hr features.sdnn features.rmssd features.dfa_alpha1 features.motion_intensity')
+      .sort({ window_start: -1 })
+      .limit(100)
+      .lean();
+    const savedNodes = segments.length
+      ? await CaparWindowNode.find({
+        segment_id: { $in: segments.map((segment) => segment._id) },
+      })
+        .select('segment_id createdAt')
+        .lean()
+      : [];
+    const savedBySegment = new Map(
+      savedNodes.map((node) => [String(node.segment_id), node])
+    );
+
+    res.json({
+      success: true,
+      count: segments.length,
+      data: segments.map((segment) => {
+        const savedNode = savedBySegment.get(String(segment._id));
+        return {
+          ...segment,
+          saved: Boolean(savedNode),
+          saved_at: savedNode?.createdAt || null,
+        };
+      }),
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function saveDoctorCaparWindowNode(req, res) {
+  try {
+    const patientId = String(req.body?.patient_id || '');
+    const segmentId = String(req.body?.segment_id || '');
+    if (!mongoose.isValidObjectId(patientId) || !mongoose.isValidObjectId(segmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'patient_id dan segment_id harus berupa ObjectId yang valid.',
+      });
+    }
+
+    const patients = await getDoctorPatientAccounts();
+    const patient = patients.find((item) => String(item._id) === patientId);
+    if (!patient) {
+      return res.status(404).json({ success: false, message: 'Pasien tidak ditemukan.' });
+    }
+    const userAccount = patient.account_refs?.find((ref) => ref.account_type === 'user');
+    if (!userAccount) {
+      return res.status(404).json({ success: false, message: 'Akun CAPAR pasien tidak tersedia.' });
+    }
+
+    const segment = await Segment.findOne({
+      _id: segmentId,
+      user_id: userAccount.account_id,
+      is_valid: true,
+    })
+      .select('_id user_id window_start window_end window_type activity_label analyzed classification anomaly_score features.mean_hr features.sdnn features.rmssd features.dfa_alpha1 features.motion_intensity')
+      .lean();
+    if (!segment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Window CAPAR tidak ditemukan untuk pasien ini.',
+      });
+    }
+
+    const node = await CaparWindowNode.findOneAndUpdate(
+      { segment_id: segment._id },
+      {
+        $setOnInsert: {
+          account_id: segment.user_id,
+          segment_id: segment._id,
+          created_by: req.user.id,
+          window_start: segment.window_start,
+          window_end: segment.window_end,
+          window_type: segment.window_type,
+          activity_label: segment.activity_label,
+          analyzed: segment.analyzed,
+          classification: segment.classification,
+          anomaly_score: segment.anomaly_score,
+          features: {
+            mean_hr: segment.features?.mean_hr,
+            sdnn: segment.features?.sdnn,
+            rmssd: segment.features?.rmssd,
+            dfa_alpha1: segment.features?.dfa_alpha1,
+            motion_intensity: segment.features?.motion_intensity,
+          },
+        },
+      },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(201).json({ success: true, data: node });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
