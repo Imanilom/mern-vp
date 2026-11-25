@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Activity,
   AlertCircle,
   ArrowRight,
   CalendarDays,
@@ -8,11 +9,16 @@ import {
   GitBranch,
   LoaderCircle,
   RefreshCw,
+  RotateCcw,
   Save,
   Signal,
 } from 'lucide-react';
 import { api } from '../api';
 import SectionHeading from '../components/SectionHeading';
+import {
+  calculateRecoveryTime,
+  recoveryHeartRate,
+} from '../utils/caparDynamicRecovery';
 
 function toEpochMs(value) {
   const timestamp = Number(value);
@@ -59,6 +65,72 @@ function getNodeStatus(window) {
   if (window.rr_status) return window.rr_status.replaceAll('_', ' ').toLowerCase();
   if (window.classification) return window.classification;
   return window.analyzed ? 'Sudah dianalisis' : 'Belum dianalisis';
+}
+
+const DYNAMIC_STATES = [
+  {
+    code: 'S0',
+    name: 'Baseline-compatible',
+    description: 'Observasi kompatibel dengan referensi personal pada konteks yang sesuai.',
+  },
+  {
+    code: 'S1',
+    name: 'Deviation candidate',
+    description: 'Ada kandidat deviasi; satu window saja belum menunjukkan persistensi.',
+  },
+  {
+    code: 'S2',
+    name: 'Persistent deviation',
+    description: 'Status persistensi hanya ditampilkan jika status temporal CAPAR menyatakannya.',
+  },
+  {
+    code: 'S3',
+    name: 'Recovery',
+    description: 'Observasi bergerak menuju referensi personal menurut status temporal CAPAR.',
+  },
+  {
+    code: 'S4',
+    name: 'Recovered',
+    description: 'Status recovered berasal dari status CAPAR; bukan diagnosis klinis.',
+  },
+  {
+    code: 'S5',
+    name: 'Unresolved',
+    description: 'Belum disimpulkan otomatis; butuh horizon observasi episode dan bukti yang memadai.',
+  },
+];
+
+const STATE_BY_CODE = new Map(DYNAMIC_STATES.map((state) => [state.code, state]));
+const RR_STATE_MAP = {
+  NORMAL: 'S0',
+  PROVISIONAL_NORMAL: 'S0',
+  DEVIATION_CANDIDATE: 'S1',
+  PROVISIONAL_DEVIATION: 'S1',
+  PERSISTENT_DEVIATION: 'S2',
+  RECOVERING: 'S3',
+  RECOVERED: 'S4',
+};
+const RR_ABSTAIN_STATUSES = new Set([
+  'QUALITY_WARNING',
+  'INSUFFICIENT_BASELINE',
+  'BASELINE_PAUSED',
+  'DEVIATION_PAUSED',
+  'PERSISTENT_PAUSED',
+  'RECOVERY_PAUSED',
+]);
+
+function getTemporalState(window) {
+  const status = window.rr_status;
+  if (!status) return null;
+  if (RR_ABSTAIN_STATUSES.has(status)) {
+    return { code: 'ABSTAIN', name: 'Bukti belum cukup', provisional: false };
+  }
+  const code = RR_STATE_MAP[status];
+  if (!code) return null;
+  return {
+    ...STATE_BY_CODE.get(code),
+    provisional: status.startsWith('PROVISIONAL_'),
+  };
 }
 
 function getNodeSize(rawCount, range) {
@@ -136,6 +208,12 @@ function getWindowParagraphs(window, baseline, nextWindow) {
     : '';
   const activity = window.activity_label || 'Unknown';
   const nextActivity = nextWindow?.activity_label || 'Unknown';
+  const temporalState = getTemporalState(window);
+  const temporalStateText = temporalState
+    ? `${temporalState.code}${temporalState.provisional ? ' provisional' : ''} · ${temporalState.name}`
+    : window.rr_status
+    ? `status ${getNodeStatus(window)} belum dipetakan ke S0–S4`
+    : 'state belum ditentukan dari data window ini';
 
   return [
     {
@@ -162,12 +240,253 @@ function getWindowParagraphs(window, baseline, nextWindow) {
     {
       label: 'K4 · Perbandingan kontekstual',
       text: window.is_valid === false
-        ? `Window ditandai tidak valid, sehingga deviasi HR tidak diinterpretasikan. Status CAPAR: ${getNodeStatus(window)}; tinjau bukti kualitas sensor sebelum membandingkan dengan baseline.`
+        ? `Window ditandai tidak valid, sehingga deviasi HR tidak diinterpretasikan. Status CAPAR: ${getNodeStatus(window)}; tinjau bukti kualitas sensor sebelum membandingkan dengan baseline. Keadaan dinamis: ${temporalStateText}.`
         : baseline?.is_mature && deviation !== null
-        ? `HR window ${deviation >= 0 ? 'lebih tinggi' : 'lebih rendah'} ${formatMetric(Math.abs(deviation))} bpm dari rerata baseline yang cocok${zScore !== null ? ` (z = ${formatMetric(zScore, 2)})` : ''}. Status CAPAR: ${getNodeStatus(window)}. Ini adalah perbandingan observasional, bukan diagnosis; interpretasi juga perlu mempertimbangkan RR, ACC, dan kualitas sinyal.`
-        : `Deviasi HR belum dapat dinilai meyakinkan karena baseline yang cocok belum matang atau fitur HR tidak tersedia. Status CAPAR: ${getNodeStatus(window)}; gunakan RR, ACC, dan bukti kualitas sensor sebagai konteks, bukan sebagai diagnosis.`,
+        ? `HR window ${deviation >= 0 ? 'lebih tinggi' : 'lebih rendah'} ${formatMetric(Math.abs(deviation))} bpm dari rerata baseline yang cocok${zScore !== null ? ` (z = ${formatMetric(zScore, 2)})` : ''}. Status CAPAR: ${getNodeStatus(window)}; keadaan dinamis: ${temporalStateText}. Ini adalah perbandingan observasional, bukan diagnosis; interpretasi juga perlu mempertimbangkan RR, ACC, dan kualitas sinyal.`
+        : `Deviasi HR belum dapat dinilai meyakinkan karena baseline yang cocok belum matang atau fitur HR tidak tersedia. Status CAPAR: ${getNodeStatus(window)}; keadaan dinamis: ${temporalStateText}. Gunakan RR, ACC, dan bukti kualitas sensor sebagai konteks, bukan sebagai diagnosis.`,
     },
   ];
+}
+
+function RangeControl({ id, label, value, min, max, step, unit, onChange }) {
+  return (
+    <label className="capar-range-control" htmlFor={id}>
+      <span>{label}<output>{value} {unit}</output></span>
+      <input
+        id={id}
+        max={max}
+        min={min}
+        onChange={(event) => onChange(Number(event.target.value))}
+        step={step}
+        type="range"
+        value={value}
+      />
+      <small>{min}–{max} {unit}</small>
+    </label>
+  );
+}
+
+function DynamicStateFlow() {
+  const [selectedCode, setSelectedCode] = useState('S0');
+  const selectedState = STATE_BY_CODE.get(selectedCode);
+
+  return (
+    <section className="capar-state-model">
+      <div className="capar-simulator-heading">
+        <div>
+          <span className="eyebrow">MODEL STATE HIBRIDA</span>
+          <h3>Keadaan diskrit yang dapat ditelusuri</h3>
+        </div>
+        <span className="capar-model-note">Pemetaan node memakai rr_status yang tersedia</span>
+      </div>
+      <div className="capar-state-flow" role="group" aria-label="Pilih keadaan dinamis">
+        {DYNAMIC_STATES.slice(0, 5).map((state, index) => (
+          <div className="capar-state-flow-step" key={state.code}>
+            <button
+              aria-pressed={selectedCode === state.code}
+              className={`capar-state-chip ${selectedCode === state.code ? 'is-selected' : ''} ${state.code === 'S5' ? 'is-unresolved' : ''}`}
+              onClick={() => setSelectedCode(state.code)}
+              type="button"
+            >
+              <strong>{state.code}</strong>
+              <span>{state.name}</span>
+            </button>
+            {index < 4 && <ArrowRight aria-hidden="true" size={14} />}
+          </div>
+        ))}
+        <div className="capar-state-flow-branch">
+          <span>Horizon observasi</span>
+          <button
+            aria-pressed={selectedCode === 'S5'}
+            className={`capar-state-chip is-unresolved ${selectedCode === 'S5' ? 'is-selected' : ''}`}
+            onClick={() => setSelectedCode('S5')}
+            type="button"
+          >
+            <strong>S5</strong>
+            <span>Unresolved</span>
+          </button>
+        </div>
+      </div>
+      <div className="capar-state-description">
+        <strong>{selectedState.code} · {selectedState.name}</strong>
+        <p>{selectedState.description}</p>
+        <small>
+          Alur ini konseptual; relapse S3→S2 dapat terjadi. S5 tidak ditetapkan hanya karena data berhenti atau satu window menyimpang.
+        </small>
+      </div>
+    </section>
+  );
+}
+
+function RecoverySimulator({ selectedWindow, selectedBaseline, hidden }) {
+  const [baseline, setBaseline] = useState(75);
+  const [initial, setInitial] = useState(135);
+  const [tauA, setTauA] = useState(3);
+  const [tauB, setTauB] = useState(9);
+  const [tolerance, setTolerance] = useState(10);
+  const [timeHorizon, setTimeHorizon] = useState(30);
+  const [sourceSnapshot, setSourceSnapshot] = useState(null);
+  const chart = { width: 760, height: 330, left: 52, right: 18, top: 18, bottom: 42 };
+  const plotWidth = chart.width - chart.left - chart.right;
+  const plotHeight = chart.height - chart.top - chart.bottom;
+  const yMin = Math.max(30, Math.floor(Math.min(baseline - tolerance, initial) - 15));
+  const yMax = Math.min(220, Math.ceil(Math.max(baseline + tolerance, initial) + 15));
+  const x = (time) => chart.left + ((time / timeHorizon) * plotWidth);
+  const y = (heartRate) => chart.top + (((yMax - heartRate) / (yMax - yMin)) * plotHeight);
+  const pathFor = (tau) => Array.from({ length: 121 }, (_, index) => {
+    const time = (index / 120) * timeHorizon;
+    return `${index === 0 ? 'M' : 'L'}${x(time).toFixed(1)},${y(recoveryHeartRate(time, baseline, initial, tau)).toFixed(1)}`;
+  }).join(' ');
+  const ttrA = calculateRecoveryTime(baseline, initial, tauA, tolerance);
+  const ttrB = calculateRecoveryTime(baseline, initial, tauB, tolerance);
+  const hrAtTenA = recoveryHeartRate(10, baseline, initial, tauA);
+  const hrAtTenB = recoveryHeartRate(10, baseline, initial, tauB);
+  const yTicks = Array.from({ length: 5 }, (_, index) => yMin + (((yMax - yMin) / 4) * index));
+  const xTicks = Array.from({ length: 7 }, (_, index) => (timeHorizon / 6) * index);
+  const toleranceTop = y(Math.min(yMax, baseline + tolerance));
+  const toleranceBottom = y(Math.max(yMin, baseline - tolerance));
+
+  function reset() {
+    setBaseline(75);
+    setInitial(135);
+    setTauA(3);
+    setTauB(9);
+    setTolerance(10);
+    setTimeHorizon(30);
+    setSourceSnapshot(null);
+  }
+
+  function useSelectedNode() {
+    const nodeHr = numericValue(selectedWindow?.features?.mean_hr);
+    if (!selectedWindow || selectedWindow.is_valid === false || nodeHr === null) return;
+    const baselineHr = selectedBaseline?.is_mature
+      ? numericValue(selectedBaseline.stats?.mean_hr?.mean)
+      : null;
+    setInitial(Math.round(nodeHr));
+    if (baselineHr !== null) setBaseline(Math.round(baselineHr));
+    setSourceSnapshot({
+      activity: selectedWindow.activity_label || 'Unknown',
+      windowStart: selectedWindow.window_start,
+      baselineApplied: baselineHr !== null,
+      baselineAdjusted: false,
+    });
+  }
+
+  return (
+    <section className="capar-simulator-panel panel" hidden={hidden} role="tabpanel">
+      <div className="capar-simulator-intro">
+        <div>
+          <span className="eyebrow">DYNAMIC STATE MODEL · SIMULASI</span>
+          <h2>Respons dan pemulihan HR</h2>
+          <p>Model orde pertama setelah aktivitas berhenti: HR(t) = HR baseline + (HR awal − baseline) × e<sup>−t/τ</sup>.</p>
+        </div>
+        <div className="capar-simulator-actions">
+          <button
+            className="button button-light"
+            disabled={!selectedWindow || selectedWindow.is_valid === false || numericValue(selectedWindow.features?.mean_hr) === null}
+            onClick={useSelectedNode}
+            type="button"
+          >
+            <Activity size={15} /> Gunakan node terpilih
+          </button>
+          <button className="button button-light" onClick={reset} type="button">
+            <RotateCcw size={15} /> Reset
+          </button>
+        </div>
+      </div>
+      <p className="capar-simulator-source">
+        {sourceSnapshot
+          ? `HR awal diambil dari ${sourceSnapshot.activity} · ${formatTime(sourceSnapshot.windowStart)}. Baseline ${sourceSnapshot.baselineAdjusted ? 'disesuaikan manual' : sourceSnapshot.baselineApplied ? 'menggunakan profil cocok yang matang' : 'tetap memakai nilai slider karena baseline cocok belum matang'}. τ tetap parameter simulasi.`
+          : selectedWindow
+          ? `Node terpilih: ${selectedWindow.activity_label || 'Unknown'} · ${formatTime(selectedWindow.window_start)}. Gunakan tombol untuk memasukkan HR-nya sebagai HR awal simulasi.`
+          : 'Pilih node yang valid pada tab Node & data CAPAR untuk memasukkan HR terukurnya ke simulasi.'}
+      </p>
+
+      <DynamicStateFlow />
+
+      <div className="capar-simulator-grid">
+        <div className="capar-simulator-controls">
+          <RangeControl
+            id="capar-baseline"
+            label="HR baseline"
+            value={baseline}
+            min={Math.min(20, baseline)}
+            max={Math.max(250, baseline)}
+            step={1}
+            unit="bpm"
+            onChange={(value) => {
+              setBaseline(value);
+              setSourceSnapshot((current) => current && ({ ...current, baselineAdjusted: true }));
+            }}
+          />
+          <RangeControl
+            id="capar-initial"
+            label="HR awal recovery"
+            value={initial}
+            min={20}
+            max={Math.max(250, initial)}
+            step={1}
+            unit="bpm"
+            onChange={(value) => {
+              setInitial(value);
+              setSourceSnapshot(null);
+            }}
+          />
+          <RangeControl id="capar-tau-a" label="Konstanta waktu episode A (τ)" value={tauA} min={0.5} max={30} step={0.5} unit="menit" onChange={setTauA} />
+          <RangeControl id="capar-tau-b" label="Konstanta waktu episode B (τ)" value={tauB} min={0.5} max={30} step={0.5} unit="menit" onChange={setTauB} />
+          <RangeControl id="capar-tolerance" label="Toleransi baseline" value={tolerance} min={1} max={30} step={1} unit="bpm" onChange={setTolerance} />
+          <RangeControl id="capar-time-horizon" label="Horizon grafik" value={timeHorizon} min={10} max={60} step={5} unit="menit" onChange={setTimeHorizon} />
+        </div>
+
+        <div className="capar-simulator-chart-wrap">
+          <svg
+            aria-label="Simulasi lintasan pemulihan denyut jantung untuk episode A dan B"
+            className="capar-simulator-chart"
+            role="img"
+            viewBox={`0 0 ${chart.width} ${chart.height}`}
+          >
+            <rect
+              className="capar-chart-tolerance"
+              height={Math.max(0, toleranceBottom - toleranceTop)}
+              width={plotWidth}
+              x={chart.left}
+              y={toleranceTop}
+            />
+            {yTicks.map((tick) => (
+              <g key={`y-${tick}`}>
+                <line x1={chart.left} x2={chart.left + plotWidth} y1={y(tick)} y2={y(tick)} />
+                <text x={chart.left - 9} y={y(tick) + 4} textAnchor="end">{Math.round(tick)}</text>
+              </g>
+            ))}
+            {xTicks.map((tick) => (
+              <g key={`x-${tick}`}>
+                <line className="capar-chart-x-tick" x1={x(tick)} x2={x(tick)} y1={chart.top + plotHeight} y2={chart.top + plotHeight + 4} />
+                <text x={x(tick)} y={chart.top + plotHeight + 19} textAnchor="middle">{Math.round(tick)}</text>
+              </g>
+            ))}
+            <line className="capar-chart-baseline" x1={chart.left} x2={chart.left + plotWidth} y1={y(baseline)} y2={y(baseline)} />
+            <path className="capar-chart-episode-a" d={pathFor(tauA)} />
+            <path className="capar-chart-episode-b" d={pathFor(tauB)} />
+            <text className="capar-chart-axis-label" x={chart.left + (plotWidth / 2)} y={chart.height - 4} textAnchor="middle">Waktu setelah aktivitas (menit)</text>
+            <text className="capar-chart-axis-label" transform={`translate(14 ${chart.top + (plotHeight / 2)}) rotate(-90)`} textAnchor="middle">HR (bpm)</text>
+          </svg>
+          <div className="capar-chart-legend">
+            <span><i className="is-episode-a" />Episode A · τ {tauA} m</span>
+            <span><i className="is-episode-b" />Episode B · τ {tauB} m</span>
+            <span><i className="is-baseline" />Baseline ± toleransi</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="capar-recovery-metrics">
+        <article><span>Time to recovery A</span><strong>{formatMetric(ttrA, 1)} menit</strong><small>HR menit ke-10: {formatMetric(hrAtTenA)} bpm</small></article>
+        <article><span>Time to recovery B</span><strong>{formatMetric(ttrB, 1)} menit</strong><small>HR menit ke-10: {formatMetric(hrAtTenB)} bpm</small></article>
+      </div>
+      <p className="capar-simulator-disclaimer">
+        Simulasi matematis ilustratif, bukan data eksperimen atau diagnosis. TTR adalah waktu pertama memasuki rentang toleransi tanpa dwell time; parameter tidak diestimasi dari data pasien.
+      </p>
+    </section>
+  );
 }
 
 export default function CaparWindowNodesPage() {
@@ -175,6 +494,8 @@ export default function CaparWindowNodesPage() {
   const [selectedPatient, setSelectedPatient] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [activityFilter, setActivityFilter] = useState('all');
+  const [stateFilter, setStateFilter] = useState('all');
+  const [activeView, setActiveView] = useState('nodes');
   const [windows, setWindows] = useState([]);
   const [dates, setDates] = useState([]);
   const [baselines, setBaselines] = useState([]);
@@ -246,9 +567,14 @@ export default function CaparWindowNodesPage() {
   );
   const visibleWindows = useMemo(
     () => windows.filter((window) => (
-      activityFilter === 'all' || (window.activity_label || 'Unknown') === activityFilter
+      (activityFilter === 'all' || (window.activity_label || 'Unknown') === activityFilter)
+      && (
+        stateFilter === 'all'
+        || (stateFilter === 'unmapped' && !getTemporalState(window))
+        || getTemporalState(window)?.code === stateFilter
+      )
     )),
-    [windows, activityFilter],
+    [windows, activityFilter, stateFilter],
   );
   const visibleSummaries = useMemo(() => (
     (dailySummary?.activity_summaries || []).filter((summary) => (
@@ -263,10 +589,6 @@ export default function CaparWindowNodesPage() {
     [dailySummary],
   );
   const selectedWindow = windows.find((window) => window._id === selectedWindowId) || null;
-  const selectedIndex = selectedWindow
-    ? visibleWindows.findIndex((window) => window._id === selectedWindow._id)
-    : -1;
-  const selectedNextWindow = selectedIndex >= 0 ? visibleWindows[selectedIndex + 1] : null;
   const selectedBaseline = selectedWindow
     ? baselines.find((baseline) => (
       baseline.activity === (selectedWindow.activity_label || 'Unknown')
@@ -344,6 +666,28 @@ export default function CaparWindowNodesPage() {
         )}
       />
 
+      <div className="capar-view-tabs" role="tablist" aria-label="Tampilan model CAPAR">
+        <button
+          aria-selected={activeView === 'nodes'}
+          className={activeView === 'nodes' ? 'is-active' : ''}
+          onClick={() => setActiveView('nodes')}
+          role="tab"
+          type="button"
+        >
+          Node & data CAPAR
+        </button>
+        <button
+          aria-selected={activeView === 'simulation'}
+          className={activeView === 'simulation' ? 'is-active' : ''}
+          onClick={() => setActiveView('simulation')}
+          role="tab"
+          type="button"
+        >
+          Dynamic State Model
+        </button>
+      </div>
+
+      {activeView === 'nodes' && (
       <div className="doctor-log-toolbar panel capar-filter-toolbar">
         <label>
           Pasien
@@ -354,6 +698,7 @@ export default function CaparWindowNodesPage() {
                 setSelectedPatient(event.target.value);
                 setSelectedDate('');
                 setActivityFilter('all');
+                setStateFilter('all');
               }}
               value={selectedPatient}
             >
@@ -375,6 +720,7 @@ export default function CaparWindowNodesPage() {
               onChange={(event) => {
                 setSelectedDate(event.target.value);
                 setActivityFilter('all');
+                setStateFilter('all');
               }}
               value={selectedDate}
             >
@@ -390,7 +736,10 @@ export default function CaparWindowNodesPage() {
           <span className="doctor-log-select">
             <select
               disabled={!activities.length}
-              onChange={(event) => setActivityFilter(event.target.value)}
+              onChange={(event) => {
+                setActivityFilter(event.target.value);
+                setSelectedWindowId('');
+              }}
               value={activityFilter}
             >
               <option value="all">Semua aktivitas</option>
@@ -401,21 +750,50 @@ export default function CaparWindowNodesPage() {
             <ChevronDown aria-hidden="true" size={16} />
           </span>
         </label>
+        <label>
+          Filter state
+          <span className="doctor-log-select">
+            <select
+              disabled={!windows.length}
+              onChange={(event) => {
+                setStateFilter(event.target.value);
+                setSelectedWindowId('');
+              }}
+              value={stateFilter}
+            >
+              <option value="all">Semua state</option>
+              {DYNAMIC_STATES.slice(0, 5).map((state) => (
+                <option key={state.code} value={state.code}>{state.code} · {state.name}</option>
+              ))}
+              <option value="ABSTAIN">Bukti belum cukup</option>
+              <option value="unmapped">Belum dipetakan</option>
+            </select>
+            <ChevronDown aria-hidden="true" size={16} />
+          </span>
+        </label>
         <div className="capar-node-summary">
           <strong>{savedNodeCount} / {windows.length}</strong>
           <span>snapshot node tersimpan</span>
         </div>
       </div>
+      )}
 
-      {error && (
+      {activeView === 'nodes' && error && (
         <div className="notice notice-warning doctor-log-error">
           <AlertCircle size={17} />
           <span>{error}</span>
         </div>
       )}
-      {notice && <div className="capar-node-notice"><Check size={16} />{notice}</div>}
+      {activeView === 'nodes' && notice && <div className="capar-node-notice"><Check size={16} />{notice}</div>}
 
-      {!selectedPatient ? (
+      <RecoverySimulator
+        hidden={activeView !== 'simulation'}
+        key={`${selectedPatient}:${selectedDate}`}
+        selectedBaseline={selectedBaseline}
+        selectedWindow={selectedWindow}
+      />
+      {activeView === 'nodes' && (
+        !selectedPatient ? (
         <div className="doctor-analysis-empty-state panel">
           <GitBranch size={24} />
           <strong>{loadingPatients ? 'Memuat daftar pasien...' : 'Pilih pasien untuk melihat window CAPAR'}</strong>
@@ -504,9 +882,15 @@ export default function CaparWindowNodesPage() {
             <div className="capar-legend">
               <span><i className="capar-legend-density" />Ukuran = jumlah sampel sensor per window</span>
               <span><i className="capar-legend-color" />Warna = deviasi HR dari baseline matang; tanpa baseline memakai status CAPAR</span>
+              <span><b className="capar-legend-state">Sx</b> State mengikuti rr_status yang tersedia; S5 tidak disimpulkan otomatis</span>
               <span><ArrowRight size={14} /> Panah menunjukkan selang waktu dan transisi aktivitas</span>
             </div>
             <ol className="capar-node-list">
+              {!visibleWindows.length && (
+                <li className="capar-nodes-filter-empty">
+                  Tidak ada node yang cocok dengan filter aktivitas dan state ini.
+                </li>
+              )}
               {visibleWindows.map((window, index) => {
                 const nextWindow = visibleWindows[index + 1];
                 const baseline = getBaselineForWindow(window);
@@ -517,9 +901,16 @@ export default function CaparWindowNodesPage() {
                   : null;
                 const currentActivity = window.activity_label || 'Unknown';
                 const nextActivity = nextWindow?.activity_label || 'Unknown';
+                const temporalState = getTemporalState(window);
+                const nextTemporalState = nextWindow ? getTemporalState(nextWindow) : null;
                 const transition = nextWindow
                   ? currentActivity !== nextActivity
                   : false;
+                const stateTransition = Boolean(
+                  temporalState?.code
+                  && nextTemporalState?.code
+                  && temporalState.code !== nextTemporalState.code
+                );
                 const activityTransition = nextWindow && transition
                   ? activityTransitionByEdge.get(`${window._id}:${nextWindow._id}`)
                   : null;
@@ -558,6 +949,17 @@ export default function CaparWindowNodesPage() {
                             {window.is_valid ? 'Data valid' : 'Perlu tinjau'}
                           </span>
                         </div>
+                        <div className="capar-window-state-row">
+                          {temporalState ? (
+                            <span className={`capar-state-badge state-${temporalState.code.toLowerCase()}`}>
+                              {temporalState.code}{temporalState.provisional ? ' · provisional' : ''} · {temporalState.name}
+                            </span>
+                          ) : (
+                            <span className="capar-state-badge state-unmapped">
+                              {window.rr_status ? 'Status belum dipetakan' : 'State belum tersedia'}
+                            </span>
+                          )}
+                        </div>
                         <time>{formatTime(window.window_start)}</time>
                         <div className="capar-window-metrics">
                           <span>HR <strong>{formatMetric(window.features?.mean_hr)} bpm</strong></span>
@@ -583,10 +985,15 @@ export default function CaparWindowNodesPage() {
                         </button>
                       )}
                       {nextWindow && (
-                        <div className={`capar-node-transition ${transition ? 'is-activity-transition' : ''}`}>
+                        <div className={`capar-node-transition ${transition ? 'is-activity-transition' : ''} ${stateTransition ? 'is-state-transition' : ''}`}>
                           <ArrowRight size={14} />
                           {transition && <strong>{currentActivity} → {nextActivity}</strong>}
                           <span>Δt {formatDuration(elapsedMs)}</span>
+                          {stateTransition && (
+                            <span className="capar-state-edge">
+                              {temporalState.code} → {nextTemporalState.code}
+                            </span>
+                          )}
                           {activityTransition && (
                             <span>durasi aktivitas {formatDuration(activityTransition.activity_duration_ms)}</span>
                           )}
@@ -613,7 +1020,7 @@ export default function CaparWindowNodesPage() {
             </p>
           </section>
         </>
-      )}
+      ))}
     </section>
   );
 }

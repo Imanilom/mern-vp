@@ -732,6 +732,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-node-summary strong { color: var(--green-dark); font-family: Manrope, sans-serif; font-size: 18px; }
 .capar-node-notice { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 11px 13px; color: #34735b; background: #edf7f1; border: 1px solid #dceee2; border-radius: 10px; font-size: 10px; }
 .capar-node-list { position: relative; display: grid; gap: 14px; margin: 0; padding: 4px 0 4px 20px; list-style: none; }
+.capar-nodes-filter-empty { grid-column: 1 / -1; padding: 18px; color: var(--muted); background: #f8fbfa; border: 1px dashed var(--line); border-radius: 10px; font-size: 9px; }
 .capar-node-list::before { position: absolute; top: 10px; bottom: 10px; left: 36px; width: 2px; background: #d7e9e4; content: ''; }
 .capar-node-item { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: start; gap: 12px; }
 .capar-node-marker { z-index: 1; display: grid; width: 19px; height: 19px; margin-top: 13px; padding: 0; color: #fff; background: #7e9b91; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #cfdfd9; font-size: 7px; font-weight: 800; place-items: center; }
@@ -770,6 +771,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-legend { display: flex; flex-wrap: wrap; gap: 9px 16px; margin: -4px 0 14px; color: var(--muted); font-size: 8px; }
 .capar-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .capar-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.capar-legend-state { display: inline-grid; min-width: 20px; height: 17px; padding: 0 4px; color: #496d9d; background: #edf3fa; border-radius: 5px; font-size: 7px; place-items: center; }
 .capar-legend-density { background: #4c9a7e; }
 .capar-legend-color { background: linear-gradient(90deg, #4c7dbe, #3a9987, #d67448); }
 .capar-node-marker { min-width: 16px; margin-top: 5px; transition: box-shadow .15s ease, transform .15s ease; }
@@ -788,12 +790,79 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-node-interpretation p { margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.55; }
 .capar-node-disclaimer { display: flex; align-items: flex-start; gap: 6px; }
 .capar-node-disclaimer svg { flex: 0 0 auto; margin-top: 1px; }
+.capar-view-tabs { display: inline-flex; width: fit-content; gap: 4px; padding: 4px; background: #eaf2ef; border: 1px solid #dce9e5; border-radius: 11px; }
+.capar-view-tabs button { min-height: 34px; padding: 7px 12px; color: var(--muted); background: transparent; border: 0; border-radius: 8px; font-size: 9px; font-weight: 700; cursor: pointer; }
+.capar-view-tabs button.is-active { color: var(--green-dark); background: #fff; box-shadow: 0 2px 6px rgba(34, 75, 68, .10); }
+.capar-window-state-row { margin-top: 8px; }
+.capar-state-badge { display: inline-flex; align-items: center; gap: 4px; padding: 5px 8px; color: #536b79; background: #edf2f6; border-radius: 7px; font-size: 8px; font-weight: 700; text-transform: capitalize; }
+.capar-state-badge.state-s0 { color: #34735b; background: #edf7f1; }
+.capar-state-badge.state-s1 { color: #8b6b27; background: #fbf5e8; }
+.capar-state-badge.state-s2 { color: #9c4e57; background: #fbebed; }
+.capar-state-badge.state-s3 { color: #496d9d; background: #edf3fa; }
+.capar-state-badge.state-s4 { color: #34735b; background: #e5f4ed; }
+.capar-state-badge.state-abstain { color: #6b6178; background: #f2eff6; }
+.capar-state-badge.state-unmapped { color: #64737a; background: #f0f3f4; }
+.capar-node-transition.is-state-transition { border-top-style: solid; }
+.capar-state-edge { padding: 3px 6px; color: #496d9d; background: #edf3fa; border-radius: 5px; font-weight: 700; }
+.capar-simulator-panel { display: grid; gap: 22px; padding: 20px; }
+.capar-simulator-panel[hidden] { display: none; }
+.capar-simulator-intro, .capar-simulator-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.capar-simulator-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.capar-simulator-intro h2 { margin: 5px 0; color: var(--ink); font-family: Manrope, sans-serif; font-size: 18px; }
+.capar-simulator-intro p { max-width: 720px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.capar-simulator-source { margin: -12px 0 0; padding: 9px 11px; color: var(--ink-soft); background: #f5f8f7; border-radius: 8px; font-size: 9px; line-height: 1.55; }
+.capar-simulator-heading h3 { margin: 4px 0 0; color: var(--ink); font-family: Manrope, sans-serif; font-size: 13px; }
+.capar-model-note { color: var(--muted); font-size: 8px; }
+.capar-state-model { display: grid; gap: 12px; padding: 14px; background: #f8fbfa; border: 1px solid var(--line); border-radius: 12px; }
+.capar-state-flow { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 2px 1px 5px; }
+.capar-state-flow-step { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; color: #91a59f; }
+.capar-state-flow-branch { display: grid; flex: 0 0 auto; gap: 5px; margin-left: 4px; padding-left: 10px; border-left: 1px dashed #b6c8c2; }
+.capar-state-flow-branch > span { color: var(--muted); font-size: 7px; }
+.capar-state-chip { display: grid; min-width: 116px; gap: 3px; padding: 9px 10px; color: var(--ink-soft); background: #fff; border: 1px solid var(--line); border-radius: 9px; text-align: left; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.capar-state-chip strong { color: var(--green-dark); font-size: 10px; }
+.capar-state-chip span { color: var(--muted); font-size: 8px; white-space: nowrap; }
+.capar-state-chip:hover, .capar-state-chip.is-selected { border-color: #78aa9d; box-shadow: 0 3px 10px rgba(34, 75, 68, .10); transform: translateY(-1px); }
+.capar-state-chip.is-unresolved { border-style: dashed; }
+.capar-state-description { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line); }
+.capar-state-description strong { color: var(--green-dark); font-size: 10px; }
+.capar-state-description p, .capar-state-description small { margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.5; }
+.capar-state-description small { color: var(--muted); }
+.capar-simulator-grid { display: grid; grid-template-columns: minmax(210px, .7fr) minmax(0, 1.6fr); align-items: start; gap: 18px; }
+.capar-simulator-controls { display: grid; gap: 15px; padding: 14px; background: #f9fbfa; border: 1px solid var(--line); border-radius: 11px; }
+.capar-range-control { display: grid; gap: 6px; }
+.capar-range-control > span { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; color: var(--ink-soft); font-size: 9px; font-weight: 700; }
+.capar-range-control output { color: var(--green-dark); white-space: nowrap; }
+.capar-range-control input { width: 100%; accent-color: var(--green); cursor: pointer; }
+.capar-range-control small { color: var(--muted); font-size: 7px; }
+.capar-simulator-chart-wrap { min-width: 0; overflow-x: auto; }
+.capar-simulator-chart { display: block; width: 100%; min-width: 520px; height: auto; overflow: visible; }
+.capar-simulator-chart line { stroke: #e2ebe8; stroke-width: 1; }
+.capar-simulator-chart .capar-chart-x-tick { stroke: #9eb4ad; }
+.capar-simulator-chart text { fill: #6b7b7f; font-family: inherit; font-size: 10px; }
+.capar-simulator-chart .capar-chart-axis-label { fill: #52686b; font-size: 9px; }
+.capar-simulator-chart .capar-chart-tolerance { fill: #e6f3ed; }
+.capar-simulator-chart .capar-chart-baseline { stroke: #518a76; stroke-dasharray: 5 4; stroke-width: 2; }
+.capar-simulator-chart .capar-chart-episode-a { fill: none; stroke: #4c7dbe; stroke-width: 3; }
+.capar-simulator-chart .capar-chart-episode-b { fill: none; stroke: #d67448; stroke-width: 3; }
+.capar-chart-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 0 8px; color: var(--muted); font-size: 8px; }
+.capar-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.capar-chart-legend i { width: 15px; height: 3px; background: #518a76; border-radius: 2px; }
+.capar-chart-legend .is-episode-a { background: #4c7dbe; }
+.capar-chart-legend .is-episode-b { background: #d67448; }
+.capar-recovery-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.capar-recovery-metrics article { display: grid; gap: 4px; padding: 12px 14px; background: #f8fbfa; border: 1px solid var(--line); border-radius: 10px; }
+.capar-recovery-metrics span { color: var(--muted); font-size: 8px; }
+.capar-recovery-metrics strong { color: var(--green-dark); font-family: Manrope, sans-serif; font-size: 17px; }
+.capar-recovery-metrics small { color: var(--ink-soft); font-size: 8px; }
+.capar-simulator-disclaimer { margin: 0; padding-top: 10px; color: var(--muted); border-top: 1px solid var(--line); font-size: 9px; line-height: 1.55; }
 
 @media (max-width: 880px) {
   .dashboard-grid { grid-template-columns: 1fr; }
   .doctor-analysis-grid { grid-template-columns: 1fr; }
   .doctor-circular-diagram { width: min(100%, 620px); }
   .doctor-node { width: 135px; min-height: 86px; padding: 8px 7px; }
+  .capar-simulator-grid { grid-template-columns: 1fr; }
+  .capar-simulator-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 650px) {
@@ -823,6 +892,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .capar-activity-summaries { grid-template-columns: 1fr; }
   .capar-activity-summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .capar-legend { display: grid; }
+  .capar-view-tabs { width: 100%; }
+  .capar-view-tabs button { flex: 1; padding-inline: 8px; }
+  .capar-simulator-panel { padding: 14px; }
+  .capar-simulator-intro, .capar-simulator-heading { flex-direction: column; }
+  .capar-simulator-controls { grid-template-columns: 1fr; }
+  .capar-recovery-metrics { grid-template-columns: 1fr; }
   .doctor-log-item summary { align-items: flex-start; }
   .doctor-log-item time { display: none; }
   .doctor-log-item pre { margin-left: 0; }
