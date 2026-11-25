@@ -935,8 +935,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-visual-filters label { color: var(--ink-soft); font-size: 9px; font-weight: 700; }
 .capar-visual-filters select { min-height: 31px; font-size: 9px; }
 .capar-visual-filters span { color: var(--muted); font-size: 8px; }
-.capar-visual-graph-scroll { width: 100%; overflow-x: auto; border: 1px solid #edf2f0; border-radius: 10px; }
-.capar-visual-graph { display: block; min-width: 760px; width: 100%; background: #fff; }
+.capar-visual-graph-scroll { width: 100%; max-height: 480px; overflow: auto; border: 1px solid #edf2f0; border-radius: 10px; }
+.capar-visual-graph { display: block; width: 2880px; min-width: 2880px; height: auto; background: #fff; }
 .capar-visual-grid { stroke: #edf2f0; stroke-dasharray: 3 4; }
 .capar-visual-axis { fill: #81918f; font-family: inherit; font-size: 8px; }
 .capar-visual-day { fill: #425f5a; font-family: inherit; font-size: 9px; font-weight: 700; }

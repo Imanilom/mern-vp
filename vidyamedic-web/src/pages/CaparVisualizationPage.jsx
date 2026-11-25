@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import SectionHeading from '../components/SectionHeading';
+import { getCaparTimelineStackLayout } from '../utils/caparTimelineLayout';
 
 const MODES = [
   { id: 'rows', label: 'Baris data', icon: Rows3 },
@@ -61,7 +62,7 @@ function formatTime(value) {
   return new Intl.DateTimeFormat('id-ID', {
     timeZone: 'Asia/Jakarta',
     dateStyle: 'medium',
-    timeStyle: 'short',
+    timeStyle: 'medium',
   }).format(new Date(timestamp));
 }
 
@@ -93,7 +94,10 @@ function getMinuteOfDay(value) {
   const timestamp = toEpochMs(value);
   if (timestamp === null) return 0;
   const date = new Date(timestamp + (7 * 60 * 60 * 1000));
-  return (date.getUTCHours() * 60) + date.getUTCMinutes();
+  return (date.getUTCHours() * 60)
+    + date.getUTCMinutes()
+    + (date.getUTCSeconds() / 60)
+    + (date.getUTCMilliseconds() / 60_000);
 }
 
 function TimelineGraph({
@@ -129,26 +133,45 @@ function TimelineGraph({
   });
   const minDensity = visible.length ? Math.min(...visible.map(({ density }) => density)) : 0;
   const maxDensity = visible.length ? Math.max(...visible.map(({ density }) => density)) : 0;
-  const width = 1800;
+  const width = 2880;
   const plotLeft = 190;
   const plotRight = width - 28;
   const plotWidth = plotRight - plotLeft;
-  const laneHeight = 32;
   const headingHeight = 26;
+  const x = (minute) => plotLeft + ((minute / 1440) * plotWidth);
   let nextTop = 28;
   const days = [...entriesByDay.entries()].map(([day, entries]) => {
     const activities = [...new Set(entries.map(({ activity }) => activity))];
-    const layout = { day, entries, activities, top: nextTop };
-    nextTop += headingHeight + (activities.length * laneHeight) + 10;
+    const stackLayout = getCaparTimelineStackLayout(
+      entries,
+      (entry) => entry.id,
+      (entry) => entry.activity,
+      (entry) => x(getMinuteOfDay(entry.time))
+    );
+    const stackedEntries = entries.map((entry) => ({
+      ...entry,
+      stackOffset: stackLayout.offsets.get(entry.id) || 0,
+    }));
+    let laneTop = nextTop + headingHeight;
+    const lanes = new Map();
+    activities.forEach((activity) => {
+      const laneHeight = stackLayout.laneHeights.get(activity) || 44;
+      lanes.set(activity, { top: laneTop, height: laneHeight });
+      laneTop += laneHeight;
+    });
+    const layout = { day, entries: stackedEntries, activities, lanes, top: nextTop };
+    nextTop = laneTop + 10;
     return layout;
   });
   const height = Math.max(100, nextTop + 10);
-  const x = (minute) => plotLeft + ((minute / 1440) * plotWidth);
-  const y = (layout, activity) => (
-    layout.top + headingHeight
-      + (layout.activities.indexOf(activity) * laneHeight)
-      + (laneHeight / 2)
-  );
+  const y = (layout, activity, stackOffset = 0) => {
+    const lane = layout.lanes.get(activity);
+    return lane.top + (lane.height / 2) + stackOffset;
+  };
+  const laneCenterY = (layout, activity) => {
+    const lane = layout.lanes.get(activity);
+    return lane.top + (lane.height / 2);
+  };
 
   if (!nodes.length) {
     return <p className="capar-visual-empty">Belum ada node untuk mode dan rentang waktu ini.</p>;
@@ -186,20 +209,21 @@ function TimelineGraph({
             </text>
             {layout.activities.map((activity) => (
               <g key={`${layout.day}:${activity}:lane`}>
-                <text className="capar-visual-activity" x="8" y={y(layout, activity) + 3}>
+                <text className="capar-visual-activity" x="8" y={laneCenterY(layout, activity) + 3}>
                   {activity}
                 </text>
                 <line
                   className="capar-visual-lane"
                   x1={plotLeft}
                   x2={plotRight}
-                  y1={y(layout, activity)}
-                  y2={y(layout, activity)}
+                  y1={laneCenterY(layout, activity)}
+                  y2={laneCenterY(layout, activity)}
                 />
               </g>
             ))}
             {layout.entries.slice(0, -1).map((entry, index) => {
               const next = layout.entries[index + 1];
+              if (entry.activity === next.activity) return null;
               return (
                 <line
                   className="capar-visual-edge"
@@ -207,8 +231,8 @@ function TimelineGraph({
                   markerEnd="url(#capar-visual-arrow)"
                   x1={x(getMinuteOfDay(entry.time))}
                   x2={x(getMinuteOfDay(next.time))}
-                  y1={y(layout, entry.activity)}
-                  y2={y(layout, next.activity)}
+                  y1={y(layout, entry.activity, entry.stackOffset)}
+                  y2={y(layout, next.activity, next.stackOffset)}
                 />
               );
             })}
@@ -217,7 +241,7 @@ function TimelineGraph({
               const ratio = maxDensity === minDensity
                 ? 0
                 : Math.sqrt((entry.density - minDensity) / (maxDensity - minDensity));
-              const radius = mode === 'rows' ? 5 : 5 + (ratio * 6);
+              const radius = mode === 'rows' ? 4 : 4 + (ratio * 2.5);
               const label = `${entry.activity}, ${formatTime(entry.time)}, node ${index + 1}`;
               return (
                 <g
@@ -238,8 +262,8 @@ function TimelineGraph({
                   <title>{label}</title>
                   <circle
                     cx={x(getMinuteOfDay(entry.time))}
-                    cy={y(layout, entry.activity) + ((index % 3) - 1) * 2}
-                    r={selected ? radius + 3 : radius}
+                    cy={y(layout, entry.activity, entry.stackOffset)}
+                    r={selected ? radius + 2 : radius}
                     fill={activityColors.get(entry.activity)}
                   />
                 </g>
@@ -671,7 +695,7 @@ export default function CaparVisualizationPage() {
               <option value="all">Semua aktivitas</option>
               {activityNames.map((activity) => <option key={activity} value={activity}>{activity}</option>)}
             </select>
-            <span>Satu lane untuk setiap aktivitas · node lebih besar berarti jumlah data lebih banyak.</span>
+            <span>Satu lane per aktivitas · node berdekatan ditumpuk vertikal; node lebih besar berarti lebih banyak data.</span>
           </div>
         )}
 
@@ -704,7 +728,7 @@ export default function CaparVisualizationPage() {
         )}
         <div className="capar-visual-legend">
           <GitBranch size={14} />
-          <span>Panah menunjukkan urutan waktu; pergantian hari tetap menjadi episode terpisah.</span>
+          <span>Node rapat ditumpuk vertikal; panah menandai transisi aktivitas dan tidak melintasi hari.</span>
         </div>
       </section>
 

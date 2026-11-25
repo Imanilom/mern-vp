@@ -19,6 +19,9 @@ import {
   calculateRecoveryTime,
   recoveryHeartRate,
 } from '../utils/caparDynamicRecovery';
+import {
+  getCaparTimelineStackLayout,
+} from '../utils/caparTimelineLayout';
 
 function toEpochMs(value) {
   const timestamp = Number(value);
@@ -32,7 +35,7 @@ function formatTime(value) {
   return new Intl.DateTimeFormat('id-ID', {
     timeZone: 'Asia/Jakarta',
     dateStyle: 'medium',
-    timeStyle: 'short',
+    timeStyle: 'medium',
   }).format(new Date(timestamp));
 }
 
@@ -184,7 +187,10 @@ function getJakartaMinuteOfDay(value) {
   const timestamp = toEpochMs(value);
   if (timestamp === null) return 0;
   const jakartaDate = new Date(timestamp + (7 * 60 * 60 * 1000));
-  return (jakartaDate.getUTCHours() * 60) + jakartaDate.getUTCMinutes();
+  return (jakartaDate.getUTCHours() * 60)
+    + jakartaDate.getUTCMinutes()
+    + (jakartaDate.getUTCSeconds() / 60)
+    + (jakartaDate.getUTCMilliseconds() / 60_000);
 }
 
 const ACTIVITY_PALETTE = [
@@ -236,27 +242,49 @@ function CaparWindowGraph({
     activities.map((activity, index) => [activity, ACTIVITY_PALETTE[index % ACTIVITY_PALETTE.length]]),
   );
   const width = 2880;
-  const laneHeight = 32;
   const dayHeadingHeight = 24;
+  const plotLeft = 220;
+  const plotRight = width - 28;
+  const plotWidth = plotRight - plotLeft;
+  const timeX = (minute) => plotLeft + ((minute / 1440) * plotWidth);
   let nextDayTop = 28;
   const dayLayouts = days.map(({ day, entries }) => {
     const dayActivities = activities.filter((activity) => (
       entries.some(({ window }) => (window.activity_label || 'Unknown') === activity)
     ));
-    const layout = { day, entries, dayActivities, top: nextDayTop };
-    nextDayTop += dayHeadingHeight + (dayActivities.length * laneHeight) + 10;
+    const stackLayout = getCaparTimelineStackLayout(
+      entries.map(({ window }) => window),
+      (window) => window._id,
+      (window) => window.activity_label || 'Unknown',
+      (window) => timeX(getJakartaMinuteOfDay(window.window_start))
+    );
+    let laneTop = nextDayTop + dayHeadingHeight;
+    const lanes = new Map();
+    dayActivities.forEach((activity) => {
+      const height = stackLayout.laneHeights.get(activity) || 44;
+      lanes.set(activity, { top: laneTop, height });
+      laneTop += height;
+    });
+    const layout = {
+      day,
+      entries,
+      dayActivities,
+      lanes,
+      stackOffsets: stackLayout.offsets,
+      top: nextDayTop,
+    };
+    nextDayTop = laneTop + 10;
     return layout;
   });
   const height = Math.max(100, nextDayTop + 10);
-  const plotLeft = 220;
-  const plotRight = width - 28;
-  const plotWidth = plotRight - plotLeft;
-  const timeX = (minute) => plotLeft + ((minute / 1440) * plotWidth);
-  const laneY = (layout, activity) => (
-    layout.top + dayHeadingHeight
-      + (layout.dayActivities.indexOf(activity) * laneHeight)
-      + (laneHeight / 2)
-  );
+  const laneY = (layout, activity, nodeId) => {
+    const lane = layout.lanes.get(activity);
+    return lane.top + (lane.height / 2) + (layout.stackOffsets.get(String(nodeId)) || 0);
+  };
+  const laneCenterY = (layout, activity) => {
+    const lane = layout.lanes.get(activity);
+    return lane.top + (lane.height / 2);
+  };
 
   if (!visibleWindows.length) {
     return <p className="capar-graph-empty">Tidak ada node untuk filter ini.</p>;
@@ -268,7 +296,7 @@ function CaparWindowGraph({
         <div>
           <span className="eyebrow">GRAF SEMANTIK · URUTAN WIB</span>
           <h3>Satu node per window, tersusun dalam lane aktivitas</h3>
-          <p>Setiap hari menjadi episode terpisah; panah mengikuti timestamp dan tidak melintasi hari.</p>
+          <p>Node berwaktu rapat ditumpuk vertikal; panah menandai transisi aktivitas dan tidak melintasi hari.</p>
         </div>
         <span className="capar-graph-count">{visibleWindows.length} node · {days.length} episode harian</span>
       </div>
@@ -320,7 +348,7 @@ function CaparWindowGraph({
                     <text
                       className="capar-graph-activity"
                       x="8"
-                      y={laneY(layout, activity) + 3}
+                      y={laneCenterY(layout, activity) + 3}
                     >
                       {activity}
                     </text>
@@ -328,14 +356,15 @@ function CaparWindowGraph({
                       className="capar-graph-episode-line"
                       x1={plotLeft}
                       x2={plotRight}
-                      y1={laneY(layout, activity)}
-                      y2={laneY(layout, activity)}
+                      y1={laneCenterY(layout, activity)}
+                      y2={laneCenterY(layout, activity)}
                     />
                   </g>
                 ))}
                 {entries.slice(0, -1).map(({ window: current }, index) => {
                   const next = entries[index + 1].window;
                   if (!visibleIds.has(String(current._id)) || !visibleIds.has(String(next._id))) return null;
+                  if ((current.activity_label || 'Unknown') === (next.activity_label || 'Unknown')) return null;
                   return (
                     <line
                       className="capar-graph-edge"
@@ -343,8 +372,8 @@ function CaparWindowGraph({
                       markerEnd="url(#capar-graph-arrow)"
                       x1={timeX(getJakartaMinuteOfDay(current.window_start))}
                       x2={timeX(getJakartaMinuteOfDay(next.window_start))}
-                      y1={laneY(layout, current.activity_label || 'Unknown')}
-                      y2={laneY(layout, next.activity_label || 'Unknown')}
+                      y1={laneY(layout, current.activity_label || 'Unknown', current._id)}
+                      y2={laneY(layout, next.activity_label || 'Unknown', next._id)}
                     />
                   );
                 })}
@@ -355,11 +384,11 @@ function CaparWindowGraph({
                   ));
                   return (
                     <g key={`${day}:${activity}`}>
-                      {activityEntries.map(({ window }, index) => {
+                      {activityEntries.map(({ window }) => {
                         const state = getTemporalState(window);
                         const color = activityColors.get(activity) || '#788f98';
                         const selected = String(window._id) === String(selectedWindowId);
-                        const radius = Math.max(5, Math.min(10, getNodeSize(window.raw_count, densityRange) / 3));
+                        const radius = Math.max(4, Math.min(7, getNodeSize(window.raw_count, densityRange) / 4));
                         const label = `${activity}, ${formatTime(window.window_start)}, HR ${formatMetric(window.features?.mean_hr)} bpm, RR ${formatMetric(window.features?.mean_rr)} ms, ACC ${formatMetric(window.features?.motion_intensity, 3)}, ${state?.name || 'state belum dipetakan'}, ${Number(window.raw_count) || 0} sampel`;
                         return (
                           <g
@@ -380,8 +409,8 @@ function CaparWindowGraph({
                             <title>{label}</title>
                             <circle
                               cx={timeX(getJakartaMinuteOfDay(window.window_start))}
-                              cy={laneY(layout, activity) + ((index % 3) - 1) * 3}
-                              r={selected ? radius + 3 : radius}
+                              cy={laneY(layout, activity, window._id)}
+                              r={selected ? radius + 2 : radius}
                               fill={color}
                               stroke={STATE_STROKES[state?.code] || '#ffffff'}
                             />
@@ -396,7 +425,7 @@ function CaparWindowGraph({
           })}
         </svg>
       </div>
-      <p className="capar-graph-hint">Klik node untuk membuka interpretasi K1–K4 di daftar; arah panah mengikuti urutan timestamp, bukan hubungan kausal.</p>
+      <p className="capar-graph-hint">Node yang berdekatan disusun bertingkat agar dapat dipilih; panah hanya menandai pergantian aktivitas, bukan hubungan kausal.</p>
     </section>
   );
 }
