@@ -13,6 +13,11 @@ import {
   saveDoctorCaparWindowNode,
   saveDoctorCaparDailyAnalysis,
 } from '../controllers/doctor.controller.js';
+import {
+  listDoctorCaparRows,
+  listDoctorCaparActivityEpisodes,
+  rebuildDoctorCaparActivityEpisodes,
+} from '../controllers/doctorCaparVisualization.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
 
 const router = express.Router();
@@ -34,6 +39,9 @@ router.get('/logs', listDoctorPatientLogs);
 router.get('/capar-window-nodes', listDoctorCaparWindowNodes);
 router.post('/capar-window-nodes', saveDoctorCaparWindowNode);
 router.post('/capar-window-analyses/daily', saveDoctorCaparDailyAnalysis);
+router.get('/capar-visualization/rows', listDoctorCaparRows);
+router.get('/capar-visualization/activities', listDoctorCaparActivityEpisodes);
+router.post('/capar-visualization/activities/rebuild', rebuildDoctorCaparActivityEpisodes);
 router.get('/patient/:id', getDoctorPatientById);
 router.get('/patient/:id/live', getDoctorPatientLive);
 router.get('/patient/:id/history', getDoctorPatientHistory);

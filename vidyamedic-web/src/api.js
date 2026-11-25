@@ -62,10 +62,32 @@ export const api = {
     if (cursor) params.set('cursor', cursor);
     return request(`/doctor/logs?${params.toString()}`);
   },
-  async listDoctorCaparWindowNodes(patientId, date) {
+  async listDoctorCaparWindowNodes(patientId, date, allDates = false) {
     const params = new URLSearchParams({ patient_id: patientId });
-    if (date) params.set('date', date);
+    if (allDates) params.set('all_dates', 'true');
+    else if (date) params.set('date', date);
     return request(`/doctor/capar-window-nodes?${params.toString()}`);
+  },
+  async listDoctorCaparRows(patientId, date, allDates = false) {
+    const params = new URLSearchParams({ patient_id: patientId });
+    if (allDates) params.set('all_dates', 'true');
+    else if (date) params.set('date', date);
+    return request(`/doctor/capar-visualization/rows?${params.toString()}`);
+  },
+  async listDoctorCaparActivityEpisodes(patientId, date, allDates = false) {
+    const params = new URLSearchParams({ patient_id: patientId });
+    if (allDates) params.set('all_dates', 'true');
+    else if (date) params.set('date', date);
+    return request(`/doctor/capar-visualization/activities?${params.toString()}`);
+  },
+  async rebuildDoctorCaparActivityEpisodes(patientId, date, allDates = false) {
+    return request('/doctor/capar-visualization/activities/rebuild', {
+      method: 'POST',
+      body: JSON.stringify({
+        patient_id: patientId,
+        ...(allDates ? { all_dates: true } : date ? { date } : {}),
+      }),
+    });
   },
   async saveDoctorCaparWindowNode(patientId, segmentId) {
     return request('/doctor/capar-window-nodes', {

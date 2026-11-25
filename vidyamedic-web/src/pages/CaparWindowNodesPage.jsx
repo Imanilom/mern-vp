@@ -173,6 +173,234 @@ function getNodeColor(window, baseline) {
   return '#788f98';
 }
 
+function getJakartaDayKey(value) {
+  const timestamp = toEpochMs(value);
+  return timestamp === null
+    ? null
+    : new Date(timestamp + (7 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+}
+
+function getJakartaMinuteOfDay(value) {
+  const timestamp = toEpochMs(value);
+  if (timestamp === null) return 0;
+  const jakartaDate = new Date(timestamp + (7 * 60 * 60 * 1000));
+  return (jakartaDate.getUTCHours() * 60) + jakartaDate.getUTCMinutes();
+}
+
+const ACTIVITY_PALETTE = [
+  '#397b69',
+  '#547fb4',
+  '#c27b3f',
+  '#8a6da8',
+  '#b45d69',
+  '#588f9d',
+  '#9b8a3c',
+  '#587c4d',
+];
+
+const STATE_STROKES = {
+  S0: '#34735b',
+  S1: '#8b6b27',
+  S2: '#9c4e57',
+  S3: '#496d9d',
+  S4: '#34735b',
+  ABSTAIN: '#6b6178',
+};
+
+function CaparWindowGraph({
+  windows,
+  visibleWindows,
+  selectedWindowId,
+  onSelect,
+  onActivitySelect,
+  activityFilter,
+  activities,
+}) {
+  const visibleIds = new Set(visibleWindows.map((window) => String(window._id)));
+  const rawCounts = windows.map((window) => Number(window.raw_count) || 0);
+  const densityRange = {
+    min: rawCounts.length ? Math.min(...rawCounts) : 0,
+    max: rawCounts.length ? Math.max(...rawCounts) : 0,
+  };
+  const windowsByDay = new Map();
+  windows.forEach((window, index) => {
+    const day = getJakartaDayKey(window.window_start);
+    if (!day) return;
+    if (!windowsByDay.has(day)) windowsByDay.set(day, []);
+    windowsByDay.get(day).push({ window, index });
+  });
+  const days = [...windowsByDay.entries()]
+    .map(([day, entries]) => ({ day, entries }))
+    .filter(({ entries }) => entries.some(({ window }) => visibleIds.has(String(window._id))));
+  const activityColors = new Map(
+    activities.map((activity, index) => [activity, ACTIVITY_PALETTE[index % ACTIVITY_PALETTE.length]]),
+  );
+  const width = 2880;
+  const laneHeight = 32;
+  const dayHeadingHeight = 24;
+  let nextDayTop = 28;
+  const dayLayouts = days.map(({ day, entries }) => {
+    const dayActivities = activities.filter((activity) => (
+      entries.some(({ window }) => (window.activity_label || 'Unknown') === activity)
+    ));
+    const layout = { day, entries, dayActivities, top: nextDayTop };
+    nextDayTop += dayHeadingHeight + (dayActivities.length * laneHeight) + 10;
+    return layout;
+  });
+  const height = Math.max(100, nextDayTop + 10);
+  const plotLeft = 220;
+  const plotRight = width - 28;
+  const plotWidth = plotRight - plotLeft;
+  const timeX = (minute) => plotLeft + ((minute / 1440) * plotWidth);
+  const laneY = (layout, activity) => (
+    layout.top + dayHeadingHeight
+      + (layout.dayActivities.indexOf(activity) * laneHeight)
+      + (laneHeight / 2)
+  );
+
+  if (!visibleWindows.length) {
+    return <p className="capar-graph-empty">Tidak ada node untuk filter ini.</p>;
+  }
+
+  return (
+    <section className="capar-semantic-graph" aria-label="Graf node window CAPAR">
+      <div className="capar-graph-heading">
+        <div>
+          <span className="eyebrow">GRAF SEMANTIK · URUTAN WIB</span>
+          <h3>Satu node per window, tersusun dalam lane aktivitas</h3>
+          <p>Setiap hari menjadi episode terpisah; panah mengikuti timestamp dan tidak melintasi hari.</p>
+        </div>
+        <span className="capar-graph-count">{visibleWindows.length} node · {days.length} episode harian</span>
+      </div>
+      <div className="capar-graph-legend" aria-label="Legenda aktivitas">
+        {activities.map((activity) => (
+          <button
+            aria-pressed={activityFilter === activity}
+            className={activityFilter === activity ? 'is-active' : ''}
+            key={activity}
+            onClick={() => onActivitySelect(activity)}
+            type="button"
+          >
+            <i style={{ backgroundColor: activityColors.get(activity) }} />
+            {activity}
+          </button>
+        ))}
+        <span className="capar-graph-node-legend">Ukuran = sampel · garis tepi = state CAPAR</span>
+      </div>
+      <div className="capar-graph-scroll">
+        <svg
+          aria-label={`${visibleWindows.length} node CAPAR pada ${days.length} episode harian`}
+          className="capar-graph-svg"
+          role="group"
+          viewBox={`0 0 ${width} ${height}`}
+        >
+          <defs>
+            <marker id="capar-graph-arrow" markerHeight="7" markerWidth="7" orient="auto" refX="6" refY="3.5">
+              <path d="M0,0 L7,3.5 L0,7 z" />
+            </marker>
+          </defs>
+          {[0, 360, 720, 1080, 1440].map((minute) => (
+            <g key={minute}>
+              <line className="capar-graph-grid" x1={timeX(minute)} x2={timeX(minute)} y1="18" y2={height - 8} />
+              <text className="capar-graph-time" x={timeX(minute)} y="13" textAnchor="middle">
+                {String(Math.floor(minute / 60)).padStart(2, '0')}:00
+              </text>
+            </g>
+          ))}
+          {dayLayouts.map((layout) => {
+            const { day, entries, dayActivities, top } = layout;
+            return (
+              <g key={day}>
+                <text className="capar-graph-day" x="8" y={top + 13}>{day}</text>
+                <text className="capar-graph-day-count" x="112" y={top + 13}>
+                  {entries.length} window
+                </text>
+                {dayActivities.map((activity) => (
+                  <g key={`${day}:${activity}:lane`}>
+                    <text
+                      className="capar-graph-activity"
+                      x="8"
+                      y={laneY(layout, activity) + 3}
+                    >
+                      {activity}
+                    </text>
+                    <line
+                      className="capar-graph-episode-line"
+                      x1={plotLeft}
+                      x2={plotRight}
+                      y1={laneY(layout, activity)}
+                      y2={laneY(layout, activity)}
+                    />
+                  </g>
+                ))}
+                {entries.slice(0, -1).map(({ window: current }, index) => {
+                  const next = entries[index + 1].window;
+                  if (!visibleIds.has(String(current._id)) || !visibleIds.has(String(next._id))) return null;
+                  return (
+                    <line
+                      className="capar-graph-edge"
+                      key={`${current._id}:${next._id}`}
+                      markerEnd="url(#capar-graph-arrow)"
+                      x1={timeX(getJakartaMinuteOfDay(current.window_start))}
+                      x2={timeX(getJakartaMinuteOfDay(next.window_start))}
+                      y1={laneY(layout, current.activity_label || 'Unknown')}
+                      y2={laneY(layout, next.activity_label || 'Unknown')}
+                    />
+                  );
+                })}
+                {dayActivities.map((activity) => {
+                  const activityEntries = entries.filter(({ window }) => (
+                    (window.activity_label || 'Unknown') === activity
+                    && visibleIds.has(String(window._id))
+                  ));
+                  return (
+                    <g key={`${day}:${activity}`}>
+                      {activityEntries.map(({ window }, index) => {
+                        const state = getTemporalState(window);
+                        const color = activityColors.get(activity) || '#788f98';
+                        const selected = String(window._id) === String(selectedWindowId);
+                        const radius = Math.max(5, Math.min(10, getNodeSize(window.raw_count, densityRange) / 3));
+                        const label = `${activity}, ${formatTime(window.window_start)}, HR ${formatMetric(window.features?.mean_hr)} bpm, RR ${formatMetric(window.features?.mean_rr)} ms, ACC ${formatMetric(window.features?.motion_intensity, 3)}, ${state?.name || 'state belum dipetakan'}, ${Number(window.raw_count) || 0} sampel`;
+                        return (
+                          <g
+                            aria-label={label}
+                            aria-pressed={selected}
+                            className={`capar-graph-node ${selected ? 'is-selected' : ''}`}
+                            key={window._id}
+                            onClick={() => onSelect(window._id)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                onSelect(window._id);
+                              }
+                            }}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <title>{label}</title>
+                            <circle
+                              cx={timeX(getJakartaMinuteOfDay(window.window_start))}
+                              cy={laneY(layout, activity) + ((index % 3) - 1) * 3}
+                              r={selected ? radius + 3 : radius}
+                              fill={color}
+                              stroke={STATE_STROKES[state?.code] || '#ffffff'}
+                            />
+                          </g>
+                        );
+                      })}
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <p className="capar-graph-hint">Klik node untuk membuka interpretasi K1–K4 di daftar; arah panah mengikuti urutan timestamp, bukan hubungan kausal.</p>
+    </section>
+  );
+}
+
 function getWindowParagraphs(window, baseline, nextWindow) {
   const hr = numericValue(window.features?.mean_hr);
   const rr = numericValue(window.features?.mean_rr);
@@ -493,6 +721,7 @@ export default function CaparWindowNodesPage() {
   const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const [dateMode, setDateMode] = useState('day');
   const [activityFilter, setActivityFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
   const [activeView, setActiveView] = useState('nodes');
@@ -539,7 +768,11 @@ export default function CaparWindowNodesPage() {
     setLoading(true);
     setError('');
     setNotice('');
-    api.listDoctorCaparWindowNodes(selectedPatient, selectedDate || undefined)
+    api.listDoctorCaparWindowNodes(
+      selectedPatient,
+      dateMode === 'day' ? selectedDate || undefined : undefined,
+      dateMode === 'all',
+    )
       .then((result) => {
         if (!active) return;
         setWindows(result.data || []);
@@ -548,7 +781,9 @@ export default function CaparWindowNodesPage() {
         setDailySummary(result);
         setSavedAnalysis(result.daily_analysis || null);
         setTruncated(Boolean(result.truncated));
-        if (!selectedDate && result.selected_date) setSelectedDate(result.selected_date);
+        if (dateMode === 'day' && !selectedDate && result.selected_date) {
+          setSelectedDate(result.selected_date);
+        }
         setSelectedWindowId('');
       })
       .catch((reason) => {
@@ -558,7 +793,7 @@ export default function CaparWindowNodesPage() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [selectedPatient, selectedDate, reloadKey]);
+  }, [selectedPatient, selectedDate, dateMode, reloadKey]);
 
   const activities = useMemo(
     () => [...new Set(windows.map((window) => window.activity_label || 'Unknown'))]
@@ -575,6 +810,14 @@ export default function CaparWindowNodesPage() {
       )
     )),
     [windows, activityFilter, stateFilter],
+  );
+  const visibleWindowIds = useMemo(
+    () => new Set(visibleWindows.map((window) => String(window._id))),
+    [visibleWindows],
+  );
+  const windowIndexById = useMemo(
+    () => new Map(windows.map((window, index) => [String(window._id), index])),
+    [windows],
   );
   const visibleSummaries = useMemo(() => (
     (dailySummary?.activity_summaries || []).filter((summary) => (
@@ -595,6 +838,17 @@ export default function CaparWindowNodesPage() {
       && baseline.time_period === selectedWindow.time_period
     ))
     : null;
+  const selectedWindowParagraphs = selectedWindow
+    && visibleWindowIds.has(String(selectedWindow._id))
+    ? getWindowParagraphs(
+      selectedWindow,
+      selectedBaseline,
+      getNextWindowInEpisode(selectedWindow),
+    )
+    : [];
+  const combinedDateLabel = dates.length
+    ? `${dates[dates.length - 1]} — ${dates[0]}`
+    : 'belum ada tanggal';
   const rawCounts = windows.map((window) => Number(window.raw_count) || 0);
   const densityRange = {
     min: rawCounts.length ? Math.min(...rawCounts) : 0,
@@ -611,6 +865,15 @@ export default function CaparWindowNodesPage() {
       baseline.activity === (window.activity_label || 'Unknown')
       && baseline.time_period === window.time_period
     ));
+  }
+
+  function getNextWindowInEpisode(window) {
+    const index = windowIndexById.get(String(window._id));
+    const nextWindow = index === undefined ? null : windows[index + 1];
+    return nextWindow
+      && getJakartaDayKey(nextWindow.window_start) === getJakartaDayKey(window.window_start)
+      ? nextWindow
+      : null;
   }
 
   async function saveNode(window) {
@@ -633,7 +896,7 @@ export default function CaparWindowNodesPage() {
   }
 
   async function saveDailyAnalysis() {
-    if (!selectedDate) return;
+    if (!selectedDate || dateMode !== 'day') return;
     setSavingDaily(true);
     setError('');
     setNotice('');
@@ -697,6 +960,7 @@ export default function CaparWindowNodesPage() {
               onChange={(event) => {
                 setSelectedPatient(event.target.value);
                 setSelectedDate('');
+                setDateMode('day');
                 setActivityFilter('all');
                 setStateFilter('all');
               }}
@@ -713,10 +977,29 @@ export default function CaparWindowNodesPage() {
           </span>
         </label>
         <label>
-          Tanggal analisis
+          Rentang node
           <span className="doctor-log-select">
             <select
-              disabled={!selectedPatient || !dates.length || loading}
+              disabled={!selectedPatient || loading}
+              onChange={(event) => {
+                setDateMode(event.target.value);
+                setActivityFilter('all');
+                setStateFilter('all');
+                setSelectedWindowId('');
+              }}
+              value={dateMode}
+            >
+              <option value="day">Satu hari</option>
+              <option value="all">Gabungkan semua hari</option>
+            </select>
+            <ChevronDown aria-hidden="true" size={16} />
+          </span>
+        </label>
+        <label>
+          Hari
+          <span className="doctor-log-select">
+            <select
+              disabled={dateMode === 'all' || !selectedPatient || !dates.length || loading}
               onChange={(event) => {
                 setSelectedDate(event.target.value);
                 setActivityFilter('all');
@@ -788,7 +1071,7 @@ export default function CaparWindowNodesPage() {
 
       <RecoverySimulator
         hidden={activeView !== 'simulation'}
-        key={`${selectedPatient}:${selectedDate}`}
+        key={`${selectedPatient}:${dateMode}:${selectedDate}`}
         selectedBaseline={selectedBaseline}
         selectedWindow={selectedWindow}
       />
@@ -815,29 +1098,37 @@ export default function CaparWindowNodesPage() {
           <section className="capar-daily-panel panel">
             <div className="capar-section-heading">
               <div>
-                <span className="eyebrow">RINGKASAN HARIAN · {selectedDate}</span>
+                <span className="eyebrow">
+                  {dateMode === 'day' ? `RINGKASAN HARIAN · ${selectedDate}` : `GABUNGAN HARI · ${combinedDateLabel}`}
+                </span>
                 <h2>Fisiologi per aktivitas</h2>
-                <p>Statistik dihitung dari window valid; kovarians memakai pasangan HR–RR yang tersedia.</p>
+                <p>
+                  {dateMode === 'day'
+                    ? 'Statistik dihitung dari window valid; kovarians memakai pasangan HR–RR yang tersedia.'
+                    : 'Ringkasan menggabungkan hari yang tersedia; urutan node dan episode hariannya tetap dipisahkan.'}
+                </p>
               </div>
               <div className="capar-daily-save">
-                {savedAnalysis && (
+                {dateMode === 'day' && savedAnalysis && (
                   <span className="capar-saved-analysis">
                     <Check size={14} /> Tersimpan {formatTime(savedAnalysis.updatedAt)}
                   </span>
                 )}
-                <button
-                  className="button button-primary"
-                  disabled={savingDaily || !windows.length}
-                  onClick={saveDailyAnalysis}
-                >
-                  {savingDaily ? <LoaderCircle className="spin" size={15} /> : <Save size={15} />}
-                  Simpan analisis harian
-                </button>
+                {dateMode === 'day' && (
+                  <button
+                    className="button button-primary"
+                    disabled={savingDaily || !windows.length}
+                    onClick={saveDailyAnalysis}
+                  >
+                    {savingDaily ? <LoaderCircle className="spin" size={15} /> : <Save size={15} />}
+                    Simpan analisis harian
+                  </button>
+                )}
               </div>
             </div>
             {truncated && (
               <div className="notice notice-warning capar-truncated-notice">
-                Tampilan dibatasi sampai 10.000 window. Snapshot harian tetap menghitung seluruh data tanggal ini.
+                Tampilan dan ringkasan dibatasi sampai 10.000 window. Pilih satu hari untuk mempersempit rentang.
               </div>
             )}
             <div className="capar-activity-summaries">
@@ -874,11 +1165,48 @@ export default function CaparWindowNodesPage() {
           <section className="capar-node-panel panel">
             <div className="doctor-log-list-heading">
               <div>
-                <span className="eyebrow">URUTAN WAKTU · WIB</span>
+                <span className="eyebrow">URUTAN WAKTU · WIB · NODE PER WINDOW</span>
                 <h2>{patients.find((patient) => patient._id === selectedPatient)?.name || 'Pasien'}</h2>
               </div>
-              <span className="doctor-log-count">{visibleWindows.length} node · {selectedDate}</span>
+              <span className="doctor-log-count">
+                {visibleWindows.length} node · {dateMode === 'day' ? selectedDate : `${dates.length} hari`}
+              </span>
             </div>
+            <CaparWindowGraph
+              activities={activities}
+              activityFilter={activityFilter}
+              onActivitySelect={(activity) => {
+                setActivityFilter((current) => (current === activity ? 'all' : activity));
+                setSelectedWindowId('');
+              }}
+              onSelect={(windowId) => setSelectedWindowId((current) => (
+                current === windowId ? '' : windowId
+              ))}
+              selectedWindowId={selectedWindowId}
+              visibleWindows={visibleWindows}
+              windows={windows}
+            />
+            {selectedWindowParagraphs.length > 0 && (
+              <section className="capar-node-interpretation-panel" aria-live="polite">
+                <div className="capar-graph-heading">
+                  <div>
+                    <span className="eyebrow">NODE TERPILIH · SEMANTIK K1–K4</span>
+                    <h3>{selectedWindow.activity_label || 'Unknown'} · {formatTime(selectedWindow.window_start)}</h3>
+                  </div>
+                  <button className="button button-light" onClick={() => setSelectedWindowId('')} type="button">
+                    Tutup
+                  </button>
+                </div>
+                <div className="capar-node-interpretation">
+                  {selectedWindowParagraphs.map((paragraph) => (
+                    <div key={paragraph.label}>
+                      <strong>{paragraph.label}</strong>
+                      <p>{paragraph.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
             <div className="capar-legend">
               <span><i className="capar-legend-density" />Ukuran = jumlah sampel sensor per window</span>
               <span><i className="capar-legend-color" />Warna = deviasi HR dari baseline matang; tanpa baseline memakai status CAPAR</span>
@@ -892,18 +1220,22 @@ export default function CaparWindowNodesPage() {
                 </li>
               )}
               {visibleWindows.map((window, index) => {
-                const nextWindow = visibleWindows[index + 1];
+                const nextWindow = getNextWindowInEpisode(window);
+                const displayNextWindow = nextWindow
+                  && visibleWindowIds.has(String(nextWindow._id))
+                  ? nextWindow
+                  : null;
                 const baseline = getBaselineForWindow(window);
                 const size = getNodeSize(window.raw_count, densityRange);
                 const color = getNodeColor(window, baseline);
-                const elapsedMs = nextWindow
-                  ? Math.max(0, (toEpochMs(nextWindow.window_start) ?? 0) - (toEpochMs(window.window_start) ?? 0))
+                const elapsedMs = displayNextWindow
+                  ? Math.max(0, (toEpochMs(displayNextWindow.window_start) ?? 0) - (toEpochMs(window.window_start) ?? 0))
                   : null;
                 const currentActivity = window.activity_label || 'Unknown';
-                const nextActivity = nextWindow?.activity_label || 'Unknown';
+                const nextActivity = displayNextWindow?.activity_label || 'Unknown';
                 const temporalState = getTemporalState(window);
-                const nextTemporalState = nextWindow ? getTemporalState(nextWindow) : null;
-                const transition = nextWindow
+                const nextTemporalState = displayNextWindow ? getTemporalState(displayNextWindow) : null;
+                const transition = displayNextWindow
                   ? currentActivity !== nextActivity
                   : false;
                 const stateTransition = Boolean(
@@ -911,13 +1243,10 @@ export default function CaparWindowNodesPage() {
                   && nextTemporalState?.code
                   && temporalState.code !== nextTemporalState.code
                 );
-                const activityTransition = nextWindow && transition
-                  ? activityTransitionByEdge.get(`${window._id}:${nextWindow._id}`)
+                const activityTransition = displayNextWindow && transition
+                  ? activityTransitionByEdge.get(`${window._id}:${displayNextWindow._id}`)
                   : null;
                 const isSelected = selectedWindowId === window._id;
-                const paragraphs = isSelected
-                  ? getWindowParagraphs(window, baseline, nextWindow)
-                  : [];
 
                 return (
                   <li className="capar-node-item" key={window._id}>
@@ -984,7 +1313,7 @@ export default function CaparWindowNodesPage() {
                           Simpan node
                         </button>
                       )}
-                      {nextWindow && (
+                      {displayNextWindow && (
                         <div className={`capar-node-transition ${transition ? 'is-activity-transition' : ''} ${stateTransition ? 'is-state-transition' : ''}`}>
                           <ArrowRight size={14} />
                           {transition && <strong>{currentActivity} → {nextActivity}</strong>}
@@ -997,16 +1326,6 @@ export default function CaparWindowNodesPage() {
                           {activityTransition && (
                             <span>durasi aktivitas {formatDuration(activityTransition.activity_duration_ms)}</span>
                           )}
-                        </div>
-                      )}
-                      {isSelected && (
-                        <div className="capar-node-interpretation">
-                          {paragraphs.map((paragraph) => (
-                            <div key={paragraph.label}>
-                              <strong>{paragraph.label}</strong>
-                              <p>{paragraph.text}</p>
-                            </div>
-                          ))}
                         </div>
                       )}
                     </article>

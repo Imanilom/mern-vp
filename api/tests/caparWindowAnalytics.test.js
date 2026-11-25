@@ -85,3 +85,27 @@ test('daily timeline separates activity runs and records chronological transitio
   assert.equal(result.time_edges.length, 3);
   assert.equal(result.time_edges[1].activity_changed, true);
 });
+
+test('combined timelines keep adjacent days as separate episodes', () => {
+  const windows = [
+    {
+      _id: 'day-one',
+      window_start: Date.parse('2026-10-26T16:55:00.000Z'),
+      window_end: Date.parse('2026-10-26T16:59:00.000Z'),
+      activity_label: 'Rest',
+      is_valid: true,
+    },
+    {
+      _id: 'day-two',
+      window_start: Date.parse('2026-10-26T17:01:00.000Z'),
+      window_end: Date.parse('2026-10-26T17:05:00.000Z'),
+      activity_label: 'Rest',
+      is_valid: true,
+    },
+  ];
+
+  const result = buildCaparDailyAnalysis(windows);
+  assert.equal(result.activity_runs.length, 2);
+  assert.equal(result.transitions.length, 0);
+  assert.equal(result.time_edges.length, 0);
+});

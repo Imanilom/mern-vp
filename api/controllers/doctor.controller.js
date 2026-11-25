@@ -67,7 +67,7 @@ function getDoctorLogCursor(rawCursor) {
   }
 }
 
-async function getDoctorPatientAccounts() {
+export async function getDoctorPatientAccounts() {
   const [users, legacyPatients] = await Promise.all([
     User.find({ role: 'user' })
       .select('_id name email')
@@ -246,13 +246,23 @@ export async function listDoctorPatientLogs(req, res) {
 
 export async function listDoctorCaparWindowNodes(req, res) {
   try {
-    const allowedQuery = new Set(['patient_id', 'date']);
+    const allowedQuery = new Set(['patient_id', 'date', 'all_dates']);
     const unknownFields = Object.keys(req.query).filter((field) => !allowedQuery.has(field));
     if (unknownFields.length) {
       return res.status(400).json({
         success: false,
         message: `Query tidak dikenal: ${unknownFields.join(', ')}.`,
       });
+    }
+    if (
+      req.query.all_dates !== undefined
+      && !['true', 'false'].includes(String(req.query.all_dates))
+    ) {
+      return res.status(400).json({ success: false, message: 'all_dates harus bernilai true atau false.' });
+    }
+    const allDates = req.query.all_dates === 'true';
+    if (allDates && req.query.date !== undefined) {
+      return res.status(400).json({ success: false, message: 'Pilih date atau all_dates, bukan keduanya.' });
     }
 
     const patientId = String(req.query.patient_id || '');
@@ -272,6 +282,7 @@ export async function listDoctorCaparWindowNodes(req, res) {
         count: 0,
         dates: [],
         selected_date: null,
+        selected_dates: [],
         data: [],
         baselines: [],
         daily_analysis: null,
@@ -307,9 +318,17 @@ export async function listDoctorCaparWindowNodes(req, res) {
     ]);
     const availableDates = dates.map(({ _id }) => _id);
     const requestedDate = req.query.date === undefined ? null : String(req.query.date);
-    let selectedDate = requestedDate || availableDates[0] || null;
+    const selectedDate = allDates ? null : requestedDate || availableDates[0] || null;
     let dayRange = null;
-    if (selectedDate) {
+    if (allDates && availableDates.length) {
+      try {
+        const oldestDay = getJakartaDayRange(availableDates[availableDates.length - 1]);
+        const newestDay = getJakartaDayRange(availableDates[0]);
+        dayRange = { startMs: oldestDay.startMs, endMs: newestDay.endMs };
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+    } else if (selectedDate) {
       try {
         dayRange = getJakartaDayRange(selectedDate);
       } catch (err) {
@@ -361,7 +380,7 @@ export async function listDoctorCaparWindowNodes(req, res) {
       .select('activity time_period stats.mean_hr stats.mean_rr stats.rmssd stats.dfa_alpha1 stats.motion_intensity segment_count is_mature MATURITY_THRESHOLD maturity_detail.level')
       .lean();
     const summary = buildCaparDailyAnalysis(segments);
-    const dailyAnalysis = selectedDate
+    const dailyAnalysis = selectedDate && !allDates
       ? await CaparWindowDailyAnalysis.findOne({
         account_id: userAccount.account_id,
         analysis_date: selectedDate,
@@ -373,6 +392,8 @@ export async function listDoctorCaparWindowNodes(req, res) {
       count: segments.length,
       dates: availableDates,
       selected_date: selectedDate,
+      selected_dates: allDates ? availableDates : selectedDate ? [selectedDate] : [],
+      date_mode: allDates ? 'all' : 'day',
       truncated,
       data: segments.map((segment) => {
         const savedNode = savedBySegment.get(String(segment._id));

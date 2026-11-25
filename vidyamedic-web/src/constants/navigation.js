@@ -9,6 +9,7 @@ import {
   History,
   HeartPulse,
   LayoutDashboard,
+  Layers,
   ShieldCheck,
   Sparkles,
   SlidersHorizontal,
@@ -38,6 +39,7 @@ export const NAV_ITEMS = [
   },
   { id: 'doctor_logs', label: 'Log Pasien', icon: ClipboardList },
   { id: 'doctor_capar_nodes', label: 'Node Window CAPAR', icon: GitBranch },
+  { id: 'doctor_capar_visualization', label: 'Visualisasi CAPAR', icon: Layers },
 ];
 
 export const INITIAL_PROFILE = {

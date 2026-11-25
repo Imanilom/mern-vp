@@ -133,12 +133,15 @@ export function buildCaparDailyAnalysis(windows) {
       };
     });
 
-  const edges = ordered.slice(0, -1).map((window, index) => {
+  const edges = ordered.slice(0, -1).flatMap((window, index) => {
     const next = ordered[index + 1];
+    if (getJakartaDateKey(window.window_start) !== getJakartaDateKey(next.window_start)) {
+      return [];
+    }
     const startMs = normalizeEpochMs(window.window_start);
     const nextStartMs = normalizeEpochMs(next.window_start);
     const endMs = normalizeEpochMs(window.window_end) ?? startMs;
-    return {
+    return [{
       from_segment_id: window._id,
       to_segment_id: next._id,
       from_activity: activityFor(window),
@@ -147,14 +150,20 @@ export function buildCaparDailyAnalysis(windows) {
       elapsed_ms: Math.max(0, (nextStartMs ?? startMs) - (startMs ?? nextStartMs)),
       gap_ms: Math.max(0, (nextStartMs ?? endMs) - (endMs ?? nextStartMs)),
       window_duration_ms: Math.max(0, (endMs ?? startMs) - (startMs ?? endMs)),
-    };
+    }];
   });
 
   const activityRuns = [];
+  const activityRunDayKeys = [];
   for (const window of ordered) {
     const activity = activityFor(window);
+    const dayKey = getJakartaDateKey(window.window_start);
     let run = activityRuns[activityRuns.length - 1];
-    if (!run || run.activity !== activity) {
+    if (
+      !run
+      || run.activity !== activity
+      || activityRunDayKeys[activityRunDayKeys.length - 1] !== dayKey
+    ) {
       const startMs = normalizeEpochMs(window.window_start);
       run = {
         activity,
@@ -166,6 +175,7 @@ export function buildCaparDailyAnalysis(windows) {
         last_segment_id: window._id,
       };
       activityRuns.push(run);
+      activityRunDayKeys.push(dayKey);
     }
     const endMs = normalizeEpochMs(window.window_end)
       ?? normalizeEpochMs(window.window_start);
@@ -175,9 +185,10 @@ export function buildCaparDailyAnalysis(windows) {
     run.last_segment_id = window._id;
   }
 
-  const activityTransitions = activityRuns.slice(0, -1).map((run, index) => {
+  const activityTransitions = activityRuns.slice(0, -1).flatMap((run, index) => {
     const nextRun = activityRuns[index + 1];
-    return {
+    if (activityRunDayKeys[index] !== activityRunDayKeys[index + 1]) return [];
+    return [{
       from_activity: run.activity,
       to_activity: nextRun.activity,
       from_segment_id: run.last_segment_id,
@@ -191,7 +202,7 @@ export function buildCaparDailyAnalysis(windows) {
         nextRun.start_time - run.start_time
       ),
       gap_ms: Math.max(0, nextRun.start_time - run.end_time),
-    };
+    }];
   });
 
   return {
