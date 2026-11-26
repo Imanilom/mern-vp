@@ -104,12 +104,6 @@ function getNodeId(node, mode) {
   return String(mode === 'activities' ? node.episode_key || node._id : node._id);
 }
 
-function getNodeDensity(node, mode) {
-  if (mode === 'rows') return 1;
-  if (mode === 'windows') return Number(node.raw_count) || 0;
-  return Number(node.summary?.raw_sample_count) || Number(node.summary?.window_count) || 0;
-}
-
 function getNodeEndTime(node, mode, startTime) {
   const endValue = mode === 'rows'
     ? startTime
@@ -652,8 +646,7 @@ function CaparNodeField({
   const [page, setPage] = useState(0);
   const pageSize = 200;
   useEffect(() => setPage(0), [nodes, mode, activityFilter, deviceFilter]);
-  const allEntries = getTimelineEntries(nodes, mode)
-    .map((entry) => ({ ...entry, density: getNodeDensity(entry.node, mode) }));
+  const allEntries = getTimelineEntries(nodes, mode);
   const activityNames = [...new Set(allEntries.map((entry) => entry.activity))];
   const activityColors = new Map(
     activityNames.map((name, index) => [name, ACTIVITY_COLORS[index % ACTIVITY_COLORS.length]]),
@@ -669,10 +662,6 @@ function CaparNodeField({
     if (!entriesByDay.has(day)) entriesByDay.set(day, []);
     entriesByDay.get(day).push(entry);
   });
-  const { min: minDensity, max: maxDensity } = getFiniteRange(
-    visible.map(({ density }) => density),
-  );
-
   if (!nodes.length) {
     return <p className="capar-visual-empty">Belum ada node untuk mode dan rentang waktu ini.</p>;
   }
@@ -761,11 +750,16 @@ function CaparNodeField({
                         : mode === 'windows'
                           ? entry.node.features?.mean_rr
                           : entry.node.summary?.mean_rr;
-                      const detail = mode === 'rows'
-                        ? `RR ${formatMetric(rr, 0)} ms`
+                      const sourceDetail = mode === 'rows'
+                        ? ''
                         : mode === 'windows'
                           ? `${entry.node.window_type} · ${Number(entry.node.raw_count) || 0} sampel`
                           : `${entry.node.summary?.window_count || 0} window`;
+                      const attributes = [
+                        `HR ${formatMetric(hr, 0)} bpm`,
+                        `RR ${formatMetric(rr, 0)} ms`,
+                        sourceDetail,
+                      ].filter(Boolean).join(' · ');
                       const label = `${entry.activity}, ${formatTime(entry.time)}, HR ${formatMetric(hr)} bpm, RR ${formatMetric(rr)} ms`;
                       return (
                         <div className="capar-visual-node-step" key={entry.id}>
@@ -774,22 +768,19 @@ function CaparNodeField({
                             aria-pressed={selected}
                             className={`capar-visual-node-card ${selected ? 'is-selected' : ''}`}
                             onClick={() => onSelect(entry.id)}
-                            style={{ flex: `0 0 ${128 * zoom}px` }}
+                            style={{ flex: `0 0 ${176 * zoom}px` }}
                             title={label}
                             type="button"
                           >
                             <span
                               className="capar-visual-node-bubble"
+                              aria-hidden="true"
                               style={{
-                                height: `${size}px`,
-                                width: `${size}px`,
                                 backgroundColor: activityColors.get(entry.activity),
                               }}
-                            >
-                              {formatMetric(hr, 0)}
-                            </span>
+                            />
                             <time>{formatNodeClock(entry.time)}</time>
-                            <small>{entry.activity} · {detail}</small>
+                            <small>{entry.activity} · {attributes}</small>
                           </button>
                           {hasVisibleSuccessor && (
                             <span
