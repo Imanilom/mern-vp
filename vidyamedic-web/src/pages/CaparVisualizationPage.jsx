@@ -54,8 +54,35 @@ const ACTIVITY_COLORS = [
 ];
 const DEVICE_SIGNAL_GAP_MS = 5 * 60_000;
 const MIN_VISUAL_ZOOM = 0.75;
-const MAX_VISUAL_ZOOM = 10;
-const VISUAL_ZOOM_STEP = 0.25;
+const VISUAL_ZOOM_LEVELS = [
+  0.75,
+  1,
+  1.25,
+  1.5,
+  1.75,
+  2,
+  2.5,
+  3,
+  4,
+  5,
+  7.5,
+  10,
+  15,
+  20,
+  30,
+  50,
+  75,
+  100,
+];
+
+function getAdjacentVisualZoom(value, direction) {
+  if (direction > 0) {
+    return VISUAL_ZOOM_LEVELS.find((level) => level > value)
+      ?? VISUAL_ZOOM_LEVELS[VISUAL_ZOOM_LEVELS.length - 1];
+  }
+  return [...VISUAL_ZOOM_LEVELS].reverse().find((level) => level < value)
+    ?? MIN_VISUAL_ZOOM;
+}
 
 function toEpochMs(value) {
   const timestamp = Number(value);
@@ -231,7 +258,7 @@ function ZoomControl({ label, value, onChange }) {
       <button
         aria-label={`Perkecil ${label.toLowerCase()}`}
         disabled={value <= MIN_VISUAL_ZOOM}
-        onClick={() => onChange(Math.max(MIN_VISUAL_ZOOM, value - VISUAL_ZOOM_STEP))}
+        onClick={() => onChange(getAdjacentVisualZoom(value, -1))}
         title={`Perkecil ${label.toLowerCase()}`}
         type="button"
       >
@@ -240,8 +267,8 @@ function ZoomControl({ label, value, onChange }) {
       <output aria-live="polite">{Math.round(value * 100)}%</output>
       <button
         aria-label={`Perbesar ${label.toLowerCase()}`}
-        disabled={value >= MAX_VISUAL_ZOOM}
-        onClick={() => onChange(Math.min(MAX_VISUAL_ZOOM, value + VISUAL_ZOOM_STEP))}
+        disabled={value >= VISUAL_ZOOM_LEVELS[VISUAL_ZOOM_LEVELS.length - 1]}
+        onClick={() => onChange(getAdjacentVisualZoom(value, 1))}
         title={`Perbesar ${label.toLowerCase()}`}
         type="button"
       >
@@ -831,6 +858,8 @@ function AnchoredTimelineChart({
     () => getDeviceSignalSessions(allEntries, mode),
     [allEntries, mode],
   );
+  const [panPosition, setPanPosition] = useState(null);
+  useEffect(() => setPanPosition(null), [focusId, nodes, zoom]);
   if (!allEntries.length) return null;
 
   const timelineBoundaries = [
@@ -840,13 +869,30 @@ function AnchoredTimelineChart({
   const { min: dataStart, max: dataEnd } = getFiniteRange(timelineBoundaries);
   const dataSpan = Math.max(1_000, dataEnd - dataStart);
   const visibleSpan = dataSpan / zoom;
+  const maxViewStart = Math.max(dataStart, dataEnd - visibleSpan);
   const focusTime = allEntries.find((entry) => entry.id === focusId)?.time
     ?? ((dataStart + dataEnd) / 2);
   const centeredStart = focusTime - (visibleSpan / 2);
+  const defaultViewStart = zoom >= 1
+    ? Math.max(dataStart, Math.min(maxViewStart, centeredStart))
+    : centeredStart;
+  const availablePanRange = maxViewStart - dataStart;
+  const defaultPanPosition = availablePanRange > 0
+    ? (defaultViewStart - dataStart) / availablePanRange
+    : 0;
+  const activePanPosition = panPosition ?? defaultPanPosition;
   const viewStart = zoom >= 1
-    ? Math.max(dataStart, Math.min(dataEnd - visibleSpan, centeredStart))
+    ? dataStart + (activePanPosition * availablePanRange)
     : centeredStart;
   const viewEnd = viewStart + visibleSpan;
+  const canPan = availablePanRange > 0;
+  const panStep = canPan
+    ? Math.min(1, Math.max(0.001, (visibleSpan / availablePanRange) * 0.5))
+    : 0;
+  const movePan = (direction) => setPanPosition(Math.max(
+    0,
+    Math.min(1, activePanPosition + (direction * panStep)),
+  ));
   const entries = allEntries.filter((entry) => entry.time >= viewStart && entry.time <= viewEnd);
   const sessions = allSessions
     .map((session) => {
@@ -1051,6 +1097,42 @@ function AnchoredTimelineChart({
           <text className="capar-timeline-axis-label" textAnchor="end" x={right} y={height - 8}>{formatNodeClock(viewEnd)}</text>
           <text className="capar-timeline-axis-label" textAnchor="middle" x={(left + right) / 2} y={sessionY + 22}>rentang sesi sinyal tercatat</text>
         </svg>
+      </div>
+      <div className="capar-timeline-pan-control">
+        <button
+          aria-label="Geser grafik ke waktu lebih awal"
+          className="button button-light"
+          disabled={!canPan || activePanPosition <= 0.001}
+          onClick={() => movePan(-1)}
+          title="Geser ke kiri"
+          type="button"
+        >
+          <ArrowLeft size={15} />
+        </button>
+        <label>
+          Geser rentang waktu
+          <input
+            aria-label="Geser grafik ke kiri atau kanan"
+            disabled={!canPan}
+            max="1000"
+            min="0"
+            onChange={(event) => setPanPosition(Number(event.target.value) / 1000)}
+            step="1"
+            type="range"
+            value={Math.round(activePanPosition * 1000)}
+          />
+        </label>
+        <button
+          aria-label="Geser grafik ke waktu lebih akhir"
+          className="button button-light"
+          disabled={!canPan || activePanPosition >= 0.999}
+          onClick={() => movePan(1)}
+          title="Geser ke kanan"
+          type="button"
+        >
+          <ArrowRight size={15} />
+        </button>
+        <output>{formatTime(viewStart)} – {formatTime(viewEnd)}</output>
       </div>
       <MetricTimeSeriesLanes
         anchors={anchors}

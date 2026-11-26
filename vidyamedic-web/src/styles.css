@@ -955,6 +955,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-timeline-heading span, .capar-timeline-note { color: var(--muted); font-size: 8px; line-height: 1.5; }
 .capar-timeline-svg-wrap { width: 100%; overflow-x: auto; }
 .capar-timeline-svg { display: block; width: 100%; min-width: 560px; height: auto; }
+.capar-timeline-pan-control { display: grid; grid-template-columns: auto minmax(100px, 1fr) auto minmax(130px, auto); align-items: center; gap: 7px; }
+.capar-timeline-pan-control label { display: grid; grid-template-columns: auto minmax(80px, 1fr); align-items: center; gap: 9px; color: var(--ink-soft); font-size: 8px; }
+.capar-timeline-pan-control input { width: 100%; margin: 0; accent-color: var(--green-dark); cursor: ew-resize; }
+.capar-timeline-pan-control output { color: var(--muted); font-size: 8px; font-variant-numeric: tabular-nums; text-align: right; }
 .capar-timeline-grid { stroke: #e7eeeb; stroke-dasharray: 3 5; }
 .capar-timeline-axis-label { fill: #7e8b9e; font-family: inherit; font-size: 9px; }
 .capar-timeline-anchor-label { fill: #126f70; font-family: inherit; font-size: 9px; font-weight: 800; }
@@ -1133,6 +1137,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .capar-temporal-table th { position: static; }
   .capar-timeline-svg-wrap { overflow: visible; }
   .capar-timeline-svg { width: 100% !important; min-width: 0 !important; height: 246px !important; }
+  .capar-timeline-pan-control { display: none; }
   .capar-node-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 8px !important;
@@ -1145,6 +1150,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 }
 
 @media (max-width: 640px) {
+  .capar-timeline-pan-control { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .capar-timeline-pan-control label { grid-column: 1 / -1; grid-template-columns: 1fr; }
+  .capar-timeline-pan-control output { grid-column: 1 / -1; text-align: center; }
   .capar-visual-tabs { width: 100%; }
   .capar-visual-tabs button { flex: 1 1 auto; justify-content: center; padding-inline: 8px; }
   .capar-visual-heading { align-items: flex-start; }
