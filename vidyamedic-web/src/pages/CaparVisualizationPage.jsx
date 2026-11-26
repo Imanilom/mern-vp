@@ -3,15 +3,14 @@ import {
   AlertCircle,
   Activity,
   CalendarDays,
-  GitBranch,
   Layers,
   LoaderCircle,
   RefreshCw,
   Rows3,
+  Timer,
 } from 'lucide-react';
 import { api } from '../api';
 import SectionHeading from '../components/SectionHeading';
-import { getCaparTimelineStackLayout } from '../utils/caparTimelineLayout';
 
 const MODES = [
   { id: 'rows', label: 'Baris data', icon: Rows3 },
@@ -66,6 +65,17 @@ function formatTime(value) {
   }).format(new Date(timestamp));
 }
 
+function formatNodeClock(value) {
+  const timestamp = toEpochMs(value);
+  if (timestamp === null) return '—';
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(timestamp));
+}
+
 function formatMetric(value, digits = 1) {
   if (value === null || value === undefined || value === '') return '—';
   const parsed = Number(value);
@@ -90,17 +100,7 @@ function getJakartaDateKey(value) {
     : new Date(timestamp + (7 * 60 * 60 * 1000)).toISOString().slice(0, 10);
 }
 
-function getMinuteOfDay(value) {
-  const timestamp = toEpochMs(value);
-  if (timestamp === null) return 0;
-  const date = new Date(timestamp + (7 * 60 * 60 * 1000));
-  return (date.getUTCHours() * 60)
-    + date.getUTCMinutes()
-    + (date.getUTCSeconds() / 60)
-    + (date.getUTCMilliseconds() / 60_000);
-}
-
-function TimelineGraph({
+function CaparNodeField({
   nodes,
   mode,
   selectedId,
@@ -133,45 +133,6 @@ function TimelineGraph({
   });
   const minDensity = visible.length ? Math.min(...visible.map(({ density }) => density)) : 0;
   const maxDensity = visible.length ? Math.max(...visible.map(({ density }) => density)) : 0;
-  const width = 2880;
-  const plotLeft = 190;
-  const plotRight = width - 28;
-  const plotWidth = plotRight - plotLeft;
-  const headingHeight = 26;
-  const x = (minute) => plotLeft + ((minute / 1440) * plotWidth);
-  let nextTop = 28;
-  const days = [...entriesByDay.entries()].map(([day, entries]) => {
-    const activities = [...new Set(entries.map(({ activity }) => activity))];
-    const stackLayout = getCaparTimelineStackLayout(
-      entries,
-      (entry) => entry.id,
-      (entry) => entry.activity,
-      (entry) => x(getMinuteOfDay(entry.time))
-    );
-    const stackedEntries = entries.map((entry) => ({
-      ...entry,
-      stackOffset: stackLayout.offsets.get(entry.id) || 0,
-    }));
-    let laneTop = nextTop + headingHeight;
-    const lanes = new Map();
-    activities.forEach((activity) => {
-      const laneHeight = stackLayout.laneHeights.get(activity) || 44;
-      lanes.set(activity, { top: laneTop, height: laneHeight });
-      laneTop += laneHeight;
-    });
-    const layout = { day, entries: stackedEntries, activities, lanes, top: nextTop };
-    nextTop = laneTop + 10;
-    return layout;
-  });
-  const height = Math.max(100, nextTop + 10);
-  const y = (layout, activity, stackOffset = 0) => {
-    const lane = layout.lanes.get(activity);
-    return lane.top + (lane.height / 2) + stackOffset;
-  };
-  const laneCenterY = (layout, activity) => {
-    const lane = layout.lanes.get(activity);
-    return lane.top + (lane.height / 2);
-  };
 
   if (!nodes.length) {
     return <p className="capar-visual-empty">Belum ada node untuk mode dan rentang waktu ini.</p>;
@@ -181,97 +142,79 @@ function TimelineGraph({
   }
 
   return (
-    <div className="capar-visual-graph-scroll">
-      <svg
-        aria-label={`${visible.length} node CAPAR`}
-        className="capar-visual-graph"
-        role="group"
-        viewBox={`0 0 ${width} ${height}`}
-      >
-        <defs>
-          <marker id="capar-visual-arrow" markerHeight="7" markerWidth="7" orient="auto" refX="6" refY="3.5">
-            <path d="M0,0 L7,3.5 L0,7 z" />
-          </marker>
-        </defs>
-        {[0, 360, 720, 1080, 1440].map((minute) => (
-          <g key={minute}>
-            <line className="capar-visual-grid" x1={x(minute)} x2={x(minute)} y1="18" y2={height - 8} />
-            <text className="capar-visual-axis" x={x(minute)} y="13" textAnchor="middle">
-              {String(Math.floor(minute / 60)).padStart(2, '0')}:00
-            </text>
-          </g>
-        ))}
-        {days.map((layout) => (
-          <g key={layout.day}>
-            <text className="capar-visual-day" x="8" y={layout.top + 13}>{layout.day}</text>
-            <text className="capar-visual-axis" x="112" y={layout.top + 13}>
-              {layout.entries.length} node
-            </text>
-            {layout.activities.map((activity) => (
-              <g key={`${layout.day}:${activity}:lane`}>
-                <text className="capar-visual-activity" x="8" y={laneCenterY(layout, activity) + 3}>
-                  {activity}
-                </text>
-                <line
-                  className="capar-visual-lane"
-                  x1={plotLeft}
-                  x2={plotRight}
-                  y1={laneCenterY(layout, activity)}
-                  y2={laneCenterY(layout, activity)}
-                />
-              </g>
-            ))}
-            {layout.entries.slice(0, -1).map((entry, index) => {
-              const next = layout.entries[index + 1];
-              if (entry.activity === next.activity) return null;
+    <div className="capar-visual-node-field">
+      {[...entriesByDay.entries()].map(([day, dayEntries]) => {
+        const activities = [...new Set(dayEntries.map(({ activity }) => activity))].sort();
+        return (
+          <section className="capar-visual-day-group" key={day}>
+            <div className="capar-visual-day-heading">
+              <strong>{day}</strong>
+              <span>{dayEntries.length} node</span>
+            </div>
+            {activities.map((activity) => {
+              const activityEntries = dayEntries.filter((entry) => entry.activity === activity);
               return (
-                <line
-                  className="capar-visual-edge"
-                  key={`${entry.id}:${next.id}`}
-                  markerEnd="url(#capar-visual-arrow)"
-                  x1={x(getMinuteOfDay(entry.time))}
-                  x2={x(getMinuteOfDay(next.time))}
-                  y1={y(layout, entry.activity, entry.stackOffset)}
-                  y2={y(layout, next.activity, next.stackOffset)}
-                />
+                <section className="capar-visual-activity-group" key={`${day}:${activity}`}>
+                  <div className="capar-visual-activity-heading">
+                    <i style={{ backgroundColor: activityColors.get(activity) }} />
+                    <strong>{activity}</strong>
+                    <span>{activityEntries.length}</span>
+                  </div>
+                  <div className="capar-visual-node-grid">
+                    {activityEntries.map((entry) => {
+                      const selected = entry.id === selectedId;
+                      const ratio = maxDensity === minDensity
+                        ? 0
+                        : Math.sqrt((entry.density - minDensity) / (maxDensity - minDensity));
+                      const size = mode === 'rows' ? 30 : 30 + (ratio * 18);
+                      const hr = mode === 'rows'
+                        ? entry.node.hr
+                        : mode === 'windows'
+                          ? entry.node.features?.mean_hr
+                          : entry.node.summary?.mean_hr;
+                      const rr = mode === 'rows'
+                        ? entry.node.rr
+                        : mode === 'windows'
+                          ? entry.node.features?.mean_rr
+                          : entry.node.summary?.mean_rr;
+                      const detail = mode === 'rows'
+                        ? `RR ${formatMetric(rr, 0)} ms`
+                        : mode === 'windows'
+                          ? `${entry.node.window_type} · ${Number(entry.node.raw_count) || 0} sampel`
+                          : `${entry.node.summary?.window_count || 0} window`;
+                      const label = `${entry.activity}, ${formatTime(entry.time)}, HR ${formatMetric(hr)} bpm, RR ${formatMetric(rr)} ms`;
+                      return (
+                        <button
+                          aria-label={label}
+                          aria-pressed={selected}
+                          className={`capar-visual-node-card ${selected ? 'is-selected' : ''}`}
+                          key={entry.id}
+                          onClick={() => onSelect(entry.id)}
+                          title={label}
+                          type="button"
+                        >
+                          <span
+                            className="capar-visual-node-bubble"
+                            style={{
+                              width: `${size}px`,
+                              height: `${size}px`,
+                              backgroundColor: activityColors.get(entry.activity),
+                            }}
+                          >
+                            {formatMetric(hr, 0)}
+                          </span>
+                          <time>{formatNodeClock(entry.time)}</time>
+                          <small>{detail}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
               );
             })}
-            {layout.entries.map((entry, index) => {
-              const selected = entry.id === selectedId;
-              const ratio = maxDensity === minDensity
-                ? 0
-                : Math.sqrt((entry.density - minDensity) / (maxDensity - minDensity));
-              const radius = mode === 'rows' ? 4 : 4 + (ratio * 2.5);
-              const label = `${entry.activity}, ${formatTime(entry.time)}, node ${index + 1}`;
-              return (
-                <g
-                  aria-label={label}
-                  aria-pressed={selected}
-                  className={`capar-visual-node ${selected ? 'is-selected' : ''}`}
-                  key={entry.id}
-                  onClick={() => onSelect(entry.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      onSelect(entry.id);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <title>{label}</title>
-                  <circle
-                    cx={x(getMinuteOfDay(entry.time))}
-                    cy={y(layout, entry.activity, entry.stackOffset)}
-                    r={selected ? radius + 2 : radius}
-                    fill={activityColors.get(entry.activity)}
-                  />
-                </g>
-              );
-            })}
-          </g>
-        ))}
-      </svg>
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -579,17 +522,17 @@ export default function CaparVisualizationPage() {
   }
 
   const modeDescription = mode === 'rows'
-    ? 'Setiap titik mewakili satu baris PolarData; data besar dibatasi dan tanggal dapat dipilih.'
+    ? 'Setiap node mewakili satu baris PolarData; node disusun menurut aktivitas dan waktu tercantum di dalamnya.'
     : mode === 'windows'
-      ? 'Setiap titik mewakili satu window hasil segmentasi CAPAR, lengkap dengan fitur fisiologis.'
-      : 'Satu titik mewakili satu episode aktivitas; data time series dan ringkasan tersimpan di MongoDB.';
+      ? 'Setiap node mewakili satu window CAPAR; ukuran menunjukkan jumlah sampel dan waktu tercantum di dalamnya.'
+      : 'Satu node mewakili satu episode aktivitas; ringkasan dan time series tersimpan di MongoDB.';
 
   return (
     <section className="capar-visual-page">
       <SectionHeading
         eyebrow="DASHBOARD DOKTER · SEMANTIC CAPAR"
         title="Visualisasi node CAPAR"
-        description="Telusuri data sensor dari baris mentah hingga window dan episode aktivitas yang berurutan secara temporal."
+        description="Telusuri baris sensor, window CAPAR, dan episode aktivitas melalui node yang dikelompokkan menurut hari dan aktivitas."
       />
 
       <div className="panel capar-visual-toolbar">
@@ -674,7 +617,7 @@ export default function CaparVisualizationPage() {
       <section className="panel capar-visual-main">
         <div className="capar-visual-heading">
           <div>
-            <span className="eyebrow">LINIMASA · WIB</span>
+            <span className="eyebrow">NODE SEMANTIK · WIB</span>
             <h2>{MODES.find((item) => item.id === mode)?.label}</h2>
             <p>{modeDescription}</p>
           </div>
@@ -695,7 +638,7 @@ export default function CaparVisualizationPage() {
               <option value="all">Semua aktivitas</option>
               {activityNames.map((activity) => <option key={activity} value={activity}>{activity}</option>)}
             </select>
-            <span>Satu lane per aktivitas · node berdekatan ditumpuk vertikal; node lebih besar berarti lebih banyak data.</span>
+            <span>Node dikelompokkan per aktivitas · ukuran node menunjukkan volume data.</span>
           </div>
         )}
 
@@ -718,7 +661,7 @@ export default function CaparVisualizationPage() {
           </p>
         )}
         {!loading && (
-          <TimelineGraph
+          <CaparNodeField
             activityFilter={activityFilter}
             mode={mode}
             nodes={nodes}
@@ -727,8 +670,8 @@ export default function CaparVisualizationPage() {
           />
         )}
         <div className="capar-visual-legend">
-          <GitBranch size={14} />
-          <span>Node rapat ditumpuk vertikal; panah menandai transisi aktivitas dan tidak melintasi hari.</span>
+          <Timer size={14} />
+          <span>Waktu tercantum pada setiap node; pilih node untuk membuka detail dan interpretasi.</span>
         </div>
       </section>
 
