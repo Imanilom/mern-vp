@@ -625,11 +625,12 @@ function CaparNodeField({
   const [page, setPage] = useState(0);
   const pageSize = 200;
   useEffect(() => setPage(0), [nodes, mode, activityFilter, deviceFilter]);
+  const allEntries = getTimelineEntries(nodes, mode)
+    .map((entry) => ({ ...entry, density: getNodeDensity(entry.node, mode) }));
+  const activityNames = [...new Set(allEntries.map((entry) => entry.activity))];
   const activityColors = new Map(
     activityNames.map((name, index) => [name, ACTIVITY_COLORS[index % ACTIVITY_COLORS.length]]),
   );
-  const allEntries = getTimelineEntries(nodes, mode)
-    .map((entry) => ({ ...entry, density: getNodeDensity(entry.node, mode) }));
   const visible = allEntries.filter((entry) => (
     (activityFilter === 'all' || entry.activity === activityFilter)
     && (deviceFilter === 'all' || entry.device === deviceFilter)
