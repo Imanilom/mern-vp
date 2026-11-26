@@ -4,7 +4,7 @@ FROM node:20-slim
 WORKDIR /app
 
 # Copy package.json and package-lock.json
-COPY package*.json ./
+COPY api/package*.json ./
 
 # Install system dependencies for node-gyp and canvas (Debian/apt-get)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -22,7 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN npm install --omit=dev
 
 # Copy all source files
-COPY . .
+COPY api/ ./
+COPY shared/caparGraph.mjs /shared/caparGraph.mjs
 
 # Expose port (default 3030)
 EXPOSE 3030

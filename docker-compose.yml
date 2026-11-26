@@ -20,7 +20,9 @@ services:
       - mongodb_data:/data/db
 
   api:
-    build: ./api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     container_name: mern-vp-api
     restart: always
     ports:
@@ -43,7 +45,9 @@ services:
       - 203.175.8.227
 
   vidyamedic-web:
-    build: ./vidyamedic-web
+    build:
+      context: .
+      dockerfile: vidyamedic-web/Dockerfile
     container_name: mern-vp-vidyamedic-web
     restart: always
     ports:
