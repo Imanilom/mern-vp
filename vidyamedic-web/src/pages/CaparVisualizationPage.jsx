@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import SectionHeading from '../components/SectionHeading';
+import { groupChronologicalActivityRuns } from '../utils/caparActivityRuns';
 
 const MODES = [
   { id: 'rows', label: 'Baris data', icon: Rows3 },
@@ -111,7 +112,7 @@ function CaparNodeField({
   const activityColors = new Map(
     activityNames.map((name, index) => [name, ACTIVITY_COLORS[index % ACTIVITY_COLORS.length]]),
   );
-  const visible = nodes
+  const allEntries = nodes
     .map((node) => ({
       node,
       id: getNodeId(node, mode),
@@ -119,13 +120,13 @@ function CaparNodeField({
       activity: getNodeActivity(node, mode),
       density: getNodeDensity(node, mode),
     }))
-    .filter((entry) => (
-      entry.time !== null
-      && (activityFilter === 'all' || entry.activity === activityFilter)
-    ))
+    .filter((entry) => entry.time !== null)
     .sort((first, second) => first.time - second.time || first.id.localeCompare(second.id));
+  const visible = allEntries.filter((entry) => (
+    activityFilter === 'all' || entry.activity === activityFilter
+  ));
   const entriesByDay = new Map();
-  visible.forEach((entry) => {
+  allEntries.forEach((entry) => {
     const day = getJakartaDateKey(entry.time);
     if (!day) return;
     if (!entriesByDay.has(day)) entriesByDay.set(day, []);
@@ -144,20 +145,43 @@ function CaparNodeField({
   return (
     <div className="capar-visual-node-field">
       {[...entriesByDay.entries()].map(([day, dayEntries]) => {
-        const activities = [...new Set(dayEntries.map(({ activity }) => activity))].sort();
+        const runs = groupChronologicalActivityRuns(dayEntries, {
+          getActivity: (entry) => entry.activity,
+          getTime: (entry) => entry.time,
+          getEndTime: (entry) => mode === 'activities'
+            ? toEpochMs(entry.node.episode_end) ?? entry.time
+            : mode === 'windows'
+              ? toEpochMs(entry.node.window_end) ?? entry.time
+              : entry.time,
+          getStreamKey: (entry) => mode === 'rows'
+            ? entry.node.device_id || 'UNKNOWN'
+            : `${entry.node.device_id || 'UNKNOWN'}:${entry.node.window_type || '5min'}`,
+          getMaxGap: (_previous, next) => mode === 'rows'
+            ? 5 * 60_000
+            : next.node.window_type === '1min' ? 60_000 : 5 * 60_000,
+          canMerge: () => mode !== 'activities',
+        });
         return (
           <section className="capar-visual-day-group" key={day}>
             <div className="capar-visual-day-heading">
               <strong>{day}</strong>
-              <span>{dayEntries.length} node</span>
+              <span>{visible.filter((entry) => getJakartaDateKey(entry.time) === day).length} node</span>
             </div>
-            {activities.map((activity) => {
-              const activityEntries = dayEntries.filter((entry) => entry.activity === activity);
+            {runs.map((run, runIndex) => {
+              const activity = run.activity;
+              const activityEntries = run.entries.filter((entry) => (
+                activityFilter === 'all' || entry.activity === activityFilter
+              ));
+              if (!activityEntries.length) return null;
               return (
-                <section className="capar-visual-activity-group" key={`${day}:${activity}`}>
+                <section
+                  className="capar-visual-activity-group"
+                  key={`${day}:${run.start_time}:${run.stream_key}:${runIndex}`}
+                >
                   <div className="capar-visual-activity-heading">
                     <i style={{ backgroundColor: activityColors.get(activity) }} />
                     <strong>{activity}</strong>
+                    <time>{formatNodeClock(run.start_time)} – {formatNodeClock(run.end_time)}</time>
                     <span>{activityEntries.length}</span>
                   </div>
                   <div className="capar-visual-node-grid">
@@ -522,9 +546,9 @@ export default function CaparVisualizationPage() {
   }
 
   const modeDescription = mode === 'rows'
-    ? 'Setiap node mewakili satu baris PolarData; node disusun menurut aktivitas dan waktu tercantum di dalamnya.'
+    ? 'Setiap node mewakili satu baris PolarData; kelompok mengikuti urutan aktivitas dan waktu.'
     : mode === 'windows'
-      ? 'Setiap node mewakili satu window CAPAR; ukuran menunjukkan jumlah sampel dan waktu tercantum di dalamnya.'
+      ? 'Setiap node mewakili satu window CAPAR; perubahan aktivitas berdasarkan timestamp memulai kelompok baru.'
       : 'Satu node mewakili satu episode aktivitas; ringkasan dan time series tersimpan di MongoDB.';
 
   return (
@@ -532,7 +556,7 @@ export default function CaparVisualizationPage() {
       <SectionHeading
         eyebrow="DASHBOARD DOKTER · SEMANTIC CAPAR"
         title="Visualisasi node CAPAR"
-        description="Telusuri baris sensor, window CAPAR, dan episode aktivitas melalui node yang dikelompokkan menurut hari dan aktivitas."
+        description="Node dikelompokkan menurut urutan timestamp; aktivitas yang sama setelah aktivitas lain tetap menjadi kelompok terpisah."
       />
 
       <div className="panel capar-visual-toolbar">

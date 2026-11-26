@@ -754,6 +754,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-node-day-heading span, .capar-node-activity h4 span { color: var(--muted); font-size: 8px; }
 .capar-node-activity { display: grid; gap: 7px; padding: 10px; background: #f8fbfa; border: 1px solid #edf2f0; border-radius: 10px; }
 .capar-node-activity h4 { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--ink-soft); font-size: 9px; }
+.capar-node-activity h4 .capar-node-run-time { color: var(--muted); font-size: 8px; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 .capar-node-activity h4 i, .capar-visual-activity-heading i { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; }
 .capar-node-activity h4 span, .capar-visual-activity-heading span { margin-left: auto; }
 .capar-node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
@@ -948,6 +949,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-visual-activity-group { display: grid; gap: 7px; padding: 10px; background: #f8fbfa; border: 1px solid #edf2f0; border-radius: 10px; }
 .capar-visual-activity-heading { display: flex; align-items: center; gap: 7px; }
 .capar-visual-activity-heading strong { color: var(--ink-soft); font-size: 9px; }
+.capar-visual-activity-heading time { color: var(--muted); font-size: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .capar-visual-node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
 .capar-visual-node-card { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 4px 8px; min-width: 0; min-height: 66px; padding: 8px; color: var(--ink-soft); background: #fff; border: 1px solid #e5eeeb; border-radius: 10px; text-align: left; cursor: pointer; transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease; }
 .capar-visual-node-card:hover, .capar-visual-node-card.is-selected { border-color: #79aa9d; box-shadow: 0 3px 11px rgba(34, 75, 68, .10); transform: translateY(-1px); }

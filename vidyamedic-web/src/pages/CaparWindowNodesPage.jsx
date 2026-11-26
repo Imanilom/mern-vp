@@ -19,6 +19,7 @@ import {
   calculateRecoveryTime,
   recoveryHeartRate,
 } from '../utils/caparDynamicRecovery';
+import { groupChronologicalActivityRuns } from '../utils/caparActivityRuns';
 
 function toEpochMs(value) {
   const timestamp = Number(value);
@@ -45,6 +46,10 @@ function formatNodeClock(value) {
     minute: '2-digit',
     second: '2-digit',
   }).format(new Date(timestamp));
+}
+
+function getWindowMaxGap(window) {
+  return window.window_type === '1min' ? 60_000 : 300_000;
 }
 
 function formatMetric(value, digits = 1) {
@@ -248,8 +253,8 @@ function CaparWindowGraph({
       <div className="capar-graph-heading">
         <div>
           <span className="eyebrow">GRAF SEMANTIK · NODE CAPAR</span>
-          <h3>Satu node per window, dikelompokkan menurut hari dan aktivitas</h3>
-          <p>Waktu ditampilkan pada setiap node; ukuran node mengikuti jumlah sampel di dalam window.</p>
+          <h3>Satu node per window, dikelompokkan menurut urutan aktivitas</h3>
+          <p>Kelompok mengikuti urutan timestamp; aktivitas yang muncul lagi setelah transisi menjadi kelompok baru.</p>
         </div>
         <span className="capar-graph-count">{visibleWindows.length} node · {days.length} episode harian</span>
       </div>
@@ -270,32 +275,43 @@ function CaparWindowGraph({
       </div>
       <div className="capar-graph-scroll capar-node-field">
         {days.map(({ day, entries }) => {
-          const dayActivities = activities.filter((activity) => (
-            entries.some(({ window }) => (
-              visibleIds.has(String(window._id))
-              && (window.activity_label || 'Unknown') === activity
-            ))
-          ));
+          const runs = groupChronologicalActivityRuns(
+            entries.map(({ window }) => window),
+            {
+              getActivity: (window) => window.activity_label || 'Unknown',
+              getTime: (window) => toEpochMs(window.window_start),
+              getEndTime: (window) => toEpochMs(window.window_end) ?? toEpochMs(window.window_start),
+              getStreamKey: (window) => `${window.device_id || 'UNKNOWN'}:${window.window_type || '5min'}`,
+              getMaxGap: (previous, next) => getWindowMaxGap(next),
+            }
+          );
           return (
             <section className="capar-node-day" key={day}>
               <div className="capar-node-day-heading">
                 <strong>{day}</strong>
                 <span>{entries.filter(({ window }) => visibleIds.has(String(window._id))).length} node</span>
               </div>
-              {dayActivities.map((activity) => {
-                const activityEntries = entries.filter(({ window }) => (
+              {runs.map((run, runIndex) => {
+                const activity = run.activity;
+                const activityEntries = run.entries.filter((window) => (
                   visibleIds.has(String(window._id))
-                  && (window.activity_label || 'Unknown') === activity
                 ));
+                if (!activityEntries.length) return null;
                 return (
-                  <section className="capar-node-activity" key={`${day}:${activity}`}>
+                  <section
+                    className="capar-node-activity capar-node-activity-run"
+                    key={`${day}:${run.start_time}:${activity}:${runIndex}`}
+                  >
                     <h4>
                       <i style={{ backgroundColor: activityColors.get(activity) }} />
                       {activity}
+                      <time className="capar-node-run-time">
+                        {formatNodeClock(run.start_time)} – {formatNodeClock(run.end_time)}
+                      </time>
                       <span>{activityEntries.length}</span>
                     </h4>
                     <div className="capar-node-grid">
-                      {activityEntries.map(({ window }) => {
+                      {activityEntries.map((window) => {
                         const state = getTemporalState(window);
                         const color = activityColors.get(activity) || '#788f98';
                         const selected = String(window._id) === String(selectedWindowId);
