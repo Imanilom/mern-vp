@@ -89,12 +89,25 @@ export const api = {
     ));
     return { ...result, count: data.length, data, truncated: false };
   },
-  async listDoctorCaparTemporalTimeline(patientId, date, allDates = false, deviceId = '') {
+  async listDoctorCaparTemporalTimeline(
+    patientId,
+    date,
+    allDates = false,
+    deviceId = '',
+    includeDetail = true,
+  ) {
     const params = new URLSearchParams({ patient_id: patientId });
     if (allDates) params.set('all_dates', 'true');
     else if (date) params.set('date', date);
     if (deviceId) params.set('device_id', deviceId);
+    if (!includeDetail) params.set('include_detail', 'false');
     return request(`/doctor/capar-visualization/timeline?${params.toString()}`);
+  },
+  async saveDoctorCaparDynamicProfile(profile) {
+    return request('/doctor/capar-visualization/dynamic-profile', {
+      method: 'POST',
+      body: JSON.stringify(profile),
+    });
   },
   async listDoctorCaparActivityEpisodes(patientId, date, allDates = false) {
     const params = new URLSearchParams({ patient_id: patientId });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Activity,
@@ -20,6 +20,10 @@ import {
 import { api } from '../api';
 import SectionHeading from '../components/SectionHeading';
 import { groupChronologicalActivityRuns } from '../utils/caparActivityRuns';
+import { projectCaparGraph } from '../utils/caparGraph';
+
+const CaparGraphExplorer = lazy(() => import('../components/CaparGraphExplorer'));
+const CaparDynamicAnalysis = lazy(() => import('../components/CaparDynamicAnalysis'));
 
 const MODES = [
   { id: 'overview', label: 'Ringkasan hari', icon: CalendarDays },
@@ -28,9 +32,9 @@ const MODES = [
   { id: 'activities', label: 'Episode aktivitas', icon: Activity },
 ];
 const TIMELINE_VIEWS = [
-  { id: 'graph', label: 'Node graph' },
+  { id: 'graph', label: 'Graf relasi' },
   { id: 'timeseries', label: 'Time series' },
-  { id: 'table', label: 'Table' },
+  { id: 'table', label: 'Tabel data' },
 ];
 const TIMELINE_METRICS = [
   { id: 'hr', label: 'HR' },
@@ -644,19 +648,16 @@ function CaparNodeField({
   zoom,
 }) {
   const [page, setPage] = useState(0);
+  const graphId = useId().replace(/:/g, '');
   const pageSize = 200;
   useEffect(() => setPage(0), [nodes, mode, activityFilter, deviceFilter]);
   const allEntries = getTimelineEntries(nodes, mode);
-  const activityNames = [...new Set(allEntries.map((entry) => entry.activity))];
-  const activityColors = new Map(
-    activityNames.map((name, index) => [name, ACTIVITY_COLORS[index % ACTIVITY_COLORS.length]]),
-  );
   const visible = allEntries.filter((entry) => (
     (activityFilter === 'all' || entry.activity === activityFilter)
     && (deviceFilter === 'all' || entry.device === deviceFilter)
   ));
   const entriesByDay = new Map();
-  allEntries.forEach((entry) => {
+  visible.forEach((entry) => {
     const day = getJakartaDateKey(entry.time);
     if (!day) return;
     if (!entriesByDay.has(day)) entriesByDay.set(day, []);
@@ -669,128 +670,163 @@ function CaparNodeField({
     return <p className="capar-visual-empty">Tidak ada node untuk filter aktivitas ini.</p>;
   }
   const pageCount = Math.ceil(visible.length / pageSize);
-  const visibleIds = new Set(visible
-    .slice(page * pageSize, (page + 1) * pageSize)
-    .map((entry) => entry.id));
+  const pageEntries = visible.slice(page * pageSize, (page + 1) * pageSize);
+  const visibleIds = new Set(pageEntries.map((entry) => entry.id));
+  const visibleIndexes = new Map(visible.map((entry, index) => [entry.id, index]));
+  const graphNodeWidth = 164;
+  const graphNodeHeight = 68;
+  const graphStep = 236;
+  const graphRowHeight = 126;
 
   return (
-    <div className="capar-visual-node-field">
-      <p className="capar-node-sequence-note">
-        <ArrowRight aria-hidden="true" size={15} />
-        Panah menunjukkan node berikutnya secara kronologis pada device dan sesi data yang sama.
-      </p>
+    <div className="capar-visual-node-field capar-node-graph">
+      <div className="capar-node-graph-explanation">
+        <strong>Graf berarah · waktu → waktu berikutnya</strong>
+        <span>Node = observasi. Panah menghubungkan observasi berurutan pada aktivitas, device, dan sesi yang sama. HR/RR adalah atribut node, bukan skala grafik.</span>
+      </div>
       {[...entriesByDay.entries()].map(([day, dayEntries]) => {
-        const runs = groupChronologicalActivityRuns(dayEntries, {
-          getActivity: (entry) => entry.streamKey,
-          getTime: (entry) => entry.time,
-          getEndTime: (entry) => mode === 'activities'
-            ? toEpochMs(entry.node.episode_end) ?? entry.time
-            : mode === 'windows'
-              ? toEpochMs(entry.node.window_end) ?? entry.time
-              : entry.time,
-          getStreamKey: (entry) => mode === 'rows'
-            ? `${entry.node.device_id || 'UNKNOWN'}:${entry.node.source_collection || 'PolarData'}`
-            : `${entry.node.device_id || 'UNKNOWN'}:${entry.node.window_type || '5min'}`,
-          getMaxGap: (_previous, next) => mode === 'rows'
-            ? 5 * 60_000
-            : next.node.window_type === '1min' ? 60_000 : 5 * 60_000,
-          canMerge: () => true,
+        const entriesByActivity = new Map();
+        dayEntries.forEach((entry) => {
+          if (!entriesByActivity.has(entry.activity)) entriesByActivity.set(entry.activity, []);
+          entriesByActivity.get(entry.activity).push(entry);
         });
         return (
           <section className="capar-visual-day-group" key={day}>
             <div className="capar-visual-day-heading">
               <strong>{day}</strong>
-              <span>{visible.filter((entry) => getJakartaDateKey(entry.time) === day).length} node</span>
+              <span>{dayEntries.length} node</span>
             </div>
-            {runs.map((run, runIndex) => {
-              const runEntryIndexes = new Map(
-                run.entries.map((entry, index) => [entry.id, index]),
-              );
-              const activityEntries = run.entries.filter((entry) => (
-                visibleIds.has(entry.id)
-                && (activityFilter === 'all' || entry.activity === activityFilter)
-              ));
-              if (!activityEntries.length) return null;
-              const activityNames = [...new Set(activityEntries.map((entry) => entry.activity))];
+            {[...entriesByActivity.entries()].map(([activity, activityEntries], activityIndex) => {
+              const activityColor = ACTIVITY_COLORS[activityIndex % ACTIVITY_COLORS.length];
+              const runs = groupChronologicalActivityRuns(activityEntries, {
+                getActivity: (entry) => entry.streamKey,
+                getTime: (entry) => entry.time,
+                getEndTime: (entry) => entry.endTime,
+                getStreamKey: (entry) => entry.streamKey,
+                getMaxGap: (_previous, next) => getSignalGapLimit(next.node, mode),
+                canMerge: () => true,
+              });
+              const visibleRuns = runs
+                .map((run) => ({
+                  ...run,
+                  entries: run.entries.filter((entry) => visibleIds.has(entry.id)),
+                }))
+                .filter((run) => run.entries.length);
+              if (!visibleRuns.length) return null;
               return (
                 <section
                   className="capar-visual-activity-group"
-                  key={`${day}:${run.start_time}:${run.stream_key}:${runIndex}`}
+                  key={`${day}:${activity}`}
                 >
                   <div className="capar-visual-activity-heading">
-                    <i style={{ backgroundColor: activityColors.get(run.entries[0].activity) }} />
-                    <strong>{activityNames.length === 1 ? activityNames[0] : 'Perubahan aktivitas'}</strong>
-                    <time>{formatNodeClock(run.start_time)} – {formatNodeClock(run.end_time)}</time>
-                    <span>{activityEntries.length}</span>
+                    <i style={{ backgroundColor: activityColor }} />
+                    <strong>{activity}</strong>
+                    <span>{visibleRuns.reduce((count, run) => count + run.entries.length, 0)} node · {visibleRuns.reduce((count, run) => count + Math.max(0, run.entries.length - 1), 0)} relasi</span>
                   </div>
-                  <div
-                    className="capar-visual-node-grid"
-                    style={{
-                      gap: `${8 * zoom}px`,
-                    }}
-                  >
-                    {activityEntries.map((entry) => {
-                      const selected = entry.id === selectedId;
-                      const runEntryIndex = runEntryIndexes.get(entry.id);
-                      const nextRunEntry = run.entries[runEntryIndex + 1];
-                      const hasVisibleSuccessor = nextRunEntry
-                        && visibleIds.has(nextRunEntry.id)
-                        && (activityFilter === 'all' || nextRunEntry.activity === activityFilter);
-                      const hr = mode === 'rows'
-                        ? entry.node.hr
-                        : mode === 'windows'
-                          ? entry.node.features?.mean_hr
-                          : entry.node.summary?.mean_hr;
-                      const rr = mode === 'rows'
-                        ? entry.node.rr
-                        : mode === 'windows'
-                          ? entry.node.features?.mean_rr
-                          : entry.node.summary?.mean_rr;
-                      const sourceDetail = mode === 'rows'
-                        ? ''
-                        : mode === 'windows'
-                          ? `${entry.node.window_type} · ${Number(entry.node.raw_count) || 0} sampel`
-                          : `${entry.node.summary?.window_count || 0} window`;
-                      const attributes = [
-                        `HR ${formatMetric(hr, 0)} bpm`,
-                        `RR ${formatMetric(rr, 0)} ms`,
-                        sourceDetail,
-                      ].filter(Boolean).join(' · ');
-                      const label = `${entry.activity}, ${formatTime(entry.time)}, HR ${formatMetric(hr)} bpm, RR ${formatMetric(rr)} ms`;
-                      return (
-                        <div className="capar-visual-node-step" key={entry.id}>
-                          <button
-                            aria-label={label}
-                            aria-pressed={selected}
-                            className={`capar-visual-node-card ${selected ? 'is-selected' : ''}`}
-                            onClick={() => onSelect(entry.id)}
-                            style={{ flex: `0 0 ${176 * zoom}px` }}
-                            title={label}
-                            type="button"
-                          >
-                            <span
-                              className="capar-visual-node-bubble"
-                              aria-hidden="true"
-                              style={{
-                                backgroundColor: activityColors.get(entry.activity),
-                              }}
-                            />
-                            <time>{formatNodeClock(entry.time)}</time>
-                            <small>{entry.activity} · {attributes}</small>
-                          </button>
-                          {hasVisibleSuccessor && (
-                            <span
-                              aria-label={`Arah ke node ${formatNodeClock(nextRunEntry.time)}`}
-                              className="capar-visual-node-relation"
-                              title={`Urutan waktu berikutnya: ${formatNodeClock(nextRunEntry.time)}`}
-                            >
-                              <ArrowRight aria-hidden="true" size={22} />
-                            </span>
-                          )}
+                  {visibleRuns.map((run, runIndex) => {
+                    const runId = `${graphId}-${day.replace(/[^a-zA-Z0-9_-]/g, '')}-${activityIndex}-${runIndex}`;
+                    const graphWidth = 40 + (run.entries.length * graphStep);
+                    const graphHeight = 34 + graphRowHeight;
+                    return (
+                      <div className="capar-node-graph-session" key={`${run.stream_key}:${run.start_time}`}>
+                        <div className="capar-node-graph-session-heading">
+                          <span>{run.stream_key}</span>
+                          <span>{formatNodeClock(run.start_time)} – {formatNodeClock(run.end_time)}</span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="capar-node-graph-scroll">
+                          <svg
+                            aria-label={`Graf ${activity} pada ${day}, ${run.entries.length} node`}
+                            className="capar-node-graph-svg"
+                            height={graphHeight * zoom}
+                            role="group"
+                            viewBox={`0 0 ${graphWidth} ${graphHeight}`}
+                            width={graphWidth * zoom}
+                          >
+                            <defs>
+                              <marker
+                                id={runId}
+                                markerHeight="8"
+                                markerWidth="8"
+                                orient="auto"
+                                refX="6"
+                                refY="4"
+                              >
+                                <path className="capar-node-graph-arrowhead" d="M0,0 L8,4 L0,8 z" />
+                              </marker>
+                            </defs>
+                            {run.entries.map((entry, index) => {
+                              const x = 20 + (index * graphStep);
+                              const y = 30;
+                              const node = entry.node;
+                              const hr = mode === 'rows'
+                                ? node.hr
+                                : mode === 'windows'
+                                  ? node.features?.mean_hr
+                                  : node.summary?.mean_hr;
+                              const rr = mode === 'rows'
+                                ? node.rr
+                                : mode === 'windows'
+                                  ? node.features?.mean_rr
+                                  : node.summary?.mean_rr;
+                              const detail = mode === 'rows'
+                                ? node.source_collection || 'PolarData'
+                                : mode === 'windows'
+                                  ? `${node.window_type || 'window'} · ${Number(node.raw_count) || 0} sampel`
+                                  : `${Number(node.summary?.window_count) || 0} window`;
+                              const label = `${activity} · ${formatTime(entry.time)} · HR ${formatMetric(hr)} bpm · RR ${formatMetric(rr)} ms · ${detail}`;
+                              const selected = entry.id === selectedId;
+                              const successor = run.entries[index + 1];
+                              return (
+                                <g key={entry.id}>
+                                  {successor && (
+                                    <g className="capar-node-graph-edge">
+                                      <path
+                                        d={`M ${x + graphNodeWidth} ${y + (graphNodeHeight / 2)} L ${x + graphStep - 12} ${y + (graphNodeHeight / 2)}`}
+                                        markerEnd={`url(#${runId})`}
+                                      >
+                                        <title>{`Relasi temporal · selang ${formatDuration(successor.time - entry.time)}`}</title>
+                                      </path>
+                                      <text
+                                        textAnchor="middle"
+                                        x={x + graphNodeWidth + ((graphStep - graphNodeWidth) / 2)}
+                                        y={y + (graphNodeHeight / 2) - 9}
+                                      >
+                                        {formatDuration(successor.time - entry.time)}
+                                      </text>
+                                    </g>
+                                  )}
+                                  <g
+                                    aria-label={label}
+                                    aria-pressed={selected}
+                                    className={`capar-node-graph-node ${selected ? 'is-selected' : ''}`}
+                                    onClick={() => onSelect(entry.id)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        onSelect(entry.id);
+                                      }
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                  >
+                                    <rect height={graphNodeHeight} rx="10" width={graphNodeWidth} x={x} y={y} />
+                                    <text className="capar-node-graph-node-title" x={x + 12} y={y + 19}>
+                                      Node {((page * pageSize) + visibleIndexes.get(entry.id) + 1).toLocaleString('id-ID')}
+                                    </text>
+                                    <text x={x + 12} y={y + 37}>{formatNodeClock(entry.time)}</text>
+                                    <text className="capar-node-graph-node-attributes" x={x + 12} y={y + 54}>
+                                      {`HR ${formatMetric(hr, 0)} · RR ${formatMetric(rr, 0)}`}
+                                    </text>
+                                    <title>{label}</title>
+                                  </g>
+                                </g>
+                              );
+                            })}
+                          </svg>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </section>
               );
             })}
@@ -1681,6 +1717,28 @@ function csvCell(value) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+function getTimePeriodForWindow(timestamp) {
+  const value = toEpochMs(timestamp);
+  if (value === null) return null;
+  const hour = new Date(value + (7 * 60 * 60 * 1000)).getUTCHours();
+  if (hour < 6) return 'night';
+  if (hour < 12) return 'morning';
+  if (hour < 18) return 'afternoon';
+  return 'evening';
+}
+
+function getWindowBaselineForExport(window, baselines = []) {
+  const matching = baselines.filter((baseline) => baseline.activity === (window.activity_label || 'Unknown'));
+  const period = window.time_period || getTimePeriodForWindow(window.window_start);
+  return matching.find((baseline) => baseline.time_period === period)
+    || (matching.length === 1 ? matching[0] : null);
+}
+
+function toExportTimestamp(value) {
+  const timestamp = toEpochMs(value);
+  return timestamp === null ? '' : new Date(timestamp).toISOString();
+}
+
 function createTemporalCsv(timelineData) {
   const header = [
     'granularity',
@@ -1699,14 +1757,25 @@ function createTemporalCsv(timelineData) {
     'activity',
     'device_id',
     'signal_quality',
+    'q_complete',
+    'window_type',
+    'baseline_activity',
+    'baseline_time_period',
+    'baseline_hr_mean',
+    'baseline_hr_std',
+    'baseline_rmssd_mean',
+    'baseline_rmssd_std',
+    'baseline_dfa_alpha1_mean',
+    'baseline_dfa_alpha1_std',
+    'baseline_mature',
     'source_reference',
     'parent_reference',
   ];
   const rows = (timelineData?.rows || []).map((node) => [
     'row',
     node._id,
-    formatTime(node.timestamp_ms ?? node.timestamp),
-    formatTime(node.timestamp_ms ?? node.timestamp),
+    toExportTimestamp(node.timestamp_ms ?? node.timestamp),
+    toExportTimestamp(node.timestamp_ms ?? node.timestamp),
     node.hr,
     node.rr,
     node.rmssd_ms,
@@ -1719,34 +1788,64 @@ function createTemporalCsv(timelineData) {
     node.activity,
     node.device_id,
     node.signal_quality,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
     node._id,
     node.parent_window_id,
   ]);
-  const windows = (timelineData?.windows || []).map((node) => [
-    'window',
-    node._id,
-    formatTime(node.window_start),
-    formatTime(node.window_end),
-    node.features?.mean_hr,
-    node.features?.mean_rr,
-    node.features?.rmssd,
-    node.features?.sdnn,
-    node.features?.dfa_alpha1,
-    node.features?.dfa_alpha2,
-    null,
-    null,
-    null,
-    node.activity_label,
-    node.device_id,
-    node.signal_quality_detail?.q_signal,
-    node._id,
-    node.parent_episode_id,
-  ]);
+  const windows = (timelineData?.windows || []).map((node) => {
+    const baseline = getWindowBaselineForExport(node, timelineData?.baselines || []);
+    return [
+      'window',
+      node._id,
+      toExportTimestamp(node.window_start),
+      toExportTimestamp(node.window_end),
+      node.features?.mean_hr,
+      node.features?.mean_rr,
+      node.features?.rmssd,
+      node.features?.sdnn,
+      node.features?.dfa_alpha1,
+      node.features?.dfa_alpha2,
+      null,
+      null,
+      null,
+      node.activity_label,
+      node.device_id,
+      node.signal_quality_detail?.q_signal,
+      node.signal_quality_detail?.q_complete
+        ?? (node.missing_data_info?.missing_ratio !== null
+          && node.missing_data_info?.missing_ratio !== undefined
+          && Number.isFinite(Number(node.missing_data_info.missing_ratio))
+          ? 1 - Number(node.missing_data_info.missing_ratio)
+          : null),
+      node.window_type,
+      baseline?.activity,
+      baseline?.time_period,
+      baseline?.stats?.mean_hr?.mean,
+      baseline?.stats?.mean_hr?.std,
+      baseline?.stats?.rmssd?.mean,
+      baseline?.stats?.rmssd?.std,
+      baseline?.stats?.dfa_alpha1?.mean,
+      baseline?.stats?.dfa_alpha1?.std,
+      baseline?.is_mature,
+      node._id,
+      node.parent_episode_id,
+    ];
+  });
   const activities = (timelineData?.activities || []).map((node) => [
     'activity',
     node.episode_key || node._id,
-    formatTime(node.episode_start),
-    formatTime(node.episode_end),
+    toExportTimestamp(node.episode_start),
+    toExportTimestamp(node.episode_end),
     node.summary?.mean_hr,
     node.summary?.mean_rr,
     node.summary?.mean_rmssd,
@@ -1758,6 +1857,17 @@ function createTemporalCsv(timelineData) {
     null,
     node.activity_label,
     node.device_id,
+    null,
+    null,
+    node.window_type,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
     null,
     (node.source_segment_ids || []).join('|'),
     null,
@@ -1938,6 +2048,9 @@ export default function CaparVisualizationPage() {
   const [visualZoom, setVisualZoom] = useState(1);
   const [activityFilter, setActivityFilter] = useState('all');
   const [deviceFilter, setDeviceFilter] = useState('all');
+  const [graphScope, setGraphScope] = useState('day');
+  const [selectedGraphEpisodeId, setSelectedGraphEpisodeId] = useState('');
+  const [selectedGraphWindowId, setSelectedGraphWindowId] = useState('');
   const [viewMode, setViewMode] = useState('graph');
   const [selectedMetrics, setSelectedMetrics] = useState(TIMELINE_METRICS.map(({ id }) => id));
   const [dates, setDates] = useState([]);
@@ -1947,6 +2060,16 @@ export default function CaparVisualizationPage() {
   const truncatedSources = Object.entries(timelineData?.truncated || {})
     .filter(([, value]) => value)
     .map(([source]) => source);
+  const selectedPatientRecord = patients.find((patient) => String(patient._id) === String(selectedPatient));
+  const graph = useMemo(() => projectCaparGraph({
+    patient: selectedPatientRecord || { _id: selectedPatient },
+    rows: timelineData?.rows || [],
+    windows: timelineData?.windows || [],
+    activities: timelineData?.activities || [],
+    episodes: timelineData?.episodes || [],
+    anchors: timelineData?.anchors || [],
+    deviceSessions: timelineData?.device_sessions || [],
+  }), [selectedPatient, selectedPatientRecord, timelineData]);
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loading, setLoading] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
@@ -1987,11 +2110,19 @@ export default function CaparVisualizationPage() {
     setSelectedId('');
     setSelectedAnchor(null);
     setNodePopupOpen(false);
-    api.listDoctorCaparTemporalTimeline(selectedPatient, selectedDate, dateMode === 'all')
+    api.listDoctorCaparTemporalTimeline(
+      selectedPatient,
+      selectedDate,
+      dateMode === 'all',
+      '',
+      viewMode !== 'graph',
+    )
       .then((result) => {
         if (!active) return;
         setTimelineData(result);
         setDates(result.dates || []);
+        setSelectedGraphEpisodeId('');
+        setSelectedGraphWindowId('');
         if (result.selected_date && !selectedDate) setSelectedDate(result.selected_date);
         setActivityFilter('all');
         setDeviceFilter('all');
@@ -2006,7 +2137,7 @@ export default function CaparVisualizationPage() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [selectedPatient, selectedDate, dateMode, reloadKey]);
+  }, [selectedPatient, selectedDate, dateMode, reloadKey, viewMode]);
 
   const filteredNodes = useMemo(() => nodes.filter((node) => (
       (activityFilter === 'all' || getNodeActivity(node, dataMode) === activityFilter)
@@ -2094,15 +2225,29 @@ export default function CaparVisualizationPage() {
     }
   }
 
-  function exportCsv() {
+  async function exportCsv() {
     if (!timelineData) return;
-    const blob = new Blob([createTemporalCsv(timelineData)], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `capar-timeline-${selectedPatient}-${selectedDate || 'all-days'}.csv`;
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setError('');
+    try {
+      const exportData = timelineData.detail_included
+        ? timelineData
+        : await api.listDoctorCaparTemporalTimeline(
+          selectedPatient,
+          selectedDate,
+          dateMode === 'all',
+          '',
+          true,
+        );
+      const blob = new Blob([createTemporalCsv(exportData)], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `capar-timeline-${selectedPatient}-${selectedDate || 'all-days'}.csv`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (reason) {
+      setError(reason.message || 'Ekspor CSV gagal.');
+    }
   }
 
   async function rebuildEpisodes() {
@@ -2125,7 +2270,15 @@ export default function CaparVisualizationPage() {
     }
   }
 
-  const modeDescription = mode === 'overview'
+  function changeGraphScope(scope) {
+    setGraphScope(scope);
+    if (scope === 'person' || scope === 'activity') setDateMode('all');
+    else if (scope === 'day') setDateMode('day');
+  }
+
+  const modeDescription = viewMode === 'graph'
+    ? 'Graf dan analisis memakai window, episode aktivitas, episode fisiologis, dan baseline; metrik disimpan sebagai atribut node.'
+    : mode === 'overview'
     ? 'Day overview menyinkronkan data raw, window, episode, anchor, dan sesi device pada rentang waktu yang sama.'
     : mode === 'rows'
     ? 'Setiap node mewakili satu baris PolarData; kelompok mengikuti urutan aktivitas dan waktu.'
@@ -2137,8 +2290,10 @@ export default function CaparVisualizationPage() {
     <section className="capar-visual-page">
       <SectionHeading
         eyebrow="SCIENTIFIC MONITORING · CAPAR"
-        title="Temporal Visualization"
-        description="Visualisasi temporal multis skala dari raw measurements, window CAPAR, episode aktivitas, anchor, dan device signal."
+        title={viewMode === 'graph' ? 'CAPAR Knowledge Graph' : 'Temporal Visualization'}
+        description={viewMode === 'graph'
+          ? 'Jelajahi relasi antar data per pasien, hari, dan aktivitas. Nilai fisiologis ditampilkan sebagai atribut node, bukan skala grafik.'
+          : 'Visualisasi data temporal dari raw measurements, window CAPAR, episode aktivitas, anchor, dan device signal.'}
         action={(
           <button
             className="button button-light capar-visual-print"
@@ -2173,7 +2328,11 @@ export default function CaparVisualizationPage() {
         <label>
           Rentang hari
           <select
-            onChange={(event) => setDateMode(event.target.value)}
+            onChange={(event) => {
+              const nextMode = event.target.value;
+              setDateMode(nextMode);
+              if (nextMode === 'all' && graphScope === 'day') setGraphScope('person');
+            }}
             value={dateMode}
           >
             <option value="day">Satu hari</option>
@@ -2200,6 +2359,8 @@ export default function CaparVisualizationPage() {
                 setDeviceFilter(event.target.value);
                 setSelectedId('');
                 setNodePopupOpen(false);
+                setSelectedGraphEpisodeId('');
+                setSelectedGraphWindowId('');
               }}
               value={deviceFilter}
             >
@@ -2275,9 +2436,13 @@ export default function CaparVisualizationPage() {
           </div>
           <div className="capar-visual-count">
             <strong>{mode === 'overview'
-              ? (timelineData?.count?.rows || 0).toLocaleString('id-ID')
+              ? (viewMode === 'graph'
+                ? (timelineData?.count?.windows || 0)
+                : (timelineData?.count?.rows || 0)).toLocaleString('id-ID')
               : filteredNodes.length.toLocaleString('id-ID')}</strong>
-            <span>{mode === 'overview' ? 'raw measurements' : 'node ditampilkan'}</span>
+            <span>{mode === 'overview'
+              ? (viewMode === 'graph' ? 'window CAPAR' : 'raw measurements')
+              : 'node ditampilkan'}</span>
             {mode === 'overview' && (
               <small>
                 {timelineData?.count?.windows || 0} windows · {timelineData?.count?.activities || 0} episodes
@@ -2301,6 +2466,8 @@ export default function CaparVisualizationPage() {
                 setActivityFilter(event.target.value);
                 setSelectedId('');
                 setNodePopupOpen(false);
+                setSelectedGraphEpisodeId('');
+                setSelectedGraphWindowId('');
               }}
               value={activityFilter}
             >
@@ -2311,7 +2478,7 @@ export default function CaparVisualizationPage() {
           </div>
         )}
         <p className="capar-visual-all-activities">
-          Hari overview memuat seluruh aktivitas tanpa filter aktif. Filter aktivitas/device bersifat opsional.
+          Tampilan mengelompokkan node per hari dan aktivitas; filter aktivitas/device hanya membatasi data yang terlihat.
         </p>
 
         <nav className="capar-timeline-view-tabs" aria-label="Tampilan timeline">
@@ -2328,7 +2495,7 @@ export default function CaparVisualizationPage() {
           ))}
         </nav>
 
-        {viewMode !== 'table' && (
+        {viewMode === 'timeseries' && (
           <div className="capar-metric-filters" aria-label="Pilih lane metrik">
             <strong>Metric lanes</strong>
             {TIMELINE_METRICS.map((metric) => (
@@ -2394,48 +2561,86 @@ export default function CaparVisualizationPage() {
                   />
                 </div>
               </>
-            ) : (
-              <>
-                <AnchoredTimelineChart
-                  anchors={visibleTimelineAnchors}
-                  baseline={selectedBaseline}
-                  contextLabel={contextLabel}
-                  exportType="current"
-                  focusId={selectedId}
-                  mode={dataMode}
-                  nodes={filteredNodes}
-                  onAnchorSelect={setSelectedAnchor}
-                  onSelect={selectNode}
-                  selectedId={resolvedSelectedId}
-                  selectedMetrics={selectedMetrics}
-                  zoom={visualZoom}
-                  windows={timelineData?.windows || []}
-                  activities={timelineData?.activities || []}
-                  deviceFilter={deviceFilter}
-                />
-                {viewMode === 'graph' && (
-                  <CaparNodeField
+            ) : viewMode === 'graph' ? (
+              <div className="capar-graph-analysis-stack">
+                <Suspense fallback={<div className="capar-visual-loading">Memuat graph explorer…</div>}>
+                  <CaparGraphExplorer
                     activityFilter={activityFilter}
+                    dateMode={dateMode}
                     deviceFilter={deviceFilter}
+                    episodes={timelineData?.episodes || []}
+                    graph={graph}
                     mode={dataMode}
-                    nodes={nodes}
-                    onSelect={selectNode}
-                    selectedId={resolvedSelectedId}
-                    zoom={visualZoom}
+                    onEpisodeChange={(episodeId) => {
+                      setSelectedGraphEpisodeId(episodeId);
+                      setSelectedGraphWindowId('');
+                    }}
+                    onDayChange={(day) => {
+                      if (day === 'all') setGraphScope('person');
+                      else setSelectedDate(day);
+                    }}
+                    onScopeChange={changeGraphScope}
+                    onWindowChange={(windowId) => {
+                      setSelectedGraphWindowId(windowId);
+                      setSelectedGraphEpisodeId('');
+                    }}
+                    scope={graphScope}
+                    selectedDate={selectedDate}
+                    selectedEpisodeId={selectedGraphEpisodeId}
+                    selectedWindowId={selectedGraphWindowId}
+                    showScopeSelectors
+                    showScopeTabs
+                    windows={timelineData?.windows || []}
                   />
-                )}
-              </>
+                </Suspense>
+                <Suspense fallback={<div className="capar-visual-loading">Memuat analisis dinamika…</div>}>
+                  <CaparDynamicAnalysis
+                    key={selectedPatient}
+                    patientId={selectedPatient}
+                    patientLabel={selectedPatientRecord?.name || selectedPatient}
+                    activities={timelineData?.activities || []}
+                    activityFilter={activityFilter}
+                    baselines={timelineData?.baselines || []}
+                    dateMode={dateMode}
+                    deviceFilter={deviceFilter}
+                    physiologicalEpisodes={timelineData?.episodes || []}
+                    scope={graphScope}
+                    selectedDate={selectedDate}
+                    selectedEpisodeId={selectedGraphEpisodeId}
+                    selectedWindowId={selectedGraphWindowId}
+                    windows={timelineData?.windows || []}
+                  />
+                </Suspense>
+              </div>
+            ) : (
+              <AnchoredTimelineChart
+                anchors={visibleTimelineAnchors}
+                baseline={selectedBaseline}
+                contextLabel={contextLabel}
+                exportType="current"
+                focusId={selectedId}
+                mode={dataMode}
+                nodes={filteredNodes}
+                onAnchorSelect={setSelectedAnchor}
+                onSelect={selectNode}
+                selectedId={resolvedSelectedId}
+                selectedMetrics={selectedMetrics}
+                zoom={visualZoom}
+                windows={timelineData?.windows || []}
+                activities={timelineData?.activities || []}
+                deviceFilter={deviceFilter}
+              />
             )}
           </>
         )}
-        {!loading && (
+        {!loading && viewMode === 'timeseries' && (
           <TemporalAnchorList
             anchors={visibleTimelineAnchors}
             onSelect={setSelectedAnchor}
             selectedAnchor={selectedAnchor}
           />
         )}
-        {!loading && (
+        {!loading && viewMode === 'timeseries' && (
           <DeviceSessionList
             deviceFilter={deviceFilter}
             sessions={timelineData?.device_sessions || []}
@@ -2464,11 +2669,13 @@ export default function CaparVisualizationPage() {
         )}
         <div className="capar-visual-legend">
           <Timer size={14} />
-          <span>Panah menunjukkan arah awal → akhir; pilih node untuk popup HRV dan navigasi ke node sebelumnya/berikutnya.</span>
+          <span>{viewMode === 'graph'
+            ? 'Panah menunjukkan relasi ke node berikutnya pada aktivitas, device, dan sesi yang sama. Pilih node untuk melihat detail.'
+            : 'Garis time series menghubungkan observasi berurutan pada sesi device; pilih node untuk melihat detail dan relasi temporal.'}</span>
         </div>
       </section>
 
-      {!loading && selectedNode && (
+      {!loading && viewMode !== 'graph' && selectedNode && (
         <DetailPanel
           baseline={selectedBaseline}
           mode={dataMode}
@@ -2476,7 +2683,7 @@ export default function CaparVisualizationPage() {
           node={selectedNode}
         />
       )}
-      {!loading && selectedNode && (
+      {!loading && viewMode !== 'graph' && selectedNode && (
         <NodeRelationshipPanel
           allNodes={allLevelNodes}
           childNodes={childNodes}

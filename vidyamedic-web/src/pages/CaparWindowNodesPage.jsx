@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -19,7 +19,10 @@ import {
   calculateRecoveryTime,
   recoveryHeartRate,
 } from '../utils/caparDynamicRecovery';
-import { groupChronologicalActivityRuns } from '../utils/caparActivityRuns';
+import { projectCaparGraph } from '../utils/caparGraph';
+
+const CaparGraphExplorer = lazy(() => import('../components/CaparGraphExplorer'));
+const CaparDynamicAnalysis = lazy(() => import('../components/CaparDynamicAnalysis'));
 
 function toEpochMs(value) {
   const timestamp = Number(value);
@@ -35,21 +38,6 @@ function formatTime(value) {
     dateStyle: 'medium',
     timeStyle: 'medium',
   }).format(new Date(timestamp));
-}
-
-function formatNodeClock(value) {
-  const timestamp = toEpochMs(value);
-  if (timestamp === null) return '—';
-  return new Intl.DateTimeFormat('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(new Date(timestamp));
-}
-
-function getWindowMaxGap(window) {
-  return window.window_type === '1min' ? 60_000 : 300_000;
 }
 
 function formatMetric(value, digits = 1) {
@@ -149,46 +137,6 @@ function getTemporalState(window) {
   };
 }
 
-function getNodeSize(rawCount, range) {
-  const count = Math.max(0, Number(rawCount) || 0);
-  if (range.max === range.min) return 22;
-  const ratio = Math.sqrt((count - range.min) / (range.max - range.min));
-  return Math.round(16 + (ratio * 18));
-}
-
-function mixColor(from, to, ratio) {
-  const channels = from.map((value, index) => (
-    Math.round(value + ((to[index] - value) * ratio))
-  ));
-  return `rgb(${channels.join(', ')})`;
-}
-
-function getNodeColor(window, baseline) {
-  const hr = numericValue(window.features?.mean_hr);
-  const baselineMean = numericValue(baseline?.stats?.mean_hr?.mean);
-  const baselineStd = numericValue(baseline?.stats?.mean_hr?.std);
-  if (
-    window.is_valid !== false
-    && baseline?.is_mature
-    && Number.isFinite(hr)
-    && Number.isFinite(baselineMean)
-    && Number.isFinite(baselineStd)
-    && baselineStd > 0
-  ) {
-    const zScore = Math.max(-3, Math.min(3, (hr - baselineMean) / baselineStd));
-    const blue = [76, 125, 190];
-    const neutral = [58, 153, 135];
-    const orange = [214, 116, 72];
-    return zScore < 0
-      ? mixColor(blue, neutral, (zScore + 3) / 3)
-      : mixColor(neutral, orange, zScore / 3);
-  }
-  if (window.classification === 'Alert') return '#b85e69';
-  if (window.classification === 'Caution') return '#ce9650';
-  if (window.classification === 'Normal') return '#4c9a7e';
-  return '#788f98';
-}
-
 function getJakartaDayKey(value) {
   const timestamp = toEpochMs(value);
   return timestamp === null
@@ -196,168 +144,29 @@ function getJakartaDayKey(value) {
     : new Date(timestamp + (7 * 60 * 60 * 1000)).toISOString().slice(0, 10);
 }
 
-const ACTIVITY_PALETTE = [
-  '#397b69',
-  '#547fb4',
-  '#c27b3f',
-  '#8a6da8',
-  '#b45d69',
-  '#588f9d',
-  '#9b8a3c',
-  '#587c4d',
-];
-
-const STATE_STROKES = {
-  S0: '#34735b',
-  S1: '#8b6b27',
-  S2: '#9c4e57',
-  S3: '#496d9d',
-  S4: '#34735b',
-  ABSTAIN: '#6b6178',
-};
-
 function CaparWindowGraph({
-  windows,
-  visibleWindows,
-  selectedWindowId,
+  graph,
+  selectedDate,
+  dateMode,
   onSelect,
-  onActivitySelect,
   activityFilter,
-  activities,
 }) {
-  const visibleIds = new Set(visibleWindows.map((window) => String(window._id)));
-  const rawCounts = windows.map((window) => Number(window.raw_count) || 0);
-  const densityRange = {
-    min: rawCounts.length ? Math.min(...rawCounts) : 0,
-    max: rawCounts.length ? Math.max(...rawCounts) : 0,
-  };
-  const windowsByDay = new Map();
-  windows.forEach((window) => {
-    const day = getJakartaDayKey(window.window_start);
-    if (!day) return;
-    if (!windowsByDay.has(day)) windowsByDay.set(day, []);
-    windowsByDay.get(day).push({ window });
-  });
-  const days = [...windowsByDay.entries()]
-    .map(([day, entries]) => ({ day, entries }))
-    .filter(({ entries }) => entries.some(({ window }) => visibleIds.has(String(window._id))));
-  const activityColors = new Map(
-    activities.map((activity, index) => [activity, ACTIVITY_PALETTE[index % ACTIVITY_PALETTE.length]]),
-  );
-  if (!visibleWindows.length) {
-    return <p className="capar-graph-empty">Tidak ada node untuk filter ini.</p>;
-  }
-
   return (
-    <section className="capar-semantic-graph" aria-label="Graf node window CAPAR">
-      <div className="capar-graph-heading">
-        <div>
-          <span className="eyebrow">GRAF SEMANTIK · NODE CAPAR</span>
-          <h3>Satu node per window, dikelompokkan menurut urutan aktivitas</h3>
-          <p>Kelompok mengikuti urutan timestamp; aktivitas yang muncul lagi setelah transisi menjadi kelompok baru.</p>
-        </div>
-        <span className="capar-graph-count">{visibleWindows.length} node · {days.length} episode harian</span>
-      </div>
-      <div className="capar-graph-legend" aria-label="Legenda aktivitas">
-        {activities.map((activity) => (
-          <button
-            aria-pressed={activityFilter === activity}
-            className={activityFilter === activity ? 'is-active' : ''}
-            key={activity}
-            onClick={() => onActivitySelect(activity)}
-            type="button"
-          >
-            <i style={{ backgroundColor: activityColors.get(activity) }} />
-            {activity}
-          </button>
-        ))}
-        <span className="capar-graph-node-legend">Ukuran = sampel · cincin = state CAPAR</span>
-      </div>
-      <div className="capar-graph-scroll capar-node-field">
-        {days.map(({ day, entries }) => {
-          const runs = groupChronologicalActivityRuns(
-            entries.map(({ window }) => window),
-            {
-              getActivity: (window) => window.activity_label || 'Unknown',
-              getTime: (window) => toEpochMs(window.window_start),
-              getEndTime: (window) => toEpochMs(window.window_end) ?? toEpochMs(window.window_start),
-              getStreamKey: (window) => `${window.device_id || 'UNKNOWN'}:${window.window_type || '5min'}`,
-              getMaxGap: (previous, next) => getWindowMaxGap(next),
-            }
-          );
-          return (
-            <section className="capar-node-day" key={day}>
-              <div className="capar-node-day-heading">
-                <strong>{day}</strong>
-                <span>{entries.filter(({ window }) => visibleIds.has(String(window._id))).length} node</span>
-              </div>
-              {runs.map((run, runIndex) => {
-                const activity = run.activity;
-                const activityEntries = run.entries.filter((window) => (
-                  visibleIds.has(String(window._id))
-                ));
-                if (!activityEntries.length) return null;
-                return (
-                  <section
-                    className="capar-node-activity capar-node-activity-run"
-                    key={`${day}:${run.start_time}:${activity}:${runIndex}`}
-                  >
-                    <h4>
-                      <i style={{ backgroundColor: activityColors.get(activity) }} />
-                      {activity}
-                      <time className="capar-node-run-time">
-                        {formatNodeClock(run.start_time)} – {formatNodeClock(run.end_time)}
-                      </time>
-                      <span>{activityEntries.length}</span>
-                    </h4>
-                    <div className="capar-node-grid">
-                      {activityEntries.map((window) => {
-                        const state = getTemporalState(window);
-                        const color = activityColors.get(activity) || '#788f98';
-                        const selected = String(window._id) === String(selectedWindowId);
-                        const size = Math.max(
-                          28,
-                          Math.min(46, getNodeSize(window.raw_count, densityRange) + 10)
-                        );
-                        const label = `${activity}, ${formatTime(window.window_start)}, HR ${formatMetric(window.features?.mean_hr)} bpm, RR ${formatMetric(window.features?.mean_rr)} ms, ACC ${formatMetric(window.features?.motion_intensity, 3)}, ${state?.name || 'state belum dipetakan'}, ${Number(window.raw_count) || 0} sampel`;
-                        return (
-                          <button
-                            aria-label={label}
-                            aria-pressed={selected}
-                            className={`capar-node-chip ${selected ? 'is-selected' : ''}`}
-                            key={window._id}
-                            onClick={() => onSelect(window._id)}
-                            title={label}
-                            type="button"
-                          >
-                            <span
-                              className="capar-node-bubble"
-                              style={{
-                                width: `${size}px`,
-                                height: `${size}px`,
-                                backgroundColor: color,
-                                borderColor: STATE_STROKES[state?.code] || '#ffffff',
-                              }}
-                            >
-                              {formatMetric(window.features?.mean_hr, 0)}
-                            </span>
-                            <time>{formatNodeClock(window.window_start)}</time>
-                            <span className="capar-node-chip-meta">
-                              RR {formatMetric(window.features?.mean_rr, 0)} · {Number(window.raw_count) || 0} sampel
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
-            </section>
-          );
-        })}
-      </div>
-      <p className="capar-graph-hint">Klik node untuk membuka interpretasi K1–K4. Waktu pada setiap node memakai zona WIB.</p>
-    </section>
+    <Suspense fallback={<div className="capar-visual-loading">Memuat graph explorer…</div>}>
+      <CaparGraphExplorer
+        activityFilter={activityFilter}
+        dateMode={dateMode}
+        deviceFilter="all"
+        graph={graph}
+        mode="windows"
+        onSelectNode={(_id, node) => {
+          if (node?.type === 'WINDOW') onSelect(node.id.replace(/^window:/, ''));
+        }}
+        selectedDate={selectedDate}
+        showMetrics={false}
+        showScopeFilters={false}
+      />
+    </Suspense>
   );
 }
 
@@ -694,6 +503,9 @@ export default function CaparWindowNodesPage() {
   const [selectedWindowId, setSelectedWindowId] = useState('');
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [analysisTimeline, setAnalysisTimeline] = useState(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
   const [savingSegmentId, setSavingSegmentId] = useState('');
   const [savingDaily, setSavingDaily] = useState(false);
   const [error, setError] = useState('');
@@ -755,6 +567,38 @@ export default function CaparWindowNodesPage() {
     return () => { active = false; };
   }, [selectedPatient, selectedDate, dateMode, reloadKey]);
 
+  useEffect(() => {
+    if (activeView !== 'analysis' || !selectedPatient) {
+      setAnalysisTimeline(null);
+      setAnalysisError('');
+      setAnalysisLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setAnalysisLoading(true);
+    setAnalysisError('');
+    api.listDoctorCaparTemporalTimeline(
+      selectedPatient,
+      selectedDate,
+      dateMode === 'all',
+      '',
+      false,
+    )
+      .then((result) => {
+        if (active) setAnalysisTimeline(result);
+      })
+      .catch((reason) => {
+        if (active) {
+          setAnalysisTimeline(null);
+          setAnalysisError(reason.message || 'Data analisis dinamis gagal dimuat.');
+        }
+      })
+      .finally(() => {
+        if (active) setAnalysisLoading(false);
+      });
+    return () => { active = false; };
+  }, [activeView, selectedPatient, selectedDate, dateMode, reloadKey]);
+
   const activities = useMemo(
     () => [...new Set(windows.map((window) => window.activity_label || 'Unknown'))]
       .sort((first, second) => first.localeCompare(second)),
@@ -771,6 +615,10 @@ export default function CaparWindowNodesPage() {
     )),
     [windows, activityFilter, stateFilter],
   );
+  const relationGraph = useMemo(() => projectCaparGraph({
+    patient: { _id: selectedPatient },
+    windows: visibleWindows,
+  }), [selectedPatient, visibleWindows]);
   const visibleWindowIds = useMemo(
     () => new Set(visibleWindows.map((window) => String(window._id))),
     [visibleWindows],
@@ -809,23 +657,7 @@ export default function CaparWindowNodesPage() {
   const combinedDateLabel = dates.length
     ? `${dates[dates.length - 1]} — ${dates[0]}`
     : 'belum ada tanggal';
-  const rawCounts = windows.map((window) => Number(window.raw_count) || 0);
-  const densityRange = {
-    min: rawCounts.length ? Math.min(...rawCounts) : 0,
-    max: rawCounts.length ? Math.max(...rawCounts) : 0,
-  };
-  const maxActivityCount = Math.max(
-    1,
-    ...(dailySummary?.activity_summaries || []).map((summary) => summary.window_count || 0),
-  );
   const savedNodeCount = windows.filter((window) => window.saved).length;
-
-  function getBaselineForWindow(window) {
-    return baselines.find((baseline) => (
-      baseline.activity === (window.activity_label || 'Unknown')
-      && baseline.time_period === window.time_period
-    ));
-  }
 
   function getNextWindowInEpisode(window) {
     const index = windowIndexById.get(String(window._id));
@@ -897,20 +729,19 @@ export default function CaparWindowNodesPage() {
           role="tab"
           type="button"
         >
-          Node & data CAPAR
+          Graf window & data CAPAR
         </button>
         <button
-          aria-selected={activeView === 'simulation'}
-          className={activeView === 'simulation' ? 'is-active' : ''}
-          onClick={() => setActiveView('simulation')}
+          aria-selected={activeView === 'analysis'}
+          className={activeView === 'analysis' ? 'is-active' : ''}
+          onClick={() => setActiveView('analysis')}
           role="tab"
           type="button"
         >
-          Dynamic State Model
+          Analisis dinamika
         </button>
       </div>
 
-      {activeView === 'nodes' && (
       <div className="doctor-log-toolbar panel capar-filter-toolbar">
         <label>
           Pasien
@@ -993,7 +824,7 @@ export default function CaparWindowNodesPage() {
             <ChevronDown aria-hidden="true" size={16} />
           </span>
         </label>
-        <label>
+        {activeView === 'nodes' && <label>
           Filter state
           <span className="doctor-log-select">
             <select
@@ -1013,13 +844,12 @@ export default function CaparWindowNodesPage() {
             </select>
             <ChevronDown aria-hidden="true" size={16} />
           </span>
-        </label>
-        <div className="capar-node-summary">
+        </label>}
+        {activeView === 'nodes' && <div className="capar-node-summary">
           <strong>{savedNodeCount} / {windows.length}</strong>
           <span>snapshot node tersimpan</span>
-        </div>
+        </div>}
       </div>
-      )}
 
       {activeView === 'nodes' && error && (
         <div className="notice notice-warning doctor-log-error">
@@ -1029,12 +859,41 @@ export default function CaparWindowNodesPage() {
       )}
       {activeView === 'nodes' && notice && <div className="capar-node-notice"><Check size={16} />{notice}</div>}
 
-      <RecoverySimulator
-        hidden={activeView !== 'simulation'}
-        key={`${selectedPatient}:${dateMode}:${selectedDate}`}
-        selectedBaseline={selectedBaseline}
-        selectedWindow={selectedWindow}
-      />
+      {activeView === 'analysis' && (
+        !selectedPatient ? (
+          <div className="doctor-analysis-empty-state panel">
+            <GitBranch size={24} />
+            <strong>Pilih pasien untuk melihat analisis dinamika</strong>
+          </div>
+        ) : analysisLoading ? (
+          <div className="doctor-analysis-empty-state panel">
+            <LoaderCircle className="spin" size={22} />
+            <strong>Memuat data dinamika aktual...</strong>
+          </div>
+        ) : analysisError ? (
+          <div className="notice notice-warning doctor-log-error" role="alert">
+            <AlertCircle size={17} />
+            <span>{analysisError}</span>
+          </div>
+        ) : analysisTimeline ? (
+          <Suspense fallback={<div className="capar-visual-loading">Memuat analisis dinamika…</div>}>
+            <CaparDynamicAnalysis
+              key={selectedPatient}
+              patientId={selectedPatient}
+              patientLabel={patients.find((patient) => String(patient._id) === String(selectedPatient))?.name || selectedPatient}
+              activities={analysisTimeline.activities || []}
+              activityFilter={activityFilter}
+              baselines={analysisTimeline.baselines || []}
+              dateMode={dateMode}
+              physiologicalEpisodes={analysisTimeline.episodes || []}
+              scope={selectedWindowId ? 'window' : activityFilter !== 'all' ? 'activity' : dateMode === 'all' ? 'person' : 'day'}
+              selectedDate={selectedDate}
+              selectedWindowId={selectedWindowId}
+              windows={analysisTimeline.windows || []}
+            />
+          </Suspense>
+        ) : null
+      )}
       {activeView === 'nodes' && (
         !selectedPatient ? (
         <div className="doctor-analysis-empty-state panel">
@@ -1098,9 +957,6 @@ export default function CaparWindowNodesPage() {
                     <strong>{summary.activity}</strong>
                     <span>{summary.valid_window_count}/{summary.window_count} valid</span>
                   </div>
-                  <div className="capar-density-track" aria-label={`${summary.window_count} window`}>
-                    <span style={{ width: `${Math.max(4, (summary.window_count / maxActivityCount) * 100)}%` }} />
-                  </div>
                   <div className="capar-activity-summary-stats">
                     <span>Window <strong>{summary.window_count}</strong></span>
                     <span>Sampel sensor <strong>{summary.raw_sample_count}</strong></span>
@@ -1133,18 +989,11 @@ export default function CaparWindowNodesPage() {
               </span>
             </div>
             <CaparWindowGraph
-              activities={activities}
               activityFilter={activityFilter}
-              onActivitySelect={(activity) => {
-                setActivityFilter((current) => (current === activity ? 'all' : activity));
-                setSelectedWindowId('');
-              }}
-              onSelect={(windowId) => setSelectedWindowId((current) => (
-                current === windowId ? '' : windowId
-              ))}
-              selectedWindowId={selectedWindowId}
-              visibleWindows={visibleWindows}
-              windows={windows}
+              dateMode={dateMode}
+              graph={relationGraph}
+              onSelect={(windowId) => setSelectedWindowId(windowId)}
+              selectedDate={selectedDate}
             />
             {selectedWindowParagraphs.length > 0 && (
               <section className="capar-node-interpretation-panel" aria-live="polite">
@@ -1168,8 +1017,7 @@ export default function CaparWindowNodesPage() {
               </section>
             )}
             <div className="capar-legend">
-              <span><i className="capar-legend-density" />Ukuran = jumlah sampel sensor per window</span>
-              <span><i className="capar-legend-color" />Warna = deviasi HR dari baseline matang; tanpa baseline memakai status CAPAR</span>
+              <span><i className="capar-legend-color" />Node dan edge menunjukkan relasi temporal; nilai fisiologis adalah atribut.</span>
               <span><b className="capar-legend-state">Sx</b> State mengikuti rr_status yang tersedia; S5 tidak disimpulkan otomatis</span>
               <span><ArrowRight size={14} /> Panah menunjukkan selang waktu dan transisi aktivitas</span>
             </div>
@@ -1185,9 +1033,6 @@ export default function CaparWindowNodesPage() {
                   && visibleWindowIds.has(String(nextWindow._id))
                   ? nextWindow
                   : null;
-                const baseline = getBaselineForWindow(window);
-                const size = getNodeSize(window.raw_count, densityRange);
-                const color = getNodeColor(window, baseline);
                 const elapsedMs = displayNextWindow
                   ? Math.max(0, (toEpochMs(displayNextWindow.window_start) ?? 0) - (toEpochMs(window.window_start) ?? 0))
                   : null;
@@ -1214,11 +1059,7 @@ export default function CaparWindowNodesPage() {
                       aria-label={`Pilih node ${index + 1}, ${window.activity_label || 'Unknown'}, ${formatTime(window.window_start)}`}
                       className={`capar-node-marker ${window.saved ? 'capar-node-marker-saved' : ''} ${isSelected ? 'is-selected' : ''}`}
                       onClick={() => setSelectedWindowId(isSelected ? '' : window._id)}
-                      style={{
-                        width: `${size}px`,
-                        height: `${size}px`,
-                        backgroundColor: window.saved ? '#26795f' : color,
-                      }}
+                      style={{ backgroundColor: window.saved ? '#26795f' : '#7e9b91' }}
                       type="button"
                     >
                       {window.saved ? <Check size={14} /> : index + 1}
@@ -1295,7 +1136,7 @@ export default function CaparWindowNodesPage() {
             </ol>
             <p className="capar-node-disclaimer">
               <Signal size={14} />
-              Interpretasi K1–K4 adalah ringkasan observasional. Warna z-score hanya visualisasi perbandingan, bukan batas klinis atau diagnosis.
+              Nilai fisiologis ditampilkan sebagai atribut observasional. Interpretasi K1–K4 bukan diagnosis klinis.
             </p>
           </section>
         </>

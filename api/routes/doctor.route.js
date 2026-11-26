@@ -15,9 +15,11 @@ import {
 } from '../controllers/doctor.controller.js';
 import {
   listDoctorCaparTemporalTimeline,
+  listDoctorCaparGraph,
   listDoctorCaparRows,
   listDoctorCaparActivityEpisodes,
   rebuildDoctorCaparActivityEpisodes,
+  saveDoctorCaparDynamicProfile,
 } from '../controllers/doctorCaparVisualization.controller.js';
 import { verifyToken } from '../utils/verifyUser.js';
 
@@ -42,6 +44,8 @@ router.post('/capar-window-nodes', saveDoctorCaparWindowNode);
 router.post('/capar-window-analyses/daily', saveDoctorCaparDailyAnalysis);
 router.get('/capar-visualization/rows', listDoctorCaparRows);
 router.get('/capar-visualization/timeline', listDoctorCaparTemporalTimeline);
+router.get('/capar-visualization/graph', listDoctorCaparGraph);
+router.post('/capar-visualization/dynamic-profile', saveDoctorCaparDynamicProfile);
 router.get('/capar-visualization/activities', listDoctorCaparActivityEpisodes);
 router.post('/capar-visualization/activities/rebuild', rebuildDoctorCaparActivityEpisodes);
 router.get('/patient/:id', getDoctorPatientById);

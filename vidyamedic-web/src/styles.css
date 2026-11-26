@@ -990,6 +990,99 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-visual-node-step { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
 .capar-visual-node-relation { display: inline-flex; flex: 0 0 auto; align-items: center; color: #647d8e; }
 .capar-visual-node-relation svg { display: block; }
+.capar-node-graph-explanation { display: grid; gap: 4px; padding: 10px 12px; color: #465e6a; background: #f2f7f8; border-left: 3px solid #547fb4; border-radius: 7px; font-size: 9px; line-height: 1.5; }
+.capar-node-graph-explanation strong { color: var(--ink); font-size: 10px; }
+.capar-node-graph-session { display: grid; gap: 5px; padding: 8px; background: #fff; border: 1px solid #e5eeeb; border-radius: 9px; }
+.capar-node-graph-session-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; color: var(--muted); font-size: 8px; }
+.capar-node-graph-session-heading span:first-child { color: var(--ink-soft); font-weight: 700; }
+.capar-node-graph-scroll { overflow-x: auto; }
+.capar-node-graph-svg { display: block; max-width: none; }
+.capar-node-graph-edge path { fill: none; stroke: #718996; stroke-width: 1.6; }
+.capar-node-graph-edge text { fill: #647d8e; font-size: 8px; }
+.capar-node-graph-arrowhead { fill: #718996; }
+.capar-node-graph-node { cursor: pointer; outline: none; }
+.capar-node-graph-node rect { fill: #f4f9fc; stroke: #a9c5d5; stroke-width: 1.4; transition: fill .14s ease, stroke .14s ease; }
+.capar-node-graph-node text { fill: #526976; font-size: 9px; pointer-events: none; }
+.capar-node-graph-node .capar-node-graph-node-title { fill: #285d78; font-size: 9px; font-weight: 800; }
+.capar-node-graph-node .capar-node-graph-node-attributes { fill: #526976; font-size: 8px; }
+.capar-node-graph-node:hover rect, .capar-node-graph-node:focus rect, .capar-node-graph-node.is-selected rect { fill: #e4f2fb; stroke: #397b9d; stroke-width: 2; }
+.capar-graph-explorer { display: grid; gap: 12px; }
+.capar-graph-explorer-heading, .capar-graph-toolbar, .capar-graph-path-tools, .capar-graph-load-more { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.capar-graph-explorer-heading h3 { margin: 3px 0; color: var(--ink); font-family: Manrope, sans-serif; font-size: 15px; }
+.capar-graph-explorer-heading p { margin: 3px 0 0; color: var(--muted); font-size: 9px; }
+.capar-graph-summary { display: grid; gap: 2px; padding: 8px 11px; color: #205c5a; background: #e3eeee; border-radius: 9px; text-align: right; }
+.capar-graph-summary strong { font-size: 14px; }
+.capar-graph-summary span { color: var(--muted); font-size: 8px; }
+.capar-graph-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.capar-graph-metric { display: grid; gap: 3px; padding: 10px 12px; background: #f4f8f7; border: 1px solid #e4edeb; border-radius: 9px; }
+.capar-graph-metric strong { color: #205c5a; font-size: 15px; font-variant-numeric: tabular-nums; }
+.capar-graph-metric span { color: var(--ink-soft); font-size: 9px; font-weight: 800; }
+.capar-graph-metric small { color: var(--muted); font-size: 8px; }
+.capar-graph-toolbar { display: grid; grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(130px, 1fr)); padding: 12px; background: #f7fafa; border: 1px solid var(--line); border-radius: 10px; }
+.capar-graph-toolbar label, .capar-graph-path-tools label { display: grid; gap: 4px; color: var(--muted); font-size: 9px; font-weight: 700; }
+.capar-graph-toolbar select, .capar-graph-toolbar input, .capar-graph-path-tools input { width: 100%; min-width: 0; padding: 8px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 7px; font-size: 10px; }
+.capar-graph-search { display: flex; align-items: end; gap: 6px; }
+.capar-graph-search label { flex: 1; }
+.capar-graph-check { display: flex !important; grid-auto-flow: column; align-items: center; justify-content: start; gap: 6px !important; white-space: nowrap; }
+.capar-graph-check input { width: auto; }
+.capar-graph-filter-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.capar-graph-filter-groups fieldset { display: flex; gap: 6px 12px; flex-wrap: wrap; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; }
+.capar-graph-filter-groups legend { padding: 0 5px; color: var(--muted); font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.capar-graph-filter-groups label { display: inline-flex; align-items: center; gap: 5px; margin: 0; color: var(--ink-soft); font-size: 8px; font-weight: 600; }
+.capar-graph-filter-groups label input { margin: 0; }
+.capar-graph-filter-groups label i, .capar-graph-explorer-legend i { width: 9px; height: 9px; border-radius: 3px; }
+.capar-graph-path-tools { justify-content: flex-start; padding: 9px 10px; background: #f8fbfb; border: 1px solid #e5eded; border-radius: 9px; }
+.capar-graph-path-tools label { min-width: 170px; }
+.capar-graph-path-tools > span { color: var(--teal); font-size: 9px; font-weight: 700; }
+.capar-graph-explorer-legend { display: flex; gap: 8px 13px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 8px; }
+.capar-graph-explorer-legend > span { display: inline-flex; align-items: center; gap: 4px; }
+.capar-graph-explorer-legend .capar-graph-legend-edge i { width: 17px; height: 0; border-top: 2px solid #547fb4; border-radius: 0; }
+.capar-graph-explorer-legend .capar-graph-legend-edge.is-hierarchy i { border-color: #79a391; }
+.capar-graph-explorer-legend .capar-graph-legend-edge.is-inferred i { border-top-style: dashed; border-color: #9a899f; }
+.capar-graph-workspace { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); gap: 12px; align-items: stretch; }
+.capar-graph-canvas { display: grid; grid-template-rows: minmax(380px, 65vh) auto; min-width: 0; overflow: hidden; background: #f8fbfb; border: 1px solid #e5eded; border-radius: 10px; }
+.capar-graph-canvas .react-flow { min-height: 380px; }
+.capar-graph-vertex { display: grid; gap: 5px; width: 206px; min-height: 82px; padding: 9px 11px; color: var(--ink); background: #fff; border: 1.5px solid var(--vertex-color); border-left: 4px solid var(--vertex-color); border-radius: 9px; box-shadow: 0 2px 6px rgba(24,49,59,.08); }
+.capar-graph-vertex.is-selected { box-shadow: 0 0 0 3px rgba(8,125,121,.18); }
+.capar-graph-vertex.is-connected { background: #f1f8f7; }
+.capar-graph-vertex.is-path { background: #eaf3fb; box-shadow: 0 0 0 2px rgba(84,127,180,.2); }
+.capar-graph-vertex-heading { display: grid; gap: 2px; min-width: 0; }
+.capar-graph-vertex-heading span { color: var(--vertex-color); font-size: 7px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.capar-graph-vertex-heading strong { overflow: hidden; color: var(--ink); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.capar-graph-vertex time, .capar-graph-vertex small { overflow: hidden; color: var(--muted); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.capar-graph-handle { width: 7px; height: 7px; background: var(--vertex-color); border: 1px solid #fff; }
+.capar-graph-inspector { display: grid; align-content: start; gap: 9px; min-width: 0; max-height: 65vh; overflow: auto; padding: 13px; background: #f3f8f7; border: 1px solid #e1ece9; border-left: 3px solid var(--teal); border-radius: 9px; }
+.capar-graph-inspector.is-empty { align-content: center; justify-items: start; color: var(--muted); font-size: 10px; }
+.capar-graph-inspector-title h3 { margin: 3px 0; overflow-wrap: anywhere; color: var(--ink); font-size: 12px; }
+.capar-graph-inspector p { margin: 0; overflow-wrap: anywhere; color: var(--ink-soft); font-size: 8px; }
+.capar-graph-inspector dl { display: grid; grid-template-columns: minmax(75px, .7fr) minmax(0, 1.3fr); gap: 4px 8px; margin: 0; font-size: 8px; }
+.capar-graph-inspector dt { color: var(--muted); overflow-wrap: anywhere; }
+.capar-graph-inspector dd { min-width: 0; margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.capar-graph-inspector pre { max-height: 120px; overflow: auto; margin: 0; padding: 7px; background: #eaf1f0; border-radius: 6px; font-size: 8px; }
+.capar-graph-inspector-relations { display: grid; gap: 4px; }
+.capar-graph-inspector-relations strong { color: var(--ink-soft); font-size: 8px; }
+.capar-graph-inspector-relations button { padding: 5px 7px; color: var(--teal); background: #fff; border: 1px solid #dfe9e6; border-radius: 6px; text-align: left; font-size: 8px; overflow-wrap: anywhere; }
+.capar-graph-inspector-relations small { color: var(--muted); font-size: 8px; }
+.capar-graph-load-more { justify-content: center; padding: 7px; color: var(--muted); font-size: 9px; }
+.capar-graph-selection-status, .capar-graph-neighbor-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0; color: var(--muted); font-size: 8px; }
+.capar-graph-neighbor-tools { padding-top: 8px; border-top: 1px solid var(--line); }
+.capar-graph-neighbor-tools > span { color: var(--teal); font-weight: 700; }
+@media (max-width: 880px) {
+  .capar-graph-workspace { grid-template-columns: minmax(0, 1fr); }
+  .capar-graph-inspector { max-height: 360px; }
+  .capar-graph-canvas { grid-template-rows: minmax(380px, 55vh) auto; }
+}
+@media (max-width: 640px) {
+  .capar-graph-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .capar-graph-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .capar-graph-search { align-items: end; }
+  .capar-graph-filter-groups { grid-template-columns: minmax(0, 1fr); }
+  .capar-graph-path-tools label { min-width: 100%; }
+  .capar-graph-path-tools .button { flex: 1 1 100%; justify-content: center; }
+  .capar-graph-canvas { grid-template-rows: 400px auto; }
+  .capar-graph-canvas .react-flow { min-height: 400px; }
+  .capar-graph-inspector { max-height: 45vh; }
+}
 .capar-visual-node-card { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 4px 8px; min-width: 0; min-height: 66px; padding: 8px; color: var(--ink-soft); background: #fff; border: 1px solid #e5eeeb; border-radius: 10px; text-align: left; cursor: pointer; transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease; }
 .capar-visual-node-card:hover, .capar-visual-node-card.is-selected { border-color: #79aa9d; box-shadow: 0 3px 11px rgba(34, 75, 68, .10); transform: translateY(-1px); }
 .capar-visual-node-bubble { display: block; grid-row: 1 / span 2; width: 12px; height: 12px; flex: 0 0 auto; border: 2px solid rgba(255,255,255,.9); border-radius: 50%; box-shadow: 0 0 0 1px #cadbd5; }
@@ -1015,6 +1108,91 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-visual-interpretation { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
 .capar-visual-interpretation > div { display: grid; align-content: start; gap: 5px; padding: 10px; background: #f9fbfa; border: 1px solid #edf2f0; border-radius: 9px; }
 .capar-visual-interpretation strong { color: var(--green-dark); font-size: 9px; }
+.capar-graph-analysis-stack { display: grid; gap: 20px; }
+.capar-graph-scope-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.capar-graph-scope-tabs button { padding: 9px 10px; color: var(--ink-soft); background: #f5f8f7; border: 1px solid var(--line); border-radius: 8px; text-align: left; font-size: 9px; font-weight: 800; cursor: pointer; }
+.capar-graph-scope-tabs button:hover, .capar-graph-scope-tabs button.is-active { color: #205c5a; background: #e3eeee; border-color: #b7d0ca; }
+.capar-graph-toolbar label { min-width: 0; }
+.capar-graph-toolbar > label select, .capar-graph-toolbar > label input { margin-top: 4px; }
+.capar-graph-summary .button { margin-top: 4px; padding: 6px 8px; font-size: 8px; }
+.capar-dynamic-analysis { display: grid; gap: 12px; }
+.capar-dynamic-heading, .capar-dynamic-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.capar-dynamic-heading h3 { margin: 3px 0; color: var(--ink); font-family: Manrope, sans-serif; font-size: 16px; }
+.capar-dynamic-heading p, .capar-dynamic-description { margin: 3px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.capar-dynamic-import { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.capar-dynamic-import label { position: relative; overflow: hidden; cursor: pointer; }
+.capar-dynamic-import input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.capar-dynamic-import-note, .capar-dynamic-error { margin: 0; padding: 9px 11px; color: #397b69; background: #edf7f1; border-radius: 8px; font-size: 9px; }
+.capar-dynamic-error { color: #825752; background: #fff4f1; }
+.capar-dynamic-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.capar-dynamic-metric { display: grid; align-content: start; gap: 4px; min-width: 0; padding: 10px; background: #f4f8f7; border: 1px solid #e4edeb; border-radius: 9px; }
+.capar-dynamic-metric span { color: var(--muted); font-size: 8px; font-weight: 800; }
+.capar-dynamic-metric strong { overflow-wrap: anywhere; color: #205c5a; font-size: 13px; font-variant-numeric: tabular-nums; }
+.capar-dynamic-metric small { color: var(--muted); font-size: 8px; }
+.capar-dynamic-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.capar-dynamic-panel { display: grid; align-content: start; gap: 10px; min-width: 0; padding: 13px; background: #fff; border: 1px solid #e3ece9; border-radius: 11px; box-shadow: 0 4px 14px rgba(34, 75, 68, .035); }
+.capar-dynamic-recovery, .capar-dynamic-reference { grid-column: 1 / -1; }
+.capar-dynamic-panel h4 { margin: 3px 0 0; color: var(--ink); font-family: Manrope, sans-serif; font-size: 12px; }
+.capar-dynamic-panel h5 { margin: 0; color: var(--ink-soft); font-size: 9px; }
+.capar-dynamic-status { align-self: flex-start; padding: 5px 8px; color: #795b2b; background: #fbf5e8; border-radius: 7px; font-size: 8px; }
+.capar-dynamic-status.is-confirmed { color: #34735b; background: #edf7f1; }
+.capar-profile-graph-scroll { width: 100%; max-height: 650px; overflow: auto; border: 1px solid #e6eeeb; border-radius: 9px; background: #fbfdfc; }
+.capar-profile-graph { display: block; max-width: none; }
+.capar-profile-edge path { fill: none; stroke: #77a79a; stroke-width: 1.6; }
+.capar-profile-edge marker path { fill: #77a79a; }
+.capar-profile-edge text { fill: #617b73; font-size: 9px; text-anchor: middle; paint-order: stroke; stroke: #fbfdfc; stroke-width: 4px; }
+.capar-profile-node rect { fill: #e4f0ed; stroke: #8bb9ad; stroke-width: 1.3; }
+.capar-profile-node.is-model rect { fill: #fbefdc; stroke: #d3b47f; }
+.capar-profile-node.is-observation rect { fill: #e7eef9; stroke: #9ab0d4; }
+.capar-profile-node text { text-anchor: middle; pointer-events: none; }
+.capar-profile-node-title { fill: #244b46; font-size: 11px; font-weight: 800; }
+.capar-profile-node-sub { fill: #5f7770; font-size: 9px; }
+.capar-dynamic-highlight { padding: 6px 9px; color: #34735b; background: #edf7f1; border-radius: 7px; font-size: 11px; }
+.capar-dynamic-profile-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.capar-dynamic-chart, .capar-profile-chart { display: block; width: 100%; height: auto; overflow: visible; }
+.capar-dynamic-chart line, .capar-profile-chart line { stroke: #d7e3df; stroke-width: 1; }
+.capar-dynamic-chart polyline { fill: none; stroke: #397b69; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.capar-dynamic-chart circle { fill: #397b69; stroke: #fff; stroke-width: 1.5; }
+.capar-dynamic-chart circle.is-peak { fill: #c27b3f; }
+.capar-dynamic-chart circle.is-confirmed { fill: #547fb4; }
+.capar-dynamic-chart .capar-dynamic-threshold { stroke: #b45d69; stroke-dasharray: 5 4; }
+.capar-dynamic-chart text, .capar-profile-chart text, .capar-eigen-chart text { fill: var(--muted); font-size: 8px; }
+.capar-profile-chart polyline { fill: none; stroke: #397b69; stroke-width: 2; }
+.capar-profile-chart polyline.is-ttr { stroke: #547fb4; stroke-dasharray: 5 3; }
+.capar-profile-chart circle { fill: #397b69; }
+.capar-profile-chart circle.is-ttr-point { fill: #547fb4; }
+.capar-dynamic-note, .capar-dynamic-disclaimer { margin: 0; color: var(--muted); font-size: 8px; line-height: 1.55; }
+.capar-dynamic-disclaimer { padding-top: 8px; border-top: 1px solid #edf2f0; }
+.capar-dynamic-empty { margin: 0; padding: 11px; color: var(--muted); background: #f7faf9; border: 1px dashed var(--line); border-radius: 8px; font-size: 9px; line-height: 1.5; }
+.capar-dynamic-table-scroll { width: 100%; overflow: auto; }
+.capar-dynamic-table, .capar-dynamic-matrix { width: 100%; border-collapse: collapse; font-size: 8px; white-space: nowrap; }
+.capar-dynamic-table th, .capar-dynamic-table td, .capar-dynamic-matrix th, .capar-dynamic-matrix td { padding: 6px 7px; border-bottom: 1px solid #e8efed; text-align: left; font-variant-numeric: tabular-nums; }
+.capar-dynamic-table th, .capar-dynamic-matrix th { color: var(--muted); font-weight: 800; }
+.capar-dynamic-table td, .capar-dynamic-matrix td { color: var(--ink-soft); }
+.capar-dynamic-matrix-wrap { overflow: auto; }
+.capar-dynamic-matrix { min-width: 390px; }
+.capar-dynamic-matrix td { color: #205c5a; text-align: center; font-weight: 800; }
+.capar-coupling-graph { display: block; width: 100%; max-height: 280px; }
+.capar-coupling-graph g path { fill: none; stroke: #547fb4; stroke-width: 1.4; }
+.capar-coupling-graph g.is-negative path { stroke: #b45d69; }
+.capar-coupling-graph marker path { fill: #547fb4; }
+.capar-coupling-graph g.is-negative text { fill: #b45d69; }
+.capar-coupling-graph g > text { fill: #526976; font-size: 9px; text-anchor: middle; paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+.capar-coupling-graph g circle { fill: #f4f9f7; stroke: #79aa9d; stroke-width: 1.5; }
+.capar-coupling-graph .capar-coupling-node-label { fill: #205c5a; font-size: 9px; font-weight: 800; stroke: none; }
+.capar-coupling-graph .capar-coupling-self { fill: var(--muted); font-size: 7px; stroke: none; }
+.capar-eigen-chart { display: block; width: min(100%, 300px); max-height: 260px; margin: 0 auto; }
+.capar-eigen-chart line { stroke: #cbd9d5; stroke-width: 1; }
+.capar-eigen-chart .capar-eigen-unit-circle { fill: none; stroke: #94b5aa; stroke-dasharray: 4 3; }
+.capar-dynamic-audit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.capar-dynamic-reasons { display: grid; gap: 4px; margin: 0; padding-left: 17px; color: #835f31; font-size: 8px; }
+@media (max-width: 640px) {
+  .capar-graph-scope-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .capar-dynamic-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .capar-dynamic-grid { grid-template-columns: minmax(0, 1fr); }
+  .capar-dynamic-recovery, .capar-dynamic-reference { grid-column: auto; }
+  .capar-dynamic-profile-summary { grid-template-columns: minmax(0, 1fr); }
+}
 .capar-visual-interpretation p { margin: 0; color: var(--ink-soft); font-size: 8px; line-height: 1.55; }
 .capar-visual-transition { margin: 0; padding-top: 9px; color: #6d6380; border-top: 1px dashed #dce8e4; font-size: 9px; }
 .capar-activity-series { display: grid; gap: 5px; padding: 10px; background: #fbfcfc; border: 1px solid var(--line); border-radius: 9px; }
