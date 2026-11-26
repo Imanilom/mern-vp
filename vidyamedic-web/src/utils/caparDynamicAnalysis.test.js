@@ -14,6 +14,14 @@ const transition = [
   [0.02, 0, 0.5],
 ];
 
+function assertGraphEdgesResolve(graph) {
+  const nodeIds = new Set(graph.nodes.map(({ id }) => id));
+  graph.edges.forEach(({ from, to }) => {
+    assert.ok(nodeIds.has(from), `Missing graph node: ${from}`);
+    assert.ok(nodeIds.has(to), `Missing graph node: ${to}`);
+  });
+}
+
 test('dynamic estimation recovers stable coefficients from eligible paired windows', () => {
   const episodes = Array.from({ length: 24 }, (_, episodeIndex) => {
     const before = [
@@ -242,6 +250,7 @@ test('dynamic profile graph keeps relationship nodes visible when the selected d
   );
   assert.ok(graph.edges.some(({ from, to }) => from === 'person' && to === 'day:2026-11-18'));
   assert.ok(graph.edges.some(({ from, to }) => from === 'model' && to === 'profile'));
+  assertGraphEdgesResolve(graph);
 });
 
 test('dynamic profile graph keeps window metrics as attributes without scaling its node', () => {
@@ -254,11 +263,19 @@ test('dynamic profile graph keeps window metrics as attributes without scaling i
   };
   const graph = buildDynamicProfileGraph({
     participant: 'P01',
-    scope: 'day',
+    scope: 'window',
     day: '2026-11-18',
     activity: 'all',
     windows: [selectedWindow],
     selectedWindow,
+    selectedWindowAttributes: {
+      hr: 75.6,
+      rmssd: 35,
+      dfa: 0.9,
+      acc: 0.026,
+      hr_base: 70,
+    },
+    selectedWindowState: { eligible: true, state: [1, 0.5, 0.25], reasons: [] },
     model: { status: 'ESTIMASI', audit: { pair_count: 18 }, matrix: [[1]] },
   });
   const selectedNode = graph.nodes.find(({ id }) => id === 'window:window-1');
@@ -271,9 +288,102 @@ test('dynamic profile graph keeps window metrics as attributes without scaling i
     dfa_alpha1: null,
     motion_intensity: null,
     signal_quality: 0.98,
+    signal_completeness: null,
   });
   assert.ok(graph.edges.some(({ from, to, rel }) => (
-    from === 'window:window-1' && to === 'model' && rel === 'contributesTo'
+    from === 'window:window-1' && to === 'model' && rel === 'modelContext'
   )));
+  assert.ok(graph.nodes.some(({ id }) => id === 'feature:hr'));
+  assert.deepEqual(
+    graph.nodes.find(({ id }) => id === 'feature:hr').attributes,
+    { value: 75.6, unit: 'BPM', standardized_state: 1 },
+  );
+  assert.deepEqual(
+    graph.nodes.find(({ id }) => id === 'baseline').attributes,
+    {
+      hr_mean: 70,
+      hr_sd: null,
+      rmssd_mean: null,
+      lnrmssd_sd: null,
+      dfa_mean: null,
+      dfa_sd: null,
+    },
+  );
+  assert.ok(graph.edges.some(({ from, to, rel }) => (
+    from === 'window:window-1' && to === 'feature:hr' && rel === 'hasFeature'
+  )));
+  assert.ok(graph.edges.some(({ from, to, rel }) => (
+    from === 'feature:rmssd' && to === 'baseline' && rel === 'comparedWith'
+  )));
+  assert.ok(graph.edges.some(({ from, to, rel }) => (
+    from === 'feature:hr' && to === 'deviation' && rel === 'contributes'
+  )));
+  assertGraphEdgesResolve(graph);
   assert.equal(selectedNode.w, 155);
+});
+
+test('person scope groups days into a clickable relationship overview', () => {
+  const graph = buildDynamicProfileGraph({
+    participant: 'P01',
+    scope: 'person',
+    day: '2026-11-18',
+    windows: [
+      { _id: 'w1', window_start: Date.parse('2026-11-02T03:00:00Z'), activity_label: 'Jalan' },
+      { _id: 'w2', window_start: Date.parse('2026-11-18T03:00:00Z'), activity_label: 'Tangga' },
+    ],
+    model: { status: 'ABSTAIN', audit: { pair_count: 0 }, matrix: null },
+  });
+
+  assert.ok(graph.nodes.some(({ id }) => id === 'observations'));
+  assert.ok(graph.edges.some(({ from, to, rel }) => (
+    from === 'day:2026-11-18' && to === 'observations' && rel === 'hasObservation'
+  )));
+  assert.equal(graph.nodes.some(({ id }) => id.startsWith('activity:')), false);
+  assertGraphEdgesResolve(graph);
+});
+
+test('window scope shows a selectable observation placeholder when no windows exist', () => {
+  const graph = buildDynamicProfileGraph({
+    participant: 'P01',
+    scope: 'window',
+    day: '2026-11-18',
+    windows: [],
+    model: { status: 'ABSTAIN', audit: { pair_count: 0 }, matrix: null },
+  });
+
+  assert.ok(graph.nodes.some(({ id }) => id === 'window:not-selected'));
+  assert.equal(graph.edges.some(({ from, rel }) => from === 'activity:0:0' && rel === 'usedToEstimate'), false);
+  assertGraphEdgesResolve(graph);
+});
+
+test('activity scope links physiology episodes to the dynamic model', () => {
+  const episode = {
+    _id: 'episode-1',
+    activity: 'Naik tangga',
+    onset_time: Date.parse('2026-11-18T06:22:30.000Z'),
+    segment_ids: ['window-1'],
+    ttr_min: 27,
+  };
+  const graph = buildDynamicProfileGraph({
+    participant: 'P01',
+    scope: 'activity',
+    day: '2026-11-18',
+    activity: 'Naik tangga',
+    episodes: [episode],
+    selectedEpisode: episode,
+    windows: [{
+      _id: 'window-1',
+      window_start: episode.onset_time,
+      activity_label: 'Naik tangga',
+    }],
+    model: { status: 'ABSTAIN', audit: { pair_count: 0 }, matrix: null },
+  });
+
+  assert.ok(graph.edges.some(({ from, to, rel }) => (
+    from === 'activity:0:0' && to === 'episode:episode-1' && rel === 'hasEpisode'
+  )));
+  assert.ok(graph.edges.some(({ from, to, rel }) => (
+    from === 'episode:episode-1' && to === 'model' && rel === 'usedToEstimate'
+  )));
+  assertGraphEdgesResolve(graph);
 });

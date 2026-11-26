@@ -12,6 +12,13 @@ function numberOrNull(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function getEpisodeWindowCount(episode, episodes) {
+  const segmentIds = episode?.segment_ids || [];
+  if (segmentIds.length || !episode?.parent_episode_id) return segmentIds.length;
+  const parent = episodes.find((item) => String(item._id || '') === String(episode.parent_episode_id));
+  return (parent?.segment_ids || []).length;
+}
+
 function unitIntervalOrNull(value) {
   const parsed = numberOrNull(value);
   return parsed !== null && parsed >= 0 && parsed <= 1 ? parsed : null;
@@ -750,7 +757,11 @@ export function buildDynamicProfileGraph({
   day,
   windows = [],
   activity = 'all',
+  episodes = [],
+  selectedEpisode = null,
   selectedWindow = null,
+  selectedWindowAttributes = null,
+  selectedWindowState = null,
   model,
   profileTau = null,
   ttrMedian = null,
@@ -772,7 +783,7 @@ export function buildDynamicProfileGraph({
   const availableDays = [...activityByDay.keys()].sort();
   const days = scope === 'day' && day
     ? [day]
-    : availableDays.slice(-70);
+    : availableDays.slice(-5);
   if (!days.length) days.push(day || 'Belum ada hari');
   const dayEntries = days.map((date) => {
     const activities = activityByDay.get(date);
@@ -806,20 +817,29 @@ export function buildDynamicProfileGraph({
 
   let selectedWindowNodeAdded = false;
   dayEntries.forEach(({ date, entries }, dayIndex) => {
-    const dayY = 130 + (dayIndex * 245);
+    const dayY = scope === 'person' ? 135 : 130 + (dayIndex * 245);
     const dayId = `day:${date}`;
     const totalWindows = entries.reduce((sum, entry) => sum + entry.windows.length, 0);
     graphNodes.push({
       id: dayId,
       title: date,
       sub: `${totalWindows} window`,
-      x: centerX,
+      x: scope === 'person'
+        ? (dayEntries.length === 1 ? centerX : 80 + (dayIndex * ((graphWidth - 160) / (dayEntries.length - 1))))
+        : centerX,
       y: dayY,
       type: 'context',
       info: `Hari pengamatan ${date}`,
+      attributes: { day: date, windows: totalWindows },
+      action: getJakartaDay(date) ? { type: 'day', value: date } : null,
       w: nodeWidth,
     });
     graphEdges.push({ from: personId, to: dayId, rel: 'hasDay' });
+
+    if (scope === 'person') {
+      graphEdges.push({ from: dayId, to: 'observations', rel: 'hasObservation' });
+      return;
+    }
 
     entries.forEach(({ label, windows: activityWindows }, activityIndex) => {
       const activityX = ((activityIndex + 1) * graphWidth) / (entries.length + 1);
@@ -832,21 +852,67 @@ export function buildDynamicProfileGraph({
         y: dayY + 92,
         type: 'context',
         info: `Aktivitas ${label} pada ${date}`,
+        attributes: { activity: label, windows: activityWindows.length },
+        action: activityWindows.length ? { type: 'activity', value: label } : null,
         w: nodeWidth,
       });
       graphEdges.push({ from: dayId, to: activityId, rel: 'hasActivity' });
 
-      if (!selectedWindowNodeAdded && selectedWindow
+      if (scope === 'activity') {
+        let episodeNodes = episodes.filter((episode) => (
+          (activity === 'all' || (episode.activity || 'Unknown') === label)
+          && getJakartaDay(episode.onset_time) === date
+        )).slice(-5);
+        if (selectedEpisode && !episodeNodes.some((episode) => (
+          String(episode._id || '') === String(selectedEpisode._id || '')
+        ))) {
+          episodeNodes = [...episodeNodes.slice(1), selectedEpisode];
+        }
+        if (!episodeNodes.length) episodeNodes = [null];
+        episodeNodes.forEach((episode, episodeIndex) => {
+          const episodeX = episodeNodes.length === 1
+            ? activityX
+            : 80 + (episodeIndex * ((graphWidth - 160) / (episodeNodes.length - 1)));
+          const episodeId = episode?._id ? `episode:${String(episode._id)}` : `episode:unavailable:${dayIndex}:${activityIndex}`;
+          graphNodes.push({
+            id: episodeId,
+            title: episode ? `Episode ${episodeIndex + 1}` : 'Episode fisiologis',
+            sub: episode ? `${getEpisodeWindowCount(episode, episodes)} window · TTR ${numberOrNull(episode.ttr_min) ?? '—'} min` : 'Belum tersedia',
+            x: episodeX,
+            y: dayY + 175,
+            type: 'observation',
+            info: episode
+              ? `${episode.classification || 'Episode'} · ${toEpochMs(episode.onset_time) === null ? 'waktu tidak tersedia' : new Date(toEpochMs(episode.onset_time)).toISOString()}`
+              : 'Episode fisiologis belum tersedia untuk aktivitas ini.',
+            attributes: episode ? {
+              episode_id: String(episode._id),
+              classification: episode.classification || null,
+              onset_time: toEpochMs(episode.onset_time) === null
+                ? null
+                : new Date(toEpochMs(episode.onset_time)).toISOString(),
+              windows: getEpisodeWindowCount(episode, episodes),
+              recorded_ttr_minutes: numberOrNull(episode.ttr_min),
+            } : {},
+            action: episode?._id ? { type: 'episode', value: String(episode._id) } : null,
+            w: nodeWidth,
+          });
+          graphEdges.push({ from: activityId, to: episodeId, rel: 'hasEpisode' });
+        });
+      }
+
+      if (scope === 'window' && !selectedWindowNodeAdded && selectedWindow
         && getJakartaDay(selectedWindow.window_start) === date
-        && selectedWindow.activity_label === label) {
+        && (selectedWindow.activity_label || 'Unknown') === label) {
         const selectedId = String(selectedWindow._id || 'selected');
+        const selectedTimestamp = toEpochMs(selectedWindow.window_start);
         const attributes = {
-          timestamp: new Date(toEpochMs(selectedWindow.window_start)).toISOString(),
+          timestamp: selectedTimestamp === null ? null : new Date(selectedTimestamp).toISOString(),
           hr_bpm: numberOrNull(selectedWindow.features?.mean_hr),
           rmssd_ms: numberOrNull(selectedWindow.features?.rmssd),
           dfa_alpha1: numberOrNull(selectedWindow.features?.dfa_alpha1),
           motion_intensity: numberOrNull(selectedWindow.features?.motion_intensity),
           signal_quality: numberOrNull(selectedWindow.signal_quality_detail?.q_signal),
+          signal_completeness: numberOrNull(selectedWindow.signal_quality_detail?.q_complete),
         };
         graphNodes.push({
           id: `window:${selectedId}`,
@@ -856,42 +922,162 @@ export function buildDynamicProfileGraph({
           y: dayY + 175,
           type: 'observation',
           info: [
-            `${label} · ${attributes.timestamp}`,
+            `${label} · ${attributes.timestamp || 'waktu tidak tersedia'}`,
             `HR: ${attributes.hr_bpm ?? '—'} bpm`,
             `RMSSD: ${attributes.rmssd_ms ?? '—'} ms`,
             `DFA α1: ${attributes.dfa_alpha1 ?? '—'}`,
             `Gerak: ${attributes.motion_intensity ?? '—'}`,
             `Kualitas sinyal: ${attributes.signal_quality ?? '—'}`,
+            `Kelengkapan: ${attributes.signal_completeness ?? '—'}`,
           ].join('\n'),
           attributes,
+          action: { type: 'window', value: selectedId },
           w: nodeWidth,
         });
         graphEdges.push({ from: activityId, to: `window:${selectedId}`, rel: 'hasWindow' });
         selectedWindowNodeAdded = true;
+        const selectedAttributes = selectedWindowAttributes || {};
+        const state = selectedWindowState?.state || null;
+        const featureSpecs = [
+          { key: 'hr', title: 'HR', value: selectedAttributes.hr, unit: 'BPM', state: state?.[0] },
+          { key: 'rmssd', title: 'RMSSD', value: selectedAttributes.rmssd, unit: 'ms', state: state?.[1] },
+          { key: 'dfa', title: 'DFA α1', value: selectedAttributes.dfa, unit: '', state: state?.[2] },
+          { key: 'acc', title: 'ACC', value: selectedAttributes.acc, unit: '', state: null },
+        ];
+        featureSpecs.forEach((feature, featureIndex) => {
+          const x = 95 + (featureIndex * ((graphWidth - 190) / (featureSpecs.length - 1)));
+          const featureId = `feature:${feature.key}`;
+          graphNodes.push({
+            id: featureId,
+            title: feature.title,
+            sub: feature.value === null || feature.value === undefined
+              ? 'Nilai tidak tersedia'
+              : `${feature.value}${feature.unit ? ` ${feature.unit}` : ''}`,
+            x,
+            y: dayY + 260,
+            type: 'observation',
+            info: `${feature.title}: ${feature.value ?? '—'}${feature.unit ? ` ${feature.unit}` : ''}${Number.isFinite(feature.state) ? ` · xᵢ ${feature.state.toFixed(3)}` : ''}`,
+            attributes: {
+              value: numberOrNull(feature.value),
+              unit: feature.unit || null,
+              standardized_state: Number.isFinite(feature.state) ? feature.state : null,
+            },
+            w: nodeWidth,
+          });
+          graphEdges.push({ from: `window:${selectedId}`, to: featureId, rel: 'hasFeature' });
+        });
+        graphNodes.push({
+          id: 'baseline',
+          title: 'Baseline personal',
+          sub: `HR ${selectedAttributes.hr_base ?? '—'} · RMSSD ${selectedAttributes.rmssd_base ?? '—'}`,
+          x: centerX - 185,
+          y: dayY + 355,
+          type: 'context',
+          info: 'Baseline yang digunakan untuk standardisasi state.',
+          attributes: {
+            hr_mean: numberOrNull(selectedAttributes.hr_base),
+            hr_sd: numberOrNull(selectedAttributes.hr_sd),
+            rmssd_mean: numberOrNull(selectedAttributes.rmssd_base),
+            lnrmssd_sd: numberOrNull(selectedAttributes.lnrmssd_sd),
+            dfa_mean: numberOrNull(selectedAttributes.dfa_base),
+            dfa_sd: numberOrNull(selectedAttributes.dfa_sd),
+          },
+          w: nodeWidth,
+        });
+        graphNodes.push({
+          id: 'deviation',
+          title: 'Deviasi D',
+          sub: selectedWindowState?.eligible && state ? `D = ${Math.hypot(...state).toFixed(3)}` : 'ABSTAIN',
+          x: centerX + 185,
+          y: dayY + 355,
+          type: 'model',
+          info: selectedWindowState?.reasons?.join('; ') || 'Norma Euclidean dari state terstandardisasi.',
+          attributes: {
+            distance: state ? Math.hypot(...state) : null,
+            state,
+            eligible: selectedWindowState?.eligible || false,
+          },
+          w: nodeWidth,
+        });
+        graphEdges.push(...['hr', 'rmssd', 'dfa'].flatMap((key) => ([
+          { from: `feature:${key}`, to: 'baseline', rel: 'comparedWith' },
+          { from: `feature:${key}`, to: 'deviation', rel: 'contributes' },
+        ])));
+        graphEdges.push({ from: 'baseline', to: 'deviation', rel: 'reference' });
       }
     });
   });
 
-  const modelY = 130 + ((dayEntries.length - 1) * 245) + 205;
+  if (scope === 'person') {
+    graphNodes.push({
+      id: 'observations',
+      title: 'Observasi individu',
+      sub: `${windows.length} window`,
+      x: centerX,
+      y: 245,
+      type: 'observation',
+      info: 'Gabungan seluruh hari dan aktivitas pemicu.',
+      attributes: { windows: windows.length },
+      w: nodeWidth,
+    });
+  }
+  if (scope === 'window' && !selectedWindowNodeAdded) {
+    const activityNode = graphNodes.find((node) => node.id.startsWith('activity:'));
+    graphNodes.push({
+      id: 'window:not-selected',
+      title: 'Pilih window',
+      sub: 'Observasi lokal',
+      x: activityNode?.x || centerX,
+      y: 305,
+      type: 'observation',
+      info: 'Pilih window CAPAR untuk membuka fitur, baseline, dan deviasi.',
+      attributes: {},
+      w: nodeWidth,
+    });
+    if (activityNode) graphEdges.push({ from: activityNode.id, to: 'window:not-selected', rel: 'hasWindow' });
+  }
+
+  const modelY = scope === 'person'
+    ? 335
+    : scope === 'activity'
+      ? 435
+      : scope === 'window'
+        ? 570
+        : 130 + ((dayEntries.length - 1) * 245) + 205;
   const modelId = 'model';
   const audit = model?.audit || {};
   const hasMatrix = Array.isArray(model?.matrix);
   graphNodes.push({
     id: modelId,
-    title: hasMatrix ? 'Model Aᵈ' : 'Model belum layak',
+    title: hasMatrix ? 'Model Aᵈ' : 'Dynamic Model',
     sub: `${audit.pair_count || 0} transisi valid`,
     x: centerX,
     y: modelY,
     type: 'model',
     info: model?.reason || 'Belum cukup data untuk mengestimasi model.',
+    attributes: {
+      status: model?.status || 'ABSTAIN',
+      pairs: audit.pair_count || 0,
+      rank: audit.rank || 0,
+      condition_number: audit.condition_number ?? null,
+      rmse: audit.rmse ?? null,
+    },
     w: nodeWidth,
   });
   graphEdges.push(...graphNodes
-    .filter((node) => node.id.startsWith('activity:'))
+    .filter((node) => node.id.startsWith('activity:') && node.attributes?.windows > 0)
     .map((node) => ({ from: node.id, to: modelId, rel: 'usedToEstimate' })));
+  graphEdges.push(...graphNodes
+    .filter((node) => node.id.startsWith('episode:') && node.action)
+    .map((node) => ({ from: node.id, to: modelId, rel: 'usedToEstimate' })));
+  if (scope === 'person' && windows.length) {
+    graphEdges.push({ from: 'observations', to: modelId, rel: 'usedToEstimate' });
+  }
   if (selectedWindowNodeAdded) {
     const selectedWindowNode = graphNodes.find((node) => node.id.startsWith('window:'));
-    graphEdges.push({ from: selectedWindowNode.id, to: modelId, rel: 'contributesTo' });
+    graphEdges.push({ from: selectedWindowNode.id, to: modelId, rel: 'modelContext' });
+    graphEdges.push({ from: 'deviation', to: modelId, rel: 'informsModel' });
+    graphEdges.push({ from: 'feature:acc', to: modelId, rel: 'contextEvidence' });
   }
 
   const modeId = 'mode';

@@ -2051,6 +2051,7 @@ export default function CaparVisualizationPage() {
   const [graphScope, setGraphScope] = useState('day');
   const [selectedGraphEpisodeId, setSelectedGraphEpisodeId] = useState('');
   const [selectedGraphWindowId, setSelectedGraphWindowId] = useState('');
+  const [advancedGraphOpen, setAdvancedGraphOpen] = useState(false);
   const [viewMode, setViewMode] = useState('graph');
   const [selectedMetrics, setSelectedMetrics] = useState(TIMELINE_METRICS.map(({ id }) => id));
   const [dates, setDates] = useState([]);
@@ -2272,8 +2273,8 @@ export default function CaparVisualizationPage() {
 
   function changeGraphScope(scope) {
     setGraphScope(scope);
-    if (scope === 'person' || scope === 'activity') setDateMode('all');
-    else if (scope === 'day') setDateMode('day');
+    if (scope === 'person') setDateMode('all');
+    else setDateMode('day');
   }
 
   const modeDescription = viewMode === 'graph'
@@ -2563,36 +2564,6 @@ export default function CaparVisualizationPage() {
               </>
             ) : viewMode === 'graph' ? (
               <div className="capar-graph-analysis-stack">
-                <Suspense fallback={<div className="capar-visual-loading">Memuat graph explorer…</div>}>
-                  <CaparGraphExplorer
-                    activityFilter={activityFilter}
-                    dateMode={dateMode}
-                    deviceFilter={deviceFilter}
-                    episodes={timelineData?.episodes || []}
-                    graph={graph}
-                    mode={dataMode}
-                    onEpisodeChange={(episodeId) => {
-                      setSelectedGraphEpisodeId(episodeId);
-                      setSelectedGraphWindowId('');
-                    }}
-                    onDayChange={(day) => {
-                      if (day === 'all') setGraphScope('person');
-                      else setSelectedDate(day);
-                    }}
-                    onScopeChange={changeGraphScope}
-                    onWindowChange={(windowId) => {
-                      setSelectedGraphWindowId(windowId);
-                      setSelectedGraphEpisodeId('');
-                    }}
-                    scope={graphScope}
-                    selectedDate={selectedDate}
-                    selectedEpisodeId={selectedGraphEpisodeId}
-                    selectedWindowId={selectedGraphWindowId}
-                    showScopeSelectors
-                    showScopeTabs
-                    windows={timelineData?.windows || []}
-                  />
-                </Suspense>
                 <Suspense fallback={<div className="capar-visual-loading">Memuat analisis dinamika…</div>}>
                   <CaparDynamicAnalysis
                     key={selectedPatient}
@@ -2608,9 +2579,64 @@ export default function CaparVisualizationPage() {
                     selectedDate={selectedDate}
                     selectedEpisodeId={selectedGraphEpisodeId}
                     selectedWindowId={selectedGraphWindowId}
+                    onScopeChange={changeGraphScope}
+                    onDayChange={(day) => {
+                      setSelectedDate(day);
+                      setDateMode('day');
+                    }}
+                    onActivityChange={(activity) => {
+                      setActivityFilter(activity);
+                      setDateMode('day');
+                    }}
+                    onEpisodeChange={(episodeId) => {
+                      setSelectedGraphEpisodeId(episodeId);
+                      setSelectedGraphWindowId('');
+                    }}
+                    onWindowChange={(windowId) => {
+                      setSelectedGraphWindowId(windowId);
+                      setSelectedGraphEpisodeId('');
+                    }}
                     windows={timelineData?.windows || []}
                   />
                 </Suspense>
+                <details
+                  className="capar-graph-advanced"
+                  onToggle={(event) => setAdvancedGraphOpen(event.currentTarget.open)}
+                >
+                  <summary>Graph Explorer lanjutan · pencarian, traversal, relasi temporal, dan ekspor</summary>
+                  {advancedGraphOpen && (
+                    <Suspense fallback={<div className="capar-visual-loading">Memuat graph explorer…</div>}>
+                      <CaparGraphExplorer
+                        activityFilter={activityFilter}
+                        dateMode={dateMode}
+                        deviceFilter={deviceFilter}
+                        episodes={timelineData?.episodes || []}
+                        graph={graph}
+                        mode={dataMode}
+                        onEpisodeChange={(episodeId) => {
+                          setSelectedGraphEpisodeId(episodeId);
+                          setSelectedGraphWindowId('');
+                        }}
+                        onDayChange={(day) => {
+                          if (day === 'all') setGraphScope('person');
+                          else setSelectedDate(day);
+                        }}
+                        onScopeChange={changeGraphScope}
+                        onWindowChange={(windowId) => {
+                          setSelectedGraphWindowId(windowId);
+                          setSelectedGraphEpisodeId('');
+                        }}
+                        scope={graphScope}
+                        selectedDate={selectedDate}
+                        selectedEpisodeId={selectedGraphEpisodeId}
+                        selectedWindowId={selectedGraphWindowId}
+                        showScopeSelectors
+                        showScopeTabs
+                        windows={timelineData?.windows || []}
+                      />
+                    </Suspense>
+                  )}
+                </details>
               </div>
             ) : (
               <AnchoredTimelineChart

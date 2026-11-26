@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { api } from '../api.js';
 import {
   analyzeDynamicProfile,
@@ -13,6 +13,12 @@ import {
 
 const STATE_NAMES = ['zHR', 'defisit lnRMSSD', 'defisit DFA α1'];
 const EIGEN_COLORS = ['#397b69', '#547fb4', '#b45d69'];
+const PROFILE_SCOPES = [
+  { id: 'person', label: '01 · Per individu' },
+  { id: 'day', label: '02 · Per hari' },
+  { id: 'activity', label: '03 · Per aktivitas' },
+  { id: 'window', label: '04 · Per window' },
+];
 
 function formatNumber(value, digits = 2) {
   return Number.isFinite(value) ? Number(value.toFixed(digits)).toLocaleString('id-ID') : '—';
@@ -274,7 +280,11 @@ function CouplingGraph({ matrix }) {
   );
 }
 
-function ProfileRelationshipGraph({ graph }) {
+function ProfileRelationshipGraph({
+  graph,
+  onNodeSelect,
+  selectedNodeId,
+}) {
   if (!graph?.nodes?.length) {
     return <p className="capar-dynamic-empty">Node konteks dan relasi belum tersedia.</p>;
   }
@@ -301,28 +311,55 @@ function ProfileRelationshipGraph({ graph }) {
           const from = nodesById.get(edge.from);
           const to = nodesById.get(edge.to);
           if (!from || !to) return null;
-          const startY = from.y + (to.y >= from.y ? 32 : -32);
-          const endY = to.y + (to.y >= from.y ? -32 : 32);
-          const middleY = (startY + endY) / 2;
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          const startScale = 1 / Math.max(
+            Math.abs(dx) / ((from.w || 155) / 2),
+            Math.abs(dy) / 24,
+            1e-6,
+          );
+          const endScale = 1 / Math.max(
+            Math.abs(dx) / (((to.w || 155) / 2) + 5),
+            Math.abs(dy) / 29,
+            1e-6,
+          );
+          const startX = from.x + (dx * startScale);
+          const startY = from.y + (dy * startScale);
+          const endX = to.x - (dx * endScale);
+          const endY = to.y - (dy * endScale);
           return (
             <g className="capar-profile-edge" key={`${edge.from}-${edge.to}-${index}`}>
               <path
-                d={`M ${from.x} ${startY} C ${from.x} ${middleY}, ${to.x} ${middleY}, ${to.x} ${endY}`}
+                d={`M ${startX} ${startY} L ${endX} ${endY}`}
                 markerEnd="url(#capar-profile-arrow)"
               />
-              <text x={(from.x + to.x) / 2} y={middleY - 5}>{edge.rel}</text>
+              <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 5}>{edge.rel}</text>
             </g>
           );
         })}
         {graph.nodes.map((node) => (
-          <g className={`capar-profile-node is-${node.type}`} key={node.id}>
+          <g
+            aria-label={`${node.title}. ${node.sub || ''}`}
+            aria-pressed={selectedNodeId === node.id}
+            className={`capar-profile-node is-${node.type}${selectedNodeId === node.id ? ' is-selected' : ''}`}
+            key={node.id}
+            onClick={() => onNodeSelect?.(node)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onNodeSelect?.(node);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+          >
             <title>{node.info || node.title}</title>
             <rect
-              height="64"
+              height="48"
               rx="12"
               width={node.w || 155}
               x={node.x - ((node.w || 155) / 2)}
-              y={node.y - 32}
+              y={node.y - 24}
             />
             <text className="capar-profile-node-title" x={node.x} y={node.y - 4}>
               {shorten(node.title)}
@@ -414,6 +451,11 @@ export default function CaparDynamicAnalysis({
   deviceFilter = 'all',
   selectedEpisodeId = '',
   selectedWindowId = '',
+  onScopeChange = () => {},
+  onDayChange = () => {},
+  onActivityChange = () => {},
+  onEpisodeChange = () => {},
+  onWindowChange = () => {},
 }) {
   const [importedSource, setImportedSource] = useState(null);
   const [importError, setImportError] = useState('');
@@ -422,6 +464,7 @@ export default function CaparDynamicAnalysis({
   const [historyError, setHistoryError] = useState('');
   const [mongoProfile, setMongoProfile] = useState(null);
   const [profileSaveState, setProfileSaveState] = useState({ status: 'idle', message: '' });
+  const [selectedProfileNodeId, setSelectedProfileNodeId] = useState('person');
   const activeWindows = importedSource?.data.windows || windows;
   const activeBaselines = importedSource?.data.baselines || baselines;
   const activeActivities = importedSource?.data.activities || activities;
@@ -452,77 +495,6 @@ export default function CaparDynamicAnalysis({
       });
     return () => { active = false; };
   }, [patientId, isImported, dateMode]);
-  const scopedWindows = useMemo(() => {
-    let result = isImported
-      ? [...activeWindows]
-      : activeWindows.filter((window) => (
-        (deviceFilter === 'all' || String(window.device_id || 'UNKNOWN') === deviceFilter)
-        && (activityFilter === 'all' || (window.activity_label || 'Unknown') === activityFilter)
-      ));
-    if (!isImported && (scope === 'day' || (dateMode === 'day' && scope !== 'person' && scope !== 'activity'))) {
-      result = result.filter((window) => getJakartaDay(window.window_start) === selectedDate);
-    }
-    if (selectedEpisodeId && !isImported) {
-      const selectedEpisode = physiologicalEpisodes.find((episode) => getEpisodeId(episode) === selectedEpisodeId);
-      const ids = getEpisodeWindowIds(selectedEpisode, physiologicalEpisodes);
-      if (ids.size) result = result.filter((window) => ids.has(String(window._id)));
-    }
-    if (selectedWindowId && !isImported) {
-      const run = analyzeDynamicProfile({
-        windows: result,
-        baselines: activeBaselines,
-        activities: activeActivities,
-        activity: 'all',
-      }).episodes.find((episode) => episode.windows.some((window) => String(window._id) === selectedWindowId));
-      result = run?.windows || [];
-    } else if (scope === 'window' && !isImported) {
-      result = [];
-    }
-    return result;
-  }, [
-    activeWindows,
-    activeBaselines,
-    activeActivities,
-    scope,
-    selectedDate,
-    dateMode,
-    activityFilter,
-    deviceFilter,
-    selectedEpisodeId,
-    selectedWindowId,
-    physiologicalEpisodes,
-    isImported,
-  ]);
-  const profile = useMemo(() => analyzeDynamicProfile({
-    windows: scopedWindows,
-    baselines: activeBaselines,
-    activities: activeActivities,
-    activity: 'all',
-  }), [scopedWindows, activeBaselines, activeActivities]);
-  const scopedEpisodes = useMemo(() => {
-    if (isImported) return [];
-    let result = physiologicalEpisodes.filter((episode) => (
-      (deviceFilter === 'all' || String(episode.device_id || 'UNKNOWN') === deviceFilter)
-      && (activityFilter === 'all' || (episode.activity || 'Unknown') === activityFilter)
-    ));
-    if (scope === 'day' || (dateMode === 'day' && scope !== 'person' && scope !== 'activity')) {
-      result = result.filter((episode) => getJakartaDay(episode.onset_time) === selectedDate);
-    }
-    if (selectedWindowId) {
-      result = result.filter((episode) => getEpisodeWindowIds(episode, physiologicalEpisodes).has(selectedWindowId));
-    }
-    return result;
-  }, [
-    isImported,
-    physiologicalEpisodes,
-    deviceFilter,
-    activityFilter,
-    scope,
-    dateMode,
-    selectedDate,
-    selectedWindowId,
-    activeActivities,
-  ]);
   const historyWindows = isImported
     ? activeWindows
     : historyTimeline?.windows || activeWindows;
@@ -532,6 +504,108 @@ export default function CaparDynamicAnalysis({
   const historyBaselines = isImported
     ? activeBaselines
     : historyTimeline?.baselines || activeBaselines;
+  const historyEpisodes = useMemo(() => (
+    isImported
+      ? []
+      : (historyTimeline?.episodes || physiologicalEpisodes).filter((episode) => (
+        (deviceFilter === 'all' || String(episode.device_id || 'UNKNOWN') === deviceFilter)
+        && (activityFilter === 'all' || (episode.activity || 'Unknown') === activityFilter)
+      ))
+  ), [isImported, historyTimeline, physiologicalEpisodes, deviceFilter, activityFilter]);
+  const sourceWindows = !isImported && scope === 'person' ? historyWindows : activeWindows;
+  const sourceActivities = !isImported && scope === 'person' ? historyActivities : activeActivities;
+  const sourceBaselines = !isImported && scope === 'person' ? historyBaselines : activeBaselines;
+  const scopedWindows = useMemo(() => {
+    let result = isImported
+      ? [...sourceWindows]
+      : sourceWindows.filter((window) => (
+        (deviceFilter === 'all' || String(window.device_id || 'UNKNOWN') === deviceFilter)
+        && (activityFilter === 'all' || (window.activity_label || 'Unknown') === activityFilter)
+      ));
+    if (!isImported && (scope === 'day' || scope === 'activity' || scope === 'window'
+      || (dateMode === 'day' && scope !== 'person'))) {
+      result = result.filter((window) => getJakartaDay(window.window_start) === selectedDate);
+    }
+    if (selectedEpisodeId && !isImported && scope === 'window') {
+      const selectedEpisode = historyEpisodes.find((episode) => getEpisodeId(episode) === selectedEpisodeId);
+      const ids = getEpisodeWindowIds(selectedEpisode, historyEpisodes);
+      if (ids.size) result = result.filter((window) => ids.has(String(window._id)));
+    }
+    if (selectedWindowId && !isImported && scope === 'window') {
+      const run = analyzeDynamicProfile({
+        windows: result,
+        baselines: sourceBaselines,
+        activities: sourceActivities,
+        activity: 'all',
+      }).episodes.find((episode) => episode.windows.some((window) => String(window._id) === selectedWindowId));
+      result = run?.windows || [];
+    }
+    return result;
+  }, [
+    sourceWindows,
+    sourceBaselines,
+    sourceActivities,
+    scope,
+    selectedDate,
+    dateMode,
+    activityFilter,
+    deviceFilter,
+    selectedEpisodeId,
+    selectedWindowId,
+    historyEpisodes,
+    isImported,
+  ]);
+  const profile = useMemo(() => analyzeDynamicProfile({
+    windows: scopedWindows,
+    baselines: sourceBaselines,
+    activities: sourceActivities,
+    activity: 'all',
+  }), [scopedWindows, sourceBaselines, sourceActivities]);
+  const scopedEpisodes = useMemo(() => {
+    if (isImported) return [];
+    let result = [...historyEpisodes];
+    if (scope === 'day' || scope === 'activity' || scope === 'window'
+      || (dateMode === 'day' && scope !== 'person')) {
+      result = result.filter((episode) => getJakartaDay(episode.onset_time) === selectedDate);
+    }
+    if (selectedWindowId && scope === 'window') {
+      result = result.filter((episode) => getEpisodeWindowIds(episode, historyEpisodes).has(selectedWindowId));
+    }
+    return result;
+  }, [
+    isImported,
+    historyEpisodes,
+    scope,
+    dateMode,
+    selectedDate,
+    selectedWindowId,
+  ]);
+  const selectableWindows = useMemo(() => {
+    let result = sourceWindows.filter((window) => (
+      (deviceFilter === 'all' || String(window.device_id || 'UNKNOWN') === deviceFilter)
+      && (activityFilter === 'all' || (window.activity_label || 'Unknown') === activityFilter)
+    ));
+    if (!isImported && scope !== 'person') {
+      result = result.filter((window) => getJakartaDay(window.window_start) === selectedDate);
+    }
+    if (selectedEpisodeId && !isImported) {
+      const selectedEpisode = historyEpisodes.find((episode) => getEpisodeId(episode) === selectedEpisodeId);
+      const ids = getEpisodeWindowIds(selectedEpisode, historyEpisodes);
+      if (ids.size) result = result.filter((window) => ids.has(String(window._id)));
+    }
+    return result.sort((first, second) => (
+      Number(first.window_start) - Number(second.window_start)
+    ));
+  }, [
+    sourceWindows,
+    deviceFilter,
+    activityFilter,
+    isImported,
+    scope,
+    selectedDate,
+    selectedEpisodeId,
+    historyEpisodes,
+  ]);
   const historyProfile = useMemo(() => analyzeDynamicProfile({
     windows: historyWindows.filter((window) => (
       (deviceFilter === 'all' || String(window.device_id || 'UNKNOWN') === deviceFilter)
@@ -547,14 +621,6 @@ export default function CaparDynamicAnalysis({
     deviceFilter,
     activityFilter,
   ]);
-  const historyEpisodes = useMemo(() => (
-    isImported
-      ? []
-      : (historyTimeline?.episodes || physiologicalEpisodes).filter((episode) => (
-        (deviceFilter === 'all' || String(episode.device_id || 'UNKNOWN') === deviceFilter)
-        && (activityFilter === 'all' || (episode.activity || 'Unknown') === activityFilter)
-      ))
-  ), [isImported, historyTimeline, physiologicalEpisodes, deviceFilter, activityFilter]);
   const selectedEpisode = !isImported
     ? scopedEpisodes.find((episode) => getEpisodeId(episode) === selectedEpisodeId)
       || [...scopedEpisodes].sort((first, second) => (
@@ -562,22 +628,22 @@ export default function CaparDynamicAnalysis({
       ))[0]
     : null;
   const recovery = selectedEpisode
-    ? buildRecoveryTrajectory(selectedEpisode, activeWindows, activeBaselines, physiologicalEpisodes)
+    ? buildRecoveryTrajectory(selectedEpisode, sourceWindows, sourceBaselines, historyEpisodes)
     : null;
   const eligibleCount = scopedWindows.filter((window) => (
-    prepareDynamicWindow(window, activeBaselines).eligible
+    prepareDynamicWindow(window, sourceBaselines).eligible
   )).length;
   const rejectionReasons = new Map();
   scopedWindows.forEach((window) => {
-    prepareDynamicWindow(window, activeBaselines).reasons.forEach((reason) => (
+    prepareDynamicWindow(window, sourceBaselines).reasons.forEach((reason) => (
       rejectionReasons.set(reason, (rejectionReasons.get(reason) || 0) + 1)
     ));
   });
   const baselineContexts = new Map();
   scopedWindows.forEach((window) => {
-    const parameters = prepareDynamicWindow(window, activeBaselines);
+    const parameters = prepareDynamicWindow(window, sourceBaselines);
     const timePeriod = window.time_period || getLocalTimePeriod(parameters.timestamp);
-    const baseline = activeBaselines.find((item) => (
+    const baseline = sourceBaselines.find((item) => (
       item.activity === (window.activity_label || 'Unknown')
       && item.time_period === timePeriod
     ));
@@ -610,19 +676,19 @@ export default function CaparDynamicAnalysis({
     : null;
   const selectedWindow = useMemo(() => (
     (selectedWindowId
-      ? activeWindows.find((window) => String(window._id) === String(selectedWindowId))
+      ? scopedWindows.find((window) => String(window._id) === String(selectedWindowId))
       : null)
     || scopedWindows[scopedWindows.length - 1]
     || null
-  ), [activeWindows, scopedWindows, selectedWindowId]);
+  ), [scopedWindows, selectedWindowId]);
   const recoverySummaries = useMemo(
     () => scopedEpisodes.map((episode) => summarizeRecovery(
       episode,
-      activeWindows,
-      activeBaselines,
-      physiologicalEpisodes,
+      sourceWindows,
+      sourceBaselines,
+      historyEpisodes,
     )),
-    [scopedEpisodes, activeWindows, activeBaselines, physiologicalEpisodes],
+    [scopedEpisodes, sourceWindows, sourceBaselines, historyEpisodes],
   );
   const ttrMedian = median(recoverySummaries
     .map(({ ttr }) => ttr)
@@ -631,15 +697,21 @@ export default function CaparDynamicAnalysis({
     selectedWindow,
     patientLabel || patientId,
     selectedEpisode?._id || selectedEpisodeId,
-    activeBaselines,
-  ), [selectedWindow, patientLabel, patientId, selectedEpisode, selectedEpisodeId, activeBaselines]);
+    sourceBaselines,
+  ), [selectedWindow, patientLabel, patientId, selectedEpisode, selectedEpisodeId, sourceBaselines]);
   const profileGraph = useMemo(() => buildDynamicProfileGraph({
     participant: patientLabel || patientId,
     scope,
     day: selectedDate,
     windows: scopedWindows,
     activity: activityFilter,
+    episodes: scopedEpisodes,
+    selectedEpisode,
     selectedWindow,
+    selectedWindowAttributes: selectedWindowProfile,
+    selectedWindowState: selectedWindow
+      ? prepareDynamicWindow(selectedWindow, sourceBaselines)
+      : null,
     model,
     profileTau: model.dominantTauMinutes,
     ttrMedian,
@@ -651,6 +723,10 @@ export default function CaparDynamicAnalysis({
     scopedWindows,
     activityFilter,
     selectedWindow,
+    selectedWindowProfile,
+    selectedEpisode,
+    scopedEpisodes,
+    sourceBaselines,
     model,
     ttrMedian,
   ]);
@@ -696,7 +772,7 @@ export default function CaparDynamicAnalysis({
     modelScope: scope === 'day'
       ? 'Semua aktivitas pada hari terpilih'
       : scope === 'activity'
-        ? `Aktivitas ${activityFilter} pada seluruh hari`
+        ? `Aktivitas ${activityFilter} pada hari terpilih`
         : scope === 'window'
           ? 'Window terpilih dan episode terkait'
           : 'Semua aktivitas dan hari individu',
@@ -812,6 +888,32 @@ export default function CaparDynamicAnalysis({
   const displayedProfileGraph = mongoProfileMatches
     ? mongoProfile.payload?.graph || profileGraph
     : profileSnapshot.graph;
+  const selectedProfileNode = displayedProfileGraph?.nodes?.find(
+    (node) => node.id === selectedProfileNodeId,
+  ) || displayedProfileGraph?.nodes?.[0] || null;
+
+  useEffect(() => {
+    if (displayedProfileGraph?.nodes?.some((node) => node.id === selectedProfileNodeId)) return;
+    setSelectedProfileNodeId(displayedProfileGraph?.nodes?.[0]?.id || '');
+  }, [displayedProfileGraph, selectedProfileNodeId]);
+
+  function handleProfileNodeSelect(node) {
+    setSelectedProfileNodeId(node.id);
+    if (!node.action) return;
+    if (node.action.type === 'day') {
+      onScopeChange('day');
+      onDayChange(node.action.value);
+    } else if (node.action.type === 'activity') {
+      onScopeChange('activity');
+      onActivityChange(node.action.value);
+    } else if (node.action.type === 'episode') {
+      onScopeChange('window');
+      onEpisodeChange(node.action.value);
+    } else if (node.action.type === 'window') {
+      onScopeChange('window');
+      onWindowChange(node.action.value);
+    }
+  }
 
   async function handleImport(event) {
     const file = event.target.files?.[0];
@@ -855,12 +957,61 @@ export default function CaparDynamicAnalysis({
         </p>
       )}
 
+      <div className="capar-dynamic-selectors">
+        <label>
+          Episode fisiologis
+          <select
+            onChange={(event) => onEpisodeChange(event.target.value)}
+            value={selectedEpisodeId}
+          >
+            <option value="">Semua episode</option>
+            {scopedEpisodes.map((episode) => {
+              const id = getEpisodeId(episode);
+              return (
+                <option key={id} value={id}>
+                  {episode.classification || 'Episode'} · {formatTime(Number(episode.onset_time))}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+        <label>
+          Window CAPAR
+          <select
+            onChange={(event) => onWindowChange(event.target.value)}
+            value={selectedWindowId}
+          >
+            <option value="">Window terbaru / sesuai episode</option>
+            {selectableWindows.slice(-300).map((window) => (
+              <option key={String(window._id)} value={String(window._id)}>
+                {window.activity_label || 'Unknown'} · {formatTime(Number(window.window_start))}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <nav className="capar-dynamic-scope-tabs" aria-label="Lingkup knowledge graph">
+        {PROFILE_SCOPES.map(({ id, label }) => (
+          <button
+            aria-pressed={scope === id}
+            className={scope === id ? 'is-active' : ''}
+            key={id}
+            onClick={() => onScopeChange(id)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
       <div className="capar-dynamic-metrics">
         <Metric label="Window terpilih" value={scopedWindows.length.toLocaleString('id-ID')} />
         <Metric label="Lolos quality gate" value={eligibleCount.toLocaleString('id-ID')} detail="Q signal & kelengkapan ≥95%" />
         <Metric label="Pasangan valid" value={model.audit.pair_count.toLocaleString('id-ID')} detail={`Δt ${formatNumber(model.audit.dt_minutes, 2)} menit`} />
         <Metric label="τ dominan" value={model.status === 'ESTIMASI' ? `${formatNumber(model.dominantTauMinutes, 2)} m` : '—'} detail={model.status} />
       </div>
+      <div className="capar-dynamic-dashboard">
+        <div className="capar-dynamic-column">
       <section className="capar-dynamic-panel capar-profile-graph-panel">
         <header>
           <div>
@@ -882,7 +1033,35 @@ export default function CaparDynamicAnalysis({
         <p className="capar-dynamic-description">
           {profileSaveState.message || (mongoProfileMatches ? 'Ditampilkan dari dokumen MongoDB.' : 'Graf relasi dari hasil hitung untuk konteks terpilih.')}
         </p>
-        <ProfileRelationshipGraph graph={displayedProfileGraph} />
+        <ProfileRelationshipGraph
+          graph={displayedProfileGraph}
+          onNodeSelect={handleProfileNodeSelect}
+          selectedNodeId={selectedProfileNode?.id}
+        />
+        <div className="capar-dynamic-graph-legend">
+          <span><i className="is-context" />Entitas &amp; konteks</span>
+          <span><i className="is-observation" />Observasi &amp; fitur</span>
+          <span><i className="is-model" />Model &amp; interpretasi</span>
+        </div>
+        {selectedProfileNode && (
+          <div className="capar-profile-node-inspector" aria-live="polite">
+            <div>
+              <strong>{selectedProfileNode.title}</strong>
+              <span>{selectedProfileNode.sub}</span>
+            </div>
+            {selectedProfileNode.info && <p>{selectedProfileNode.info}</p>}
+            {Object.keys(selectedProfileNode.attributes || {}).length > 0 && (
+              <dl>
+                {Object.entries(selectedProfileNode.attributes).map(([key, value]) => (
+                  <Fragment key={key}>
+                    <dt>{key.replaceAll('_', ' ')}</dt>
+                    <dd>{value !== null && typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—')}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            )}
+          </div>
+        )}
       </section>
       {profile.episodes.some((episode) => episode.inferredGrouping) && (
         <p className="capar-dynamic-import-note">
@@ -890,7 +1069,6 @@ export default function CaparDynamicAnalysis({
         </p>
       )}
 
-      <div className="capar-dynamic-grid">
         <section className="capar-dynamic-panel capar-dynamic-recovery">
           <header>
             <div>
@@ -995,6 +1173,8 @@ export default function CaparDynamicAnalysis({
           </p>
         </section>
 
+        </div>
+        <div className="capar-dynamic-column">
         <section className="capar-dynamic-panel">
           <header>
             <div>
@@ -1125,6 +1305,7 @@ export default function CaparDynamicAnalysis({
           )}
           <p className="capar-dynamic-disclaimer">D adalah norma Euclidean state terstandardisasi. TTR observasional bukan konfirmasi kesehatan atau ambang klinis.</p>
         </section>
+        </div>
       </div>
     </section>
   );
