@@ -43,9 +43,14 @@ function getPoint(window) {
     raw_count: Number(window.raw_count) || 0,
     mean_hr: numericValue(window.features?.mean_hr),
     mean_rr: numericValue(window.features?.mean_rr),
+    sdnn: numericValue(window.features?.sdnn),
     motion_intensity: numericValue(window.features?.motion_intensity),
     rmssd: numericValue(window.features?.rmssd),
     dfa_alpha1: numericValue(window.features?.dfa_alpha1),
+    dfa_alpha2: numericValue(window.features?.dfa_alpha2),
+    q_signal: numericValue(window.signal_quality_detail?.q_signal),
+    confidence_score: numericValue(window.missing_data_info?.confidence_score),
+    classification: window.rr_status || window.classification || null,
   };
 }
 
@@ -73,9 +78,25 @@ function summarize(points) {
     hr_rr_covariance: sampleCovariance(hrRrPairs),
     hr_rr_pair_count: hrRrPairs.length,
     mean_rr: average(valuesFor('mean_rr')),
+    mean_sdnn: average(valuesFor('sdnn')),
+    min_sdnn: valuesFor('sdnn').length ? Math.min(...valuesFor('sdnn')) : null,
+    max_sdnn: valuesFor('sdnn').length ? Math.max(...valuesFor('sdnn')) : null,
     mean_motion_intensity: average(valuesFor('motion_intensity')),
+    min_motion_intensity: valuesFor('motion_intensity').length
+      ? Math.min(...valuesFor('motion_intensity'))
+      : null,
+    max_motion_intensity: valuesFor('motion_intensity').length
+      ? Math.max(...valuesFor('motion_intensity'))
+      : null,
     mean_rmssd: average(valuesFor('rmssd')),
+    min_rmssd: valuesFor('rmssd').length ? Math.min(...valuesFor('rmssd')) : null,
+    max_rmssd: valuesFor('rmssd').length ? Math.max(...valuesFor('rmssd')) : null,
     mean_dfa_alpha1: average(valuesFor('dfa_alpha1')),
+    mean_dfa_alpha2: average(valuesFor('dfa_alpha2')),
+    mean_confidence_score: average(valuesFor('confidence_score')),
+    quality_valid_window_count: points.filter((point) => point.is_valid).length,
+    quality_invalid_window_count: points.filter((point) => !point.is_valid).length,
+    state_transition_count: 0,
   };
 }
 
@@ -120,13 +141,27 @@ export function buildCaparActivityTimeSeries(windows, { accountId, generatedBy }
         episode_end: end,
         source_segment_ids: [],
         series_points: [],
+        state_transitions: [],
       });
     }
 
     const episode = episodes[episodes.length - 1];
+    const statePreviousPoint = episode.series_points.at(-1);
+    const previousState = statePreviousPoint?.rr_status || statePreviousPoint?.classification || null;
+    const currentPoint = getPoint(window);
+    const currentState = currentPoint.rr_status || currentPoint.classification || null;
+    if (statePreviousPoint && previousState && currentState && previousState !== currentState) {
+      episode.state_transitions.push({
+        from_segment_id: statePreviousPoint.segment_id,
+        to_segment_id: currentPoint.segment_id,
+        timestamp: currentPoint.window_start,
+        from_state: previousState,
+        to_state: currentState,
+      });
+    }
     episode.episode_end = Math.max(episode.episode_end, end);
     episode.source_segment_ids.push(window._id);
-    episode.series_points.push(getPoint(window));
+    episode.series_points.push(currentPoint);
   }
 
   return episodes.map((episode) => {
@@ -137,11 +172,14 @@ export function buildCaparActivityTimeSeries(windows, { accountId, generatedBy }
       episode.window_type,
       firstSegmentId,
     ].join(':');
+    const summary = summarize(episode.series_points);
+    summary.state_transition_count = episode.state_transitions.length;
     return {
       ...episode,
       episode_key: episodeKey,
       generated_by: generatedBy,
-      summary: summarize(episode.series_points),
+      summary,
+      state_transitions: episode.state_transitions,
     };
   });
 }

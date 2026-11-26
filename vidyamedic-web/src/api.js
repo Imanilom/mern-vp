@@ -72,7 +72,29 @@ export const api = {
     const params = new URLSearchParams({ patient_id: patientId });
     if (allDates) params.set('all_dates', 'true');
     else if (date) params.set('date', date);
-    return request(`/doctor/capar-visualization/rows?${params.toString()}`);
+    const data = [];
+    let result = await request(`/doctor/capar-visualization/rows?${params.toString()}`);
+    data.push(...(result.data || []));
+    while (result.truncated) {
+      if (!Number.isSafeInteger(result.next_offset) || result.next_offset < 0) {
+        throw new Error('Data baris belum lengkap: server tidak mengirim penanda halaman berikutnya.');
+      }
+      params.set('offset', String(result.next_offset));
+      result = await request(`/doctor/capar-visualization/rows?${params.toString()}`);
+      data.push(...(result.data || []));
+    }
+    data.sort((first, second) => (
+      Number(first.timestamp_ms) - Number(second.timestamp_ms)
+      || String(first._id).localeCompare(String(second._id))
+    ));
+    return { ...result, count: data.length, data, truncated: false };
+  },
+  async listDoctorCaparTemporalTimeline(patientId, date, allDates = false, deviceId = '') {
+    const params = new URLSearchParams({ patient_id: patientId });
+    if (allDates) params.set('all_dates', 'true');
+    else if (date) params.set('date', date);
+    if (deviceId) params.set('device_id', deviceId);
+    return request(`/doctor/capar-visualization/timeline?${params.toString()}`);
   },
   async listDoctorCaparActivityEpisodes(patientId, date, allDates = false) {
     const params = new URLSearchParams({ patient_id: patientId });

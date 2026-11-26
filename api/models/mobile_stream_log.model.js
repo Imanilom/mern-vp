@@ -32,6 +32,7 @@ const mobileStreamLogSchema = new mongoose.Schema({
 
 // Index untuk query cepat per user & event terbaru
 mobileStreamLogSchema.index({ user_id: 1, created_at: -1 });
+mobileStreamLogSchema.index({ user_id: 1, device_id: 1, created_at: 1 });
 mobileStreamLogSchema.index({ created_at: -1 });
 
 const MobileStreamLog = mongoose.model('MobileStreamLog', mobileStreamLogSchema);

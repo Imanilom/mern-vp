@@ -2,13 +2,24 @@ import mongoose from 'mongoose';
 import PolarData from '../models/data.model.js';
 import Segment from '../models/segment.model.js';
 import CaparActivityTimeSeries from '../models/capar_activity_time_series.model.js';
+import PatientAppWearableSample from '../models/patient_app_wearable_sample.model.js';
+import MobileStreamLog from '../models/mobile_stream_log.model.js';
+import Baseline from '../models/baseline.model.js';
 import { getDoctorPatientAccounts } from './doctor.controller.js';
 import {
   buildCaparActivityTimeSeries,
 } from '../utils/caparActivityTimeSeries.js';
-import { getJakartaDayRange } from '../utils/caparWindowAnalytics.js';
+import {
+  getJakartaDayRange,
+  normalizeEpochMs,
+} from '../utils/caparWindowAnalytics.js';
+import {
+  buildCaparTemporalTimeline,
+  buildTemporalEdges,
+} from '../utils/caparTemporalTimeline.js';
 
 const NODE_LIMIT = 5000;
+const TIMELINE_SOURCE_LIMIT = 50_000;
 
 function getDateProjection(field) {
   return {
@@ -16,9 +27,15 @@ function getDateProjection(field) {
       date: {
         $toDate: {
           $cond: [
-            { $lt: [`$${field}`, 100_000_000_000] },
-            { $multiply: [`$${field}`, 1000] },
+            { $eq: [{ $type: `$${field}` }, 'date'] },
             `$${field}`,
+            {
+              $cond: [
+                { $lt: [`$${field}`, 100_000_000_000] },
+                { $multiply: [`$${field}`, 1000] },
+                `$${field}`,
+              ],
+            },
           ],
         },
       },
@@ -28,12 +45,17 @@ function getDateProjection(field) {
   };
 }
 
-async function getDates(model, accountId, timeField) {
+async function getDates(model, accountId, timeField, {
+  accountField = 'user_id',
+  extraMatch = {},
+  accountValue = accountId,
+} = {}) {
   const rows = await model.aggregate([
     {
       $match: {
-        user_id: accountId,
-        [timeField]: { $type: 'number' },
+        [accountField]: accountValue,
+        ...extraMatch,
+        [timeField]: { $type: ['number', 'date'] },
       },
     },
     { $project: { day: getDateProjection(timeField) } },
@@ -99,6 +121,17 @@ function timestampRangeFilter(timeField, range) {
   };
 }
 
+function meanOfFinite(values = []) {
+  const finite = values.map(Number).filter(Number.isFinite);
+  return finite.length
+    ? finite.reduce((total, value) => total + value, 0) / finite.length
+    : null;
+}
+
+function averageAcceleration(samples = [], axis) {
+  return meanOfFinite(samples.map((sample) => sample?.[axis]));
+}
+
 function buildSelectedRange(dates, query) {
   const allDates = query.all_dates === 'true';
   const selectedDate = allDates ? null : String(query.date || dates[0] || '');
@@ -116,13 +149,287 @@ function buildSelectedRange(dates, query) {
   }
 }
 
+export async function listDoctorCaparTemporalTimeline(req, res) {
+  try {
+    const queryError = validateDateQuery(
+      req.query,
+      new Set(['patient_id', 'date', 'all_dates', 'device_id'])
+    );
+    if (queryError) return res.status(400).json({ success: false, message: queryError });
+    const deviceId = req.query.device_id === undefined
+      ? null
+      : String(req.query.device_id).trim();
+    if (req.query.device_id !== undefined && !deviceId) {
+      return res.status(400).json({ success: false, message: 'device_id tidak boleh kosong.' });
+    }
+
+    const patientResult = await getPatientAccount(String(req.query.patient_id || ''));
+    if (patientResult.error) {
+      return res.status(patientResult.error.status).json({
+        success: false,
+        message: patientResult.error.message,
+      });
+    }
+    const accountId = patientResult.accountId;
+    const dateLists = await Promise.all([
+      getDates(PolarData, accountId, 'timestamp'),
+      getDates(Segment, accountId, 'window_start'),
+      getDates(PatientAppWearableSample, accountId, 'recorded_at', {
+        accountField: 'account_id',
+        extraMatch: { account_type: 'user' },
+        accountValue: accountId,
+      }),
+      getDates(MobileStreamLog, accountId, 'created_at', {
+        accountField: 'user_id',
+        accountValue: String(accountId),
+      }),
+    ]);
+    const dates = [...new Set(dateLists.flat())].sort((first, second) => second.localeCompare(first));
+    const selection = buildSelectedRange(dates, req.query);
+    if (selection.error) {
+      return res.status(400).json({ success: false, message: selection.error.message });
+    }
+    if (!selection.range) {
+      return res.json({
+        success: true,
+        dates,
+        selected_date: selection.selectedDate,
+        rows: [],
+        windows: [],
+        activities: [],
+        anchors: [],
+        device_sessions: [],
+        temporal_edges: { rows: [], windows: [], activities: [] },
+        truncated: {
+          rows: false,
+          wearable_samples: false,
+          windows: false,
+          activities: false,
+          evidence: false,
+        },
+      });
+    }
+
+    const sourceFilter = deviceId ? { device_id: deviceId } : {};
+    const [rowDocs, windowDocs, activityDocs, wearableSamples, streamLogs, baselines] = await Promise.all([
+      PolarData.find({
+        user_id: accountId,
+        ...sourceFilter,
+        ...timestampRangeFilter('timestamp', selection.range),
+      })
+        .select('_id timestamp hr rr rrms signal_quality acc_x acc_y acc_z step_count activity device_id')
+        .sort({ timestamp: 1, _id: 1 })
+        .limit(TIMELINE_SOURCE_LIMIT + 1)
+        .lean(),
+      Segment.find({
+        user_id: accountId,
+        ...sourceFilter,
+        ...timestampRangeFilter('window_start', selection.range),
+      })
+        .select('_id device_id window_type window_start window_end activity_label raw_count is_valid analyzed classification anomaly_score rr_status signal_quality_detail missing_data_info.confidence_score features')
+        .sort({ window_start: 1, _id: 1 })
+        .limit(TIMELINE_SOURCE_LIMIT + 1)
+        .lean(),
+      CaparActivityTimeSeries.find({
+        account_id: accountId,
+        ...sourceFilter,
+        episode_start: { $gte: selection.range.startMs, $lt: selection.range.endMs },
+      })
+        .sort({ episode_start: 1, _id: 1 })
+        .limit(TIMELINE_SOURCE_LIMIT + 1)
+        .lean(),
+      PatientAppWearableSample.find({
+        account_id: accountId,
+        account_type: 'user',
+        ...(deviceId ? { device_id: deviceId } : {}),
+        recorded_at: {
+          $gte: new Date(selection.range.startMs),
+          $lt: new Date(selection.range.endMs),
+        },
+      })
+        .select('_id device_id recorded_at sensor_contact signal_confidence heart_rate_bpm rr_intervals_ms acceleration_g activity activity_intensity rmssd_ms sdnn_ms dfa_alpha1 spo2_pct steps data_quality')
+        .sort({ recorded_at: 1, _id: 1 })
+        .limit(TIMELINE_SOURCE_LIMIT + 1)
+        .lean(),
+      MobileStreamLog.find({
+        user_id: String(accountId),
+        ...(deviceId ? { device_id: deviceId } : {}),
+        created_at: {
+          $gte: new Date(selection.range.startMs),
+          $lt: new Date(selection.range.endMs),
+        },
+      })
+        .select('_id device_id event created_at mqtt_connected')
+        .sort({ created_at: 1, _id: 1 })
+        .limit(TIMELINE_SOURCE_LIMIT + 1)
+        .lean(),
+      Baseline.find({ user_id: accountId })
+        .select('activity time_period stats.mean_hr stats.mean_rr stats.rmssd stats.dfa_alpha1 stats.motion_intensity segment_count is_mature')
+        .lean(),
+    ]);
+    const rowsTruncated = rowDocs.length > TIMELINE_SOURCE_LIMIT;
+    const wearableSamplesTruncated = wearableSamples.length > TIMELINE_SOURCE_LIMIT;
+    const windowsTruncated = windowDocs.length > TIMELINE_SOURCE_LIMIT;
+    const activitiesTruncated = activityDocs.length > TIMELINE_SOURCE_LIMIT;
+    const evidenceTruncated = streamLogs.length > TIMELINE_SOURCE_LIMIT;
+    const polarRows = rowDocs.slice(0, TIMELINE_SOURCE_LIMIT).map((row) => ({
+      ...row,
+      timestamp_ms: normalizeEpochMs(row.timestamp),
+      source_collection: 'PolarData',
+      source_id: String(row._id),
+    })).sort((first, second) => first.timestamp_ms - second.timestamp_ms
+      || String(first._id).localeCompare(String(second._id)));
+    const contactSamples = wearableSamples.slice(0, TIMELINE_SOURCE_LIMIT);
+    const wearableRows = contactSamples.map((sample) => {
+      const timestamp = normalizeEpochMs(sample.recorded_at);
+      const rrValues = sample.rr_intervals_ms || [];
+      const id = String(sample._id);
+      return {
+        _id: `wearable:${id}`,
+        source_id: id,
+        source_collection: 'PatientAppWearableSample',
+        timestamp,
+        timestamp_ms: timestamp,
+        hr: sample.heart_rate_bpm,
+        rr: meanOfFinite(rrValues),
+        rr_interval_count: rrValues.length,
+        rmssd_ms: sample.rmssd_ms,
+        sdnn_ms: sample.sdnn_ms,
+        dfa_alpha1: sample.dfa_alpha1,
+        acc_x: averageAcceleration(sample.acceleration_g, 'x'),
+        acc_y: averageAcceleration(sample.acceleration_g, 'y'),
+        acc_z: averageAcceleration(sample.acceleration_g, 'z'),
+        activity: sample.activity || sample.activity_intensity || 'Unknown',
+        signal_quality: sample.signal_confidence,
+        data_quality: sample.data_quality?.status,
+        sensor_contact: sample.sensor_contact,
+        device_id: sample.device_id,
+      };
+    }).filter((row) => row.timestamp_ms !== null);
+    const rows = [...polarRows, ...wearableRows].sort((first, second) => (
+      first.timestamp_ms - second.timestamp_ms
+      || String(first._id).localeCompare(String(second._id))
+    ));
+    const activities = activityDocs.slice(0, TIMELINE_SOURCE_LIMIT);
+    const activitySegments = new Map();
+    for (const activity of activities) {
+      for (const segmentId of activity.source_segment_ids || []) {
+        activitySegments.set(String(segmentId), activity.episode_key);
+      }
+    }
+    const windows = windowDocs.slice(0, TIMELINE_SOURCE_LIMIT).map((window) => ({
+      ...window,
+      parent_episode_id: activitySegments.get(String(window._id)) || null,
+      parent_relation_source: activitySegments.has(String(window._id))
+        ? 'CaparActivityTimeSeries.source_segment_ids'
+        : null,
+    })).sort((first, second) => (
+      (normalizeEpochMs(first.window_start) ?? 0)
+      - (normalizeEpochMs(second.window_start) ?? 0)
+      || String(first._id).localeCompare(String(second._id))
+    ));
+    const windowsByDevice = new Map();
+    for (const window of windows) {
+      const deviceKey = String(window.device_id || 'UNKNOWN');
+      if (!windowsByDevice.has(deviceKey)) windowsByDevice.set(deviceKey, []);
+      windowsByDevice.get(deviceKey).push(window);
+    }
+    const rowsWithLineage = rows.map((row) => {
+      const candidates = windowsByDevice.get(String(row.device_id || 'UNKNOWN')) || [];
+      let low = 0;
+      let high = candidates.length - 1;
+      let parent = null;
+      while (low <= high) {
+        const middle = Math.floor((low + high) / 2);
+        const startTime = normalizeEpochMs(candidates[middle].window_start) ?? Infinity;
+        if (startTime <= row.timestamp_ms) {
+          parent = candidates[middle];
+          low = middle + 1;
+        } else {
+          high = middle - 1;
+        }
+      }
+      const endTime = parent ? normalizeEpochMs(parent.window_end) : null;
+      const hasOverlap = parent && endTime !== null && row.timestamp_ms <= endTime;
+      return {
+        ...row,
+        parent_window_id: hasOverlap ? String(parent._id) : null,
+        parent_relation_source: hasOverlap ? 'timestamp_overlap' : null,
+      };
+    });
+    const temporal = buildCaparTemporalTimeline({
+      accountId,
+      rows: rowsWithLineage,
+      windows,
+      activities,
+      wearableSamples: contactSamples,
+      streamLogs: streamLogs.slice(0, TIMELINE_SOURCE_LIMIT),
+    });
+    const getActivity = (node, mode) => (
+      mode === 'rows' ? node.activity : mode === 'windows' ? node.activity_label : node.activity_label
+    );
+    const getMetric = (node, mode) => (
+      mode === 'rows'
+        ? node.hr
+        : mode === 'windows'
+          ? node.features?.mean_hr
+          : node.summary?.mean_hr
+    );
+    const edgesFor = (data, mode) => buildTemporalEdges(data, {
+      getTime: (node) => mode === 'rows'
+        ? normalizeEpochMs(node.timestamp_ms)
+        : mode === 'windows'
+          ? normalizeEpochMs(node.window_start)
+          : normalizeEpochMs(node.episode_start),
+      getActivity: (node) => getActivity(node, mode),
+      getMetric: (node) => getMetric(node, mode),
+      getId: (node) => mode === 'activities' ? node.episode_key || node._id : node._id,
+    });
+
+    return res.json({
+      success: true,
+      count: { rows: rowsWithLineage.length, windows: windows.length, activities: activities.length },
+      dates,
+      patient_id: String(req.query.patient_id),
+      user_id: String(accountId),
+      selected_date: selection.selectedDate,
+      date_mode: selection.allDates ? 'all' : 'day',
+      selected_device: deviceId,
+      baselines,
+      rows: rowsWithLineage,
+      windows,
+      activities,
+      anchors: temporal.anchors,
+      device_sessions: temporal.device_sessions,
+      temporal_edges: {
+        rows: edgesFor(rowsWithLineage, 'rows'),
+        windows: edgesFor(windows, 'windows'),
+        activities: edgesFor(activities, 'activities'),
+      },
+      truncated: {
+        rows: rowsTruncated,
+        wearable_samples: wearableSamplesTruncated,
+        windows: windowsTruncated,
+        activities: activitiesTruncated,
+        evidence: evidenceTruncated,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 export async function listDoctorCaparRows(req, res) {
   try {
     const queryError = validateDateQuery(
       req.query,
-      new Set(['patient_id', 'date', 'all_dates'])
+      new Set(['patient_id', 'date', 'all_dates', 'offset'])
     );
     if (queryError) return res.status(400).json({ success: false, message: queryError });
+    const offset = Number(req.query.offset || 0);
+    if (!Number.isSafeInteger(offset) || offset < 0) {
+      return res.status(400).json({ success: false, message: 'offset harus bilangan bulat non-negatif.' });
+    }
 
     const patientResult = await getPatientAccount(String(req.query.patient_id || ''));
     if (patientResult.error) {
@@ -168,6 +475,7 @@ export async function listDoctorCaparRows(req, res) {
         },
       },
       { $sort: { timestamp_ms: -1, _id: -1 } },
+      { $skip: offset },
       { $limit: NODE_LIMIT + 1 },
       {
         $project: {
@@ -196,6 +504,7 @@ export async function listDoctorCaparRows(req, res) {
       selected_date: selection.selectedDate,
       date_mode: selection.allDates ? 'all' : 'day',
       truncated,
+      next_offset: truncated ? offset + NODE_LIMIT : null,
       data,
     });
   } catch (error) {
@@ -302,7 +611,7 @@ export async function rebuildDoctorCaparActivityEpisodes(req, res) {
       user_id: patientResult.accountId,
       ...timestampRangeFilter('window_start', selection.range),
     })
-      .select('_id device_id window_type window_start window_end activity_label raw_count is_valid rr_status features.mean_hr features.mean_rr features.motion_intensity features.rmssd features.dfa_alpha1')
+      .select('_id device_id window_type window_start window_end activity_label raw_count is_valid classification rr_status signal_quality_detail.q_signal missing_data_info.confidence_score features.mean_hr features.mean_rr features.sdnn features.motion_intensity features.rmssd features.dfa_alpha1 features.dfa_alpha2')
       .lean();
     if (!segments.length) {
       return res.status(404).json({

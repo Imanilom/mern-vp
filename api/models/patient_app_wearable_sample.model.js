@@ -96,6 +96,7 @@ const PatientAppWearableSampleSchema = new mongoose.Schema(
 );
 
 PatientAppWearableSampleSchema.index({ account_id: 1, account_type: 1, recorded_at: -1 });
+PatientAppWearableSampleSchema.index({ account_id: 1, account_type: 1, recorded_at: 1 });
 PatientAppWearableSampleSchema.index(
   { account_id: 1, account_type: 1, device_id: 1, recorded_at: 1 },
   {

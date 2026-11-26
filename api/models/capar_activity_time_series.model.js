@@ -10,9 +10,14 @@ const SeriesPointSchema = new mongoose.Schema(
     raw_count: { type: Number, default: 0 },
     mean_hr: { type: Number, default: null },
     mean_rr: { type: Number, default: null },
+    sdnn: { type: Number, default: null },
     motion_intensity: { type: Number, default: null },
     rmssd: { type: Number, default: null },
     dfa_alpha1: { type: Number, default: null },
+    dfa_alpha2: { type: Number, default: null },
+    q_signal: { type: Number, default: null },
+    confidence_score: { type: Number, default: null },
+    classification: { type: String, default: null },
   },
   { _id: false }
 );
@@ -30,9 +35,32 @@ const SummarySchema = new mongoose.Schema(
     hr_rr_covariance: { type: Number, default: null },
     hr_rr_pair_count: { type: Number, default: 0 },
     mean_rr: { type: Number, default: null },
+    mean_sdnn: { type: Number, default: null },
+    min_sdnn: { type: Number, default: null },
+    max_sdnn: { type: Number, default: null },
     mean_motion_intensity: { type: Number, default: null },
+    min_motion_intensity: { type: Number, default: null },
+    max_motion_intensity: { type: Number, default: null },
     mean_rmssd: { type: Number, default: null },
+    min_rmssd: { type: Number, default: null },
+    max_rmssd: { type: Number, default: null },
     mean_dfa_alpha1: { type: Number, default: null },
+    mean_dfa_alpha2: { type: Number, default: null },
+    mean_confidence_score: { type: Number, default: null },
+    quality_valid_window_count: { type: Number, default: 0 },
+    quality_invalid_window_count: { type: Number, default: 0 },
+    state_transition_count: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
+const StateTransitionSchema = new mongoose.Schema(
+  {
+    from_segment_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Segment', required: true },
+    to_segment_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Segment', required: true },
+    timestamp: { type: Number, required: true },
+    from_state: { type: String, default: null },
+    to_state: { type: String, default: null },
   },
   { _id: false }
 );
@@ -56,6 +84,7 @@ const CaparActivityTimeSeriesSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Segment',
     }],
+    state_transitions: { type: [StateTransitionSchema], default: [] },
     summary: { type: SummarySchema, required: true },
     series_points: { type: [SeriesPointSchema], default: [] },
     generated_by: {
@@ -76,11 +105,13 @@ CaparActivityTimeSeriesSchema.index(
   { unique: true }
 );
 CaparActivityTimeSeriesSchema.index({ account_id: 1, episode_start: 1 });
+CaparActivityTimeSeriesSchema.index({ account_id: 1, device_id: 1, episode_start: 1 });
 CaparActivityTimeSeriesSchema.index({
   account_id: 1,
   activity_label: 1,
   episode_start: 1,
 });
+CaparActivityTimeSeriesSchema.index({ source_segment_ids: 1 });
 
 export default mongoose.model(
   'CaparActivityTimeSeries',
