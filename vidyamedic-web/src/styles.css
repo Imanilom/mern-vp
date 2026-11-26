@@ -980,7 +980,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .capar-visual-activity-heading { display: flex; align-items: center; gap: 7px; }
 .capar-visual-activity-heading strong { color: var(--ink-soft); font-size: 9px; }
 .capar-visual-activity-heading time { color: var(--muted); font-size: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.capar-visual-node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
+.capar-node-sequence-note { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); font-size: 8px; }
+.capar-node-sequence-note svg { flex: 0 0 auto; color: var(--green-dark); }
+.capar-visual-node-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.capar-visual-node-step { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+.capar-visual-node-relation { display: inline-flex; flex: 0 0 auto; align-items: center; color: #647d8e; }
+.capar-visual-node-relation svg { display: block; }
 .capar-visual-node-card { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 4px 8px; min-width: 0; min-height: 66px; padding: 8px; color: var(--ink-soft); background: #fff; border: 1px solid #e5eeeb; border-radius: 10px; text-align: left; cursor: pointer; transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease; }
 .capar-visual-node-card:hover, .capar-visual-node-card.is-selected { border-color: #79aa9d; box-shadow: 0 3px 11px rgba(34, 75, 68, .10); transform: translateY(-1px); }
 .capar-visual-node-bubble { display: grid; grid-row: 1 / span 2; flex: 0 0 auto; color: #fff; border: 2px solid rgba(255,255,255,.9); border-radius: 50%; box-shadow: 0 0 0 1px #cadbd5; font-size: 9px; font-weight: 800; place-items: center; }
@@ -1128,10 +1133,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .capar-temporal-table th { position: static; }
   .capar-timeline-svg-wrap { overflow: visible; }
   .capar-timeline-svg { width: 100% !important; min-width: 0 !important; height: 246px !important; }
-  .capar-node-grid, .capar-visual-node-grid {
+  .capar-node-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 8px !important;
   }
+  .capar-visual-node-grid { gap: 8px !important; }
+  .capar-visual-node-card { flex-basis: 128px !important; }
   .capar-timeline-chart { break-inside: avoid; }
   .capar-visual-node-card, .capar-node-chip { break-inside: avoid; }
   .capar-visual-node-card:hover, .capar-node-chip:hover { transform: none; box-shadow: none; }

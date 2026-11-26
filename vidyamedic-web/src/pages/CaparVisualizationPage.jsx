@@ -659,9 +659,13 @@ function CaparNodeField({
 
   return (
     <div className="capar-visual-node-field">
+      <p className="capar-node-sequence-note">
+        <ArrowRight aria-hidden="true" size={15} />
+        Panah menunjukkan node berikutnya secara kronologis pada device dan sesi data yang sama.
+      </p>
       {[...entriesByDay.entries()].map(([day, dayEntries]) => {
         const runs = groupChronologicalActivityRuns(dayEntries, {
-          getActivity: (entry) => entry.activity,
+          getActivity: (entry) => entry.streamKey,
           getTime: (entry) => entry.time,
           getEndTime: (entry) => mode === 'activities'
             ? toEpochMs(entry.node.episode_end) ?? entry.time
@@ -674,7 +678,7 @@ function CaparNodeField({
           getMaxGap: (_previous, next) => mode === 'rows'
             ? 5 * 60_000
             : next.node.window_type === '1min' ? 60_000 : 5 * 60_000,
-          canMerge: () => mode !== 'activities',
+          canMerge: () => true,
         });
         return (
           <section className="capar-visual-day-group" key={day}>
@@ -683,20 +687,23 @@ function CaparNodeField({
               <span>{visible.filter((entry) => getJakartaDateKey(entry.time) === day).length} node</span>
             </div>
             {runs.map((run, runIndex) => {
-              const activity = run.activity;
+              const runEntryIndexes = new Map(
+                run.entries.map((entry, index) => [entry.id, index]),
+              );
               const activityEntries = run.entries.filter((entry) => (
                 visibleIds.has(entry.id)
                 && (activityFilter === 'all' || entry.activity === activityFilter)
               ));
               if (!activityEntries.length) return null;
+              const activityNames = [...new Set(activityEntries.map((entry) => entry.activity))];
               return (
                 <section
                   className="capar-visual-activity-group"
                   key={`${day}:${run.start_time}:${run.stream_key}:${runIndex}`}
                 >
                   <div className="capar-visual-activity-heading">
-                    <i style={{ backgroundColor: activityColors.get(activity) }} />
-                    <strong>{activity}</strong>
+                    <i style={{ backgroundColor: activityColors.get(run.entries[0].activity) }} />
+                    <strong>{activityNames.length === 1 ? activityNames[0] : 'Perubahan aktivitas'}</strong>
                     <time>{formatNodeClock(run.start_time)} – {formatNodeClock(run.end_time)}</time>
                     <span>{activityEntries.length}</span>
                   </div>
@@ -704,11 +711,15 @@ function CaparNodeField({
                     className="capar-visual-node-grid"
                     style={{
                       gap: `${8 * zoom}px`,
-                      gridTemplateColumns: `repeat(auto-fill, minmax(${128 * zoom}px, 1fr))`,
                     }}
                   >
                     {activityEntries.map((entry) => {
                       const selected = entry.id === selectedId;
+                      const runEntryIndex = runEntryIndexes.get(entry.id);
+                      const nextRunEntry = run.entries[runEntryIndex + 1];
+                      const hasVisibleSuccessor = nextRunEntry
+                        && visibleIds.has(nextRunEntry.id)
+                        && (activityFilter === 'all' || nextRunEntry.activity === activityFilter);
                       const ratio = maxDensity === minDensity
                         ? 0
                         : Math.sqrt((entry.density - minDensity) / (maxDensity - minDensity));
@@ -730,28 +741,39 @@ function CaparNodeField({
                           : `${entry.node.summary?.window_count || 0} window`;
                       const label = `${entry.activity}, ${formatTime(entry.time)}, HR ${formatMetric(hr)} bpm, RR ${formatMetric(rr)} ms`;
                       return (
-                        <button
-                          aria-label={label}
-                          aria-pressed={selected}
-                          className={`capar-visual-node-card ${selected ? 'is-selected' : ''}`}
-                          key={entry.id}
-                          onClick={() => onSelect(entry.id)}
-                          title={label}
-                          type="button"
-                        >
-                          <span
-                            className="capar-visual-node-bubble"
-                            style={{
-                              height: `${size}px`,
-                              width: `${size}px`,
-                              backgroundColor: activityColors.get(entry.activity),
-                            }}
+                        <div className="capar-visual-node-step" key={entry.id}>
+                          <button
+                            aria-label={label}
+                            aria-pressed={selected}
+                            className={`capar-visual-node-card ${selected ? 'is-selected' : ''}`}
+                            onClick={() => onSelect(entry.id)}
+                            style={{ flex: `0 0 ${128 * zoom}px` }}
+                            title={label}
+                            type="button"
                           >
-                            {formatMetric(hr, 0)}
-                          </span>
-                          <time>{formatNodeClock(entry.time)}</time>
-                          <small>{detail}</small>
-                        </button>
+                            <span
+                              className="capar-visual-node-bubble"
+                              style={{
+                                height: `${size}px`,
+                                width: `${size}px`,
+                                backgroundColor: activityColors.get(entry.activity),
+                              }}
+                            >
+                              {formatMetric(hr, 0)}
+                            </span>
+                            <time>{formatNodeClock(entry.time)}</time>
+                            <small>{entry.activity} · {detail}</small>
+                          </button>
+                          {hasVisibleSuccessor && (
+                            <span
+                              aria-label={`Arah ke node ${formatNodeClock(nextRunEntry.time)}`}
+                              className="capar-visual-node-relation"
+                              title={`Urutan waktu berikutnya: ${formatNodeClock(nextRunEntry.time)}`}
+                            >
+                              <ArrowRight aria-hidden="true" size={22} />
+                            </span>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -805,6 +827,10 @@ function AnchoredTimelineChart({
   deviceFilter = 'all',
 }) {
   const allEntries = useMemo(() => getTimelineEntries(nodes, mode), [nodes, mode]);
+  const allSessions = useMemo(
+    () => getDeviceSignalSessions(allEntries, mode),
+    [allEntries, mode],
+  );
   if (!allEntries.length) return null;
 
   const timelineBoundaries = [
@@ -822,7 +848,7 @@ function AnchoredTimelineChart({
     : centeredStart;
   const viewEnd = viewStart + visibleSpan;
   const entries = allEntries.filter((entry) => entry.time >= viewStart && entry.time <= viewEnd);
-  const sessions = useMemo(() => getDeviceSignalSessions(allEntries, mode), [allEntries, mode])
+  const sessions = allSessions
     .map((session) => {
       const visibleEntries = session.entries.filter((entry) => (
         entry.time >= viewStart && entry.time <= viewEnd
