@@ -54,7 +54,7 @@ const ACTIVITY_COLORS = [
 ];
 const DEVICE_SIGNAL_GAP_MS = 5 * 60_000;
 const MIN_VISUAL_ZOOM = 0.75;
-const MAX_VISUAL_ZOOM = 2;
+const MAX_VISUAL_ZOOM = 10;
 const VISUAL_ZOOM_STEP = 0.25;
 
 function toEpochMs(value) {
