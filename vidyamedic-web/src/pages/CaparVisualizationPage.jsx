@@ -736,10 +736,6 @@ function CaparNodeField({
                       const hasVisibleSuccessor = nextRunEntry
                         && visibleIds.has(nextRunEntry.id)
                         && (activityFilter === 'all' || nextRunEntry.activity === activityFilter);
-                      const ratio = maxDensity === minDensity
-                        ? 0
-                        : Math.sqrt((entry.density - minDensity) / (maxDensity - minDensity));
-                      const size = mode === 'rows' ? 30 : 30 + (ratio * 18);
                       const hr = mode === 'rows'
                         ? entry.node.hr
                         : mode === 'windows'
